@@ -1,6 +1,6 @@
 # Orot release process
 
-This repository currently admits `v0.1.0` only. Release automation creates a GitHub Release after validating the exact main commit, its successful main CI run, issue evidence, and a human approval recorded on the candidate pull request. CI simulator builds are test evidence only; this process does not create an installable iPhone IPA or submit to TestFlight or the App Store.
+This repository currently admits `v0.1.0` only. Release automation creates a GitHub Release after validating the exact main commit, its successful main CI run, issue evidence, and a human approval recorded on the candidate pull request. The simulator product is `Orot.app` with display name `Orot`; CI simulator builds are test evidence only. This process does not create an installable iPhone IPA or submit to TestFlight or the App Store.
 
 For workstation setup and the pinned development commands, see [Development setup](development.md).
 

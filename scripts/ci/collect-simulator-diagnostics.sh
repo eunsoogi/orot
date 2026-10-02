@@ -20,6 +20,6 @@ if [[ -z "$device_id" ]]; then
   exit 0
 fi
 
-if ! xcrun simctl spawn "$device_id" log show --last 20m --style compact --predicate 'process == "OrotMobile"' > "$output_log" 2>&1; then
+if ! xcrun simctl spawn "$device_id" log show --last 20m --style compact --predicate 'process == "Orot"' > "$output_log" 2>&1; then
   printf '\nSimulator log capture failed; see the retained Detox test log.\n' >> "$output_log"
 fi

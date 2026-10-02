@@ -12,7 +12,7 @@ module.exports = {
   apps: {
     'ios.release': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/OrotMobile.app',
+      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/Orot.app',
       build: 'xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO',
     },
   },
