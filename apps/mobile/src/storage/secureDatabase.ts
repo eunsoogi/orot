@@ -1,0 +1,112 @@
+import { isSQLCipher, open } from '@op-engineering/op-sqlite';
+import { ACCESSIBLE, getGenericPassword, setGenericPassword } from 'react-native-keychain';
+import { openEncryptedStorage, resolveDatabaseKey } from '@orot/storage';
+import type { RecordRepository } from '@orot/storage';
+import type { DB } from '@op-engineering/op-sqlite';
+
+const DATABASE_NAME = 'orot-secure.db';
+const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
+const KEYCHAIN_ACCOUNT = 'database';
+
+const keyStore = {
+  async getSecret() {
+    const credentials = await getGenericPassword({ service: KEYCHAIN_SERVICE });
+    return credentials === false ? null : credentials.password;
+  },
+  async setSecret(secret: string) {
+    const result = await setGenericPassword(KEYCHAIN_ACCOUNT, secret, {
+      service: KEYCHAIN_SERVICE,
+      accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    if (result === false) {
+      throw new Error('The database key could not be saved to Keychain.');
+    }
+  },
+};
+
+function fillSecureRandomBytes(target: Uint8Array): void {
+  const source = (globalThis as unknown as {
+    crypto?: { getRandomValues?: <T extends ArrayBufferView>(value: T) => T };
+  }).crypto;
+  if (!source || typeof source.getRandomValues !== 'function') {
+    throw new Error('A secure random source is unavailable.');
+  }
+  source.getRandomValues(target);
+}
+
+let database: DB | null = null;
+let opening: Promise<RecordRepository> | null = null;
+
+export function openLocalStorage(): Promise<RecordRepository> {
+  if (!isSQLCipher()) {
+    return Promise.reject(new Error('The native SQLite build does not include SQLCipher.'));
+  }
+  if (!opening) {
+    opening = openEncryptedStorage({
+      name: DATABASE_NAME,
+      keyStore,
+      randomBytes: fillSecureRandomBytes,
+      openDatabase(name, encryptionKey) {
+        database = open({ name, encryptionKey });
+        return database;
+      },
+    }).catch(error => {
+      opening = null;
+      database = null;
+      throw error;
+    });
+  }
+  return opening;
+}
+
+export async function hasDatabaseKey(): Promise<boolean> {
+  return (await keyStore.getSecret()) !== null;
+}
+
+export async function getCipherVersion(): Promise<string | null> {
+  if (!database) throw new Error('The database is not open.');
+  const result = await database.execute('PRAGMA cipher_version');
+  const value = result.rows[0]?.cipher_version;
+  return typeof value === 'string' ? value : null;
+}
+
+export async function verifyWrongKeyRejected(): Promise<boolean> {
+  const credentials = await getGenericPassword({ service: KEYCHAIN_SERVICE });
+  if (credentials === false) return false;
+  const key = credentials.password;
+  const wrongKey = (key[0] === '0' ? '1' : '0') + key.slice(1);
+  let probe: DB | null = null;
+  try {
+    probe = open({
+      name: DATABASE_NAME,
+      encryptionKey: wrongKey,
+      failOnCreate: true,
+      readOnly: true,
+    });
+    await probe.execute('SELECT count(*) AS schema_count FROM sqlite_master');
+    return false;
+  } catch {
+    return true;
+  } finally {
+    try {
+      await probe?.closeAsync();
+    } catch {
+      // The wrong-key check must not change the storage result.
+    }
+  }
+}
+
+export async function prepareLegacyStorageForE2e(record: object): Promise<void> {
+  if (!isSQLCipher()) throw new Error('The native SQLite build does not include SQLCipher.');
+  const key = await resolveDatabaseKey(keyStore, fillSecureRandomBytes);
+  const legacyDatabase = open({ name: DATABASE_NAME, encryptionKey: key });
+  await legacyDatabase.execute(
+    'CREATE TABLE records (record_type TEXT NOT NULL, payload_json TEXT NOT NULL)',
+  );
+  await legacyDatabase.execute('INSERT INTO records (record_type, payload_json) VALUES (?, ?)', [
+    'source_record',
+    JSON.stringify(record),
+  ]);
+  await legacyDatabase.execute('PRAGMA user_version = 0');
+  await legacyDatabase.closeAsync();
+}
