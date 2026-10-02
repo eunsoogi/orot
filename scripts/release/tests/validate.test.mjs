@@ -159,6 +159,7 @@ test('rejects failed, skipped, missing, or duplicate required CI jobs', () => {
   for (const jobs of [
     ciJobs.map((job, index) => index === 0 ? { ...job, conclusion: 'failure' } : job),
     ciJobs.map((job, index) => index === 1 ? { ...job, conclusion: 'skipped' } : job),
+    ciJobs.map((job, index) => index === 2 ? { ...job, conclusion: 'failure' } : job),
     ciJobs.slice(1),
     [...ciJobs, ciJobs[0]],
   ]) {

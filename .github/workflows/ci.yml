@@ -21,6 +21,7 @@ env:
   EXPECTED_PNPM_VERSION: "12.3.4"
   EXPECTED_RUBY_VERSION: "4.0.7"
   EXPECTED_COCOAPODS_VERSION: "1.17.0"
+  EXPECTED_APPLESIMUTILS_VERSION: "0.9.12"
   EXPECTED_MACOS_VERSION: "27.0"
   EXPECTED_XCODE_VERSION: "27.0"
   EXPECTED_IOS_SIMULATOR_SDK: "27.0"
@@ -168,6 +169,9 @@ jobs:
 
       - name: Build Detox iOS Simulator app
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- pnpm e2e:build:ios
+
+      - name: Install Detox Simulator utilities
+        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
 
       - name: Run Detox iOS Simulator tests
         run: scripts/ci/run-test-suite.sh e2e artifacts/detox
