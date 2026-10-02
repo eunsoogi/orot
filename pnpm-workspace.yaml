@@ -1,0 +1,9 @@
+packages:
+  - apps/mobile
+  - packages/*
+
+nodeLinker: isolated
+
+allowBuilds:
+  detox: true
+  dtrace-provider: false
