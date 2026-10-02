@@ -1,0 +1,17 @@
+{
+  "name": "orot",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "lint": "pnpm --filter @orot/mobile lint",
+    "typecheck": "pnpm --filter @orot/mobile typecheck",
+    "test:unit": "pnpm --filter @orot/mobile test:unit",
+    "ios:build": "pnpm --filter @orot/mobile ios:build",
+    "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios",
+    "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios"
+  }
+}
