@@ -167,6 +167,9 @@ jobs:
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
 
+      - name: Build Detox iOS framework cache
+        run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
+
       - name: Build Detox iOS Simulator app
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- pnpm e2e:build:ios
 
