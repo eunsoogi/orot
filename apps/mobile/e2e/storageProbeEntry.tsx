@@ -1,11 +1,12 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, StyleSheet, Text, View } from 'react-native';
+import App from '../App';
 import { name as appName } from '../app.json';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import type { StorageProbeMode } from '../src/storage/e2eProbe';
 
-function getStorageProbeMode(): StorageProbeMode {
+function getStorageProbeMode(): StorageProbeMode | null {
   const settingsManager = (NativeModules as unknown as {
     SettingsManager?: {
       settings?: Record<string, unknown>;
@@ -16,11 +17,10 @@ function getStorageProbeMode(): StorageProbeMode {
     settingsManager?.settings?.OROT_STORAGE_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_STORAGE_PROBE;
   if (value === 'fresh' || value === 'restart' || value === 'legacy') return value;
-  throw new Error('A Detox storage probe mode is required.');
+  return null;
 }
 
-function StorageProbe() {
-  const mode = getStorageProbeMode();
+function StorageProbe({ mode }: { mode: StorageProbeMode }) {
   const [result, setResult] = useState<{
     status: 'running' | 'success' | 'failure';
     message?: string;
@@ -54,6 +54,11 @@ function StorageProbe() {
   );
 }
 
+function StorageProbeEntry() {
+  const mode = getStorageProbeMode();
+  return mode === null ? <App /> : <StorageProbe mode={mode} />;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -64,4 +69,4 @@ const styles = StyleSheet.create({
   },
 });
 
-AppRegistry.registerComponent(appName, () => StorageProbe);
+AppRegistry.registerComponent(appName, () => StorageProbeEntry);
