@@ -9,6 +9,7 @@ fi
 suite="$1"
 artifact_dir="$2"
 mkdir -p "$artifact_dir"
+artifact_dir="$(cd "$artifact_dir" && pwd -P)"
 case "$suite" in
   unit)
     log_path="$artifact_dir/unit-test.log"
