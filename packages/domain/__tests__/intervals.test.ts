@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { EncounterSchema, SymptomEntrySchema } from '../src';
+import { AppointmentSchema, EncounterSchema, SymptomEntrySchema } from '../src';
 import { metadata } from './fixtures';
 
 describe('effective intervals', () => {
@@ -15,6 +15,34 @@ describe('effective intervals', () => {
       resolvedAt: '2026-02-03T08:59:00-05:00',
     });
 
+    expect(encounter.success).toBe(false);
+    expect(symptom.success).toBe(false);
+  });
+
+  it('rejects interval end times earlier within the same millisecond', () => {
+    const appointment = AppointmentSchema.safeParse({
+      ...metadata('submillisecond-appointment-1', {
+        effectiveAt: '2026-01-01T00:00:00.0002Z',
+      }),
+      status: 'scheduled',
+      endsAt: '2026-01-01T00:00:00.0001Z',
+    });
+    const encounter = EncounterSchema.safeParse({
+      ...metadata('submillisecond-encounter-1', {
+        effectiveAt: '2026-01-01T00:00:00.0002Z',
+      }),
+      encounterKind: 'outpatient',
+      endedAt: '2026-01-01T00:00:00.0001Z',
+    });
+    const symptom = SymptomEntrySchema.safeParse({
+      ...metadata('submillisecond-symptom-1', {
+        effectiveAt: '2026-01-01T00:00:00.0002Z',
+      }),
+      description: 'Synthetic symptom',
+      resolvedAt: '2026-01-01T00:00:00.0001Z',
+    });
+
+    expect(appointment.success).toBe(false);
     expect(encounter.success).toBe(false);
     expect(symptom.success).toBe(false);
   });

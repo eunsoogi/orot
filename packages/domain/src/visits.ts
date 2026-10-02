@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { RecordIdSchema, RecordMetadataSchema, TimestampSchema } from './common';
+import {
+  RecordIdSchema,
+  RecordMetadataSchema,
+  TimestampSchema,
+  compareTimestamps,
+} from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const UniqueRecordIdsSchema = z
@@ -14,7 +19,7 @@ export const AppointmentSchema = RecordMetadataSchema.safeExtend({
 }).superRefine((appointment, context) => {
   if (
     appointment.endsAt &&
-    Date.parse(appointment.endsAt) < Date.parse(appointment.effectiveAt)
+    compareTimestamps(appointment.endsAt, appointment.effectiveAt) < 0
   ) {
     context.addIssue({
       code: 'custom',

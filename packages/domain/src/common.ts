@@ -3,6 +3,29 @@ import { z } from 'zod';
 export const RecordIdSchema = z.string().trim().min(1);
 export const TimestampSchema = z.iso.datetime({ offset: true });
 
+function submillisecondDigits(timestamp: string): string {
+  const fraction = timestamp.match(/\.(\d+)(?=(?:Z|[+-]\d{2}:\d{2})$)/i)?.[1] ?? '';
+  return fraction.slice(3);
+}
+
+export function compareTimestamps(left: string, right: string): number {
+  const leftMilliseconds = Date.parse(left);
+  const rightMilliseconds = Date.parse(right);
+
+  if (leftMilliseconds !== rightMilliseconds) {
+    return leftMilliseconds < rightMilliseconds ? -1 : 1;
+  }
+
+  const leftFraction = submillisecondDigits(left);
+  const rightFraction = submillisecondDigits(right);
+  const precision = Math.max(leftFraction.length, rightFraction.length);
+  const normalizedLeft = leftFraction.padEnd(precision, '0');
+  const normalizedRight = rightFraction.padEnd(precision, '0');
+
+  if (normalizedLeft === normalizedRight) return 0;
+  return normalizedLeft < normalizedRight ? -1 : 1;
+}
+
 export const ProvenanceOriginSchema = z.enum([
   'user_reported',
   'caregiver_reported',
@@ -42,7 +65,7 @@ export const RecordMetadataSchema = z
     reviewState: ReviewStateSchema,
   })
   .superRefine((record, context) => {
-    if (Date.parse(record.recordedAt) > Date.parse(record.ingestedAt)) {
+    if (compareTimestamps(record.recordedAt, record.ingestedAt) > 0) {
       context.addIssue({
         code: 'custom',
         path: ['ingestedAt'],
@@ -63,7 +86,7 @@ export const RecordMetadataSchema = z
 
     if (
       record.reviewState.status === 'reviewed' &&
-      Date.parse(record.reviewState.reviewedAt) < Date.parse(record.recordedAt)
+      compareTimestamps(record.reviewState.reviewedAt, record.recordedAt) < 0
     ) {
       context.addIssue({
         code: 'custom',

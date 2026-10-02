@@ -38,6 +38,40 @@ describe('record time, provenance, and review validation', () => {
     }
   });
 
+  it('compares fractional seconds beyond milliseconds and equivalent offsets exactly', () => {
+    const reversedFraction = HealthObservationSchema.safeParse({
+      ...metadata('submillisecond-order-1', {
+        recordedAt: '2026-01-01T00:00:00.0002Z',
+        ingestedAt: '2026-01-01T00:00:00.0001Z',
+      }),
+      observationKind: 'measurement',
+      concept: 'sample',
+      value: { kind: 'quantity', amount: 1, unit: 'unit' },
+    });
+    const equivalentOffsets = HealthObservationSchema.safeParse({
+      ...metadata('equivalent-offsets-1', {
+        recordedAt: '2026-01-01T01:00:00.000100+01:00',
+        ingestedAt: '2026-01-01T00:00:00.0001Z',
+      }),
+      observationKind: 'measurement',
+      concept: 'sample',
+      value: { kind: 'quantity', amount: 1, unit: 'unit' },
+    });
+    const adjacentMillis = HealthObservationSchema.safeParse({
+      ...metadata('fractional-millisecond-boundary-1', {
+        recordedAt: '2026-01-01T00:00:00.0009999Z',
+        ingestedAt: '2026-01-01T00:00:00.0010000Z',
+      }),
+      observationKind: 'measurement',
+      concept: 'sample',
+      value: { kind: 'quantity', amount: 1, unit: 'unit' },
+    });
+
+    expect(reversedFraction.success).toBe(false);
+    expect(equivalentOffsets.success).toBe(true);
+    expect(adjacentMillis.success).toBe(true);
+  });
+
   it('allows backfilled facts and future appointments', () => {
     const observation = HealthObservationSchema.parse({
       ...metadata('backfilled-1', { effectiveAt: '2024-10-01T08:00:00Z' }),
@@ -111,9 +145,23 @@ describe('record time, provenance, and review validation', () => {
       concept: 'sample measurement',
       value: { kind: 'quantity', amount: 1, unit: 'unit' },
     });
+    const invalidSubmillisecond = HealthObservationSchema.safeParse({
+      ...metadata('review-before-record-submillisecond-1', {
+        recordedAt: '2026-01-01T00:00:00.0002Z',
+        reviewState: {
+          status: 'reviewed',
+          reviewerId: 'reviewer-1',
+          reviewedAt: '2026-01-01T00:00:00.0001Z',
+        },
+      }),
+      observationKind: 'measurement',
+      concept: 'sample measurement',
+      value: { kind: 'quantity', amount: 1, unit: 'unit' },
+    });
 
     expect(valid.success).toBe(true);
     expect(invalid.success).toBe(false);
+    expect(invalidSubmillisecond.success).toBe(false);
     expect(ReviewStateSchema.safeParse({ status: 'needs_review' }).success).toBe(false);
   });
 });

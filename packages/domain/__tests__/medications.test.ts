@@ -31,4 +31,17 @@ describe('medication assertions and dose events', () => {
     expect(MedicationAssertionSchema.safeParse(doseEvent).success).toBe(false);
     expect(unconfirmedCurrentMedication.success).toBe(false);
   });
+
+  it('rejects a prescription end time earlier within the same millisecond', () => {
+    const prescription = PrescriptionAssertionSchema.safeParse({
+      ...metadata('submillisecond-prescription-1', {
+        effectiveAt: '2026-01-01T00:00:00.0002Z',
+      }),
+      assertionKind: 'prescribed',
+      medicationName: 'Sample medication',
+      endsAt: '2026-01-01T00:00:00.0001Z',
+    });
+
+    expect(prescription.success).toBe(false);
+  });
 });
