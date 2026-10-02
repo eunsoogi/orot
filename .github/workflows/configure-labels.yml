@@ -1,0 +1,111 @@
+name: Configure Orot labels
+on:
+  push:
+    branches: [chore/orot-label-settings]
+    paths: [.github/workflows/configure-labels.yml]
+  workflow_dispatch:
+permissions:
+  issues: write
+concurrency:
+  group: orot-label-settings
+  cancel-in-progress: false
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure and verify repository labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import json, os, urllib.request, urllib.parse, urllib.error
+          REPO = os.environ["GITHUB_REPOSITORY"]
+          TOKEN = os.environ["GH_TOKEN"]
+          BASE = "https://api.github.com/repos/" + REPO
+          DESIRED = json.loads("[{\"name\":\"area/foundation\",\"color\":\"BFD4F2\",\"description\":\"Workspace, build tooling, and shared project infrastructure\"},{\"name\":\"area/domain\",\"color\":\"BFD4F2\",\"description\":\"Health-record contracts, validation, and provenance rules\"},{\"name\":\"area/model-runtime\",\"color\":\"D4C5F9\",\"description\":\"Provider-neutral model interfaces and model selection\"},{\"name\":\"area/agent\",\"color\":\"D4C5F9\",\"description\":\"LangGraph workflows, checkpoints, and user confirmation\"},{\"name\":\"area/storage\",\"color\":\"BFD4F2\",\"description\":\"Encrypted on-device persistence and migrations\"},{\"name\":\"area/provider-openai\",\"color\":\"D4C5F9\",\"description\":\"ChatGPT authentication and OpenAI model integration\"},{\"name\":\"area/ios-audio\",\"color\":\"C2E0C6\",\"description\":\"iOS consultation recording and audio sessions\"},{\"name\":\"area/ios-speech\",\"color\":\"C2E0C6\",\"description\":\"On-device speech recognition and transcription\"},{\"name\":\"area/records\",\"color\":\"BFDADC\",\"description\":\"Medical documents, transcripts, and personal health records\"},{\"name\":\"area/ios-health\",\"color\":\"C2E0C6\",\"description\":\"HealthKit permissions and health-data synchronization\"},{\"name\":\"area/ios-calendar\",\"color\":\"C2E0C6\",\"description\":\"EventKit calendar and appointment integration\"},{\"name\":\"area/appointment\",\"color\":\"BFDADC\",\"description\":\"Appointment creation and visit scheduling\"},{\"name\":\"area/rag\",\"color\":\"D4C5F9\",\"description\":\"Local embeddings, retrieval, and evidence citations\"},{\"name\":\"area/agent-tools\",\"color\":\"D4C5F9\",\"description\":\"Deterministic tools for structured health-record queries\"},{\"name\":\"area/safety\",\"color\":\"F9D0C4\",\"description\":\"Reviewed health-safety rules and safe agent behavior\"},{\"name\":\"area/ui\",\"color\":\"BFDADC\",\"description\":\"Mobile screens, accessibility, and interaction flows\"},{\"name\":\"area/notifications\",\"color\":\"BFDADC\",\"description\":\"Local reminders and notification behavior\"},{\"name\":\"area/privacy\",\"color\":\"F9D0C4\",\"description\":\"Data protection, deletion, consent, and telemetry boundaries\"},{\"name\":\"area/eval\",\"color\":\"FEF2C0\",\"description\":\"Synthetic datasets and model or workflow evaluation\"},{\"name\":\"area/e2e\",\"color\":\"FEF2C0\",\"description\":\"End-to-end integration and physical-device validation\"},{\"name\":\"type/bug\",\"color\":\"D73A4A\",\"description\":\"Existing behavior is broken or incorrect\"},{\"name\":\"type/feature\",\"color\":\"0E8A16\",\"description\":\"Add or improve a user-facing or platform capability\"},{\"name\":\"type/refactor\",\"color\":\"A2EEEF\",\"description\":\"Restructure implementation without changing behavior\"},{\"name\":\"type/docs\",\"color\":\"0075CA\",\"description\":\"Documentation, examples, and developer guidance\"},{\"name\":\"type/test\",\"color\":\"FBCA04\",\"description\":\"Automated tests, validation, and evaluation coverage\"},{\"name\":\"type/chore\",\"color\":\"CFD3D7\",\"description\":\"Maintenance, configuration, and project scaffolding\"},{\"name\":\"type/spike\",\"color\":\"D876E3\",\"description\":\"Time-bounded research or feasibility validation\"},{\"name\":\"type/ci\",\"color\":\"1D76DB\",\"description\":\"Continuous integration and release automation\"},{\"name\":\"type/question\",\"color\":\"CC317C\",\"description\":\"A question requiring clarification or discussion\"},{\"name\":\"priority/p0\",\"color\":\"B60205\",\"description\":\"Critical incident or release-stopping issue; address immediately\"},{\"name\":\"priority/p1\",\"color\":\"D93F0B\",\"description\":\"High priority; address ahead of normal planned work\"},{\"name\":\"priority/p2\",\"color\":\"FBCA04\",\"description\":\"Normal priority for planned work\"},{\"name\":\"priority/p3\",\"color\":\"C5DEF5\",\"description\":\"Low priority; can be deferred\"},{\"name\":\"status/blocked\",\"color\":\"B60205\",\"description\":\"Progress is blocked by an unresolved dependency or decision\"},{\"name\":\"status/needs-info\",\"color\":\"FEF2C0\",\"description\":\"More information is required before work can proceed\"},{\"name\":\"duplicate\",\"color\":\"CFD3D7\",\"description\":\"Already tracked by another issue or pull request\"},{\"name\":\"invalid\",\"color\":\"E4E669\",\"description\":\"Not actionable as a valid issue for this repository\"},{\"name\":\"wontfix\",\"color\":\"FFFFFF\",\"description\":\"A deliberate decision has been made not to implement this\"},{\"name\":\"good first issue\",\"color\":\"7057FF\",\"description\":\"Well-scoped work suitable for a first contribution\"},{\"name\":\"help wanted\",\"color\":\"008672\",\"description\":\"Contributions from others are welcome\"}]")
+          
+          def api(method, path, payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(BASE + path, data=data, method=method, headers={
+                  "Authorization": "Bearer " + TOKEN,
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "Content-Type": "application/json",
+              })
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = response.read()
+                  return json.loads(body) if body else None
+          
+          def list_all(path):
+              result = []
+              page = 1
+              while True:
+                  batch = api("GET", path + "?per_page=100&page=" + str(page))
+                  result.extend(batch)
+                  if len(batch) < 100:
+                      return result
+                  page += 1
+          
+          def label_path(name):
+              return "/labels/" + urllib.parse.quote(name, safe="")
+          
+          existing = {label["name"]: label for label in list_all("/labels")}
+          migrations = {name: name.replace(":", "/", 1) for name in existing
+                        if name.startswith(("area:", "type:"))}
+          migrations.update({"bug": "type/bug", "enhancement": "type/feature",
+                             "documentation": "type/docs", "question": "type/question"})
+          for old, new in migrations.items():
+              if old in existing and new not in existing:
+                  api("PATCH", label_path(old), {"new_name": new})
+                  existing[new] = existing.pop(old)
+                  print("Renamed", old, "->", new)
+          
+          for label in DESIRED:
+              name = label["name"]
+              if name in existing:
+                  api("PATCH", label_path(name), {"color": label["color"], "description": label["description"]})
+              else:
+                  api("POST", "/labels", label)
+              print("Configured", name)
+          
+          # Merge duplicate legacy labels while preserving labels on all issues and PRs.
+          remaining = {label["name"] for label in list_all("/labels")}
+          for old, new in migrations.items():
+              if old not in remaining:
+                  continue
+              page = 1
+              matches = []
+              while True:
+                  batch = api("GET", "/issues?state=all&per_page=100&page=" + str(page)
+                              + "&labels=" + urllib.parse.quote(old, safe=""))
+                  matches.extend(batch)
+                  if len(batch) < 100:
+                      break
+                  page += 1
+              for issue in matches:
+                  base = "/issues/" + str(issue["number"]) + "/labels"
+                  api("POST", base, {"labels": [new]})
+                  api("DELETE", base + "/" + urllib.parse.quote(old, safe=""))
+              api("DELETE", label_path(old))
+              print("Merged", old, "->", new, "across", len(matches), "issues/PRs")
+          
+          actual = {label["name"]: label for label in list_all("/labels")}
+          for expected in DESIRED:
+              found = actual[expected["name"]]
+              assert found["color"].lower() == expected["color"].lower(), expected["name"]
+              assert found["description"] == expected["description"], expected["name"]
+          assert not any(name in actual for name in migrations), "Legacy labels remain"
+          issues = list_all("/issues")
+          checked = 0
+          for issue in issues:
+              if "pull_request" in issue or not 1 <= issue["number"] <= 42:
+                  continue
+              names = [label["name"] for label in issue["labels"]]
+              assert any(name.startswith("area/") for name in names), issue["number"]
+              assert any(name.startswith("type/") for name in names), issue["number"]
+              assert not any(name.startswith(("area:", "type:")) for name in names), issue["number"]
+              checked += 1
+          assert checked == 42, ("Expected 42 original open issues", checked)
+          print("Verified", len(DESIRED), "label definitions and", checked, "issue assignments")
+          
