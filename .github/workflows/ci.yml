@@ -35,6 +35,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up pnpm
@@ -49,6 +50,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enforce the 250-line policy
+        env:
+          LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
 
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
