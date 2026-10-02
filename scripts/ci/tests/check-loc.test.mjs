@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
-import { copyFileSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -120,6 +120,22 @@ test('reports policy exclusions with reasons', (t) => {
   const result = run(repo.root, '--base', repo.base);
   assert.equal(result.status, 0, result.output);
   for (const name of Object.keys(files)) assert.ok(result.output.includes(`EXCLUDED ${JSON.stringify(name)} reason=`), result.output);
+});
+
+test('classifies literal path segments and preserves a leading BOM in path names', (t) => {
+  const bomName = '\uFEFFsame.ts';
+  const repo = repository({ 'same.ts': 'small baseline\n' });
+  clean(t, repo.root);
+  const names = ['src/constructor/large.ts', 'src/__proto__/large.ts', 'scripts/build', bomName];
+  for (const name of names) put(repo.root, name, physicalLines(251));
+  chmodSync(join(repo.root, 'scripts/build'), 0o755);
+
+  const result = run(repo.root, '--base', repo.base);
+  assert.equal(result.status, 1, result.output);
+  for (const name of names) {
+    const shownName = JSON.stringify(name).replace(/\uFEFF/g, '\\uFEFF');
+    assert.ok(result.output.includes(`FAIL UNTRACKED ${shownName} lines=251 limit=250`), result.output);
+  }
 });
 
 test('fails closed for unknown types, symlinks, and a missing base', (t) => {

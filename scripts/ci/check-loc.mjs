@@ -5,7 +5,11 @@ import { dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url';
 
 const POLICY_PATH = resolve(dirname(fileURLToPath(import.meta.url)), 'loc-policy.json');
-const decoder = new TextDecoder('utf-8', { fatal: true });
+const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+
+function quotePath(path) {
+  return JSON.stringify(path).replace(/\uFEFF/g, '\\uFEFF');
+}
 
 function fail(message) {
   console.error(`LOC check failed: ${message}`);
@@ -70,7 +74,7 @@ function changedFiles(root, base) {
       continue;
     }
     if (!['A', 'M', 'R', 'C', 'T'].includes(status[0])) throw new Error(`unsupported Git change status ${status}`);
-    changes.push({ path: destination, mode, action: status[0] === 'R' ? `RENAMED from ${JSON.stringify(source)}` : status[0] === 'C' ? `COPIED from ${JSON.stringify(source)}` : 'CHANGED' });
+    changes.push({ path: destination, mode, action: status[0] === 'R' ? `RENAMED from ${quotePath(source)}` : status[0] === 'C' ? `COPIED from ${quotePath(source)}` : 'CHANGED' });
   }
 
   for (const field of nulFields(runGit(root, ['ls-files', '--others', '--exclude-standard', '-z']))) {
@@ -101,16 +105,21 @@ function allFiles(root) {
 }
 
 function exclusionFor(path, policy) {
-  if (policy.excludedPaths[path]) return policy.excludedPaths[path];
+  if (Object.hasOwn(policy.excludedPaths, path)) return policy.excludedPaths[path];
   const parts = path.split('/');
-  for (const part of parts) {
-    const reason = policy.excludedPathSegments[part.toLowerCase()];
-    if (reason) return reason;
+  for (const part of parts.slice(0, -1)) {
+    const key = part.toLowerCase();
+    if (Object.hasOwn(policy.excludedPathSegments, key) && policy.excludedPathSegments[key]) {
+      return policy.excludedPathSegments[key];
+    }
   }
   const filename = parts.at(-1);
-  const exactReason = policy.excludedFilenames[filename.toLowerCase()];
-  if (exactReason) return exactReason;
-  return policy.excludedExtensions[extname(filename).toLowerCase()];
+  const filenameKey = filename.toLowerCase();
+  if (Object.hasOwn(policy.excludedFilenames, filenameKey) && policy.excludedFilenames[filenameKey]) {
+    return policy.excludedFilenames[filenameKey];
+  }
+  const extension = extname(filename).toLowerCase();
+  return Object.hasOwn(policy.excludedExtensions, extension) ? policy.excludedExtensions[extension] : undefined;
 }
 
 function isIncluded(path, mode, policy) {
@@ -125,9 +134,9 @@ function countPhysicalLines(bytes, path) {
   try {
     text = decoder.decode(bytes);
   } catch {
-    throw new Error(`${JSON.stringify(path)} is not valid UTF-8 text`);
+    throw new Error(`${quotePath(path)} is not valid UTF-8 text`);
   }
-  if (text.includes('\0')) throw new Error(`${JSON.stringify(path)} contains binary NUL bytes`);
+  if (text.includes('\0')) throw new Error(`${quotePath(path)} contains binary NUL bytes`);
   if (text.length === 0) return 0;
   const breaks = text.match(/\r\n|\r|\n/g)?.length ?? 0;
   return breaks + (/(?:\r\n|\r|\n)$/.test(text) ? 0 : 1);
@@ -136,7 +145,7 @@ function countPhysicalLines(bytes, path) {
 function fileBytes(root, path) {
   const absolute = resolve(root, ...path.split('/'));
   const rel = relative(root, absolute);
-  if (isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`)) throw new Error(`path escapes repository root: ${JSON.stringify(path)}`);
+  if (isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`)) throw new Error(`path escapes repository root: ${quotePath(path)}`);
   return readFileSync(absolute);
 }
 
@@ -181,7 +190,7 @@ function main() {
 
   const problems = [];
   for (const file of files) {
-    const shownPath = JSON.stringify(file.path);
+    const shownPath = quotePath(file.path);
     if (!['100644', '100755'].includes(file.mode)) {
       problems.push(`${shownPath} has unexpected Git file mode ${file.mode}; only regular files are supported`);
       continue;
@@ -204,7 +213,7 @@ function main() {
     }
   }
 
-  for (const path of deleted) console.log(`DELETED ${JSON.stringify(path)}; no current file to count`);
+  for (const path of deleted) console.log(`DELETED ${quotePath(path)}; no current file to count`);
   if (problems.length) {
     for (const problem of problems) console.error(`FAIL ${problem}`);
     fail(`${problems.length} file(s) require attention`);
