@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Dry run reports readiness without publishing; publish creates the tag and GitHub Release.
+        type: choice
+        options:
+          - dry-run
+          - publish
+        default: dry-run
+        required: true
+      version:
+        description: Release version; this workflow currently admits v0.1.0 only.
+        type: string
+        default: "0.1.0"
+        required: true
+      source_sha:
+        description: Full commit SHA on main that passed the required CI run.
+        type: string
+        required: true
+      ci_run_id:
+        description: Run ID of the successful CI push workflow for source_sha.
+        type: string
+        required: true
+      readiness_evidence_json:
+        description: Required for publish; JSON containing actual #34, #40, #41, #42 evidence and candidate approval. Never include credentials or health data.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orot-release-v0.1.0
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Release / Verify Candidate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      publication_allowed: ${{ steps.validate.outputs.publication_allowed }}
+    steps:
+      - name: Check out the selected main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify release candidate and evidence
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OROT_RELEASE_MODE: ${{ inputs.mode }}
+          OROT_VERSION: ${{ inputs.version }}
+          OROT_SOURCE_SHA: ${{ inputs.source_sha }}
+          OROT_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          OROT_READINESS_EVIDENCE_JSON: ${{ inputs.readiness_evidence_json }}
+        run: node scripts/release/check.mjs
+
+  publish:
+    name: Release / Publish GitHub Release
+    if: ${{ inputs.mode == 'publish' && needs.validate.outputs.publication_allowed == 'true' }}
+    needs: validate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Check out the selected main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      - name: Recheck candidate before publishing
+        id: recheck
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OROT_RELEASE_MODE: ${{ inputs.mode }}
+          OROT_VERSION: ${{ inputs.version }}
+          OROT_SOURCE_SHA: ${{ inputs.source_sha }}
+          OROT_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          OROT_READINESS_EVIDENCE_JSON: ${{ inputs.readiness_evidence_json }}
+        run: node scripts/release/check.mjs
+
+      - name: Create the immutable tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OROT_RELEASE_MODE: ${{ inputs.mode }}
+          OROT_VERSION: ${{ inputs.version }}
+          OROT_SOURCE_SHA: ${{ inputs.source_sha }}
+          OROT_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          OROT_READINESS_EVIDENCE_JSON: ${{ inputs.readiness_evidence_json }}
+        run: node scripts/release/publish.mjs
