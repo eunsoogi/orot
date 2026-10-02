@@ -1,39 +1,21 @@
 # Orot
 
-Orot is an iOS-first React Native application in a pnpm workspace. The mobile app lives in `apps/mobile`; future shared packages belong under `packages/*`.
+Orot은 흩어진 상담·건강·복약·증상 기록과 진료 일정을 개인 기기에서 정리해 다음 진료를 준비하는 개인 건강 기록 프로젝트입니다.
 
-## Local setup
+여러 곳에 나뉜 기록을 한곳에서 정리하고, 각 내용의 출처를 살펴 다음에 물어볼 질문과 진료 요약을 준비할 수 있도록 돕는 것을 목표로 합니다.
 
-### Pinned toolchain
+## 목표로 하는 사용 흐름
 
-| Tool | Version |
-| --- | --- |
-| macOS | 27.0 |
-| Node.js | 22.23.2 (`.nvmrc`; React Native requires 22.13 or newer) |
-| pnpm | 12.3.4 |
-| React Native / React | 0.87.1 / 19.2.3 |
-| Jest / React Native Testing Library / test-renderer | 29.7.0 / 14.0.1 / 1.2.0 |
-| Detox | 20.51.4 |
-| Xcode | 27.0 |
-| Ruby / CocoaPods | 4.0.7 / 1.17.0 (Homebrew) |
+1. 상담 기록, 건강 데이터, 복약·증상 기록과 진료 일정을 모읍니다.
+2. 기록의 시점과 출처를 확인하고 필요한 내용을 정리합니다.
+3. 다음 진료에서 전할 변화와 질문, 준비할 내용을 요약해 검토합니다.
 
-Install CocoaPods with `brew install cocoapods` if needed. Install an iOS Simulator runtime through Xcode before running the iOS build or Detox tests.
+Orot은 현재 개발 중이며, 위 흐름은 구현 목표입니다. 기록을 기기에서 확인하는 기능과 진료 준비 흐름을 단계적으로 만들고 있습니다. 계획된 ChatGPT 모델 추론은 원격 서비스와 연결하므로 네트워크가 필요합니다.
 
-```sh
-pnpm install
-pnpm lint
-pnpm typecheck
-pnpm test:unit
-pnpm ios:build
-```
+## 개발 현황
 
-The iOS build script installs CocoaPods dependencies and disables code signing for Simulator builds. If `xcode-select -p` points to Command Line Tools, set `DEVELOPER_DIR` to the Xcode developer directory for install and iOS commands; for example, `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer pnpm install`.
+기능별 진행 상황은 [GitHub Issues](https://github.com/eunsoogi/orot/issues)에서 확인할 수 있습니다.
 
-## Detox smoke test
+## 개발자 안내
 
-```sh
-pnpm e2e:build:ios
-pnpm e2e:test:ios
-```
-
-The E2E test launches the app in an iOS Simulator and checks that the welcome screen renders. The E2E runner and test live under `apps/mobile/e2e`.
+개발 환경 설정, 실행, 테스트 방법은 [개발 문서](docs/development.md)를 참고하세요.
