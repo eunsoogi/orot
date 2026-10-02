@@ -28,13 +28,14 @@ env:
 
 jobs:
   quality:
-    name: CI / Quality
+    name: Quality
     runs-on: xcode-27
     timeout-minutes: 35
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up pnpm
@@ -49,6 +50,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enforce the 250-line policy
+        env:
+          LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
 
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
@@ -78,7 +84,7 @@ jobs:
           retention-days: 14
 
   ios-simulator-build:
-    name: CI / iOS Simulator Build
+    name: iOS Simulator Build
     runs-on: xcode-27
     timeout-minutes: 75
     steps:
@@ -129,7 +135,7 @@ jobs:
           retention-days: 14
 
   detox-ios-e2e:
-    name: CI / Detox iOS E2E
+    name: Detox iOS E2E
     runs-on: xcode-27
     timeout-minutes: 90
     steps:
