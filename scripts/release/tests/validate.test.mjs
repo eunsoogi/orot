@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { REQUIRED_CI_JOBS, validateCandidate } from '../policy.mjs';
+import { validateCandidate } from '../policy.mjs';
 import { buildReleaseRequest } from '../release-request.mjs';
 
 const sourceSha = 'a'.repeat(40);
@@ -14,7 +14,8 @@ const ciRun = {
   conclusion: 'success',
   html_url: 'https://github.com/eunsoogi/orot/actions/runs/1234',
 };
-const ciJobs = REQUIRED_CI_JOBS.map((name) => ({ name, status: 'completed', conclusion: 'success' }));
+const ciJobs = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E']
+  .map((name) => ({ name, status: 'completed', conclusion: 'success' }));
 const evidenceNames = ['simulatorE2E', 'evaluation', 'deletion', 'telemetry'];
 const evidenceIssues = { simulatorE2E: 42, evaluation: 41, deletion: 34, telemetry: 40 };
 const evidenceComments = Object.fromEntries(evidenceNames.map((name) => {

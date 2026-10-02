@@ -1,7 +1,7 @@
 export const REQUIRED_CI_JOBS = [
-  'CI / Quality',
-  'CI / iOS Simulator Build',
-  'CI / Detox iOS E2E',
+  'Quality',
+  'iOS Simulator Build',
+  'Detox iOS E2E',
 ];
 
 const EXPECTED_EVIDENCE = {

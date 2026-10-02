@@ -28,7 +28,7 @@ env:
 
 jobs:
   quality:
-    name: CI / Quality
+    name: Quality
     runs-on: xcode-27
     timeout-minutes: 35
     steps:
@@ -84,7 +84,7 @@ jobs:
           retention-days: 14
 
   ios-simulator-build:
-    name: CI / iOS Simulator Build
+    name: iOS Simulator Build
     runs-on: xcode-27
     timeout-minutes: 75
     steps:
@@ -135,7 +135,7 @@ jobs:
           retention-days: 14
 
   detox-ios-e2e:
-    name: CI / Detox iOS E2E
+    name: Detox iOS E2E
     runs-on: xcode-27
     timeout-minutes: 90
     steps:
