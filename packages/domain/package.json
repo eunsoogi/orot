@@ -1,0 +1,23 @@
+{
+  "name": "@orot/domain",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "pnpm --filter @orot/mobile exec eslint --config .eslintrc.js ../../packages/domain/src ../../packages/domain/__tests__ --ext .ts",
+    "typecheck": "pnpm --filter @orot/mobile exec tsc --noEmit --project ../../packages/domain/tsconfig.json",
+    "test:unit": "pnpm --filter @orot/mobile exec jest --config ../../packages/domain/jest.config.js --runInBand"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}
