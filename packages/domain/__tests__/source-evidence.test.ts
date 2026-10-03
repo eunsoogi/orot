@@ -83,4 +83,28 @@ describe('source content hashes and evidence locators', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('rejects a document locator that conflicts with the legacy page number', () => {
+    const span = {
+      ...metadata('evidence-page-conflict-1', {
+        provenance: { origin: 'derived', sourceRecordIds: ['source-1'] },
+      }),
+      sourceRecordId: 'source-1',
+      text: 'Synthetic extracted excerpt.',
+      pageNumber: 1,
+      locator: { kind: 'document_range', pageNumber: 2, startOffset: 0, endOffset: 7 },
+    };
+
+    expect(EvidenceSpanSchema.safeParse(span).success).toBe(false);
+    expect(
+      EvidenceSpanSchema.safeParse({
+        ...span,
+        pageNumber: 2,
+      }).success,
+    ).toBe(true);
+
+    const legacyOnlySpan = { ...span, pageNumber: 1 };
+    delete (legacyOnlySpan as { locator?: unknown }).locator;
+    expect(EvidenceSpanSchema.safeParse(legacyOnlySpan).success).toBe(true);
+  });
 });

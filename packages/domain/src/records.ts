@@ -83,6 +83,17 @@ export const EvidenceSpanSchema = RecordMetadataSchema.safeExtend({
       message: 'The source record must also appear in provenance.sourceRecordIds.',
     });
   }
+  if (
+    span.locator?.kind === 'document_range' &&
+    span.pageNumber !== undefined &&
+    span.pageNumber !== span.locator.pageNumber
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['locator', 'pageNumber'],
+      message: 'A document locator must match the legacy evidence page number.',
+    });
+  }
 });
 
 export const EncounterSchema = RecordMetadataSchema.safeExtend({
