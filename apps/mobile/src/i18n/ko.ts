@@ -43,4 +43,10 @@ export const ko = {
   'appointments.actions.save': '저장',
   'appointments.actions.saving': '저장 중…',
   'appointments.actions.close': '닫기',
+  'provider.apple.available': '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
+  'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
+  'provider.apple.modelNotReady': 'Apple Intelligence 모델을 준비하고 있어요.',
+  'provider.apple.unsupportedDevice': '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
+  'provider.apple.unsupportedLanguage': '현재 한국어를 지원하지 않아요.',
+  'provider.apple.generationFailed': '질문을 만들지 못했어요. 다시 시도해 주세요.',
 } as const;
