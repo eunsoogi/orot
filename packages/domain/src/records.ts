@@ -10,6 +10,8 @@ const NonEmptyTextSchema = z.string().trim().min(1);
 const NonNegativeIntegerSchema = z.number().int().min(0);
 const PositiveIntegerSchema = z.number().int().positive();
 
+export const SymptomEntryStatusSchema = z.enum(['active', 'resolved']);
+
 export const SourceContentHashSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 
 const EvidenceSpanLocatorBaseSchema = z.discriminatedUnion('kind', [
@@ -136,16 +138,28 @@ export const HealthObservationSchema = RecordMetadataSchema.safeExtend({
   value: ObservationValueSchema,
 });
 
-export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
+const SymptomEntryRecordSchema = RecordMetadataSchema.safeExtend({
   description: NonEmptyTextSchema,
   bodySite: NonEmptyTextSchema.optional(),
   severity: z.number().int().min(0).max(10).optional(),
+  status: SymptomEntryStatusSchema,
   resolvedAt: TimestampSchema.optional(),
 }).superRefine((symptom, context) => {
-  if (
-    symptom.resolvedAt &&
-    compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0
-  ) {
+  if (symptom.status === 'active' && symptom.resolvedAt !== undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['resolvedAt'],
+      message: 'An active symptom cannot have a resolution timestamp.',
+    });
+  }
+  if (symptom.status === 'resolved' && symptom.resolvedAt === undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['resolvedAt'],
+      message: 'A resolved symptom must have a resolution timestamp.',
+    });
+  }
+  if (symptom.resolvedAt && compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['resolvedAt'],
@@ -153,6 +167,22 @@ export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
     });
   }
 });
+
+function normalizeLegacySymptomStatus(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+  const symptom = value as Record<string, unknown>;
+  if ('status' in symptom) return value;
+  return {
+    ...symptom,
+    status: symptom.resolvedAt === undefined ? 'active' : 'resolved',
+  };
+}
+
+/** Adds a status when parsing pre-status records; no stored rows need migration. */
+export const SymptomEntrySchema = z.preprocess(
+  normalizeLegacySymptomStatus,
+  SymptomEntryRecordSchema,
+);
 
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 export type SourceContentHash = z.infer<typeof SourceContentHashSchema>;
@@ -162,3 +192,4 @@ export type Encounter = z.infer<typeof EncounterSchema>;
 export type ObservationValue = z.infer<typeof ObservationValueSchema>;
 export type HealthObservation = z.infer<typeof HealthObservationSchema>;
 export type SymptomEntry = z.infer<typeof SymptomEntrySchema>;
+export type SymptomEntryStatus = z.infer<typeof SymptomEntryStatusSchema>;

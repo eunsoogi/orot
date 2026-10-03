@@ -17,6 +17,7 @@ export {
   SourceContentHashSchema,
   SourceRecordSchema,
   SymptomEntrySchema,
+  SymptomEntryStatusSchema,
 } from './records';
 export type {
   Encounter,
@@ -27,7 +28,22 @@ export type {
   SourceContentHash,
   SourceRecord,
   SymptomEntry,
+  SymptomEntryStatus,
 } from './records';
+export {
+  CreateSymptomEntryInputSchema,
+  EditSymptomEntryInputSchema,
+  SymptomEntryFilterSchema,
+  createSymptomEntry,
+  editSymptomEntry,
+  filterSymptomEntries,
+  resolveSymptomEntry,
+} from './symptoms';
+export type {
+  CreateSymptomEntryInput,
+  EditSymptomEntryInput,
+  SymptomEntryFilter,
+} from './symptoms';
 export {
   CurrentMedicationConfirmationSchema,
   DoseEventSchema,
