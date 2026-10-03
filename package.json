@@ -7,12 +7,12 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "lint": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/provider-apple lint && pnpm --filter @orot/agent-runtime lint && pnpm --filter @orot/storage lint && pnpm --filter @orot/eval lint && pnpm --filter @orot/agent-memory lint",
-    "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/provider-apple typecheck && pnpm --filter @orot/agent-runtime typecheck && pnpm --filter @orot/storage typecheck && pnpm --filter @orot/eval typecheck && pnpm --filter @orot/agent-memory typecheck",
-    "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/provider-apple test:unit && pnpm --filter @orot/agent-runtime test:unit && pnpm --filter @orot/storage test:unit && pnpm --filter @orot/eval test:unit && pnpm --filter @orot/agent-memory test:unit",
+    "lint": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/provider-apple lint && pnpm --filter @orot/provider-openai lint && pnpm --filter @orot/agent-runtime lint && pnpm --filter @orot/storage lint && pnpm --filter @orot/eval lint && pnpm --filter @orot/agent-memory lint",
+    "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/provider-apple typecheck && pnpm --filter @orot/provider-openai typecheck && pnpm --filter @orot/agent-runtime typecheck && pnpm --filter @orot/storage typecheck && pnpm --filter @orot/eval typecheck && pnpm --filter @orot/agent-memory typecheck",
+    "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/provider-apple test:unit && pnpm --filter @orot/provider-openai test:unit && pnpm --filter @orot/agent-runtime test:unit && pnpm --filter @orot/storage test:unit && pnpm --filter @orot/eval test:unit && pnpm --filter @orot/agent-memory test:unit",
     "ios:build": "pnpm --filter @orot/mobile ios:build",
-    "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios && pnpm --filter @orot/mobile e2e:build:ios:agent-memory && pnpm --filter @orot/mobile e2e:build:ios:graph",
-    "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios && pnpm --filter @orot/mobile e2e:test:ios:agent-memory && pnpm --filter @orot/mobile e2e:test:ios:graph",
+    "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios && pnpm --filter @orot/mobile e2e:build:ios:agent-memory && pnpm --filter @orot/mobile e2e:build:ios:graph && pnpm --filter @orot/mobile e2e:build:ios:openai-provider",
+    "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios && pnpm --filter @orot/mobile e2e:test:ios:agent-memory && pnpm --filter @orot/mobile e2e:test:ios:graph && pnpm --filter @orot/mobile e2e:test:ios:openai-provider",
     "e2e:build:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:build:ios:apple-foundation-models",
     "e2e:test:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:test:ios:apple-foundation-models"
   }
