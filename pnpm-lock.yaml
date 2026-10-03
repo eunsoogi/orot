@@ -120,6 +120,12 @@ importers:
       '@orot/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@orot/model-runtime':
+        specifier: workspace:*
+        version: link:../../packages/model-runtime
+      '@orot/provider-apple':
+        specifier: workspace:*
+        version: link:../../packages/provider-apple
       '@orot/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -237,6 +243,12 @@ importers:
         version: link:../domain
 
   packages/model-runtime: {}
+
+  packages/provider-apple:
+    dependencies:
+      '@orot/model-runtime':
+        specifier: workspace:*
+        version: link:../model-runtime
 
   packages/storage:
     dependencies:

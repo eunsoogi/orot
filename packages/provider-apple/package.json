@@ -1,0 +1,23 @@
+{
+  "name": "@orot/provider-apple",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "pnpm --filter @orot/mobile exec eslint --config .eslintrc.js ../../packages/provider-apple/src ../../packages/provider-apple/__tests__ --ext .ts",
+    "typecheck": "pnpm --filter @orot/mobile exec tsc --noEmit --project ../../packages/provider-apple/tsconfig.json",
+    "test:unit": "pnpm --filter @orot/mobile exec jest --config ../../packages/provider-apple/jest.config.js --runInBand"
+  },
+  "dependencies": {
+    "@orot/model-runtime": "workspace:*"
+  }
+}
