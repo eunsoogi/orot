@@ -3,18 +3,42 @@ import Foundation
 public extension ChatGPTOAuthClient {
     func listModels(for account: ChatGPTAccountAccess) async throws -> [ListedChatGPTModel] {
         guard account.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
+        let stored = try await sessionManager.accountWithFreshAccessToken(
+            issuedClientID: account.issuedClientID
+        )
+        guard stored.subject == account.subject else { throw ChatGPTOAuthError.accountIdentityMismatch }
+        guard stored.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
+        guard let accessToken = stored.credentials?.accessToken else {
+            throw ChatGPTOAuthError.reauthorizationRequired
+        }
+        return try await listModels(accessToken: accessToken)
+    }
+
+    func listModels(forIssuedClientID issuedClientID: String) async throws -> [ListedChatGPTModel] {
+        let account = try await sessionManager.accountWithFreshAccessToken(issuedClientID: issuedClientID)
+        guard account.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
+        guard let accessToken = account.credentials?.accessToken else {
+            throw ChatGPTOAuthError.reauthorizationRequired
+        }
+        return try await listModels(accessToken: accessToken)
+    }
+
+    private func listModels(accessToken: String) async throws -> [ListedChatGPTModel] {
 
         var request = URLRequest(url: URL(string: "\(ChatGPTOAuthConstants.resource)/models")!)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(account.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await transport.data(for: request)
         } catch {
-            throw ChatGPTOAuthError.modelCatalogUnavailable
+            guard Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled else {
+                throw ChatGPTOAuthError.modelCatalogUnavailable
+            }
+            throw CancellationError()
         }
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               data.count <= 1_048_576,
