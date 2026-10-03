@@ -9,7 +9,8 @@ enum OAuthCallbackParser {
     static func parse(
         _ callbackURL: URL,
         expectedState: String,
-        expectedRedirectURI: URL
+        expectedRedirectURI: URL,
+        expectedClientID: String? = nil
     ) throws -> OAuthCallback {
         guard isCallbackAddress(callbackURL, expectedRedirectURI: expectedRedirectURI),
               let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
@@ -31,11 +32,18 @@ enum OAuthCallbackParser {
         guard let code = values["code"], !code.isEmpty else {
             throw ChatGPTOAuthError.invalidCallback
         }
-        guard let clientID = values["client_id"], !clientID.isEmpty else {
-            throw ChatGPTOAuthError.registrationIncomplete
-        }
-        guard clientID != ChatGPTOAuthConstants.initialClientID else {
-            throw ChatGPTOAuthError.registrationIncomplete
+        let clientID: String
+        if let expectedClientID, expectedClientID != ChatGPTOAuthConstants.initialClientID {
+            if let callbackClientID = values["client_id"], callbackClientID != expectedClientID {
+                throw ChatGPTOAuthError.registrationMismatch
+            }
+            clientID = expectedClientID
+        } else {
+            guard let issuedClientID = values["client_id"],
+                  KeychainChatGPTCredentialStore.isValidIssuedClientID(issuedClientID) else {
+                throw ChatGPTOAuthError.registrationIncomplete
+            }
+            clientID = issuedClientID
         }
 
         return OAuthCallback(code: code, issuedClientID: clientID)

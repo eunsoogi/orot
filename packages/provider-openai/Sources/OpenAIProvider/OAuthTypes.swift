@@ -13,8 +13,13 @@ public enum ChatGPTOAuthError: Error, Equatable, LocalizedError, Sendable {
     case providerFailure
     case invalidTokenResponse
     case invalidIdentity
+    case accountIdentityMismatch
     case planPermissionMissing
     case modelCatalogUnavailable
+    case credentialStoreUnavailable
+    case accountNotFound
+    case reauthorizationRequired
+    case sessionSigningOut
 
     public var errorDescription: String? {
         switch self {
@@ -30,8 +35,13 @@ public enum ChatGPTOAuthError: Error, Equatable, LocalizedError, Sendable {
         case .providerFailure: "ChatGPT 로그인을 완료하지 못했습니다."
         case .invalidTokenResponse: "ChatGPT가 올바르지 않은 토큰 응답을 보냈습니다."
         case .invalidIdentity: "ChatGPT ID 토큰 검증에 실패했습니다."
+        case .accountIdentityMismatch: "선택한 ChatGPT 계정과 로그인 응답이 일치하지 않습니다."
         case .planPermissionMissing: "chatgpt.tokens.use.direct 권한이 허용되지 않았습니다."
         case .modelCatalogUnavailable: "/v1/models 목록을 가져오지 못했습니다."
+        case .credentialStoreUnavailable: "보호된 로그인 정보를 저장하거나 불러오지 못했습니다."
+        case .accountNotFound: "저장된 ChatGPT 계정을 찾지 못했습니다."
+        case .reauthorizationRequired: "ChatGPT 로그인이 만료되었습니다. 다시 로그인해 주세요."
+        case .sessionSigningOut: "ChatGPT 로그아웃이 진행 중입니다."
         }
     }
 }
@@ -72,18 +82,24 @@ struct OpenIDConfiguration: Decodable, Sendable {
     let authorizationEndpoint: URL
     let tokenEndpoint: URL
     let jwksURI: URL
+    let revocationEndpoint: URL
 
     enum CodingKeys: String, CodingKey {
         case issuer
         case authorizationEndpoint = "authorization_endpoint"
         case tokenEndpoint = "token_endpoint"
         case jwksURI = "jwks_uri"
+        case revocationEndpoint = "revocation_endpoint"
     }
 }
 
 public struct PendingChatGPTAuthorization: Sendable {
     public let authorizationURL: URL
     public let redirectURI: URL
+    let hostIdentifier: String
+    let requestedClientID: String
+    let expectedSubject: String?
+    let idTokenHint: String?
 
     let state: String
     let nonce: String
@@ -93,6 +109,10 @@ public struct PendingChatGPTAuthorization: Sendable {
     init(
         authorizationURL: URL,
         redirectURI: URL,
+        hostIdentifier: String,
+        requestedClientID: String,
+        expectedSubject: String?,
+        idTokenHint: String?,
         state: String,
         nonce: String,
         codeVerifier: String,
@@ -100,6 +120,10 @@ public struct PendingChatGPTAuthorization: Sendable {
     ) {
         self.authorizationURL = authorizationURL
         self.redirectURI = redirectURI
+        self.hostIdentifier = hostIdentifier
+        self.requestedClientID = requestedClientID
+        self.expectedSubject = expectedSubject
+        self.idTokenHint = idTokenHint
         self.state = state
         self.nonce = nonce
         self.codeVerifier = codeVerifier
