@@ -53,7 +53,7 @@ extension ChatGPTSessionManager {
         if changedSinceRequest, forceRefresh {
             return account
         }
-        if expiresAt > now().addingTimeInterval(refreshLeeway) {
+        if !forceRefresh, expiresAt > now().addingTimeInterval(refreshLeeway) {
             return account
         }
         guard credentials.refreshToken != nil else {

@@ -81,11 +81,10 @@ private final class SpikeViewModel: ObservableObject {
 
                 status = "필요한 권한을 받았습니다. ChatGPT 모델 목록을 요청합니다…"
                 models = try await oauth.listModels(forIssuedClientID: access.issuedClientID)
+                try Task.checkCancellation()
                 status = "실제 /v1/models 응답을 확인했습니다. 공개 모델 \(models.count)개를 받았습니다."
-            } catch is CancellationError {
-                status = cancellationState.cancellationMessage
             } catch {
-                status = error.localizedDescription
+                status = cancellationState.failureMessage(for: error, taskIsCancelled: Task.isCancelled)
             }
         }
     }

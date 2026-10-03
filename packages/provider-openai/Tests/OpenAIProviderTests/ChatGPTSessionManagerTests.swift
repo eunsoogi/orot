@@ -52,6 +52,27 @@ final class ChatGPTSessionManagerTests: XCTestCase {
         XCTAssertEqual(try store.loadAccount(issuedClientID: clientID)?.credentials?.refreshToken, "fixture-refresh-token-rotated")
     }
 
+    func testRefreshNowRotatesCredentialsEvenBeforeExpiry() async throws {
+        let transport = StubOAuthHTTPTransport { request in
+            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
+            if request.url?.path == Self.tokenPath { return refreshedTokenResponse() }
+            return StubOAuthResponse(statusCode: 404, body: Data())
+        }
+        let store = InMemoryChatGPTCredentialStore()
+        try store.saveAccount(syntheticAccount(expiresAt: Self.fixedNow.addingTimeInterval(3600)))
+        let manager = ChatGPTSessionManager(
+            transport: transport,
+            credentialStore: store,
+            now: { Self.fixedNow }
+        )
+
+        let refreshed = try await manager.refreshNow(issuedClientID: Self.clientID)
+
+        let requests = await transport.recordedRequests(path: Self.tokenPath)
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(refreshed.credentials?.refreshToken, "fixture-refresh-token-rotated")
+    }
+
     func testTransientRefreshFailurePreservesStoredCredentials() async throws {
         let transport = StubOAuthHTTPTransport { request in
             if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }

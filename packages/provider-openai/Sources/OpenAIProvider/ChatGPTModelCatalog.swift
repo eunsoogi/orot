@@ -35,7 +35,10 @@ public extension ChatGPTOAuthClient {
         do {
             (data, response) = try await transport.data(for: request)
         } catch {
-            throw ChatGPTOAuthError.modelCatalogUnavailable
+            guard Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled else {
+                throw ChatGPTOAuthError.modelCatalogUnavailable
+            }
+            throw CancellationError()
         }
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               data.count <= 1_048_576,

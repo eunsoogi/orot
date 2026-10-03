@@ -12,13 +12,28 @@ final class AuthorizationCancellationStateTests: XCTestCase {
         )
     }
 
-    func testCancellationDuringModelRequestReportsPersistedSession() {
+    func testCancellationDuringDelayedModelRequestReportsPersistedSession() async {
         let state = AuthorizationCancellationState.credentialsStored
+        let requestStarted = expectation(description: "The model request started.")
+        let modelRequest = Task {
+            requestStarted.fulfill()
+            try await Task.sleep(nanoseconds: 5_000_000_000)
+        }
+
+        await fulfillment(of: [requestStarted], timeout: 1)
+        modelRequest.cancel()
+
+        do {
+            try await modelRequest.value
+            XCTFail("Cancelling a pending model request must throw.")
+        } catch {
+            XCTAssertEqual(
+                state.failureMessage(for: error, taskIsCancelled: modelRequest.isCancelled),
+                state.cancellationMessage
+            )
+        }
 
         XCTAssertEqual(state.cancelButtonTitle, "모델 확인 취소")
-        XCTAssertEqual(
-            state.cancellationMessage,
-            "모델 확인을 취소했습니다. ChatGPT 인증 정보는 저장되어 있습니다."
-        )
+        XCTAssertTrue(state.cancellationMessage.contains("인증 정보는 저장되어 있습니다"))
     }
 }
