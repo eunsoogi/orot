@@ -13,9 +13,12 @@ enum OAuthCallbackParser {
     ) throws -> OAuthCallback {
         guard isCallbackAddress(callbackURL, expectedRedirectURI: expectedRedirectURI),
               let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-              let queryItems = components.queryItems else {
+              let encodedQuery = components.percentEncodedQuery else {
             throw ChatGPTOAuthError.invalidCallback
         }
+        var formComponents = URLComponents()
+        formComponents.percentEncodedQuery = encodedQuery.replacingOccurrences(of: "+", with: "%20")
+        guard let queryItems = formComponents.queryItems else { throw ChatGPTOAuthError.invalidCallback }
 
         let values = try uniqueValues(queryItems)
         guard values["state"] == expectedState else { throw ChatGPTOAuthError.stateMismatch }
