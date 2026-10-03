@@ -15,6 +15,26 @@ export type {
   AppointmentRepositoryOptions,
   ManualAppointmentInput,
 } from './appointments';
+export { createSymptomRepository } from './symptoms';
+export type { SymptomQuery, SymptomRepository } from './symptoms';
+export {
+  CreateSymptomEntryInputSchema,
+  EditSymptomEntryInputSchema,
+  SymptomEntryFilterSchema,
+  SymptomEntrySchema,
+  SymptomEntryStatusSchema,
+  createSymptomEntry,
+  editSymptomEntry,
+  filterSymptomEntries,
+  resolveSymptomEntry,
+} from '@orot/domain';
+export type {
+  CreateSymptomEntryInput,
+  EditSymptomEntryInput,
+  SymptomEntry,
+  SymptomEntryFilter,
+  SymptomEntryStatus,
+} from '@orot/domain';
 export type {
   EvidenceSpanRepository,
   HashedSourceRecord,
