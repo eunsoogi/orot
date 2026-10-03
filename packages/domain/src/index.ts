@@ -5,6 +5,7 @@ export {
   RecordMetadataSchema,
   ReviewStateSchema,
   TimestampSchema,
+  compareTimestamps,
 } from './common';
 export type { Provenance, RecordId, RecordMetadata, ReviewState, Timestamp } from './common';
 export {
@@ -39,5 +40,21 @@ export type {
   MedicationAssertion,
   PrescriptionAssertion,
 } from './medications';
-export { AppointmentSchema, VisitBriefSchema, VisitQuestionSchema } from './visits';
-export type { Appointment, VisitBrief, VisitQuestion } from './visits';
+export {
+  AppointmentCreateInputSchema,
+  AppointmentSchema,
+  AppointmentStatusSchema,
+  AppointmentUpdateInputSchema,
+  cancelAppointment,
+  createAppointment,
+  updateAppointment,
+  VisitBriefSchema,
+  VisitQuestionSchema,
+} from './visits';
+export type {
+  Appointment,
+  AppointmentStatus,
+  AppointmentUpdateInput,
+  VisitBrief,
+  VisitQuestion,
+} from './visits';

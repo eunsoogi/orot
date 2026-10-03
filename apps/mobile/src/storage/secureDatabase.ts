@@ -1,7 +1,7 @@
 import { isSQLCipher, open } from '@op-engineering/op-sqlite';
 import { ACCESSIBLE, getGenericPassword, setGenericPassword } from 'react-native-keychain';
-import { openEncryptedStorage, resolveDatabaseKey } from '@orot/storage';
-import type { RecordRepository } from '@orot/storage';
+import { createAppointmentRepository, openEncryptedStorage, resolveDatabaseKey } from '@orot/storage';
+import type { AppointmentRepository, RecordRepository } from '@orot/storage';
 import type { DB } from '@op-engineering/op-sqlite';
 
 const DATABASE_NAME = 'orot-secure.db';
@@ -57,6 +57,12 @@ export function openLocalStorage(): Promise<RecordRepository> {
     });
   }
   return opening;
+}
+
+export async function openLocalAppointmentRepository(): Promise<AppointmentRepository> {
+  const records = await openLocalStorage();
+  if (!database) throw new Error('The encrypted database is not open.');
+  return createAppointmentRepository(records, database);
 }
 
 export async function hasDatabaseKey(): Promise<boolean> {
