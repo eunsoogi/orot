@@ -26,6 +26,9 @@ describe('Apple native request conversion', () => {
 
     expect(result.mode).toBe('structured');
     expect(result.instructions).toContain('Help prepare questions the patient can ask at a medical visit.');
+    expect(result.instructions).toContain('The patient is the speaker and their clinician is the listener.');
+    expect(result.instructions).toContain("Address the clinician as '선생님'");
+    expect(result.instructions).toContain('Write every string in structured output in Korean.');
     expect(result.instructions).toContain('Do not diagnose or give medical or medication-change recommendations.');
     expect(result.instructions).toContain('Use the record only.');
     expect(result.prompt).toContain('Synthetic source-42');
@@ -43,6 +46,63 @@ describe('Apple native request conversion', () => {
         },
       ],
     });
+  });
+
+  it('gives sibling nested object schemas distinct native identities', () => {
+    const result = serializeAppleRequest({
+      messages: [{ role: 'user', content: 'Use both nested fields.' }],
+      responseFormat: {
+        name: 'VisitQuestion',
+        schema: {
+          type: 'object',
+          properties: {
+            question: {
+              type: 'object',
+              properties: {
+                text: {
+                  type: 'string',
+                  description: "The patient addresses their clinician as '선생님' and asks what to discuss or check about the supplied change.",
+                },
+              },
+              required: ['text'],
+              additionalProperties: false,
+            },
+            source: {
+              type: 'object',
+              properties: { id: { type: 'integer' } },
+              required: ['id'],
+              additionalProperties: false,
+            },
+          },
+          required: ['question', 'source'],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    expect(result.schema).toMatchObject({
+      kind: 'object',
+      properties: [
+        {
+          name: 'question',
+          schema: {
+            kind: 'object',
+            properties: [{
+              name: 'text',
+              description: "The patient addresses their clinician as '선생님' and asks what to discuss or check about the supplied change.",
+              schema: { kind: 'string' },
+            }],
+          },
+        },
+        { name: 'source', schema: { kind: 'object', properties: [{ name: 'id', schema: { kind: 'integer' } }] } },
+      ],
+    });
+    const nestedNames = result.schema?.kind === 'object'
+      ? result.schema.properties.map(property =>
+        property.schema.kind === 'object' ? property.schema.name : '',
+      )
+      : [];
+    expect(nestedNames).toEqual(['VisitQuestionField0', 'VisitQuestionField1']);
   });
 
   it('keeps prior tool-call and result ids in the prompt and validates tool names', () => {
@@ -81,6 +141,25 @@ describe('Apple native request conversion', () => {
         { kind: 'object', properties: [{ name: 'kind' }, { name: 'text' }] },
       ],
     });
+  });
+
+  it('passes tool descriptions into the model-visible instructions', () => {
+    const inputSchema = {
+      type: 'object',
+      properties: { sourceId: { type: 'string' } },
+      required: ['sourceId'],
+      additionalProperties: false,
+    } as const;
+    const serialize = (description: string) => serializeAppleRequest({
+      messages: [{ role: 'user', content: 'Use an available tool.' }],
+      tools: [{ name: 'lookup_source', description, inputSchema }],
+    });
+
+    const lookup = serialize('Find the supplied source and return its contents.');
+    const archive = serialize('Archive the supplied source.');
+
+    expect(lookup.instructions).toContain('lookup_source: Find the supplied source and return its contents.');
+    expect(lookup.instructions).not.toBe(archive.instructions);
   });
 
   it('rejects unsupported schema keywords and non-text inputs before native inference', () => {

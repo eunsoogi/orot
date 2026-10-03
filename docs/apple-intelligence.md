@@ -86,19 +86,34 @@ as `not-run`. If the request finishes before cancellation, the probe reports
 `completed-before-cancel`. Its `inferenceStop=unverified` field makes clear that
 the framework's underlying inference termination was not observed.
 
-On 2026-10-04, the dedicated iPhone 18 Pro Simulator on iOS 27.0 first reported
-`modelNotReady`. A later run on the same Simulator reported `available` without
-manual changes to Apple Intelligence settings or an Apple Account sign-in. The
-real Detox probe then completed structured generation, verified the synthetic
-source ID, and observed the bridge cancellation path:
+On 2026-10-04, the dedicated iPhone 18 Pro Simulator on iOS 27.0 (`Orot Apple
+Models 62 Retest`, UDID `6CA4652D-1842-4DA7-90DD-E7041F6C6A5E`) first reported
+`modelNotReady`. A later run on that device reported `available` without manual
+changes to Apple Intelligence settings or an Apple Account sign-in. The latest
+fresh DerivedData build succeeded. The Detox probe sent this synthetic request
+through the normalized provider graph:
+
+```text
+실습용 기록 synthetic-source-42: 정기 진료에서 최근 수면 변화에 관해 이야기하고 싶습니다. 다음 진료에서 의료진에게 직접 할 한국어 질문 한 가지를 제안해 주세요. 질문은 환자가 의료진에게 하는 질문이어야 합니다. 환자에게 감정을 되묻지 말고, 이 수면 변화와 관련해 진료에서 무엇을 확인하거나 이야기하면 좋을지 물어보세요.
+```
+
+Foundation Models returned this actual structured question, preserved the
+synthetic source ID, and the bridge cancellation path rejected the pending
+request:
 
 ```text
 availability=available; generation=passed; sourceIdPreserved=passed; cancellation=cancelled; inferenceStop=unverified
+선생님, 최근 수면 변화와 관련해 진료에서 무엇을 확인하거나 이야기하면 좋을까요?
 ```
 
-The successful run used synthetic visit text. `inferenceStop=unverified` is
-intentional: cancellation rejected or suppressed the bridge result, but the
-test cannot establish that Foundation Models stopped its underlying inference.
-The earlier `modelNotReady` result is retained as an observed unavailable state;
-the later result shows that readiness can change on the same Simulator without
-an app-side provider fallback.
+The independent semantic sample review confirmed that the question naturally
+addresses the clinician from the patient's perspective and stays grounded in
+the reported change. The test rejects unsafe diagnosis and medication-change
+instructions, but does not hardcode an expected sentence. The current run's
+actual input, output, summary, and screenshot are retained outside the checkout
+in `/tmp/orot-issue-62-apple-foundation-models-20261004-r9/detox/`.
+`inferenceStop=unverified` is intentional: cancellation rejected the bridge
+promise, but the test cannot establish that Foundation Models stopped its
+underlying inference. The earlier `modelNotReady` readback is retained as an
+observed unavailable state; the later readback shows that readiness changed on
+the same Simulator without an app-side provider fallback.

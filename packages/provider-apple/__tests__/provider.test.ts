@@ -34,9 +34,10 @@ class FakeNativeBridge implements AppleFoundationModelsNativeBridge {
   availability: AppleAvailabilityStatus = 'available';
   generateCount = 0;
   readonly cancelled: string[] = [];
+  readonly generatedRequestIds: string[] = [];
   generated: LanguageModelResponse = response;
   generateWait?: Promise<LanguageModelResponse>;
-  onGenerate?: () => void;
+  onGenerate?: (requestId: string) => void;
   packets: AppleNativeStreamPacket[] = [
     { type: 'snapshot', text: '안' },
     { type: 'snapshot', text: '안녕' },
@@ -50,9 +51,10 @@ class FakeNativeBridge implements AppleFoundationModelsNativeBridge {
     return { status: this.availability } as const;
   }
 
-  async generate() {
+  async generate(_request: Parameters<AppleFoundationModelsNativeBridge['generate']>[0], requestId: string) {
     this.generateCount += 1;
-    this.onGenerate?.();
+    this.generatedRequestIds.push(requestId);
+    this.onGenerate?.(requestId);
     return this.generateWait ?? this.generated;
   }
 
@@ -167,7 +169,7 @@ describe('AppleFoundationModelsProvider', () => {
     controller.abort();
 
     await expect(call).rejects.toHaveProperty('name', 'AbortError');
-    expect(native.cancelled).toEqual(['apple-foundation-models-1']);
+    expect(native.cancelled).toEqual(native.generatedRequestIds);
     expect(native.generateCount).toBe(1);
     pending.resolve(response);
   });

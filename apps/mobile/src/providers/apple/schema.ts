@@ -149,11 +149,11 @@ function compileSchema(raw: JsonObject, name: string): AppleNativeSchema {
       if ([...required].some((key) => !(key in properties))) {
         throw codedError('INVALID_REQUEST', 'Required schema property is missing.');
       }
-      return objectSchema(name, Object.keys(properties).sort().map((key) => {
+      return objectSchema(name, Object.keys(properties).sort().map((key, index) => {
         const schema = asSchema(properties[key]);
         return {
           name: key,
-          schema: compileSchema(schema, name + 'Field'),
+          schema: compileSchema(schema, name + 'Field' + index),
           optional: !required.has(key),
           description: typeof schema.description === 'string' ? schema.description : undefined,
         };

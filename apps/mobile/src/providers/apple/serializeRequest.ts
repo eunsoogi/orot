@@ -7,6 +7,8 @@ import { compileResponseSchema, type AppleNativeRequest } from './schema';
 const safetyInstructions = [
   'Help prepare questions the patient can ask at a medical visit.',
   'Use only supplied evidence and answer in Korean.',
+  "The patient is the speaker and their clinician is the listener. Address the clinician as '선생님' and ask what to discuss or check about the supplied change. Do not ask the patient how they feel.",
+  'Write every string in structured output in Korean. Return one concise, polite question ending with a question mark.',
   'Do not diagnose or give medical or medication-change recommendations.',
   'Preserve supplied source IDs exactly in structured output.',
 ].join(' ');
@@ -41,6 +43,12 @@ export function serializeAppleRequest(request: LanguageModelRequest): AppleNativ
       throw codedError('INVALID_REQUEST', 'Tool names must be present and unique.');
     }
     names.add(tool.name);
+  }
+  if (tools.length) {
+    instructions.push([
+      'Available tools:',
+      ...tools.map(tool => tool.name + ': ' + (tool.description?.trim() || 'No description provided.')),
+    ].join('\n'));
   }
   const format = request.responseFormat;
   const mode = tools.length

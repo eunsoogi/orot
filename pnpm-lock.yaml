@@ -229,6 +229,9 @@ importers:
       '@langchain/langgraph':
         specifier: 1.4.18
         version: 1.4.18(@langchain/core@1.2.14(ws@7.5.13))(react@19.2.3)(zod@4.6.5)
+      '@orot/model-runtime':
+        specifier: workspace:*
+        version: link:../model-runtime
 
   packages/domain:
     dependencies:

@@ -33,13 +33,13 @@ export const APPLE_PROVIDER_CAPABILITIES: LanguageModelCapabilities = {
   toolCalling: true,
 };
 
+let requestSequence = 0;
+
 export class AppleFoundationModelsProvider implements LanguageModelProvider {
   readonly kind = 'language-model' as const;
   readonly id = APPLE_PROVIDER_ID;
   readonly displayName = 'Apple Foundation Models';
   readonly capabilities = APPLE_PROVIDER_CAPABILITIES;
-  private requestSequence = 0;
-
   constructor(private readonly native: AppleFoundationModelsNativeBridge) {}
 
   getAvailability(): Promise<AppleModelAvailability> {
@@ -222,7 +222,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
   }
 
   private nextRequestId(): string {
-    this.requestSequence += 1;
-    return APPLE_PROVIDER_ID + '-' + this.requestSequence;
+    requestSequence += 1;
+    return APPLE_PROVIDER_ID + '-' + requestSequence;
   }
 }

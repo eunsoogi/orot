@@ -1,4 +1,5 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
+export { createLanguageModelProviderGraph } from './modelProviderGraph';
 
 export type AgentGraphNode = 'increment' | 'double';
 

@@ -35,6 +35,7 @@ function AppleFoundationModelsProbeEntry() {
       + '; sourceIdPreserved=' + state.result.sourceIdPreserved
       + '; cancellation=' + state.result.cancellation
       + '; inferenceStop=' + state.result.inferenceStop
+      + '; questionText=' + state.result.questionText
     : state.status === 'failure'
       ? 'Apple Foundation Models probe failed: ' + state.message
       : 'Apple Foundation Models probe running';
@@ -44,7 +45,9 @@ function AppleFoundationModelsProbeEntry() {
       <Text
         accessible
         accessibilityLabel={label}
-        testID={'apple-foundation-models-probe-' + state.status}
+        testID={state.status === 'running'
+          ? 'apple-foundation-models-probe-running'
+          : 'apple-foundation-models-probe-result'}
       >
         {label}
       </Text>
