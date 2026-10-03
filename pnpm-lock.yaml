@@ -197,6 +197,12 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  packages/eval:
+    dependencies:
+      '@orot/domain':
+        specifier: workspace:*
+        version: link:../domain
+
   packages/model-runtime: {}
 
   packages/storage:

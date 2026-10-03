@@ -7,9 +7,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "lint": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/storage lint",
-    "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/storage typecheck",
-    "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/storage test:unit",
+    "lint": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/storage lint && pnpm --filter @orot/eval lint",
+    "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/storage typecheck && pnpm --filter @orot/eval typecheck",
+    "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/storage test:unit && pnpm --filter @orot/eval test:unit",
     "ios:build": "pnpm --filter @orot/mobile ios:build",
     "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios",
     "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios"
