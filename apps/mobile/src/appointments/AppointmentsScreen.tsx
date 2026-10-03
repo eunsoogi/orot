@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
-import { toAppointmentTimestamp, toLocalAppointmentDateTime } from './dateTime';
+import {
+  toAppointmentTimestamp,
+  toAppointmentTimestampForEdit,
+  toLocalAppointmentDateTime,
+} from './dateTime';
 
 interface AppointmentsScreenProps {
   repository: AppointmentRepository;
@@ -60,7 +64,9 @@ export default function AppointmentsScreen({ repository, onBack }: AppointmentsS
   }
 
   async function saveAppointment() {
-    const effectiveAt = toAppointmentTimestamp(date, time);
+    const effectiveAt = editing
+      ? toAppointmentTimestampForEdit(editing.effectiveAt, date, time)
+      : toAppointmentTimestamp(date, time);
     if (!clinicLabel.trim()) {
       setError('Enter a clinic or specialty.');
       return;

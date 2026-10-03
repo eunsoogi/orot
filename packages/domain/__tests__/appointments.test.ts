@@ -78,4 +78,30 @@ describe('appointment domain API', () => {
       'A cancelled appointment cannot be edited.',
     );
   });
+
+  it('moves reviewed appointments to needs-review after an edit or cancellation', () => {
+    const reviewed = AppointmentSchema.parse({
+      ...manualAppointment(),
+      reviewState: {
+        status: 'reviewed',
+        reviewerId: 'reviewer-1',
+        reviewedAt: '2026-02-03T14:05:00Z',
+      },
+    });
+    const changedAt = '2026-02-04T09:30:00Z';
+
+    const updated = updateAppointment(reviewed, { note: 'Updated after review.' }, changedAt);
+    const cancelled = cancelAppointment(reviewed, changedAt);
+
+    expect(updated.reviewState).toEqual({
+      status: 'needs_review',
+      reason: 'Appointment changed after review.',
+    });
+    expect(cancelled.reviewState).toEqual({
+      status: 'needs_review',
+      reason: 'Appointment changed after review.',
+    });
+    expect(AppointmentSchema.safeParse(updated).success).toBe(true);
+    expect(AppointmentSchema.safeParse(cancelled).success).toBe(true);
+  });
 });

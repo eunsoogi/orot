@@ -5,9 +5,13 @@ import {
   updateAppointment as updateDomainAppointment,
 } from '@orot/domain';
 import type { Appointment, AppointmentUpdateInput } from '@orot/domain';
-import { decodeStoredRecord } from './recordPersistence';
+import {
+  decodeStoredRecord,
+  readStoredRecord,
+  updateStoredRecord,
+} from './recordPersistence';
 import type { RecordRepository } from './repository';
-import type { SqlExecutor } from './sql';
+import type { SqlDatabase } from './sql';
 
 export interface ManualAppointmentInput {
   effectiveAt: string;
@@ -33,8 +37,8 @@ function newAppointmentId(): string {
   return 'appointment-' + Date.now() + '-' + Math.random().toString(36).slice(2);
 }
 
-async function listStoredAppointments(executor: SqlExecutor): Promise<Appointment[]> {
-  const result = await executor.execute(
+async function listStoredAppointments(database: SqlDatabase): Promise<Appointment[]> {
+  const result = await database.execute(
     'SELECT payload_json FROM appointments ORDER BY id ASC',
   );
   return result.rows
@@ -46,14 +50,14 @@ async function listStoredAppointments(executor: SqlExecutor): Promise<Appointmen
 
 export function createAppointmentRepository(
   records: Pick<RecordRepository, 'get' | 'put'>,
-  executor: SqlExecutor,
+  database: SqlDatabase,
   options: AppointmentRepositoryOptions = {},
 ): AppointmentRepository {
   const clock = options.clock ?? (() => new Date().toISOString());
   const createId = options.createId ?? newAppointmentId;
 
   return {
-    list: () => listStoredAppointments(executor),
+    list: () => listStoredAppointments(database),
     async create(input) {
       const now = clock();
       const note = input.note?.trim();
@@ -71,17 +75,27 @@ export function createAppointmentRepository(
       return appointment;
     },
     async update(id, changes) {
-      const appointment = await records.get('appointment', id);
-      if (!appointment) throw new Error('Appointment not found.');
-      const updated = updateDomainAppointment(appointment, changes, clock());
-      await records.put('appointment', updated);
+      let updated!: Appointment;
+      await database.transaction(async transaction => {
+        const appointment = await readStoredRecord(transaction, 'appointment', id);
+        if (!appointment) throw new Error('Appointment not found.');
+        updated = updateDomainAppointment(appointment, changes, clock());
+        if (!(await updateStoredRecord(transaction, 'appointment', updated))) {
+          throw new Error('Appointment not found.');
+        }
+      });
       return updated;
     },
     async cancel(id) {
-      const appointment = await records.get('appointment', id);
-      if (!appointment) throw new Error('Appointment not found.');
-      const cancelled = cancelDomainAppointment(appointment, clock());
-      await records.put('appointment', cancelled);
+      let cancelled!: Appointment;
+      await database.transaction(async transaction => {
+        const appointment = await readStoredRecord(transaction, 'appointment', id);
+        if (!appointment) throw new Error('Appointment not found.');
+        cancelled = cancelDomainAppointment(appointment, clock());
+        if (!(await updateStoredRecord(transaction, 'appointment', cancelled))) {
+          throw new Error('Appointment not found.');
+        }
+      });
       return cancelled;
     },
   };

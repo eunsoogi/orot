@@ -58,6 +58,12 @@ export const AppointmentUpdateInputSchema = z
 
 export type AppointmentUpdateInput = z.input<typeof AppointmentUpdateInputSchema>;
 
+function reviewStateAfterChange(appointment: Appointment): Appointment['reviewState'] {
+  return appointment.reviewState.status === 'reviewed'
+    ? { status: 'needs_review', reason: 'Appointment changed after review.' }
+    : appointment.reviewState;
+}
+
 export function createAppointment(input: z.input<typeof AppointmentCreateInputSchema>): Appointment {
   return AppointmentSchema.parse(AppointmentCreateInputSchema.parse(input));
 }
@@ -86,6 +92,7 @@ export function updateAppointment(
   }
   next.recordedAt = recordedAt;
   next.ingestedAt = recordedAt;
+  next.reviewState = reviewStateAfterChange(appointment);
   return AppointmentSchema.parse(next);
 }
 
@@ -99,6 +106,7 @@ export function cancelAppointment(appointment: Appointment, recordedAt: string):
     status: 'cancelled',
     recordedAt,
     ingestedAt: recordedAt,
+    reviewState: reviewStateAfterChange(appointment),
   });
 }
 

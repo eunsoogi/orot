@@ -96,3 +96,16 @@ export function toLocalAppointmentDateTime(
     time: [pad(parts.hour), pad(parts.minute)].join(':'),
   };
 }
+
+export function toAppointmentTimestampForEdit(
+  originalTimestamp: string,
+  dateText: string,
+  timeText: string,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string | null {
+  const originalLocalTime = toLocalAppointmentDateTime(originalTimestamp, timeZone);
+  if (dateText.trim() === originalLocalTime.date && timeText.trim() === originalLocalTime.time) {
+    return originalTimestamp;
+  }
+  return toAppointmentTimestamp(dateText, timeText, timeZone);
+}
