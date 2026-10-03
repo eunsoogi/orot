@@ -106,19 +106,13 @@ public final class ChatGPTOAuthClient: Sendable {
         _ callback: OAuthCallback,
         pending: PendingChatGPTAuthorization
     ) async throws -> TokenResponse {
-        var request = URLRequest(url: pending.discovery.tokenEndpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 20
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = Self.formBody([
-            "grant_type": "authorization_code",
-            "client_id": callback.issuedClientID,
-            "code": callback.code,
-            "code_verifier": pending.codeVerifier,
-            "redirect_uri": pending.redirectURI.absoluteString,
-            "resource": ChatGPTOAuthConstants.resource,
-        ])
+        let request = TokenExchangeRequestBuilder.build(
+            endpoint: pending.discovery.tokenEndpoint,
+            clientID: callback.issuedClientID,
+            code: callback.code,
+            codeVerifier: pending.codeVerifier,
+            redirectURI: pending.redirectURI
+        )
 
         let data: Data
         let response: URLResponse
@@ -196,13 +190,6 @@ public final class ChatGPTOAuthClient: Sendable {
             && url.user == nil
             && url.password == nil
             && url.fragment == nil
-    }
-
-    private static func formBody(_ values: [String: String]) -> Data {
-        var components = URLComponents()
-        components.queryItems = values.keys.sorted().map { URLQueryItem(name: $0, value: values[$0]) }
-        let encoded = (components.percentEncodedQuery ?? "").replacingOccurrences(of: "%20", with: "+")
-        return Data(encoded.utf8)
     }
 }
 
