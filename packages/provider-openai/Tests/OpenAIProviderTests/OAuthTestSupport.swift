@@ -41,6 +41,7 @@ final class InMemoryChatGPTCredentialStore: ChatGPTCredentialStore, @unchecked S
 struct StubOAuthResponse: Sendable {
     let statusCode: Int
     let body: Data
+    var requestID: String? = nil
 }
 
 actor RequestGate {
@@ -75,11 +76,13 @@ actor StubOAuthHTTPTransport: OAuthHTTPTransport {
         requests.append(request)
         resumeRequestWaiters()
         let result = try await responder(request)
+        var headers = ["Content-Type": "application/json"]
+        if let requestID = result.requestID { headers["x-request-id"] = requestID }
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: result.statusCode,
             httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json"]
+            headerFields: headers
         )!
         return (result.body, response)
     }

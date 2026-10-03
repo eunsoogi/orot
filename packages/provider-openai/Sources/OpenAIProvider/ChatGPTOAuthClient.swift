@@ -2,6 +2,7 @@ import Foundation
 
 public final class ChatGPTOAuthClient: Sendable {
     let transport: any OAuthHTTPTransport
+    let responsesTransport: any ChatGPTResponsesHTTPTransport
     private let agentName: String
     private let credentialStore: any ChatGPTCredentialStore
     let sessionManager: ChatGPTSessionManager
@@ -14,6 +15,7 @@ public final class ChatGPTOAuthClient: Sendable {
         let session = session ?? Self.makeEphemeralSession()
         let transport = URLSessionOAuthHTTPTransport(session: session)
         self.transport = transport
+        self.responsesTransport = URLSessionChatGPTResponsesHTTPTransport(session: session)
         self.agentName = agentName
         self.credentialStore = credentialStore
         self.sessionManager = ChatGPTSessionManager(
@@ -25,9 +27,13 @@ public final class ChatGPTOAuthClient: Sendable {
     init(
         transport: any OAuthHTTPTransport,
         agentName: String = "Orot",
-        credentialStore: any ChatGPTCredentialStore
+        credentialStore: any ChatGPTCredentialStore,
+        responsesTransport: (any ChatGPTResponsesHTTPTransport)? = nil
     ) {
         self.transport = transport
+        self.responsesTransport = responsesTransport ?? URLSessionChatGPTResponsesHTTPTransport(
+            session: Self.makeEphemeralSession()
+        )
         self.agentName = agentName
         self.credentialStore = credentialStore
         self.sessionManager = ChatGPTSessionManager(

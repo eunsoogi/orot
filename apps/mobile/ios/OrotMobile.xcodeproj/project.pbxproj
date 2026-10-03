@@ -14,6 +14,9 @@
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
+		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
+		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
+		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -30,6 +33,8 @@
 		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
+		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
+		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -39,6 +44,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-OrotMobile.a in Frameworks */,
+				A63F00000000000000000003 /* OpenAIProvider in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,6 +59,8 @@
 				B62F00000000000000000001 /* AppleFoundationModelsModule.swift */,
 				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
+				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
+				B63F00000000000000000002 /* OpenAIProviderModule.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -127,6 +135,9 @@
 			dependencies = (
 			);
 			name = OrotMobile;
+			packageProductDependencies = (
+				D63F00000000000000000001 /* OpenAIProvider */,
+			);
 			productName = Orot;
 			productReference = 13B07F961A680F5B00A75B9A /* Orot.app */;
 			productType = "com.apple.product-type.application";
@@ -153,6 +164,9 @@
 				Base,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
+			packageReferences = (
+				C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */,
+			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -259,6 +273,8 @@
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
+				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
+				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,6 +519,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../packages/provider-openai";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D63F00000000000000000001 /* OpenAIProvider */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */;
+			productName = OpenAIProvider;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
 }
