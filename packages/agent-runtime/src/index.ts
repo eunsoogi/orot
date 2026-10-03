@@ -1,5 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
 export { createLanguageModelProviderGraph } from './modelProviderGraph';
+export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
 
 export type AgentGraphNode = 'increment' | 'double';
 
@@ -16,7 +17,7 @@ const State = Annotation.Root({
   }),
 });
 
-export function createStatefulTwoNodeGraph() {
+function createStatefulGraphBuilder() {
   return new StateGraph(State)
     .addNode('increment', state => ({
       value: state.value + 1,
@@ -29,5 +30,12 @@ export function createStatefulTwoNodeGraph() {
     .addEdge(START, 'increment')
     .addEdge('increment', 'double')
     .addEdge('double', END)
-    .compile();
+}
+
+type StatefulGraphCompileOptions = Parameters<
+  ReturnType<typeof createStatefulGraphBuilder>['compile']
+>[0];
+
+export function createStatefulTwoNodeGraph(options?: StatefulGraphCompileOptions) {
+  return createStatefulGraphBuilder().compile(options);
 }

@@ -11,9 +11,11 @@
     "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/provider-apple typecheck && pnpm --filter @orot/agent-runtime typecheck && pnpm --filter @orot/storage typecheck && pnpm --filter @orot/eval typecheck && pnpm --filter @orot/agent-memory typecheck",
     "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/provider-apple test:unit && pnpm --filter @orot/agent-runtime test:unit && pnpm --filter @orot/storage test:unit && pnpm --filter @orot/eval test:unit && pnpm --filter @orot/agent-memory test:unit",
     "ios:build": "pnpm --filter @orot/mobile ios:build",
-    "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios && pnpm --filter @orot/mobile e2e:build:ios:agent-memory && pnpm --filter @orot/mobile e2e:build:ios:graph",
-    "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios && pnpm --filter @orot/mobile e2e:test:ios:agent-memory && pnpm --filter @orot/mobile e2e:test:ios:graph",
+    "e2e:build:ios": "pnpm --filter @orot/mobile e2e:build:ios && pnpm --filter @orot/mobile e2e:build:ios:agent-memory && pnpm --filter @orot/mobile e2e:build:ios:graph && pnpm --filter @orot/mobile e2e:build:ios:checkpoint",
+    "e2e:test:ios": "pnpm --filter @orot/mobile e2e:test:ios && pnpm --filter @orot/mobile e2e:test:ios:agent-memory && pnpm --filter @orot/mobile e2e:test:ios:graph && pnpm --filter @orot/mobile e2e:test:ios:checkpoint",
     "e2e:build:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:build:ios:apple-foundation-models",
-    "e2e:test:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:test:ios:apple-foundation-models"
+    "e2e:test:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:test:ios:apple-foundation-models",
+    "e2e:build:ios:checkpoint": "pnpm --filter @orot/mobile e2e:build:ios:checkpoint",
+    "e2e:test:ios:checkpoint": "pnpm --filter @orot/mobile e2e:test:ios:checkpoint"
   }
 }

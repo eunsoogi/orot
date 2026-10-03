@@ -9,6 +9,13 @@ export { createRecordRepository } from './repository';
 export type { RecordRepository, RecordWriter } from './repository';
 export { createAppointmentRepository } from './appointments';
 export type { Appointment } from '@orot/domain';
+export { createLangGraphCheckpointStorage } from './checkpointStorage';
+export type {
+  CheckpointBundle,
+  LangGraphCheckpointStorage,
+  StoredCheckpoint,
+  StoredCheckpointWrite,
+} from './checkpointStorage';
 export type {
   AppointmentChanges,
   AppointmentRepository,
