@@ -25,6 +25,14 @@ The lifecycle display is evidence to collect, not a guarantee of background exec
 
 Use a human-operated ChatGPT login and consent only after the Simulator is showing the provider screen. Do not save screenshots, logs, or reports containing callback URLs, codes, tokens, email addresses, or other account data. Record the Simulator device and OS, the callback/lifecycle outcome, whether the direct-plan scope was returned, and whether `/v1/models` returned HTTP 200. If permission is denied, the app stops before requesting the catalog.
 
+## Recorded Simulator run (2026-10-04)
+
+- On iPhone 17 / iOS 27, the harness launched Safari at `auth.openai.com`; the app reported `inactive` after browser handoff. No `background` transition was observed.
+- Safari reached ChatGPT identity verification by email code and displayed a “다른 방법도 있어요” (“Try another method”) option. No verification code was entered, and no account identifier is retained here.
+- At the user's request, interactive account authentication was stopped after additional MFA steps appeared. No loopback callback, provider code exchange, live ID-token verification, actual `chatgpt.tokens.use.direct` grant, or `/v1/models` response was observed. Real-account OAuth and provider access therefore remain unverified.
+- No provider consent denial or in-app cancellation action was exercised. Package tests cover a denied callback stopping before exchange and model access being gated on the actual direct-plan scope; the live UI cancellation path remains unverified.
+- The temporary Simulator screenshot containing an account identifier was deleted. No credential, verification code, callback URL, or token was saved.
+
 ## Local verification
 
 Run the focused package tests:
