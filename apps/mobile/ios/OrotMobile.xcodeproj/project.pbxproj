@@ -11,6 +11,9 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
+		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
+		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -24,6 +27,9 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OrotMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OrotMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
+		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
+		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -44,6 +50,9 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				B62F00000000000000000001 /* AppleFoundationModelsModule.swift */,
+				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
+				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -247,6 +256,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
+				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
+				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
