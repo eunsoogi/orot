@@ -1,0 +1,24 @@
+{
+  "name": "@orot/agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "pnpm --filter @orot/mobile exec eslint --config .eslintrc.js ../../packages/agent-runtime/src ../../packages/agent-runtime/__tests__ --ext .ts",
+    "typecheck": "pnpm --filter @orot/mobile exec tsc --noEmit --project ../../packages/agent-runtime/tsconfig.json",
+    "test:unit": "pnpm --filter @orot/mobile exec jest --config ../../packages/agent-runtime/jest.config.js --runInBand"
+  },
+  "dependencies": {
+    "@langchain/core": "1.2.14",
+    "@langchain/langgraph": "1.4.18"
+  }
+}
