@@ -76,6 +76,7 @@ export default function App({
     try {
       setSymptomEntries(await repository.list(filter));
     } catch {
+      setSymptomEntries([]);
       setSymptomError('Symptoms could not be loaded. Try again.');
     } finally {
       setLoadingSymptoms(false);
@@ -90,13 +91,20 @@ export default function App({
       return;
     }
     setLoadingSymptoms(true);
+    let opened = false;
     try {
       const repository = await loadSymptoms();
+      opened = true;
       setSymptomRepository(repository);
       setSymptomEntries(await repository.list({}));
       setSymptomFilter({});
     } catch {
-      setSymptomError('Symptoms could not be opened. Try again.');
+      setSymptomEntries([]);
+      setSymptomError(
+        opened
+          ? 'Symptoms could not be loaded. Try again.'
+          : 'Symptoms could not be opened. Try again.',
+      );
     } finally {
       setLoadingSymptoms(false);
     }
@@ -167,11 +175,13 @@ export default function App({
       return (
         <SymptomsScreen
           entries={symptomEntries}
+          loadError={symptomError}
           filter={symptomFilter}
           loading={loadingSymptoms}
           onBack={() => setShowSymptoms(false)}
           onCreate={createSymptom}
           onFilterChange={changeSymptomFilter}
+          onRetry={() => loadSymptomEntries(symptomFilter)}
           onResolve={resolveSymptom}
           onUpdate={updateSymptom}
         />

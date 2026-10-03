@@ -26,6 +26,7 @@ function renderScreen(overrides: Partial<ComponentProps<typeof SymptomsScreen>> 
     <SymptomsScreen
       entries={[]}
       onBack={jest.fn()}
+      onRetry={jest.fn()}
       onFilterChange={jest.fn()}
       onCreate={jest.fn()}
       onUpdate={jest.fn()}

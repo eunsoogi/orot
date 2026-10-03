@@ -68,6 +68,31 @@ function symptom(id: string, onsetAt: string, status: 'active' | 'resolved' = 'a
 }
 
 describe('encrypted symptom repository', () => {
+  it('limits journal queries to user-entered, unreviewed symptom entries', async () => {
+    const database = createDatabase();
+    await runMigrations(database);
+    const repository = createSymptomRepository(database);
+    const journalEntry = symptom('journal', '2026-04-20T08:30:00Z');
+    const clinicianEntry = SymptomEntrySchema.parse({
+      ...symptom('clinician', '2026-04-19T08:30:00Z'),
+      provenance: { origin: 'clinician_recorded', sourceRecordIds: [] },
+      reviewState: {
+        status: 'reviewed',
+        reviewerId: 'clinician-1',
+        reviewedAt: '2026-05-01T12:00:00Z',
+      },
+    });
+    await database.execute(
+      'INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
+      [clinicianEntry.id, clinicianEntry.effectiveAt, clinicianEntry.recordedAt,
+        clinicianEntry.ingestedAt, JSON.stringify(clinicianEntry)],
+    );
+    await repository.create(journalEntry);
+
+    expect(await repository.list()).toEqual([journalEntry]);
+    await database.closeAsync?.();
+  });
+
   it('reopens user-entered symptoms, edits details, resolves once, and queries by time and status', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'orot-symptoms-'));
     const databasePath = join(directory, 'symptoms.sqlite');

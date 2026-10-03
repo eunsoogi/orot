@@ -17,8 +17,10 @@ import type { NewSymptomDraft, SymptomEdit, SymptomFilter } from './types';
 interface SymptomsScreenProps {
   entries: SymptomEntry[];
   filter?: SymptomFilter;
+  loadError?: string;
   loading?: boolean;
   onBack: () => void;
+  onRetry: () => Promise<void> | void;
   onFilterChange: (filter: SymptomFilter) => Promise<void> | void;
   onCreate: (draft: NewSymptomDraft) => Promise<void> | void;
   onUpdate: (id: string, changes: SymptomEdit) => Promise<void> | void;
@@ -28,8 +30,10 @@ interface SymptomsScreenProps {
 export default function SymptomsScreen({
   entries,
   filter = {},
+  loadError = '',
   loading = false,
   onBack,
+  onRetry,
   onFilterChange,
   onCreate,
   onUpdate,
@@ -109,7 +113,19 @@ export default function SymptomsScreen({
           </Text>
         ) : null}
         <SymptomFilters filter={filter} onFilterChange={onFilterChange} />
-        {loading ? (
+        {loadError ? (
+          <>
+            <Text accessibilityRole="alert" testID="symptoms-load-error">
+              {loadError}
+            </Text>
+            <Button
+              disabled={loading}
+              onPress={onRetry}
+              testID="symptoms-retry-list"
+              title="Try again"
+            />
+          </>
+        ) : loading ? (
           <Text testID="symptoms-loading">Loading symptoms…</Text>
         ) : entries.length === 0 ? (
           <Text testID="symptoms-empty">

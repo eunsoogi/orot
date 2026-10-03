@@ -96,6 +96,10 @@ export function createSymptomRepository(database: SqlDatabase): SymptomRepositor
       const entries = await readAll(database);
       return entries
         .filter(entry => {
+          if (
+            entry.provenance.origin !== 'user_reported' ||
+            entry.reviewState.status !== 'unreviewed'
+          ) return false;
           if (query.status && entry.status !== query.status) return false;
           if (query.fromOnsetAt && compareTimestamps(entry.effectiveAt, query.fromOnsetAt) < 0) {
             return false;
