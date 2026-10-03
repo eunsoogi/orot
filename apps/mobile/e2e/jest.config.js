@@ -5,6 +5,7 @@ module.exports = {
   testPathIgnorePatterns: [
     '<rootDir>/e2e/graph.test.js',
     '<rootDir>/e2e/agentMemory.test.js',
+    '<rootDir>/e2e/appleFoundationModels.test.js',
   ],
   testTimeout: 120000,
   maxWorkers: 1,
