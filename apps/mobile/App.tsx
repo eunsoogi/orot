@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import AppointmentsScreen from './src/appointments/AppointmentsScreen';
+import { t } from './src/i18n';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -15,10 +16,13 @@ function defaultAppointmentLoader(): Promise<AppointmentRepository> {
   return require('./src/appointments/localRepository').openLocalAppointmentRepository();
 }
 
-export default function App({ loadAppointments = defaultAppointmentLoader }: AppProps) {
+export default function App({
+  loadAppointments = defaultAppointmentLoader,
+}: AppProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [showAppointments, setShowAppointments] = useState(false);
-  const [appointmentRepository, setAppointmentRepository] = useState<AppointmentRepository | null>(null);
+  const [appointmentRepository, setAppointmentRepository] =
+    useState<AppointmentRepository | null>(null);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [appointmentError, setAppointmentError] = useState('');
 
@@ -30,7 +34,7 @@ export default function App({ loadAppointments = defaultAppointmentLoader }: App
     try {
       setAppointmentRepository(await loadAppointments());
     } catch {
-      setAppointmentError('Appointments could not be opened. Try again.');
+      setAppointmentError(t('appointments.openError'));
     } finally {
       setLoadingAppointments(false);
     }
@@ -47,32 +51,53 @@ export default function App({ loadAppointments = defaultAppointmentLoader }: App
     }
     return (
       <View style={styles.container}>
-        <Text accessibilityRole="header" style={styles.title}>Appointments</Text>
-        <Text testID="appointments-opening">
-          {loadingAppointments ? 'Opening encrypted storage…' : appointmentError}
+        <Text accessibilityRole="header" style={styles.title}>
+          {t('appointments.title')}
+        </Text>
+        <Text
+          testID="appointments-opening"
+          accessibilityRole={appointmentError ? 'alert' : undefined}
+        >
+          {loadingAppointments ? t('appointments.opening') : appointmentError}
         </Text>
         {!loadingAppointments ? (
-          <Button onPress={openAppointments} testID="appointments-retry-open" title="Try again" />
+          <Button
+            onPress={openAppointments}
+            testID="appointments-retry-open"
+            title={t('appointments.retry')}
+          />
         ) : null}
-        <Button onPress={() => setShowAppointments(false)} testID="appointments-back" title="Back" />
+        <Button
+          onPress={() => setShowAppointments(false)}
+          testID="appointments-back"
+          title={t('appointments.back')}
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title} testID="welcome-title">
-        Orot workspace ready
+      <Text
+        accessibilityRole="header"
+        style={styles.title}
+        testID="welcome-title"
+      >
+        {t('app.welcome.title')}
       </Text>
       <Text style={styles.message}>
-        {hasStarted ? 'You are ready to build.' : 'A simple foundation for Orot.'}
+        {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
       </Text>
       <Button
         onPress={() => setHasStarted(true)}
         testID="get-started"
-        title="Get started"
+        title={t('app.actions.getStarted')}
       />
-      <Button onPress={openAppointments} testID="open-appointments" title="Appointments" />
+      <Button
+        onPress={openAppointments}
+        testID="open-appointments"
+        title={t('app.actions.appointments')}
+      />
     </View>
   );
 }
