@@ -182,6 +182,7 @@ export function buildFixtureRecords(fixtureId: string): FixtureRecords {
       ...metadata(id('symptom-headache'), '2030-04-19T11:05:00Z', 'user_reported', [source.symptom]),
       description: 'Synthetic intermittent headache reported; no cause or diagnosis recorded.',
       bodySite: 'head',
+      status: 'active',
     },
   ];
 
