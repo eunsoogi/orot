@@ -86,7 +86,7 @@ as `not-run`. If the request finishes before cancellation, the probe reports
 `completed-before-cancel`. Its `inferenceStop=unverified` field makes clear that
 the framework's underlying inference termination was not observed.
 
-On 2026-10-04, the dedicated iPhone 18 Pro Simulator on iOS 27.0 (`Orot Apple
+On 2026-10-04, the dedicated iPhone 18 Pro Max Simulator on iOS 27.0 (`Orot Apple
 Models 62 Retest`, UDID `6CA4652D-1842-4DA7-90DD-E7041F6C6A5E`) first reported
 `modelNotReady`. A later run on that device reported `available` without manual
 changes to Apple Intelligence settings or an Apple Account sign-in. The latest
