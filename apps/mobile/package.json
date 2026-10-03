@@ -19,11 +19,14 @@
     "e2e:build:ios:graph": "detox build --config-path ./e2e/graph.detox.config.js --configuration ios.sim.release.graph",
     "e2e:test:ios:graph": "detox test --config-path ./e2e/graph.detox.config.js --configuration ios.sim.release.graph",
     "e2e:build:ios:apple-foundation-models": "pnpm run ios:pods && test -n \"$OROT_APPLE_FOUNDATION_MODELS_SIMULATOR_UDID\" && test -n \"$OROT_APPLE_FOUNDATION_MODELS_DERIVED_DATA_PATH\" && detox build --config-path ./e2e/apple-foundation-models.detox.config.js --configuration ios.sim.release.apple-foundation-models",
-    "e2e:test:ios:apple-foundation-models": "test -n \"$OROT_APPLE_FOUNDATION_MODELS_SIMULATOR_UDID\" && test -n \"$OROT_APPLE_FOUNDATION_MODELS_EVIDENCE_DIR\" && test -n \"$OROT_APPLE_FOUNDATION_MODELS_DERIVED_DATA_PATH\" && detox test --config-path ./e2e/apple-foundation-models.detox.config.js --configuration ios.sim.release.apple-foundation-models --artifacts-location \"$OROT_APPLE_FOUNDATION_MODELS_EVIDENCE_DIR\""
+    "e2e:test:ios:apple-foundation-models": "test -n \"$OROT_APPLE_FOUNDATION_MODELS_SIMULATOR_UDID\" && test -n \"$OROT_APPLE_FOUNDATION_MODELS_EVIDENCE_DIR\" && test -n \"$OROT_APPLE_FOUNDATION_MODELS_DERIVED_DATA_PATH\" && detox test --config-path ./e2e/apple-foundation-models.detox.config.js --configuration ios.sim.release.apple-foundation-models --artifacts-location \"$OROT_APPLE_FOUNDATION_MODELS_EVIDENCE_DIR\"",
+    "e2e:build:ios:openai-provider": "pnpm run ios:pods && detox build --config-path ./e2e/openai-provider.detox.config.js --configuration ios.sim.debug.openai-provider",
+    "e2e:test:ios:openai-provider": "detox test --config-path ./e2e/openai-provider.detox.config.js --configuration ios.sim.debug.openai-provider"
   },
   "dependencies": {
     "@orot/agent-memory": "workspace:*",
     "@orot/model-runtime": "workspace:*",
+    "@orot/provider-openai": "workspace:*",
     "@orot/provider-apple": "workspace:*",
     "@op-engineering/op-sqlite": "18.2.5",
     "@orot/agent-runtime": "workspace:*",
