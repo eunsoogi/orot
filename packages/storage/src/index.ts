@@ -7,4 +7,10 @@ export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
 export type { RecordRepository, RecordWriter } from './repository';
+export type {
+  EvidenceSpanRepository,
+  HashedSourceRecord,
+  LocatedEvidenceSpan,
+  SourceRecordRepository,
+} from './sourceEvidence';
 export type { SqlDatabase, SqlExecutor, SqlResult, SqlTransaction, SqlValue } from './sql';

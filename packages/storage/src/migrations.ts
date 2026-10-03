@@ -2,7 +2,7 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -26,6 +26,24 @@ async function createInitialTables(transaction: SqlExecutor): Promise<void> {
         definition.table + ' (effective_at)',
     );
   }
+}
+
+async function createSourceEvidenceIntegrity(transaction: SqlExecutor): Promise<void> {
+  await transaction.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS source_records_content_hash_idx ON source_records (json_extract(payload_json, '$.contentHash')) WHERE json_type(payload_json, '$.contentHash') = 'text'",
+  );
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS evidence_spans_source_record_idx ON evidence_spans (json_extract(payload_json, '$.sourceRecordId'))",
+  );
+  await transaction.execute(
+    "CREATE TRIGGER IF NOT EXISTS evidence_spans_require_source_insert BEFORE INSERT ON evidence_spans WHEN NOT EXISTS (SELECT 1 FROM source_records WHERE id = json_extract(NEW.payload_json, '$.sourceRecordId')) BEGIN SELECT RAISE(ABORT, 'Evidence span source record does not exist.'); END",
+  );
+  await transaction.execute(
+    "CREATE TRIGGER IF NOT EXISTS evidence_spans_require_source_update BEFORE UPDATE OF payload_json ON evidence_spans WHEN NOT EXISTS (SELECT 1 FROM source_records WHERE id = json_extract(NEW.payload_json, '$.sourceRecordId')) BEGIN SELECT RAISE(ABORT, 'Evidence span source record does not exist.'); END",
+  );
+  await transaction.execute(
+    "CREATE TRIGGER IF NOT EXISTS source_records_delete_evidence_spans AFTER DELETE ON source_records BEGIN DELETE FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = OLD.id; END",
+  );
 }
 
 async function hasLegacyTable(transaction: SqlExecutor): Promise<boolean> {
@@ -75,12 +93,15 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
   if (currentVersion === CURRENT_SCHEMA_VERSION) return;
 
   await database.transaction(async transaction => {
-    const hasLegacy = await hasLegacyTable(transaction);
-    await createInitialTables(transaction);
-    if (hasLegacy) {
-      await migrateLegacyRows(transaction);
-      await transaction.execute('DROP TABLE records');
+    if (currentVersion === 0) {
+      const hasLegacy = await hasLegacyTable(transaction);
+      await createInitialTables(transaction);
+      if (hasLegacy) {
+        await migrateLegacyRows(transaction);
+        await transaction.execute('DROP TABLE records');
+      }
     }
-    await transaction.execute('PRAGMA user_version = ' + CURRENT_SCHEMA_VERSION);
+    await createSourceEvidenceIntegrity(transaction);
+    await transaction.execute('PRAGMA user_version = 2');
   });
 }

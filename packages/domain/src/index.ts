@@ -10,16 +10,20 @@ export type { Provenance, RecordId, RecordMetadata, ReviewState, Timestamp } fro
 export {
   EncounterSchema,
   EvidenceSpanSchema,
+  EvidenceSpanLocatorSchema,
   HealthObservationSchema,
   ObservationValueSchema,
+  SourceContentHashSchema,
   SourceRecordSchema,
   SymptomEntrySchema,
 } from './records';
 export type {
   Encounter,
   EvidenceSpan,
+  EvidenceSpanLocator,
   HealthObservation,
   ObservationValue,
+  SourceContentHash,
   SourceRecord,
   SymptomEntry,
 } from './records';

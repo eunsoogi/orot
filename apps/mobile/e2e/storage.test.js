@@ -20,13 +20,13 @@ async function launchProbe(mode, newInstance) {
 }
 
 describe('encrypted local storage', () => {
-  it('creates a Keychain key and stores an encrypted record on fresh install', async () => {
+  it('creates encrypted source and evidence records on fresh install', async () => {
     await installFreshApp();
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
   });
 
-  it('reopens the stored record after an app process restart', async () => {
+  it('reopens a source and its evidence span after an app process restart', async () => {
     await installFreshApp();
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
