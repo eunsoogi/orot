@@ -24,7 +24,36 @@ enum TokenExchangeRequestBuilder {
         return request
     }
 
-    private static func formBody(_ values: [String: String]) -> Data {
+    static func buildRefresh(endpoint: URL, clientID: String, refreshToken: String) -> URLRequest {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = formBody([
+            "grant_type": "refresh_token",
+            "client_id": clientID,
+            "refresh_token": refreshToken,
+            "resource": ChatGPTOAuthConstants.resource,
+        ])
+        return request
+    }
+
+    static func buildRevocation(endpoint: URL, clientID: String, refreshToken: String) -> URLRequest {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = formBody([
+            "token": refreshToken,
+            "token_type_hint": "refresh_token",
+            "client_id": clientID,
+        ])
+        return request
+    }
+
+    static func formBody(_ values: [String: String]) -> Data {
         let fields = values.sorted { $0.key < $1.key }.map { field in
             "\(formComponent(field.key))=\(formComponent(field.value))"
         }

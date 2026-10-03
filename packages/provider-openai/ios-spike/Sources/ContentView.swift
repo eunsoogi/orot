@@ -9,10 +9,13 @@ private final class SpikeViewModel: ObservableObject {
     @Published var models: [ListedChatGPTModel] = []
     @Published var grantedDirectPlanScope = false
     @Published var isSigningIn = false
+    @Published var cancellationState = AuthorizationCancellationState.awaitingAuthorization
+    @Published var storageProbeStatus: String?
 
-    private let oauth = ChatGPTOAuthClient(agentName: "Orot 로그인 검증")
-    private let hostIdentifierStore = UserDefaultsHostIdentifierStore(
-        key: "com.orot.oauth-spike.ext-agent-host-id"
+    private let credentialStore = KeychainChatGPTCredentialStore()
+    private lazy var oauth = ChatGPTOAuthClient(
+        agentName: "Orot 로그인 검증",
+        credentialStore: credentialStore
     )
     private var callbackServer: LoopbackCallbackServer?
     private var signInTask: Task<Void, Never>?
@@ -35,6 +38,7 @@ private final class SpikeViewModel: ObservableObject {
         isSigningIn = true
         models = []
         grantedDirectPlanScope = false
+        cancellationState = .awaitingAuthorization
         status = "127.0.0.1 콜백 리스너를 시작합니다…"
 
         signInTask = Task {
@@ -51,10 +55,7 @@ private final class SpikeViewModel: ObservableObject {
                 callbackServer = server
                 let redirectURI = try await server.start()
                 try Task.checkCancellation()
-                let pending = try await oauth.prepareAuthorization(
-                    hostIdentifier: hostIdentifierStore.loadOrCreate(),
-                    redirectURI: redirectURI
-                )
+                let pending = try await oauth.prepareAuthorization(redirectURI: redirectURI)
                 try Task.checkCancellation()
 
                 status = "Safari가 열렸습니다. 로그인을 마친 뒤 이 앱으로 돌아오세요."
@@ -71,18 +72,19 @@ private final class SpikeViewModel: ObservableObject {
                     callbackURL: callbackURL,
                     pending: pending
                 )
+                cancellationState = .credentialsStored
+                try Task.checkCancellation()
                 grantedDirectPlanScope = access.hasDirectPlanAccess
                 guard grantedDirectPlanScope else {
                     throw ChatGPTOAuthError.planPermissionMissing
                 }
 
                 status = "필요한 권한을 받았습니다. ChatGPT 모델 목록을 요청합니다…"
-                models = try await oauth.listModels(for: access)
+                models = try await oauth.listModels(forIssuedClientID: access.issuedClientID)
+                try Task.checkCancellation()
                 status = "실제 /v1/models 응답을 확인했습니다. 공개 모델 \(models.count)개를 받았습니다."
-            } catch is CancellationError {
-                status = "로그인이 취소되었습니다. 인증 정보는 저장하지 않았습니다."
             } catch {
-                status = error.localizedDescription
+                status = cancellationState.failureMessage(for: error, taskIsCancelled: Task.isCancelled)
             }
         }
     }
@@ -90,8 +92,54 @@ private final class SpikeViewModel: ObservableObject {
     func cancel() {
         signInTask?.cancel()
         callbackServer?.stop()
-        status = "로그인을 취소했습니다. 인증 정보는 저장하지 않았습니다."
+        status = cancellationState.cancellationMessage
     }
+
+#if DEBUG
+    func prepareSyntheticKeychainRestartProbe() {
+        let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
+        do {
+            try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+            try credentialStore.saveAccount(fixture)
+            storageProbeStatus = "합성 Keychain 계정을 저장했습니다. 앱을 완전히 종료하고 다시 연 뒤 ‘재실행 후 확인’을 누르세요. 로그인이나 네트워크 요청은 하지 않았습니다."
+        } catch {
+            try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+            storageProbeStatus = "합성 Keychain 준비에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
+        }
+    }
+
+    func verifyRestartedSyntheticKeychainProbe() {
+        let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
+        do {
+            let reopened = try KeychainChatGPTCredentialStore().loadAccount(issuedClientID: fixture.issuedClientID)
+            guard reopened?.issuedClientID == fixture.issuedClientID,
+                  reopened?.hostIdentifier == fixture.hostIdentifier,
+                  reopened?.subject == fixture.subject,
+                  reopened?.hasDirectPlanAccess == true,
+                  reopened?.requiresSignIn == false else {
+                throw SpikeError.syntheticStorageRoundTripFailed
+            }
+
+            try credentialStore.clearCredentials(issuedClientID: fixture.issuedClientID)
+            let signedOut = try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID)
+            guard signedOut?.requiresSignIn == true,
+                  signedOut?.issuedClientID == fixture.issuedClientID,
+                  signedOut?.hostIdentifier == fixture.hostIdentifier,
+                  signedOut?.subject == fixture.subject else {
+                throw SpikeError.syntheticStorageRoundTripFailed
+            }
+
+            try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+            guard try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID) == nil else {
+                throw SpikeError.syntheticStorageRoundTripFailed
+            }
+            storageProbeStatus = "앱 재실행 후 합성 Keychain 정보를 읽었고, 로그아웃 시 토큰 제거·계정 정리를 확인했습니다. 실제 계정 인증이나 네트워크 요청은 하지 않았습니다."
+        } catch {
+            try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+            storageProbeStatus = "앱 재실행 후 합성 Keychain 확인에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
+        }
+    }
+#endif
 
     private func openInSystemBrowser(_ url: URL) async -> Bool {
         await withCheckedContinuation { continuation in
@@ -104,9 +152,13 @@ private final class SpikeViewModel: ObservableObject {
 
 private enum SpikeError: LocalizedError {
     case browserUnavailable
+    case syntheticStorageRoundTripFailed
 
     var errorDescription: String? {
-        "시스템 브라우저에서 로그인 페이지를 열지 못했습니다."
+        switch self {
+        case .browserUnavailable: "시스템 브라우저에서 로그인 페이지를 열지 못했습니다."
+        case .syntheticStorageRoundTripFailed: "합성 Keychain 저장 상태를 다시 확인하지 못했습니다."
+        }
     }
 }
 
@@ -129,10 +181,31 @@ struct ContentView: View {
                         Button("ChatGPT 로그인 시작", action: model.signIn)
                             .accessibilityIdentifier("start-chatgpt-sign-in")
                     } else {
-                        Button("로그인 취소", role: .cancel, action: model.cancel)
+                        Button(
+                            model.cancellationState.cancelButtonTitle,
+                            role: .cancel,
+                            action: model.cancel
+                        )
                             .accessibilityIdentifier("cancel-chatgpt-sign-in")
                     }
                 }
+
+#if DEBUG
+                Section("보호된 저장소 확인") {
+                    Text("합성 계정을 저장한 뒤 앱을 완전히 종료하고 다시 열어 재실행 후 확인을 누르세요.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("1. 합성 Keychain 계정 저장", action: model.prepareSyntheticKeychainRestartProbe)
+                        .accessibilityIdentifier("synthetic-keychain-prepare-restart")
+                    Button("2. 재실행 후 확인·로그아웃·정리", action: model.verifyRestartedSyntheticKeychainProbe)
+                        .accessibilityIdentifier("synthetic-keychain-verify-restart")
+                    if let storageProbeStatus = model.storageProbeStatus {
+                        Text(storageProbeStatus)
+                            .font(.footnote)
+                            .accessibilityIdentifier("synthetic-keychain-status")
+                    }
+                }
+#endif
 
                 Section("iOS 앱 상태 변화") {
                     Text("브라우저로 전환하면 이 앱은 백그라운드로 이동합니다. 상태 전환을 기록하지만, 다른 앱이 활성화되면 iOS가 리스너를 일시 중단할 수 있습니다.")

@@ -8,12 +8,14 @@ enum AuthorizationRequestBuilder {
         state: String,
         nonce: String,
         verifier: String,
-        agentName: String
+        agentName: String,
+        clientID: String = ChatGPTOAuthConstants.initialClientID,
+        idTokenHint: String? = nil
     ) throws -> URL {
         guard UserDefaultsHostIdentifierStore.isValidHostIdentifier(hostIdentifier),
               !state.isEmpty,
               !nonce.isEmpty,
-              !agentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+              Self.isValidClientSelection(clientID: clientID, agentName: agentName, idTokenHint: idTokenHint) else {
             throw ChatGPTOAuthError.invalidAuthorizationRequest
         }
         guard ChatGPTOAuthClient.isValidRedirectURI(redirectURI) else {
@@ -23,8 +25,7 @@ enum AuthorizationRequestBuilder {
         var components = URLComponents(url: discovery.authorizationEndpoint, resolvingAgainstBaseURL: false)
         guard components?.queryItems == nil else { throw ChatGPTOAuthError.discoveryUnavailable }
         components?.queryItems = [
-            URLQueryItem(name: "client_id", value: ChatGPTOAuthConstants.initialClientID),
-            URLQueryItem(name: "agent_name_hint", value: agentName),
+            URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "ext_agent_host_id", value: hostIdentifier),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "redirect_uri", value: redirectURI.absoluteString),
@@ -35,7 +36,24 @@ enum AuthorizationRequestBuilder {
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "code_challenge", value: PKCE.challenge(for: verifier)),
         ]
+        if clientID == ChatGPTOAuthConstants.initialClientID {
+            components?.queryItems?.append(URLQueryItem(name: "agent_name_hint", value: agentName))
+        } else if let idTokenHint {
+            components?.queryItems?.append(URLQueryItem(name: "id_token_hint", value: idTokenHint))
+        }
         guard let url = components?.url else { throw ChatGPTOAuthError.discoveryUnavailable }
         return url
+    }
+
+    private static func isValidClientSelection(
+        clientID: String,
+        agentName: String,
+        idTokenHint: String?
+    ) -> Bool {
+        if clientID == ChatGPTOAuthConstants.initialClientID {
+            return idTokenHint == nil
+                && !agentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return KeychainChatGPTCredentialStore.isValidIssuedClientID(clientID)
     }
 }

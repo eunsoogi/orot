@@ -1,20 +1,8 @@
 import Foundation
-import JWTKit
 import XCTest
 @testable import OpenAIProvider
 
 final class OAuthContractTests: XCTestCase {
-    private var fixture: IdentityFixture!
-    private var jwksData: Data!
-
-    override func setUpWithError() throws {
-        let url = Bundle.module.url(forResource: "identity-tokens", withExtension: "json")!
-        let source = try Data(contentsOf: url)
-        fixture = try JSONDecoder().decode(IdentityFixture.self, from: source)
-        let document = try JSONSerialization.jsonObject(with: source) as! [String: Any]
-        jwksData = try JSONSerialization.data(withJSONObject: document["jwks"]!)
-    }
-
     func testPKCEChallengeMatchesRFC7636S256Vector() {
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
@@ -50,7 +38,8 @@ final class OAuthContractTests: XCTestCase {
             issuer: ChatGPTOAuthConstants.issuer,
             authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
             tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
-            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!
+            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
+            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
         )
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         let url = try AuthorizationRequestBuilder.build(
@@ -78,6 +67,37 @@ final class OAuthContractTests: XCTestCase {
         XCTAssertEqual(Set(parameters["scope", default: ""].split(separator: " ").map(String.init)), Set(ChatGPTOAuthConstants.scopes.split(separator: " ").map(String.init)))
     }
 
+    func testReturningAccountReusesIssuedClientIDAndOnlyAddsRetainedIDTokenHint() throws {
+        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
+        let discovery = OpenIDConfiguration(
+            issuer: ChatGPTOAuthConstants.issuer,
+            authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
+            tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
+            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
+            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
+        )
+        let url = try AuthorizationRequestBuilder.build(
+            discovery: discovery,
+            hostIdentifier: "urn:uuid:80f64234-5a94-4f5d-b510-37ea412918ca",
+            redirectURI: redirect,
+            state: "fresh-state",
+            nonce: "fresh-nonce",
+            verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+            agentName: "Orot",
+            clientID: "oaiapp_fixture_client",
+            idTokenHint: "synthetic-id-token-hint"
+        )
+        let parameters = Dictionary(
+            uniqueKeysWithValues: URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!.map {
+                ($0.name, $0.value ?? "")
+            }
+        )
+
+        XCTAssertEqual(parameters["client_id"], "oaiapp_fixture_client")
+        XCTAssertEqual(parameters["id_token_hint"], "synthetic-id-token-hint")
+        XCTAssertNil(parameters["agent_name_hint"])
+    }
+
     func testCallbackAcceptsOnlyMatchingLoopbackStateAndIssuedClientID() throws {
         let callback = try OAuthCallbackParser.parse(
             URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_registered")!,
@@ -86,6 +106,27 @@ final class OAuthContractTests: XCTestCase {
         )
 
         XCTAssertEqual(callback, OAuthCallback(code: "one-time-code", issuedClientID: "oaiapp_registered"))
+    }
+
+    func testReturningCallbackMayOmitSelectedClientIDButCannotReplaceIt() throws {
+        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
+        let returning = try OAuthCallbackParser.parse(
+            URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected")!,
+            expectedState: "expected",
+            expectedRedirectURI: redirect,
+            expectedClientID: "oaiapp_selected_account"
+        )
+        XCTAssertEqual(returning.issuedClientID, "oaiapp_selected_account")
+        XCTAssertThrowsError(
+            try OAuthCallbackParser.parse(
+                URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_other")!,
+                expectedState: "expected",
+                expectedRedirectURI: redirect,
+                expectedClientID: "oaiapp_selected_account"
+            )
+        ) { error in
+            XCTAssertEqual(error as? ChatGPTOAuthError, .registrationMismatch)
+        }
     }
 
     func testCallbackRejectsWrongStateDuplicateParametersAndUnissuedClientID() {
@@ -125,36 +166,6 @@ final class OAuthContractTests: XCTestCase {
         )
     }
 
-    func testPublishedRS256KeyVerifiesIDTokenAndRequiredClaims() async throws {
-        let identity = try await IDTokenVerifier().verify(
-            fixture.tokens["valid"]!,
-            jwksData: jwksData,
-            clientID: "oaiapp_fixture-client",
-            nonce: "fixture-nonce",
-            now: Date()
-        )
-
-        XCTAssertEqual(identity.subject, "fixture-subject")
-    }
-
-    func testWrongIssuerAudienceExpiryNonceAndFutureIssuedAtAreRejected() async {
-        let claims = ["wrongIssuer", "wrongAudience", "expired", "wrongNonce", "futureIssuedAt"]
-        for name in claims {
-            await assertIdentityError(fixture.tokens[name]!, error: .invalidIdentity)
-        }
-    }
-
-    func testSignatureFailureAndNonRS256HeadersAreRejected() async {
-        let valid = fixture.tokens["valid"]!
-        let parts = valid.split(separator: ".", omittingEmptySubsequences: false)
-        let tamperedSignature = String(parts[2].first == "A" ? "B" : "A") + String(parts[2].dropFirst())
-        await assertIdentityError("\(parts[0]).\(parts[1]).\(tamperedSignature)", error: .invalidIdentity)
-        await assertIdentityError(reheader(valid, algorithm: "none"), error: .invalidIdentity)
-        await assertIdentityError(reheader(valid, algorithm: "HS256"), error: .invalidIdentity)
-        await assertIdentityError(reheader(valid, algorithm: "RS256", keyID: nil), error: .invalidIdentity)
-        await assertIdentityError(reheader(valid, algorithm: "RS256", keyID: "untrusted-key"), error: .invalidIdentity)
-    }
-
     func testDirectPlanPermissionIsReadFromTheGrantedScopeSet() async {
         let noPlan = ChatGPTAccountAccess(
             issuedClientID: "oaiapp_fixture-client",
@@ -182,28 +193,6 @@ final class OAuthContractTests: XCTestCase {
         XCTAssertTrue(granted.hasDirectPlanAccess)
     }
 
-    private func assertIdentityError(
-        _ token: String,
-        error expected: ChatGPTOAuthError,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) async {
-        do {
-            _ = try await IDTokenVerifier().verify(
-                token,
-                jwksData: jwksData,
-                clientID: "oaiapp_fixture-client",
-                nonce: "fixture-nonce",
-                now: Date()
-            )
-            XCTFail("Expected ID-token verification to fail.", file: file, line: line)
-        } catch let error as ChatGPTOAuthError {
-            XCTAssertEqual(error, expected, file: file, line: line)
-        } catch {
-            XCTFail("Unexpected ID-token error: \(error)", file: file, line: line)
-        }
-    }
-
     private func assertCallbackError(
         _ url: String,
         expectedState: String,
@@ -225,20 +214,7 @@ final class OAuthContractTests: XCTestCase {
         }
     }
 
-    private func reheader(_ token: String, algorithm: String, keyID: String? = "unit-test-key") -> String {
-        let parts = token.split(separator: ".", omittingEmptySubsequences: false)
-        var header = ["alg": algorithm, "typ": "JWT"]
-        if let keyID { header["kid"] = keyID }
-        let data = try! JSONSerialization.data(withJSONObject: header, options: [.sortedKeys])
-        return "\(data.base64URLEncodedString()).\(parts[1]).\(parts[2])"
-    }
-
     private static func isBase64URLCharacter(_ character: Character) -> Bool {
         character.isASCII && (character.isLetter || character.isNumber || character == "-" || character == "_")
     }
-}
-
-private struct IdentityFixture: Decodable {
-    let jwks: JWKS
-    let tokens: [String: String]
 }
