@@ -1,7 +1,7 @@
 import { isSQLCipher, open } from '@op-engineering/op-sqlite';
 import { ACCESSIBLE, getGenericPassword, setGenericPassword } from 'react-native-keychain';
 import { createAppointmentRepository, openEncryptedStorage, resolveDatabaseKey } from '@orot/storage';
-import type { AppointmentRepository, RecordRepository } from '@orot/storage';
+import type { AppointmentRepository, RecordRepository, SqlDatabase } from '@orot/storage';
 import type { DB } from '@op-engineering/op-sqlite';
 
 const DATABASE_NAME = 'orot-secure.db';
@@ -57,6 +57,17 @@ export function openLocalStorage(): Promise<RecordRepository> {
     });
   }
   return opening;
+}
+
+/** Gives the agent-memory adapter access to the existing encrypted connection without exposing close/delete. */
+export async function openLocalAgentMemoryDatabase(): Promise<SqlDatabase> {
+  await openLocalStorage();
+  if (!database) throw new Error('The encrypted database is not open.');
+  const encryptedDatabase = database;
+  return {
+    execute: (query, parameters) => encryptedDatabase.execute(query, parameters),
+    transaction: operation => encryptedDatabase.transaction(operation),
+  };
 }
 
 export async function openLocalAppointmentRepository(): Promise<AppointmentRepository> {
