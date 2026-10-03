@@ -2,6 +2,10 @@
 
 This repository currently admits `v0.1.0` only. Release automation creates a GitHub Release after validating the exact main commit, its successful main CI run, issue evidence, and a human approval recorded on the candidate pull request. The simulator product is `Orot.app` with display name `Orot`; CI simulator builds are test evidence only. This process does not create an installable iPhone IPA or submit to TestFlight or the App Store.
 
+## 0.1.0 scope
+
+The release gate covers the reduced initial scope: recording and transcription, HealthKit imports, the next outpatient appointment from Calendar, and evidence-linked visit-question recommendations. Orot's directly implemented RAG (#23–25) and the separate external open-source agent-memory subsystem (#61) are both required. Korean-only i18n (#59), Apple Intelligence (#62), ChatGPT OAuth, LangChain, LangGraph, and LangSmith remain in scope; Orot has no backend. The initial LangSmith evaluation on issue #36 is required evidence; comparative full-context versus custom-RAG evaluation #41 and other 0.2.0 work are not 0.1.0 release gates.
+
 For workstation setup and the pinned development commands, see [Development setup](development.md).
 
 ## CI checks
@@ -30,7 +34,7 @@ The dry run checks workflow ref, source SHA ancestry on `main`, package version,
   "ciRunUrl": "https://github.com/eunsoogi/orot/actions/runs/<successful run ID>",
   "evidence": {
     "simulatorE2E": { "url": "https://github.com/eunsoogi/orot/issues/42#issuecomment-<id>" },
-    "evaluation": { "url": "https://github.com/eunsoogi/orot/issues/41#issuecomment-<id>" },
+    "evaluation": { "url": "https://github.com/eunsoogi/orot/issues/36#issuecomment-<id>" },
     "deletion": { "url": "https://github.com/eunsoogi/orot/issues/34#issuecomment-<id>" },
     "telemetry": { "url": "https://github.com/eunsoogi/orot/issues/40#issuecomment-<id>" }
   },
@@ -47,11 +51,11 @@ The dry run checks workflow ref, source SHA ancestry on `main`, package version,
 }
 ```
 
-The workflow reads the CI run and required jobs from GitHub, reads the evidence comments from issues #34, #40, #41, and #42, and checks that the candidate PR merged this commit to `main`. The issue #42 comment must describe the integrated iOS Simulator scenarios and OS, the actual provider configuration and results or blocker, the test-only fake adapter boundary used by CI, unverified hardware limitations, the exact source commit, and the exact successful CI run URL. Include an iOS version, exercised scenarios, the exact CI run link, a `test-only`/`fake` adapter boundary, and the real provider OAuth configuration and result or blocker. Keep provider authentication distinct from the fake-provider Detox run. The approval must be a non-author approval of the final PR head. Only the decision and gate reasons are written to the workflow log; the supplied JSON and evidence comment bodies are not uploaded as artifacts.
+The workflow reads the CI run and required jobs from GitHub, reads the evidence comments from issues #34, #36, #40, and #42, and checks that the candidate PR merged this commit to `main`. The evaluation evidence is the initial LangSmith evaluation of synthetic visit-question inputs on #36; the comparative experiment on #41 is deferred to 0.2.0. The issue #42 comment must describe the integrated iOS Simulator scenarios and OS, the actual provider configuration and results or blocker, the test-only fake adapter boundary used by CI, unverified hardware limitations, the exact source commit, and the exact successful CI run URL. Include an iOS version, exercised scenarios, the exact CI run link, a `test-only`/`fake` adapter boundary, and the real provider OAuth configuration and result or blocker. Keep provider authentication distinct from the fake-provider Detox run. The approval must be a non-author approval of the final PR head. Only the decision and gate reasons are written to the workflow log; the supplied JSON and evidence comment bodies are not uploaded as artifacts.
 
 ## Publish
 
-Use `mode: publish` only after all planned feature waves and the integrated iOS Simulator golden path are complete. Record actual provider-auth configuration and results separately from the deterministic fake-provider CI suite; if Simulator OAuth is unavailable, record the observed blocker on issue #8 and include it in known limitations. Identify physical-device behavior, HealthKit, microphone, speech, and other hardware capabilities as unverified when they were not exercised. No physical-iPhone run is required for 0.1.0. Select `main`, provide the verified version, source SHA, successful CI run ID, and complete readiness JSON. The issue #42 evidence comment must cite that exact source commit and successful CI run. The workflow rechecks all evidence immediately before writing.
+Use `mode: publish` only after the scoped 0.1.0 requirements and integrated iOS Simulator golden path are complete. Deferred 0.2.0 work does not gate this release. Record actual provider-auth configuration and results separately from the deterministic fake-provider CI suite; if Simulator OAuth is unavailable, record the observed blocker on issue #8 and include it in known limitations. Identify physical-device behavior, HealthKit, microphone, speech, and other hardware capabilities as unverified when they were not exercised. No physical-iPhone run is required for 0.1.0. Select `main`, provide the verified version, source SHA, successful CI run ID, and complete readiness JSON. The issue #42 evidence comment must cite that exact source commit and successful CI run. The workflow rechecks all evidence immediately before writing.
 
 If the `v0.1.0` tag is absent, the workflow creates it at the verified source commit using the normal GitHub ref-creation API. It never force-moves a tag. It refuses a tag at another commit and refuses to overwrite an existing GitHub Release. The published release notes include the source SHA, verified CI run, and known limitations. No simulator app, IPA, or unsigned build is attached as a release asset; CI diagnostic artifacts remain separately labeled and expire after 14 days.
 

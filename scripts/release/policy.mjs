@@ -6,7 +6,7 @@ export const REQUIRED_CI_JOBS = [
 
 const EXPECTED_EVIDENCE = {
   simulatorE2E: 42,
-  evaluation: 41,
+  evaluation: 36,
   deletion: 34,
   telemetry: 40,
 };

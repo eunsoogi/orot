@@ -17,7 +17,7 @@ const ciRun = {
 const ciJobs = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E']
   .map((name) => ({ name, status: 'completed', conclusion: 'success' }));
 const evidenceNames = ['simulatorE2E', 'evaluation', 'deletion', 'telemetry'];
-const evidenceIssues = { simulatorE2E: 42, evaluation: 41, deletion: 34, telemetry: 40 };
+const evidenceIssues = { simulatorE2E: 42, evaluation: 36, deletion: 34, telemetry: 40 };
 const evidenceComments = Object.fromEntries(evidenceNames.map((name) => {
   const issueNumber = evidenceIssues[name];
   const id = issueNumber * 100;
@@ -27,8 +27,10 @@ const evidenceComments = Object.fromEntries(evidenceNames.map((name) => {
     issueNumber,
     closed: true,
     body: name === 'simulatorE2E'
-      ? `iOS Simulator on iOS 27.0; scenarios: local retrieval and graph resume. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider/auth adapter. Real provider OAuth configuration: ChatGPT plan; result: passed in Simulator. Unverified hardware capabilities are recorded in known limitations.`
-      : `Verified for source commit ${sourceSha}. Recorded outcome for ${name}.`,
+      ? `Test fixture: iOS Simulator on iOS 27.0; scenarios: local retrieval and graph resume. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider/auth adapter. Actual provider OAuth configuration: fixture only; result: no live provider result claimed. Unverified hardware capabilities are recorded in known limitations.`
+      : name === 'evaluation'
+        ? `Test fixture: LangSmith evaluation of visit-question recommendations with synthetic consultation, HealthKit, Calendar and memory inputs. Source commit ${sourceSha}. Recorded source support, temporal and numeric correctness, question quality, clarification behavior, safety, latency and token usage. No real health data or production traces.`
+        : `Test fixture: recorded outcome for ${name} on source commit ${sourceSha}.`,
   }];
 }));
 const approvalPull = {
@@ -96,11 +98,33 @@ function context(overrides = {}) {
   };
 }
 
-test('accepts a complete release candidate tied to main, successful CI, evidence, and approval', () => {
+test('accepts a complete candidate with the initial #36 LangSmith evaluation evidence', () => {
+  assert.equal(evidenceComments.evaluation.issueNumber, 36);
+  assert.match(readiness.evidence.evaluation.url, /\/issues\/36#issuecomment-/);
   const result = validateCandidate(context());
   assert.equal(result.valid, true);
   assert.equal(result.publicationAllowed, true);
   assert.deepEqual(result.errors, []);
+});
+
+test('rejects deferred comparative evaluation evidence from issue #41', () => {
+  const oldCommentUrl = 'https://github.com/eunsoogi/orot/issues/41#issuecomment-4100';
+  const oldComment = {
+    ...evidenceComments.evaluation,
+    id: 4100,
+    html_url: oldCommentUrl,
+    issueNumber: 41,
+  };
+  const result = validateCandidate(context({
+    readiness: {
+      ...readiness,
+      evidence: { ...readiness.evidence, evaluation: { url: oldCommentUrl } },
+    },
+    evidenceComments: { ...evidenceComments, evaluation: oldComment },
+  }));
+  assert.equal(result.valid, false);
+  assert.equal(result.publicationAllowed, false);
+  assert.match(result.errors.join(' '), /required issue #36/);
 });
 
 test('dry run without readiness evidence completes as blocked and never authorizes publication', () => {
