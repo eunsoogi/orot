@@ -114,6 +114,9 @@ importers:
       '@op-engineering/op-sqlite':
         specifier: 18.2.5
         version: 18.2.5(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
+      '@orot/agent-memory':
+        specifier: workspace:*
+        version: link:../../packages/agent-memory
       '@orot/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
@@ -196,6 +199,21 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  packages/agent-memory:
+    dependencies:
+      '@langchain/core':
+        specifier: 1.2.14
+        version: 1.2.14(ws@7.5.13)
+      '@orot/model-runtime':
+        specifier: workspace:*
+        version: link:../model-runtime
+      rememori:
+        specifier: 0.7.0
+        version: 0.7.0
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/agent-runtime:
     dependencies:
@@ -3580,6 +3598,10 @@ packages:
   regjsparser@0.13.3:
     resolution: {integrity: sha512-ycwFAS14Jw4mppvmK4GR/J6u3WpWpjkEApehuHtLc/8VpPNpDMbQ4WjqwplXifGeyKOzHSFLmSPqzksDQE2Sfg==}
     hasBin: true
+
+  rememori@0.7.0:
+    resolution: {integrity: sha512-UFbFUIEtGmFJMmmAKLmdQn3CQhipQsfSMJu+YIdsfuFpWv65xWnKW0qSeaAZLxgwJhpFF/MJBucQ7Rk6ADCWsw==}
+    engines: {node: '>=18'}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -8576,6 +8598,8 @@ snapshots:
   regjsparser@0.13.3:
     dependencies:
       jsesc: 3.1.0
+
+  rememori@0.7.0: {}
 
   require-directory@2.1.1: {}
 
