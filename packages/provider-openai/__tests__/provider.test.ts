@@ -155,6 +155,36 @@ describe('ChatGPT plan model adapter', () => {
     await Promise.resolve();
     expect(bridge.cancelled).toEqual(['request-cancel']);
   });
+
+  it('isolates simultaneous streams from provider instances sharing a bridge', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    try {
+      const releases: (() => void)[] = [];
+      const bridge = new FakeBridge(async () => new Promise<void>((resolve) => { releases.push(resolve); }));
+      const options = { bridge, issuedClientID: 'issued-client', model: { slug: 'gpt-test', displayName: 'Test model' } };
+      const first = createChatGPTPlanProvider(options).stream!(baseRequest)[Symbol.asyncIterator]();
+      const second = createChatGPTPlanProvider(options).stream!(baseRequest)[Symbol.asyncIterator]();
+      const firstPending = first.next();
+      const secondPending = second.next();
+      const [firstID, secondID] = bridge.started.map((request) => request.requestID);
+      expect(firstID).toBeDefined();
+      expect(secondID).toBeDefined();
+      expect(firstID).not.toBe(secondID);
+
+      await first.return?.();
+      await expect(firstPending).resolves.toEqual({ done: true, value: undefined });
+      expect(bridge.cancelled).toEqual([firstID]);
+      bridge.emit({ requestId: secondID!, type: 'text_delta', text: 'Second only' });
+      bridge.emit({ requestId: secondID!, type: 'completed', text: 'Second only' });
+      releases[1]?.();
+      await expect(secondPending).resolves.toMatchObject({ done: false, value: { ok: true, value: { type: 'text_delta', text: 'Second only' } } });
+      await expect(second.next()).resolves.toMatchObject({ done: false, value: { ok: true, value: { type: 'completed' } } });
+      expect(bridge.cancelled).toEqual([firstID]);
+      releases[0]?.();
+    } finally {
+      now.mockRestore();
+    }
+  });
 });
 
 class FakeBridge implements ChatGPTPlanNativeBridge {
@@ -163,7 +193,7 @@ class FakeBridge implements ChatGPTPlanNativeBridge {
   listedAccount: string | undefined;
   readonly started: { requestID: string; request: ChatGPTPlanRequest }[] = [];
   readonly cancelled: string[] = [];
-  private listener: ((event: ChatGPTPlanNativeEvent) => void) | undefined;
+  private readonly listeners = new Set<(event: ChatGPTPlanNativeEvent) => void>();
 
   constructor(
     private readonly onStart: (requestID: string, bridge: FakeBridge) => Promise<void> = async () => {},
@@ -176,8 +206,8 @@ class FakeBridge implements ChatGPTPlanNativeBridge {
   }
 
   subscribe(listener: (event: ChatGPTPlanNativeEvent) => void): () => void {
-    this.listener = listener;
-    return () => { this.listener = undefined; };
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
   }
 
   async startResponse(requestID: string, _issuedClientID: string, request: ChatGPTPlanRequest): Promise<void> {
@@ -190,6 +220,6 @@ class FakeBridge implements ChatGPTPlanNativeBridge {
   }
 
   emit(event: ChatGPTPlanNativeEvent): void {
-    this.listener?.(event);
+    for (const listener of this.listeners) listener(event);
   }
 }

@@ -40,11 +40,13 @@ struct ResponsesEventNormalizer {
         case "response.failed", "error":
             let response = object["response"] as? [String: Any]
             let error = (response?["error"] as? [String: Any]) ?? (object["error"] as? [String: Any])
+            let code = error?["code"] as? String ?? (type == "error" ? object["code"] as? String : nil)
+            let parameter = error?["param"] as? String ?? (type == "error" ? object["param"] as? String : nil)
             throw ChatGPTResponsesError.responseFailure(
                 ChatGPTResponsesDiagnostics(
                     bodyShape: error == nil ? "error_event" : "error_object",
-                    code: error?["code"] as? String,
-                    parameter: error?["param"] as? String,
+                    code: code,
+                    parameter: parameter,
                     requestID: requestID
                 )
             )

@@ -185,9 +185,11 @@ private final class ChatGPTPlanFixtureURLProtocol: URLProtocol {
         ])
     }
 
-    private static let failure = event("response.failed", [
-        "type": "response.failed",
-        "response": ["error": ["code": "subscription_sharing_usage_limit_exceeded", "param": "model"]],
+    private static let failure = event("error", [
+        "type": "error",
+        "code": "subscription_sharing_usage_limit_exceeded",
+        "message": "The ChatGPT plan usage limit was reached.",
+        "param": "model",
     ])
 }
 

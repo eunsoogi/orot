@@ -44,6 +44,27 @@ final class ResponsesEventNormalizerTests: XCTestCase {
         }
     }
 
+    func testTopLevelErrorEventsPreserveProviderSpecificCodesAndParameters() {
+        let cases = [
+            ("subscription_sharing_usage_limit_exceeded", "model"),
+            ("chatpass_v2_scope_not_authorized", "model"),
+            ("subscription_sharing_unsupported_capability", "tools"),
+        ]
+        for (code, parameter) in cases {
+            var normalizer = ResponsesEventNormalizer(requestID: "req_top_level_error")
+            let payload = #"{"type":"error","code":"\#(code)","message":"Provider error","param":"\#(parameter)"}"#
+            XCTAssertThrowsError(try normalizer.consume(frame("error", payload))) { error in
+                guard case .responseFailure(let diagnostics) = error as? ChatGPTResponsesError else {
+                    return XCTFail("Expected response failure, got \(error).")
+                }
+                XCTAssertEqual(diagnostics.bodyShape, "error_event")
+                XCTAssertEqual(diagnostics.code, code)
+                XCTAssertEqual(diagnostics.parameter, parameter)
+                XCTAssertEqual(diagnostics.requestID, "req_top_level_error")
+            }
+        }
+    }
+
     func testCompletedTextMustMatchTheEmittedDeltas() {
         var normalizer = ResponsesEventNormalizer(requestID: nil)
         _ = try? normalizer.consume(frame("response.output_text.delta", #"{"type":"response.output_text.delta","delta":"partial"}"#))

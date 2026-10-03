@@ -16,6 +16,13 @@ import type {
 } from './native-contract';
 import { prepareRequest } from './request-mapper';
 
+let requestSequence = 0;
+
+function createRequestID(): string {
+  requestSequence += 1;
+  return `orot-chatgpt-${Date.now()}-${requestSequence}`;
+}
+
 export interface ChatGPTPlanModel extends ChatGPTPlanModelDescriptor {
   readonly id: string;
 }
@@ -50,8 +57,7 @@ export async function listChatGPTPlanModels(
 }
 
 export function createChatGPTPlanProvider(options: ChatGPTPlanProviderOptions): LanguageModelProvider {
-  let requestNumber = 0;
-  const nextRequestID = options.requestIDFactory ?? (() => `orot-chatgpt-${Date.now()}-${++requestNumber}`);
+  const nextRequestID = options.requestIDFactory ?? createRequestID;
   const provider: LanguageModelProvider = {
     kind: 'language-model',
     id: `chatgpt-plan:${options.issuedClientID}:${options.model.slug}`,
