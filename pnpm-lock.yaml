@@ -126,6 +126,9 @@ importers:
       '@orot/provider-apple':
         specifier: workspace:*
         version: link:../../packages/provider-apple
+      '@orot/provider-openai':
+        specifier: workspace:*
+        version: link:../../packages/provider-openai
       '@orot/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -248,6 +251,12 @@ importers:
   packages/model-runtime: {}
 
   packages/provider-apple:
+    dependencies:
+      '@orot/model-runtime':
+        specifier: workspace:*
+        version: link:../model-runtime
+
+  packages/provider-openai:
     dependencies:
       '@orot/model-runtime':
         specifier: workspace:*

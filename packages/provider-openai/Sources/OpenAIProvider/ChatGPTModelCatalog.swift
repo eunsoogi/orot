@@ -40,8 +40,19 @@ public extension ChatGPTOAuthClient {
             }
             throw CancellationError()
         }
-        guard (response as? HTTPURLResponse)?.statusCode == 200,
-              data.count <= 1_048_576,
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChatGPTOAuthError.modelCatalogUnavailable
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw ChatGPTOAuthError.modelCatalogHTTPFailure(
+                ResponsesHTTPFailureParser.diagnostics(
+                    statusCode: httpResponse.statusCode,
+                    requestID: httpResponse.value(forHTTPHeaderField: "x-request-id"),
+                    body: data
+                )
+            )
+        }
+        guard data.count <= 1_048_576,
               let body = try? JSONDecoder().decode(ModelCatalogResponse.self, from: data) else {
             throw ChatGPTOAuthError.modelCatalogUnavailable
         }
