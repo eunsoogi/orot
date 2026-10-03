@@ -53,6 +53,8 @@ export interface PersistedMemoryRecord extends MemoryRecord {}
 /** Rememori's storage contract plus the atomic operations needed by app corrections. */
 export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listRecords(): Promise<PersistedMemoryRecord[]>;
+  listRemovedSourceIds(): Promise<string[]>;
+  markSourceRemoved(sourceId: string): Promise<void>;
   beginBatch(): void;
   commitBatch(): Promise<void>;
   rollbackBatch(): void;

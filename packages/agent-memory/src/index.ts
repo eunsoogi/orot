@@ -1,7 +1,11 @@
 export { createRememoriEmbedder } from './embedder';
 export type { EmbeddingProvider } from '@orot/model-runtime';
 export { createAgentMemory } from './service';
-export type { AgentMemoryService, CreateAgentMemoryOptions } from './service';
+export type {
+  AgentMemoryService,
+  AgentMemorySourceRemovalResult,
+  CreateAgentMemoryOptions,
+} from './service';
 export { createAgentMemoryTools } from './tools';
 export type {
   AgentMemoryAuthorization,

@@ -1,85 +1,7 @@
 import { createAgentMemory } from '../src/service';
 import { createAgentMemoryTools } from '../src/tools';
-import type {
-  AgentMemoryInput,
-  AgentMemoryStorageAdapter,
-  PersistedMemoryRecord,
-} from '../src/types';
-
-class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
-  private readonly records = new Map<string, PersistedMemoryRecord>();
-  private pending: Map<string, PersistedMemoryRecord | null> | null = null;
-  failNextCommit = false;
-
-  async load(): Promise<PersistedMemoryRecord[]> {
-    return this.listRecords();
-  }
-
-  async listRecords(): Promise<PersistedMemoryRecord[]> {
-    return [...this.records.values()];
-  }
-
-  async append(record: PersistedMemoryRecord): Promise<void> {
-    if (this.pending) this.pending.set(record.id, record);
-    else this.records.set(record.id, record);
-  }
-
-  async tombstone(id: string): Promise<void> {
-    if (this.pending) this.pending.set(id, null);
-    else this.records.delete(id);
-  }
-
-  async compact(records: PersistedMemoryRecord[]): Promise<void> {
-    if (this.pending) throw new Error('Cannot compact during a write batch.');
-    this.records.clear();
-    for (const record of records) this.records.set(record.id, record);
-  }
-
-  beginBatch(): void {
-    if (this.pending) throw new Error('A write batch is already open.');
-    this.pending = new Map();
-  }
-
-  async commitBatch(): Promise<void> {
-    if (!this.pending) throw new Error('No write batch is open.');
-    if (this.failNextCommit) {
-      this.failNextCommit = false;
-      throw new Error('Synthetic transaction failure.');
-    }
-    for (const [id, record] of this.pending) {
-      if (record) this.records.set(id, record);
-      else this.records.delete(id);
-    }
-    this.pending = null;
-  }
-
-  rollbackBatch(): void {
-    this.pending = null;
-  }
-
-  async close(): Promise<void> {}
-}
-
-const embedder = {
-  async embed(texts: string[]): Promise<Float32Array[]> {
-    return texts.map(text => {
-      const vector = new Float32Array(16);
-      for (const character of text) vector[character.charCodeAt(0) % vector.length] += 1;
-      return vector;
-    });
-  },
-};
-
-const preference: AgentMemoryInput = {
-  memoryKey: 'preference:reminder-time',
-  text: '사용자는 외래 일정 알림을 하루 전에 받고 싶어 한다.',
-  kind: 'preference',
-  provenance: {
-    sourceIds: ['synthetic-source-1'],
-    sourceDates: [{ sourceId: 'synthetic-source-1', date: '2026-01-02T00:00:00Z' }],
-    reviewState: 'user_confirmed',
-  },
-};
+import type { AgentMemoryInput } from '../src/types';
+import { embedder, PersistentMemoryStorage, preference } from './testFixtures';
 
 describe('on-device agent memory lifecycle', () => {
   it('recalls persisted Korean memory and provenance after reopening', async () => {
@@ -145,26 +67,6 @@ describe('on-device agent memory lifecycle', () => {
     await expect(memory.recall(preference.text, { minSimilarity: 0.999 })).resolves.toMatchObject([
       { id: originalId, text: preference.text },
     ]);
-    await memory.close();
-  });
-
-  it('deletes only memories linked to a removed source', async () => {
-    const storage = new PersistentMemoryStorage();
-    const memory = await createAgentMemory({ embedder, storage });
-    await memory.remember(preference);
-    await memory.remember({
-      ...preference,
-      memoryKey: 'task:visit-prep',
-      text: '진료 전에 복용 목록을 확인한다.',
-      kind: 'task_context',
-      provenance: { sourceIds: ['synthetic-source-2'], reviewState: 'human_reviewed' },
-    });
-
-    await expect(memory.forgetBySourceId('synthetic-source-1')).resolves.toBe(1);
-    expect(await storage.listRecords()).toHaveLength(1);
-    expect((await storage.listRecords())[0]?.meta.provenance).toMatchObject({
-      sourceIds: ['synthetic-source-2'],
-    });
     await memory.close();
   });
 

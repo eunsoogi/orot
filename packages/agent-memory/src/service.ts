@@ -19,12 +19,22 @@ export interface CreateAgentMemoryOptions {
   readonly storage: AgentMemoryStorageAdapter;
 }
 
+export interface AgentMemorySourceRemovalResult {
+  readonly sourceDeleted: boolean;
+  readonly memoriesDeleted: number;
+}
+
 export interface AgentMemoryService {
   remember(input: AgentMemoryInput): Promise<string>;
   update(input: AgentMemoryInput): Promise<string>;
   recall(query: string, options?: Pick<RecallOptions, 'limit' | 'tags' | 'minSimilarity'>): Promise<AgentMemoryHit[]>;
   forget(memoryId: string): Promise<boolean>;
   forgetBySourceId(sourceId: string): Promise<number>;
+  /** Serializes linked-memory cleanup with source deletion; the callback only removes the source record. */
+  removeSource(
+    sourceId: string,
+    deleteSourceRecord: () => Promise<boolean>,
+  ): Promise<AgentMemorySourceRemovalResult>;
   close(): Promise<void>;
 }
 
@@ -38,6 +48,7 @@ class LocalAgentMemory implements AgentMemoryService {
   private engine: Memory | null = null;
   private tail: Promise<void> = Promise.resolve();
   private closed = false;
+  private removedSourceIds = new Set<string>();
 
   constructor(
     private readonly embedder: Embedder,
@@ -45,6 +56,7 @@ class LocalAgentMemory implements AgentMemoryService {
   ) {}
 
   async open(): Promise<void> {
+    this.removedSourceIds = new Set(await this.storage.listRemovedSourceIds());
     this.engine = await this.openEngine();
   }
 
@@ -106,6 +118,31 @@ class LocalAgentMemory implements AgentMemoryService {
     });
   }
 
+  removeSource(
+    sourceId: string,
+    deleteSourceRecord: () => Promise<boolean>,
+  ): Promise<AgentMemorySourceRemovalResult> {
+    return this.enqueue(async () => {
+      const normalizedId = sourceId.trim();
+      if (!normalizedId) throw new Error('A source identifier is required.');
+      this.removedSourceIds.add(normalizedId);
+
+      const records = await this.storage.listRecords();
+      const ids = records
+        .filter(record => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
+        .map(record => record.id);
+      const memoriesDeleted = await this.runBatch(async () => {
+        const engine = await this.getEngine();
+        let forgotten = 0;
+        for (const id of ids) if (await engine.forget(id)) forgotten += 1;
+        await this.storage.markSourceRemoved(normalizedId);
+        return forgotten;
+      });
+      const sourceDeleted = await deleteSourceRecord();
+      return { sourceDeleted, memoriesDeleted };
+    });
+  }
+
   close(): Promise<void> {
     return this.enqueue(async () => {
       if (this.closed) return;
@@ -117,8 +154,10 @@ class LocalAgentMemory implements AgentMemoryService {
 
   private async write(input: AgentMemoryInput): Promise<string> {
     const normalized = validateInput(input);
+    const removedSourceId = normalized.provenance.sourceIds.find(sourceId => this.removedSourceIds.has(sourceId));
+    if (removedSourceId) throw new Error('Memory cannot reference a source being or already removed.');
     const records = await this.storage.listRecords();
-      const matches = records.filter(record => metadataFrom(record.meta).memoryKey === normalized.memoryKey);
+    const matches = records.filter(record => metadataFrom(record.meta).memoryKey === normalized.memoryKey);
     const current = [...matches].sort((left, right) => right.createdAt - left.createdAt)[0];
     const identical = current && samePayload(current, normalized);
 

@@ -2,11 +2,15 @@ import type { SqlDatabase, SqlTransaction } from '@orot/storage';
 import type { AgentMemoryStorageAdapter, PersistedMemoryRecord } from '@orot/agent-memory';
 
 type PendingWrite = PersistedMemoryRecord | null;
+interface PendingBatch {
+  readonly writes: Map<string, PendingWrite>;
+  readonly removedSourceIds: Set<string>;
+}
 
 /** Persists only Rememori records inside the app's existing SQLCipher database. */
 export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   private tableReady: Promise<void> | null = null;
-  private pending: Map<string, PendingWrite> | null = null;
+  private pending: PendingBatch | null = null;
 
   constructor(private readonly database: SqlDatabase) {}
 
@@ -15,7 +19,10 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     const result = await this.database.execute(
       'SELECT record_json FROM agent_memory_records ORDER BY id',
     );
-    return result.rows.map(row => decodeRecord(row.record_json));
+    const removedSourceIds = new Set(await this.listRemovedSourceIds());
+    return result.rows
+      .map(row => decodeRecord(row.record_json))
+      .filter(record => !referencesRemovedSource(record, removedSourceIds));
   }
 
   async listRecords(): Promise<PersistedMemoryRecord[]> {
@@ -24,38 +31,63 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
 
   async append(record: PersistedMemoryRecord): Promise<void> {
     if (this.pending) {
-      this.pending.set(record.id, record);
+      this.pending.writes.set(record.id, record);
       return;
     }
-    await this.executeWrites(new Map([[record.id, record]]));
+    await this.executeWrites(new Map([[record.id, record]]), new Set());
   }
 
   async tombstone(id: string): Promise<void> {
     if (this.pending) {
-      this.pending.set(id, null);
+      this.pending.writes.set(id, null);
       return;
     }
-    await this.executeWrites(new Map([[id, null]]));
+    await this.executeWrites(new Map([[id, null]]), new Set());
   }
 
   async compact(records: PersistedMemoryRecord[]): Promise<void> {
     if (this.pending) throw new Error('Cannot compact agent memory during a write batch.');
     await this.ensureTable();
     await this.database.transaction(async transaction => {
+      const removedResult = await transaction.execute(
+        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+      );
+      const removedSourceIds = new Set(removedResult.rows.flatMap(row =>
+        typeof row.source_id === 'string' ? [row.source_id] : [],
+      ));
+      for (const record of records) assertNoRemovedSourceReference(record, removedSourceIds);
       await transaction.execute('DELETE FROM agent_memory_records');
       for (const record of records) await insertRecord(transaction, record);
     });
   }
 
+  async listRemovedSourceIds(): Promise<string[]> {
+    await this.ensureTable();
+    const result = await this.database.execute(
+      'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+    );
+    return result.rows.flatMap(row => typeof row.source_id === 'string' ? [row.source_id] : []);
+  }
+
+  async markSourceRemoved(sourceId: string): Promise<void> {
+    const normalizedId = sourceId.trim();
+    if (!normalizedId) throw new Error('A source identifier is required.');
+    if (this.pending) {
+      this.pending.removedSourceIds.add(normalizedId);
+      return;
+    }
+    await this.executeWrites(new Map(), new Set([normalizedId]));
+  }
+
   beginBatch(): void {
     if (this.pending) throw new Error('An agent-memory write batch is already open.');
-    this.pending = new Map();
+    this.pending = { writes: new Map(), removedSourceIds: new Set() };
   }
 
   async commitBatch(): Promise<void> {
     if (!this.pending) throw new Error('No agent-memory write batch is open.');
-    const writes = this.pending;
-    await this.executeWrites(writes);
+    const batch = this.pending;
+    await this.executeWrites(batch.writes, batch.removedSourceIds);
     this.pending = null;
   }
 
@@ -71,7 +103,11 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     if (!this.tableReady) {
       this.tableReady = this.database.execute(
         'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
-      ).then(() => undefined).catch(error => {
+      ).then(async () => {
+        await this.database.execute(
+          'CREATE TABLE IF NOT EXISTS agent_memory_removed_sources (source_id TEXT PRIMARY KEY NOT NULL)',
+        );
+      }).catch(error => {
         this.tableReady = null;
         throw error;
       });
@@ -79,14 +115,65 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     await this.tableReady;
   }
 
-  private async executeWrites(writes: Map<string, PendingWrite>): Promise<void> {
+  private async executeWrites(
+    writes: Map<string, PendingWrite>,
+    removedSourceIdsToAdd: Set<string>,
+  ): Promise<void> {
     await this.ensureTable();
     await this.database.transaction(async transaction => {
+      const removedResult = await transaction.execute(
+        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+      );
+      const removedSourceIds = new Set(removedResult.rows.flatMap(row =>
+        typeof row.source_id === 'string' ? [row.source_id] : [],
+      ));
+      for (const sourceId of removedSourceIdsToAdd) removedSourceIds.add(sourceId);
+      for (const record of writes.values()) {
+        if (record) assertNoRemovedSourceReference(record, removedSourceIds);
+      }
+      if (removedSourceIdsToAdd.size > 0) {
+        const records = await transaction.execute(
+          'SELECT id, record_json FROM agent_memory_records ORDER BY id',
+        );
+        for (const row of records.rows) {
+          const record = decodeRecord(row.record_json);
+          if (referencesRemovedSource(record, removedSourceIds)) {
+            await transaction.execute('DELETE FROM agent_memory_records WHERE id = ?', [record.id]);
+          }
+        }
+      }
       for (const [id, record] of writes) {
         if (record) await insertRecord(transaction, record);
         else await transaction.execute('DELETE FROM agent_memory_records WHERE id = ?', [id]);
       }
+      for (const sourceId of removedSourceIdsToAdd) {
+        await transaction.execute(
+          'INSERT OR IGNORE INTO agent_memory_removed_sources (source_id) VALUES (?)',
+          [sourceId],
+        );
+      }
     });
+  }
+}
+
+function referencesRemovedSource(
+  record: PersistedMemoryRecord,
+  removedSourceIds: Set<string>,
+): boolean {
+  const provenance = record.meta.provenance;
+  if (!provenance || typeof provenance !== 'object') return false;
+  const sourceIds = (provenance as { sourceIds?: unknown }).sourceIds;
+  return Array.isArray(sourceIds) && sourceIds.some(
+    sourceId => typeof sourceId === 'string' && removedSourceIds.has(sourceId),
+  );
+}
+
+function assertNoRemovedSourceReference(
+  record: PersistedMemoryRecord,
+  removedSourceIds: Set<string>,
+): void {
+  if (referencesRemovedSource(record, removedSourceIds)) {
+    throw new Error('Memory cannot reference a source being or already removed.');
   }
 }
 

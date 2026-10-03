@@ -88,6 +88,15 @@ export async function runAgentMemoryProbe(mode: AgentMemoryProbeMode): Promise<v
       if ((await memory.recall(correctedText, { minSimilarity: 0.999 })).length !== 0) {
         throw new Error('A memory linked to a removed source remained visible.');
       }
+      await closeLocalAgentMemory();
+      const reopened = await openLocalAgentMemory(deterministicProvider);
+      let staleWriteRejected = false;
+      try {
+        await reopened.remember({ ...memoryInput, text: correctedText });
+      } catch (error) {
+        staleWriteRejected = error instanceof Error && error.message.includes('already removed');
+      }
+      if (!staleWriteRejected) throw new Error('A removed source accepted a memory after service reopen.');
     }
     if (networkAttempts !== 0) throw new Error('The memory probe attempted network access.');
   } finally {

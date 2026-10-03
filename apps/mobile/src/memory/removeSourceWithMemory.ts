@@ -12,7 +12,5 @@ export async function removeLocalSourceWithMemory(
   memory: AgentMemoryService,
 ): Promise<SourceMemoryDeletionResult> {
   const repository = await openLocalStorage();
-  const memoriesDeleted = await memory.forgetBySourceId(sourceId);
-  const sourceDeleted = await repository.sourceRecords.delete(sourceId);
-  return { sourceDeleted, memoriesDeleted };
+  return memory.removeSource(sourceId, () => repository.sourceRecords.delete(sourceId));
 }
