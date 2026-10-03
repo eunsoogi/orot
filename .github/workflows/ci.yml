@@ -125,6 +125,19 @@ jobs:
       - name: Build the iOS Simulator app
         run: scripts/ci/run-command.sh ios-simulator-build artifacts/ios-build/build.log -- pnpm ios:build
 
+      - name: Test the standalone ChatGPT OAuth package
+        run: scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
+
+      - name: Build the standalone ChatGPT OAuth Simulator harness
+        run: |
+          scripts/ci/run-command.sh openai-oauth-ios-build artifacts/ios-build/openai-oauth-ios-build.log -- xcodebuild \
+            -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
+            -scheme ChatGPTOAuthSpike \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" \
+            CODE_SIGNING_ALLOWED=NO build
+
       - name: Upload iOS build log
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
