@@ -7,6 +7,14 @@ export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
 export type { RecordRepository, RecordWriter } from './repository';
+export { createAppointmentRepository } from './appointments';
+export type { Appointment } from '@orot/domain';
+export type {
+  AppointmentChanges,
+  AppointmentRepository,
+  AppointmentRepositoryOptions,
+  ManualAppointmentInput,
+} from './appointments';
 export type {
   EvidenceSpanRepository,
   HashedSourceRecord,
