@@ -47,7 +47,7 @@ function parseReadiness(value) {
 
 function getEvidenceContext(repo, readiness) {
   const evidenceComments = {};
-  const expectedIssues = { simulatorE2E: 42, evaluation: 41, deletion: 34, telemetry: 40 };
+  const expectedIssues = { simulatorE2E: 42, evaluation: 36, deletion: 34, telemetry: 40 };
   for (const [name, issueNumber] of Object.entries(expectedIssues)) {
     const reference = readiness?.evidence?.[name];
     const ref = parseEvidenceCommentUrl(reference?.url, repo, issueNumber);

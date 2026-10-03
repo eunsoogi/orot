@@ -25,7 +25,7 @@ on:
         type: string
         required: true
       readiness_evidence_json:
-        description: Required for publish; JSON containing actual #34, #40, #41, #42 evidence and candidate approval. Never include credentials or health data.
+        description: 'Required for publish; JSON containing actual #34, #36, #40, #42 evidence and candidate approval. Never include credentials or health data.'
         type: string
         required: false
 
