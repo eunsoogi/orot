@@ -56,6 +56,8 @@ public final class ChatGPTOAuthClient: Sendable {
             throw ChatGPTOAuthError.invalidRedirectURI
         }
 
+        let authorizationGeneration = try await ChatGPTCredentialOperationCoordinator.shared
+            .authorizationGeneration(for: hostIdentifier)
         let discovery = try await OpenIDConfigurationLoader.load(using: transport)
         let state = try PKCE.randomURLSafeValue()
         let nonce = try PKCE.randomURLSafeValue()
@@ -98,7 +100,8 @@ public final class ChatGPTOAuthClient: Sendable {
             state: state,
             nonce: nonce,
             codeVerifier: verifier,
-            discovery: discovery
+            discovery: discovery,
+            authorizationGeneration: authorizationGeneration
         )
     }
 
@@ -106,6 +109,7 @@ public final class ChatGPTOAuthClient: Sendable {
         callbackURL: URL,
         pending: PendingChatGPTAuthorization
     ) async throws -> ChatGPTAccountAccess {
+        try Task.checkCancellation()
         let callback = try OAuthCallbackParser.parse(
             callbackURL,
             expectedState: pending.state,
@@ -113,6 +117,7 @@ public final class ChatGPTOAuthClient: Sendable {
             expectedClientID: pending.requestedClientID
         )
         let tokens = try await exchangeCode(callback, pending: pending)
+        try Task.checkCancellation()
         guard let idToken = tokens.idToken,
               let accessToken = tokens.accessToken,
               let tokenType = tokens.tokenType,
@@ -140,6 +145,7 @@ public final class ChatGPTOAuthClient: Sendable {
         if let expectedSubject = pending.expectedSubject, expectedSubject != identity.subject {
             throw ChatGPTOAuthError.accountIdentityMismatch
         }
+        try Task.checkCancellation()
 
         let account = ChatGPTStoredAccount(
             issuedClientID: callback.issuedClientID,
@@ -154,7 +160,10 @@ public final class ChatGPTOAuthClient: Sendable {
                 tokenType: "Bearer"
             )
         )
-        try credentialStore.saveAccount(account)
+        try await sessionManager.saveAuthorizedAccount(
+            account,
+            expectedAuthorizationGeneration: pending.authorizationGeneration
+        )
 
         return ChatGPTAccountAccess(
             issuedClientID: callback.issuedClientID,

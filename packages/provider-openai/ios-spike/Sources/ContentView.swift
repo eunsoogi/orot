@@ -9,6 +9,7 @@ private final class SpikeViewModel: ObservableObject {
     @Published var models: [ListedChatGPTModel] = []
     @Published var grantedDirectPlanScope = false
     @Published var isSigningIn = false
+    @Published var cancellationState = AuthorizationCancellationState.awaitingAuthorization
     @Published var storageProbeStatus: String?
 
     private let credentialStore = KeychainChatGPTCredentialStore()
@@ -37,6 +38,7 @@ private final class SpikeViewModel: ObservableObject {
         isSigningIn = true
         models = []
         grantedDirectPlanScope = false
+        cancellationState = .awaitingAuthorization
         status = "127.0.0.1 콜백 리스너를 시작합니다…"
 
         signInTask = Task {
@@ -70,6 +72,8 @@ private final class SpikeViewModel: ObservableObject {
                     callbackURL: callbackURL,
                     pending: pending
                 )
+                cancellationState = .credentialsStored
+                try Task.checkCancellation()
                 grantedDirectPlanScope = access.hasDirectPlanAccess
                 guard grantedDirectPlanScope else {
                     throw ChatGPTOAuthError.planPermissionMissing
@@ -79,7 +83,7 @@ private final class SpikeViewModel: ObservableObject {
                 models = try await oauth.listModels(forIssuedClientID: access.issuedClientID)
                 status = "실제 /v1/models 응답을 확인했습니다. 공개 모델 \(models.count)개를 받았습니다."
             } catch is CancellationError {
-                status = "로그인이 취소되었습니다. 인증 정보는 저장하지 않았습니다."
+                status = cancellationState.cancellationMessage
             } catch {
                 status = error.localizedDescription
             }
@@ -89,7 +93,7 @@ private final class SpikeViewModel: ObservableObject {
     func cancel() {
         signInTask?.cancel()
         callbackServer?.stop()
-        status = "로그인을 취소했습니다. 인증 정보는 저장하지 않았습니다."
+        status = cancellationState.cancellationMessage
     }
 
 #if DEBUG
@@ -178,7 +182,11 @@ struct ContentView: View {
                         Button("ChatGPT 로그인 시작", action: model.signIn)
                             .accessibilityIdentifier("start-chatgpt-sign-in")
                     } else {
-                        Button("로그인 취소", role: .cancel, action: model.cancel)
+                        Button(
+                            model.cancellationState.cancelButtonTitle,
+                            role: .cancel,
+                            action: model.cancel
+                        )
                             .accessibilityIdentifier("cancel-chatgpt-sign-in")
                     }
                 }

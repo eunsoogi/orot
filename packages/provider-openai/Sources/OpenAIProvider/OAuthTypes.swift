@@ -105,6 +105,7 @@ public struct PendingChatGPTAuthorization: Sendable {
     let nonce: String
     let codeVerifier: String
     let discovery: OpenIDConfiguration
+    let authorizationGeneration: UInt64
 
     init(
         authorizationURL: URL,
@@ -116,7 +117,8 @@ public struct PendingChatGPTAuthorization: Sendable {
         state: String,
         nonce: String,
         codeVerifier: String,
-        discovery: OpenIDConfiguration
+        discovery: OpenIDConfiguration,
+        authorizationGeneration: UInt64
     ) {
         self.authorizationURL = authorizationURL
         self.redirectURI = redirectURI
@@ -128,5 +130,6 @@ public struct PendingChatGPTAuthorization: Sendable {
         self.nonce = nonce
         self.codeVerifier = codeVerifier
         self.discovery = discovery
+        self.authorizationGeneration = authorizationGeneration
     }
 }

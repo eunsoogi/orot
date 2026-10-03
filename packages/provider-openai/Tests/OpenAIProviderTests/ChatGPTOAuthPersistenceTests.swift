@@ -30,6 +30,8 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
             revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
         )
+        let authorizationGeneration = try await ChatGPTCredentialOperationCoordinator.shared
+            .authorizationGeneration(for: "urn:uuid:0cc04a4c-0f3a-4f49-8bda-10675883a491")
         let pending = PendingChatGPTAuthorization(
             authorizationURL: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
             redirectURI: redirect,
@@ -40,7 +42,8 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             state: "fixture-state",
             nonce: "fixture-nonce",
             codeVerifier: "fixture-verifier",
-            discovery: discovery
+            discovery: discovery,
+            authorizationGeneration: authorizationGeneration
         )
 
         let access = try await client.completeAuthorization(
@@ -100,6 +103,8 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
             revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
         )
+        let authorizationGeneration = try await ChatGPTCredentialOperationCoordinator.shared
+            .authorizationGeneration(for: selected.hostIdentifier)
         let pending = PendingChatGPTAuthorization(
             authorizationURL: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
             redirectURI: redirect,
@@ -110,7 +115,8 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             state: "fixture-state",
             nonce: "fixture-nonce",
             codeVerifier: "fixture-verifier",
-            discovery: discovery
+            discovery: discovery,
+            authorizationGeneration: authorizationGeneration
         )
 
         do {

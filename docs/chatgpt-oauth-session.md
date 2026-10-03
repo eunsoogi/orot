@@ -12,23 +12,26 @@ The package's default OAuth HTTP session is ephemeral, with URL cache and cookie
 
 ## Refresh and sign-out
 
-`ChatGPTSessionManager` refreshes within 60 seconds of expiry. Its actor coalesces overlapping requests for the same issued client ID into one refresh task. The form request uses the issued client ID, current refresh token, and `resource=https://api.openai.com/v1`; it omits `scope`. A successful response replaces the access token, expiry, returned scope set, and rotating refresh token together in Keychain.
+`ChatGPTSessionManager` refreshes within 60 seconds of expiry. A process-wide coordinator serializes refresh, authorization saves, and sign-out for a host ID, including work started through separate OAuth client instances. A waiter reloads the Keychain account under that lock before deciding whether another refresh is needed. Authorization attempts capture a generation; sign-out advances it so a delayed login cannot restore credentials after logout. The form request uses the issued client ID, current refresh token, and `resource=https://api.openai.com/v1`; it omits `scope`. A successful response replaces the access token, expiry, returned scope set, and rotating refresh token together in Keychain.
 
 Transient refresh errors preserve the stored credentials. Terminal unusable-token responses clear the access, refresh, and ID tokens while retaining the account and host mapping so the user can sign in again. Sign-out waits for an in-flight refresh, attempts remote revocation with bounded backoff for network failures and 5xx responses, then clears local credentials even if remote revocation cannot be confirmed. The result distinguishes confirmed revocation from local-only cleanup.
 
 ## Verification
 
-Run the provider package tests:
+Run the provider and harness cancellation-state tests:
 
 ```sh
 swift test --package-path packages/provider-openai
+swift test --package-path packages/provider-openai/ios-spike
 ```
 
-The tests use synthetic token fixtures and a stub HTTP transport. They cover validated sign-in persistence, account-identity mismatch, twelve simultaneous refresh callers sharing one rotating-token request, transient refresh failure, terminal `invalid_grant`, and sign-out cleanup after revocation failure. They do not contact OpenAI or prove Keychain behavior on iOS.
+The provider tests use synthetic token fixtures and a stub HTTP transport. They cover validated sign-in persistence, account-identity mismatch, twelve simultaneous refresh callers on one client, refresh serialization across separate clients sharing one credential store, rejection of sign-in completion after sign-out, transient refresh failure, terminal `invalid_grant`, and sign-out cleanup after revocation failure. The spike support tests cover cancellation messaging before and after persistence. Neither suite contacts OpenAI or proves Keychain behavior on iOS.
+
+In the standalone harness, cancellation text also tracks whether authorization has already been stored. Cancelling the model-list request reports that the saved account remains available; cancelling before persistence reports that credentials were not saved.
 
 The Debug-only actions in the iOS spike use a fixed synthetic record. Tap **1. 합성 Keychain 계정 저장**, terminate and relaunch the app, then tap **2. 재실행 후 확인·로그아웃·정리**. The second action reads the Keychain item through a new store instance, verifies the account identity and granted scope, clears the credentials while retaining the account mapping, and removes the fixture. Neither action signs in or makes a network request.
 
-The standalone Debug harness built and passed this lifecycle on an iPhone 17e Simulator running iOS 27.0. The UI confirmed that the synthetic Keychain item could be read after relaunch and that sign-out removed the tokens and account fixture. The portable package tests passed all 23 tests. These checks do not prove a real OAuth callback, token exchange, or `/v1/models` response.
+An earlier standalone Debug harness build passed this lifecycle on an iPhone 17e Simulator running iOS 27.0. The UI confirmed that the synthetic Keychain item could be read after relaunch and that sign-out removed the tokens and account fixture. The latest local run passed 25 provider tests and 2 spike support tests. These checks do not prove a real OAuth callback, token exchange, or `/v1/models` response.
 
 Interactive account authentication was waived for this handoff because the login path required additional MFA. No real callback, token exchange, granted direct-plan scope, or `/v1/models` response is claimed. The earlier issue #8 Simulator report remains in [the spike notes](chatgpt-oauth-spike.md).
 
