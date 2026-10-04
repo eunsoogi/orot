@@ -225,7 +225,7 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   assert.doesNotMatch(buildStep, /if:/);
 });
 
-test('builds the app before preparing its dedicated Simulator and waits for boot before E2E', () => {
+test('boots its dedicated Simulator while the app builds and waits for boot before E2E', () => {
   const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
   const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const utilitiesStep = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
@@ -235,9 +235,10 @@ test('builds the app before preparing its dedicated Simulator and waits for boot
 
   assert.ok(
     buildStep >= 0 &&
-      utilitiesStep > buildStep &&
+      utilitiesStep >= 0 &&
       prepareStep > utilitiesStep &&
-      bootWaitStep > prepareStep &&
+      prepareStep < buildStep &&
+      bootWaitStep > buildStep &&
       testStep > bootWaitStep,
   );
 });
