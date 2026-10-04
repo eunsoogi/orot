@@ -36,6 +36,8 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
         ...process.env,
         DETOX_LOCATION_CAPTURE: capturePath,
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        OROT_DETOX_SIMULATOR_UDID: 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
+        OROT_OPENAI_PROVIDER_SIMULATOR_UDID: 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
         PATH: [tempDirectory, process.env.PATH].join(':'),
       },
     });

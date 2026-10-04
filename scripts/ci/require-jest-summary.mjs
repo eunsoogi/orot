@@ -22,6 +22,9 @@ function total(summary) {
 if (testSummaries.length === 0 || suiteSummaries.length === 0 || testSummaries.length !== suiteSummaries.length) {
   throw new Error(`${suiteName}: Jest did not produce a matching test and suite summary for every run`);
 }
+if (suiteName === 'e2e' && testSummaries.length !== 2) {
+  throw new Error(`e2e: expected one Release and one OpenAI Debug Jest summary, received ${testSummaries.length}`);
+}
 
 let totalTests = 0;
 let totalSuites = 0;

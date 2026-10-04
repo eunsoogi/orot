@@ -14,9 +14,9 @@ if [[ ! -f "$test_log" ]]; then
   exit 0
 fi
 
-device_id="$(sed -n 's/.*assigned to \([A-Fa-f0-9-]*\) (iPhone 18 Pro).*/\1/p' "$test_log" | tail -n 1)"
+device_id="$(sed -nE 's/.*assigned to ([A-Fa-f0-9-]{36})([[:space:]].*)?$/\1/p' "$test_log" | tail -n 1)"
 if [[ -z "$device_id" ]]; then
-  printf 'Detox did not report an iPhone 18 Pro simulator ID; see the retained Detox test log.\n' > "$output_log"
+  printf 'Detox did not report a Simulator ID; see the retained Detox test log.\n' > "$output_log"
   exit 0
 fi
 

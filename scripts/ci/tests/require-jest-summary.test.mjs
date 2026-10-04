@@ -8,12 +8,12 @@ import test from 'node:test';
 
 const guardScript = fileURLToPath(new URL('../require-jest-summary.mjs', import.meta.url));
 
-function runGuard(log) {
+function runGuard(log, suiteName = 'unit') {
   const directory = mkdtempSync(join(tmpdir(), 'orot-jest-summary-'));
   const logPath = join(directory, 'jest.log');
   try {
     writeFileSync(logPath, log);
-    return spawnSync(process.execPath, [guardScript, logPath, 'unit'], { encoding: 'utf8' });
+    return spawnSync(process.execPath, [guardScript, logPath, suiteName], { encoding: 'utf8' });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -51,6 +51,18 @@ test('validates every Jest summary when the root command runs multiple packages'
   ].join('\n'));
   assert.notEqual(firstRunEmpty.status, 0);
   assert.match(firstRunEmpty.stderr, /run 1 discovered zero tests or suites/);
+});
+
+test('requires both the Release and OpenAI Debug E2E summaries', () => {
+  const release = 'Test Suites: 5 passed, 5 total\nTests: 7 passed, 7 total\n';
+  const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
+  const complete = runGuard(release + debug, 'e2e');
+  assert.equal(complete.status, 0, complete.stderr);
+  assert.match(complete.stdout, /8\/8 tests passed across 6 suites in 2 Jest runs/);
+
+  const missingDebug = runGuard(release, 'e2e');
+  assert.notEqual(missingDebug.status, 0);
+  assert.match(missingDebug.stderr, /expected one Release and one OpenAI Debug Jest summary/);
 });
 
 test('rejects missing summaries and zero discovered tests', () => {

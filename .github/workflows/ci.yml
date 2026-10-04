@@ -183,6 +183,14 @@ jobs:
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh --cocoapods
 
+      - name: Prepare dedicated Detox Simulator
+        id: prepare-detox-simulator
+        run: |
+          simulator_udid="$(bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log)"
+          printf 'udid=%s\n' "$simulator_udid" >> "$GITHUB_OUTPUT"
+          printf 'OROT_DETOX_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
+          printf 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
+
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
 
@@ -190,10 +198,13 @@ jobs:
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
 
       - name: Build Detox iOS Simulator app
-        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- pnpm e2e:build:ios
+        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh
 
       - name: Install Detox Simulator utilities
         run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
+
+      - name: Wait for dedicated Detox Simulator
+        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "$OROT_DETOX_SIMULATOR_UDID"
 
       - name: Run Detox iOS Simulator tests
         run: scripts/ci/run-test-suite.sh e2e artifacts/detox
@@ -201,6 +212,10 @@ jobs:
       - name: Collect simulator logs
         if: ${{ always() }}
         run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log
+
+      - name: Delete dedicated Detox Simulator
+        if: ${{ always() && steps.prepare-detox-simulator.outputs.udid != '' }}
+        run: scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "${{ steps.prepare-detox-simulator.outputs.udid }}" artifacts/detox/simulator-teardown-details.log
 
       - name: Upload Detox reports, logs, screenshots, and videos
         if: ${{ always() }}

@@ -24,7 +24,7 @@ case "$suite" in
       DETOX_RECORD_VIDEOS=failing
       DETOX_CAPTURE_VIEW_HIERARCHY=enabled
       DETOX_HEADLESS=true
-      pnpm e2e:test:ios)
+      bash scripts/ci/run-detox-e2e.sh)
     ;;
   *)
     printf 'Unknown test suite: %s\n' "$suite" >&2

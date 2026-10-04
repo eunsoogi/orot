@@ -1,9 +1,11 @@
 /** @type {Detox.DetoxConfig} */
+const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
+
 module.exports = {
   testRunner: {
     args: {
       $0: 'jest',
-      config: 'e2e/jest.config.js',
+      config: 'e2e/release-e2e.jest.config.js',
     },
     jest: {
       setupTimeout: 120000,
@@ -13,15 +15,13 @@ module.exports = {
     'ios.release': {
       type: 'ios.app',
       binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/Orot.app',
-      build: 'DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/storageProbeEntry.tsx',
+      build: 'DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/e2eRouterEntry.tsx',
     },
   },
   devices: {
     simulator: {
       type: 'ios.simulator',
-      device: {
-        type: 'iPhone 18 Pro',
-      },
+      device: simulatorId ? { id: simulatorId } : { type: 'iPhone 18 Pro' },
     },
   },
   configurations: {
