@@ -69,7 +69,7 @@ jobs:
         run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
 
       - name: Test CI and release gate rules
-        run: scripts/ci/run-command.sh gate-tests artifacts/quality/gate-tests.log -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs
+        run: scripts/ci/run-command.sh gate-tests artifacts/quality/gate-tests.log -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs
 
       - name: Lint
         run: scripts/ci/run-command.sh lint artifacts/quality/lint.log -- pnpm lint

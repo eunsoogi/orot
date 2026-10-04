@@ -48,8 +48,13 @@ function commentsOnly(path) {
   return true;
 }
 
-function classify(path) {
-  const excluded = policy.excludedPaths[path];
+function policyValue(record, key) {
+  // JSON policy keys must be explicit; inherited Object.prototype names are not rules.
+  return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined;
+}
+
+export function classifyPath(path) {
+  const excluded = policyValue(policy.excludedPaths, path);
   if (excluded) {
     // This comment-only file becomes active code if a rule is added, so guard its exception.
     if (excluded.guard === 'comments-only' && !commentsOnly(path)) {
@@ -68,8 +73,9 @@ function classify(path) {
   for (const [suffix, metadata] of Object.entries(policy.projectMetadataSuffixes)) {
     if (path.endsWith(suffix)) return { path, kind: 'metadata', suffix, ...metadata };
   }
-  if (policy.nonCodeBasenames[basename]) {
-    return { path, kind: 'non-code', reason: policy.nonCodeBasenames[basename] };
+  const basenameReason = policyValue(policy.nonCodeBasenames, basename);
+  if (basenameReason) {
+    return { path, kind: 'non-code', reason: basenameReason };
   }
   // CI writes logs between inventory and later checks; classify only .log files in that output folder.
   for (const rule of policy.nonCodePathRules) {
@@ -77,8 +83,9 @@ function classify(path) {
       return { path, kind: 'non-code', reason: rule.reason };
     }
   }
-  if (policy.nonCodeExtensions[extension]) {
-    return { path, kind: 'non-code', reason: policy.nonCodeExtensions[extension] };
+  const extensionReason = policyValue(policy.nonCodeExtensions, extension);
+  if (extensionReason) {
+    return { path, kind: 'non-code', reason: extensionReason };
   }
   const surface = Object.entries(policy.surfaces).find(([, entry]) =>
     entry.extensions.includes(extension),
@@ -98,7 +105,7 @@ function validateLintScopes(entries) {
 }
 
 export async function buildInventory() {
-  const entries = trackedAndNewPaths().map(classify);
+  const entries = trackedAndNewPaths().map(classifyPath);
   validateLintScopes(entries);
   for (const entry of entries) {
     if (entry.kind !== 'surface') continue;
