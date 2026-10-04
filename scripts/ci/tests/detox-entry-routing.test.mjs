@@ -93,12 +93,19 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
   assert.match(profileWorkflow, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
 });
 
-test('installs Detox Simulator utilities before each independent Simulator is prepared', () => {
+test('prepares each dedicated Simulator before its build and waits for boot before E2E', () => {
   const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
-  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const utilitiesStep = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
   const prepareStep = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
+  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const bootWaitStep = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
+  const testStep = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
 
-  assert.ok(buildStep >= 0 && utilitiesStep > buildStep && prepareStep > utilitiesStep && bootWaitStep > prepareStep);
+  assert.ok(
+    utilitiesStep >= 0 &&
+      prepareStep > utilitiesStep &&
+      buildStep > prepareStep &&
+      bootWaitStep > buildStep &&
+      testStep > bootWaitStep,
+  );
 });
