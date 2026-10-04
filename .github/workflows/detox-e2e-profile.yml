@@ -108,7 +108,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: apps/mobile/ios/build
-          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          key: orot-detox-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          restore-keys: |
+            orot-detox-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
 
       - name: Cache OpenAI Debug Detox DerivedData
         id: openai_derived_data_cache
@@ -117,7 +119,19 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: apps/mobile/ios/build-openai-provider
-          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          key: orot-detox-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          restore-keys: |
+            orot-detox-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
+
+      - name: Prepare restored Detox DerivedData cache
+        id: prepare_derived_data_cache
+        timeout-minutes: 1
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+        run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ inputs.profile }}"
 
       - name: Record Detox cache state
         timeout-minutes: 1
@@ -128,6 +142,13 @@ jobs:
           OPENAI_DERIVED_DATA_CACHE_HIT: ${{ steps.openai_derived_data_cache.outputs.cache-hit }}
           BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           RN_ARTIFACT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.react_native_artifacts }}
+          NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
+          DERIVED_DATA_CACHE_CLASSIFICATION: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_classification }}
+          MACOS_VERSION: ${{ env.EXPECTED_MACOS_VERSION }}
+          NODE_VERSION: ${{ env.EXPECTED_NODE_VERSION }}
+          PNPM_VERSION: ${{ env.EXPECTED_PNPM_VERSION }}
+          RUBY_VERSION: ${{ env.EXPECTED_RUBY_VERSION }}
+          COCOAPODS_VERSION: ${{ env.EXPECTED_COCOAPODS_VERSION }}
         run: |
           mkdir -p artifacts/detox
           if [[ "${DETOX_PROFILE}" == release ]]; then
@@ -139,16 +160,32 @@ jobs:
             printf 'profile=%s\n' "${DETOX_PROFILE}"
             printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
             printf 'derived_data_cache_hit=%s\n' "${derived_data_cache_hit}"
+            printf 'derived_data_cache_classification=%s\n' "${DERIVED_DATA_CACHE_CLASSIFICATION}"
             printf 'build_input_fingerprint=%s\n' "${BUILD_INPUT_FINGERPRINT}"
             printf 'react_native_artifact_fingerprint=%s\n' "${RN_ARTIFACT_FINGERPRINT}"
+            printf 'native_dependency_fingerprint=%s\n' "${NATIVE_DEPENDENCY_FINGERPRINT}"
             printf 'xcode=%s\n' "${EXPECTED_XCODE_VERSION}"
             printf 'ios_simulator_sdk=%s\n' "${EXPECTED_IOS_SIMULATOR_SDK}"
+            printf 'macos=%s\n' "${MACOS_VERSION}"
+            printf 'node=%s\n' "${NODE_VERSION}"
+            printf 'pnpm=%s\n' "${PNPM_VERSION}"
+            printf 'ruby=%s\n' "${RUBY_VERSION}"
+            printf 'cocoapods=%s\n' "${COCOAPODS_VERSION}"
             printf 'architecture=%s\n' "$(uname -m)"
           } > artifacts/detox/native-cache.log
 
       - name: Build Detox iOS Simulator app
         timeout-minutes: 45
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
+
+      - name: Write Detox DerivedData cache manifest
+        timeout-minutes: 1
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+        run: node scripts/ci/detox-derived-data-cache.mjs write "${{ inputs.profile }}"
 
       - name: Install Detox Simulator utilities
         timeout-minutes: 10

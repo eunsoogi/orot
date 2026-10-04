@@ -1,8 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
 
 const BUILD_INPUT_PATHS = [
   '.github/workflows/ci.yml',
@@ -15,9 +18,41 @@ const BUILD_INPUT_PATHS = [
   'packages',
   'scripts/ci/build-detox-apps.sh',
   'scripts/ci/detox-cache-fingerprint.mjs',
+  'scripts/ci/detox-derived-data-cache.mjs',
 ];
 
 const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock'];
+
+const NATIVE_DEPENDENCY_INPUT_PATHS = [
+  '.npmrc',
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'apps/mobile/package.json',
+  'apps/mobile/react-native.config.js',
+  'apps/mobile/ios',
+  'packages',
+  'scripts/ci/build-detox-apps.sh',
+];
+
+const BUILD_CONFIGS = [
+  {
+    path: 'apps/mobile/.detoxrc.js',
+    app: 'ios.release',
+    configuration: 'ios.sim.release',
+    derivedDataEnv: 'OROT_DETOX_RELEASE_DERIVED_DATA_PATH',
+    simulatorEnv: 'OROT_DETOX_SIMULATOR_UDID',
+    derivedDataPath: 'ios/build',
+  },
+  {
+    path: 'apps/mobile/e2e/openai-provider.detox.config.js',
+    app: 'ios.openai-provider',
+    configuration: 'ios.sim.debug.openai-provider',
+    derivedDataEnv: 'OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH',
+    simulatorEnv: 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID',
+    derivedDataPath: 'ios/build-openai-provider',
+  },
+];
 
 const GENERATED_DIRECTORY_NAMES = new Set([
   'node_modules',
@@ -70,22 +105,75 @@ function hashTrackedInputs(repositoryRoot, pathspecs) {
   return { fingerprint: hash.digest('hex'), count: paths.length };
 }
 
+function describeDetoxBuildConfig(repositoryRoot, descriptor) {
+  const configPath = resolve(repositoryRoot, descriptor.path);
+  const previousDerivedDataPath = process.env[descriptor.derivedDataEnv];
+  const previousSimulatorId = process.env[descriptor.simulatorEnv];
+  process.env[descriptor.derivedDataEnv] = descriptor.derivedDataPath;
+  process.env[descriptor.simulatorEnv] = '';
+
+  try {
+    const resolvedConfigPath = require.resolve(configPath);
+    delete require.cache[resolvedConfigPath];
+    const config = require(resolvedConfigPath);
+    const app = config.apps?.[descriptor.app];
+    const buildConfiguration = config.configurations?.[descriptor.configuration];
+    if (!app?.build || !app?.binaryPath || !buildConfiguration) {
+      throw new Error(`Detox build configuration is incomplete: ${descriptor.path}`);
+    }
+    return {
+      type: app.type,
+      binaryPath: app.binaryPath,
+      build: normalizeDetoxBuildCommand(app.build),
+      configuration: buildConfiguration,
+      simulatorType: config.devices?.simulator?.type,
+    };
+  } finally {
+    if (previousDerivedDataPath === undefined) delete process.env[descriptor.derivedDataEnv];
+    else process.env[descriptor.derivedDataEnv] = previousDerivedDataPath;
+    if (previousSimulatorId === undefined) delete process.env[descriptor.simulatorEnv];
+    else process.env[descriptor.simulatorEnv] = previousSimulatorId;
+  }
+}
+
+function normalizeDetoxBuildCommand(command) {
+  return command
+    .replace(/(?:^|\s)(?:ENTRY_FILE|FORCE_BUNDLING)=[^\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hashNativeDependencyInputs(repositoryRoot) {
+  const trackedInputs = hashTrackedInputs(repositoryRoot, NATIVE_DEPENDENCY_INPUT_PATHS);
+  const buildConfigs = BUILD_CONFIGS.map((descriptor) =>
+    describeDetoxBuildConfig(repositoryRoot, descriptor),
+  );
+  const hash = createHash('sha256');
+  hash.update(trackedInputs.fingerprint);
+  hash.update('\0');
+  hash.update(JSON.stringify(buildConfigs));
+  return { fingerprint: hash.digest('hex'), count: trackedInputs.count + BUILD_CONFIGS.length };
+}
+
 export function computeDetoxCacheFingerprints(repositoryRoot = process.cwd()) {
   const root = resolve(repositoryRoot);
   const buildInputs = hashTrackedInputs(root, BUILD_INPUT_PATHS);
   const reactNativeArtifacts = hashTrackedInputs(root, REACT_NATIVE_ARTIFACT_PATHS);
+  const nativeDependencies = hashNativeDependencyInputs(root);
   return {
     buildInputs: buildInputs.fingerprint,
     buildInputCount: buildInputs.count,
     reactNativeArtifacts: reactNativeArtifacts.fingerprint,
     reactNativeArtifactInputCount: reactNativeArtifacts.count,
+    nativeDependencies: nativeDependencies.fingerprint,
+    nativeDependencyInputCount: nativeDependencies.count,
   };
 }
 
 function writeGitHubOutputs(outputPath, fingerprints) {
   appendFileSync(
     outputPath,
-    `build_inputs=${fingerprints.buildInputs}\nreact_native_artifacts=${fingerprints.reactNativeArtifacts}\n`,
+    `build_inputs=${fingerprints.buildInputs}\nreact_native_artifacts=${fingerprints.reactNativeArtifacts}\nnative_dependencies=${fingerprints.nativeDependencies}\n`,
   );
 }
 
@@ -96,7 +184,7 @@ function main() {
   const fingerprints = computeDetoxCacheFingerprints();
   writeGitHubOutputs(outputPath, fingerprints);
   console.log(
-    `DETOX_CACHE_FINGERPRINT build_inputs=${fingerprints.buildInputs} tracked_files=${fingerprints.buildInputCount} react_native_artifacts=${fingerprints.reactNativeArtifacts} lockfiles=${fingerprints.reactNativeArtifactInputCount}`,
+    `DETOX_CACHE_FINGERPRINT build_inputs=${fingerprints.buildInputs} tracked_files=${fingerprints.buildInputCount} react_native_artifacts=${fingerprints.reactNativeArtifacts} lockfiles=${fingerprints.reactNativeArtifactInputCount} native_dependencies=${fingerprints.nativeDependencies} native_inputs=${fingerprints.nativeDependencyInputCount}`,
   );
 }
 
