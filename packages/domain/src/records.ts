@@ -55,6 +55,7 @@ export const SourceRecordSchema = RecordMetadataSchema.safeExtend({
     'prescription',
     'imaging_report',
     'device_export',
+    'audio_recording',
     'other',
   ]),
   title: NonEmptyTextSchema.optional(),

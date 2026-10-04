@@ -151,16 +151,23 @@ extension RecordingModule {
       self.stopTimer()
       self.recorder?.stop()
       self.recorder = nil
+      let allowUnverifiedProtectionForSimulator: Bool
       #if DEBUG && targetEnvironment(simulator)
+      allowUnverifiedProtectionForSimulator = self.syntheticCapture != nil
       self.syntheticCapture?.close()
       self.syntheticCapture = nil
+      #else
+      allowUnverifiedProtectionForSimulator = false
       #endif
 
       let completedAt = Date()
       let fileProtection: String
       let excludedFromBackup: Bool
       do {
-        let security = try RecordingFileSecurity.protect(url)
+        let security = try RecordingFileSecurity.protect(
+          url,
+          allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator
+        )
         fileProtection = security.protection
         excludedFromBackup = security.excludedFromBackup
       } catch {

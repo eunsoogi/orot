@@ -3,7 +3,7 @@ import Foundation
 struct RecordingFileSecurity {
   private static let directoryName = "Recordings"
 
-  static func directory() throws -> URL {
+  static func directory(allowUnverifiedProtectionForSimulator: Bool = false) throws -> URL {
     guard let supportDirectory = FileManager.default.urls(
       for: .applicationSupportDirectory,
       in: .userDomainMask
@@ -22,23 +22,35 @@ struct RecordingFileSecurity {
       ofItemAtPath: url.path
     )
     try markExcludedFromBackup(url)
-    try verify(url)
+    _ = try verify(url, allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator)
     return url
   }
 
-  static func fileURL(id: String, extension fileExtension: String) throws -> URL {
+  static func fileURL(
+    id: String,
+    extension fileExtension: String,
+    allowUnverifiedProtectionForSimulator: Bool = false
+  ) throws -> URL {
     guard UUID(uuidString: id) != nil else { throw RecordingFileSecurityError.invalidIdentifier }
-    return try directory().appendingPathComponent("\(id).\(fileExtension)")
+    return try directory(
+      allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator
+    ).appendingPathComponent("\(id).\(fileExtension)")
   }
 
-  static func protect(_ url: URL) throws -> (protection: String, excludedFromBackup: Bool) {
+  static func protect(
+    _ url: URL,
+    allowUnverifiedProtectionForSimulator: Bool = false
+  ) throws -> (protection: String, excludedFromBackup: Bool) {
     try FileManager.default.setAttributes(
       [.protectionKey: FileProtectionType.complete],
       ofItemAtPath: url.path
     )
     try markExcludedFromBackup(url)
-    try verify(url)
-    return ("complete", true)
+    let protection = try verify(
+      url,
+      allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator
+    )
+    return (protection, true)
   }
 
   private static func markExcludedFromBackup(_ url: URL) throws {
@@ -48,15 +60,31 @@ struct RecordingFileSecurity {
     try mutableURL.setResourceValues(values)
   }
 
-  private static func verify(_ url: URL) throws {
+  private static func verify(
+    _ url: URL,
+    allowUnverifiedProtectionForSimulator: Bool
+  ) throws -> String {
     let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-    guard (attributes[.protectionKey] as? FileProtectionType) == .complete else {
+    let protectionApplied = (attributes[.protectionKey] as? FileProtectionType) == .complete
+    let protection: String
+    #if DEBUG && targetEnvironment(simulator)
+    if protectionApplied {
+      protection = "complete"
+    } else if allowUnverifiedProtectionForSimulator {
+      protection = "unverified"
+    } else {
       throw RecordingFileSecurityError.protectionNotApplied
     }
+    #else
+    guard protectionApplied else { throw RecordingFileSecurityError.protectionNotApplied }
+    protection = "complete"
+    #endif
+
     let values = try url.resourceValues(forKeys: [.isExcludedFromBackupKey])
     guard values.isExcludedFromBackup == true else {
       throw RecordingFileSecurityError.backupExclusionNotApplied
     }
+    return protection
   }
 }
 

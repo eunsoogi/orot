@@ -7,6 +7,7 @@ extension RecordingModule {
     workQueue.async {
       guard self.recorder === recorder && self.status == .recording else { return }
       recorder.pause()
+      self.deactivateAudioSession()
       self.status = .paused
       self.stopTimer()
       self.emitState()
@@ -47,12 +48,16 @@ extension RecordingModule {
     reject: @escaping RCTPromiseRejectBlock
   ) throws {
     let identifier = UUID().uuidString.lowercased()
-    let url = try RecordingFileSecurity.fileURL(id: identifier, extension: "caf")
+    let url = try RecordingFileSecurity.fileURL(
+      id: identifier,
+      extension: "caf",
+      allowUnverifiedProtectionForSimulator: true
+    )
     recordingID = identifier
     recordingURL = url
     startedAt = Date()
     let capture = try RecordingSyntheticCapture(url: url)
-    _ = try RecordingFileSecurity.protect(url)
+    _ = try RecordingFileSecurity.protect(url, allowUnverifiedProtectionForSimulator: true)
     syntheticCapture = capture
     beginSession(identifier: identifier, url: url)
     resolve(snapshot())
