@@ -130,6 +130,31 @@ test('reports the static mismatch field and hashes before invalidating an incomp
   }
 });
 
+test('keeps unknown toolchain manifest keys out of diagnostic and GitHub output fields', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build');
+  const manifestPath = join(derivedData, '.orot-detox-cache.json');
+  const outputPath = join(root, 'prepare-output.txt');
+
+  try {
+    mkdirSync(derivedData, { recursive: true });
+    runCacheCommand(root, 'write');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    manifest.toolchain['unknown\nforged_output=sentinel_marker'] = 'untrusted-value';
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const output = runCacheCommand(root, 'prepare', { GITHUB_OUTPUT: outputPath });
+    const githubOutput = readFileSync(outputPath, 'utf8');
+    assert.match(output, /mismatch_fields=toolchain\.unknown_fields/);
+    assert.match(githubOutput, /derived_data_cache_mismatch_fields=toolchain\.unknown_fields/);
+    assert.doesNotMatch(output, /forged_output|sentinel_marker/);
+    assert.doesNotMatch(githubOutput, /forged_output|sentinel_marker/);
+    assert.equal(existsSync(derivedData), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('refuses to write a cache manifest when build fingerprints drift after the build', () => {
   const root = createFixtureRepository();
   const derivedData = join(root, 'apps/mobile/ios/build');

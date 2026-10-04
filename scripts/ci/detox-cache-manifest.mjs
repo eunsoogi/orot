@@ -83,14 +83,14 @@ export function inspectCacheManifest(readResult, expected) {
   if (previous.schemaVersion !== expected.schemaVersion) mismatchFields.push('schema_version');
   if (previous.profile !== expected.profile) mismatchFields.push('profile');
   if (isRecord(previous.toolchain) && isRecord(expected.toolchain)) {
-    const toolchainFields = new Set([
-      ...Object.keys(previous.toolchain),
-      ...Object.keys(expected.toolchain),
-    ]);
-    for (const field of [...toolchainFields].sort()) {
+    const expectedToolchainFields = Object.keys(expected.toolchain).sort();
+    for (const field of expectedToolchainFields) {
       if (previous.toolchain[field] !== expected.toolchain[field]) {
         mismatchFields.push(`toolchain.${field}`);
       }
+    }
+    if (Object.keys(previous.toolchain).some((field) => !expectedToolchainFields.includes(field))) {
+      mismatchFields.push('toolchain.unknown_fields');
     }
   } else {
     mismatchFields.push('toolchain');
