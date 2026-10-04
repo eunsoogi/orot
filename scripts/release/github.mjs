@@ -5,14 +5,6 @@ import { parseEvidenceCommentUrl, parsePullRequestUrl } from './policy.mjs';
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const VERSION = /^0\.1\.0$/;
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
-  if (result.error || result.status !== 0) {
-    throw new Error(`${command} failed (${result.status ?? 'spawn error'})`);
-  }
-  return result.stdout.trim();
-}
-
 function ghJson(endpoint, allow404 = false) {
   const result = spawnSync('gh', ['api', endpoint], { encoding: 'utf8' });
   if (result.status !== 0) {
@@ -27,9 +19,17 @@ function ghJson(endpoint, allow404 = false) {
 }
 
 function getTagTarget(tag) {
-  const result = spawnSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`, `refs/tags/${tag}^{}`], { encoding: 'utf8' });
+  const result = spawnSync(
+    'git',
+    ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`, `refs/tags/${tag}^{}`],
+    { encoding: 'utf8' },
+  );
   if (result.error || result.status !== 0) throw new Error('Unable to read the remote release tag');
-  const lines = result.stdout.trim().split('\n').filter(Boolean).map((line) => line.split('\t'));
+  const lines = result.stdout
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => line.split('\t'));
   const peeled = lines.find(([, ref]) => ref === `refs/tags/${tag}^{}`)?.[0];
   const direct = lines.find(([, ref]) => ref === `refs/tags/${tag}`)?.[0];
   const target = peeled ?? direct ?? null;
@@ -67,7 +67,8 @@ function getEvidenceContext(repo, readiness) {
   if (!approvalRef) return { evidenceComments, candidateApproval: null };
   const pull = ghJson(`repos/${repo}/pulls/${approvalRef.number}`);
   const reviewId = readiness?.candidateApproval?.reviewId;
-  if (!Number.isSafeInteger(reviewId) || reviewId < 1) return { evidenceComments, candidateApproval: null };
+  if (!Number.isSafeInteger(reviewId) || reviewId < 1)
+    return { evidenceComments, candidateApproval: null };
   const review = ghJson(`repos/${repo}/pulls/${approvalRef.number}/reviews/${reviewId}`);
   return { evidenceComments, candidateApproval: { pull, review } };
 }
@@ -89,7 +90,8 @@ export function collectReleaseContext(env = process.env) {
   const ciJobs = Array.isArray(ciJobsResponse.jobs) ? ciJobsResponse.jobs : [];
   const release = ghJson(`repos/${repo}/releases/tags/${tag}`, true);
   const evidence = getEvidenceContext(repo, readiness);
-  const mainContainsSource = spawnSync('git', ['merge-base', '--is-ancestor', sourceSha, 'origin/main']).status === 0;
+  const mainContainsSource =
+    spawnSync('git', ['merge-base', '--is-ancestor', sourceSha, 'origin/main']).status === 0;
   const packageVersion = JSON.parse(readFileSync('package.json', 'utf8')).version;
 
   return {
@@ -117,7 +119,8 @@ export function ghApi(method, endpoint, fields = {}) {
     args.push(typeof value === 'boolean' ? '-F' : '-f', `${key}=${value}`);
   }
   const result = spawnSync('gh', args, { encoding: 'utf8' });
-  if (result.error || result.status !== 0) throw new Error(`GitHub API ${method} failed for ${endpoint}`);
+  if (result.error || result.status !== 0)
+    throw new Error(`GitHub API ${method} failed for ${endpoint}`);
   try {
     return JSON.parse(result.stdout);
   } catch {

@@ -5,7 +5,8 @@ enum ChatGPTResponsesRequestBuilder {
         guard !input.model.isEmpty,
               input.model == input.model.trimmingCharacters(in: .whitespacesAndNewlines),
               !input.messages.isEmpty,
-              !accessToken.isEmpty else {
+              !accessToken.isEmpty
+        else {
             throw ChatGPTResponsesError.invalidRequest
         }
 
@@ -13,9 +14,9 @@ enum ChatGPTResponsesRequestBuilder {
         var messages = [[String: String]]()
         for message in input.messages {
             switch message {
-            case .system(let text): instructions.append(text)
-            case .user(let text): messages.append(["role": "user", "content": text])
-            case .assistant(let text): messages.append(["role": "assistant", "content": text])
+            case let .system(text): instructions.append(text)
+            case let .user(text): messages.append(["role": "user", "content": text])
+            case let .assistant(text): messages.append(["role": "assistant", "content": text])
             }
         }
 
@@ -25,7 +26,9 @@ enum ChatGPTResponsesRequestBuilder {
             "store": false,
             "stream": true,
         ]
-        if !instructions.isEmpty { body["instructions"] = instructions.joined(separator: "\n\n") }
+        if !instructions.isEmpty {
+            body["instructions"] = instructions.joined(separator: "\n\n")
+        }
         let encoded = try JSONSerialization.data(withJSONObject: body)
         guard encoded.count <= 1_048_576 else { throw ChatGPTResponsesError.invalidRequest }
 

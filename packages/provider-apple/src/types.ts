@@ -1,14 +1,7 @@
-import type {
-  LanguageModelRequest,
-  LanguageModelResponse,
-} from '@orot/model-runtime';
+import type { LanguageModelRequest, LanguageModelResponse } from '@orot/model-runtime';
 
 export type AppleAvailabilityStatus =
-  | 'available'
-  | 'disabled'
-  | 'modelNotReady'
-  | 'unsupportedDevice'
-  | 'unsupportedLanguage';
+  'available' | 'disabled' | 'modelNotReady' | 'unsupportedDevice' | 'unsupportedLanguage';
 
 export interface AppleModelAvailability {
   readonly status: AppleAvailabilityStatus;
@@ -38,13 +31,7 @@ export type AppleNativeStreamPacket =
 
 export interface AppleFoundationModelsNativeBridge {
   getAvailability(): Promise<AppleModelAvailability>;
-  generate(
-    request: LanguageModelRequest,
-    requestId: string,
-  ): Promise<LanguageModelResponse>;
-  stream(
-    request: LanguageModelRequest,
-    requestId: string,
-  ): AsyncIterable<AppleNativeStreamPacket>;
+  generate(request: LanguageModelRequest, requestId: string): Promise<LanguageModelResponse>;
+  stream(request: LanguageModelRequest, requestId: string): AsyncIterable<AppleNativeStreamPacket>;
   cancel(requestId: string): void;
 }

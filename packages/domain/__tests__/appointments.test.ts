@@ -1,10 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import {
-  AppointmentSchema,
-  cancelAppointment,
-  createAppointment,
-  updateAppointment,
-} from '../src';
+import { AppointmentSchema, cancelAppointment, createAppointment, updateAppointment } from '../src';
 import { metadata } from './fixtures';
 
 const timestamp = '2026-02-03T09:30:00Z';

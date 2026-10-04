@@ -19,7 +19,8 @@ enum OpenIDConfigurationLoader {
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               data.count <= 262_144,
               let configuration = try? JSONDecoder().decode(OpenIDConfiguration.self, from: data),
-              ChatGPTOAuthClient.isValid(configuration) else {
+              ChatGPTOAuthClient.isValid(configuration)
+        else {
             throw ChatGPTOAuthError.discoveryUnavailable
         }
         return configuration
@@ -29,14 +30,14 @@ enum OpenIDConfigurationLoader {
 extension ChatGPTOAuthClient {
     func exchangeCode(
         _ callback: OAuthCallback,
-        pending: PendingChatGPTAuthorization
+        pending: PendingChatGPTAuthorization,
     ) async throws -> OAuthTokenResponse {
         let request = TokenExchangeRequestBuilder.build(
             endpoint: pending.discovery.tokenEndpoint,
             clientID: callback.issuedClientID,
             code: callback.code,
             codeVerifier: pending.codeVerifier,
-            redirectURI: pending.redirectURI
+            redirectURI: pending.redirectURI,
         )
 
         let data: Data
@@ -48,7 +49,8 @@ extension ChatGPTOAuthClient {
         }
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               data.count <= 262_144,
-              let tokens = try? JSONDecoder().decode(OAuthTokenResponse.self, from: data) else {
+              let tokens = try? JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+        else {
             throw ChatGPTOAuthError.invalidTokenResponse
         }
         return tokens
@@ -58,7 +60,7 @@ extension ChatGPTOAuthClient {
         idToken: String,
         clientID: String,
         nonce: String,
-        discovery: OpenIDConfiguration
+        discovery: OpenIDConfiguration,
     ) async throws -> VerifiedIdentity {
         var request = URLRequest(url: discovery.jwksURI)
         request.httpMethod = "GET"
@@ -73,7 +75,8 @@ extension ChatGPTOAuthClient {
             throw ChatGPTOAuthError.discoveryUnavailable
         }
         guard (response as? HTTPURLResponse)?.statusCode == 200,
-              data.count <= 262_144 else {
+              data.count <= 262_144
+        else {
             throw ChatGPTOAuthError.discoveryUnavailable
         }
         return try await IDTokenVerifier().verify(
@@ -81,7 +84,7 @@ extension ChatGPTOAuthClient {
             jwksData: data,
             clientID: clientID,
             nonce: nonce,
-            now: Date()
+            now: Date(),
         )
     }
 }

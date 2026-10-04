@@ -37,23 +37,53 @@ describe('LangGraph checkpoint storage', () => {
       });
 
       await storage.saveWrites('workflow:visit-1', 'parent', 'cp-1', [
-        { taskId: 'node', index: 0, channel: 'result', type: 'json', value: new Uint8Array([7]), replaceExisting: false },
-        { taskId: 'node', index: -3, channel: '__interrupt__', type: 'json', value: new Uint8Array([8]), replaceExisting: true },
+        {
+          taskId: 'node',
+          index: 0,
+          channel: 'result',
+          type: 'json',
+          value: new Uint8Array([7]),
+          replaceExisting: false,
+        },
+        {
+          taskId: 'node',
+          index: -3,
+          channel: '__interrupt__',
+          type: 'json',
+          value: new Uint8Array([8]),
+          replaceExisting: true,
+        },
       ]);
       await storage.saveWrites('workflow:visit-1', 'parent', 'cp-1', [
-        { taskId: 'node', index: 0, channel: 'result', type: 'json', value: new Uint8Array([9]), replaceExisting: false },
-        { taskId: 'node', index: -3, channel: '__interrupt__', type: 'json', value: new Uint8Array([10]), replaceExisting: true },
+        {
+          taskId: 'node',
+          index: 0,
+          channel: 'result',
+          type: 'json',
+          value: new Uint8Array([9]),
+          replaceExisting: false,
+        },
+        {
+          taskId: 'node',
+          index: -3,
+          channel: '__interrupt__',
+          type: 'json',
+          value: new Uint8Array([10]),
+          replaceExisting: true,
+        },
       ]);
 
       const parent = await storage.loadCheckpoint('workflow:visit-1', 'parent', 'cp-1');
       expect(parent?.checkpoint).toEqual(new Uint8Array([3]));
       expect(parent?.parentCheckpointId).toBe('cp-0');
-      expect(parent?.pendingWrites.map(write => [write.channel, [...write.value]])).toEqual([
+      expect(parent?.pendingWrites.map((write) => [write.channel, [...write.value]])).toEqual([
         ['__interrupt__', [10]],
         ['result', [7]],
       ]);
-      await expect(storage.loadCheckpoint('workflow:visit-1', 'child'))
-        .resolves.toMatchObject({ checkpointId: 'cp-2', namespace: 'child' });
+      await expect(storage.loadCheckpoint('workflow:visit-1', 'child')).resolves.toMatchObject({
+        checkpointId: 'cp-2',
+        namespace: 'child',
+      });
       const rowCount = await database.execute(
         'SELECT count(*) AS count FROM langgraph_checkpoints WHERE thread_id = ?',
         ['workflow:visit-1'],
@@ -90,10 +120,26 @@ describe('LangGraph checkpoint storage', () => {
         BEFORE INSERT ON langgraph_checkpoint_writes WHEN NEW.idx = 1
         BEGIN SELECT RAISE(ABORT, 'injected write failure'); END`);
 
-      await expect(storage.saveWrites('thread', '', 'cp-1', [
-        { taskId: 'node', index: 0, channel: 'first', type: 'json', value: new Uint8Array([1]), replaceExisting: false },
-        { taskId: 'node', index: 1, channel: 'second', type: 'json', value: new Uint8Array([2]), replaceExisting: false },
-      ])).rejects.toThrow('injected write failure');
+      await expect(
+        storage.saveWrites('thread', '', 'cp-1', [
+          {
+            taskId: 'node',
+            index: 0,
+            channel: 'first',
+            type: 'json',
+            value: new Uint8Array([1]),
+            replaceExisting: false,
+          },
+          {
+            taskId: 'node',
+            index: 1,
+            channel: 'second',
+            type: 'json',
+            value: new Uint8Array([2]),
+            replaceExisting: false,
+          },
+        ]),
+      ).rejects.toThrow('injected write failure');
 
       const checkpoint = await storage.loadCheckpoint('thread', '');
       expect(checkpoint?.pendingWrites).toEqual([]);

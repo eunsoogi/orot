@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin-arm64",
+  "jdk": {
+    "version": "17.0.20.1+1",
+    "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.20.1_1.tar.gz",
+    "sha256": "196d13ba5f10414bef7f6a05a9b3f00edacb18ebacef2b99485db9e2ee18f0e8"
+  },
+  "tools": {
+    "swiftformat": {
+      "version": "0.62.1",
+      "url": "https://github.com/nicklockwood/SwiftFormat/releases/download/0.62.1/swiftformat.zip",
+      "sha256": "7cb1cb1fae04932047c7015441c543848e8e60e1572d808d080e0a1f1661114a",
+      "archive": "zip",
+      "binary": "swiftformat"
+    },
+    "shellcheck": {
+      "version": "0.11.0",
+      "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.gz",
+      "sha256": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
+      "archive": "tar.gz",
+      "binary": "shellcheck-v0.11.0/shellcheck"
+    },
+    "shfmt": {
+      "version": "3.13.1",
+      "url": "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_darwin_arm64",
+      "sha256": "9680526be4a66ea1ffe988ed08af58e1400fe1e4f4aef5bd88b20bb9b3da33f8",
+      "binary": "shfmt"
+    },
+    "ktlint": {
+      "version": "1.8.0",
+      "url": "https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint",
+      "sha256": "a3fd620207d5c40da6ca789b95e7f823c54e854b7fade7f613e91096a3706d75",
+      "binary": "ktlint"
+    },
+    "actionlint": {
+      "version": "1.7.12",
+      "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+      "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+      "archive": "tar.gz",
+      "binary": "actionlint"
+    }
+  },
+  "clangFormat": {
+    "version": "21.0.0",
+    "source": "Xcode 27.0 toolchain via xcrun"
+  }
+}

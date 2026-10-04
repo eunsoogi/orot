@@ -1,7 +1,14 @@
-import type { LanguageModelInputPart, LanguageModelRequest, ProviderError } from '@orot/model-runtime';
+import type {
+  LanguageModelInputPart,
+  LanguageModelRequest,
+  ProviderError,
+} from '@orot/model-runtime';
 import type { ChatGPTPlanMessage, ChatGPTPlanRequest } from './native-contract';
 
-export function prepareRequest(model: string, request: LanguageModelRequest):
+export function prepareRequest(
+  model: string,
+  request: LanguageModelRequest,
+):
   | { readonly ok: true; readonly value: ChatGPTPlanRequest }
   | { readonly ok: false; readonly error: ProviderError } {
   if (request.tools?.length) return unsupportedCapability('tool calling');
@@ -22,7 +29,9 @@ export function prepareRequest(model: string, request: LanguageModelRequest):
   return { ok: true, value: { model, messages } };
 }
 
-function textContent(content: string | readonly LanguageModelInputPart[]):
+function textContent(
+  content: string | readonly LanguageModelInputPart[],
+):
   | { readonly ok: true; readonly value: string }
   | { readonly ok: false; readonly error: ProviderError } {
   if (typeof content === 'string') return { ok: true, value: content };
@@ -43,9 +52,16 @@ function textContent(content: string | readonly LanguageModelInputPart[]):
   return { ok: true, value: text };
 }
 
-function unsupportedCapability(name: string): { readonly ok: false; readonly error: ProviderError } {
+function unsupportedCapability(name: string): {
+  readonly ok: false;
+  readonly error: ProviderError;
+} {
   return {
     ok: false,
-    error: { code: 'unsupported_capability', message: `ChatGPT plan inference does not support ${name}.`, retryable: false },
+    error: {
+      code: 'unsupported_capability',
+      message: `ChatGPT plan inference does not support ${name}.`,
+      retryable: false,
+    },
   };
 }

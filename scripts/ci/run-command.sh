@@ -10,7 +10,7 @@ step_name="$1"
 log_path="$2"
 shift 3
 mkdir -p "$(dirname "$log_path")"
-: > "$log_path"
+: >"$log_path"
 printf 'Running %s\n' "$step_name"
 
 set +e

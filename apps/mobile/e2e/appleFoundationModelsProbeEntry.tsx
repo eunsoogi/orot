@@ -9,7 +9,10 @@ import {
 
 type ProbeState =
   | { readonly status: 'running' }
-  | { readonly status: 'complete'; readonly result: AppleFoundationModelsProbeResult }
+  | {
+      readonly status: 'complete';
+      readonly result: AppleFoundationModelsProbeResult;
+    }
   | { readonly status: 'failure'; readonly message: string };
 
 function AppleFoundationModelsProbeEntry() {
@@ -29,25 +32,34 @@ function AppleFoundationModelsProbeEntry() {
     );
   }, []);
 
-  const label = state.status === 'complete'
-    ? 'Apple Foundation Models probe complete; availability=' + state.result.availability
-      + '; generation=' + state.result.generation
-      + '; sourceIdPreserved=' + state.result.sourceIdPreserved
-      + '; cancellation=' + state.result.cancellation
-      + '; inferenceStop=' + state.result.inferenceStop
-      + '; questionText=' + state.result.questionText
-    : state.status === 'failure'
-      ? 'Apple Foundation Models probe failed: ' + state.message
-      : 'Apple Foundation Models probe running';
+  const label =
+    state.status === 'complete'
+      ? 'Apple Foundation Models probe complete; availability=' +
+        state.result.availability +
+        '; generation=' +
+        state.result.generation +
+        '; sourceIdPreserved=' +
+        state.result.sourceIdPreserved +
+        '; cancellation=' +
+        state.result.cancellation +
+        '; inferenceStop=' +
+        state.result.inferenceStop +
+        '; questionText=' +
+        state.result.questionText
+      : state.status === 'failure'
+        ? 'Apple Foundation Models probe failed: ' + state.message
+        : 'Apple Foundation Models probe running';
 
   return (
     <View style={styles.container}>
       <Text
         accessible
         accessibilityLabel={label}
-        testID={state.status === 'running'
-          ? 'apple-foundation-models-probe-running'
-          : 'apple-foundation-models-probe-result'}
+        testID={
+          state.status === 'running'
+            ? 'apple-foundation-models-probe-running'
+            : 'apple-foundation-models-probe-result'
+        }
       >
         {label}
       </Text>

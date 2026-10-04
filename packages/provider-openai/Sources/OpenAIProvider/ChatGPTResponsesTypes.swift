@@ -45,7 +45,7 @@ public struct ChatGPTResponsesDiagnostics: Equatable, Sendable {
         code: String? = nil,
         parameter: String? = nil,
         requestID: String? = nil,
-        reason: String? = nil
+        reason: String? = nil,
     ) {
         self.httpStatusCode = httpStatusCode
         self.bodyShape = bodyShape
@@ -73,14 +73,14 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .invalidRequest: "The ChatGPT Responses request is invalid."
-        case .unsupportedCapability(let capability): "The ChatGPT plan route does not support \(capability)."
-        case .unsupportedInput(let input): "The ChatGPT plan route does not support \(input) input."
+        case let .unsupportedCapability(capability): "The ChatGPT plan route does not support \(capability)."
+        case let .unsupportedInput(input): "The ChatGPT plan route does not support \(input) input."
         case .transportUnavailable: "ChatGPT inference could not connect to the Responses API."
         case .invalidHTTPResponse: "ChatGPT returned an invalid HTTP response."
         case .invalidContentType: "ChatGPT returned a non-event-stream Responses body."
-        case .httpFailure(let diagnostics): Self.message(for: diagnostics)
-        case .responseFailure(let diagnostics): Self.message(for: diagnostics)
-        case .incomplete(let diagnostics): Self.message(for: diagnostics)
+        case let .httpFailure(diagnostics): Self.message(for: diagnostics)
+        case let .responseFailure(diagnostics): Self.message(for: diagnostics)
+        case let .incomplete(diagnostics): Self.message(for: diagnostics)
         case .interrupted: "ChatGPT inference ended before a completed response."
         case .malformedEvent: "ChatGPT returned an invalid Responses stream event."
         }
@@ -97,8 +97,12 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
              "chatpass_v2_invalid_authorization_context":
             return "The selected ChatGPT account did not authorize this request."
         default:
-            if diagnostics.httpStatusCode == 401 { return "The selected ChatGPT account must be authorized again." }
-            if diagnostics.httpStatusCode == 429 { return "The ChatGPT plan usage limit was reached." }
+            if diagnostics.httpStatusCode == 401 {
+                return "The selected ChatGPT account must be authorized again."
+            }
+            if diagnostics.httpStatusCode == 429 {
+                return "The ChatGPT plan usage limit was reached."
+            }
             return "ChatGPT could not complete the Responses request."
         }
     }

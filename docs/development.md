@@ -29,10 +29,15 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm quality:setup
+pnpm quality:inventory
 pnpm lint
+pnpm format:check
 pnpm typecheck
 pnpm test:unit
 ```
+
+`pnpm format:write`는 검사 대상 파일을 정리합니다. 코드 표면과 제외 근거는 [코드 품질 검사 안내](code-quality.md)에 있습니다.
 
 ## Source line policy
 

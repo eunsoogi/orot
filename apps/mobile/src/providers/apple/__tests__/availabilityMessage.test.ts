@@ -5,7 +5,9 @@ import {
 
 describe('Apple provider localization', () => {
   it('provides Korean text for every native availability state', () => {
-    expect(appleAvailabilityMessage('available')).toContain('Apple Intelligence');
+    expect(appleAvailabilityMessage('available')).toContain(
+      'Apple Intelligence',
+    );
     expect(appleAvailabilityMessage('disabled')).toContain('설정');
     expect(appleAvailabilityMessage('modelNotReady')).toContain('준비');
     expect(appleAvailabilityMessage('unsupportedDevice')).toContain('기기');

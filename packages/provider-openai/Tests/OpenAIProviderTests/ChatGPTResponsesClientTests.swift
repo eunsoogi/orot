@@ -1,11 +1,11 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ChatGPTResponsesClientTests: XCTestCase {
     private let request = ChatGPTResponsesRequest(
         model: "model-slug",
-        messages: [.system("Keep it brief."), .user("Say hello.")]
+        messages: [.system("Keep it brief."), .user("Say hello.")],
     )
 
     func testSendsPlanRequestAndNormalizesDeltasBeforeCompleted() async throws {
@@ -15,7 +15,9 @@ final class ChatGPTResponsesClientTests: XCTestCase {
         let client = try responsesClient(transport)
         let stream = try await client.streamResponse(request, for: accountAccess())
         var received = [ChatGPTResponsesEvent]()
-        for try await event in stream { received.append(event) }
+        for try await event in stream {
+            received.append(event)
+        }
 
         XCTAssertEqual(received, [.textDelta(text), .completed(ChatGPTResponsesResult(text: text))])
         let recordedRequest = await transport.recordedRequest()
@@ -36,8 +38,8 @@ final class ChatGPTResponsesClientTests: XCTestCase {
     }
 
     func testGenerateRequiresCompletedInsteadOfDoneSentinel() async throws {
-        let transport = StubChatGPTResponsesHTTPTransport(
-            chunks: try sseChunks(deltaEvent("partial") + "data: [DONE]\n\n")
+        let transport = try StubChatGPTResponsesHTTPTransport(
+            chunks: sseChunks(deltaEvent("partial") + "data: [DONE]\n\n"),
         )
         let client = try responsesClient(transport)
 
@@ -58,7 +60,7 @@ final class ChatGPTResponsesClientTests: XCTestCase {
             for try await _ in stream {}
             XCTFail("An incomplete response must not become a completed result.")
         } catch {
-            guard case .incomplete(let diagnostics) = error as? ChatGPTResponsesError else {
+            guard case let .incomplete(diagnostics) = error as? ChatGPTResponsesError else {
                 return XCTFail("Expected incomplete error, got \(error).")
             }
             XCTAssertEqual(diagnostics.reason, "max_output_tokens")
@@ -75,7 +77,7 @@ final class ChatGPTResponsesClientTests: XCTestCase {
             for try await _ in stream {}
             XCTFail("A failed response must not become a completed result.")
         } catch {
-            guard case .responseFailure(let diagnostics) = error as? ChatGPTResponsesError else {
+            guard case let .responseFailure(diagnostics) = error as? ChatGPTResponsesError else {
                 return XCTFail("Expected response failure, got \(error).")
             }
             XCTAssertEqual(diagnostics.code, "subscription_sharing_usage_limit_exceeded")
@@ -90,14 +92,14 @@ final class ChatGPTResponsesClientTests: XCTestCase {
             statusCode: 403,
             chunks: [body],
             contentType: "application/json",
-            requestID: "req_admission"
+            requestID: "req_admission",
         ))
 
         do {
             _ = try await client.streamResponse(request, for: accountAccess())
             XCTFail("An admission failure must not open a stream.")
         } catch {
-            guard case .httpFailure(let diagnostics) = error as? ChatGPTResponsesError else {
+            guard case let .httpFailure(diagnostics) = error as? ChatGPTResponsesError else {
                 return XCTFail("Expected HTTP failure, got \(error).")
             }
             XCTAssertEqual(diagnostics.httpStatusCode, 403)
@@ -110,7 +112,7 @@ final class ChatGPTResponsesClientTests: XCTestCase {
         let transport = StubChatGPTResponsesHTTPTransport(chunks: [])
         let noPlan = syntheticAccount(
             expiresAt: Date().addingTimeInterval(3600),
-            scopes: ["openid"]
+            scopes: ["openid"],
         )
         let client = try responsesClient(transport, account: noPlan)
         do {

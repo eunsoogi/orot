@@ -1,5 +1,8 @@
 import type { SqlDatabase, SqlTransaction } from '@orot/storage';
-import type { AgentMemoryStorageAdapter, PersistedMemoryRecord } from '@orot/agent-memory';
+import type {
+  AgentMemoryStorageAdapter,
+  PersistedMemoryRecord,
+} from '@orot/agent-memory';
 
 type PendingWrite = PersistedMemoryRecord | null;
 interface PendingBatch {
@@ -46,16 +49,20 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   async compact(records: PersistedMemoryRecord[]): Promise<void> {
-    if (this.pending) throw new Error('Cannot compact agent memory during a write batch.');
+    if (this.pending)
+      throw new Error('Cannot compact agent memory during a write batch.');
     await this.ensureTable();
     await this.database.transaction(async transaction => {
       const removedResult = await transaction.execute(
         'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
       );
-      const removedSourceIds = new Set(removedResult.rows.flatMap(row =>
-        typeof row.source_id === 'string' ? [row.source_id] : [],
-      ));
-      for (const record of records) assertNoRemovedSourceReference(record, removedSourceIds);
+      const removedSourceIds = new Set(
+        removedResult.rows.flatMap(row =>
+          typeof row.source_id === 'string' ? [row.source_id] : [],
+        ),
+      );
+      for (const record of records)
+        assertNoRemovedSourceReference(record, removedSourceIds);
       await transaction.execute('DELETE FROM agent_memory_records');
       for (const record of records) await insertRecord(transaction, record);
     });
@@ -66,7 +73,9 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     const result = await this.database.execute(
       'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
     );
-    return result.rows.flatMap(row => typeof row.source_id === 'string' ? [row.source_id] : []);
+    return result.rows.flatMap(row =>
+      typeof row.source_id === 'string' ? [row.source_id] : [],
+    );
   }
 
   async markSourceRemoved(sourceId: string): Promise<void> {
@@ -80,7 +89,8 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   beginBatch(): void {
-    if (this.pending) throw new Error('An agent-memory write batch is already open.');
+    if (this.pending)
+      throw new Error('An agent-memory write batch is already open.');
     this.pending = { writes: new Map(), removedSourceIds: new Set() };
   }
 
@@ -101,16 +111,19 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
 
   private async ensureTable(): Promise<void> {
     if (!this.tableReady) {
-      this.tableReady = this.database.execute(
-        'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
-      ).then(async () => {
-        await this.database.execute(
-          'CREATE TABLE IF NOT EXISTS agent_memory_removed_sources (source_id TEXT PRIMARY KEY NOT NULL)',
-        );
-      }).catch(error => {
-        this.tableReady = null;
-        throw error;
-      });
+      this.tableReady = this.database
+        .execute(
+          'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
+        )
+        .then(async () => {
+          await this.database.execute(
+            'CREATE TABLE IF NOT EXISTS agent_memory_removed_sources (source_id TEXT PRIMARY KEY NOT NULL)',
+          );
+        })
+        .catch(error => {
+          this.tableReady = null;
+          throw error;
+        });
     }
     await this.tableReady;
   }
@@ -124,10 +137,13 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       const removedResult = await transaction.execute(
         'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
       );
-      const removedSourceIds = new Set(removedResult.rows.flatMap(row =>
-        typeof row.source_id === 'string' ? [row.source_id] : [],
-      ));
-      for (const sourceId of removedSourceIdsToAdd) removedSourceIds.add(sourceId);
+      const removedSourceIds = new Set(
+        removedResult.rows.flatMap(row =>
+          typeof row.source_id === 'string' ? [row.source_id] : [],
+        ),
+      );
+      for (const sourceId of removedSourceIdsToAdd)
+        removedSourceIds.add(sourceId);
       for (const record of writes.values()) {
         if (record) assertNoRemovedSourceReference(record, removedSourceIds);
       }
@@ -138,13 +154,20 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
         for (const row of records.rows) {
           const record = decodeRecord(row.record_json);
           if (referencesRemovedSource(record, removedSourceIds)) {
-            await transaction.execute('DELETE FROM agent_memory_records WHERE id = ?', [record.id]);
+            await transaction.execute(
+              'DELETE FROM agent_memory_records WHERE id = ?',
+              [record.id],
+            );
           }
         }
       }
       for (const [id, record] of writes) {
         if (record) await insertRecord(transaction, record);
-        else await transaction.execute('DELETE FROM agent_memory_records WHERE id = ?', [id]);
+        else
+          await transaction.execute(
+            'DELETE FROM agent_memory_records WHERE id = ?',
+            [id],
+          );
       }
       for (const sourceId of removedSourceIdsToAdd) {
         await transaction.execute(
@@ -163,8 +186,12 @@ function referencesRemovedSource(
   const provenance = record.meta.provenance;
   if (!provenance || typeof provenance !== 'object') return false;
   const sourceIds = (provenance as { sourceIds?: unknown }).sourceIds;
-  return Array.isArray(sourceIds) && sourceIds.some(
-    sourceId => typeof sourceId === 'string' && removedSourceIds.has(sourceId),
+  return (
+    Array.isArray(sourceIds) &&
+    sourceIds.some(
+      sourceId =>
+        typeof sourceId === 'string' && removedSourceIds.has(sourceId),
+    )
   );
 }
 
@@ -173,7 +200,9 @@ function assertNoRemovedSourceReference(
   removedSourceIds: Set<string>,
 ): void {
   if (referencesRemovedSource(record, removedSourceIds)) {
-    throw new Error('Memory cannot reference a source being or already removed.');
+    throw new Error(
+      'Memory cannot reference a source being or already removed.',
+    );
   }
 }
 
@@ -181,7 +210,10 @@ async function insertRecord(
   transaction: SqlTransaction,
   record: PersistedMemoryRecord,
 ): Promise<void> {
-  const serialized = JSON.stringify({ ...record, vector: Array.from(record.vector) });
+  const serialized = JSON.stringify({
+    ...record,
+    vector: Array.from(record.vector),
+  });
   await transaction.execute(
     'INSERT OR REPLACE INTO agent_memory_records (id, record_json) VALUES (?, ?)',
     [record.id, serialized],
@@ -189,16 +221,28 @@ async function insertRecord(
 }
 
 function decodeRecord(value: unknown): PersistedMemoryRecord {
-  if (typeof value !== 'string') throw new Error('Encrypted agent-memory data is invalid.');
-  const parsed = JSON.parse(value) as Omit<PersistedMemoryRecord, 'vector'> & { vector?: unknown };
+  if (typeof value !== 'string')
+    throw new Error('Encrypted agent-memory data is invalid.');
+  const parsed = JSON.parse(value) as Omit<PersistedMemoryRecord, 'vector'> & {
+    vector?: unknown;
+  };
   if (
-    typeof parsed.id !== 'string' || typeof parsed.text !== 'string' ||
-    !Array.isArray(parsed.vector) || parsed.vector.some(vectorValue => typeof vectorValue !== 'number') ||
-    !Array.isArray(parsed.tags) || !Array.isArray(parsed.entities) ||
-    typeof parsed.importance !== 'number' || !parsed.meta || typeof parsed.meta !== 'object' ||
-    typeof parsed.createdAt !== 'number' || typeof parsed.reinforcements !== 'number'
+    typeof parsed.id !== 'string' ||
+    typeof parsed.text !== 'string' ||
+    !Array.isArray(parsed.vector) ||
+    parsed.vector.some(vectorValue => typeof vectorValue !== 'number') ||
+    !Array.isArray(parsed.tags) ||
+    !Array.isArray(parsed.entities) ||
+    typeof parsed.importance !== 'number' ||
+    !parsed.meta ||
+    typeof parsed.meta !== 'object' ||
+    typeof parsed.createdAt !== 'number' ||
+    typeof parsed.reinforcements !== 'number'
   ) {
     throw new Error('Encrypted agent-memory data is invalid.');
   }
-  return { ...parsed, vector: Float32Array.from(parsed.vector) } as PersistedMemoryRecord;
+  return {
+    ...parsed,
+    vector: Float32Array.from(parsed.vector),
+  } as PersistedMemoryRecord;
 }

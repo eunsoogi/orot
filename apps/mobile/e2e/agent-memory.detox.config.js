@@ -10,8 +10,10 @@ module.exports = {
   apps: {
     'ios.agent-memory': {
       type: 'ios.app',
-      binaryPath: 'ios/build-agent-memory/Build/Products/Release-iphonesimulator/Orot.app',
-      build: 'DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build-agent-memory CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/agentMemoryProbeEntry.tsx',
+      binaryPath:
+        'ios/build-agent-memory/Build/Products/Release-iphonesimulator/Orot.app',
+      build:
+        'DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build-agent-memory CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/agentMemoryProbeEntry.tsx',
     },
   },
   devices: {

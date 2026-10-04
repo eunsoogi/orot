@@ -11,9 +11,9 @@ struct IDTokenVerifier {
         jwksData: Data,
         clientID: String,
         nonce: String,
-        now: Date
+        now: Date,
     ) async throws -> VerifiedIdentity {
-        guard idToken.utf8.count <= 65_536,
+        guard idToken.utf8.count <= 65536,
               let parsed = try? DefaultJWTParser().parse(Data(idToken.utf8), as: ChatGPTIDTokenPayload.self),
               parsed.header.alg == "RS256",
               let kid = parsed.header.kid,
@@ -21,14 +21,16 @@ struct IDTokenVerifier {
               parsed.header.crit?.isEmpty != false,
               parsed.header.jwk == nil,
               parsed.header.jku == nil,
-              parsed.header.x5u == nil else {
+              parsed.header.x5u == nil
+        else {
             throw ChatGPTOAuthError.invalidIdentity
         }
 
         let decoder = JSONDecoder()
         guard let jwks = try? decoder.decode(JWKS.self, from: jwksData),
               let keyMetadata = try? decoder.decode(JWKKeyMetadataSet.self, from: jwksData),
-              keyMetadata.keys.count == jwks.keys.count else {
+              keyMetadata.keys.count == jwks.keys.count
+        else {
             throw ChatGPTOAuthError.discoveryUnavailable
         }
         let rsaKeys = jwks.keys.enumerated().compactMap { index, key -> JWK? in
@@ -41,7 +43,8 @@ struct IDTokenVerifier {
                   key.algorithm == .rs256,
                   key.keyIdentifier != nil,
                   key.modulus != nil,
-                  key.exponent != nil else {
+                  key.exponent != nil
+            else {
                 return nil
             }
             return key
@@ -49,7 +52,8 @@ struct IDTokenVerifier {
         let keyIDs = rsaKeys.compactMap { $0.keyIdentifier?.string }
         guard !rsaKeys.isEmpty,
               Set(keyIDs).count == keyIDs.count,
-              keyIDs.contains(kid) else {
+              keyIDs.contains(kid)
+        else {
             throw ChatGPTOAuthError.invalidIdentity
         }
 
@@ -73,7 +77,8 @@ struct IDTokenVerifier {
               payload.nonce == nonce,
               payload.authorizedParty == nil || payload.authorizedParty == clientID,
               payload.audience.value.count <= 1 || payload.authorizedParty == clientID,
-              payload.issuedAt.value <= now.addingTimeInterval(60) else {
+              payload.issuedAt.value <= now.addingTimeInterval(60)
+        else {
             throw ChatGPTOAuthError.invalidIdentity
         }
         do {
@@ -122,7 +127,8 @@ struct ChatGPTIDTokenPayload: JWTPayload, Equatable {
     func verify(using algorithm: some JWTAlgorithm) async throws {
         guard algorithm.name == "RS256",
               issuer.value == ChatGPTOAuthConstants.issuer,
-              !subject.value.isEmpty else {
+              !subject.value.isEmpty
+        else {
             throw ChatGPTOAuthError.invalidIdentity
         }
     }

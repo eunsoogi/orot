@@ -1,8 +1,5 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
-import type {
-  CompletedRecording,
-  RecordingSnapshot,
-} from './recordingTypes';
+import type { CompletedRecording, RecordingSnapshot } from './recordingTypes';
 
 interface NativeRecordingModule {
   addListener(eventType: string): void;
@@ -13,7 +10,9 @@ interface NativeRecordingModule {
   resumeRecording(): Promise<RecordingSnapshot>;
   stopRecording(): Promise<CompletedRecording>;
   prepareSyntheticCapture?: () => Promise<boolean>;
-  prepareSyntheticStartFailure?: (point: 'beforeFileURL' | 'afterFileCreated') => Promise<void>;
+  prepareSyntheticStartFailure?: (
+    point: 'beforeFileURL' | 'afterFileCreated',
+  ) => Promise<void>;
   simulateInterruption?: (phase: 'began' | 'ended') => Promise<void>;
 }
 
@@ -27,9 +26,12 @@ export interface RecordingBridge {
 }
 
 function requireNativeModule(): NativeRecordingModule {
-  const module = NativeModules.RecordingModule as NativeRecordingModule | undefined;
+  const module = NativeModules.RecordingModule as
+    NativeRecordingModule | undefined;
   if (!module) {
-    const error = new Error('The iOS recording module is unavailable.') as Error & {
+    const error = new Error(
+      'The iOS recording module is unavailable.',
+    ) as Error & {
       code?: string;
     };
     error.code = 'RECORDING_UNAVAILABLE';
@@ -65,7 +67,8 @@ export const nativeRecordingBridge: RecordingBridge = {
 };
 
 export function isSyntheticRecordingProbeAvailable(): boolean {
-  const module = NativeModules.RecordingModule as NativeRecordingModule | undefined;
+  const module = NativeModules.RecordingModule as
+    NativeRecordingModule | undefined;
   return (
     __DEV__ &&
     module?.prepareSyntheticCapture !== undefined &&
@@ -79,7 +82,9 @@ export async function prepareSyntheticRecordingStartFailure(
 ): Promise<void> {
   const module = requireNativeModule();
   if (!__DEV__ || !module.prepareSyntheticStartFailure) {
-    throw new Error('Recording start failures can be simulated only in an iOS Simulator debug build.');
+    throw new Error(
+      'Recording start failures can be simulated only in an iOS Simulator debug build.',
+    );
   }
   await module.prepareSyntheticStartFailure(point);
 }
@@ -87,7 +92,9 @@ export async function prepareSyntheticRecordingStartFailure(
 export async function prepareSyntheticRecordingProbe(): Promise<void> {
   const module = requireNativeModule();
   if (!__DEV__ || !module.prepareSyntheticCapture) {
-    throw new Error('Synthetic recording is available only in an iOS Simulator debug build.');
+    throw new Error(
+      'Synthetic recording is available only in an iOS Simulator debug build.',
+    );
   }
   if (!(await module.prepareSyntheticCapture())) {
     throw new Error('The synthetic recording fixture could not be prepared.');

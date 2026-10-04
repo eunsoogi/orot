@@ -47,16 +47,20 @@ export async function listChatGPTPlanModels(
         retryable: false,
       });
     }
-    return providerSuccess(models.map((model) => ({
-      ...model,
-      id: `chatgpt-plan:${issuedClientID}:${model.slug}`,
-    })));
+    return providerSuccess(
+      models.map((model) => ({
+        ...model,
+        id: `chatgpt-plan:${issuedClientID}:${model.slug}`,
+      })),
+    );
   } catch (error) {
     return providerFailure(toProviderError(error));
   }
 }
 
-export function createChatGPTPlanProvider(options: ChatGPTPlanProviderOptions): LanguageModelProvider {
+export function createChatGPTPlanProvider(
+  options: ChatGPTPlanProviderOptions,
+): LanguageModelProvider {
   const nextRequestID = options.requestIDFactory ?? createRequestID;
   const provider: LanguageModelProvider = {
     kind: 'language-model',
@@ -117,7 +121,9 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     request: LanguageModelRequest,
   ) {
     this.prepared = prepareRequest(options.model.slug, request);
-    this.cancelled = new Promise((resolve) => { this.resolveCancellation = resolve; });
+    this.cancelled = new Promise((resolve) => {
+      this.resolveCancellation = resolve;
+    });
   }
 
   [Symbol.asyncIterator](): AsyncIterator<ProviderResult<LanguageModelStreamEvent>> {
@@ -136,25 +142,34 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
       const event = await this.queue.next();
       if (this.closed) return { done: true, value: undefined };
       if (!event) {
-        return this.finish(providerFailure({
-          code: 'provider_unavailable',
-          message: 'ChatGPT ended the stream before completing the response.',
-          retryable: false,
-        }));
+        return this.finish(
+          providerFailure({
+            code: 'provider_unavailable',
+            message: 'ChatGPT ended the stream before completing the response.',
+            retryable: false,
+          }),
+        );
       }
       if (event.type === 'text_delta') {
         this.streamedText += event.text;
         return { done: false, value: providerSuccess({ type: 'text_delta', text: event.text }) };
       }
-      if (event.type === 'failed') return this.finish(providerFailure(toProviderError(event.error)));
+      if (event.type === 'failed')
+        return this.finish(providerFailure(toProviderError(event.error)));
       if (event.text !== this.streamedText) {
-        return this.finish(providerFailure({
-          code: 'internal_error',
-          message: 'ChatGPT completion did not match the streamed text.',
-          retryable: false,
-        }));
+        return this.finish(
+          providerFailure({
+            code: 'internal_error',
+            message: 'ChatGPT completion did not match the streamed text.',
+            retryable: false,
+          }),
+        );
       }
-      const response: LanguageModelResponse = { text: event.text, toolCalls: [], finishReason: 'complete' };
+      const response: LanguageModelResponse = {
+        text: event.text,
+        toolCalls: [],
+        finishReason: 'complete',
+      };
       return this.finish(providerSuccess({ type: 'completed', response }));
     } catch (error) {
       if (this.closed) return { done: true, value: undefined };
@@ -178,24 +193,26 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
         if (event.requestId === this.requestID) this.queue.push(event);
       });
       if (!this.prepared.ok) throw new Error('Invalid provider request state.');
-      this.startTask = this.options.bridge.startResponse(
-        this.requestID,
-        this.options.issuedClientID,
-        this.prepared.value,
-      ).then(() => {
-        this.started = true;
-        if (this.closed) this.cancelNativeRequest();
-      });
+      this.startTask = this.options.bridge
+        .startResponse(this.requestID, this.options.issuedClientID, this.prepared.value)
+        .then(() => {
+          this.started = true;
+          if (this.closed) this.cancelNativeRequest();
+        });
     }
     return this.startTask;
   }
 
-  private emit(value: ProviderResult<LanguageModelStreamEvent>): IteratorResult<ProviderResult<LanguageModelStreamEvent>> {
+  private emit(
+    value: ProviderResult<LanguageModelStreamEvent>,
+  ): IteratorResult<ProviderResult<LanguageModelStreamEvent>> {
     this.close();
     return { done: false, value };
   }
 
-  private finish(value: ProviderResult<LanguageModelStreamEvent>): IteratorResult<ProviderResult<LanguageModelStreamEvent>> {
+  private finish(
+    value: ProviderResult<LanguageModelStreamEvent>,
+  ): IteratorResult<ProviderResult<LanguageModelStreamEvent>> {
     this.terminal = true;
     this.close();
     return { done: false, value };

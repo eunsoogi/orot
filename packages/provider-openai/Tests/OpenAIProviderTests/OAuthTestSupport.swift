@@ -41,7 +41,7 @@ final class InMemoryChatGPTCredentialStore: ChatGPTCredentialStore, @unchecked S
 struct StubOAuthResponse: Sendable {
     let statusCode: Int
     let body: Data
-    var requestID: String? = nil
+    var requestID: String?
 }
 
 actor RequestGate {
@@ -77,12 +77,14 @@ actor StubOAuthHTTPTransport: OAuthHTTPTransport {
         resumeRequestWaiters()
         let result = try await responder(request)
         var headers = ["Content-Type": "application/json"]
-        if let requestID = result.requestID { headers["x-request-id"] = requestID }
+        if let requestID = result.requestID {
+            headers["x-request-id"] = requestID
+        }
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: result.statusCode,
             httpVersion: "HTTP/1.1",
-            headerFields: headers
+            headerFields: headers,
         )!
         return (result.body, response)
     }
@@ -100,10 +102,10 @@ actor StubOAuthHTTPTransport: OAuthHTTPTransport {
 
     private func resumeRequestWaiters() {
         let ready = requestWaiters.filter { waiter in
-            requests.filter({ $0.url?.path == waiter.path }).count >= waiter.count
+            requests.filter { $0.url?.path == waiter.path }.count >= waiter.count
         }
         requestWaiters.removeAll { waiter in
-            requests.filter({ $0.url?.path == waiter.path }).count >= waiter.count
+            requests.filter { $0.url?.path == waiter.path }.count >= waiter.count
         }
         ready.forEach { $0.continuation.resume() }
     }
@@ -112,7 +114,7 @@ actor StubOAuthHTTPTransport: OAuthHTTPTransport {
 func syntheticAccount(
     expiresAt: Date,
     scopes: Set<String> = ["openid", "offline_access", ChatGPTOAuthConstants.directPlanScope],
-    refreshToken: String? = "fixture-refresh-token"
+    refreshToken: String? = "fixture-refresh-token",
 ) -> ChatGPTStoredAccount {
     ChatGPTStoredAccount(
         issuedClientID: "oaiapp_fixture_client",
@@ -124,8 +126,8 @@ func syntheticAccount(
             accessToken: "fixture-access-token",
             refreshToken: refreshToken,
             idToken: "fixture-id-token",
-            tokenType: "Bearer"
-        )
+            tokenType: "Bearer",
+        ),
     )
 }
 
@@ -135,15 +137,15 @@ func discoveryResponse() -> StubOAuthResponse {
         body: Data(
             """
             {"issuer":"https://auth.openai.com","authorization_endpoint":"https://auth.openai.com/api/accounts/authorize","token_endpoint":"https://auth.openai.com/api/accounts/oauth/token","jwks_uri":"https://auth.openai.com/oauth2/v1/keys","revocation_endpoint":"https://auth.openai.com/api/accounts/oauth/revoke"}
-            """.utf8
-        )
+            """.utf8,
+        ),
     )
 }
 
 func refreshedTokenResponse(
     access: String = "fixture-access-token-rotated",
     refresh: String = "fixture-refresh-token-rotated",
-    scope: String? = nil
+    scope: String? = nil,
 ) -> StubOAuthResponse {
     var values = [
         "access_token": access,
@@ -151,6 +153,8 @@ func refreshedTokenResponse(
         "token_type": "Bearer",
         "expires_in": 3600,
     ] as [String: Any]
-    if let scope { values["scope"] = scope }
+    if let scope {
+        values["scope"] = scope
+    }
     return StubOAuthResponse(statusCode: 200, body: try! JSONSerialization.data(withJSONObject: values))
 }

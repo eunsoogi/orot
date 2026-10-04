@@ -1,9 +1,5 @@
 import type { RecordKind, RecordMap } from './contracts';
-import {
-  deleteStoredRecord,
-  readStoredRecord,
-  upsertStoredRecord,
-} from './recordPersistence';
+import { deleteStoredRecord, readStoredRecord, upsertStoredRecord } from './recordPersistence';
 import { createSourceEvidenceRepositories } from './sourceEvidence';
 import type { EvidenceSpanRepository, SourceRecordRepository } from './sourceEvidence';
 import type { SqlDatabase, SqlTransaction } from './sql';
@@ -32,13 +28,13 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
   return {
     ...sourceEvidenceRepositories,
     async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         await createWriter(transaction).put(kind, record);
       });
     },
     async delete<K extends RecordKind>(kind: K, id: string) {
       let deleted = false;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         deleted = await createWriter(transaction).delete(kind, id);
       });
       return deleted;
@@ -46,7 +42,7 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     get: (kind, id) => readStoredRecord(database, kind, id),
     async transaction<T>(operation: (transactionWriter: RecordWriter) => Promise<T>) {
       let value!: T;
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         value = await operation(createWriter(transaction));
       });
       return value;
