@@ -17,6 +17,13 @@
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
+		A64F00000000000000000001 /* RecordingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000001 /* RecordingModule.swift */; };
+		A64F00000000000000000002 /* RecordingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000002 /* RecordingModule.m */; };
+		A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000003 /* RecordingModule+Commands.swift */; };
+		A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */; };
+		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
+		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
+		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +42,13 @@
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
+		B64F00000000000000000001 /* RecordingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingModule.swift; path = OrotMobile/RecordingModule.swift; sourceTree = "<group>"; };
+		B64F00000000000000000002 /* RecordingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingModule.m; path = OrotMobile/RecordingModule.m; sourceTree = "<group>"; };
+		B64F00000000000000000003 /* RecordingModule+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordingModule+Commands.swift"; path = "OrotMobile/RecordingModule+Commands.swift"; sourceTree = "<group>"; };
+		B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureLifecycle.swift; path = OrotMobile/RecordingCaptureLifecycle.swift; sourceTree = "<group>"; };
+		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
+		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
+		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -61,6 +75,13 @@
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
+				B64F00000000000000000001 /* RecordingModule.swift */,
+				B64F00000000000000000002 /* RecordingModule.m */,
+				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
+				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
+				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
+				B64F00000000000000000006 /* RecordingFileStore.swift */,
+				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -275,6 +296,13 @@
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
+				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
+				A64F00000000000000000002 /* RecordingModule.m in Sources */,
+				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,
+				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
+				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
+				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
+				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

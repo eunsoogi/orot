@@ -21,6 +21,16 @@ test('updates the welcome message when the user gets started', async () => {
   expect(screen.getByText('이제 시작할 수 있어요.')).toBeTruthy();
 });
 
+test('opens consultation recording behind an explicit consent step', async () => {
+  await render(<App />);
+
+  await fireEvent.press(screen.getByTestId('open-recording'));
+
+  expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
+  expect(screen.getByText(/녹음 전에/)).toBeTruthy();
+  expect(screen.getByTestId('recording-start')).toBeDisabled();
+});
+
 test('falls back to Korean when opening appointments fails and can retry', async () => {
   const store = createAppointmentStore();
   const loadAppointments = jest

@@ -21,6 +21,15 @@ describe('source content hashes and evidence locators', () => {
     expect(SourceContentHashSchema.safeParse('sha256:' + 'a'.repeat(63)).success).toBe(false);
   });
 
+  it('accepts an audio recording as a source kind', () => {
+    const source = SourceRecordSchema.parse({
+      ...metadata('audio-source-1'),
+      sourceKind: 'audio_recording',
+    });
+
+    expect(source.sourceKind).toBe('audio_recording');
+  });
+
   it('accepts audio, text, and document ranges with explicit coordinates', () => {
     const locators = [
       { kind: 'audio_time_range', startMs: 0, endMs: 1250 },
