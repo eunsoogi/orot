@@ -190,7 +190,9 @@ jobs:
           EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
-        run: node scripts/ci/detox-derived-data-cache.mjs write "${{ inputs.profile }}"
+        shell: bash
+        run: |
+          node scripts/ci/detox-derived-data-cache.mjs write "${{ inputs.profile }}" 2>&1 | tee -a artifacts/detox/native-cache.log
 
       - name: Install Detox Simulator utilities
         timeout-minutes: 10

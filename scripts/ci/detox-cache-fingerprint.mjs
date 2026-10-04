@@ -85,6 +85,29 @@ function listTrackedInputs(repositoryRoot, pathspecs) {
     .sort();
 }
 
+export function listChangedDetoxBuildInputs(repositoryRoot = process.cwd()) {
+  const output = execFileSync(
+    'git',
+    [
+      '-C',
+      repositoryRoot,
+      'diff',
+      '--name-only',
+      '--no-ext-diff',
+      '-z',
+      'HEAD',
+      '--',
+      ...BUILD_INPUT_PATHS,
+    ],
+    { encoding: 'buffer' },
+  );
+  return output
+    .toString('utf8')
+    .split('\0')
+    .filter((path) => path && !isGeneratedPath(path))
+    .sort();
+}
+
 function hashTrackedInputs(repositoryRoot, pathspecs) {
   const paths = listTrackedInputs(repositoryRoot, pathspecs);
   if (paths.length === 0)

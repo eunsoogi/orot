@@ -73,6 +73,22 @@ function createFixtureRepository() {
     };`,
   );
   execFileSync('git', ['add', '--all'], { cwd: root, stdio: 'ignore' });
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=CI fixture',
+      '-c',
+      'user.email=ci-fixture@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '--quiet',
+      '--message',
+      'fixture',
+    ],
+    { cwd: root, stdio: 'ignore' },
+  );
   return root;
 }
 
@@ -97,6 +113,10 @@ test('records the invalidation diagnostic and passes prebuild hashes to manifest
   assert.match(
     workflow,
     /EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: \$\{\{ steps\.detox_cache_fingerprint\.outputs\.native_dependencies \}\}/,
+  );
+  assert.match(
+    workflow,
+    /node scripts\/ci\/detox-derived-data-cache\.mjs write .*\| tee -a artifacts\/detox\/native-cache\.log/,
   );
 });
 
@@ -181,6 +201,43 @@ test('refuses to write a cache manifest when build fingerprints drift after the 
     assert.match(output, /manifest_build_inputs=[a-f0-9]{64}/);
     assert.match(output, /manifest_native_dependencies=[a-f0-9]{64}/);
     assert.equal(existsSync(manifestPath), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('names changed tracked build inputs when refusing a drifted cache manifest', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build');
+
+  try {
+    mkdirSync(derivedData, { recursive: true });
+    const beforeBuild = computeDetoxCacheFingerprints(root);
+    writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed during the build');
+    const injectedPath = 'apps/mobile/ios/unexpected\nforged_output=sentinel';
+    writeFixtureFile(root, injectedPath, 'untrusted path');
+    execFileSync('git', ['add', '--all'], { cwd: root, stdio: 'ignore' });
+
+    assert.throws(
+      () =>
+        runCacheCommand(root, 'write', {
+          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: beforeBuild.buildInputs,
+          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: beforeBuild.nativeDependencies,
+        }),
+      (error) => {
+        const output = error.stdout.toString();
+        const diagnostic = output
+          .split('\n')
+          .find((line) => line.includes('tracked_build_input_changes='));
+        const prefix = 'tracked_build_input_changes=';
+        const reportedPaths = JSON.parse(
+          diagnostic.slice(diagnostic.indexOf(prefix) + prefix.length),
+        );
+        assert.deepEqual(reportedPaths, ['apps/mobile/ios/Podfile.lock', injectedPath].sort());
+        assert.doesNotMatch(output, /\nforged_output=sentinel/);
+        return /prebuild_fingerprint_mismatch/.test(error.stderr.toString());
+      },
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

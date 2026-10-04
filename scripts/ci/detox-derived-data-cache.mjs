@@ -7,7 +7,10 @@ import {
   MANIFEST_FILENAME,
   readCacheManifest,
 } from './detox-cache-manifest.mjs';
-import { computeDetoxCacheFingerprints } from './detox-cache-fingerprint.mjs';
+import {
+  computeDetoxCacheFingerprints,
+  listChangedDetoxBuildInputs,
+} from './detox-cache-fingerprint.mjs';
 
 const PROFILES = {
   release: {
@@ -150,8 +153,12 @@ function writeManifest(repositoryRoot, profile) {
     process.env.EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT,
     process.env.EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT,
   );
+  const changedInputsDiagnostic =
+    fingerprintCheck.match === 'false'
+      ? ` tracked_build_input_changes=${JSON.stringify(listChangedDetoxBuildInputs(repositoryRoot))}`
+      : '';
   console.log(
-    `DETOX_DERIVEDDATA_CACHE manifest_write=${fingerprintCheck.match === 'false' ? 'refused' : 'written'} profile=${profile} ${fingerprintCheck.diagnostic}`,
+    `DETOX_DERIVEDDATA_CACHE manifest_write=${fingerprintCheck.match === 'false' ? 'refused' : 'written'} profile=${profile} ${fingerprintCheck.diagnostic}${changedInputsDiagnostic}`,
   );
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
