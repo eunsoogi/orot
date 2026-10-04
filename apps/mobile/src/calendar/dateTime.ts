@@ -14,10 +14,27 @@ function formatDateInZone(value: Date, timeZone: string): string {
   });
 }
 
+function parseFloatingDateTime(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const timestamp = `${value}Z`;
+  const parsed = new Date(timestamp);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString() === timestamp
+    ? parsed
+    : null;
+}
+
 export function formatCalendarEventRange(event: CalendarEvent): string {
-  const timeZone = calendarTimeZone(event);
-  const start = new Date(event.effectiveAt);
-  const end = new Date(event.endsAt);
+  const isFloating = event.calendarEventSnapshot.timeZoneIdentifier === null;
+  const floatingStart = isFloating
+    ? parseFloatingDateTime(event.calendarEventSnapshot.floatingStartAt)
+    : null;
+  const floatingEnd = isFloating
+    ? parseFloatingDateTime(event.calendarEventSnapshot.floatingEndAt)
+    : null;
+  const displayFloatingComponents = floatingStart !== null && floatingEnd !== null;
+  const timeZone = displayFloatingComponents ? 'UTC' : calendarTimeZone(event);
+  const start = floatingStart ?? new Date(event.effectiveAt);
+  const end = floatingEnd ?? new Date(event.endsAt);
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
     return t('appointments.errors.invalidTime');
   }

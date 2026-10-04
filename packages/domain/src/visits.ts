@@ -26,8 +26,26 @@ const NonZeroIntegerSchema = (minimum: number, maximum: number) =>
     .max(maximum)
     .refine(value => value !== 0);
 
+const FloatingCalendarDateTimeSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/)
+  .refine(value => {
+    const date = new Date(`${value}Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString() === `${value}Z`;
+  }, 'Floating Calendar date and time components must be a valid Gregorian date.');
+
 const CalendarRecurrenceEndSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('date'), date: TimestampSchema }),
+  z.strictObject({
+    kind: z.literal('date'),
+    date: TimestampSchema.nullable(),
+    floatingDateTime: FloatingCalendarDateTimeSchema.nullable().optional(),
+  }).refine(
+    value =>
+      value.date === null
+        ? typeof value.floatingDateTime === 'string'
+        : value.floatingDateTime == null,
+    'A recurrence end must use either an absolute date or floating civil time.',
+  ),
   z.strictObject({ kind: z.literal('count'), occurrenceCount: z.number().int().min(1) }),
 ]);
 
@@ -56,7 +74,10 @@ export const CalendarAppointmentSnapshotSchema = z.strictObject({
   title: z.string().max(4096),
   timeZoneIdentifier: z.string().trim().min(1).nullable(),
   isAllDay: z.boolean(),
+  floatingStartAt: FloatingCalendarDateTimeSchema.nullable().optional(),
+  floatingEndAt: FloatingCalendarDateTimeSchema.nullable().optional(),
   occurrenceDate: TimestampSchema.nullable(),
+  floatingOccurrenceAt: FloatingCalendarDateTimeSchema.nullable().optional(),
   isDetached: z.boolean(),
   recurrenceRules: z.array(CalendarRecurrenceRuleSchema).max(1),
 });

@@ -19,5 +19,43 @@ export function calendarSnapshotsEqual(
   left: CalendarEvent['calendarEventSnapshot'],
   right: CalendarEvent['calendarEventSnapshot'],
 ): boolean {
-  return canonicalJson(left) === canonicalJson(right);
+  return canonicalJson(comparableSnapshot(left)) ===
+    canonicalJson(comparableSnapshot(right));
+}
+
+function comparableSnapshot(
+  snapshot: CalendarEvent['calendarEventSnapshot'],
+): CalendarEvent['calendarEventSnapshot'] {
+  if (snapshot.timeZoneIdentifier !== null) {
+    return {
+      ...snapshot,
+      floatingStartAt: undefined,
+      floatingEndAt: undefined,
+      floatingOccurrenceAt: undefined,
+      recurrenceRules: snapshot.recurrenceRules.map(rule =>
+        rule.end?.kind === 'date'
+          ? { ...rule, end: { ...rule.end, floatingDateTime: undefined } }
+          : rule,
+      ),
+    };
+  }
+
+  const recurrenceRules = snapshot.recurrenceRules.map(rule => {
+    if (
+      rule.end?.kind !== 'date' ||
+      typeof rule.end.floatingDateTime !== 'string'
+    ) {
+      return rule;
+    }
+    return { ...rule, end: { ...rule.end, date: null } };
+  });
+
+  return {
+    ...snapshot,
+    occurrenceDate:
+      snapshot.floatingOccurrenceAt !== undefined
+        ? null
+        : snapshot.occurrenceDate,
+    recurrenceRules,
+  };
 }

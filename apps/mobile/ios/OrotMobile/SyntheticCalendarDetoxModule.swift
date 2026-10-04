@@ -17,10 +17,11 @@ public final class SyntheticCalendarDetoxModule: RCTEventEmitter {
     resolve(["access": "fullAccess", "events": Self.events] as NSDictionary)
   }
 
-  @objc(findEvent:occurrenceDate:resolver:rejecter:)
+  @objc(findEvent:occurrenceDate:floatingOccurrenceAt:resolver:rejecter:)
   public func findEvent(
     _ calendarEventIdentifier: String,
     occurrenceDate: String?,
+    floatingOccurrenceAt: String?,
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -59,7 +60,10 @@ public final class SyntheticCalendarDetoxModule: RCTEventEmitter {
         "title": title,
         "timeZoneIdentifier": "Asia/Seoul",
         "isAllDay": false,
+        "floatingStartAt": NSNull(),
+        "floatingEndAt": NSNull(),
         "occurrenceDate": NSNull(),
+        "floatingOccurrenceAt": NSNull(),
         "isDetached": false,
         "recurrenceRules": [[String: Any]](),
       ],

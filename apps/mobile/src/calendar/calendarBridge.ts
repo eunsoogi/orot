@@ -7,6 +7,7 @@ interface NativeCalendarModule {
   findEvent(
     calendarEventIdentifier: string,
     occurrenceDate: string | null,
+    floatingOccurrenceAt: string | null,
   ): Promise<CalendarEventLookup>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
@@ -23,9 +24,13 @@ export function createCalendarBridge(
   return {
     requestAccessAndListUpcomingEvents: () =>
       nativeModule ? nativeModule.requestAccessAndListUpcomingEvents() : unavailable(),
-    findEvent: (identifier, occurrenceDate) =>
+    findEvent: (identifier, occurrenceDate, floatingOccurrenceAt) =>
       nativeModule
-        ? nativeModule.findEvent(identifier, occurrenceDate)
+        ? nativeModule.findEvent(
+            identifier,
+            occurrenceDate,
+            floatingOccurrenceAt,
+          )
         : unavailable(),
     addEventStoreListener(listener) {
       if (!emitter) return { remove: () => undefined };

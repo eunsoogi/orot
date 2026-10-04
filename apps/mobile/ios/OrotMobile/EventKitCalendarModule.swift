@@ -47,10 +47,11 @@ public final class EventKitCalendarModule: RCTEventEmitter {
     }
   }
 
-  @objc(findEvent:occurrenceDate:resolver:rejecter:)
+  @objc(findEvent:occurrenceDate:floatingOccurrenceAt:resolver:rejecter:)
   public func findEvent(
     _ calendarEventIdentifier: String,
     occurrenceDate: String?,
+    floatingOccurrenceAt: String?,
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -60,12 +61,19 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         resolve(["access": access, "event": NSNull()] as NSDictionary)
         return
       }
+      if let floatingOccurrenceAt,
+        EventKitCalendarSnapshot.date(fromFloatingDateTime: floatingOccurrenceAt) == nil
+      {
+        resolve(["access": access, "event": NSNull()] as NSDictionary)
+        return
+      }
       let event = self.findEvent(
         identifier: calendarEventIdentifier,
-        occurrenceDate: occurrenceDate.flatMap(Self.parseTimestamp)
+        occurrenceDate: occurrenceDate.flatMap(Self.parseTimestamp),
+        floatingOccurrenceAt: floatingOccurrenceAt
       )
       let serializedEvent: Any
-      if let event, let value = self.serialize(event) {
+      if let event, let value = EventKitCalendarSnapshot.serialize(event) {
         serializedEvent = value
       } else {
         serializedEvent = NSNull()
@@ -132,18 +140,25 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         return $0.startDate < $1.startDate
       }
       .prefix(100)
-      .compactMap(serialize)
+      .compactMap(EventKitCalendarSnapshot.serialize)
   }
 
-  private func findEvent(identifier: String, occurrenceDate: Date?) -> EKEvent? {
-    guard let occurrenceDate else {
+  private func findEvent(
+    identifier: String,
+    occurrenceDate: Date?,
+    floatingOccurrenceAt: String?
+  ) -> EKEvent? {
+    let targetDate = floatingOccurrenceAt.flatMap(
+      EventKitCalendarSnapshot.date(fromFloatingDateTime:)
+    ) ?? occurrenceDate
+    guard let targetDate else {
       return eventStore.event(withIdentifier: identifier)
     }
 
     // event(withIdentifier:) returns the first occurrence for a recurring item.
     // Search only around the stored occurrence and require both identity and date.
-    let start = occurrenceDate.addingTimeInterval(-86_400)
-    let end = occurrenceDate.addingTimeInterval(86_400)
+    let start = targetDate.addingTimeInterval(-86_400)
+    let end = targetDate.addingTimeInterval(86_400)
     let predicate = eventStore.predicateForEvents(
       withStart: start,
       end: end,
@@ -153,89 +168,12 @@ public final class EventKitCalendarModule: RCTEventEmitter {
       guard event.eventIdentifier == identifier, let candidateDate = event.occurrenceDate else {
         return false
       }
-      return abs(candidateDate.timeIntervalSince(occurrenceDate)) < 1
-    }
-  }
-
-  private func serialize(_ event: EKEvent) -> [String: Any]? {
-    guard let identifier = event.eventIdentifier, !identifier.isEmpty else { return nil }
-    let occurrenceDate: Any
-    if let date = event.occurrenceDate {
-      occurrenceDate = Self.timestamp(date)
-    } else {
-      occurrenceDate = NSNull()
-    }
-    let timeZoneIdentifier: Any
-    if let identifier = event.timeZone?.identifier {
-      timeZoneIdentifier = identifier
-    } else {
-      timeZoneIdentifier = NSNull()
-    }
-    return [
-      "calendarEventIdentifier": identifier,
-      "effectiveAt": Self.timestamp(event.startDate),
-      "endsAt": Self.timestamp(event.endDate),
-      "calendarEventSnapshot": [
-        "title": event.title ?? "",
-        "timeZoneIdentifier": timeZoneIdentifier,
-        "isAllDay": event.isAllDay,
-        "occurrenceDate": occurrenceDate,
-        "isDetached": event.isDetached,
-        "recurrenceRules": (event.recurrenceRules ?? []).map(serialize),
-      ],
-    ]
-  }
-
-  private func serialize(_ rule: EKRecurrenceRule) -> [String: Any] {
-    let end: Any
-    if let date = rule.recurrenceEnd?.endDate {
-      end = ["kind": "date", "date": Self.timestamp(date)]
-    } else if let count = rule.recurrenceEnd?.occurrenceCount, count > 0 {
-      end = ["kind": "count", "occurrenceCount": count]
-    } else {
-      end = NSNull()
-    }
-
-    let daysOfTheWeek: Any
-    if let days = rule.daysOfTheWeek {
-      daysOfTheWeek = days.map {
-        ["dayOfTheWeek": $0.dayOfTheWeek.rawValue, "weekNumber": $0.weekNumber]
+      if let floatingOccurrenceAt {
+        return EventKitCalendarSnapshot.floatingDateTime(candidateDate) ==
+          floatingOccurrenceAt
       }
-    } else {
-      daysOfTheWeek = NSNull()
+      return abs(candidateDate.timeIntervalSince(targetDate)) < 1
     }
-
-    return [
-      "frequency": frequencyName(rule.frequency),
-      "interval": rule.interval,
-      "firstDayOfTheWeek": rule.firstDayOfTheWeek,
-      "daysOfTheWeek": daysOfTheWeek,
-      "daysOfTheMonth": numbers(rule.daysOfTheMonth),
-      "monthsOfTheYear": numbers(rule.monthsOfTheYear),
-      "weeksOfTheYear": numbers(rule.weeksOfTheYear),
-      "daysOfTheYear": numbers(rule.daysOfTheYear),
-      "setPositions": numbers(rule.setPositions),
-      "end": end,
-    ]
-  }
-
-  private func frequencyName(_ frequency: EKRecurrenceFrequency) -> String {
-    switch frequency {
-    case .daily: return "daily"
-    case .weekly: return "weekly"
-    case .monthly: return "monthly"
-    case .yearly: return "yearly"
-    @unknown default: return "daily"
-    }
-  }
-
-  private func numbers(_ values: [NSNumber]?) -> Any {
-    guard let values else { return NSNull() }
-    return values.map(\.intValue)
-  }
-
-  private static func timestamp(_ date: Date) -> String {
-    fractionalTimestampFormatter.string(from: date)
   }
 
   private static func parseTimestamp(_ value: String) -> Date? {

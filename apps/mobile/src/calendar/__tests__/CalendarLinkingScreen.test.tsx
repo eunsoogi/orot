@@ -165,4 +165,5 @@ describe('Calendar linking screen', () => {
       appStateSpy.mockRestore();
     }
   });
+
 });

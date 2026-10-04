@@ -9,29 +9,76 @@ type PendingCalendarChange =
   | { kind: 'changed'; event: CalendarEvent }
   | { kind: 'missing' };
 
-function nextLinkedAppointment(appointments: Appointment[]): Appointment | null {
-  const now = Date.now();
-  return (
-    appointments
-      .filter(
-        appointment =>
-          (appointment.status === 'scheduled' || appointment.status === 'rescheduled') &&
-          appointment.calendarEventIdentifier !== undefined &&
-          appointment.calendarEventSnapshot !== undefined &&
-          new Date(appointment.effectiveAt).getTime() > now,
-      )
-      .sort((left, right) => left.effectiveAt.localeCompare(right.effectiveAt))[0] ?? null
+function appointmentStartTime(appointment: Appointment): number {
+  const snapshot = appointment.calendarEventSnapshot;
+  const match =
+    snapshot?.timeZoneIdentifier === null &&
+    typeof snapshot.floatingStartAt === 'string'
+      ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})$/.exec(
+          snapshot.floatingStartAt,
+        )
+      : null;
+  if (match) {
+    const [, year, month, day, hour, minute, second, millisecond] = match;
+    const localDate = new Date(0);
+    localDate.setFullYear(Number(year), Number(month) - 1, Number(day));
+    localDate.setHours(
+      Number(hour),
+      Number(minute),
+      Number(second),
+      Number(millisecond),
+    );
+    if (
+      localDate.getFullYear() === Number(year) &&
+      localDate.getMonth() === Number(month) - 1 &&
+      localDate.getDate() === Number(day) &&
+      localDate.getHours() === Number(hour) &&
+      localDate.getMinutes() === Number(minute) &&
+      localDate.getSeconds() === Number(second)
+    ) {
+      return localDate.getTime();
+    }
+  }
+  return new Date(appointment.effectiveAt).getTime();
+}
+
+function selectLinkedAppointment(appointments: Appointment[]): Appointment | null {
+  const linked = appointments.filter(
+    appointment =>
+      (appointment.status === 'scheduled' || appointment.status === 'rescheduled') &&
+      appointment.calendarEventIdentifier !== undefined &&
+      appointment.calendarEventSnapshot !== undefined,
   );
+  const now = Date.now();
+  linked.sort((left, right) => {
+    const leftStart = appointmentStartTime(left);
+    const rightStart = appointmentStartTime(right);
+    const leftUpcoming = leftStart > now;
+    const rightUpcoming = rightStart > now;
+    if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1;
+    return leftUpcoming ? leftStart - rightStart : rightStart - leftStart;
+  });
+  return linked[0] ?? null;
 }
 
 function calendarEventMatchesAppointment(
   event: CalendarEvent,
   appointment: Appointment,
 ): boolean {
+  const eventSnapshot = event.calendarEventSnapshot;
+  const appointmentSnapshot = appointment.calendarEventSnapshot;
+  const hasFloatingCivilTimes =
+    eventSnapshot.timeZoneIdentifier === null &&
+    appointmentSnapshot?.timeZoneIdentifier === null &&
+    typeof eventSnapshot.floatingStartAt === 'string' &&
+    typeof eventSnapshot.floatingEndAt === 'string' &&
+    eventSnapshot.floatingStartAt === appointmentSnapshot.floatingStartAt &&
+    eventSnapshot.floatingEndAt === appointmentSnapshot.floatingEndAt;
   return (
     event.calendarEventIdentifier === appointment.calendarEventIdentifier &&
-    event.effectiveAt === appointment.effectiveAt &&
-    event.endsAt === appointment.endsAt &&
+    (hasFloatingCivilTimes ||
+      (event.effectiveAt === appointment.effectiveAt &&
+        event.endsAt === appointment.endsAt)) &&
     event.calendarEventSnapshot !== undefined &&
     appointment.calendarEventSnapshot !== undefined &&
     calendarSnapshotsEqual(
@@ -56,7 +103,11 @@ export function useCalendarLinking(
     useState<PendingCalendarChange | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const linkedAppointment = nextLinkedAppointment(appointments);
+  const linkedAppointment = selectLinkedAppointment(appointments);
+  const nextVisitAppointment =
+    linkedAppointment && appointmentStartTime(linkedAppointment) > Date.now()
+      ? linkedAppointment
+      : null;
 
   const reloadAppointments = useCallback(async () => {
     setLoadingAppointments(true);
@@ -77,6 +128,7 @@ export function useCalendarLinking(
         const result = await bridge.findEvent(
           appointment.calendarEventIdentifier,
           appointment.calendarEventSnapshot.occurrenceDate,
+          appointment.calendarEventSnapshot.floatingOccurrenceAt ?? null,
         );
         setAccess(result.access);
         if (result.access !== 'fullAccess') {
@@ -162,6 +214,7 @@ export function useCalendarLinking(
     error,
     events,
     linkedAppointment,
+    nextVisitAppointment,
     loadUpcomingEvents,
     loadingAppointments,
     loadingEvents,

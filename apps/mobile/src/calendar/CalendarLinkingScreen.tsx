@@ -96,8 +96,8 @@ export default function CalendarLinkingScreen({
         />
       ) : null}
 
-      {calendar.linkedAppointment
-        ? nextVisitView(calendar.linkedAppointment)
+      {calendar.nextVisitAppointment
+        ? nextVisitView(calendar.nextVisitAppointment)
         : null}
       {calendar.pendingChange?.kind === 'changed' ? (
         <View style={styles.card} testID="calendar-change-warning">

@@ -24,6 +24,7 @@ export interface CalendarBridge {
   findEvent(
     calendarEventIdentifier: string,
     occurrenceDate: string | null,
+    floatingOccurrenceAt: string | null,
   ): Promise<CalendarEventLookup>;
   addEventStoreListener(listener: () => void): { remove: () => void };
 }

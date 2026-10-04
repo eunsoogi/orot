@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import {
   AppointmentSchema,
+  CalendarAppointmentSnapshotSchema,
   cancelAppointment,
   createAppointment,
   updateAppointment,
@@ -84,6 +85,48 @@ describe('appointment domain API', () => {
       AppointmentSchema.safeParse({
         ...confirmed,
         calendarEventSnapshot: undefined,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates floating Calendar civil times and recurrence end dates', () => {
+    const floatingSnapshot = {
+      ...selectedCalendarSnapshot,
+      timeZoneIdentifier: null,
+      floatingStartAt: '2027-03-01T10:00:00.000',
+      floatingEndAt: '2027-03-01T11:00:00.000',
+      occurrenceDate: null,
+      floatingOccurrenceAt: '2027-03-01T10:00:00.000',
+      recurrenceRules: [
+        {
+          ...selectedCalendarSnapshot.recurrenceRules[0],
+          end: {
+            kind: 'date' as const,
+            date: null,
+            floatingDateTime: '2027-06-01T10:00:00.000',
+          },
+        },
+      ],
+    };
+
+    expect(CalendarAppointmentSnapshotSchema.safeParse(floatingSnapshot).success).toBe(
+      true,
+    );
+    expect(
+      CalendarAppointmentSnapshotSchema.safeParse({
+        ...floatingSnapshot,
+        floatingStartAt: '2027-02-30T10:00:00.000',
+      }).success,
+    ).toBe(false);
+    expect(
+      CalendarAppointmentSnapshotSchema.safeParse({
+        ...floatingSnapshot,
+        recurrenceRules: [
+          {
+            ...floatingSnapshot.recurrenceRules[0],
+            end: { kind: 'date', date: null, floatingDateTime: null },
+          },
+        ],
       }).success,
     ).toBe(false);
   });

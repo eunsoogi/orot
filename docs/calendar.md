@@ -29,6 +29,13 @@ occurrence when it verifies a saved appointment. See Apple's
 [`eventIdentifier`](https://developer.apple.com/documentation/EventKit/EKEvent/eventIdentifier)
 and [`recurrenceRules`](https://developer.apple.com/documentation/EventKit/EKCalendarItem/recurrenceRules).
 
+For floating events, EventKit reports a `nil` time zone and returns `startDate`
+in the system's default time zone. Orot also stores the event's local civil
+start/end and occurrence components so a device time-zone change does not move
+the visit on screen or make the same occurrence look changed. See Apple's
+[`timeZone`](https://developer.apple.com/documentation/eventkit/ekcalendaritem/timezone)
+and [`startDate`](https://developer.apple.com/documentation/eventkit/ekevent/startdate) documentation.
+
 ## Changes and removal
 
 Orot checks a linked event when EventKit reports a change and when the app
