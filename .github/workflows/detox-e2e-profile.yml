@@ -88,6 +88,10 @@ jobs:
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
 
+      - name: Install Detox CocoaPods dependencies
+        timeout-minutes: 20
+        run: scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+
       - name: Compute stable Detox cache fingerprints
         id: detox_cache_fingerprint
         timeout-minutes: 1
@@ -178,7 +182,7 @@ jobs:
 
       - name: Build Detox iOS Simulator app
         timeout-minutes: 45
-        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
+        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}" --skip-pods
 
       - name: Write Detox DerivedData cache manifest
         id: write_derived_data_cache

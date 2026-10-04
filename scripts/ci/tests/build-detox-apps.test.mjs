@@ -9,7 +9,7 @@ import test from 'node:test';
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const builder = join(repositoryRoot, 'scripts/ci/build-detox-apps.sh');
 
-function runBuilder(profile = 'all') {
+function runBuilder(profile = 'all', { skipPods = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-build-profiles-'));
   const binDirectory = join(directory, 'bin');
   const callsPath = join(directory, 'pnpm-calls.log');
@@ -42,19 +42,23 @@ function runBuilder(profile = 'all') {
     { mode: 0o755 },
   );
   const hostArch = spawnSync('uname', ['-m'], { encoding: 'utf8' }).stdout.trim();
-  const result = spawnSync('bash', [builder, ...(profile === 'all' ? [] : [profile])], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: [binDirectory, process.env.PATH].join(':'),
-      BUILD_CALLS: callsPath,
-      EXPECTED_HOST_ARCH: hostArch,
-      OROT_DETOX_RELEASE_DERIVED_DATA_PATH: releaseDerivedData,
-      OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH: debugDerivedData,
+  const result = spawnSync(
+    'bash',
+    [builder, ...(profile === 'all' ? [] : [profile]), ...(skipPods ? ['--skip-pods'] : [])],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: [binDirectory, process.env.PATH].join(':'),
+        BUILD_CALLS: callsPath,
+        EXPECTED_HOST_ARCH: hostArch,
+        OROT_DETOX_RELEASE_DERIVED_DATA_PATH: releaseDerivedData,
+        OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH: debugDerivedData,
+      },
+      maxBuffer: 2_000_000,
     },
-    maxBuffer: 2_000_000,
-  });
+  );
   const calls = existsSync(callsPath)
     ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean)
     : [];
@@ -85,6 +89,20 @@ test('keeps the local all-profile helper and builds both variants only when requ
   assert.match(all.calls[0], /ios:pods/);
   assert.match(all.calls[1], /ios\.sim\.release/);
   assert.match(all.calls[2], /ios\.sim\.debug\.openai-provider/);
+});
+
+test('can install Pods before cache preparation and skip only the duplicate install', () => {
+  const pods = runBuilder('pods');
+  assert.equal(pods.result.status, 0, pods.result.stderr + pods.result.stdout);
+  assert.equal(pods.calls.length, 1);
+  assert.match(pods.calls[0], /ios:pods/);
+  assert.match(pods.result.stdout, /DETOX_BUILD_STAGE_START stage=pods/);
+
+  const release = runBuilder('release', { skipPods: true });
+  assert.equal(release.result.status, 0, release.result.stderr + release.result.stdout);
+  assert.equal(release.calls.length, 1);
+  assert.match(release.calls[0], /ios\.sim\.release/);
+  assert.doesNotMatch(release.calls.join('\n'), /ios:pods/);
 });
 
 test('rejects an unknown build profile before invoking package commands', () => {

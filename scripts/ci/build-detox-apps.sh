@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -gt 1 ]]; then
-  printf 'Usage: %s [all|release|openai-provider]\n' "$0" >&2
+if [[ $# -gt 2 ]]; then
+  printf 'Usage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$0" >&2
   exit 2
 fi
 
 profile="${1:-all}"
+skip_pods=false
+if [[ "${2:-}" == "--skip-pods" ]]; then
+  skip_pods=true
+elif [[ $# -eq 2 ]]; then
+  printf 'Unknown build option: %s\nUsage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$2" "$0" >&2
+  exit 2
+fi
 case "$profile" in
-  all | release | openai-provider) ;;
+  all | release | openai-provider | pods) ;;
   *)
-    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider]\n' "$profile" "$0" >&2
+    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$profile" "$0" >&2
     exit 2
     ;;
 esac
+if [[ "$profile" == pods && ("$skip_pods" == true || $# -ne 1) ]]; then
+  printf 'The pods profile does not accept build options.\n' >&2
+  exit 2
+fi
 
 host_arch="$(uname -m)"
 release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build}"
@@ -78,7 +89,14 @@ resolve_mobile_path() {
   fi
 }
 
-run_timed_stage pods pnpm --filter @orot/mobile ios:pods
+if [[ "$profile" == pods ]]; then
+  run_timed_stage pods pnpm --filter @orot/mobile ios:pods
+  exit 0
+fi
+
+if [[ "$skip_pods" != true ]]; then
+  run_timed_stage pods pnpm --filter @orot/mobile ios:pods
+fi
 
 if [[ "$profile" == all || "$profile" == release ]]; then
   run_timed_stage release pnpm --filter @orot/mobile exec -- detox build --configuration ios.sim.release

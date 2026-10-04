@@ -87,6 +87,20 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
   assert.match(profileWorkflow, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
 });
 
+test('installs Pods before cache fingerprints and avoids a second install during the build', () => {
+  const frameworkCache = profileWorkflow.indexOf('- name: Build Detox iOS framework cache');
+  const podsInstall = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
+  const fingerprints = profileWorkflow.indexOf('- name: Compute stable Detox cache fingerprints');
+  const buildStart = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
+  const buildEnd = profileWorkflow.indexOf('\n      - name:', buildStart + 1);
+  const buildStep = profileWorkflow.slice(buildStart, buildEnd);
+
+  assert.ok(frameworkCache >= 0 && frameworkCache < podsInstall);
+  assert.ok(podsInstall < fingerprints && fingerprints < buildStart);
+  assert.match(profileWorkflow.slice(podsInstall, fingerprints), /build-detox-apps\.sh pods/);
+  assert.match(buildStep, /build-detox-apps\.sh "\$\{\{ inputs\.profile \}\}" --skip-pods/);
+});
+
 test('keys native dependency and per-profile DerivedData caches by the exact toolchain and build inputs', () => {
   const fingerprintSource = readFileSync(
     join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
