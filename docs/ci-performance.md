@@ -6,17 +6,20 @@ The comparable baseline is the successful `main` run [37168559096, attempt 2](ht
 
 | Hosted measure | Baseline | Candidate |
 | --- | ---: | ---: |
-| Detox build step | 17m03s | Pending hosted run |
-| Detox E2E test step | 15m00s | Pending hosted run |
-| Complete Detox job | 33m32s | Pending hosted run |
+| Frozen workspace install | 4s | 3m51s |
+| Detox build step | 17m03s | 19m19s |
+| Detox E2E test step | 15m00s | 8m34s |
+| Complete Detox job | 33m32s | 33m34s |
 | Native app builds | 4 Release + 1 Debug | 1 Release + 1 Debug |
 | CocoaPods installs | 3 | 1 |
 | Detox/Jest invocations | 5 | 2 |
 | Workload | 9 tests across 7 suites | 9 tests across 7 suites |
 
-The baseline build log records one shared app build, agent-memory, graph, checkpoint, and OpenAI Debug builds. Its E2E log records the same nine test cases listed below across five Detox invocations. The candidate combines the six Release suites into one app and one invocation, while retaining the OpenAI Debug app and its separate invocation. Hosted candidate timings, cache state, and exact-head required checks will be added after the pull-request run completes.
+The successful hosted candidate was run 37172401876 at `6e2a34a3fe6670c11500743bab59d7549f6f20d4`. Its three required checks passed. The E2E log records all nine test cases across seven suites in two invocations, and the dedicated Simulator was deleted successfully. Compared with the baseline, the test step is 6m26s shorter, the build step is 2m16s longer, and the complete Detox job is 2s longer. This run therefore does not demonstrate a whole-job speedup.
 
-The baseline Detox job used the `xcode-27-arm64` image, release `20260928.0222.1`, macOS 27.0, Xcode 27.0, and iOS Simulator SDK 27.0. The verified toolchain was Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The pnpm cache was restored. The workflow does not configure a DerivedData cache; the baseline built Detox framework and downloaded the React Native Debug and Release dependency archives on the runner.
+Both hosted runs used the `xcode-27-arm64` image, release `20260928.0222.1`, macOS 27.0, Xcode 27.0, and iOS Simulator SDK 27.0. The verified toolchain was Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The pnpm cache was restored in both runs; each install log reports 938 packages reused and zero downloaded. Neither workflow configures a DerivedData cache. Both native build logs report cache misses for React Native Debug/Release dependencies and core plus Hermes archives.
+
+The candidate workspace install took 3m51s versus 4s on the baseline. Its `pnpm install` log records 205 slow npm registry responses, and the supply-chain lockfile check took 3m15.8s versus 3.3s on the baseline. This explains most of the install-stage difference; the logs do not establish whether the already-started Simulator contributed. The candidate build stage remains 2m16s slower despite three fewer Xcode builds and two fewer CocoaPods installs. Per-build timings and runner resource measurements were not captured, so the cause of that increase is unknown. The next hosted comparison moves Simulator preparation after the native build to test whether overlapping boot work affected build time; this is a hypothesis, not a measured cause.
 
 ## Local candidate evidence
 
@@ -42,8 +45,8 @@ The Release router selects the existing storage, agent-memory, graph, or checkpo
 
 ## CI changes and verification
 
-The Detox job prepares one dedicated iOS 27 iPhone 18 Pro Simulator before dependency installation, persists its UDID before boot, and passes that exact ID to both configurations. Each `simctl` operation and each lifecycle workflow step has a bound. Cleanup targets only the recorded device, attempts deletion after shutdown errors, and preserves logs. Summary validation requires both the configured six-suite Release run and one-suite OpenAI Debug run, and rejects missing, failed, skipped, pending, or todo tests.
+The Detox job prepares one dedicated iOS 27 iPhone 18 Pro Simulator after the native build, persists its UDID before boot, and passes that exact ID to both configurations. This ordering is being measured against the earlier hosted candidate, which prepared the device before dependency installation. Each `simctl` operation and each lifecycle workflow step has a bound. Cleanup targets only the recorded device, attempts deletion after shutdown errors, and preserves logs. Summary validation requires both the configured six-suite Release run and one-suite OpenAI Debug run, and rejects missing, failed, skipped, pending, or todo tests.
 
 The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. Peak RSS, CPU time by child process, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
 
-Local portable validation passed 45/45 tests, along with lint, typecheck, unit/component tests, the 250-line audit, shell and Node syntax checks, workflow YAML parsing, and `git diff --check`. Hosted required checks on the candidate head are pending. This document will be updated with the hosted candidate run's exact SHA, runner/toolchain/cache state, build/test/job timings, and final check results before handoff.
+Local portable validation passed 45/45 tests, along with lint, typecheck, unit/component tests, the 250-line audit, shell and Node syntax checks, workflow YAML parsing, and `git diff --check`. All required checks passed on the first hosted candidate head `6e2a34a`. The reordered hosted comparison and the final-head independent strict review and required checks remain pending.
