@@ -4,18 +4,22 @@
 
 The comparable baseline is the successful `main` run [37168559096, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37168559096/attempts/2), at `b128021a3330c1f2d432c218ba70f13c86c273e9`. It includes the checkpoint probe added by PR #72. All three required jobs passed. Attempt 1 of the same run failed in the old multi-build workflow during a later CocoaPods install with `ArgumentError - path name contains null byte`; attempt 2 passed. This change reduces the install to one and does not claim to have fixed that error's root cause.
 
-| Hosted measure | Baseline | First candidate |
-| --- | ---: | ---: |
-| Frozen workspace install | 4s | 3m51s |
-| Detox build step | 17m03s | 19m19s |
-| Detox E2E test step | 15m00s | 8m34s |
-| Complete Detox job | 33m32s | 33m34s |
-| Native app builds | 4 Release + 1 Debug | 1 Release + 1 Debug |
-| CocoaPods installs | 3 | 1 |
-| Detox/Jest invocations | 5 | 2 |
-| Workload | 9 tests across 7 suites | 9 tests across 7 suites |
+| Hosted measure | Baseline | First candidate | Corrected candidate (`6713cd2`) |
+| --- | ---: | ---: | ---: |
+| Frozen workspace install | 4s | 3m51s | 4s |
+| Detox build step | 17m03s | 19m19s | 6m59s |
+| Detox E2E test step | 15m00s | 8m34s | 12m47s |
+| Complete Detox job | 33m32s | 33m34s | 22m30s |
+| Native app builds | 4 Release + 1 Debug | 1 Release + 1 Debug | 1 Release + 1 Debug |
+| CocoaPods installs | 3 | 1 | 1 |
+| Detox/Jest invocations | 5 | 2 | 2 |
+| Workload | 9 tests across 7 suites | 9 tests across 7 suites | 9 tests across 7 suites |
 
 The successful hosted candidate was run 37172401876 at `6e2a34a3fe6670c11500743bab59d7549f6f20d4`. Its three required checks passed. The E2E log records all nine test cases across seven suites in two invocations, and the dedicated Simulator was deleted successfully. Compared with the baseline, the test step is 6m26s shorter, the build step is 2m16s longer, and the complete Detox job is 2s longer. This run therefore does not demonstrate a whole-job speedup.
+
+The corrected hosted candidate was run 37178221372 at `6713cd239c829c91fc38ac9bc502a501f1d2e803`. Quality, iOS Simulator Build, and Detox iOS E2E all passed. Compared with the successful baseline, its Detox build step was 10m04s shorter, its test step was 2m13s shorter, and the complete Detox job was 11m02s shorter (33m32s to 22m30s). This is an observed single-run comparison between separate runner instances, not a controlled experiment or a guarantee of the same improvement on later runs.
+
+Both runs restored the same pnpm cache on the same `xcode-27-arm64` image release and used the same nine-test/seven-suite workload. The corrected candidate used one CocoaPods install, one Release app build, one OpenAI Debug app build, and two Detox/Jest invocations. Its runner snapshot reported 3 logical CPUs and 7,516,192,768 bytes of memory. Internal `/usr/bin/time -l` measurements were 64.52s for CocoaPods, 192.63s for Release (maximum process RSS 834,125,824 bytes), and 160.05s for OpenAI Debug (maximum process RSS 783,040,512 bytes). Both executable architecture checks reported only `arm64`, matching the runner. Xcode timing summaries and build logs were uploaded; the dedicated Simulator was removed successfully.
 
 The native build log command timings were: baseline Release builds 203/186/192/186s and Debug 158s; first candidate Release 638s and Debug 316s. CocoaPods took 62s in the baseline's first build sequence and 190s in the first candidate. The separate production/OAuth job on the first candidate took 65s for CocoaPods and 156s for its Debug app build. These are single-run timings from separate hosted runner instances, not controlled samples.
 
@@ -81,4 +85,4 @@ The Detox job builds Release and OpenAI Debug for the host Simulator architectur
 
 The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. The updated Detox build logs per-stage process max RSS and host memory snapshots; per-child CPU time, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
 
-The first hosted candidate `6e2a34a` passed all three required checks. On diagnostic head `db2c184`, Quality and iOS Simulator Build passed; Detox E2E failed as described above. On `37bb7b9`, Quality and iOS Simulator Build passed; Detox E2E failed during the Release build as described above. Portable and configuration tests, lint, typecheck, unit/component tests, LOC, shell/Node syntax, workflow YAML parsing, and diff checks have passed locally. A hosted candidate run for the corrected architecture command and a fresh independent strict review of the final head remain pending.
+The first hosted candidate `6e2a34a` passed all three required checks. On diagnostic head `db2c184`, Quality and iOS Simulator Build passed; Detox E2E failed as described above. On `37bb7b9`, Quality and iOS Simulator Build passed; Detox E2E failed during the Release build as described above. The corrected code head `6713cd2` passed all three required checks, including the hosted timing run above. Portable and configuration tests, lint, typecheck, unit/component tests, LOC, shell/Node syntax, workflow YAML parsing, and diff checks also passed locally on that code head. The documentation update requires a fresh required-check run, and an independent strict review of the final PR head remains pending.
