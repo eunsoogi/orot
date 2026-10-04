@@ -95,6 +95,10 @@ function sourceRecord(id: string, contentHash = hashA, title = 'Synthetic source
   };
 }
 
+function audioSourceRecord(id: string) {
+  return { ...sourceRecord(id), sourceKind: 'audio_recording' as const };
+}
+
 function evidenceSpan(id: string, sourceRecordId: string, locator: EvidenceSpanLocator) {
   return {
     id,
@@ -115,10 +119,11 @@ describe('persistent source and evidence repositories', () => {
     const databasePath = join(directory, 'database.sqlite');
     const firstDatabase = createDatabase(databasePath);
     const firstRepository = await openEncryptedStorage(options(firstDatabase));
-    const createdSource = await firstRepository.sourceRecords.create(sourceRecord('source-1'));
-    const duplicate = await firstRepository.sourceRecords.create(
-      sourceRecord('source-duplicate', hashA, 'Duplicate metadata must not replace the original'),
-    );
+    const createdSource = await firstRepository.sourceRecords.create(audioSourceRecord('source-1'));
+    const duplicate = await firstRepository.sourceRecords.create({
+      ...audioSourceRecord('source-duplicate'),
+      title: 'Duplicate metadata must not replace the original',
+    });
     const createdSpan = await firstRepository.evidenceSpans.create(
       evidenceSpan('span-1', 'source-1', {
         kind: 'audio_time_range',

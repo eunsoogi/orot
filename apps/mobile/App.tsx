@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import AppointmentsScreen from './src/appointments/AppointmentsScreen';
+import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
 
 declare const require: (path: string) => {
@@ -21,6 +22,7 @@ export default function App({
 }: AppProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [showAppointments, setShowAppointments] = useState(false);
+  const [showRecording, setShowRecording] = useState(false);
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -38,6 +40,10 @@ export default function App({
     } finally {
       setLoadingAppointments(false);
     }
+  }
+
+  if (showRecording) {
+    return <RecordingScreen onBack={() => setShowRecording(false)} />;
   }
 
   if (showAppointments) {
@@ -97,6 +103,11 @@ export default function App({
         onPress={openAppointments}
         testID="open-appointments"
         title={t('app.actions.appointments')}
+      />
+      <Button
+        onPress={() => setShowRecording(true)}
+        testID="open-recording"
+        title={t('app.actions.recording')}
       />
     </View>
   );
