@@ -2,6 +2,7 @@ import { AppState } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
+import { calendarSnapshotsEqual } from './calendarSnapshot';
 import type { CalendarAccessState, CalendarBridge, CalendarEvent } from './types';
 
 type PendingCalendarChange =
@@ -31,8 +32,12 @@ function calendarEventMatchesAppointment(
     event.calendarEventIdentifier === appointment.calendarEventIdentifier &&
     event.effectiveAt === appointment.effectiveAt &&
     event.endsAt === appointment.endsAt &&
-    JSON.stringify(event.calendarEventSnapshot) ===
-      JSON.stringify(appointment.calendarEventSnapshot)
+    event.calendarEventSnapshot !== undefined &&
+    appointment.calendarEventSnapshot !== undefined &&
+    calendarSnapshotsEqual(
+      event.calendarEventSnapshot,
+      appointment.calendarEventSnapshot,
+    )
   );
 }
 
