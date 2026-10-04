@@ -2,7 +2,7 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -43,6 +43,31 @@ async function createSourceEvidenceIntegrity(transaction: SqlExecutor): Promise<
   );
   await transaction.execute(
     "CREATE TRIGGER IF NOT EXISTS source_records_delete_evidence_spans AFTER DELETE ON source_records BEGIN DELETE FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = OLD.id; END",
+  );
+}
+
+async function createManualHistoryTable(transaction: SqlExecutor): Promise<void> {
+  await transaction.execute(
+    'CREATE TABLE IF NOT EXISTS manual_history_entries (' +
+      'id TEXT PRIMARY KEY NOT NULL, ' +
+      "entry_kind TEXT NOT NULL CHECK (entry_kind IN ('diagnosis_history', 'procedure', 'medication_context', 'note')), " +
+      'effective_date TEXT, date_known INTEGER NOT NULL CHECK (date_known IN (0, 1)), ' +
+      'recorded_at TEXT NOT NULL, ingested_at TEXT NOT NULL, supersedes_id TEXT, ' +
+      'payload_json TEXT NOT NULL CHECK (json_valid(payload_json)), ' +
+      'CHECK ((date_known = 1 AND effective_date IS NOT NULL) OR ' +
+      '(date_known = 0 AND effective_date IS NULL)))',
+  );
+  await transaction.execute(
+    'CREATE INDEX IF NOT EXISTS manual_history_kind_date_idx ON ' +
+      'manual_history_entries (entry_kind, date_known, effective_date)',
+  );
+  await transaction.execute(
+    'CREATE INDEX IF NOT EXISTS manual_history_supersedes_idx ON ' +
+      'manual_history_entries (supersedes_id)',
+  );
+  await transaction.execute(
+    'CREATE UNIQUE INDEX IF NOT EXISTS manual_history_one_successor_idx ON ' +
+      'manual_history_entries (supersedes_id) WHERE supersedes_id IS NOT NULL',
   );
 }
 
@@ -101,7 +126,8 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
         await transaction.execute('DROP TABLE records');
       }
     }
-    await createSourceEvidenceIntegrity(transaction);
-    await transaction.execute('PRAGMA user_version = 2');
+    if (currentVersion < 2) await createSourceEvidenceIntegrity(transaction);
+    if (currentVersion < 3) await createManualHistoryTable(transaction);
+    await transaction.execute('PRAGMA user_version = 3');
   });
 }

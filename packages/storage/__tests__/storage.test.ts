@@ -103,7 +103,7 @@ function createOptions(database: SqlDatabase, secrets: { value: string | null })
 }
 
 describe('encrypted local storage', () => {
-  it('creates ten typed tables and migrates records from the earlier schema', async () => {
+  it('creates the typed and manual-history tables and migrates records from the earlier schema', async () => {
     const database = createDatabase();
     const secrets = { value: null as string | null };
     await database.execute(
@@ -125,13 +125,14 @@ describe('encrypted local storage', () => {
       'encounters',
       'evidence_spans',
       'health_observations',
+      'manual_history_entries',
       'medication_assertions',
       'source_records',
       'symptom_entries',
       'visit_briefs',
       'visit_questions',
     ]);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(2);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(3);
     expect((await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows)
       .toHaveLength(0);
     await database.closeAsync?.();
