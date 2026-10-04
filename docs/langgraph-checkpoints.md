@@ -2,7 +2,9 @@
 
 Orot's LangGraph saver implements the upstream `BaseCheckpointSaver` contract
 and writes checkpoint state through the app's existing SQLCipher connection.
-It adds no backend, hosted checkpoint service, dependency, or native bridge.
+It adds no backend, hosted checkpoint service, or native bridge. The mobile app
+adds `fast-text-encoding@1.0.6` as a fallback for Hermes runtimes without
+`TextDecoder`.
 
 ## App integration
 
