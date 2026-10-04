@@ -1,3 +1,5 @@
+// LangGraph's checkpoint serializer decodes persisted UTF-8 JSON through TextDecoder.
+import 'fast-text-encoding';
 import 'web-streams-polyfill/polyfill';
 import 'react-native-get-random-values';
 
