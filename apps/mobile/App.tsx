@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
@@ -24,65 +24,101 @@ export default function App({
   loadAppointments = defaultAppointmentLoader,
   calendarBridge = eventKitCalendarBridge,
 }: AppProps) {
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showRecording, setShowRecording] = useState(false);
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [showRecording, setShowRecording] = useState(false);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [appointmentError, setAppointmentError] = useState('');
 
-  const loadRepository = useCallback(async () => {
-    setLoading(true);
-    setFailed(false);
+  async function openCalendar() {
+    setShowCalendar(true);
+    setAppointmentError('');
+    if (appointmentRepository) return;
+
+    setLoadingAppointments(true);
     try {
       setAppointmentRepository(await loadAppointments());
     } catch {
-      setFailed(true);
+      setAppointmentError(t('appointments.openError'));
     } finally {
-      setLoading(false);
+      setLoadingAppointments(false);
     }
-  }, [loadAppointments]);
-
-  useEffect(() => {
-    loadRepository().catch(() => undefined);
-  }, [loadRepository]);
+  }
 
   if (showRecording) {
     return <RecordingScreen onBack={() => setShowRecording(false)} />;
   }
 
-  if (!appointmentRepository) {
+  if (showCalendar) {
+    if (appointmentRepository) {
+      return (
+        <CalendarLinkingScreen
+          repository={appointmentRepository}
+          bridge={calendarBridge}
+          onBack={() => setShowCalendar(false)}
+          onOpenRecording={() => setShowRecording(true)}
+        />
+      );
+    }
+
     return (
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.title}>
           {t('calendar.title')}
         </Text>
         <Text
-          accessibilityRole={failed ? 'alert' : undefined}
+          accessibilityRole={appointmentError ? 'alert' : undefined}
           testID="calendar-app-opening"
         >
-          {failed
-            ? t('appointments.openError')
-            : loading
-              ? t('appointments.opening')
-              : ''}
+          {appointmentError ||
+            (loadingAppointments ? t('appointments.opening') : '')}
         </Text>
-        {failed ? (
+        {appointmentError ? (
           <Button
-            onPress={loadRepository}
+            onPress={openCalendar}
             testID="calendar-app-retry"
             title={t('appointments.retry')}
           />
         ) : null}
+        <Button
+          onPress={() => setShowCalendar(false)}
+          testID="calendar-app-back"
+          title={t('calendar.back')}
+        />
       </View>
     );
   }
 
   return (
-    <CalendarLinkingScreen
-      repository={appointmentRepository}
-      bridge={calendarBridge}
-      onOpenRecording={() => setShowRecording(true)}
-    />
+    <View style={styles.container}>
+      <Text
+        accessibilityRole="header"
+        style={styles.title}
+        testID="welcome-title"
+      >
+        {t('app.welcome.title')}
+      </Text>
+      <Text style={styles.message}>
+        {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
+      </Text>
+      <Button
+        onPress={() => setHasStarted(true)}
+        testID="get-started"
+        title={t('app.actions.getStarted')}
+      />
+      <Button
+        onPress={openCalendar}
+        testID="open-appointments"
+        title={t('app.actions.appointments')}
+      />
+      <Button
+        onPress={() => setShowRecording(true)}
+        testID="open-recording"
+        title={t('app.actions.recording')}
+      />
+    </View>
   );
 }
 
@@ -99,6 +135,11 @@ const styles = StyleSheet.create({
     color: '#17212b',
     fontSize: 24,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  message: {
+    color: '#45515f',
+    fontSize: 16,
     textAlign: 'center',
   },
 });

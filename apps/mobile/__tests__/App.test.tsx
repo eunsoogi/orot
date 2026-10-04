@@ -15,16 +15,28 @@ function createCalendarBridge(): CalendarBridge {
   };
 }
 
-test('opens on Calendar linking and waits for a user action before requesting access', async () => {
+test('restores the welcome entry and opens Calendar linking from the appointments action', async () => {
   const store = createAppointmentStore();
   const bridge = createCalendarBridge();
+  const loadAppointments = jest.fn(async () => store.repository);
   await render(
     <App
-      loadAppointments={async () => store.repository}
+      loadAppointments={loadAppointments}
       calendarBridge={bridge}
     />,
   );
 
+  expect(screen.getByTestId('welcome-title')).toHaveTextContent(
+    'Orot에 오신 걸 환영해요',
+  );
+  expect(screen.getByTestId('get-started')).toHaveTextContent('시작하기');
+  expect(screen.getByTestId('open-appointments')).toHaveTextContent('예약');
+  expect(loadAppointments).not.toHaveBeenCalled();
+
+  await fireEvent.press(screen.getByTestId('get-started'));
+  expect(screen.getByText('이제 시작할 수 있어요.')).toBeTruthy();
+
+  await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(screen.getByRole('header', { name: '캘린더 연결' })).toBeTruthy();
   expect(screen.getByTestId('calendar-connect')).toHaveTextContent(
     '캘린더 일정 불러오기',
@@ -40,6 +52,7 @@ test('keeps the consent-gated recording screen reachable from Calendar linking',
   const store = createAppointmentStore();
   await render(<App loadAppointments={async () => store.repository} />);
 
+  await fireEvent.press(screen.getByTestId('open-appointments'));
   await fireEvent.press(screen.getByTestId('open-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   expect(screen.getByText(/녹음 전에/)).toBeTruthy();
@@ -58,6 +71,7 @@ test('keeps Calendar linking available when local appointment storage needs a re
   const bridge = createCalendarBridge();
   await render(<App loadAppointments={loadAppointments} calendarBridge={bridge} />);
 
+  await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(await screen.findByTestId('calendar-app-opening')).toHaveTextContent(
     '예약을 열지 못했어요. 다시 시도해 주세요.',
   );
