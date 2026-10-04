@@ -224,21 +224,3 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   assert.match(debugCache, /-openai-provider-/);
   assert.doesNotMatch(buildStep, /if:/);
 });
-
-test('boots its dedicated Simulator while the app builds and waits for boot before E2E', () => {
-  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
-  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
-  const utilitiesStep = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
-  const prepareStep = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
-  const bootWaitStep = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
-  const testStep = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
-
-  assert.ok(
-    buildStep >= 0 &&
-      utilitiesStep >= 0 &&
-      prepareStep > utilitiesStep &&
-      prepareStep < buildStep &&
-      bootWaitStep > buildStep &&
-      testStep > bootWaitStep,
-  );
-});

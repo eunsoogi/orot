@@ -62,15 +62,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install Detox Simulator utilities
-        timeout-minutes: 10
-        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
-
-      - name: Prepare dedicated Detox Simulator
-        id: prepare_detox_simulator
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
@@ -154,6 +145,37 @@ jobs:
         timeout-minutes: 45
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
 
+      - name: Install Detox Simulator utilities
+        timeout-minutes: 10
+        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
+
+      - name: Prepare dedicated Detox Simulator
+        id: prepare_detox_simulator
+        timeout-minutes: 15
+        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
+
+      - name: Measure and disable runner Spotlight indexing
+        id: spotlight_indexing
+        if: ${{ runner.environment == 'github-hosted' && runner.os == 'macOS' }}
+        timeout-minutes: 3
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/detox
+          cpu_log="artifacts/detox/spotlight-cpu.log"
+          : > "$cpu_log"
+          sample_cpu() {
+            printf 'SPOTLIGHT_CPU_SAMPLE phase=%s\n' "$1" | tee -a "$cpu_log"
+            if ! /usr/bin/top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null | /usr/bin/awk 'BEGIN { sample = 0 } /^Processes:/ { sample += 1 } sample == 2 { print }' | /usr/bin/tee -a "$cpu_log"; then
+              printf 'cpu_sample=unavailable phase=%s\n' "$1" | tee -a "$cpu_log"
+            fi
+          }
+          sample_cpu before
+          spotlight_status=0
+          node scripts/ci/run-detox-spotlight-experiment.mjs || spotlight_status=$?
+          sample_cpu after
+          exit "$spotlight_status"
+
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}"
@@ -178,6 +200,28 @@ jobs:
           fi
           simulator_udid="$(cat artifacts/detox/simulator.udid)"
           scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log
+
+      - name: Assess Spotlight experiment after E2E cleanup
+        if: ${{ always() }}
+        env:
+          SPOTLIGHT_STEP_OUTCOME: ${{ steps.spotlight_indexing.outcome }}
+          SPOTLIGHT_ATTEMPTED: ${{ steps.spotlight_indexing.outputs.attempted }}
+          SPOTLIGHT_VERIFIED: ${{ steps.spotlight_indexing.outputs.verified }}
+        run: |
+          set -euo pipefail
+          if [[ "$SPOTLIGHT_STEP_OUTCOME" == "failure" || "$SPOTLIGHT_STEP_OUTCOME" == "cancelled" ]]; then
+            printf 'Spotlight experiment command did not complete; E2E and Simulator cleanup ran before this assessment.\n' >&2
+            exit 1
+          fi
+          if [[ "$SPOTLIGHT_ATTEMPTED" == "true" && "$SPOTLIGHT_VERIFIED" != "true" ]]; then
+            printf 'Spotlight suppression was attempted but its disabled-state readback was not verified.\n' >&2
+            exit 1
+          fi
+          if [[ "$SPOTLIGHT_ATTEMPTED" == "true" && "$SPOTLIGHT_VERIFIED" == "true" ]]; then
+            printf 'Spotlight suppression was verified for the Data volume.\n'
+          else
+            printf 'Spotlight experiment was unavailable or indexing was already disabled; no suppression effect is claimed.\n'
+          fi
 
       - name: Upload Detox reports, logs, screenshots, and videos
         if: ${{ always() }}
