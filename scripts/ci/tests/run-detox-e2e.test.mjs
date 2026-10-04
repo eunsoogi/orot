@@ -27,14 +27,18 @@ function runRunner({
   const samplerCallsPath = join(directory, 'sampler-calls.log');
   const artifactsPath = join(directory, 'artifacts');
   const resourceLogPath = join(directory, 'detox-resource-samples.log');
-  writeFileSync(fakePnpm, [
-    '#!/usr/bin/env bash',
-    'printf \'profile=%s %s\\n\' "${OROT_DETOX_TEST_PROFILE:-}" "$*" >> "$DETOX_CALL_LOG"',
-    'printf \'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n\'',
-    'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
-    'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
-    'exit 97',
-  ].join('\n'), { mode: 0o755 });
+  writeFileSync(
+    fakePnpm,
+    [
+      '#!/usr/bin/env bash',
+      'printf \'profile=%s %s\\n\' "${OROT_DETOX_TEST_PROFILE:-}" "$*" >> "$DETOX_CALL_LOG"',
+      "printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
+      'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
+      'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
+      'exit 97',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
   if (resourceLog) installDetoxHostSamplerStubs(directory);
 
   const args = profile === 'both' ? [] : [profile];
@@ -73,38 +77,62 @@ test('runs Release and OpenAI Debug under separate artifact paths', () => {
   assert.match(calls[0], /^profile=release /);
   assert.match(calls[1], /^profile=openai-provider /);
   assert.match(calls[0], /ios\.sim\.release/);
-  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
+  assert.match(
+    calls[0],
+    /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/,
+  );
   assert.match(calls[0], new RegExp(`${artifactsPath}/release`));
-  assert.match(calls[1], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
+  assert.match(
+    calls[1],
+    /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/,
+  );
   assert.match(calls[1], /ios\.sim\.debug\.openai-provider/);
   assert.match(calls[1], new RegExp(`${artifactsPath}/openai-provider`));
 });
 
 test('runs only the selected Release profile on its dedicated Simulator', () => {
   const simulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
-  const { result, calls, artifactsPath } = runRunner({ profile: 'release', simulatorId, openaiSimulatorId: '' });
+  const { result, calls, artifactsPath } = runRunner({
+    profile: 'release',
+    simulatorId,
+    openaiSimulatorId: '',
+  });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(calls.length, 1);
   assert.match(calls[0], /^profile=release /);
   assert.match(calls[0], /ios\.sim\.release/);
-  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
+  assert.match(
+    calls[0],
+    /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/,
+  );
   assert.match(calls[0], new RegExp(`${artifactsPath}/release`));
 });
 
 test('runs only the Debug-only OpenAI probe on its dedicated Simulator', () => {
   const simulatorId = '';
   const openaiSimulatorId = '11111111-2222-4333-8444-555555555555';
-  const { result, calls, artifactsPath } = runRunner({ profile: 'openai-provider', simulatorId, openaiSimulatorId });
+  const { result, calls, artifactsPath } = runRunner({
+    profile: 'openai-provider',
+    simulatorId,
+    openaiSimulatorId,
+  });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(calls.length, 1);
   assert.match(calls[0], /^profile=openai-provider /);
-  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
+  assert.match(
+    calls[0],
+    /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/,
+  );
   assert.match(calls[0], /ios\.sim\.debug\.openai-provider/);
   assert.match(calls[0], new RegExp(`${artifactsPath}/openai-provider`));
 });
 
 test('can record bounded process and memory samples when explicitly enabled', () => {
-  const { result, calls, resourceSamples, samplerCalls } = runRunner({ profile: 'release', resourceLog: true, logLevel: 'info' });
+  const { result, calls, resourceSamples, samplerCalls } = runRunner({
+    profile: 'release',
+    resourceLog: true,
+    logLevel: 'info',
+  });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.match(calls[0], /--loglevel info/);
   assert.match(result.stderr, /real/);

@@ -68,14 +68,38 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     );
 
     writeFixtureFile(root, 'apps/mobile/ios/build/DerivedData.db', 'changed Release build output');
-    writeFixtureFile(root, 'apps/mobile/ios/build-openai-provider/DerivedData.db', 'changed Debug build output');
-    writeFixtureFile(root, 'apps/mobile/ios/build-agent-memory/DerivedData.db', 'changed feature build output');
-    writeFixtureFile(root, 'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj', 'changed Pods output');
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/build-openai-provider/DerivedData.db',
+      'changed Debug build output',
+    );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/build-agent-memory/DerivedData.db',
+      'changed feature build output',
+    );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj',
+      'changed Pods output',
+    );
     writeFixtureFile(root, 'apps/mobile/node_modules/generated.js', 'changed app dependency');
-    writeFixtureFile(root, 'packages/storage/node_modules/generated.js', 'changed package dependency');
+    writeFixtureFile(
+      root,
+      'packages/storage/node_modules/generated.js',
+      'changed package dependency',
+    );
     writeFixtureFile(root, 'apps/mobile/.cache/generated.js', 'changed cache output');
-    writeFixtureFile(root, 'apps/mobile/ios/CoreSimulator/devices/generated.plist', 'changed Simulator output');
-    writeFixtureFile(root, 'apps/mobile/ios/Simulator/devices/generated.plist', 'changed Simulator output');
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/CoreSimulator/devices/generated.plist',
+      'changed Simulator output',
+    );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/Simulator/devices/generated.plist',
+      'changed Simulator output',
+    );
     writeFixtureFile(root, 'apps/mobile/ios/Keychains/login.keychain', 'changed Keychain output');
     git(root, 'add', '--all');
     const afterGeneratedOutputs = computeDetoxCacheFingerprints(root);
@@ -83,8 +107,16 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     assert.deepEqual(afterGeneratedOutputs, initial);
 
     writeFixtureFile(root, 'scripts/ci/run-detox-e2e.sh', 'changed Detox invocation wrapper');
-    writeFixtureFile(root, 'scripts/ci/detox-e2e-profile.detox.config.cjs', 'changed Detox test-runner config');
-    writeFixtureFile(root, 'scripts/ci/detox-e2e-profile.jest.config.cjs', 'changed Jest-only profile config');
+    writeFixtureFile(
+      root,
+      'scripts/ci/detox-e2e-profile.detox.config.cjs',
+      'changed Detox test-runner config',
+    );
+    writeFixtureFile(
+      root,
+      'scripts/ci/detox-e2e-profile.jest.config.cjs',
+      'changed Jest-only profile config',
+    );
     git(root, 'add', '--all');
     const afterTestRunnerConfigChanges = computeDetoxCacheFingerprints(root);
 
@@ -100,7 +132,10 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     git(root, 'add', '--all');
     const afterLockChange = computeDetoxCacheFingerprints(root);
     assert.notEqual(afterLockChange.buildInputs, afterAppSourceChange.buildInputs);
-    assert.notEqual(afterLockChange.reactNativeArtifacts, afterAppSourceChange.reactNativeArtifacts);
+    assert.notEqual(
+      afterLockChange.reactNativeArtifacts,
+      afterAppSourceChange.reactNativeArtifacts,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

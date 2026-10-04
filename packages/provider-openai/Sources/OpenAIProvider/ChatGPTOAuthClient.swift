@@ -10,17 +10,17 @@ public final class ChatGPTOAuthClient: Sendable {
     public init(
         session: URLSession? = nil,
         agentName: String = "Orot",
-        credentialStore: any ChatGPTCredentialStore = KeychainChatGPTCredentialStore()
+        credentialStore: any ChatGPTCredentialStore = KeychainChatGPTCredentialStore(),
     ) {
         let session = session ?? Self.makeEphemeralSession()
         let transport = URLSessionOAuthHTTPTransport(session: session)
         self.transport = transport
-        self.responsesTransport = URLSessionChatGPTResponsesHTTPTransport(session: session)
+        responsesTransport = URLSessionChatGPTResponsesHTTPTransport(session: session)
         self.agentName = agentName
         self.credentialStore = credentialStore
-        self.sessionManager = ChatGPTSessionManager(
+        sessionManager = ChatGPTSessionManager(
             transport: transport,
-            credentialStore: credentialStore
+            credentialStore: credentialStore,
         )
     }
 
@@ -28,17 +28,17 @@ public final class ChatGPTOAuthClient: Sendable {
         transport: any OAuthHTTPTransport,
         agentName: String = "Orot",
         credentialStore: any ChatGPTCredentialStore,
-        responsesTransport: (any ChatGPTResponsesHTTPTransport)? = nil
+        responsesTransport: (any ChatGPTResponsesHTTPTransport)? = nil,
     ) {
         self.transport = transport
         self.responsesTransport = responsesTransport ?? URLSessionChatGPTResponsesHTTPTransport(
-            session: Self.makeEphemeralSession()
+            session: Self.makeEphemeralSession(),
         )
         self.agentName = agentName
         self.credentialStore = credentialStore
-        self.sessionManager = ChatGPTSessionManager(
+        sessionManager = ChatGPTSessionManager(
             transport: transport,
-            credentialStore: credentialStore
+            credentialStore: credentialStore,
         )
     }
 
@@ -53,7 +53,7 @@ public final class ChatGPTOAuthClient: Sendable {
     public func prepareAuthorization(
         hostIdentifier: String,
         redirectURI: URL,
-        existingIssuedClientID: String? = nil
+        existingIssuedClientID: String? = nil,
     ) async throws -> PendingChatGPTAuthorization {
         guard UserDefaultsHostIdentifierStore.isValidHostIdentifier(hostIdentifier) else {
             throw ChatGPTOAuthError.invalidHostIdentifier
@@ -93,7 +93,7 @@ public final class ChatGPTOAuthClient: Sendable {
             verifier: verifier,
             agentName: agentName,
             clientID: requestedClientID,
-            idTokenHint: idTokenHint
+            idTokenHint: idTokenHint,
         )
 
         return PendingChatGPTAuthorization(
@@ -107,20 +107,20 @@ public final class ChatGPTOAuthClient: Sendable {
             nonce: nonce,
             codeVerifier: verifier,
             discovery: discovery,
-            authorizationGeneration: authorizationGeneration
+            authorizationGeneration: authorizationGeneration,
         )
     }
 
     public func completeAuthorization(
         callbackURL: URL,
-        pending: PendingChatGPTAuthorization
+        pending: PendingChatGPTAuthorization,
     ) async throws -> ChatGPTAccountAccess {
         try Task.checkCancellation()
         let callback = try OAuthCallbackParser.parse(
             callbackURL,
             expectedState: pending.state,
             expectedRedirectURI: pending.redirectURI,
-            expectedClientID: pending.requestedClientID
+            expectedClientID: pending.requestedClientID,
         )
         let tokens = try await exchangeCode(callback, pending: pending)
         try Task.checkCancellation()
@@ -131,7 +131,8 @@ public final class ChatGPTOAuthClient: Sendable {
               let expiresIn = tokens.expiresIn,
               expiresIn.isFinite,
               expiresIn > 0,
-              let scope = tokens.scope else {
+              let scope = tokens.scope
+        else {
             throw ChatGPTOAuthError.invalidTokenResponse
         }
         let grantedScopes = Set(scope.split(whereSeparator: \.isWhitespace).map(String.init))
@@ -139,14 +140,15 @@ public final class ChatGPTOAuthClient: Sendable {
               !accessToken.isEmpty,
               !idToken.isEmpty,
               !scope.isEmpty,
-              !grantedScopes.contains("offline_access") || tokens.refreshToken?.isEmpty == false else {
+              !grantedScopes.contains("offline_access") || tokens.refreshToken?.isEmpty == false
+        else {
             throw ChatGPTOAuthError.invalidTokenResponse
         }
         let identity = try await verifyIdentity(
             idToken: idToken,
             clientID: callback.issuedClientID,
             nonce: pending.nonce,
-            discovery: pending.discovery
+            discovery: pending.discovery,
         )
         if let expectedSubject = pending.expectedSubject, expectedSubject != identity.subject {
             throw ChatGPTOAuthError.accountIdentityMismatch
@@ -163,31 +165,31 @@ public final class ChatGPTOAuthClient: Sendable {
                 accessToken: accessToken,
                 refreshToken: tokens.refreshToken,
                 idToken: idToken,
-                tokenType: "Bearer"
-            )
+                tokenType: "Bearer",
+            ),
         )
         try await sessionManager.saveAuthorizedAccount(
             account,
-            expectedAuthorizationGeneration: pending.authorizationGeneration
+            expectedAuthorizationGeneration: pending.authorizationGeneration,
         )
 
         return ChatGPTAccountAccess(
             issuedClientID: callback.issuedClientID,
             subject: identity.subject,
             grantedScopes: grantedScopes,
-            accessToken: accessToken
+            accessToken: accessToken,
         )
     }
 
     public func prepareAuthorization(
         redirectURI: URL,
-        existingIssuedClientID: String? = nil
+        existingIssuedClientID: String? = nil,
     ) async throws -> PendingChatGPTAuthorization {
         let hostIdentifier = try credentialStore.loadOrCreateHostIdentifier()
         return try await prepareAuthorization(
             hostIdentifier: hostIdentifier,
             redirectURI: redirectURI,
-            existingIssuedClientID: existingIssuedClientID
+            existingIssuedClientID: existingIssuedClientID,
         )
     }
 

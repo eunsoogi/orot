@@ -1,7 +1,9 @@
 import { t } from '../../i18n';
 import type { AppleAvailabilityStatus } from '@orot/provider-apple';
 
-export function appleAvailabilityMessage(status: AppleAvailabilityStatus): string {
+export function appleAvailabilityMessage(
+  status: AppleAvailabilityStatus,
+): string {
   switch (status) {
     case 'available':
       return t('provider.apple.available');

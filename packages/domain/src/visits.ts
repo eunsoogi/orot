@@ -1,15 +1,10 @@
 import { z } from 'zod';
-import {
-  RecordIdSchema,
-  RecordMetadataSchema,
-  TimestampSchema,
-  compareTimestamps,
-} from './common';
+import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const UniqueRecordIdsSchema = z
   .array(RecordIdSchema)
-  .refine(ids => new Set(ids).size === ids.length, 'Record IDs must be unique.');
+  .refine((ids) => new Set(ids).size === ids.length, 'Record IDs must be unique.');
 
 export const AppointmentStatusSchema = z.enum([
   'scheduled',
@@ -26,10 +21,7 @@ export const AppointmentSchema = RecordMetadataSchema.safeExtend({
   endsAt: TimestampSchema.optional(),
   encounterId: RecordIdSchema.optional(),
 }).superRefine((appointment, context) => {
-  if (
-    appointment.endsAt &&
-    compareTimestamps(appointment.endsAt, appointment.effectiveAt) < 0
-  ) {
+  if (appointment.endsAt && compareTimestamps(appointment.endsAt, appointment.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['endsAt'],
@@ -54,7 +46,7 @@ export const AppointmentUpdateInputSchema = z
     note: NonEmptyTextSchema.nullable().optional(),
     endsAt: TimestampSchema.nullable().optional(),
   })
-  .refine(changes => Object.keys(changes).length > 0, 'Provide at least one appointment change.');
+  .refine((changes) => Object.keys(changes).length > 0, 'Provide at least one appointment change.');
 
 export type AppointmentUpdateInput = z.input<typeof AppointmentUpdateInputSchema>;
 
@@ -64,7 +56,9 @@ function reviewStateAfterChange(appointment: Appointment): Appointment['reviewSt
     : appointment.reviewState;
 }
 
-export function createAppointment(input: z.input<typeof AppointmentCreateInputSchema>): Appointment {
+export function createAppointment(
+  input: z.input<typeof AppointmentCreateInputSchema>,
+): Appointment {
   return AppointmentSchema.parse(AppointmentCreateInputSchema.parse(input));
 }
 

@@ -3,7 +3,7 @@ import Foundation
 public extension ChatGPTOAuthClient {
     func streamResponse(
         _ request: ChatGPTResponsesRequest,
-        for account: ChatGPTAccountAccess
+        for account: ChatGPTAccountAccess,
     ) async throws -> AsyncThrowingStream<ChatGPTResponsesEvent, Error> {
         guard account.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
         let stored = try await sessionManager.accountWithFreshAccessToken(issuedClientID: account.issuedClientID)
@@ -16,7 +16,7 @@ public extension ChatGPTOAuthClient {
 
     func streamResponse(
         _ request: ChatGPTResponsesRequest,
-        forIssuedClientID issuedClientID: String
+        forIssuedClientID issuedClientID: String,
     ) async throws -> AsyncThrowingStream<ChatGPTResponsesEvent, Error> {
         let stored = try await sessionManager.accountWithFreshAccessToken(issuedClientID: issuedClientID)
         try Task.checkCancellation()
@@ -27,29 +27,33 @@ public extension ChatGPTOAuthClient {
 
     func generateResponse(
         _ request: ChatGPTResponsesRequest,
-        for account: ChatGPTAccountAccess
+        for account: ChatGPTAccountAccess,
     ) async throws -> ChatGPTResponsesResult {
         let events = try await streamResponse(request, for: account)
         for try await event in events {
-            if case .completed(let response) = event { return response }
+            if case let .completed(response) = event {
+                return response
+            }
         }
         throw ChatGPTResponsesError.interrupted
     }
 
     func generateResponse(
         _ request: ChatGPTResponsesRequest,
-        forIssuedClientID issuedClientID: String
+        forIssuedClientID issuedClientID: String,
     ) async throws -> ChatGPTResponsesResult {
         let events = try await streamResponse(request, forIssuedClientID: issuedClientID)
         for try await event in events {
-            if case .completed(let response) = event { return response }
+            if case let .completed(response) = event {
+                return response
+            }
         }
         throw ChatGPTResponsesError.interrupted
     }
 
     private func openResponseStream(
         _ input: ChatGPTResponsesRequest,
-        accessToken: String
+        accessToken: String,
     ) async throws -> AsyncThrowingStream<ChatGPTResponsesEvent, Error> {
         let request = try ChatGPTResponsesRequestBuilder.build(input, accessToken: accessToken)
         try Task.checkCancellation()
@@ -59,7 +63,9 @@ public extension ChatGPTOAuthClient {
         do {
             (response, body) = try await responsesTransport.stream(for: request)
         } catch {
-            if Self.isCancellation(error) { throw CancellationError() }
+            if Self.isCancellation(error) {
+                throw CancellationError()
+            }
             throw ChatGPTResponsesError.transportUnavailable
         }
 
@@ -67,11 +73,11 @@ public extension ChatGPTOAuthClient {
             throw ChatGPTResponsesError.invalidHTTPResponse
         }
         let requestID = httpResponse.value(forHTTPHeaderField: "x-request-id")
-        guard (200...299).contains(httpResponse.statusCode) else {
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
             let diagnostics = try await ResponsesHTTPFailureParser.diagnostics(
                 for: body,
                 statusCode: httpResponse.statusCode,
-                requestID: requestID
+                requestID: requestID,
             )
             throw ChatGPTResponsesError.httpFailure(diagnostics)
         }

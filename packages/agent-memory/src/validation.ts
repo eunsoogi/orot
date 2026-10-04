@@ -36,7 +36,7 @@ export function isAgentMemoryKind(value: unknown): value is AgentMemoryKind {
 }
 
 export function metadataFrom(value: Record<string, unknown>): StoredMetadata {
-  return value && typeof value === 'object' ? value as StoredMetadata : {};
+  return value && typeof value === 'object' ? (value as StoredMetadata) : {};
 }
 
 export function provenanceFrom(value: Record<string, unknown>): AgentMemoryProvenance | null {
@@ -46,16 +46,25 @@ export function provenanceFrom(value: Record<string, unknown>): AgentMemoryProve
 
 export function samePayload(record: PersistedMemoryRecord, input: AgentMemoryInput): boolean {
   const metadata = metadataFrom(record.meta);
-  return record.text === input.text && record.importance === input.importance &&
-    metadata.kind === input.kind && JSON.stringify(metadata.provenance) === JSON.stringify(input.provenance);
+  return (
+    record.text === input.text &&
+    record.importance === input.importance &&
+    metadata.kind === input.kind &&
+    JSON.stringify(metadata.provenance) === JSON.stringify(input.provenance)
+  );
 }
 
 function normalizeProvenance(value: AgentMemoryProvenance): AgentMemoryProvenance {
-  const sourceIds = [...new Set(value.sourceIds.map(sourceId => sourceId.trim()))].sort();
-  const sourceDates = value.sourceDates?.map(sourceDate => ({
-    sourceId: sourceDate.sourceId.trim(),
-    date: sourceDate.date.trim(),
-  })).sort((left, right) => left.sourceId.localeCompare(right.sourceId) || left.date.localeCompare(right.date));
+  const sourceIds = [...new Set(value.sourceIds.map((sourceId) => sourceId.trim()))].sort();
+  const sourceDates = value.sourceDates
+    ?.map((sourceDate) => ({
+      sourceId: sourceDate.sourceId.trim(),
+      date: sourceDate.date.trim(),
+    }))
+    .sort(
+      (left, right) =>
+        left.sourceId.localeCompare(right.sourceId) || left.date.localeCompare(right.date),
+    );
   return sourceDates === undefined
     ? { sourceIds, reviewState: value.reviewState }
     : { sourceIds, sourceDates, reviewState: value.reviewState };
@@ -64,14 +73,26 @@ function normalizeProvenance(value: AgentMemoryProvenance): AgentMemoryProvenanc
 export function isProvenance(value: unknown): value is AgentMemoryProvenance {
   if (!value || typeof value !== 'object') return false;
   const provenance = value as Partial<AgentMemoryProvenance>;
-  if (provenance.reviewState !== 'user_confirmed' && provenance.reviewState !== 'human_reviewed') return false;
-  if (!Array.isArray(provenance.sourceIds) || provenance.sourceIds.some(id => typeof id !== 'string' || !id.trim())) return false;
+  if (provenance.reviewState !== 'user_confirmed' && provenance.reviewState !== 'human_reviewed')
+    return false;
+  if (
+    !Array.isArray(provenance.sourceIds) ||
+    provenance.sourceIds.some((id) => typeof id !== 'string' || !id.trim())
+  )
+    return false;
   if (provenance.sourceDates !== undefined) {
     if (!Array.isArray(provenance.sourceDates)) return false;
-    if (provenance.sourceDates.some(item =>
-      !item || typeof item.sourceId !== 'string' || typeof item.date !== 'string' ||
-      !provenance.sourceIds?.includes(item.sourceId) || !item.date.trim(),
-    )) return false;
+    if (
+      provenance.sourceDates.some(
+        (item) =>
+          !item ||
+          typeof item.sourceId !== 'string' ||
+          typeof item.date !== 'string' ||
+          !provenance.sourceIds?.includes(item.sourceId) ||
+          !item.date.trim(),
+      )
+    )
+      return false;
   }
   return true;
 }

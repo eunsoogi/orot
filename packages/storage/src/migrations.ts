@@ -16,14 +16,19 @@ async function readUserVersion(database: SqlExecutor): Promise<number> {
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
     await transaction.execute(
-      'CREATE TABLE IF NOT EXISTS ' + definition.table + ' (' +
+      'CREATE TABLE IF NOT EXISTS ' +
+        definition.table +
+        ' (' +
         'id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, ' +
         'recorded_at TEXT NOT NULL, ingested_at TEXT NOT NULL, ' +
         'payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
     );
     await transaction.execute(
-      'CREATE INDEX IF NOT EXISTS ' + definition.table + '_effective_at_idx ON ' +
-        definition.table + ' (effective_at)',
+      'CREATE INDEX IF NOT EXISTS ' +
+        definition.table +
+        '_effective_at_idx ON ' +
+        definition.table +
+        ' (effective_at)',
     );
   }
 }
@@ -60,7 +65,8 @@ async function insertLegacyRecord<K extends RecordKind>(
 ): Promise<void> {
   const parsed = parseRecord(kind, record);
   await transaction.execute(
-    'INSERT INTO ' + STORAGE_TABLES[kind].table +
+    'INSERT INTO ' +
+      STORAGE_TABLES[kind].table +
       ' (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
     [parsed.id, parsed.effectiveAt, parsed.recordedAt, parsed.ingestedAt, JSON.stringify(parsed)],
   );
@@ -92,7 +98,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
   }
   if (currentVersion === CURRENT_SCHEMA_VERSION) return;
 
-  await database.transaction(async transaction => {
+  await database.transaction(async (transaction) => {
     if (currentVersion === 0) {
       const hasLegacy = await hasLegacyTable(transaction);
       await createInitialTables(transaction);

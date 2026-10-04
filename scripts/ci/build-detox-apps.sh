@@ -8,22 +8,31 @@ fi
 
 profile="${1:-all}"
 case "$profile" in
-  all|release|openai-provider) ;;
-  *) printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider]\n' "$profile" "$0" >&2; exit 2 ;;
+  all | release | openai-provider) ;;
+  *)
+    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider]\n' "$profile" "$0" >&2
+    exit 2
+    ;;
 esac
 
 host_arch="$(uname -m)"
 release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build}"
 openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-openai-provider}"
 case "$host_arch" in
-  arm64|x86_64) ;;
-  *) printf 'Unsupported iOS Simulator host architecture: %s\n' "$host_arch" >&2; exit 1 ;;
+  arm64 | x86_64) ;;
+  *)
+    printf 'Unsupported iOS Simulator host architecture: %s\n' "$host_arch" >&2
+    exit 1
+    ;;
 esac
 
 node_arch="$(node -p 'process.arch')"
 case "$host_arch:$node_arch" in
-  arm64:arm64|x86_64:x64) ;;
-  *) printf 'Node architecture %s does not match host architecture %s.\n' "$node_arch" "$host_arch" >&2; exit 1 ;;
+  arm64:arm64 | x86_64:x64) ;;
+  *)
+    printf 'Node architecture %s does not match host architecture %s.\n' "$node_arch" "$host_arch" >&2
+    exit 1
+    ;;
 esac
 
 snapshot_host_resources() {

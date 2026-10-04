@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ResponsesSSEDecoderTests: XCTestCase {
     func testDecodesCRLFFramesAcrossArbitraryByteChunks() throws {
@@ -14,7 +14,7 @@ final class ResponsesSSEDecoderTests: XCTestCase {
         XCTAssertEqual(frames, [
             ResponsesSSEFrame(
                 event: "response.output_text.delta",
-                data: "{\"type\":\"response.output_text.delta\",\n\"delta\":\"안녕 🌍\"}"
+                data: "{\"type\":\"response.output_text.delta\",\n\"delta\":\"안녕 🌍\"}",
             ),
         ])
     }

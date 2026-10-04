@@ -19,7 +19,7 @@ actor ChatGPTCredentialOperationCoordinator {
     func withAccountLock<Value: Sendable>(
         hostIdentifier: String,
         invalidatingAuthorizations: Bool = false,
-        operation: @Sendable (UInt64) async throws -> Value
+        operation: @Sendable (UInt64) async throws -> Value,
     ) async throws -> Value {
         await acquire(hostIdentifier)
         if invalidatingAuthorizations {
@@ -39,12 +39,16 @@ actor ChatGPTCredentialOperationCoordinator {
     }
 
     private func acquire(_ hostIdentifier: String) async {
-        if heldAccounts.insert(hostIdentifier).inserted { return }
+        if heldAccounts.insert(hostIdentifier).inserted {
+            return
+        }
         await withCheckedContinuation { waiters[hostIdentifier, default: []].append($0) }
     }
 
     private func release(_ hostIdentifier: String, finishingSignOut: Bool) {
-        if finishingSignOut { signOutInProgress.remove(hostIdentifier) }
+        if finishingSignOut {
+            signOutInProgress.remove(hostIdentifier)
+        }
         guard var pending = waiters[hostIdentifier], !pending.isEmpty else {
             heldAccounts.remove(hostIdentifier)
             waiters[hostIdentifier] = nil

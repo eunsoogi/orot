@@ -45,7 +45,8 @@ export async function insertStoredRecord<K extends RecordKind>(
 ): Promise<void> {
   const { table, parameters } = values(kind, input);
   await executor.execute(
-    'INSERT INTO ' + table +
+    'INSERT INTO ' +
+      table +
       ' (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
     parameters,
   );
@@ -58,7 +59,8 @@ export async function updateStoredRecord<K extends RecordKind>(
 ): Promise<boolean> {
   const { table, record } = values(kind, input);
   const result = await executor.execute(
-    'UPDATE ' + table +
+    'UPDATE ' +
+      table +
       ' SET effective_at = ?, recorded_at = ?, ingested_at = ?, payload_json = ? WHERE id = ?',
     [record.effectiveAt, record.recordedAt, record.ingestedAt, JSON.stringify(record), record.id],
   );
@@ -72,7 +74,9 @@ export async function upsertStoredRecord<K extends RecordKind>(
 ): Promise<void> {
   const { table, parameters } = values(kind, input);
   await executor.execute(
-    'INSERT INTO ' + table + ' (id, effective_at, recorded_at, ingested_at, payload_json) ' +
+    'INSERT INTO ' +
+      table +
+      ' (id, effective_at, recorded_at, ingested_at, payload_json) ' +
       'VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET ' +
       'effective_at = excluded.effective_at, recorded_at = excluded.recorded_at, ' +
       'ingested_at = excluded.ingested_at, payload_json = excluded.payload_json',

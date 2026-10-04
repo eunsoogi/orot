@@ -23,11 +23,11 @@ function runFakeXcrun(scriptPath, fakeScript, args, extraEnv = {}) {
   const outputPath = join(directory, 'github-output');
   const envPath = join(directory, 'github-env');
   mkdirSync(binDirectory, { recursive: true });
-  writeFileSync(fakeXcrun, [
-    '#!/usr/bin/env bash',
-    'printf \'%s\\n\' "$*" >> "$XCRUN_CALLS"',
-    fakeScript,
-  ].join('\n'), { mode: 0o755 });
+  writeFileSync(
+    fakeXcrun,
+    ['#!/usr/bin/env bash', 'printf \'%s\\n\' "$*" >> "$XCRUN_CALLS"', fakeScript].join('\n'),
+    { mode: 0o755 },
+  );
   const result = spawnSync('bash', [scriptPath, ...args(logPath, identityPath)], {
     encoding: 'utf8',
     env: {
@@ -44,7 +44,9 @@ function runFakeXcrun(scriptPath, fakeScript, args, extraEnv = {}) {
       ...extraEnv,
     },
   });
-  const calls = existsSync(callsPath) ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean) : [];
+  const calls = existsSync(callsPath)
+    ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean)
+    : [];
   const log = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
   const output = result.stdout;
   const identity = existsSync(identityPath) ? readFileSync(identityPath, 'utf8') : '';
@@ -180,11 +182,7 @@ test('attempts deletion and preserves a shutdown failure', () => {
 });
 
 test('rejects a malformed Simulator identifier without invoking simctl', () => {
-  const result = runFakeXcrun(
-    teardownScript,
-    'exit 97',
-    (logPath) => ['not-a-udid', logPath],
-  );
+  const result = runFakeXcrun(teardownScript, 'exit 97', (logPath) => ['not-a-udid', logPath]);
   assert.notEqual(result.result.status, 0);
   assert.deepEqual(result.calls, []);
 });

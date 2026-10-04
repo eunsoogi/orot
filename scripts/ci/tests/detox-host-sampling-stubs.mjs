@@ -11,10 +11,14 @@ export function installDetoxHostSamplerStubs(directory) {
   };
 
   for (const [name, body] of Object.entries(commands)) {
-    writeFileSync(join(directory, name), [
-      '#!/usr/bin/env bash',
-      `printf '%s %s\\n' '${name}' "$*" >> "$DETOX_SAMPLER_CALLS"`,
-      body,
-    ].join('\n'), { mode: 0o755 });
+    writeFileSync(
+      join(directory, name),
+      [
+        '#!/usr/bin/env bash',
+        `printf '%s %s\\n' '${name}' "$*" >> "$DETOX_SAMPLER_CALLS"`,
+        body,
+      ].join('\n'),
+      { mode: 0o755 },
+    );
   }
 }

@@ -39,9 +39,13 @@ public enum ChatGPTOAuthError: Error, Equatable, LocalizedError, Sendable {
         case .accountIdentityMismatch: return "선택한 ChatGPT 계정과 로그인 응답이 일치하지 않습니다."
         case .planPermissionMissing: return "chatgpt.tokens.use.direct 권한이 허용되지 않았습니다."
         case .modelCatalogUnavailable: return "/v1/models 목록을 가져오지 못했습니다."
-        case .modelCatalogHTTPFailure(let diagnostics):
-            if diagnostics.httpStatusCode == 401 { return "선택한 ChatGPT 계정을 다시 인증해야 합니다." }
-            if diagnostics.httpStatusCode == 429 { return "ChatGPT 요금제 사용 한도에 도달했습니다." }
+        case let .modelCatalogHTTPFailure(diagnostics):
+            if diagnostics.httpStatusCode == 401 {
+                return "선택한 ChatGPT 계정을 다시 인증해야 합니다."
+            }
+            if diagnostics.httpStatusCode == 429 {
+                return "ChatGPT 요금제 사용 한도에 도달했습니다."
+            }
             return "/v1/models 요청이 HTTP \(diagnostics.httpStatusCode ?? 0) 상태로 실패했습니다."
         case .credentialStoreUnavailable: return "보호된 로그인 정보를 저장하거나 불러오지 못했습니다."
         case .accountNotFound: return "저장된 ChatGPT 계정을 찾지 못했습니다."
@@ -111,30 +115,4 @@ public struct PendingChatGPTAuthorization: Sendable {
     let codeVerifier: String
     let discovery: OpenIDConfiguration
     let authorizationGeneration: UInt64
-
-    init(
-        authorizationURL: URL,
-        redirectURI: URL,
-        hostIdentifier: String,
-        requestedClientID: String,
-        expectedSubject: String?,
-        idTokenHint: String?,
-        state: String,
-        nonce: String,
-        codeVerifier: String,
-        discovery: OpenIDConfiguration,
-        authorizationGeneration: UInt64
-    ) {
-        self.authorizationURL = authorizationURL
-        self.redirectURI = redirectURI
-        self.hostIdentifier = hostIdentifier
-        self.requestedClientID = requestedClientID
-        self.expectedSubject = expectedSubject
-        self.idTokenHint = idTokenHint
-        self.state = state
-        self.nonce = nonce
-        self.codeVerifier = codeVerifier
-        self.discovery = discovery
-        self.authorizationGeneration = authorizationGeneration
-    }
 }

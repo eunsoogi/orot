@@ -1,9 +1,12 @@
 /** @type {Detox.DetoxConfig} */
 const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
-const releaseDerivedDataPath = process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build';
+const releaseDerivedDataPath =
+  process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build';
 
 if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
-  throw new Error('The Detox Release DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.');
+  throw new Error(
+    'The Detox Release DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.',
+  );
 }
 
 module.exports = {

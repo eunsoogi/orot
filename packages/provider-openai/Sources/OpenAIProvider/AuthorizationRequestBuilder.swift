@@ -10,12 +10,13 @@ enum AuthorizationRequestBuilder {
         verifier: String,
         agentName: String,
         clientID: String = ChatGPTOAuthConstants.initialClientID,
-        idTokenHint: String? = nil
+        idTokenHint: String? = nil,
     ) throws -> URL {
         guard UserDefaultsHostIdentifierStore.isValidHostIdentifier(hostIdentifier),
               !state.isEmpty,
               !nonce.isEmpty,
-              Self.isValidClientSelection(clientID: clientID, agentName: agentName, idTokenHint: idTokenHint) else {
+              isValidClientSelection(clientID: clientID, agentName: agentName, idTokenHint: idTokenHint)
+        else {
             throw ChatGPTOAuthError.invalidAuthorizationRequest
         }
         guard ChatGPTOAuthClient.isValidRedirectURI(redirectURI) else {
@@ -48,7 +49,7 @@ enum AuthorizationRequestBuilder {
     private static func isValidClientSelection(
         clientID: String,
         agentName: String,
-        idTokenHint: String?
+        idTokenHint: String?,
     ) -> Bool {
         if clientID == ChatGPTOAuthConstants.initialClientID {
             return idTokenHint == nil

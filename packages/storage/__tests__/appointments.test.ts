@@ -16,7 +16,9 @@ function createMemoryRepositories() {
   async function execute(query: string, parameters: SqlValue[] = []) {
     if (query.includes('FROM appointments ORDER BY id ASC')) {
       return {
-        rows: [...rows.values()].map(appointment => ({ payload_json: JSON.stringify(appointment) })),
+        rows: [...rows.values()].map((appointment) => ({
+          payload_json: JSON.stringify(appointment),
+        })),
       };
     }
     if (query.includes('FROM appointments WHERE id = ? LIMIT 1')) {
@@ -37,7 +39,7 @@ function createMemoryRepositories() {
     async transaction(operation: (transaction: SqlTransaction) => Promise<void>) {
       const prior = transactionQueue;
       let release!: () => void;
-      transactionQueue = new Promise<void>(resolve => {
+      transactionQueue = new Promise<void>((resolve) => {
         release = resolve;
       });
       await prior;
@@ -71,7 +73,7 @@ describe('appointment persistence adapter', () => {
       clinicLabel: 'Cardiology',
     });
     expect(later.provenance).toEqual({ origin: 'user_reported', sourceRecordIds: [] });
-    expect((await appointments.list()).map(item => item.id)).toEqual(['manual-2', 'manual-1']);
+    expect((await appointments.list()).map((item) => item.id)).toEqual(['manual-2', 'manual-1']);
 
     now = '2026-02-03T10:00:00Z';
     const updated = await appointments.update(earlier.id, {

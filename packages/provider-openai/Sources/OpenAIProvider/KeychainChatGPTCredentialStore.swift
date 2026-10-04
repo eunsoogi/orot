@@ -27,7 +27,8 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
 
         if let data = try readData(account: Self.hostIdentifierAccount),
            let identifier = String(data: data, encoding: .utf8),
-           UserDefaultsHostIdentifierStore.isValidHostIdentifier(identifier) {
+           UserDefaultsHostIdentifierStore.isValidHostIdentifier(identifier)
+        {
             return identifier
         }
 
@@ -48,7 +49,8 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
               account.issuedClientID == issuedClientID,
               UserDefaultsHostIdentifierStore.isValidHostIdentifier(account.hostIdentifier),
               !account.subject.isEmpty,
-              account.credentials.map(Self.hasValidCredentials) ?? true else {
+              account.credentials.map(Self.hasValidCredentials) ?? true
+        else {
             throw ChatGPTOAuthError.credentialStoreUnavailable
         }
         return account
@@ -58,7 +60,8 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
         guard Self.isValidIssuedClientID(account.issuedClientID),
               UserDefaultsHostIdentifierStore.isValidHostIdentifier(account.hostIdentifier),
               !account.subject.isEmpty,
-              account.credentials.map(Self.hasValidCredentials) ?? true else {
+              account.credentials.map(Self.hasValidCredentials) ?? true
+        else {
             throw ChatGPTOAuthError.invalidIdentity
         }
 
@@ -115,7 +118,9 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
 
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound { return nil }
+        if status == errSecItemNotFound {
+            return nil
+        }
         guard status == errSecSuccess, let data = result as? Data else {
             throw ChatGPTOAuthError.credentialStoreUnavailable
         }
@@ -130,7 +135,9 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
         ]
 
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecSuccess { return }
+        if updateStatus == errSecSuccess {
+            return
+        }
         guard updateStatus == errSecItemNotFound else {
             throw ChatGPTOAuthError.credentialStoreUnavailable
         }
@@ -138,9 +145,12 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
         var item = query
         attributes.forEach { item[$0.key] = $0.value }
         let addStatus = SecItemAdd(item as CFDictionary, nil)
-        if addStatus == errSecSuccess { return }
+        if addStatus == errSecSuccess {
+            return
+        }
         if addStatus == errSecDuplicateItem,
-           SecItemUpdate(query as CFDictionary, attributes as CFDictionary) == errSecSuccess {
+           SecItemUpdate(query as CFDictionary, attributes as CFDictionary) == errSecSuccess
+        {
             return
         }
         throw ChatGPTOAuthError.credentialStoreUnavailable
@@ -161,7 +171,8 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
     static func isValidIssuedClientID(_ value: String) -> Bool {
         guard value != ChatGPTOAuthConstants.initialClientID,
               !value.isEmpty,
-              value.utf8.count <= 256 else {
+              value.utf8.count <= 256
+        else {
             return false
         }
         return value.unicodeScalars.allSatisfy {

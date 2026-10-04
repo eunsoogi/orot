@@ -16,7 +16,7 @@ case "$resource_sampling" in
   true)
     resource_log_arg="OROT_DETOX_RESOURCE_LOG_PATH=$artifact_dir/detox-resource-samples.log"
     ;;
-  false|'')
+  false | '')
     resource_sampling=false
     ;;
   *)
@@ -77,7 +77,7 @@ set +e
 scripts/ci/run-command.sh "$suite" "$log_path" -- "${command[@]}"
 command_status=$?
 summary_args=("$log_path" "$suite")
-if [[ ( "$suite" == e2e-release || "$suite" == e2e-openai-provider ) && -n "${GITHUB_OUTPUT:-}" ]]; then
+if [[ ("$suite" == e2e-release || "$suite" == e2e-openai-provider) && -n "${GITHUB_OUTPUT:-}" ]]; then
   summary_args+=("$GITHUB_OUTPUT")
 fi
 node scripts/ci/require-jest-summary.mjs "${summary_args[@]}"

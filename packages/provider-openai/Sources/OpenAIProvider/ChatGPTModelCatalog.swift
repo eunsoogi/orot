@@ -4,7 +4,7 @@ public extension ChatGPTOAuthClient {
     func listModels(for account: ChatGPTAccountAccess) async throws -> [ListedChatGPTModel] {
         guard account.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
         let stored = try await sessionManager.accountWithFreshAccessToken(
-            issuedClientID: account.issuedClientID
+            issuedClientID: account.issuedClientID,
         )
         guard stored.subject == account.subject else { throw ChatGPTOAuthError.accountIdentityMismatch }
         guard stored.hasDirectPlanAccess else { throw ChatGPTOAuthError.planPermissionMissing }
@@ -24,7 +24,6 @@ public extension ChatGPTOAuthClient {
     }
 
     private func listModels(accessToken: String) async throws -> [ListedChatGPTModel] {
-
         var request = URLRequest(url: URL(string: "\(ChatGPTOAuthConstants.resource)/models")!)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -48,12 +47,13 @@ public extension ChatGPTOAuthClient {
                 ResponsesHTTPFailureParser.diagnostics(
                     statusCode: httpResponse.statusCode,
                     requestID: httpResponse.value(forHTTPHeaderField: "x-request-id"),
-                    body: data
-                )
+                    body: data,
+                ),
             )
         }
         guard data.count <= 1_048_576,
-              let body = try? JSONDecoder().decode(ModelCatalogResponse.self, from: data) else {
+              let body = try? JSONDecoder().decode(ModelCatalogResponse.self, from: data)
+        else {
             throw ChatGPTOAuthError.modelCatalogUnavailable
         }
 

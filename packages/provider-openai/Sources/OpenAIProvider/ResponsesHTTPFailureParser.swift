@@ -1,12 +1,12 @@
 import Foundation
 
 enum ResponsesHTTPFailureParser {
-    private static let maximumBodyBytes = 65_536
+    private static let maximumBodyBytes = 65536
 
     static func diagnostics(
         for stream: AsyncThrowingStream<Data, Error>,
         statusCode: Int,
-        requestID: String?
+        requestID: String?,
     ) async throws -> ChatGPTResponsesDiagnostics {
         var body = Data()
         var truncated = false
@@ -36,14 +36,14 @@ enum ResponsesHTTPFailureParser {
     static func diagnostics(
         statusCode: Int,
         requestID: String?,
-        body: Data
+        body: Data,
     ) -> ChatGPTResponsesDiagnostics {
         let truncated = body.count > maximumBodyBytes
         return diagnostics(
             statusCode: statusCode,
             requestID: requestID,
             body: Data(body.prefix(maximumBodyBytes)),
-            truncated: truncated
+            truncated: truncated,
         )
     }
 
@@ -51,7 +51,7 @@ enum ResponsesHTTPFailureParser {
         statusCode: Int,
         requestID: String?,
         body: Data,
-        truncated: Bool
+        truncated: Bool,
     ) -> ChatGPTResponsesDiagnostics {
         let parsed = Self.parse(body)
         return ChatGPTResponsesDiagnostics(
@@ -60,20 +60,23 @@ enum ResponsesHTTPFailureParser {
             bodyTruncated: truncated,
             code: parsed.code,
             parameter: parsed.parameter,
-            requestID: requestID
+            requestID: requestID,
         )
     }
 
     private static func parse(_ body: Data) -> (shape: String, code: String?, parameter: String?) {
         guard !body.isEmpty else { return ("empty", nil, nil) }
         guard let object = try? JSONSerialization.jsonObject(with: body),
-              let dictionary = object as? [String: Any] else {
+              let dictionary = object as? [String: Any]
+        else {
             return ("non_json", nil, nil)
         }
         if let error = dictionary["error"] as? [String: Any] {
             return ("error_object", error["code"] as? String, error["param"] as? String)
         }
-        if dictionary.keys.contains("detail") { return ("detail_object", nil, nil) }
+        if dictionary.keys.contains("detail") {
+            return ("detail_object", nil, nil)
+        }
         return ("json_object", nil, nil)
     }
 }

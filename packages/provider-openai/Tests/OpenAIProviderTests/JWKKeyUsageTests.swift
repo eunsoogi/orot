@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class JWKKeyUsageTests: XCTestCase {
     func testJWKSKeysMustPermitSignatureVerification() async throws {
@@ -14,7 +14,7 @@ final class JWKKeyUsageTests: XCTestCase {
                     jwksData: jwksData,
                     clientID: "oaiapp_fixture-client",
                     nonce: "fixture-nonce",
-                    now: Date()
+                    now: Date(),
                 )
                 XCTFail("An encryption-only JWK must not verify an ID token.")
             } catch let error as ChatGPTOAuthError {
@@ -27,7 +27,7 @@ final class JWKKeyUsageTests: XCTestCase {
 
     private func fixtureJWKS(
         use: String? = nil,
-        keyOperations: [String]? = nil
+        keyOperations: [String]? = nil,
     ) throws -> (data: Data, token: String) {
         let url = Bundle.module.url(forResource: "identity-tokens", withExtension: "json")!
         let source = try Data(contentsOf: url)
@@ -35,13 +35,17 @@ final class JWKKeyUsageTests: XCTestCase {
         var jwks = document["jwks"] as! [String: Any]
         var keys = jwks["keys"] as! [[String: Any]]
 
-        if let use { keys[0]["use"] = use }
-        if let keyOperations { keys[0]["key_ops"] = keyOperations }
+        if let use {
+            keys[0]["use"] = use
+        }
+        if let keyOperations {
+            keys[0]["key_ops"] = keyOperations
+        }
         jwks["keys"] = keys
         document["jwks"] = jwks
 
         let fixture = try JSONDecoder().decode(IdentityFixture.self, from: JSONSerialization.data(withJSONObject: document))
-        return (try JSONSerialization.data(withJSONObject: jwks), fixture.tokens["valid"]!)
+        return try (JSONSerialization.data(withJSONObject: jwks), fixture.tokens["valid"]!)
     }
 }
 

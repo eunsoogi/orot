@@ -46,11 +46,7 @@ export const validContracts = [
       pageNumber: 1,
     },
   ],
-  [
-    'Encounter',
-    EncounterSchema,
-    { ...metadata('encounter-1'), encounterKind: 'outpatient' },
-  ],
+  ['Encounter', EncounterSchema, { ...metadata('encounter-1'), encounterKind: 'outpatient' }],
   [
     'HealthObservation',
     HealthObservationSchema,

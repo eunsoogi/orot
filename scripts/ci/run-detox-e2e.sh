@@ -7,8 +7,11 @@ if [[ $# -gt 1 ]]; then
 fi
 profile="${1:-both}"
 case "$profile" in
-  both|release|openai-provider) ;;
-  *) printf 'Unknown Detox test profile: %s\nUsage: %s [both|release|openai-provider]\n' "$profile" "$0" >&2; exit 2 ;;
+  both | release | openai-provider) ;;
+  *)
+    printf 'Unknown Detox test profile: %s\nUsage: %s [both|release|openai-provider]\n' "$profile" "$0" >&2
+    exit 2
+    ;;
 esac
 
 if [[ -z "${DETOX_ARTIFACTS_LOCATION:-}" ]]; then
@@ -38,8 +41,11 @@ fi
 
 log_level="${OROT_DETOX_TEST_LOG_LEVEL:-info}"
 case "$log_level" in
-  fatal|error|warn|info|verbose|debug|trace) ;;
-  *) printf 'Unsupported Detox log level: %s\n' "$log_level" >&2; exit 2 ;;
+  fatal | error | warn | info | verbose | debug | trace) ;;
+  *)
+    printf 'Unsupported Detox log level: %s\n' "$log_level" >&2
+    exit 2
+    ;;
 esac
 
 resource_sampling="${OROT_DETOX_RESOURCE_SAMPLING:-false}"
@@ -47,7 +53,7 @@ case "$resource_sampling" in
   true)
     resource_log="${OROT_DETOX_RESOURCE_LOG_PATH:-$DETOX_ARTIFACTS_LOCATION/detox-resource-samples.log}"
     ;;
-  false|'')
+  false | '')
     resource_log=
     ;;
   *)
@@ -57,7 +63,7 @@ case "$resource_sampling" in
 esac
 if [[ -n "$resource_log" ]]; then
   mkdir -p "$(dirname "$resource_log")"
-  : >> "$resource_log"
+  : >>"$resource_log"
 fi
 
 sample_processes() {
@@ -69,19 +75,19 @@ sample_processes() {
     printf 'DETOX_RESOURCE_SAMPLE profile=%s phase=%s sample=%s utc=%s\n' \
       "$name" "$phase" "$sample_index" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     printf 'DETOX_PS_PROCESS_SAMPLE percent_cpu=lifetime-average rss_kib=resident-size\n'
-    ps -A -o pid= -o ppid= -o %cpu= -o rss= -o etime= -o comm= \
-      | awk 'tolower($0) ~ /(node|pnpm|jest|detox|simulator|coresimulator|orot)/' || true
+    ps -A -o pid= -o ppid= -o %cpu= -o rss= -o etime= -o comm= |
+      awk 'tolower($0) ~ /(node|pnpm|jest|detox|simulator|coresimulator|orot)/' || true
     if [[ "$phase" != running || "$sample_index" == 0 || $((sample_index % 4)) -eq 0 ]]; then
       if [[ "$(uname -s)" == Darwin ]]; then
         printf 'DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples interval_seconds=1 utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-        top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null \
-          | awk 'BEGIN { sample = 0 } /^Processes:/ { sample += 1 } sample == 2 { print }' || true
+        top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null |
+          awk 'BEGIN { sample = 0 } /^Processes:/ { sample += 1 } sample == 2 { print }' || true
         printf 'DETOX_MEMORY_COUNTER_SAMPLE source=vm_stat_and_swapusage utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         vm_stat || true
         sysctl vm.swapusage 2>/dev/null || true
       fi
     fi
-  } >> "$resource_log"
+  } >>"$resource_log"
 }
 
 run_profile() {
@@ -118,9 +124,9 @@ run_profile() {
       fi
       sleep 1
       sample_elapsed=$((sample_elapsed + 1))
-      if kill -0 "$process_id" 2>/dev/null \
-        && (( sample_elapsed >= 15 )) \
-        && (( sample_index < resource_sample_limit )); then
+      if kill -0 "$process_id" 2>/dev/null &&
+        ((sample_elapsed >= 15)) &&
+        ((sample_index < resource_sample_limit)); then
         sample_index=$((sample_index + 1))
         sample_processes "$name" running "$sample_index"
         sample_elapsed=0
@@ -129,7 +135,7 @@ run_profile() {
     wait "$process_id" || status=$?
   fi
   printf 'DETOX_PROFILE_END profile=%s status=%s elapsed_seconds=%s utc=%s\n' \
-    "$name" "$status" "$(( $(date +%s) - started_epoch ))" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    "$name" "$status" "$(($(date +%s) - started_epoch))" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   if [[ -n "$resource_log" ]]; then sample_processes "$name" after "$sample_index"; fi
   return "$status"
 }
@@ -142,10 +148,10 @@ run_profile_for_configuration() {
   export OROT_DETOX_TEST_PROFILE="$name"
   run_profile "$name" "$simulator_id" "$artifact_name" \
     pnpm --filter @orot/mobile exec -- detox test \
-      --config-path ../../scripts/ci/detox-e2e-profile.detox.config.cjs \
-      "$@" \
-      --loglevel "$log_level" \
-      --artifacts-location "$DETOX_ARTIFACTS_LOCATION/$artifact_name"
+    --config-path ../../scripts/ci/detox-e2e-profile.detox.config.cjs \
+    "$@" \
+    --loglevel "$log_level" \
+    --artifacts-location "$DETOX_ARTIFACTS_LOCATION/$artifact_name"
 }
 
 release_status=0

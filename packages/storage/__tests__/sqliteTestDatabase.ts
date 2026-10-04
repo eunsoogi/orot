@@ -34,7 +34,7 @@ export function openSqliteTestDatabase(path: string): {
   function exclusive<T>(operation: () => Promise<T> | T): Promise<T> {
     const previous = tail;
     let release: () => void = () => undefined;
-    tail = new Promise<void>(resolve => {
+    tail = new Promise<void>((resolve) => {
       release = resolve;
     });
     return previous.then(async () => {

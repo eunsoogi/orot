@@ -17,15 +17,18 @@ extension ChatGPTSessionManager {
             let request = TokenExchangeRequestBuilder.buildRevocation(
                 endpoint: configuration.revocationEndpoint,
                 clientID: issuedClientID,
-                refreshToken: refreshToken
+                refreshToken: refreshToken,
             )
             do {
                 let (_, response) = try await transport.data(for: request)
                 let statusCode = (response as? HTTPURLResponse)?.statusCode
-                if statusCode == 200 { return true }
+                if statusCode == 200 {
+                    return true
+                }
                 guard let statusCode,
-                      (500...599).contains(statusCode),
-                      retryIndex < revocationRetryDelaysNanoseconds.count else {
+                      (500 ... 599).contains(statusCode),
+                      retryIndex < revocationRetryDelaysNanoseconds.count
+                else {
                     return false
                 }
             } catch {

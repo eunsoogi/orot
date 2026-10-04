@@ -18,7 +18,9 @@ export class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
   }
 
   async listRecords(): Promise<PersistedMemoryRecord[]> {
-    return [...this.records.values()].filter(record => !referencesRemovedSource(record, this.removedSourceIds));
+    return [...this.records.values()].filter(
+      (record) => !referencesRemovedSource(record, this.removedSourceIds),
+    );
   }
 
   async listRemovedSourceIds(): Promise<string[]> {
@@ -85,7 +87,7 @@ export class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
 
 export const embedder = {
   async embed(texts: string[]): Promise<Float32Array[]> {
-    return texts.map(text => {
+    return texts.map((text) => {
       const vector = new Float32Array(16);
       for (const character of text) vector[character.charCodeAt(0) % vector.length] += 1;
       return vector;
@@ -109,8 +111,9 @@ function referencesRemovedSource(
   removedSourceIds: Set<string>,
 ): boolean {
   const sourceIds = (record.meta.provenance as { sourceIds?: unknown } | undefined)?.sourceIds;
-  return Array.isArray(sourceIds) && sourceIds.some(
-    sourceId => typeof sourceId === 'string' && removedSourceIds.has(sourceId),
+  return (
+    Array.isArray(sourceIds) &&
+    sourceIds.some((sourceId) => typeof sourceId === 'string' && removedSourceIds.has(sourceId))
   );
 }
 

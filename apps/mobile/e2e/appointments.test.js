@@ -1,11 +1,15 @@
 /* global by, device, element, waitFor */
 
 async function expectVisible(id) {
-  await waitFor(element(by.id(id))).toBeVisible().withTimeout(30000);
+  await waitFor(element(by.id(id)))
+    .toBeVisible()
+    .withTimeout(30000);
 }
 
 async function expectTextVisible(text) {
-  await waitFor(element(by.text(text))).toBeVisible().withTimeout(30000);
+  await waitFor(element(by.text(text)))
+    .toBeVisible()
+    .withTimeout(30000);
 }
 
 async function expectAppointmentsOpen() {

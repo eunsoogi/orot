@@ -19,17 +19,17 @@ const State = Annotation.Root({
 
 function createStatefulGraphBuilder() {
   return new StateGraph(State)
-    .addNode('increment', state => ({
+    .addNode('increment', (state) => ({
       value: state.value + 1,
       nodeRuns: ['increment'],
     }))
-    .addNode('double', state => ({
+    .addNode('double', (state) => ({
       value: state.value * 2,
       nodeRuns: ['double'],
     }))
     .addEdge(START, 'increment')
     .addEdge('increment', 'double')
-    .addEdge('double', END)
+    .addEdge('double', END);
 }
 
 type StatefulGraphCompileOptions = Parameters<

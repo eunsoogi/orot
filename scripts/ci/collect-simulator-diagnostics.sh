@@ -24,13 +24,13 @@ if [[ -z "$device_id" && -f "$test_log" ]]; then
 fi
 if [[ -z "$device_id" ]]; then
   if [[ ! -f "$test_log" ]]; then
-    printf 'Detox test log was not created and no dedicated Simulator ID was recorded.\n' > "$output_log"
+    printf 'Detox test log was not created and no dedicated Simulator ID was recorded.\n' >"$output_log"
   else
-    printf 'No dedicated Simulator ID was recorded; see the retained Detox test log.\n' > "$output_log"
+    printf 'No dedicated Simulator ID was recorded; see the retained Detox test log.\n' >"$output_log"
   fi
   exit 0
 fi
 
-if ! bash "$script_dir/run-detox-simctl.sh" "${OROT_DETOX_SIMULATOR_LOG_TIMEOUT_MS:-120000}" spawn "$device_id" log show --last 20m --style compact --predicate 'process == "Orot"' > "$output_log" 2>&1; then
-  printf '\nSimulator log capture failed; see the retained Detox test log.\n' >> "$output_log"
+if ! bash "$script_dir/run-detox-simctl.sh" "${OROT_DETOX_SIMULATOR_LOG_TIMEOUT_MS:-120000}" spawn "$device_id" log show --last 20m --style compact --predicate 'process == "Orot"' >"$output_log" 2>&1; then
+  printf '\nSimulator log capture failed; see the retained Detox test log.\n' >>"$output_log"
 fi

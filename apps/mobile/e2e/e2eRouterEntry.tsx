@@ -2,12 +2,14 @@ import 'react-native-get-random-values';
 import { NativeModules } from 'react-native';
 import { selectEntryRoute } from './selectEntryRoute';
 
-const settingsManager = (NativeModules as unknown as {
-  SettingsManager?: {
-    settings?: Record<string, unknown>;
-    getConstants?: () => { settings?: Record<string, unknown> };
-  };
-}).SettingsManager;
+const settingsManager = (
+  NativeModules as unknown as {
+    SettingsManager?: {
+      settings?: Record<string, unknown>;
+      getConstants?: () => { settings?: Record<string, unknown> };
+    };
+  }
+).SettingsManager;
 const launchSettings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 

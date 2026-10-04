@@ -12,12 +12,12 @@ let package = Package(
             name: "ChatGPTOAuthSpikeSupport",
             path: "Sources",
             exclude: ["ChatGPTOAuthSpikeApp.swift", "ContentView.swift", "LoopbackCallbackServer.swift"],
-            sources: ["AuthorizationCancellationState.swift"]
+            sources: ["AuthorizationCancellationState.swift"],
         ),
         .testTarget(
             name: "ChatGPTOAuthSpikeSupportTests",
             dependencies: ["ChatGPTOAuthSpikeSupport"],
-            path: "Tests"
+            path: "Tests",
         ),
-    ]
+    ],
 )

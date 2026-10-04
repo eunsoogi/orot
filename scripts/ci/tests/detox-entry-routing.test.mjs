@@ -7,11 +7,15 @@ import test from 'node:test';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
-const selectEntryRoute = requireFromRepository('./apps/mobile/e2e/selectEntryRoute.js').selectEntryRoute;
+const selectEntryRoute = requireFromRepository(
+  './apps/mobile/e2e/selectEntryRoute.js',
+).selectEntryRoute;
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
-const openAiDetoxConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.detox.config.js');
+const openAiDetoxConfig = requireFromRepository(
+  './apps/mobile/e2e/openai-provider.detox.config.js',
+);
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 
 function requireWithDetoxProfile(modulePath, profile) {
@@ -56,8 +60,14 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
 
 test('selects the E2E-only appointments screen backed by encrypted local storage', () => {
   const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
-  const appointmentsEntry = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointmentsProbeEntry.tsx'), 'utf8');
-  const appointmentsTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'), 'utf8');
+  const appointmentsEntry = readFileSync(
+    join(repositoryRoot, 'apps/mobile/e2e/appointmentsProbeEntry.tsx'),
+    'utf8',
+  );
+  const appointmentsTest = readFileSync(
+    join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'),
+    'utf8',
+  );
 
   assert.match(router, /case 'appointments':\s*require\('\.\/appointmentsProbeEntry'\)/);
   assert.match(appointmentsEntry, /AppointmentsScreen/);
@@ -106,7 +116,14 @@ test('the Detox runner profile keeps the existing test inventories while limitin
     assert.deepEqual(candidate.testMatch, baseConfig.testMatch);
     assert.deepEqual(candidate.testPathIgnorePatterns, baseConfig.testPathIgnorePatterns);
     assert.deepEqual(candidate.transform, {});
-    for (const preservedKey of ['globalSetup', 'globalTeardown', 'reporters', 'testEnvironment', 'testTimeout', 'maxWorkers']) {
+    for (const preservedKey of [
+      'globalSetup',
+      'globalTeardown',
+      'reporters',
+      'testEnvironment',
+      'testTimeout',
+      'maxWorkers',
+    ]) {
       assert.deepEqual(candidate[preservedKey], baseConfig[preservedKey]);
     }
   }
@@ -121,7 +138,10 @@ test('the Detox runner profile keeps the existing test inventories while limitin
     assert.deepEqual(candidateDetoxConfig.devices, baseConfig.devices);
     assert.equal(candidateDetoxConfig.behavior, baseConfig.behavior);
     assert.deepEqual(candidateDetoxConfig.testRunner.jest, baseConfig.testRunner.jest);
-    assert.equal(candidateDetoxConfig.testRunner.args.config, join(repositoryRoot, 'scripts/ci/detox-e2e-profile.jest.config.cjs'));
+    assert.equal(
+      candidateDetoxConfig.testRunner.args.config,
+      join(repositoryRoot, 'scripts/ci/detox-e2e-profile.jest.config.cjs'),
+    );
   }
 });
 
@@ -146,9 +166,18 @@ test('Release probes share one app build while OpenAI keeps its separate Debug-o
 
 test('runs Release and OpenAI Debug in independent jobs behind a fail-closed aggregate check', () => {
   const workflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
-  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
-  const releaseCall = workflow.slice(workflow.indexOf('  detox_release_e2e:'), workflow.indexOf('  detox_openai_provider_e2e:'));
-  const debugCall = workflow.slice(workflow.indexOf('  detox_openai_provider_e2e:'), workflow.indexOf('  detox_ios_e2e:'));
+  const profileWorkflow = readFileSync(
+    join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
+    'utf8',
+  );
+  const releaseCall = workflow.slice(
+    workflow.indexOf('  detox_release_e2e:'),
+    workflow.indexOf('  detox_openai_provider_e2e:'),
+  );
+  const debugCall = workflow.slice(
+    workflow.indexOf('  detox_openai_provider_e2e:'),
+    workflow.indexOf('  detox_ios_e2e:'),
+  );
   const aggregate = workflow.slice(workflow.indexOf('  detox_ios_e2e:'));
   assert.match(releaseCall, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
   assert.match(releaseCall, /profile: release/);
@@ -164,8 +193,14 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
 });
 
 test('keys native dependency and per-profile DerivedData caches by the exact toolchain and build inputs', () => {
-  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
-  const fingerprintSource = readFileSync(join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'), 'utf8');
+  const profileWorkflow = readFileSync(
+    join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
+    'utf8',
+  );
+  const fingerprintSource = readFileSync(
+    join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
+    'utf8',
+  );
   const getStep = (name) => {
     const start = profileWorkflow.indexOf(`- name: ${name}`);
     const end = profileWorkflow.indexOf('\n      - name:', start + 1);
@@ -176,7 +211,9 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   const debugCache = getStep('Cache OpenAI Debug Detox DerivedData');
   const buildStep = getStep('Build Detox iOS Simulator app');
   const fingerprintStep = getStep('Compute stable Detox cache fingerprints');
-  const fingerprintStepIndex = profileWorkflow.indexOf('- name: Compute stable Detox cache fingerprints');
+  const fingerprintStepIndex = profileWorkflow.indexOf(
+    '- name: Compute stable Detox cache fingerprints',
+  );
   const rnCacheStepIndex = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
   const buildStepIndex = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
 

@@ -22,11 +22,11 @@ function startFake(scriptPath, args, fakeScript, extraEnv = {}) {
   const identityPath = join(directory, 'simulator.udid');
   const bootStartedPath = join(directory, 'boot-started');
   mkdirSync(binDirectory, { recursive: true });
-  writeFileSync(join(binDirectory, 'xcrun'), [
-    '#!/usr/bin/env bash',
-    'printf \'%s\\n\' "$*" >> "$XCRUN_CALLS"',
-    fakeScript,
-  ].join('\n'), { mode: 0o755 });
+  writeFileSync(
+    join(binDirectory, 'xcrun'),
+    ['#!/usr/bin/env bash', 'printf \'%s\\n\' "$*" >> "$XCRUN_CALLS"', fakeScript].join('\n'),
+    { mode: 0o755 },
+  );
   const child = spawn('bash', [scriptPath, ...args({ logPath, identityPath })], {
     detached: true,
     stdio: 'ignore',
@@ -57,7 +57,11 @@ async function waitUntil(predicate, timeoutMs) {
 
 async function stopGroup(child) {
   if (child.exitCode !== null || child.signalCode !== null) return;
-  try { process.kill(-child.pid, 'SIGKILL'); } catch {}
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch (error) {
+    if (error.code !== 'ESRCH') throw error;
+  }
 }
 
 function callsFrom(path) {
@@ -91,9 +95,16 @@ test('cancellation during boot cleans up the already-published dedicated Simulat
       () => existsSync(harness.bootStartedPath) || harness.child.exitCode !== null,
       3000,
     );
-    assert.ok(enteredBoot && existsSync(harness.bootStartedPath), 'preparation reached the boot command');
+    assert.ok(
+      enteredBoot && existsSync(harness.bootStartedPath),
+      'preparation reached the boot command',
+    );
     assert.equal(readFileSync(harness.identityPath, 'utf8'), `${simulatorId}\n`);
-    try { process.kill(-harness.child.pid, 'SIGTERM'); } catch {}
+    try {
+      process.kill(-harness.child.pid, 'SIGTERM');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
     const result = await Promise.race([
       harness.closed,
       new Promise((resolve) => setTimeout(() => resolve(null), 3000)),

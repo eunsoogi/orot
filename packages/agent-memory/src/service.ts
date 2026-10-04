@@ -1,10 +1,6 @@
 import { Memory } from 'rememori';
 import type { Embedder, RecallOptions } from 'rememori';
-import type {
-  AgentMemoryHit,
-  AgentMemoryInput,
-  AgentMemoryStorageAdapter,
-} from './types';
+import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import {
   isAgentMemoryKind,
   isProvenance,
@@ -27,7 +23,10 @@ export interface AgentMemorySourceRemovalResult {
 export interface AgentMemoryService {
   remember(input: AgentMemoryInput): Promise<string>;
   update(input: AgentMemoryInput): Promise<string>;
-  recall(query: string, options?: Pick<RecallOptions, 'limit' | 'tags' | 'minSimilarity'>): Promise<AgentMemoryHit[]>;
+  recall(
+    query: string,
+    options?: Pick<RecallOptions, 'limit' | 'tags' | 'minSimilarity'>,
+  ): Promise<AgentMemoryHit[]>;
   forget(memoryId: string): Promise<boolean>;
   forgetBySourceId(sourceId: string): Promise<number>;
   /** Serializes linked-memory cleanup with source deletion; the callback only removes the source record. */
@@ -38,7 +37,9 @@ export interface AgentMemoryService {
   close(): Promise<void>;
 }
 
-export async function createAgentMemory(options: CreateAgentMemoryOptions): Promise<AgentMemoryService> {
+export async function createAgentMemory(
+  options: CreateAgentMemoryOptions,
+): Promise<AgentMemoryService> {
   const service = new LocalAgentMemory(options.embedder, options.storage);
   await service.open();
   return service;
@@ -75,19 +76,21 @@ class LocalAgentMemory implements AgentMemoryService {
     return this.enqueue(async () => {
       if (!query.trim()) throw new Error('A non-empty memory query is required.');
       const hits = await (await this.getEngine()).recall(query, { ...options, graph: false });
-      return hits.flatMap(hit => {
+      return hits.flatMap((hit) => {
         const metadata = metadataFrom(hit.meta);
         if (!metadata || !isAgentMemoryKind(metadata.kind) || !isProvenance(metadata.provenance)) {
           return [];
         }
-        return [{
-          id: hit.id,
-          text: hit.text,
-          score: hit.score,
-          kind: metadata.kind,
-          provenance: metadata.provenance,
-          createdAt: hit.createdAt,
-        }];
+        return [
+          {
+            id: hit.id,
+            text: hit.text,
+            score: hit.score,
+            kind: metadata.kind,
+            provenance: metadata.provenance,
+            createdAt: hit.createdAt,
+          },
+        ];
       });
     });
   }
@@ -95,7 +98,7 @@ class LocalAgentMemory implements AgentMemoryService {
   forget(memoryId: string): Promise<boolean> {
     return this.enqueue(async () => {
       const records = await this.storage.listRecords();
-      if (!records.some(record => record.id === memoryId)) return false;
+      if (!records.some((record) => record.id === memoryId)) return false;
       return this.runBatch(async () => (await this.getEngine()).forget(memoryId));
     });
   }
@@ -106,8 +109,8 @@ class LocalAgentMemory implements AgentMemoryService {
       if (!normalizedId) throw new Error('A source identifier is required.');
       const records = await this.storage.listRecords();
       const ids = records
-        .filter(record => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
-        .map(record => record.id);
+        .filter((record) => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
+        .map((record) => record.id);
       if (ids.length === 0) return 0;
       return this.runBatch(async () => {
         const engine = await this.getEngine();
@@ -129,8 +132,8 @@ class LocalAgentMemory implements AgentMemoryService {
 
       const records = await this.storage.listRecords();
       const ids = records
-        .filter(record => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
-        .map(record => record.id);
+        .filter((record) => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
+        .map((record) => record.id);
       const memoriesDeleted = await this.runBatch(async () => {
         const engine = await this.getEngine();
         let forgotten = 0;
@@ -154,10 +157,15 @@ class LocalAgentMemory implements AgentMemoryService {
 
   private async write(input: AgentMemoryInput): Promise<string> {
     const normalized = validateInput(input);
-    const removedSourceId = normalized.provenance.sourceIds.find(sourceId => this.removedSourceIds.has(sourceId));
-    if (removedSourceId) throw new Error('Memory cannot reference a source being or already removed.');
+    const removedSourceId = normalized.provenance.sourceIds.find((sourceId) =>
+      this.removedSourceIds.has(sourceId),
+    );
+    if (removedSourceId)
+      throw new Error('Memory cannot reference a source being or already removed.');
     const records = await this.storage.listRecords();
-    const matches = records.filter(record => metadataFrom(record.meta).memoryKey === normalized.memoryKey);
+    const matches = records.filter(
+      (record) => metadataFrom(record.meta).memoryKey === normalized.memoryKey,
+    );
     const current = [...matches].sort((left, right) => right.createdAt - left.createdAt)[0];
     const identical = current && samePayload(current, normalized);
 
@@ -165,7 +173,8 @@ class LocalAgentMemory implements AgentMemoryService {
     return this.runBatch(async () => {
       const engine = await this.getEngine();
       if (identical) {
-        for (const duplicate of matches) if (duplicate.id !== current.id) await engine.forget(duplicate.id);
+        for (const duplicate of matches)
+          if (duplicate.id !== current.id) await engine.forget(duplicate.id);
         return current.id;
       }
       const id = await engine.remember(normalized.text, {
@@ -216,7 +225,10 @@ class LocalAgentMemory implements AgentMemoryService {
       if (this.closed && !allowClosed) throw new Error('Agent memory is closed.');
       return operation();
     });
-    this.tail = result.then(() => undefined, () => undefined);
+    this.tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
     return result;
   }
 }

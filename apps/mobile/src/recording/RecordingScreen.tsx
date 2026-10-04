@@ -33,7 +33,8 @@ const initialSnapshot: RecordingSnapshot = {
 
 function errorMessage(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
-  if (code === 'RECORDING_CONSENT_REQUIRED') return t('recording.errors.consent');
+  if (code === 'RECORDING_CONSENT_REQUIRED')
+    return t('recording.errors.consent');
   if (code === 'RECORDING_MICROPHONE_PERMISSION_DENIED') {
     return t('recording.errors.microphonePermission');
   }
@@ -59,11 +60,11 @@ export default function RecordingScreen({
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(() =>
-    getPendingRecordingRetry(service),
+  const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(
+    () => getPendingRecordingRetry(service),
   );
-  const [sourceSaved, setSourceSaved] = useState(() =>
-    getPendingRecordingRetry(service) === null,
+  const [sourceSaved, setSourceSaved] = useState(
+    () => getPendingRecordingRetry(service) === null,
   );
   const [syntheticProbeReady, setSyntheticProbeReady] = useState(false);
   const [probeError, setProbeError] = useState('');
@@ -83,18 +84,21 @@ export default function RecordingScreen({
           setStateReady(true);
         }
       });
-      service.getState().then(value => {
-        if (mounted) {
-          setSnapshot(value);
-          setConsentAcknowledged(value.consentAcknowledged);
-          setStateReady(true);
-        }
-      }).catch(reason => {
-        if (mounted) {
-          setError(errorMessage(reason));
-          setStateReady(true);
-        }
-      });
+      service
+        .getState()
+        .then(value => {
+          if (mounted) {
+            setSnapshot(value);
+            setConsentAcknowledged(value.consentAcknowledged);
+            setStateReady(true);
+          }
+        })
+        .catch(reason => {
+          if (mounted) {
+            setError(errorMessage(reason));
+            setStateReady(true);
+          }
+        });
     } catch (reason) {
       setError(errorMessage(reason));
       setStateReady(true);

@@ -8,7 +8,9 @@ import AppointmentsScreen from '../src/appointments/AppointmentsScreen';
 import { openLocalAppointmentRepository } from '../src/appointments/localRepository';
 
 function AppointmentsProbeEntry() {
-  const [repository, setRepository] = useState<AppointmentRepository | null>(null);
+  const [repository, setRepository] = useState<AppointmentRepository | null>(
+    null,
+  );
   const [failed, setFailed] = useState(false);
   const [showAppointments, setShowAppointments] = useState(true);
 
@@ -19,7 +21,10 @@ function AppointmentsProbeEntry() {
         if (mounted) setRepository(value);
       },
       error => {
-        console.error('Could not open local encrypted appointments storage:', error);
+        console.error(
+          'Could not open local encrypted appointments storage:',
+          error,
+        );
         if (mounted) setFailed(true);
       },
     );
@@ -47,7 +52,9 @@ function AppointmentsProbeEntry() {
       <Text
         accessible
         accessibilityLabel={message}
-        testID={failed ? 'appointments-probe-error' : 'appointments-probe-loading'}
+        testID={
+          failed ? 'appointments-probe-error' : 'appointments-probe-loading'
+        }
       >
         {message}
       </Text>

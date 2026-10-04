@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ChatGPTOAuthPersistenceTests: XCTestCase {
     func testValidatedSyntheticSignInPersistsIssuedIDsIdentityScopeAndCredentials() async throws {
@@ -22,18 +22,18 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
         }
         let store = InMemoryChatGPTCredentialStore()
         let client = ChatGPTOAuthClient(transport: transport, credentialStore: store)
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
-        let discovery = OpenIDConfiguration(
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
+        let discovery = try OpenIDConfiguration(
             issuer: ChatGPTOAuthConstants.issuer,
-            authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
-            tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
-            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
-            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
+            authorizationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
+            tokenEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/token")),
+            jwksURI: XCTUnwrap(URL(string: "https://auth.openai.com/oauth2/v1/keys")),
+            revocationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")),
         )
         let authorizationGeneration = try await ChatGPTCredentialOperationCoordinator.shared
             .authorizationGeneration(for: "urn:uuid:0cc04a4c-0f3a-4f49-8bda-10675883a491")
-        let pending = PendingChatGPTAuthorization(
-            authorizationURL: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
+        let pending = try PendingChatGPTAuthorization(
+            authorizationURL: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
             redirectURI: redirect,
             hostIdentifier: "urn:uuid:0cc04a4c-0f3a-4f49-8bda-10675883a491",
             requestedClientID: ChatGPTOAuthConstants.initialClientID,
@@ -43,12 +43,12 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             nonce: "fixture-nonce",
             codeVerifier: "fixture-verifier",
             discovery: discovery,
-            authorizationGeneration: authorizationGeneration
+            authorizationGeneration: authorizationGeneration,
         )
 
         let access = try await client.completeAuthorization(
-            callbackURL: URL(string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=fixture-state&client_id=oaiapp_fixture-client")!,
-            pending: pending
+            callbackURL: XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=fixture-state&client_id=oaiapp_fixture-client")),
+            pending: pending,
         )
 
         let stored = try XCTUnwrap(store.loadAccount(issuedClientID: "oaiapp_fixture-client"))
@@ -91,22 +91,22 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             subject: "a-different-selected-subject",
             grantedScopes: [],
             expiresAt: nil,
-            credentials: nil
+            credentials: nil,
         )
         try store.saveAccount(selected)
         let client = ChatGPTOAuthClient(transport: transport, credentialStore: store)
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
-        let discovery = OpenIDConfiguration(
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
+        let discovery = try OpenIDConfiguration(
             issuer: ChatGPTOAuthConstants.issuer,
-            authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
-            tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
-            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
-            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
+            authorizationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
+            tokenEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/token")),
+            jwksURI: XCTUnwrap(URL(string: "https://auth.openai.com/oauth2/v1/keys")),
+            revocationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")),
         )
         let authorizationGeneration = try await ChatGPTCredentialOperationCoordinator.shared
             .authorizationGeneration(for: selected.hostIdentifier)
-        let pending = PendingChatGPTAuthorization(
-            authorizationURL: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
+        let pending = try PendingChatGPTAuthorization(
+            authorizationURL: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
             redirectURI: redirect,
             hostIdentifier: selected.hostIdentifier,
             requestedClientID: selected.issuedClientID,
@@ -116,13 +116,13 @@ final class ChatGPTOAuthPersistenceTests: XCTestCase {
             nonce: "fixture-nonce",
             codeVerifier: "fixture-verifier",
             discovery: discovery,
-            authorizationGeneration: authorizationGeneration
+            authorizationGeneration: authorizationGeneration,
         )
 
         do {
             _ = try await client.completeAuthorization(
-                callbackURL: URL(string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=fixture-state")!,
-                pending: pending
+                callbackURL: XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=fixture-state")),
+                pending: pending,
             )
             XCTFail("A returning sign-in must match the saved account identity.")
         } catch let error as ChatGPTOAuthError {

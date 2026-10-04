@@ -18,21 +18,29 @@ function runBuilder(profile = 'all') {
   const releaseDerivedData = join(directory, 'release-derived-data');
   const debugDerivedData = join(directory, 'debug-derived-data');
   mkdirSync(binDirectory, { recursive: true });
-  writeFileSync(fakePnpm, [
-    '#!/usr/bin/env bash',
-    'printf \'%s\\n\' "$*" >> "$BUILD_CALLS"',
-    'if [[ "$*" == *"ios:pods"* ]]; then exit 0; fi',
-    'if [[ "$*" == *"ios.sim.release"* ]]; then output="$OROT_DETOX_RELEASE_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
-    'elif [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then output="$OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH"; suffix="Debug-iphonesimulator"',
-    'else exit 97; fi',
-    'mkdir -p "$output/Build/Products/$suffix/Orot.app"',
-    'touch "$output/Build/Products/$suffix/Orot.app/Orot"',
-  ].join('\n'), { mode: 0o755 });
-  writeFileSync(fakeXcrun, [
-    '#!/usr/bin/env bash',
-    '[[ "$1 $2" == "lipo -archs" && -f "$3" ]] || exit 95',
-    'printf \'%s\\n\' "$EXPECTED_HOST_ARCH"',
-  ].join('\n'), { mode: 0o755 });
+  writeFileSync(
+    fakePnpm,
+    [
+      '#!/usr/bin/env bash',
+      'printf \'%s\\n\' "$*" >> "$BUILD_CALLS"',
+      'if [[ "$*" == *"ios:pods"* ]]; then exit 0; fi',
+      'if [[ "$*" == *"ios.sim.release"* ]]; then output="$OROT_DETOX_RELEASE_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
+      'elif [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then output="$OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH"; suffix="Debug-iphonesimulator"',
+      'else exit 97; fi',
+      'mkdir -p "$output/Build/Products/$suffix/Orot.app"',
+      'touch "$output/Build/Products/$suffix/Orot.app/Orot"',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
+  writeFileSync(
+    fakeXcrun,
+    [
+      '#!/usr/bin/env bash',
+      '[[ "$1 $2" == "lipo -archs" && -f "$3" ]] || exit 95',
+      'printf \'%s\\n\' "$EXPECTED_HOST_ARCH"',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
   const hostArch = spawnSync('uname', ['-m'], { encoding: 'utf8' }).stdout.trim();
   const result = spawnSync('bash', [builder, ...(profile === 'all' ? [] : [profile])], {
     cwd: repositoryRoot,
@@ -47,7 +55,9 @@ function runBuilder(profile = 'all') {
     },
     maxBuffer: 2_000_000,
   });
-  const calls = existsSync(callsPath) ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean) : [];
+  const calls = existsSync(callsPath)
+    ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean)
+    : [];
   rmSync(directory, { recursive: true, force: true });
   return { result, calls };
 }

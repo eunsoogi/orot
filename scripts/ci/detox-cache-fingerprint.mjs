@@ -17,10 +17,7 @@ const BUILD_INPUT_PATHS = [
   'scripts/ci/detox-cache-fingerprint.mjs',
 ];
 
-const REACT_NATIVE_ARTIFACT_PATHS = [
-  'pnpm-lock.yaml',
-  'apps/mobile/ios/Podfile.lock',
-];
+const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock'];
 
 const GENERATED_DIRECTORY_NAMES = new Set([
   'node_modules',
@@ -34,7 +31,7 @@ const GENERATED_DIRECTORY_NAMES = new Set([
 
 function isGeneratedPath(path) {
   const segments = path.split('/');
-  if (segments.some(segment => GENERATED_DIRECTORY_NAMES.has(segment.toLowerCase()))) {
+  if (segments.some((segment) => GENERATED_DIRECTORY_NAMES.has(segment.toLowerCase()))) {
     return true;
   }
   const iosIndex = segments.indexOf('ios');
@@ -43,21 +40,20 @@ function isGeneratedPath(path) {
 }
 
 function listTrackedInputs(repositoryRoot, pathspecs) {
-  const output = execFileSync(
-    'git',
-    ['-C', repositoryRoot, 'ls-files', '-z', '--', ...pathspecs],
-    { encoding: 'buffer' },
-  );
+  const output = execFileSync('git', ['-C', repositoryRoot, 'ls-files', '-z', '--', ...pathspecs], {
+    encoding: 'buffer',
+  });
   return output
     .toString('utf8')
     .split('\0')
-    .filter(path => path && !isGeneratedPath(path))
+    .filter((path) => path && !isGeneratedPath(path))
     .sort();
 }
 
 function hashTrackedInputs(repositoryRoot, pathspecs) {
   const paths = listTrackedInputs(repositoryRoot, pathspecs);
-  if (paths.length === 0) throw new Error(`No tracked Detox cache inputs matched: ${pathspecs.join(', ')}`);
+  if (paths.length === 0)
+    throw new Error(`No tracked Detox cache inputs matched: ${pathspecs.join(', ')}`);
 
   const hash = createHash('sha256');
   for (const path of paths) {
@@ -95,7 +91,8 @@ function writeGitHubOutputs(outputPath, fingerprints) {
 
 function main() {
   const outputPath = process.env.GITHUB_OUTPUT;
-  if (!outputPath) throw new Error('GITHUB_OUTPUT is required to publish Detox cache fingerprints.');
+  if (!outputPath)
+    throw new Error('GITHUB_OUTPUT is required to publish Detox cache fingerprints.');
   const fingerprints = computeDetoxCacheFingerprints();
   writeGitHubOutputs(outputPath, fingerprints);
   console.log(

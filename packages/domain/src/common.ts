@@ -39,7 +39,7 @@ export const ProvenanceSchema = z.strictObject({
   origin: ProvenanceOriginSchema,
   sourceRecordIds: z
     .array(RecordIdSchema)
-    .refine(ids => new Set(ids).size === ids.length, 'Source record IDs must be unique.'),
+    .refine((ids) => new Set(ids).size === ids.length, 'Source record IDs must be unique.'),
 });
 
 export const ReviewStateSchema = z.discriminatedUnion('status', [
@@ -73,10 +73,7 @@ export const RecordMetadataSchema = z
       });
     }
 
-    if (
-      record.provenance.origin === 'derived' &&
-      record.provenance.sourceRecordIds.length === 0
-    ) {
+    if (record.provenance.origin === 'derived' && record.provenance.sourceRecordIds.length === 0) {
       context.addIssue({
         code: 'custom',
         path: ['provenance', 'sourceRecordIds'],

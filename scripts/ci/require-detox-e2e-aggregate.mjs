@@ -7,19 +7,33 @@ if (args.length !== 8) {
   );
 }
 
-function requireProfile({ label, result, profile, testCases, testSuites, expectedProfile, expectedCases }) {
+function requireProfile({
+  label,
+  result,
+  profile,
+  testCases,
+  testSuites,
+  expectedProfile,
+  expectedCases,
+}) {
   if (result !== 'success') {
-    throw new Error(`${label} child job must succeed; received ${JSON.stringify(result || 'missing')}`);
+    throw new Error(
+      `${label} child job must succeed; received ${JSON.stringify(result || 'missing')}`,
+    );
   }
   if (profile !== expectedProfile) {
-    throw new Error(`${label} child output must identify ${expectedProfile}; received ${JSON.stringify(profile || 'missing')}`);
+    throw new Error(
+      `${label} child output must identify ${expectedProfile}; received ${JSON.stringify(profile || 'missing')}`,
+    );
   }
   for (const [kind, value, expected] of [
     ['test cases', testCases, expectedCases],
     ['Jest suites', testSuites, 1],
   ]) {
     if (!/^(0|[1-9]\d*)$/.test(value ?? '') || Number(value) !== expected) {
-      throw new Error(`${label} child output must report exactly ${expected} ${kind}; received ${JSON.stringify(value || 'missing')}`);
+      throw new Error(
+        `${label} child output must report exactly ${expected} ${kind}; received ${JSON.stringify(value || 'missing')}`,
+      );
     }
   }
 }

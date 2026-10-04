@@ -7,7 +7,9 @@ const response: LanguageModelResponse = { text: 'done', toolCalls: [], finishRea
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>(done => { resolve = done; });
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
   return { promise, resolve };
 }
 
@@ -17,9 +19,13 @@ class PendingBridge implements AppleFoundationModelsNativeBridge {
   private readonly requests = new Map<string, ReturnType<typeof deferred<LanguageModelResponse>>>();
   private readonly started = deferred<void>();
 
-  get bothStarted() { return this.started.promise; }
+  get bothStarted() {
+    return this.started.promise;
+  }
 
-  async getAvailability() { return { status: 'available' as const }; }
+  async getAvailability() {
+    return { status: 'available' as const };
+  }
 
   generate(_request: LanguageModelRequest, requestId: string) {
     this.requestIds.push(requestId);
@@ -31,7 +37,9 @@ class PendingBridge implements AppleFoundationModelsNativeBridge {
 
   async *stream(_request: LanguageModelRequest, _requestId: string) {}
 
-  cancel(requestId: string) { this.cancelled.push(requestId); }
+  cancel(requestId: string) {
+    this.cancelled.push(requestId);
+  }
 
   resolve(requestId: string, result: LanguageModelResponse) {
     this.requests.get(requestId)?.resolve(result);
