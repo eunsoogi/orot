@@ -8,8 +8,8 @@ async function expectTextVisible(text) {
   await waitFor(element(by.text(text))).toBeVisible().withTimeout(30000);
 }
 
-async function openAppointments() {
-  await element(by.id('open-appointments')).tap();
+async function expectAppointmentsOpen() {
+  await expectVisible('appointments-probe-ready');
   await expectVisible('appointment-add');
   await expect(element(by.id('appointments-title'))).toHaveText('예약');
 }
@@ -30,11 +30,9 @@ describe('manual appointments', () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
+    await expectAppointmentsOpen();
     await expect(element(by.id('appointments-empty'))).toHaveText(
       '등록된 예약이 없어요.',
     );
@@ -58,11 +56,9 @@ describe('manual appointments', () => {
     await device.launchApp({
       newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
+    await expectAppointmentsOpen();
     await expectTextVisible('Cardiology clinic');
     await expect(element(by.text('Cardiology clinic'))).toBeVisible();
     await expectTextVisible('2027년 6월 2일 09:45 · 현지 시간');
@@ -82,11 +78,9 @@ describe('manual appointments', () => {
     await device.launchApp({
       newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
+    await expectAppointmentsOpen();
     await expectTextVisible('Neurology clinic');
     await expect(element(by.text('Neurology clinic'))).toBeVisible();
     await expectTextVisible('2027년 6월 3일 10:15 · 현지 시간');

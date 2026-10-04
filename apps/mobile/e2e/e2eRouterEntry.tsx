@@ -15,6 +15,9 @@ switch (selectEntryRoute(launchSettings)) {
   case 'agent-memory':
     require('./agentMemoryProbeEntry');
     break;
+  case 'appointments':
+    require('./appointmentsProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;

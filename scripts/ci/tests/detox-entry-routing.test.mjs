@@ -20,6 +20,7 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
   assert.equal(selectEntryRoute({ OROT_AGENT_MEMORY_PROBE: 'fresh' }), 'agent-memory');
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'graph' }), 'graph');
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'checkpoint' }), 'checkpoint');
+  assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'appointments' }), 'appointments');
   assert.throws(() => selectEntryRoute({ OROT_E2E_PROBE: 'typo' }), /Unsupported OROT_E2E_PROBE/);
   assert.throws(
     () => selectEntryRoute({ OROT_E2E_PROBE: 'graph', OROT_AGENT_MEMORY_PROBE: 'fresh' }),
@@ -33,6 +34,22 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
     () => selectEntryRoute({ OROT_E2E_PROBE: 'checkpoint', OROT_STORAGE_PROBE: 'fresh' }),
     /Conflicting Orot E2E probe selectors/,
   );
+  assert.throws(
+    () => selectEntryRoute({ OROT_E2E_PROBE: 'appointments', OROT_STORAGE_PROBE: 'fresh' }),
+    /Conflicting Orot E2E probe selectors/,
+  );
+});
+
+test('selects the E2E-only appointments screen backed by encrypted local storage', () => {
+  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
+  const appointmentsEntry = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointmentsProbeEntry.tsx'), 'utf8');
+  const appointmentsTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'), 'utf8');
+
+  assert.match(router, /case 'appointments':\s*require\('\.\/appointmentsProbeEntry'\)/);
+  assert.match(appointmentsEntry, /AppointmentsScreen/);
+  assert.match(appointmentsEntry, /openLocalAppointmentRepository/);
+  assert.equal((appointmentsTest.match(/OROT_E2E_PROBE: 'appointments'/g) ?? []).length, 3);
+  assert.doesNotMatch(appointmentsTest, /welcome-title/);
 });
 
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
@@ -93,19 +110,62 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
   assert.match(profileWorkflow, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
 });
 
-test('prepares each dedicated Simulator before its build and waits for boot before E2E', () => {
+test('keys native dependency and per-profile DerivedData caches by the exact toolchain and build inputs', () => {
   const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
+  const getStep = (name) => {
+    const start = profileWorkflow.indexOf(`- name: ${name}`);
+    const end = profileWorkflow.indexOf('\n      - name:', start + 1);
+    return profileWorkflow.slice(start, end < 0 ? undefined : end);
+  };
+  const rnCache = getStep('Cache React Native artifact archives');
+  const releaseCache = getStep('Cache Release Detox DerivedData');
+  const debugCache = getStep('Cache OpenAI Debug Detox DerivedData');
+  const buildStep = getStep('Build Detox iOS Simulator app');
+
+  assert.match(rnCache, /uses: actions\/cache@[0-9a-f]{40}/);
+  assert.match(rnCache, /path: ~\/Library\/Caches\/ReactNative/);
+  assert.match(rnCache, /runner\.os/);
+  assert.match(rnCache, /runner\.arch/);
+  assert.match(rnCache, /EXPECTED_XCODE_VERSION/);
+  assert.match(rnCache, /EXPECTED_IOS_SIMULATOR_SDK/);
+  assert.match(rnCache, /inputs\.profile/);
+  assert.match(rnCache, /pnpm-lock\.yaml/);
+  assert.match(rnCache, /Podfile\.lock/);
+
+  for (const cache of [releaseCache, debugCache]) {
+    assert.match(cache, /uses: actions\/cache@[0-9a-f]{40}/);
+    assert.match(cache, /runner\.os/);
+    assert.match(cache, /runner\.arch/);
+    assert.match(cache, /EXPECTED_XCODE_VERSION/);
+    assert.match(cache, /EXPECTED_IOS_SIMULATOR_SDK/);
+    assert.match(cache, /hashFiles\(/);
+    assert.match(cache, /pnpm-lock\.yaml/);
+    assert.match(cache, /Podfile\.lock/);
+    assert.doesNotMatch(cache, /CoreSimulator|Keychains|simulator\.udid/);
+  }
+
+  assert.match(releaseCache, /if: \$\{\{ inputs\.profile == 'release' \}\}/);
+  assert.match(releaseCache, /path: apps\/mobile\/ios\/build\n/);
+  assert.match(releaseCache, /-release-/);
+  assert.match(debugCache, /if: \$\{\{ inputs\.profile == 'openai-provider' \}\}/);
+  assert.match(debugCache, /path: apps\/mobile\/ios\/build-openai-provider\n/);
+  assert.match(debugCache, /-openai-provider-/);
+  assert.doesNotMatch(buildStep, /if:/);
+});
+
+test('builds the app before preparing its dedicated Simulator and waits for boot before E2E', () => {
+  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
+  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const utilitiesStep = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
   const prepareStep = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
-  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const bootWaitStep = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
   const testStep = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
 
   assert.ok(
-    utilitiesStep >= 0 &&
+    buildStep >= 0 &&
+      utilitiesStep > buildStep &&
       prepareStep > utilitiesStep &&
-      buildStep > prepareStep &&
-      bootWaitStep > buildStep &&
+      bootWaitStep > prepareStep &&
       testStep > bootWaitStep,
   );
 });

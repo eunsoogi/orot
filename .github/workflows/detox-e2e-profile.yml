@@ -83,6 +83,59 @@ jobs:
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
 
+      - name: Cache React Native artifact archives
+        id: rn_artifact_cache
+        timeout-minutes: 10
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/Library/Caches/ReactNative
+          key: orot-rn-ios-artifacts-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock') }}
+
+      - name: Cache Release Detox DerivedData
+        id: release_derived_data_cache
+        if: ${{ inputs.profile == 'release' }}
+        timeout-minutes: 10
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: apps/mobile/ios/build
+          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-${{ hashFiles('.github/workflows/detox-e2e-profile.yml', 'pnpm-lock.yaml', 'package.json', 'apps/mobile/ios/Podfile.lock', 'apps/mobile/**/*', 'apps/mobile/.detoxrc.js', 'packages/**/*', 'scripts/ci/build-detox-apps.sh') }}
+
+      - name: Cache OpenAI Debug Detox DerivedData
+        id: openai_derived_data_cache
+        if: ${{ inputs.profile == 'openai-provider' }}
+        timeout-minutes: 10
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: apps/mobile/ios/build-openai-provider
+          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-${{ hashFiles('.github/workflows/detox-e2e-profile.yml', 'pnpm-lock.yaml', 'package.json', 'apps/mobile/ios/Podfile.lock', 'apps/mobile/**/*', 'apps/mobile/.detoxrc.js', 'packages/**/*', 'scripts/ci/build-detox-apps.sh') }}
+
+      - name: Record Detox cache state
+        timeout-minutes: 1
+        env:
+          DETOX_PROFILE: ${{ inputs.profile }}
+          RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
+          RELEASE_DERIVED_DATA_CACHE_HIT: ${{ steps.release_derived_data_cache.outputs.cache-hit }}
+          OPENAI_DERIVED_DATA_CACHE_HIT: ${{ steps.openai_derived_data_cache.outputs.cache-hit }}
+        run: |
+          mkdir -p artifacts/detox
+          if [[ "${DETOX_PROFILE}" == release ]]; then
+            derived_data_cache_hit="${RELEASE_DERIVED_DATA_CACHE_HIT:-false}"
+          else
+            derived_data_cache_hit="${OPENAI_DERIVED_DATA_CACHE_HIT:-false}"
+          fi
+          {
+            printf 'profile=%s\n' "${DETOX_PROFILE}"
+            printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
+            printf 'derived_data_cache_hit=%s\n' "${derived_data_cache_hit}"
+            printf 'xcode=%s\n' "${EXPECTED_XCODE_VERSION}"
+            printf 'ios_simulator_sdk=%s\n' "${EXPECTED_IOS_SIMULATOR_SDK}"
+            printf 'architecture=%s\n' "$(uname -m)"
+          } > artifacts/detox/native-cache.log
+
+      - name: Build Detox iOS Simulator app
+        timeout-minutes: 45
+        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
+
       - name: Install Detox Simulator utilities
         timeout-minutes: 10
         run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
@@ -91,10 +144,6 @@ jobs:
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-
-      - name: Build Detox iOS Simulator app
-        timeout-minutes: 45
-        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
 
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20

@@ -5,7 +5,7 @@ function selectEntryRoute(settings) {
 
   if (owns(launchSettings, 'OROT_E2E_PROBE')) {
     const probe = launchSettings.OROT_E2E_PROBE;
-    if (probe !== 'graph' && probe !== 'checkpoint') {
+    if (probe !== 'appointments' && probe !== 'graph' && probe !== 'checkpoint') {
       throw new Error('Unsupported OROT_E2E_PROBE value');
     }
     if (owns(launchSettings, 'OROT_AGENT_MEMORY_PROBE') || owns(launchSettings, 'OROT_STORAGE_PROBE')) {
