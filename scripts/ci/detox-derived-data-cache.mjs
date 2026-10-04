@@ -1,18 +1,13 @@
-import {
-  existsSync,
-  lstatSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, lstatSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  inspectCacheManifest,
+  inspectManifestFingerprints,
+  MANIFEST_FILENAME,
+  readCacheManifest,
+} from './detox-cache-manifest.mjs';
 import { computeDetoxCacheFingerprints } from './detox-cache-fingerprint.mjs';
-
-const MANIFEST_FILENAME = '.orot-detox-cache.json';
 
 const PROFILES = {
   release: {
@@ -139,31 +134,6 @@ function clearAppOutputs(profile, dataRoot) {
   appOutputs.forEach((path) => removeManagedDirectory(path, dataRoot));
 }
 
-function readManifest(dataRoot) {
-  const manifestPath = join(dataRoot, MANIFEST_FILENAME);
-  if (!existsSync(manifestPath)) {
-    return readdirSync(dataRoot).length === 0 ? null : { invalid: true };
-  }
-  if (lstatSync(manifestPath).isSymbolicLink() || !lstatSync(manifestPath).isFile()) {
-    return { invalid: true };
-  }
-  try {
-    return JSON.parse(readFileSync(manifestPath, 'utf8'));
-  } catch {
-    return { invalid: true };
-  }
-}
-
-function matchesStableBuild(manifest, expected) {
-  return (
-    manifest?.schemaVersion === expected.schemaVersion &&
-    manifest?.profile === expected.profile &&
-    JSON.stringify(manifest?.toolchain) === JSON.stringify(expected.toolchain) &&
-    manifest?.nativeDependencies === expected.nativeDependencies &&
-    /^[a-f0-9]{64}$/.test(manifest?.buildInputs ?? '')
-  );
-}
-
 function writeManifest(repositoryRoot, profile) {
   requireGitHubActions();
   const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
@@ -175,6 +145,33 @@ function writeManifest(repositoryRoot, profile) {
   }
 
   const manifest = makeManifest(repositoryRoot, profile);
+  const fingerprintCheck = inspectManifestFingerprints(
+    manifest,
+    process.env.EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT,
+    process.env.EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT,
+  );
+  console.log(
+    `DETOX_DERIVEDDATA_CACHE manifest_write=${fingerprintCheck.match === 'false' ? 'refused' : 'written'} profile=${profile} ${fingerprintCheck.diagnostic}`,
+  );
+  const outputPath = process.env.GITHUB_OUTPUT;
+  if (outputPath) {
+    writeFileSync(
+      outputPath,
+      [
+        `manifest_build_inputs=${manifest.buildInputs}`,
+        `manifest_native_dependencies=${manifest.nativeDependencies}`,
+        `manifest_fingerprint_match=${fingerprintCheck.match}`,
+        `manifest_fingerprint_mismatch_fields=${fingerprintCheck.mismatchFields.join(',') || 'none'}`,
+      ].join('\n') + '\n',
+      { flag: 'a' },
+    );
+  }
+  if (fingerprintCheck.match === 'false') {
+    throw new Error(
+      `Refusing to write Detox cache manifest after prebuild_fingerprint_mismatch: ${fingerprintCheck.mismatchFields.join(',')}`,
+    );
+  }
+
   const path = join(dataRoot, MANIFEST_FILENAME);
   const temporaryPath = `${path}.tmp-${process.pid}`;
   if (existsSync(path) && lstatSync(path).isSymbolicLink()) {
@@ -191,33 +188,40 @@ function writeManifest(repositoryRoot, profile) {
 function prepareCache(repositoryRoot, profile) {
   const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
   const expected = makeManifest(repositoryRoot, profile);
-  if (!existsSync(dataRoot)) return 'miss';
+  if (!existsSync(dataRoot)) {
+    return inspectCacheManifest({ manifest: null, reason: 'derived_data_absent' }, expected);
+  }
   if (lstatSync(dataRoot).isSymbolicLink() || !lstatSync(dataRoot).isDirectory()) {
     throw new Error(`Refusing to inspect an unsafe Detox DerivedData cache path: ${dataRoot}`);
   }
 
-  const previous = readManifest(dataRoot);
-  if (previous === null) return 'miss';
-  if (!matchesStableBuild(previous, expected)) {
+  const result = inspectCacheManifest(readCacheManifest(dataRoot), expected);
+  if (result.classification === 'invalidated') {
     requireGitHubActions();
     removeManagedDirectory(dataRoot, resolve(repositoryRoot, 'apps/mobile/ios'));
-    return 'invalidated';
   }
-  if (previous.buildInputs === expected.buildInputs) return 'exact';
-
-  requireGitHubActions();
-  clearAppOutputs(profile, dataRoot);
-  return 'dependency-compatible';
+  if (result.classification === 'dependency-compatible') {
+    requireGitHubActions();
+    clearAppOutputs(profile, dataRoot);
+  }
+  return result;
 }
 
-function writeGitHubOutput(classification) {
+function writeGitHubOutput(result) {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
-    writeFileSync(outputPath, `derived_data_cache_classification=${classification}\n`, {
-      flag: 'a',
-    });
+    writeFileSync(
+      outputPath,
+      [
+        `derived_data_cache_classification=${result.classification}`,
+        `derived_data_cache_reason=${result.reason}`,
+        `derived_data_cache_mismatch_fields=${result.mismatchFields.join(',') || 'none'}`,
+        `derived_data_cache_diagnostic=${result.diagnostic}`,
+      ].join('\n') + '\n',
+      { flag: 'a' },
+    );
   }
-  console.log(`DETOX_DERIVEDDATA_CACHE classification=${classification}`);
+  console.log(`DETOX_DERIVEDDATA_CACHE ${result.diagnostic}`);
 }
 
 function main() {

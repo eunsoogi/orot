@@ -144,6 +144,7 @@ jobs:
           RN_ARTIFACT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.react_native_artifacts }}
           NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
           DERIVED_DATA_CACHE_CLASSIFICATION: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_classification }}
+          DERIVED_DATA_CACHE_DIAGNOSTIC: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_diagnostic }}
           MACOS_VERSION: ${{ env.EXPECTED_MACOS_VERSION }}
           NODE_VERSION: ${{ env.EXPECTED_NODE_VERSION }}
           PNPM_VERSION: ${{ env.EXPECTED_PNPM_VERSION }}
@@ -161,6 +162,7 @@ jobs:
             printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
             printf 'derived_data_cache_hit=%s\n' "${derived_data_cache_hit}"
             printf 'derived_data_cache_classification=%s\n' "${DERIVED_DATA_CACHE_CLASSIFICATION}"
+            printf 'derived_data_cache_diagnostic=%s\n' "${DERIVED_DATA_CACHE_DIAGNOSTIC}"
             printf 'build_input_fingerprint=%s\n' "${BUILD_INPUT_FINGERPRINT}"
             printf 'react_native_artifact_fingerprint=%s\n' "${RN_ARTIFACT_FINGERPRINT}"
             printf 'native_dependency_fingerprint=%s\n' "${NATIVE_DEPENDENCY_FINGERPRINT}"
@@ -179,10 +181,13 @@ jobs:
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}"
 
       - name: Write Detox DerivedData cache manifest
+        id: write_derived_data_cache
         timeout-minutes: 1
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
           DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: node scripts/ci/detox-derived-data-cache.mjs write "${{ inputs.profile }}"
