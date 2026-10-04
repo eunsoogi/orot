@@ -20,8 +20,7 @@ case "$suite" in
     command=(env
       "DETOX_ARTIFACTS_LOCATION=$artifact_dir/detox"
       DETOX_RECORD_LOGS=failing
-      DETOX_TAKE_SCREENSHOTS=failing
-      DETOX_RECORD_VIDEOS=failing
+      DETOX_RECORD_VIDEOS=none
       DETOX_CAPTURE_VIEW_HIERARCHY=enabled
       DETOX_HEADLESS=true
       bash scripts/ci/run-detox-e2e.sh)

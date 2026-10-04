@@ -7,6 +7,9 @@ if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
 }
 
 module.exports = {
+  behavior: {
+    init: { reinstallApp: true },
+  },
   testRunner: {
     args: {
       $0: 'jest',
@@ -14,6 +17,16 @@ module.exports = {
     },
     jest: {
       setupTimeout: 120000,
+    },
+  },
+  artifacts: {
+    plugins: {
+      screenshot: {
+        enabled: true,
+        shouldTakeAutomaticSnapshots: true,
+        keepOnlyFailedTestsArtifacts: true,
+        takeWhen: { testStart: false, testFailure: true, testDone: false },
+      },
     },
   },
   apps: {

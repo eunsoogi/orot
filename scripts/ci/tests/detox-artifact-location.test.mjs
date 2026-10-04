@@ -29,7 +29,7 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
       'if [[ "$*" == *openai-provider* ]]; then',
       '  printf \'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n\'',
       'else',
-      '  printf \'Test Suites: 6 passed, 6 total\\nTests: 8 passed, 8 total\\n\'',
+      '  printf \'Test Suites: 1 passed, 1 total\\nTests: 8 passed, 8 total\\n\'',
       'fi',
     ].join('\n'), { mode: 0o755 });
 

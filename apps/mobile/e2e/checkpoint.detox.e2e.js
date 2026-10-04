@@ -13,7 +13,7 @@ describe('SQLCipher LangGraph checkpoint resume', () => {
 
     await device.terminateApp();
     await device.launchApp({
-      newInstance: true,
+      newInstance: false,
       launchArgs: { OROT_E2E_PROBE: 'checkpoint' },
     });
     await element(by.id('checkpoint-resume')).tap();

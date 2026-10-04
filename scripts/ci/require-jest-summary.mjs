@@ -35,14 +35,32 @@ if (suiteName === 'e2e') {
   const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
   const releaseConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
   const debugConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
+  const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+  const expectedReleaseSuiteFiles = [
+    './smoke.test.js',
+    './appointments.test.js',
+    './agentMemory.test.js',
+    './graph.test.js',
+    './checkpoint.detox.e2e.js',
+    './storage.test.js',
+  ];
+  if (JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles)) {
+    throw new Error('e2e: Release suite manifest does not include the complete required test inventory');
+  }
+  if (JSON.stringify(releaseConfig.testMatch) !== JSON.stringify(['<rootDir>/e2e/release-e2e.test.js'])) {
+    throw new Error('e2e: Release Jest config must select the explicit suite-inventory wrapper');
+  }
+  if (JSON.stringify(debugConfig.testMatch) !== JSON.stringify(['<rootDir>/e2e/openai-provider.e2e.js'])) {
+    throw new Error('e2e: OpenAI Debug Jest config must select its dedicated probe');
+  }
   expectedE2ESuites = [
-    ['Release', releaseConfig.testMatch],
-    ['OpenAI Debug', debugConfig.testMatch],
-  ].map(([configuration, testMatch]) => {
+    ['Release', releaseConfig.testMatch, 8],
+    ['OpenAI Debug', debugConfig.testMatch, 1],
+  ].map(([configuration, testMatch, tests]) => {
     if (!Array.isArray(testMatch) || testMatch.length === 0) {
       throw new Error(`e2e: ${configuration} Jest config must enumerate its suites explicitly`);
     }
-    return { configuration, count: testMatch.length };
+    return { configuration, suites: testMatch.length, tests };
   });
 }
 
@@ -66,9 +84,14 @@ for (const [index, testSummary] of testSummaries.entries()) {
     throw new Error(`${suiteName}: Jest run ${index + 1} discovered zero tests or suites`);
   }
   const expected = expectedE2ESuites?.[index];
-  if (expected && suiteTotal !== expected.count) {
+  if (expected && suiteTotal !== expected.suites) {
     throw new Error(
-      `e2e: ${expected.configuration} summary expected ${expected.count} configured suites, received ${suiteTotal}`,
+      `e2e: ${expected.configuration} summary expected ${expected.suites} configured suites, received ${suiteTotal}`,
+    );
+  }
+  if (expected && testTotal !== expected.tests) {
+    throw new Error(
+      `e2e: ${expected.configuration} summary expected ${expected.tests} test cases, received ${testTotal}`,
     );
   }
   if (passed !== testTotal || failed !== 0 || pending !== 0 || skipped !== 0 || todo !== 0 || failedSuites !== 0 || pendingSuites !== 0 || skippedSuites !== 0) {

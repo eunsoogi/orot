@@ -12,6 +12,7 @@ const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 const openAiDetoxConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.detox.config.js');
+const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 
 test('routes the existing launch arguments to one Release entry and rejects unknown selectors', () => {
   assert.equal(selectEntryRoute({}), 'storage');
@@ -38,20 +39,23 @@ test('the shared Release app config bundles the router and explicitly selects ev
   const buildCommand = mobileConfig.apps['ios.release'].build;
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
-  assert.deepEqual(releaseJestConfig.testMatch, [
-    '<rootDir>/e2e/smoke.test.js',
-    '<rootDir>/e2e/appointments.test.js',
-    '<rootDir>/e2e/storage.test.js',
-    '<rootDir>/e2e/agentMemory.test.js',
-    '<rootDir>/e2e/graph.test.js',
-    '<rootDir>/e2e/checkpoint.detox.e2e.js',
+  assert.equal(mobileConfig.behavior.init.reinstallApp, true);
+  assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
+  assert.deepEqual(releaseSuiteFiles, [
+    './smoke.test.js',
+    './appointments.test.js',
+    './agentMemory.test.js',
+    './graph.test.js',
+    './checkpoint.detox.e2e.js',
+    './storage.test.js',
   ]);
   assert.deepEqual(openAiJestConfig.testMatch, ['<rootDir>/e2e/openai-provider.e2e.js']);
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
+  assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
 });
 
-test('Release and OpenAI Debug E2E builds target only the current host Simulator architecture', () => {
+test('Release probes share one app build while OpenAI keeps its separate Debug-only fixture build', () => {
   const buildCommands = [
     mobileConfig.apps['ios.release'].build,
     openAiDetoxConfig.apps['ios.openai-provider'].build,
@@ -64,6 +68,10 @@ test('Release and OpenAI Debug E2E builds target only the current host Simulator
     assert.match(buildCommand, /ONLY_ACTIVE_ARCH=YES/);
     assert.match(buildCommand, /-showBuildTimingSummary/);
   }
+  assert.match(buildCommands[0], /-configuration Release/);
+  assert.match(buildCommands[0], /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
+  assert.match(buildCommands[1], /-configuration Debug/);
+  assert.match(buildCommands[1], /ENTRY_FILE=e2e\/openaiProviderProbeEntry\.tsx/);
 });
 
 test('installs Detox Simulator utilities before creating or booting the dedicated Simulator', () => {

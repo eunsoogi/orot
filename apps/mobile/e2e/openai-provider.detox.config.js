@@ -7,6 +7,19 @@ if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
 }
 
 module.exports = {
+  behavior: {
+    init: { reinstallApp: true },
+  },
+  artifacts: {
+    plugins: {
+      screenshot: {
+        enabled: true,
+        shouldTakeAutomaticSnapshots: true,
+        keepOnlyFailedTestsArtifacts: true,
+        takeWhen: { testStart: false, testFailure: true, testDone: false },
+      },
+    },
+  },
   testRunner: {
     args: { $0: 'jest', config: 'e2e/openai-provider.jest.config.js' },
     jest: { setupTimeout: 240000 },

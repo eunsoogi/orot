@@ -26,14 +26,9 @@ async function fillAppointment(clinic, date, time, note) {
 }
 
 describe('manual appointments', () => {
-  beforeAll(async () => {
-    await device.uninstallApp();
-    await device.clearKeychain();
-    await device.installApp();
-  });
-
   it('creates, edits, and cancels an appointment that survives process restarts', async () => {
     await device.launchApp({
+      newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
     });
     await expect(element(by.id('welcome-title'))).toHaveText(
@@ -61,7 +56,7 @@ describe('manual appointments', () => {
 
     await device.terminateApp();
     await device.launchApp({
-      newInstance: true,
+      newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
     });
     await expect(element(by.id('welcome-title'))).toHaveText(
@@ -85,7 +80,7 @@ describe('manual appointments', () => {
 
     await device.terminateApp();
     await device.launchApp({
-      newInstance: true,
+      newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
     });
     await expect(element(by.id('welcome-title'))).toHaveText(

@@ -54,22 +54,23 @@ test('validates every Jest summary when the root command runs multiple packages'
 });
 
 test('requires both the Release and OpenAI Debug E2E summaries', () => {
-  const release = 'Test Suites: 6 passed, 6 total\nTests: 8 passed, 8 total\n';
+  const release = 'Test Suites: 1 passed, 1 total\nTests: 8 passed, 8 total\n';
   const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
   const complete = runGuard(release + debug, 'e2e');
   assert.equal(complete.status, 0, complete.stderr);
-  assert.match(complete.stdout, /9\/9 tests passed across 7 suites in 2 Jest runs/);
+  assert.match(complete.stdout, /9\/9 tests passed across 2 suites in 2 Jest runs/);
 
   const missingDebug = runGuard(release, 'e2e');
   assert.notEqual(missingDebug.status, 0);
   assert.match(missingDebug.stderr, /expected one Release and one OpenAI Debug Jest summary/);
 
   const incompleteRelease = runGuard(
-    'Test Suites: 4 passed, 4 total\nTests: 6 passed, 6 total\n' + debug,
+    'Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n' + debug,
     'e2e',
   );
   assert.notEqual(incompleteRelease.status, 0);
-  assert.match(incompleteRelease.stderr, /Release summary expected 6 configured suites, received 4/);
+  assert.match(incompleteRelease.stderr, /Release summary expected 8 test cases, received 7/);
+
 });
 
 test('rejects missing summaries and zero discovered tests', () => {
