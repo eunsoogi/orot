@@ -195,14 +195,14 @@ jobs:
         timeout-minutes: 45
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh
 
+      - name: Install Detox Simulator utilities
+        timeout-minutes: 10
+        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
+
       - name: Prepare dedicated Detox Simulator
         id: prepare-detox-simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid
-
-      - name: Install Detox Simulator utilities
-        timeout-minutes: 10
-        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
 
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20

@@ -4,7 +4,7 @@
 
 The comparable baseline is the successful `main` run [37168559096, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37168559096/attempts/2), at `b128021a3330c1f2d432c218ba70f13c86c273e9`. It includes the checkpoint probe added by PR #72. All three required jobs passed. Attempt 1 of the same run failed in the old multi-build workflow during a later CocoaPods install with `ArgumentError - path name contains null byte`; attempt 2 passed. This change reduces the install to one and does not claim to have fixed that error's root cause.
 
-| Hosted measure | Baseline | Candidate |
+| Hosted measure | Baseline | First candidate |
 | --- | ---: | ---: |
 | Frozen workspace install | 4s | 3m51s |
 | Detox build step | 17m03s | 19m19s |
@@ -17,9 +17,33 @@ The comparable baseline is the successful `main` run [37168559096, attempt 2](ht
 
 The successful hosted candidate was run 37172401876 at `6e2a34a3fe6670c11500743bab59d7549f6f20d4`. Its three required checks passed. The E2E log records all nine test cases across seven suites in two invocations, and the dedicated Simulator was deleted successfully. Compared with the baseline, the test step is 6m26s shorter, the build step is 2m16s longer, and the complete Detox job is 2s longer. This run therefore does not demonstrate a whole-job speedup.
 
+The native build log command timings were: baseline Release builds 203/186/192/186s and Debug 158s; first candidate Release 638s and Debug 316s. CocoaPods took 62s in the baseline's first build sequence and 190s in the first candidate. The separate production/OAuth job on the first candidate took 65s for CocoaPods and 156s for its Debug app build. These are single-run timings from separate hosted runner instances, not controlled samples.
+
 Both hosted runs used the `xcode-27-arm64` image, release `20260928.0222.1`, macOS 27.0, Xcode 27.0, and iOS Simulator SDK 27.0. The verified toolchain was Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The pnpm cache was restored in both runs; each install log reports 938 packages reused and zero downloaded. Neither workflow configures a DerivedData cache. Both native build logs report cache misses for React Native Debug/Release dependencies and core plus Hermes archives.
 
-The candidate workspace install took 3m51s versus 4s on the baseline. Its `pnpm install` log records 205 slow npm registry responses, and the supply-chain lockfile check took 3m15.8s versus 3.3s on the baseline. This explains most of the install-stage difference; the logs do not establish whether the already-started Simulator contributed. The candidate build stage remains 2m16s slower despite three fewer Xcode builds and two fewer CocoaPods installs. Per-build timings and runner resource measurements were not captured, so the cause of that increase is unknown. The next hosted comparison moves Simulator preparation after the native build to test whether overlapping boot work affected build time; this is a hypothesis, not a measured cause.
+GitHub lists the `xcode-27` public-preview runner as 3 CPU/7 GB RAM. Its [image README](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md#installed-simulators) includes the iOS 27.0 Simulator runtime and iPhone 18 Pro; the workflow installs `applesimutils` separately. This work stays on the existing runner and image.
+
+The first candidate workspace install took 3m51s versus 4s on the baseline. Its `pnpm install` log records 205 slow npm registry responses, and the supply-chain lockfile check took 3m15.8s versus 3.3s on the baseline. A later run on the same cache and workload returned to a 4s install, so the registry delay was transient; it is not evidence that Simulator boot caused it. The first candidate build stage remained 2m16s slower despite three fewer Xcode builds and two fewer CocoaPods installs. Per-build timing and runner resource measurements were not captured, so that increase's cause was unknown.
+
+## Simulator-order diagnostic run
+
+Run [37174832554](https://github.com/eunsoogi/orot/actions/runs/37174832554) used `db2c1846e19503f3651e059d8fc8e003f31a9037`, moving Simulator preparation until after the two app builds. It used the same `xcode-27-arm64` image release and restored pnpm cache as the baseline and first candidate, but a different hosted runner instance.
+
+| Detox job step | Time (UTC) | Duration | Result |
+| --- | --- | ---: | --- |
+| Frozen workspace install | 03:43:33–03:43:37 | 4s | 938 reused, 0 downloaded |
+| Shared Release + OpenAI Debug build | 03:43:39–03:56:37 | 12m58s | Passed |
+| Create and boot Simulator | 03:56:37–03:56:50 | 13s | Passed |
+| Install applesimutils | 03:56:50–04:03:36 | 6m46s | Passed |
+| Wait for Simulator boot | 04:03:36–04:03:40 | 4s | Passed |
+| E2E | 04:03:40–04:16:29 | 12m49s | Failed |
+| Complete Detox job | 03:42:40–04:17:04 | 34m24s | Failed |
+
+The candidate build was 4m05s shorter than the baseline and 6m21s shorter than the first candidate, but these are single samples from different hosted runner instances and do not isolate the effect of step ordering. The applesimutils stage was not a six-minute download: the wrapper started at 03:57:31, Homebrew tap/clone began at 04:03:20, and tap, trust, bottle, and install completed by 04:03:36. The long gap after Simulator boot is consistent with possible resource contention, but does not prove it.
+
+The E2E failure was one Jest-wide 120s timeout in the fresh-install storage test. The screenshot shows `Storage probe success`; Detox spent about 40.2s in install, 51.2s in `get_app_container`, and 6.9s in `simctl launch` before the expectation started. The test timed out before its normal 30s visibility assertion could finish. Overall, 8/9 test cases passed: Release had 7/8 passing across all six suites, and OpenAI Debug passed 1/1. Simulator deletion and artifact upload succeeded. The test timeout remains 120s, and no test was skipped or retried.
+
+The build log also showed Xcode choosing the first of multiple Simulator destinations and compiling both arm64 and x86_64 objects on the arm64 runner. The E2E-only build is being narrowed to the actual host architecture, with `xcodebuild -showBuildTimingSummary`, stage wall/CPU/RSS measurements, and a `lipo` architecture check. Production and standalone OAuth builds remain unchanged.
 
 ## Local candidate evidence
 
@@ -45,8 +69,8 @@ The Release router selects the existing storage, agent-memory, graph, or checkpo
 
 ## CI changes and verification
 
-The Detox job prepares one dedicated iOS 27 iPhone 18 Pro Simulator after the native build, persists its UDID before boot, and passes that exact ID to both configurations. This ordering is being measured against the earlier hosted candidate, which prepared the device before dependency installation. Each `simctl` operation and each lifecycle workflow step has a bound. Cleanup targets only the recorded device, attempts deletion after shutdown errors, and preserves logs. Summary validation requires both the configured six-suite Release run and one-suite OpenAI Debug run, and rejects missing, failed, skipped, pending, or todo tests.
+The Detox job builds Release and OpenAI Debug for the host Simulator architecture, then installs applesimutils before creating and booting one dedicated iOS 27 iPhone 18 Pro Simulator. It persists the UDID before boot and passes that exact ID to both configurations. The build log records per-stage wall, user, and system time, peak process RSS, and host CPU/memory snapshots. It also prints Xcode build timing summaries and verifies both app executables contain only the selected architecture. Each `simctl` operation and lifecycle workflow step remains bounded. Cleanup targets only the recorded device, attempts deletion after shutdown errors, and preserves logs. Summary validation requires both the configured six-suite Release run and one-suite OpenAI Debug run, and rejects missing, failed, skipped, pending, or todo tests.
 
-The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. Peak RSS, CPU time by child process, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
+The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. The updated Detox build logs per-stage process max RSS and host memory snapshots; per-child CPU time, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
 
-Local portable validation passed 45/45 tests, along with lint, typecheck, unit/component tests, the 250-line audit, shell and Node syntax checks, workflow YAML parsing, and `git diff --check`. All required checks passed on the first hosted candidate head `6e2a34a`. The reordered hosted comparison and the final-head independent strict review and required checks remain pending.
+The first hosted candidate `6e2a34a` passed all three required checks. On diagnostic head `db2c184`, Quality and iOS Simulator Build passed; Detox E2E failed as described above. The new configuration and workflow-order tests passed 4/4 locally, shell syntax and LOC audit passed, and the full suite plus final-head required checks and independent strict review remain pending.

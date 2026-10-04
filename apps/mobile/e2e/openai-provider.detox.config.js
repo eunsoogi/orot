@@ -15,7 +15,7 @@ module.exports = {
     'ios.openai-provider': {
       type: 'ios.app',
       binaryPath: derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
-      build: 'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' + derivedDataPath + ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx',
+      build: `DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -arch "$(uname -m)" -derivedDataPath ${derivedDataPath} CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES -showBuildTimingSummary ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx`,
     },
   },
   devices: {
