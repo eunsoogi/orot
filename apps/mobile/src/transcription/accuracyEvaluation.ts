@@ -17,13 +17,17 @@ export interface SyntheticSpeechAccuracyResult {
   readonly negationMatched?: boolean;
 }
 
+const DECIMAL_MARKER = '\uE000';
+const NEGATIVE_SIGN_MARKER = '\uE001';
+const POSITIVE_SIGN_MARKER = '\uE002';
+
 // Keep surface transcription error separate from focused clinical terms so numeric formatting cannot hide character edits.
 export function evaluateSyntheticSpeech(
   testCase: SyntheticSpeechAccuracyCase,
   recognizedText: string,
 ): SyntheticSpeechAccuracyResult {
-  const expected = normalizeForFocus(testCase.expectedText);
-  const actual = normalizeForFocus(recognizedText);
+  const expected = normalizeForAccuracy(testCase.expectedText);
+  const actual = normalizeForAccuracy(recognizedText);
   const editDistance = levenshtein(Array.from(expected), Array.from(actual));
   const focus = normalizeForFocus(recognizedText);
 
@@ -36,10 +40,10 @@ export function evaluateSyntheticSpeech(
     ...(testCase.medicationName ? {
       medicationNameMatched: focus.includes(normalizeForFocus(testCase.medicationName)),
     } : {}),
-    // Number retention accepts fixture-declared spoken or numeric forms while CER preserves their spelling difference.
+    // Number retention accepts fixture-declared spoken or numeric forms while exact match and CER preserve numeric meaning.
     ...(testCase.numberForms ? {
       // The number boundary prevents a shorter value such as 500 from matching the tail of 1500.
-      numberMatched: testCase.numberForms.some(form => matchesNumberForm(focus, form)),
+      numberMatched: testCase.numberForms.some(form => matchesNumberForm(actual, form)),
     } : {}),
     ...(testCase.negationForms ? {
       // Match action-linked fixture phrases so an unrelated word such as "안심" cannot count as preserved negation.
@@ -53,7 +57,7 @@ function normalizeForFocus(value: string): string {
 }
 
 function matchesNumberForm(text: string, value: string): boolean {
-  const form = normalizeForFocus(value);
+  const form = normalizeForAccuracy(value);
   if (!form) return false;
   const startsWithNumber = isNumberCharacter(form[0]);
   const endsWithNumber = isNumberCharacter(form[form.length - 1]);
@@ -71,7 +75,19 @@ function matchesNumberForm(text: string, value: string): boolean {
 }
 
 function isNumberCharacter(value: string | undefined): boolean {
-  return value !== undefined && /^[0-9영공일이삼사오육칠팔구십백천만억]$/u.test(value);
+  return value !== undefined && (
+    /^[0-9영공일이삼사오육칠팔구십백천만억]$/u.test(value)
+    || [DECIMAL_MARKER, NEGATIVE_SIGN_MARKER, POSITIVE_SIGN_MARKER].includes(value)
+  );
+}
+
+function normalizeForAccuracy(value: string): string {
+  const compact = value.normalize('NFC').toLowerCase().replace(/\s/gu, '');
+  return compact
+    .replace(/([0-9])[.,](?=[0-9])/gu, (_match, digit: string) => digit + DECIMAL_MARKER)
+    .replace(/(^|[^0-9])[-−–—](?=[0-9])/gu, (_match, before: string) => before + NEGATIVE_SIGN_MARKER)
+    .replace(/(^|[^0-9])\+(?=[0-9])/gu, (_match, before: string) => before + POSITIVE_SIGN_MARKER)
+    .replace(/[.,!?;:()[\]{}"“”'‘’、。，！？…·\-+−–—]/gu, '');
 }
 
 function levenshtein(source: readonly string[], target: readonly string[]): number {

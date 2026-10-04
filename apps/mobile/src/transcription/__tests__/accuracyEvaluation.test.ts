@@ -14,27 +14,52 @@ describe('synthetic Korean transcription accuracy evaluation', () => {
   });
 
   it('counts a numeric form as preserved while retaining its character edit distance', () => {
-    const result = evaluateSyntheticSpeech({
+    const numberCase = {
       id: 'number',
       expectedText: '복용량은 오백 밀리그램입니다.',
       numberForms: ['오백 밀리그램', '500 밀리그램', '오백 mg', '500 mg'],
-    }, '복용량은 500 밀리그램입니다.');
+    };
+    const result = evaluateSyntheticSpeech(numberCase, '복용량은 500 밀리그램입니다.');
 
     expect(result).toMatchObject({
       exactMatchAfterNormalization: false,
       numberMatched: true,
     });
     expect(result.characterErrorRate).toBeGreaterThan(0);
-    expect(evaluateSyntheticSpeech({
-      id: 'number',
-      expectedText: '복용량은 오백 밀리그램입니다.',
-      numberForms: ['오백 밀리그램', '500 밀리그램', '오백 mg', '500 mg'],
-    }, '복용량은 1500 밀리그램입니다.').numberMatched).toBe(false);
-    expect(evaluateSyntheticSpeech({
-      id: 'number',
-      expectedText: '복용량은 오백 밀리그램입니다.',
-      numberForms: ['오백 밀리그램', '500 밀리그램', '오백 mg', '500 mg'],
-    }, '복용량은 일천오백 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 1500 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 일천오백 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 5.00 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 5,00 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 -500 밀리그램입니다.').numberMatched).toBe(false);
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 +500 밀리그램입니다.').numberMatched).toBe(false);
+  });
+
+  it('keeps numeric separators meaningful across exact match, character error, and number retention', () => {
+    const numberCase = {
+      id: 'numeric-dose',
+      expectedText: '복용량은 500 mg입니다.',
+      numberForms: ['500 mg'],
+    };
+
+    for (const recognizedText of [
+      '복용량은 5.00 mg입니다.',
+      '복용량은 5,00 mg입니다.',
+      '복용량은 -500 mg입니다.',
+      '복용량은 +500 mg입니다.',
+    ]) {
+      const result = evaluateSyntheticSpeech(numberCase, recognizedText);
+      expect(result).toMatchObject({
+        exactMatchAfterNormalization: false,
+        numberMatched: false,
+      });
+      expect(result.characterErrorRate).toBeGreaterThan(0);
+    }
+
+    expect(evaluateSyntheticSpeech(numberCase, '복용량은 500mg 입니다')).toMatchObject({
+      exactMatchAfterNormalization: true,
+      characterErrorRate: 0,
+      numberMatched: true,
+    });
   });
 
   it('measures a lost negation and nonzero character edits without claiming clinical accuracy', () => {
