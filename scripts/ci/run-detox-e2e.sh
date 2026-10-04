@@ -56,10 +56,18 @@ sample_processes() {
   {
     printf 'DETOX_RESOURCE_SAMPLE profile=%s phase=%s sample=%s utc=%s\n' \
       "$name" "$phase" "$sample_index" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf 'DETOX_PS_PROCESS_SAMPLE percent_cpu=lifetime-average rss_kib=resident-size\n'
     ps -A -o pid= -o ppid= -o %cpu= -o rss= -o etime= -o comm= \
       | awk 'tolower($0) ~ /(node|pnpm|jest|detox|simulator|coresimulator|orot)/' || true
     if [[ "$phase" != running || "$sample_index" == 0 || $((sample_index % 4)) -eq 0 ]]; then
-      vm_stat | sed -n '1,8p' || true
+      if [[ "$(uname -s)" == Darwin ]]; then
+        printf 'DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples interval_seconds=1 utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        /usr/bin/top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null \
+          | awk 'BEGIN { sample = 0 } /^Processes:/ { sample += 1 } sample == 2 { print }' || true
+        printf 'DETOX_MEMORY_COUNTER_SAMPLE source=vm_stat_and_swapusage utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        vm_stat || true
+        sysctl vm.swapusage 2>/dev/null || true
+      fi
     fi
   } >> "$resource_log"
 }
@@ -115,8 +123,11 @@ run_profile_for_configuration() {
   local simulator_id="$2"
   local artifact_name="$3"
   shift 3
+  export OROT_DETOX_TEST_PROFILE="$name"
   run_profile "$name" "$simulator_id" "$artifact_name" \
-    pnpm --filter @orot/mobile exec -- detox test "$@" \
+    pnpm --filter @orot/mobile exec -- detox test \
+      --config-path ../../scripts/ci/detox-e2e-profile.detox.config.cjs \
+      "$@" \
       --loglevel "$log_level" \
       --artifacts-location "$DETOX_ARTIFACTS_LOCATION/$artifact_name"
 }
@@ -131,7 +142,6 @@ fi
 
 if [[ "$profile" == both || "$profile" == openai-provider ]]; then
   run_profile_for_configuration openai-provider "$debug_simulator_id" openai-provider \
-    --config-path ./e2e/openai-provider.detox.config.js \
     --configuration ios.sim.debug.openai-provider || debug_status=$?
 fi
 

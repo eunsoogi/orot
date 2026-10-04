@@ -14,6 +14,20 @@ const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provide
 const openAiDetoxConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.detox.config.js');
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 
+function requireWithDetoxProfile(modulePath, profile) {
+  const previousProfile = process.env.OROT_DETOX_TEST_PROFILE;
+  const resolvedPath = requireFromRepository.resolve(modulePath);
+  process.env.OROT_DETOX_TEST_PROFILE = profile;
+  delete requireFromRepository.cache[resolvedPath];
+  try {
+    return requireFromRepository(modulePath);
+  } finally {
+    delete requireFromRepository.cache[resolvedPath];
+    if (previousProfile === undefined) delete process.env.OROT_DETOX_TEST_PROFILE;
+    else process.env.OROT_DETOX_TEST_PROFILE = previousProfile;
+  }
+}
+
 test('routes the existing launch arguments to one Release entry and rejects unknown selectors', () => {
   assert.equal(selectEntryRoute({}), 'storage');
   assert.equal(selectEntryRoute({ OROT_STORAGE_PROBE: 'legacy' }), 'storage');
@@ -74,6 +88,41 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
+});
+
+test('the Detox runner profile keeps the existing test inventories while limiting Jest to CommonJS E2E files', () => {
+  const jestConfigPath = './scripts/ci/detox-e2e-profile.jest.config.cjs';
+  const detoxConfigPath = './scripts/ci/detox-e2e-profile.detox.config.cjs';
+  const mobileRoot = join(repositoryRoot, 'apps/mobile');
+  const expectedRoots = [join(mobileRoot, 'e2e')];
+
+  for (const [profile, baseConfig] of [
+    ['release', releaseJestConfig],
+    ['openai-provider', openAiJestConfig],
+  ]) {
+    const candidate = requireWithDetoxProfile(jestConfigPath, profile);
+    assert.equal(candidate.rootDir, mobileRoot);
+    assert.deepEqual(candidate.roots, expectedRoots);
+    assert.deepEqual(candidate.testMatch, baseConfig.testMatch);
+    assert.deepEqual(candidate.testPathIgnorePatterns, baseConfig.testPathIgnorePatterns);
+    assert.deepEqual(candidate.transform, {});
+    for (const preservedKey of ['globalSetup', 'globalTeardown', 'reporters', 'testEnvironment', 'testTimeout', 'maxWorkers']) {
+      assert.deepEqual(candidate[preservedKey], baseConfig[preservedKey]);
+    }
+  }
+
+  for (const [profile, baseConfig] of [
+    ['release', mobileConfig],
+    ['openai-provider', openAiDetoxConfig],
+  ]) {
+    const candidateDetoxConfig = requireWithDetoxProfile(detoxConfigPath, profile);
+    assert.deepEqual(candidateDetoxConfig.apps, baseConfig.apps);
+    assert.deepEqual(candidateDetoxConfig.configurations, baseConfig.configurations);
+    assert.deepEqual(candidateDetoxConfig.devices, baseConfig.devices);
+    assert.equal(candidateDetoxConfig.behavior, baseConfig.behavior);
+    assert.deepEqual(candidateDetoxConfig.testRunner.jest, baseConfig.testRunner.jest);
+    assert.equal(candidateDetoxConfig.testRunner.args.config, join(repositoryRoot, 'scripts/ci/detox-e2e-profile.jest.config.cjs'));
+  }
 });
 
 test('Release probes share one app build while OpenAI keeps its separate Debug-only fixture build', () => {

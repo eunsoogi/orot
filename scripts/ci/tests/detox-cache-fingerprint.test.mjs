@@ -37,6 +37,9 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       'packages/storage/src/index.ts',
       'scripts/ci/build-detox-apps.sh',
       'scripts/ci/detox-cache-fingerprint.mjs',
+      'scripts/ci/run-detox-e2e.sh',
+      'scripts/ci/detox-e2e-profile.detox.config.cjs',
+      'scripts/ci/detox-e2e-profile.jest.config.cjs',
       'apps/mobile/ios/build/DerivedData.db',
       'apps/mobile/ios/build-openai-provider/DerivedData.db',
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
@@ -78,6 +81,14 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     const afterGeneratedOutputs = computeDetoxCacheFingerprints(root);
 
     assert.deepEqual(afterGeneratedOutputs, initial);
+
+    writeFixtureFile(root, 'scripts/ci/run-detox-e2e.sh', 'changed Detox invocation wrapper');
+    writeFixtureFile(root, 'scripts/ci/detox-e2e-profile.detox.config.cjs', 'changed Detox test-runner config');
+    writeFixtureFile(root, 'scripts/ci/detox-e2e-profile.jest.config.cjs', 'changed Jest-only profile config');
+    git(root, 'add', '--all');
+    const afterTestRunnerConfigChanges = computeDetoxCacheFingerprints(root);
+
+    assert.deepEqual(afterTestRunnerConfigChanges, initial);
 
     writeFixtureFile(root, 'apps/mobile/App.tsx', 'changed tracked app source');
     git(root, 'add', '--all');

@@ -26,7 +26,7 @@ function runRunner({
   const resourceLogPath = join(directory, 'detox-resource-samples.log');
   writeFileSync(fakePnpm, [
     '#!/usr/bin/env bash',
-    'printf \'%s\\n\' "$*" >> "$DETOX_CALL_LOG"',
+    'printf \'profile=%s %s\\n\' "${OROT_DETOX_TEST_PROFILE:-}" "$*" >> "$DETOX_CALL_LOG"',
     'printf \'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n\'',
     'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
     'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
@@ -63,9 +63,12 @@ test('runs Release and OpenAI Debug under separate artifact paths', () => {
   const { result, calls, artifactsPath } = runRunner();
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(calls.length, 2);
+  assert.match(calls[0], /^profile=release /);
+  assert.match(calls[1], /^profile=openai-provider /);
   assert.match(calls[0], /ios\.sim\.release/);
+  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
   assert.match(calls[0], new RegExp(`${artifactsPath}/release`));
-  assert.match(calls[1], /openai-provider\.detox\.config\.js/);
+  assert.match(calls[1], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
   assert.match(calls[1], /ios\.sim\.debug\.openai-provider/);
   assert.match(calls[1], new RegExp(`${artifactsPath}/openai-provider`));
 });
@@ -75,7 +78,9 @@ test('runs only the selected Release profile on its dedicated Simulator', () => 
   const { result, calls, artifactsPath } = runRunner({ profile: 'release', simulatorId, openaiSimulatorId: '' });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(calls.length, 1);
+  assert.match(calls[0], /^profile=release /);
   assert.match(calls[0], /ios\.sim\.release/);
+  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
   assert.match(calls[0], new RegExp(`${artifactsPath}/release`));
 });
 
@@ -85,7 +90,8 @@ test('runs only the Debug-only OpenAI probe on its dedicated Simulator', () => {
   const { result, calls, artifactsPath } = runRunner({ profile: 'openai-provider', simulatorId, openaiSimulatorId });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   assert.equal(calls.length, 1);
-  assert.match(calls[0], /openai-provider\.detox\.config\.js/);
+  assert.match(calls[0], /^profile=openai-provider /);
+  assert.match(calls[0], /--config-path \.\.\/\.\.\/scripts\/ci\/detox-e2e-profile\.detox\.config\.cjs/);
   assert.match(calls[0], /ios\.sim\.debug\.openai-provider/);
   assert.match(calls[0], new RegExp(`${artifactsPath}/openai-provider`));
 });
@@ -98,6 +104,13 @@ test('records Release startup trace, command timing, and lightweight process and
   assert.match(resourceSamples, /DETOX_RESOURCE_SAMPLE profile=release phase=before/);
   assert.match(resourceSamples, /DETOX_RESOURCE_SAMPLE profile=release phase=after/);
   assert.match(resourceSamples, /Pages free:/);
+  assert.match(resourceSamples, /Pageins:/);
+  assert.match(resourceSamples, /Pageouts:/);
+  if (process.platform === 'darwin') {
+    assert.match(resourceSamples, /DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples/);
+    assert.match(resourceSamples, /CPU usage:/);
+    assert.match(resourceSamples, /vm\.swapusage/);
+  }
 });
 
 test('still runs Debug after a Release failure and fails if either invocation fails', () => {
