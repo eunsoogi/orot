@@ -5,6 +5,13 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      detox_resource_sampling:
+        description: Collect bounded process and memory samples for diagnosis.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -54,7 +61,12 @@ jobs:
       - name: Enforce the 250-line policy
         env:
           LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            node scripts/ci/check-loc.mjs --all
+          else
+            node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
+          fi
 
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
@@ -152,12 +164,14 @@ jobs:
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
+      resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
 
   detox_openai_provider_e2e:
     name: Detox OpenAI Debug iOS E2E
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: openai-provider
+      resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
 
   detox_ios_e2e:
     name: Detox iOS E2E

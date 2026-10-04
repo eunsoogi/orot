@@ -5,9 +5,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { installDetoxHostSamplerStubs } from './detox-host-sampling-stubs.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const runner = join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh');
+const runnerSource = readFileSync(runner, 'utf8');
 
 function runRunner({
   profile = 'both',
@@ -22,6 +24,7 @@ function runRunner({
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-runs-'));
   const fakePnpm = join(directory, 'pnpm');
   const callsPath = join(directory, 'calls.log');
+  const samplerCallsPath = join(directory, 'sampler-calls.log');
   const artifactsPath = join(directory, 'artifacts');
   const resourceLogPath = join(directory, 'detox-resource-samples.log');
   writeFileSync(fakePnpm, [
@@ -32,6 +35,7 @@ function runRunner({
     'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
     'exit 97',
   ].join('\n'), { mode: 0o755 });
+  if (resourceLog) installDetoxHostSamplerStubs(directory);
 
   const args = profile === 'both' ? [] : [profile];
   const result = spawnSync('bash', [runner, ...args], {
@@ -42,10 +46,12 @@ function runRunner({
       PATH: [directory, process.env.PATH].join(':'),
       DETOX_ARTIFACTS_LOCATION: artifactsPath,
       DETOX_CALL_LOG: callsPath,
+      DETOX_SAMPLER_CALLS: samplerCallsPath,
       RELEASE_STATUS: releaseStatus,
       DEBUG_STATUS: debugStatus,
       CI: ci,
       OROT_DETOX_RESOURCE_LOG_PATH: resourceLog ? resourceLogPath : '',
+      OROT_DETOX_RESOURCE_SAMPLING: resourceLog ? 'true' : 'false',
       OROT_DETOX_TEST_LOG_LEVEL: logLevel,
       OROT_DETOX_SIMULATOR_UDID: simulatorId,
       OROT_OPENAI_PROVIDER_SIMULATOR_UDID: openaiSimulatorId,
@@ -55,8 +61,9 @@ function runRunner({
     ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean)
     : [];
   const resourceSamples = existsSync(resourceLogPath) ? readFileSync(resourceLogPath, 'utf8') : '';
+  const samplerCalls = existsSync(samplerCallsPath) ? readFileSync(samplerCallsPath, 'utf8') : '';
   rmSync(directory, { recursive: true, force: true });
-  return { result, calls, artifactsPath, resourceSamples };
+  return { result, calls, artifactsPath, resourceSamples, samplerCalls };
 }
 
 test('runs Release and OpenAI Debug under separate artifact paths', () => {
@@ -96,20 +103,23 @@ test('runs only the Debug-only OpenAI probe on its dedicated Simulator', () => {
   assert.match(calls[0], new RegExp(`${artifactsPath}/openai-provider`));
 });
 
-test('records Release startup trace, command timing, and lightweight process and memory samples', () => {
-  const { result, calls, resourceSamples } = runRunner({ profile: 'release', resourceLog: true, logLevel: 'trace' });
+test('can record bounded process and memory samples when explicitly enabled', () => {
+  const { result, calls, resourceSamples, samplerCalls } = runRunner({ profile: 'release', resourceLog: true, logLevel: 'info' });
   assert.equal(result.status, 0, result.stderr + result.stdout);
-  assert.match(calls[0], /--loglevel trace/);
+  assert.match(calls[0], /--loglevel info/);
   assert.match(result.stderr, /real/);
   assert.match(resourceSamples, /DETOX_RESOURCE_SAMPLE profile=release phase=before/);
   assert.match(resourceSamples, /DETOX_RESOURCE_SAMPLE profile=release phase=after/);
   assert.match(resourceSamples, /Pages free:/);
   assert.match(resourceSamples, /Pageins:/);
   assert.match(resourceSamples, /Pageouts:/);
-  if (process.platform === 'darwin') {
-    assert.match(resourceSamples, /DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples/);
-    assert.match(resourceSamples, /CPU usage:/);
-    assert.match(resourceSamples, /vm\.swapusage/);
+  assert.match(runnerSource, /resource_sample_limit=4/);
+  assert.match(runnerSource, /sample_index < resource_sample_limit/);
+  assert.match(resourceSamples, /DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples/);
+  assert.match(resourceSamples, /CPU usage:/);
+  assert.match(resourceSamples, /vm\.swapusage/);
+  for (const command of ['ps', 'top', 'vm_stat', 'sysctl', 'uname']) {
+    assert.match(samplerCalls, new RegExp(`^${command}(?: |$)`, 'm'));
   }
 });
 

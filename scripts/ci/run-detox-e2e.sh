@@ -42,7 +42,19 @@ case "$log_level" in
   *) printf 'Unsupported Detox log level: %s\n' "$log_level" >&2; exit 2 ;;
 esac
 
-resource_log="${OROT_DETOX_RESOURCE_LOG_PATH:-}"
+resource_sampling="${OROT_DETOX_RESOURCE_SAMPLING:-false}"
+case "$resource_sampling" in
+  true)
+    resource_log="${OROT_DETOX_RESOURCE_LOG_PATH:-$DETOX_ARTIFACTS_LOCATION/detox-resource-samples.log}"
+    ;;
+  false|'')
+    resource_log=
+    ;;
+  *)
+    printf 'OROT_DETOX_RESOURCE_SAMPLING must be true or false.\n' >&2
+    exit 2
+    ;;
+esac
 if [[ -n "$resource_log" ]]; then
   mkdir -p "$(dirname "$resource_log")"
   : >> "$resource_log"
@@ -62,7 +74,7 @@ sample_processes() {
     if [[ "$phase" != running || "$sample_index" == 0 || $((sample_index % 4)) -eq 0 ]]; then
       if [[ "$(uname -s)" == Darwin ]]; then
         printf 'DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples interval_seconds=1 utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-        /usr/bin/top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null \
+        top -d -l 2 -s 1 -n 25 -o cpu -stats pid,command,cpu,mem 2>/dev/null \
           | awk 'BEGIN { sample = 0 } /^Processes:/ { sample += 1 } sample == 2 { print }' || true
         printf 'DETOX_MEMORY_COUNTER_SAMPLE source=vm_stat_and_swapusage utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         vm_stat || true
@@ -81,6 +93,8 @@ run_profile() {
   started_epoch="$(date +%s)"
   local process_id
   local sample_index=0
+  local sample_elapsed=0
+  local resource_sample_limit=4
   local status=0
 
   mkdir -p "$DETOX_ARTIFACTS_LOCATION/$artifact_name"
@@ -104,7 +118,9 @@ run_profile() {
       fi
       sleep 1
       sample_elapsed=$((sample_elapsed + 1))
-      if kill -0 "$process_id" 2>/dev/null && (( sample_elapsed >= 15 )); then
+      if kill -0 "$process_id" 2>/dev/null \
+        && (( sample_elapsed >= 15 )) \
+        && (( sample_index < resource_sample_limit )); then
         sample_index=$((sample_index + 1))
         sample_processes "$name" running "$sample_index"
         sample_elapsed=0
