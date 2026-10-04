@@ -35,9 +35,11 @@ export function createAppointmentStore(
         changes.effectiveAt && changes.effectiveAt !== current.effectiveAt
           ? 'rescheduled'
           : current.status,
-      note: changes.note === null ? undefined : changes.note ?? current.note,
+      note: changes.note === null ? undefined : (changes.note ?? current.note),
       endsAt:
-        changes.endsAt === null ? undefined : changes.endsAt ?? current.endsAt,
+        changes.endsAt === null
+          ? undefined
+          : (changes.endsAt ?? current.endsAt),
       recordedAt,
       ingestedAt: recordedAt,
     };

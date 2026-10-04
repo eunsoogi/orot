@@ -9,10 +9,12 @@ export function createRememoriEmbedder(provider: EmbeddingProvider): Embedder {
       const result = await provider.embed({ input: texts });
       if (!result.ok) throw new Error(`Embedding provider failed: ${result.error.code}.`);
       if (result.value.vectors.length !== texts.length) {
-        throw new Error('Embedding provider returned a different number of vectors than requested.');
+        throw new Error(
+          'Embedding provider returned a different number of vectors than requested.',
+        );
       }
-      return result.value.vectors.map(vector => {
-        if (vector.length === 0 || vector.some(value => !Number.isFinite(value))) {
+      return result.value.vectors.map((vector) => {
+        if (vector.length === 0 || vector.some((value) => !Number.isFinite(value))) {
           throw new Error('Embedding provider returned an invalid vector.');
         }
         return Float32Array.from(vector);

@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ChatGPTModelCatalogTests: XCTestCase {
     func testListsOnlyVisibleModelsUsingTheSelectedAccountToken() async throws {
@@ -10,7 +10,7 @@ final class ChatGPTModelCatalogTests: XCTestCase {
             }
             return StubOAuthResponse(
                 statusCode: 200,
-                body: Data(#"{"models":[{"slug":"gpt-visible","display_name":"Visible model","visibility":"list"},{"slug":"gpt-hidden","display_name":"Hidden model","visibility":"private"}]}"#.utf8)
+                body: Data(#"{"models":[{"slug":"gpt-visible","display_name":"Visible model","visibility":"list"},{"slug":"gpt-hidden","display_name":"Hidden model","visibility":"private"}]}"#.utf8),
             )
         }
         let store = InMemoryChatGPTCredentialStore()
@@ -42,7 +42,7 @@ final class ChatGPTModelCatalogTests: XCTestCase {
         let noPlanStore = InMemoryChatGPTCredentialStore()
         try noPlanStore.saveAccount(syntheticAccount(
             expiresAt: Date().addingTimeInterval(3600),
-            scopes: ["openid"]
+            scopes: ["openid"],
         ))
         let noPlanClient = ChatGPTOAuthClient(transport: transport, credentialStore: noPlanStore)
         do {
@@ -91,7 +91,7 @@ final class ChatGPTModelCatalogTests: XCTestCase {
             StubOAuthResponse(
                 statusCode: 429,
                 body: Data(#"{"error":{"code":"subscription_sharing_usage_limit_exceeded","param":"model"}}"#.utf8),
-                requestID: "req_catalog_limit"
+                requestID: "req_catalog_limit",
             )
         }
         let store = InMemoryChatGPTCredentialStore()

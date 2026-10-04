@@ -10,11 +10,12 @@ enum OAuthCallbackParser {
         _ callbackURL: URL,
         expectedState: String,
         expectedRedirectURI: URL,
-        expectedClientID: String? = nil
+        expectedClientID: String? = nil,
     ) throws -> OAuthCallback {
         guard isCallbackAddress(callbackURL, expectedRedirectURI: expectedRedirectURI),
               let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-              let encodedQuery = components.percentEncodedQuery else {
+              let encodedQuery = components.percentEncodedQuery
+        else {
             throw ChatGPTOAuthError.invalidCallback
         }
         var formComponents = URLComponents()
@@ -25,7 +26,9 @@ enum OAuthCallbackParser {
         guard values["state"] == expectedState else { throw ChatGPTOAuthError.stateMismatch }
 
         if let error = values["error"] {
-            if error == "access_denied" { throw ChatGPTOAuthError.accessDenied }
+            if error == "access_denied" {
+                throw ChatGPTOAuthError.accessDenied
+            }
             throw ChatGPTOAuthError.providerFailure
         }
 
@@ -40,7 +43,8 @@ enum OAuthCallbackParser {
             clientID = expectedClientID
         } else {
             guard let issuedClientID = values["client_id"],
-                  KeychainChatGPTCredentialStore.isValidIssuedClientID(issuedClientID) else {
+                  KeychainChatGPTCredentialStore.isValidIssuedClientID(issuedClientID)
+            else {
                 throw ChatGPTOAuthError.registrationIncomplete
             }
             clientID = issuedClientID

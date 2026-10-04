@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class OAuthContractTests: XCTestCase {
     func testPKCEChallengeMatchesRFC7636S256Vector() {
@@ -8,21 +8,21 @@ final class OAuthContractTests: XCTestCase {
 
         XCTAssertEqual(
             PKCE.challenge(for: verifier),
-            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
         )
     }
 
     func testEachAuthorizationAttemptGetsFreshURLSafeStateNonceAndVerifier() throws {
-        let values = try (0..<9).map { _ in try PKCE.randomURLSafeValue() }
+        let values = try (0 ..< 9).map { _ in try PKCE.randomURLSafeValue() }
 
         XCTAssertEqual(Set(values).count, values.count)
         XCTAssertTrue(values.allSatisfy { $0.count == 43 })
         XCTAssertTrue(values.allSatisfy { $0.allSatisfy(Self.isBase64URLCharacter) })
     }
 
-    func testHostIdentifierSurvivesStoreRecreation() {
+    func testHostIdentifierSurvivesStoreRecreation() throws {
         let suite = "com.orot.oauth-test.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let first = UserDefaultsHostIdentifierStore(defaults: defaults).loadOrCreate()
@@ -33,13 +33,13 @@ final class OAuthContractTests: XCTestCase {
     }
 
     func testAuthorizationRequestCarriesRequiredLoopbackPKCEAndPermissionValues() throws {
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
-        let discovery = OpenIDConfiguration(
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
+        let discovery = try OpenIDConfiguration(
             issuer: ChatGPTOAuthConstants.issuer,
-            authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
-            tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
-            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
-            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
+            authorizationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
+            tokenEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/token")),
+            jwksURI: XCTUnwrap(URL(string: "https://auth.openai.com/oauth2/v1/keys")),
+            revocationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")),
         )
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         let url = try AuthorizationRequestBuilder.build(
@@ -49,9 +49,9 @@ final class OAuthContractTests: XCTestCase {
             state: "fresh-state",
             nonce: "fresh-nonce",
             verifier: verifier,
-            agentName: "Orot"
+            agentName: "Orot",
         )
-        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
+        let items = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
         let parameters = Dictionary(uniqueKeysWithValues: items.map { ($0.name, $0.value ?? "") })
 
         XCTAssertEqual(parameters["client_id"], "dynamic_agent_client")
@@ -68,13 +68,13 @@ final class OAuthContractTests: XCTestCase {
     }
 
     func testReturningAccountReusesIssuedClientIDAndOnlyAddsRetainedIDTokenHint() throws {
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
-        let discovery = OpenIDConfiguration(
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
+        let discovery = try OpenIDConfiguration(
             issuer: ChatGPTOAuthConstants.issuer,
-            authorizationEndpoint: URL(string: "https://auth.openai.com/api/accounts/authorize")!,
-            tokenEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/token")!,
-            jwksURI: URL(string: "https://auth.openai.com/oauth2/v1/keys")!,
-            revocationEndpoint: URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")!
+            authorizationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/authorize")),
+            tokenEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/token")),
+            jwksURI: XCTUnwrap(URL(string: "https://auth.openai.com/oauth2/v1/keys")),
+            revocationEndpoint: XCTUnwrap(URL(string: "https://auth.openai.com/api/accounts/oauth/revoke")),
         )
         let url = try AuthorizationRequestBuilder.build(
             discovery: discovery,
@@ -85,12 +85,12 @@ final class OAuthContractTests: XCTestCase {
             verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
             agentName: "Orot",
             clientID: "oaiapp_fixture_client",
-            idTokenHint: "synthetic-id-token-hint"
+            idTokenHint: "synthetic-id-token-hint",
         )
-        let parameters = Dictionary(
-            uniqueKeysWithValues: URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!.map {
+        let parameters = try Dictionary(
+            uniqueKeysWithValues: XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.map {
                 ($0.name, $0.value ?? "")
-            }
+            }),
         )
 
         XCTAssertEqual(parameters["client_id"], "oaiapp_fixture_client")
@@ -100,69 +100,69 @@ final class OAuthContractTests: XCTestCase {
 
     func testCallbackAcceptsOnlyMatchingLoopbackStateAndIssuedClientID() throws {
         let callback = try OAuthCallbackParser.parse(
-            URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_registered")!,
+            XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_registered")),
             expectedState: "expected",
-            expectedRedirectURI: URL(string: "http://127.0.0.1:54321/auth/callback")!
+            expectedRedirectURI: XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback")),
         )
 
         XCTAssertEqual(callback, OAuthCallback(code: "one-time-code", issuedClientID: "oaiapp_registered"))
     }
 
     func testReturningCallbackMayOmitSelectedClientIDButCannotReplaceIt() throws {
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
         let returning = try OAuthCallbackParser.parse(
-            URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected")!,
+            XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected")),
             expectedState: "expected",
             expectedRedirectURI: redirect,
-            expectedClientID: "oaiapp_selected_account"
+            expectedClientID: "oaiapp_selected_account",
         )
         XCTAssertEqual(returning.issuedClientID, "oaiapp_selected_account")
         XCTAssertThrowsError(
             try OAuthCallbackParser.parse(
-                URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_other")!,
+                XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback?code=one-time-code&state=expected&client_id=oaiapp_other")),
                 expectedState: "expected",
                 expectedRedirectURI: redirect,
-                expectedClientID: "oaiapp_selected_account"
-            )
+                expectedClientID: "oaiapp_selected_account",
+            ),
         ) { error in
             XCTAssertEqual(error as? ChatGPTOAuthError, .registrationMismatch)
         }
     }
 
-    func testCallbackRejectsWrongStateDuplicateParametersAndUnissuedClientID() {
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
+    func testCallbackRejectsWrongStateDuplicateParametersAndUnissuedClientID() throws {
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
         assertCallbackError(
             "http://127.0.0.1:54321/auth/callback?code=c&state=wrong&client_id=oaiapp_x",
             expectedState: "expected",
             redirect: redirect,
-            error: .stateMismatch
+            error: .stateMismatch,
         )
         assertCallbackError(
             "http://127.0.0.1:54321/auth/callback?code=c&state=expected&state=expected&client_id=oaiapp_x",
             expectedState: "expected",
             redirect: redirect,
-            error: .invalidCallback
+            error: .invalidCallback,
         )
         assertCallbackError(
             "http://127.0.0.1:54321/auth/callback?code=c&state=expected&client_id=dynamic_agent_client",
             expectedState: "expected",
             redirect: redirect,
-            error: .registrationIncomplete
+            error: .registrationIncomplete,
         )
         assertCallbackError(
             "http://127.0.0.1:54321/wrong?code=c&state=expected&client_id=oaiapp_x",
             expectedState: "expected",
             redirect: redirect,
-            error: .invalidCallback
+            error: .invalidCallback,
         )
     }
 
-    func testDeniedCallbackStopsBeforeCodeExchange() {
-        assertCallbackError(
+    func testDeniedCallbackStopsBeforeCodeExchange() throws {
+        try assertCallbackError(
             "http://127.0.0.1:54321/auth/callback?error=access_denied&state=expected",
             expectedState: "expected",
-            redirect: URL(string: "http://127.0.0.1:54321/auth/callback")!,
-            error: .accessDenied
+            redirect: XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback")),
+            error: .accessDenied,
         )
     }
 
@@ -171,7 +171,7 @@ final class OAuthContractTests: XCTestCase {
             issuedClientID: "oaiapp_fixture-client",
             subject: "fixture-subject",
             grantedScopes: ["openid", "email", "resource.invoke"],
-            accessToken: "transient-test-token"
+            accessToken: "transient-test-token",
         )
         XCTAssertFalse(noPlan.hasDirectPlanAccess)
 
@@ -188,7 +188,7 @@ final class OAuthContractTests: XCTestCase {
             issuedClientID: "oaiapp_fixture-client",
             subject: "fixture-subject",
             grantedScopes: [ChatGPTOAuthConstants.directPlanScope],
-            accessToken: "transient-test-token"
+            accessToken: "transient-test-token",
         )
         XCTAssertTrue(granted.hasDirectPlanAccess)
     }
@@ -199,16 +199,16 @@ final class OAuthContractTests: XCTestCase {
         redirect: URL,
         error expected: ChatGPTOAuthError,
         file: StaticString = #filePath,
-        line: UInt = #line
+        line: UInt = #line,
     ) {
         XCTAssertThrowsError(
             try OAuthCallbackParser.parse(
                 URL(string: url)!,
                 expectedState: expectedState,
-                expectedRedirectURI: redirect
+                expectedRedirectURI: redirect,
             ),
             file: file,
-            line: line
+            line: line,
         ) { error in
             XCTAssertEqual(error as? ChatGPTOAuthError, expected, file: file, line: line)
         }

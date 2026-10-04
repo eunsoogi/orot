@@ -1,17 +1,25 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { AppRegistry, NativeModules, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { name as appName } from '../app.json';
 import { runAgentMemoryProbe } from '../src/memory/agentMemoryProbe';
 import type { AgentMemoryProbeMode } from '../src/memory/agentMemoryProbe';
 
 function getProbeMode(): AgentMemoryProbeMode | null {
-  const settingsManager = (NativeModules as unknown as {
-    SettingsManager?: {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    };
-  }).SettingsManager;
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
   const value =
     settingsManager?.settings?.OROT_AGENT_MEMORY_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_AGENT_MEMORY_PROBE;
@@ -20,7 +28,9 @@ function getProbeMode(): AgentMemoryProbeMode | null {
 
 function AgentMemoryProbe() {
   const mode = getProbeMode();
-  const [status, setStatus] = useState<'running' | 'success' | 'failure'>('running');
+  const [status, setStatus] = useState<'running' | 'success' | 'failure'>(
+    'running',
+  );
 
   useEffect(() => {
     if (!mode) {
@@ -39,7 +49,11 @@ function AgentMemoryProbe() {
   const label = 'Agent memory probe ' + status;
   return (
     <View style={styles.container}>
-      <Text accessible accessibilityLabel={label} testID={'agent-memory-probe-' + status}>
+      <Text
+        accessible
+        accessibilityLabel={label}
+        testID={'agent-memory-probe-' + status}
+      >
         {label}
       </Text>
     </View>
@@ -47,7 +61,12 @@ function AgentMemoryProbe() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
 });
 
 AppRegistry.registerComponent(appName, () => AgentMemoryProbe);

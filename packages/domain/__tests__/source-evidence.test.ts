@@ -37,7 +37,7 @@ describe('source content hashes and evidence locators', () => {
       { kind: 'document_range', pageNumber: 2, startOffset: 4, endOffset: 12 },
     ];
 
-    locators.forEach(locator => {
+    locators.forEach((locator) => {
       expect(EvidenceSpanLocatorSchema.safeParse(locator).success).toBe(true);
     });
   });

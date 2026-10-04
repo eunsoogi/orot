@@ -14,17 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CI: "true"
+  CI: 'true'
   TZ: UTC
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
-  EXPECTED_NODE_VERSION: "22.23.2"
-  EXPECTED_PNPM_VERSION: "12.3.4"
-  EXPECTED_RUBY_VERSION: "4.0.7"
-  EXPECTED_COCOAPODS_VERSION: "1.17.0"
-  EXPECTED_APPLESIMUTILS_VERSION: "0.9.12"
-  EXPECTED_MACOS_VERSION: "27.0"
-  EXPECTED_XCODE_VERSION: "27.0"
-  EXPECTED_IOS_SIMULATOR_SDK: "27.0"
+  EXPECTED_NODE_VERSION: '22.23.2'
+  EXPECTED_PNPM_VERSION: '12.3.4'
+  EXPECTED_RUBY_VERSION: '4.0.7'
+  EXPECTED_COCOAPODS_VERSION: '1.17.0'
+  EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
+  EXPECTED_MACOS_VERSION: '27.0'
+  EXPECTED_XCODE_VERSION: '27.0'
+  EXPECTED_IOS_SIMULATOR_SDK: '27.0'
 
 jobs:
   quality:
@@ -62,11 +62,20 @@ jobs:
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/quality/install.log -- pnpm install --frozen-lockfile
 
+      - name: Install pinned quality tools
+        run: scripts/ci/run-command.sh quality-tools-install artifacts/quality/quality-tools-install.log -- pnpm quality:setup
+
+      - name: Record maintained code inventory
+        run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
+
       - name: Test CI and release gate rules
-        run: scripts/ci/run-command.sh gate-tests artifacts/quality/gate-tests.log -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/validate.test.mjs
+        run: scripts/ci/run-command.sh gate-tests artifacts/quality/gate-tests.log -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs
 
       - name: Lint
         run: scripts/ci/run-command.sh lint artifacts/quality/lint.log -- pnpm lint
+
+      - name: Check formatting
+        run: scripts/ci/run-command.sh format artifacts/quality/format.log -- pnpm format:check
 
       - name: Type check
         run: scripts/ci/run-command.sh typecheck artifacts/quality/typecheck.log -- pnpm typecheck
@@ -109,7 +118,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
-          ruby-version: "4.0.7"
+          ruby-version: '4.0.7'
           bundler-cache: false
 
       - name: Install CocoaPods
@@ -173,7 +182,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
-          ruby-version: "4.0.7"
+          ruby-version: '4.0.7'
           bundler-cache: false
 
       - name: Install CocoaPods

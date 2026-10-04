@@ -13,7 +13,7 @@ const ProviderInvocation = Annotation.Root({
 
 export function createLanguageModelProviderGraph(provider: LanguageModelProvider) {
   return new StateGraph(ProviderInvocation)
-    .addNode('generate', async state => ({
+    .addNode('generate', async (state) => ({
       result: await provider.generate(state.request),
     }))
     .addEdge(START, 'generate')

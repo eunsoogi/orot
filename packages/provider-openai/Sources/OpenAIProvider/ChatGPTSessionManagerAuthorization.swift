@@ -3,18 +3,18 @@ import Foundation
 extension ChatGPTSessionManager {
     func saveAuthorizedAccount(
         _ account: ChatGPTStoredAccount,
-        expectedAuthorizationGeneration: UInt64
+        expectedAuthorizationGeneration: UInt64,
     ) async throws {
         guard !signingOut.contains(account.issuedClientID) else {
             throw ChatGPTOAuthError.sessionSigningOut
         }
         try await ChatGPTCredentialOperationCoordinator.shared.withAccountLock(
-            hostIdentifier: account.hostIdentifier
+            hostIdentifier: account.hostIdentifier,
         ) { generation in
             try await self.saveAuthorizedAccountUnderLock(
                 account,
                 expectedAuthorizationGeneration: expectedAuthorizationGeneration,
-                currentAuthorizationGeneration: generation
+                currentAuthorizationGeneration: generation,
             )
         }
     }
@@ -22,7 +22,7 @@ extension ChatGPTSessionManager {
     private func saveAuthorizedAccountUnderLock(
         _ account: ChatGPTStoredAccount,
         expectedAuthorizationGeneration: UInt64,
-        currentAuthorizationGeneration: UInt64
+        currentAuthorizationGeneration: UInt64,
     ) throws {
         guard !signingOut.contains(account.issuedClientID) else {
             throw ChatGPTOAuthError.sessionSigningOut
@@ -36,10 +36,11 @@ extension ChatGPTSessionManager {
 
     func finishSignOut(
         issuedClientID: String,
-        expectedHostIdentifier: String
+        expectedHostIdentifier: String,
     ) async throws -> ChatGPTSignOutResult {
         guard let account = try credentialStore.loadAccount(issuedClientID: issuedClientID),
-              account.hostIdentifier == expectedHostIdentifier else {
+              account.hostIdentifier == expectedHostIdentifier
+        else {
             throw ChatGPTOAuthError.accountNotFound
         }
 
@@ -47,7 +48,7 @@ extension ChatGPTSessionManager {
         if let refreshToken = account.credentials?.refreshToken {
             remoteRevocationConfirmed = await revokeRenewableSession(
                 refreshToken,
-                issuedClientID: account.issuedClientID
+                issuedClientID: account.issuedClientID,
             )
         }
 

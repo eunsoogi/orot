@@ -29,8 +29,12 @@ describe('agent memory source removal', () => {
     const staleWriter = await createAgentMemory({ embedder, storage });
     let beginDelete!: () => void;
     let finishDelete!: () => void;
-    const deleteStarted = new Promise<void>(resolve => { beginDelete = resolve; });
-    const continueDelete = new Promise<void>(resolve => { finishDelete = resolve; });
+    const deleteStarted = new Promise<void>((resolve) => {
+      beginDelete = resolve;
+    });
+    const continueDelete = new Promise<void>((resolve) => {
+      finishDelete = resolve;
+    });
 
     const removal = memory.removeSource('synthetic-source-1', async () => {
       beginDelete();
@@ -39,8 +43,9 @@ describe('agent memory source removal', () => {
     });
     await deleteStarted;
     const queuedWrite = memory.remember({ ...preference, memoryKey: 'preference:late-write' });
-    await expect(staleWriter.remember({ ...preference, memoryKey: 'preference:stale-writer' }))
-      .rejects.toThrow('already removed');
+    await expect(
+      staleWriter.remember({ ...preference, memoryKey: 'preference:stale-writer' }),
+    ).rejects.toThrow('already removed');
 
     finishDelete();
     await expect(removal).resolves.toEqual({ sourceDeleted: true, memoriesDeleted: 1 });

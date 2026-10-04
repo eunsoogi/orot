@@ -13,13 +13,18 @@ const safetyInstructions = [
   'Preserve supplied source IDs exactly in structured output.',
 ].join(' ');
 
-export function serializeAppleRequest(request: LanguageModelRequest): AppleNativeRequest {
+export function serializeAppleRequest(
+  request: LanguageModelRequest,
+): AppleNativeRequest {
   const instructions = [safetyInstructions];
   const conversation: string[] = [];
   for (const message of request.messages) {
     if (message.role === 'tool') {
       conversation.push(
-        'Tool result ' + message.toolCallId + ': ' + JSON.stringify(message.result),
+        'Tool result ' +
+          message.toolCallId +
+          ': ' +
+          JSON.stringify(message.result),
       );
       continue;
     }
@@ -30,36 +35,55 @@ export function serializeAppleRequest(request: LanguageModelRequest): AppleNativ
     }
     conversation.push(message.role + ': ' + content);
     if (message.role === 'assistant' && message.toolCalls?.length) {
-      conversation.push('Requested tools: ' + JSON.stringify(message.toolCalls));
+      conversation.push(
+        'Requested tools: ' + JSON.stringify(message.toolCalls),
+      );
     }
   }
   if (!conversation.length) {
-    throw codedError('INVALID_REQUEST', 'At least one non-system message is required.');
+    throw codedError(
+      'INVALID_REQUEST',
+      'At least one non-system message is required.',
+    );
   }
   const tools = request.tools ?? [];
   const names = new Set<string>();
   for (const tool of tools) {
     if (!tool.name || names.has(tool.name)) {
-      throw codedError('INVALID_REQUEST', 'Tool names must be present and unique.');
+      throw codedError(
+        'INVALID_REQUEST',
+        'Tool names must be present and unique.',
+      );
     }
     names.add(tool.name);
   }
   if (tools.length) {
-    instructions.push([
-      'Available tools:',
-      ...tools.map(tool => tool.name + ': ' + (tool.description?.trim() || 'No description provided.')),
-    ].join('\n'));
+    instructions.push(
+      [
+        'Available tools:',
+        ...tools.map(
+          tool =>
+            tool.name +
+            ': ' +
+            (tool.description?.trim() || 'No description provided.'),
+        ),
+      ].join('\n'),
+    );
   }
   const format = request.responseFormat;
   const mode = tools.length
-    ? format ? 'mixed' : 'tools'
-    : format ? 'structured' : 'text';
+    ? format
+      ? 'mixed'
+      : 'tools'
+    : format
+      ? 'structured'
+      : 'text';
   return {
     instructions: instructions.join('\n\n'),
     prompt: conversation.join('\n'),
     mode,
     schema: compileResponseSchema(tools, format?.schema, format?.name),
-    toolNames: tools.map((tool) => tool.name),
+    toolNames: tools.map(tool => tool.name),
     maxOutputTokens: request.maxOutputTokens,
     temperature: request.temperature,
   };
@@ -69,12 +93,17 @@ function textContent(
   content: string | readonly LanguageModelInputPart[],
 ): string {
   if (typeof content === 'string') return content;
-  return content.map((part) => {
-    if (part.type !== 'text') {
-      throw codedError('UNSUPPORTED_INPUT', 'Apple Foundation Models accepts text input only.');
-    }
-    return part.text;
-  }).join('\n');
+  return content
+    .map(part => {
+      if (part.type !== 'text') {
+        throw codedError(
+          'UNSUPPORTED_INPUT',
+          'Apple Foundation Models accepts text input only.',
+        );
+      }
+      return part.text;
+    })
+    .join('\n');
 }
 
 function codedError(code: string, message: string): Error {

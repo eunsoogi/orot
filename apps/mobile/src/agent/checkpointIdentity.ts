@@ -4,7 +4,9 @@ export function createWorkflowCheckpointConfig(
   checkpointNamespace = '',
 ) {
   if (!workflowId.trim() || !appThreadId.trim()) {
-    throw new Error('Workflow checkpoint identity requires a workflow and app thread id.');
+    throw new Error(
+      'Workflow checkpoint identity requires a workflow and app thread id.',
+    );
   }
   return {
     configurable: {

@@ -15,18 +15,17 @@ private final class SpikeViewModel: ObservableObject {
     private let credentialStore = KeychainChatGPTCredentialStore()
     private lazy var oauth = ChatGPTOAuthClient(
         agentName: "Orot 로그인 검증",
-        credentialStore: credentialStore
+        credentialStore: credentialStore,
     )
     private var callbackServer: LoopbackCallbackServer?
     private var signInTask: Task<Void, Never>?
 
     func recordLifecycle(_ phase: ScenePhase) {
-        let label: String
-        switch phase {
-        case .active: label = "활성"
-        case .inactive: label = "비활성"
-        case .background: label = "백그라운드"
-        @unknown default: label = "알 수 없음"
+        let label = switch phase {
+        case .active: "활성"
+        case .inactive: "비활성"
+        case .background: "백그라운드"
+        @unknown default: "알 수 없음"
         }
         let time = Date.now.formatted(date: .omitted, time: .standard)
         lifecycleEvents.insert("\(time): \(label)", at: 0)
@@ -70,7 +69,7 @@ private final class SpikeViewModel: ObservableObject {
                 status = "콜백을 받았습니다. state를 확인하고 인가 코드를 교환합니다…"
                 let access = try await oauth.completeAuthorization(
                     callbackURL: callbackURL,
-                    pending: pending
+                    pending: pending,
                 )
                 cancellationState = .credentialsStored
                 try Task.checkCancellation()
@@ -95,51 +94,53 @@ private final class SpikeViewModel: ObservableObject {
         status = cancellationState.cancellationMessage
     }
 
-#if DEBUG
-    func prepareSyntheticKeychainRestartProbe() {
-        let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
-        do {
-            try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
-            try credentialStore.saveAccount(fixture)
-            storageProbeStatus = "합성 Keychain 계정을 저장했습니다. 앱을 완전히 종료하고 다시 연 뒤 ‘재실행 후 확인’을 누르세요. 로그인이나 네트워크 요청은 하지 않았습니다."
-        } catch {
-            try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
-            storageProbeStatus = "합성 Keychain 준비에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
+    #if DEBUG
+        func prepareSyntheticKeychainRestartProbe() {
+            let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
+            do {
+                try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+                try credentialStore.saveAccount(fixture)
+                storageProbeStatus = "합성 Keychain 계정을 저장했습니다. 앱을 완전히 종료하고 다시 연 뒤 ‘재실행 후 확인’을 누르세요. 로그인이나 네트워크 요청은 하지 않았습니다."
+            } catch {
+                try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+                storageProbeStatus = "합성 Keychain 준비에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
+            }
         }
-    }
 
-    func verifyRestartedSyntheticKeychainProbe() {
-        let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
-        do {
-            let reopened = try KeychainChatGPTCredentialStore().loadAccount(issuedClientID: fixture.issuedClientID)
-            guard reopened?.issuedClientID == fixture.issuedClientID,
-                  reopened?.hostIdentifier == fixture.hostIdentifier,
-                  reopened?.subject == fixture.subject,
-                  reopened?.hasDirectPlanAccess == true,
-                  reopened?.requiresSignIn == false else {
-                throw SpikeError.syntheticStorageRoundTripFailed
-            }
+        func verifyRestartedSyntheticKeychainProbe() {
+            let fixture = ChatGPTStoredAccount.syntheticKeychainFixture()
+            do {
+                let reopened = try KeychainChatGPTCredentialStore().loadAccount(issuedClientID: fixture.issuedClientID)
+                guard reopened?.issuedClientID == fixture.issuedClientID,
+                      reopened?.hostIdentifier == fixture.hostIdentifier,
+                      reopened?.subject == fixture.subject,
+                      reopened?.hasDirectPlanAccess == true,
+                      reopened?.requiresSignIn == false
+                else {
+                    throw SpikeError.syntheticStorageRoundTripFailed
+                }
 
-            try credentialStore.clearCredentials(issuedClientID: fixture.issuedClientID)
-            let signedOut = try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID)
-            guard signedOut?.requiresSignIn == true,
-                  signedOut?.issuedClientID == fixture.issuedClientID,
-                  signedOut?.hostIdentifier == fixture.hostIdentifier,
-                  signedOut?.subject == fixture.subject else {
-                throw SpikeError.syntheticStorageRoundTripFailed
-            }
+                try credentialStore.clearCredentials(issuedClientID: fixture.issuedClientID)
+                let signedOut = try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID)
+                guard signedOut?.requiresSignIn == true,
+                      signedOut?.issuedClientID == fixture.issuedClientID,
+                      signedOut?.hostIdentifier == fixture.hostIdentifier,
+                      signedOut?.subject == fixture.subject
+                else {
+                    throw SpikeError.syntheticStorageRoundTripFailed
+                }
 
-            try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
-            guard try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID) == nil else {
-                throw SpikeError.syntheticStorageRoundTripFailed
+                try credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+                guard try credentialStore.loadAccount(issuedClientID: fixture.issuedClientID) == nil else {
+                    throw SpikeError.syntheticStorageRoundTripFailed
+                }
+                storageProbeStatus = "앱 재실행 후 합성 Keychain 정보를 읽었고, 로그아웃 시 토큰 제거·계정 정리를 확인했습니다. 실제 계정 인증이나 네트워크 요청은 하지 않았습니다."
+            } catch {
+                try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
+                storageProbeStatus = "앱 재실행 후 합성 Keychain 확인에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
             }
-            storageProbeStatus = "앱 재실행 후 합성 Keychain 정보를 읽었고, 로그아웃 시 토큰 제거·계정 정리를 확인했습니다. 실제 계정 인증이나 네트워크 요청은 하지 않았습니다."
-        } catch {
-            try? credentialStore.removeAccount(issuedClientID: fixture.issuedClientID)
-            storageProbeStatus = "앱 재실행 후 합성 Keychain 확인에 실패했습니다. 민감한 값은 표시하거나 기록하지 않았습니다."
         }
-    }
-#endif
+    #endif
 
     private func openInSystemBrowser(_ url: URL) async -> Bool {
         await withCheckedContinuation { continuation in
@@ -184,28 +185,28 @@ struct ContentView: View {
                         Button(
                             model.cancellationState.cancelButtonTitle,
                             role: .cancel,
-                            action: model.cancel
+                            action: model.cancel,
                         )
-                            .accessibilityIdentifier("cancel-chatgpt-sign-in")
+                        .accessibilityIdentifier("cancel-chatgpt-sign-in")
                     }
                 }
 
-#if DEBUG
-                Section("보호된 저장소 확인") {
-                    Text("합성 계정을 저장한 뒤 앱을 완전히 종료하고 다시 열어 재실행 후 확인을 누르세요.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("1. 합성 Keychain 계정 저장", action: model.prepareSyntheticKeychainRestartProbe)
-                        .accessibilityIdentifier("synthetic-keychain-prepare-restart")
-                    Button("2. 재실행 후 확인·로그아웃·정리", action: model.verifyRestartedSyntheticKeychainProbe)
-                        .accessibilityIdentifier("synthetic-keychain-verify-restart")
-                    if let storageProbeStatus = model.storageProbeStatus {
-                        Text(storageProbeStatus)
+                #if DEBUG
+                    Section("보호된 저장소 확인") {
+                        Text("합성 계정을 저장한 뒤 앱을 완전히 종료하고 다시 열어 재실행 후 확인을 누르세요.")
                             .font(.footnote)
-                            .accessibilityIdentifier("synthetic-keychain-status")
+                            .foregroundStyle(.secondary)
+                        Button("1. 합성 Keychain 계정 저장", action: model.prepareSyntheticKeychainRestartProbe)
+                            .accessibilityIdentifier("synthetic-keychain-prepare-restart")
+                        Button("2. 재실행 후 확인·로그아웃·정리", action: model.verifyRestartedSyntheticKeychainProbe)
+                            .accessibilityIdentifier("synthetic-keychain-verify-restart")
+                        if let storageProbeStatus = model.storageProbeStatus {
+                            Text(storageProbeStatus)
+                                .font(.footnote)
+                                .accessibilityIdentifier("synthetic-keychain-status")
+                        }
                     }
-                }
-#endif
+                #endif
 
                 Section("iOS 앱 상태 변화") {
                     Text("브라우저로 전환하면 이 앱은 백그라운드로 이동합니다. 상태 전환을 기록하지만, 다른 앱이 활성화되면 iOS가 리스너를 일시 중단할 수 있습니다.")
