@@ -33,7 +33,7 @@ The local candidate was measured on the same host and toolchain, from an uncommi
 | App builds / Pods installs | 3 Release + 1 Debug / 2 | 1 Release + 1 Debug / 1 | — |
 | Jest/Detox runs / coverage | 4 / 8 tests, 6 suites | 2 / 8 tests, 6 suites | No skips or pending tests |
 
-The stage sum excludes dependency installation, Simulator preparation, and other workflow work. DerivedData figures are post-build directory sizes, not peak disk usage. These local measurements show the candidate's local behavior; they are not hosted CI evidence and do not satisfy the remote comparison criterion. A committed candidate SHA, equivalent hosted-run timings, runner image, and cache state are still pending. OAuth against a real account remains unverified. Peak RSS, child-process count/time, and fixture bytes remain unmeasured locally and remotely.
+The stage sum excludes dependency installation, Simulator preparation, and other workflow work. DerivedData figures are post-build directory sizes, not peak disk usage. These local measurements show the candidate's local behavior; they are not hosted CI evidence and do not satisfy the remote comparison criterion. The measured candidate source tree is committed as `df050e6`; equivalent hosted-run timings, runner image, and cache state remain pending. OAuth against a real account remains unverified. Peak RSS, child-process count/time, and fixture bytes remain unmeasured locally and remotely.
 
 ## Smallest improvement
 
