@@ -31,12 +31,10 @@ function AppointmentsProbeEntry() {
   if (!showAppointments) return <App />;
   if (repository) {
     return (
-      <View style={styles.screen} testID="appointments-probe-ready">
-        <AppointmentsScreen
-          onBack={() => setShowAppointments(false)}
-          repository={repository}
-        />
-      </View>
+      <AppointmentsScreen
+        onBack={() => setShowAppointments(false)}
+        repository={repository}
+      />
     );
   }
 
@@ -58,7 +56,6 @@ function AppointmentsProbeEntry() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   status: {
     flex: 1,
     alignItems: 'center',

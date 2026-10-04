@@ -83,13 +83,18 @@ jobs:
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
 
+      - name: Compute stable Detox cache fingerprints
+        id: detox_cache_fingerprint
+        timeout-minutes: 1
+        run: node scripts/ci/detox-cache-fingerprint.mjs
+
       - name: Cache React Native artifact archives
         id: rn_artifact_cache
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/Library/Caches/ReactNative
-          key: orot-rn-ios-artifacts-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock') }}
+          key: orot-rn-ios-artifacts-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ steps.detox_cache_fingerprint.outputs.react_native_artifacts }}
 
       - name: Cache Release Detox DerivedData
         id: release_derived_data_cache
@@ -98,7 +103,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: apps/mobile/ios/build
-          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-${{ hashFiles('.github/workflows/detox-e2e-profile.yml', 'pnpm-lock.yaml', 'package.json', 'apps/mobile/ios/Podfile.lock', 'apps/mobile/**/*', 'apps/mobile/.detoxrc.js', 'packages/**/*', 'scripts/ci/build-detox-apps.sh') }}
+          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
 
       - name: Cache OpenAI Debug Detox DerivedData
         id: openai_derived_data_cache
@@ -107,7 +112,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: apps/mobile/ios/build-openai-provider
-          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-${{ hashFiles('.github/workflows/detox-e2e-profile.yml', 'pnpm-lock.yaml', 'package.json', 'apps/mobile/ios/Podfile.lock', 'apps/mobile/**/*', 'apps/mobile/.detoxrc.js', 'packages/**/*', 'scripts/ci/build-detox-apps.sh') }}
+          key: orot-detox-deriveddata-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
 
       - name: Record Detox cache state
         timeout-minutes: 1
@@ -116,6 +121,8 @@ jobs:
           RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
           RELEASE_DERIVED_DATA_CACHE_HIT: ${{ steps.release_derived_data_cache.outputs.cache-hit }}
           OPENAI_DERIVED_DATA_CACHE_HIT: ${{ steps.openai_derived_data_cache.outputs.cache-hit }}
+          BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          RN_ARTIFACT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.react_native_artifacts }}
         run: |
           mkdir -p artifacts/detox
           if [[ "${DETOX_PROFILE}" == release ]]; then
@@ -127,6 +134,8 @@ jobs:
             printf 'profile=%s\n' "${DETOX_PROFILE}"
             printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
             printf 'derived_data_cache_hit=%s\n' "${derived_data_cache_hit}"
+            printf 'build_input_fingerprint=%s\n' "${BUILD_INPUT_FINGERPRINT}"
+            printf 'react_native_artifact_fingerprint=%s\n' "${RN_ARTIFACT_FINGERPRINT}"
             printf 'xcode=%s\n' "${EXPECTED_XCODE_VERSION}"
             printf 'ios_simulator_sdk=%s\n' "${EXPECTED_IOS_SIMULATOR_SDK}"
             printf 'architecture=%s\n' "$(uname -m)"

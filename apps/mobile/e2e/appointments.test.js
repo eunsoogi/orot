@@ -9,9 +9,16 @@ async function expectTextVisible(text) {
 }
 
 async function expectAppointmentsOpen() {
-  await expectVisible('appointments-probe-ready');
+  await waitFor(element(by.id('appointments-title')))
+    .toHaveText('예약')
+    .withTimeout(30000);
   await expectVisible('appointment-add');
-  await expect(element(by.id('appointments-title'))).toHaveText('예약');
+}
+
+async function expectEmptyAppointments() {
+  await waitFor(element(by.id('appointments-empty')))
+    .toHaveText('등록된 예약이 없어요.')
+    .withTimeout(30000);
 }
 
 async function fillAppointment(clinic, date, time, note) {
@@ -33,9 +40,7 @@ describe('manual appointments', () => {
       launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
     await expectAppointmentsOpen();
-    await expect(element(by.id('appointments-empty'))).toHaveText(
-      '등록된 예약이 없어요.',
-    );
+    await expectEmptyAppointments();
 
     await element(by.id('appointment-add')).tap();
     await fillAppointment(

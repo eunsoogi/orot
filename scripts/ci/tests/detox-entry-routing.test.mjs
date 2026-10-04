@@ -50,6 +50,10 @@ test('selects the E2E-only appointments screen backed by encrypted local storage
   assert.match(appointmentsEntry, /openLocalAppointmentRepository/);
   assert.equal((appointmentsTest.match(/OROT_E2E_PROBE: 'appointments'/g) ?? []).length, 3);
   assert.doesNotMatch(appointmentsTest, /welcome-title/);
+  assert.match(appointmentsTest, /appointments-title/);
+  assert.match(appointmentsTest, /appointment-add/);
+  assert.match(appointmentsTest, /appointments-empty/);
+  assert.doesNotMatch(appointmentsTest, /appointments-probe-ready/);
 });
 
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
@@ -112,6 +116,7 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
 
 test('keys native dependency and per-profile DerivedData caches by the exact toolchain and build inputs', () => {
   const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
+  const fingerprintSource = readFileSync(join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'), 'utf8');
   const getStep = (name) => {
     const start = profileWorkflow.indexOf(`- name: ${name}`);
     const end = profileWorkflow.indexOf('\n      - name:', start + 1);
@@ -121,6 +126,18 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   const releaseCache = getStep('Cache Release Detox DerivedData');
   const debugCache = getStep('Cache OpenAI Debug Detox DerivedData');
   const buildStep = getStep('Build Detox iOS Simulator app');
+  const fingerprintStep = getStep('Compute stable Detox cache fingerprints');
+  const fingerprintStepIndex = profileWorkflow.indexOf('- name: Compute stable Detox cache fingerprints');
+  const rnCacheStepIndex = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
+  const buildStepIndex = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
+
+  assert.ok(
+    fingerprintStep.length > 0 &&
+      fingerprintStep.includes('run: node scripts/ci/detox-cache-fingerprint.mjs') &&
+      fingerprintStepIndex >= 0 &&
+      fingerprintStepIndex < rnCacheStepIndex &&
+      fingerprintStepIndex < buildStepIndex,
+  );
 
   assert.match(rnCache, /uses: actions\/cache@[0-9a-f]{40}/);
   assert.match(rnCache, /path: ~\/Library\/Caches\/ReactNative/);
@@ -129,8 +146,8 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   assert.match(rnCache, /EXPECTED_XCODE_VERSION/);
   assert.match(rnCache, /EXPECTED_IOS_SIMULATOR_SDK/);
   assert.match(rnCache, /inputs\.profile/);
-  assert.match(rnCache, /pnpm-lock\.yaml/);
-  assert.match(rnCache, /Podfile\.lock/);
+  assert.match(rnCache, /steps\.detox_cache_fingerprint\.outputs\.react_native_artifacts/);
+  assert.doesNotMatch(rnCache, /hashFiles\(/);
 
   for (const cache of [releaseCache, debugCache]) {
     assert.match(cache, /uses: actions\/cache@[0-9a-f]{40}/);
@@ -138,11 +155,17 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
     assert.match(cache, /runner\.arch/);
     assert.match(cache, /EXPECTED_XCODE_VERSION/);
     assert.match(cache, /EXPECTED_IOS_SIMULATOR_SDK/);
-    assert.match(cache, /hashFiles\(/);
-    assert.match(cache, /pnpm-lock\.yaml/);
-    assert.match(cache, /Podfile\.lock/);
+    assert.match(cache, /steps\.detox_cache_fingerprint\.outputs\.build_inputs/);
+    assert.doesNotMatch(cache, /hashFiles\(|apps\/mobile\/\*\*\/\*|packages\/\*\*\/\*/);
     assert.doesNotMatch(cache, /CoreSimulator|Keychains|simulator\.udid/);
   }
+  assert.match(fingerprintSource, /pnpm-lock\.yaml/);
+  assert.match(fingerprintSource, /apps\/mobile\/ios\/Podfile\.lock/);
+  assert.match(fingerprintSource, /apps\/mobile/);
+  assert.match(fingerprintSource, /packages/);
+  assert.match(fingerprintSource, /node_modules/);
+  assert.match(fingerprintSource, /iosBuildDirectory\.toLowerCase\(\)/);
+  assert.match(fingerprintSource, /build\(\?:-\|\$\)/);
 
   assert.match(releaseCache, /if: \$\{\{ inputs\.profile == 'release' \}\}/);
   assert.match(releaseCache, /path: apps\/mobile\/ios\/build\n/);
