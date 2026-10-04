@@ -13,6 +13,12 @@ describe('Calendar appointment confirmation with a synthetic-only provider', () 
       launchArgs: { OROT_CALENDAR_PROBE: 'synthetic' },
     });
 
+    await expect(element(by.id('welcome-title'))).toHaveText(
+      'Orot에 오신 걸 환영해요',
+    );
+    await expect(element(by.id('calendar-connect'))).not.toExist();
+    await element(by.id('open-appointments')).tap();
+
     await waitFor(element(by.id('calendar-connect')))
       .toBeVisible()
       .withTimeout(30000);
