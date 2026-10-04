@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import App from '../App';
+import AppointmentsScreen from '../src/appointments/AppointmentsScreen';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 test('localizes appointment list errors and retry', async () => {
@@ -7,9 +7,10 @@ test('localizes appointment list errors and retry', async () => {
   store.list
     .mockRejectedValueOnce(new Error('database unavailable'))
     .mockResolvedValueOnce([]);
-  await render(<App loadAppointments={async () => store.repository} />);
+  await render(
+    <AppointmentsScreen repository={store.repository} onBack={() => undefined} />,
+  );
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(await screen.findByTestId('appointment-error')).toHaveTextContent(
     '예약을 불러오지 못했어요. 다시 시도해 주세요.',
   );
@@ -21,9 +22,10 @@ test('localizes appointment list errors and retry', async () => {
 
 test('shows localized validation messages without storing invalid input', async () => {
   const store = createAppointmentStore();
-  await render(<App loadAppointments={async () => store.repository} />);
+  await render(
+    <AppointmentsScreen repository={store.repository} onBack={() => undefined} />,
+  );
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
   await screen.findByTestId('appointments-empty');
   await fireEvent.press(screen.getByTestId('appointment-add'));
   await fireEvent.changeText(
@@ -58,9 +60,10 @@ test('shows localized validation messages without storing invalid input', async 
 test('localizes appointment save and cancel failures without changing status enums', async () => {
   const store = createAppointmentStore();
   store.create.mockRejectedValueOnce(new Error('write unavailable'));
-  await render(<App loadAppointments={async () => store.repository} />);
+  await render(
+    <AppointmentsScreen repository={store.repository} onBack={() => undefined} />,
+  );
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
   await screen.findByTestId('appointments-empty');
   await fireEvent.press(screen.getByTestId('appointment-add'));
   await fireEvent.changeText(

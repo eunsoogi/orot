@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
-import AppointmentsScreen from './src/appointments/AppointmentsScreen';
+import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
+import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
+import type { CalendarBridge } from './src/calendar/types';
 import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
 
@@ -11,6 +13,7 @@ declare const require: (path: string) => {
 
 interface AppProps {
   loadAppointments?: () => Promise<AppointmentRepository>;
+  calendarBridge?: CalendarBridge;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
@@ -19,97 +22,67 @@ function defaultAppointmentLoader(): Promise<AppointmentRepository> {
 
 export default function App({
   loadAppointments = defaultAppointmentLoader,
+  calendarBridge = eventKitCalendarBridge,
 }: AppProps) {
-  const [hasStarted, setHasStarted] = useState(false);
-  const [showAppointments, setShowAppointments] = useState(false);
-  const [showRecording, setShowRecording] = useState(false);
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
-  const [loadingAppointments, setLoadingAppointments] = useState(false);
-  const [appointmentError, setAppointmentError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [showRecording, setShowRecording] = useState(false);
 
-  async function openAppointments() {
-    setShowAppointments(true);
-    setAppointmentError('');
-    if (appointmentRepository) return;
-    setLoadingAppointments(true);
+  const loadRepository = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
     try {
       setAppointmentRepository(await loadAppointments());
     } catch {
-      setAppointmentError(t('appointments.openError'));
+      setFailed(true);
     } finally {
-      setLoadingAppointments(false);
+      setLoading(false);
     }
-  }
+  }, [loadAppointments]);
+
+  useEffect(() => {
+    loadRepository().catch(() => undefined);
+  }, [loadRepository]);
 
   if (showRecording) {
     return <RecordingScreen onBack={() => setShowRecording(false)} />;
   }
 
-  if (showAppointments) {
-    if (appointmentRepository) {
-      return (
-        <AppointmentsScreen
-          onBack={() => setShowAppointments(false)}
-          repository={appointmentRepository}
-        />
-      );
-    }
+  if (!appointmentRepository) {
     return (
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.title}>
-          {t('appointments.title')}
+          {t('calendar.title')}
         </Text>
         <Text
-          testID="appointments-opening"
-          accessibilityRole={appointmentError ? 'alert' : undefined}
+          accessibilityRole={failed ? 'alert' : undefined}
+          testID="calendar-app-opening"
         >
-          {loadingAppointments ? t('appointments.opening') : appointmentError}
+          {failed
+            ? t('appointments.openError')
+            : loading
+              ? t('appointments.opening')
+              : ''}
         </Text>
-        {!loadingAppointments ? (
+        {failed ? (
           <Button
-            onPress={openAppointments}
-            testID="appointments-retry-open"
+            onPress={loadRepository}
+            testID="calendar-app-retry"
             title={t('appointments.retry')}
           />
         ) : null}
-        <Button
-          onPress={() => setShowAppointments(false)}
-          testID="appointments-back"
-          title={t('appointments.back')}
-        />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="welcome-title"
-      >
-        {t('app.welcome.title')}
-      </Text>
-      <Text style={styles.message}>
-        {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-      </Text>
-      <Button
-        onPress={() => setHasStarted(true)}
-        testID="get-started"
-        title={t('app.actions.getStarted')}
-      />
-      <Button
-        onPress={openAppointments}
-        testID="open-appointments"
-        title={t('app.actions.appointments')}
-      />
-      <Button
-        onPress={() => setShowRecording(true)}
-        testID="open-recording"
-        title={t('app.actions.recording')}
-      />
-    </View>
+    <CalendarLinkingScreen
+      repository={appointmentRepository}
+      bridge={calendarBridge}
+      onOpenRecording={() => setShowRecording(true)}
+    />
   );
 }
 
@@ -126,11 +99,6 @@ const styles = StyleSheet.create({
     color: '#17212b',
     fontSize: 24,
     fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#45515f',
-    fontSize: 16,
     textAlign: 'center',
   },
 });
