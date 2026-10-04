@@ -2,6 +2,8 @@
 set -euo pipefail
 
 host_arch="$(uname -m)"
+release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build}"
+openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-openai-provider}"
 case "$host_arch" in
   arm64|x86_64) ;;
   *) printf 'Unsupported iOS Simulator host architecture: %s\n' "$host_arch" >&2; exit 1 ;;
@@ -47,10 +49,19 @@ verify_app_architecture() {
   fi
 }
 
+resolve_mobile_path() {
+  local path="$1"
+  if [[ "$path" == /* ]]; then
+    printf '%s\n' "$path"
+  else
+    printf 'apps/mobile/%s\n' "$path"
+  fi
+}
+
 run_timed_stage pods pnpm --filter @orot/mobile ios:pods
 run_timed_stage release pnpm --filter @orot/mobile exec -- detox build --configuration ios.sim.release
-verify_app_architecture ios/build/Build/Products/Release-iphonesimulator/Orot.app/Orot
+verify_app_architecture "$(resolve_mobile_path "$release_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"
 run_timed_stage openai-debug pnpm --filter @orot/mobile exec -- detox build \
   --config-path ./e2e/openai-provider.detox.config.js \
   --configuration ios.sim.debug.openai-provider
-verify_app_architecture ios/build-openai-provider/Build/Products/Debug-iphonesimulator/Orot.app/Orot
+verify_app_architecture "$(resolve_mobile_path "$openai_derived_data_path")/Build/Products/Debug-iphonesimulator/Orot.app/Orot"

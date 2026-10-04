@@ -1,5 +1,10 @@
 /** @type {Detox.DetoxConfig} */
 const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
+const releaseDerivedDataPath = process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build';
+
+if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
+  throw new Error('The Detox Release DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.');
+}
 
 module.exports = {
   testRunner: {
@@ -14,8 +19,8 @@ module.exports = {
   apps: {
     'ios.release': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/Orot.app',
-      build: `DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -arch "$(uname -m)" -derivedDataPath ios/build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES -showBuildTimingSummary ENTRY_FILE=e2e/e2eRouterEntry.tsx`,
+      binaryPath: `${releaseDerivedDataPath}/Build/Products/Release-iphonesimulator/Orot.app`,
+      build: `DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ${releaseDerivedDataPath} CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES -showBuildTimingSummary ENTRY_FILE=e2e/e2eRouterEntry.tsx`,
     },
   },
   devices: {

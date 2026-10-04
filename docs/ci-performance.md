@@ -43,7 +43,15 @@ The candidate build was 4m05s shorter than the baseline and 6m21s shorter than t
 
 The E2E failure was one Jest-wide 120s timeout in the fresh-install storage test. The screenshot shows `Storage probe success`; Detox spent about 40.2s in install, 51.2s in `get_app_container`, and 6.9s in `simctl launch` before the expectation started. The test timed out before its normal 30s visibility assertion could finish. Overall, 8/9 test cases passed: Release had 7/8 passing across all six suites, and OpenAI Debug passed 1/1. Simulator deletion and artifact upload succeeded. The test timeout remains 120s, and no test was skipped or retried.
 
-The build log also showed Xcode choosing the first of multiple Simulator destinations and compiling both arm64 and x86_64 objects on the arm64 runner. The E2E-only build is being narrowed to the actual host architecture, with `xcodebuild -showBuildTimingSummary`, stage wall/CPU/RSS measurements, and a `lipo` architecture check. Production and standalone OAuth builds remain unchanged.
+The build log also showed Xcode choosing the first of multiple Simulator destinations and compiling both arm64 and x86_64 objects on the arm64 runner. The next candidate added E2E-only host architecture selection, `xcodebuild -showBuildTimingSummary`, stage wall/CPU/RSS measurements, and a `lipo` architecture check. Production and standalone OAuth builds remain unchanged.
+
+## Host-architecture build correction
+
+Run [37177472365](https://github.com/eunsoogi/orot/actions/runs/37177472365) tested the E2E-only architecture settings on `37bb7b9e472cd60e872dbbc911e7e8775b375cb4`. Quality passed in 1m25s, and the separate production app plus OAuth job passed in 8m35s. The Detox job failed in its Release build after 2m08s: Xcode rejects an explicit `-arch` when the generic Simulator destination already implies an architecture. Simulator setup and E2E did not run, so this attempt is not a performance comparison.
+
+The correction retains the generic Simulator destination and sets `ARCHS` to the detected host architecture with `ONLY_ACTIVE_ARCH=YES`, without passing `-arch`. The build script runs from the repository root, so app executable checks now resolve relative DerivedData paths beneath `apps/mobile` and honor the OpenAI DerivedData override. The build config also exposes a matching Release DerivedData override for local reuse.
+
+The full workflow build command then passed locally from the repository root using the preserved candidate DerivedData directory without cleaning it. CocoaPods exited 0 in 12.54s; Release exited 0 in 121.12s and Debug exited 0 in 96.88s. Both `lipo` checks reported `arm64`, matching the local host. That host had 10 logical CPUs and 32 GiB memory, unlike the hosted runner, and the DerivedData was warm; these local values validate command behavior and architecture selection, not hosted performance.
 
 ## Local candidate evidence
 
@@ -73,4 +81,4 @@ The Detox job builds Release and OpenAI Debug for the host Simulator architectur
 
 The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. The updated Detox build logs per-stage process max RSS and host memory snapshots; per-child CPU time, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
 
-The first hosted candidate `6e2a34a` passed all three required checks. On diagnostic head `db2c184`, Quality and iOS Simulator Build passed; Detox E2E failed as described above. The new configuration and workflow-order tests passed 4/4 locally, shell syntax and LOC audit passed, and the full suite plus final-head required checks and independent strict review remain pending.
+The first hosted candidate `6e2a34a` passed all three required checks. On diagnostic head `db2c184`, Quality and iOS Simulator Build passed; Detox E2E failed as described above. On `37bb7b9`, Quality and iOS Simulator Build passed; Detox E2E failed during the Release build as described above. Portable and configuration tests, lint, typecheck, unit/component tests, LOC, shell/Node syntax, workflow YAML parsing, and diff checks have passed locally. A hosted candidate run for the corrected architecture command and a fresh independent strict review of the final head remain pending.

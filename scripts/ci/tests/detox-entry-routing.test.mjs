@@ -59,7 +59,7 @@ test('Release and OpenAI Debug E2E builds target only the current host Simulator
 
   for (const buildCommand of buildCommands) {
     assert.match(buildCommand, /-destination 'generic\/platform=iOS Simulator'/);
-    assert.match(buildCommand, /-arch "\$\(uname -m\)"/);
+    assert.doesNotMatch(buildCommand, /\s-arch(?:\s|=)/);
     assert.match(buildCommand, /ARCHS="\$\(uname -m\)"/);
     assert.match(buildCommand, /ONLY_ACTIVE_ARCH=YES/);
     assert.match(buildCommand, /-showBuildTimingSummary/);
