@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
+
+const fingerprintScriptPath = fileURLToPath(
+  new URL('../detox-cache-fingerprint.mjs', import.meta.url),
+);
 
 function writeFixtureFile(root, path, content) {
   const absolutePath = join(root, path);
@@ -48,6 +53,17 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     git(root, 'add', '--all');
 
     const initial = computeDetoxCacheFingerprints(root);
+    const outputPath = join(root, 'github-output.txt');
+    execFileSync('node', [fingerprintScriptPath], {
+      cwd: root,
+      env: { ...process.env, GITHUB_OUTPUT: outputPath },
+      encoding: 'utf8',
+    });
+    assert.equal(
+      readFileSync(outputPath, 'utf8'),
+      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\n`,
+    );
+
     writeFixtureFile(root, 'apps/mobile/ios/build/DerivedData.db', 'changed Release build output');
     writeFixtureFile(root, 'apps/mobile/ios/build-openai-provider/DerivedData.db', 'changed Debug build output');
     writeFixtureFile(root, 'apps/mobile/ios/build-agent-memory/DerivedData.db', 'changed feature build output');
