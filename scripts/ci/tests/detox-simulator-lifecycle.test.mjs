@@ -19,20 +19,26 @@ function runFakeXcrun(scriptPath, fakeScript, args, extraEnv = {}) {
   const callsPath = join(directory, 'xcrun-calls.log');
   const deletedPath = join(directory, 'deleted');
   const logPath = join(directory, 'simulator.log');
+  const identityPath = join(directory, 'simulator.udid');
+  const outputPath = join(directory, 'github-output');
+  const envPath = join(directory, 'github-env');
   mkdirSync(binDirectory, { recursive: true });
   writeFileSync(fakeXcrun, [
     '#!/usr/bin/env bash',
     'printf \'%s\\n\' "$*" >> "$XCRUN_CALLS"',
     fakeScript,
   ].join('\n'), { mode: 0o755 });
-  const result = spawnSync('bash', [scriptPath, ...args(logPath)], {
+  const result = spawnSync('bash', [scriptPath, ...args(logPath, identityPath)], {
     encoding: 'utf8',
     env: {
       ...process.env,
       PATH: [binDirectory, process.env.PATH].join(':'),
       XCRUN_CALLS: callsPath,
       DELETED_SIMULATOR_MARKER: deletedPath,
+      BOOT_STARTED_MARKER: join(directory, 'boot-started'),
       TEST_DETOX_SIMULATOR_UDID: simulatorId,
+      GITHUB_OUTPUT: outputPath,
+      GITHUB_ENV: envPath,
       GITHUB_RUN_ID: '42',
       GITHUB_RUN_ATTEMPT: '3',
       ...extraEnv,
@@ -41,8 +47,11 @@ function runFakeXcrun(scriptPath, fakeScript, args, extraEnv = {}) {
   const calls = existsSync(callsPath) ? readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean) : [];
   const log = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
   const output = result.stdout;
+  const identity = existsSync(identityPath) ? readFileSync(identityPath, 'utf8') : '';
+  const githubOutput = existsSync(outputPath) ? readFileSync(outputPath, 'utf8') : '';
+  const githubEnv = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
   rmSync(directory, { recursive: true, force: true });
-  return { result, calls, log, output };
+  return { result, calls, log, output, identity, githubOutput, githubEnv };
 }
 
 test('creates and starts one named iPhone 18 Pro on the required iOS runtime', () => {
@@ -62,10 +71,16 @@ test('creates and starts one named iPhone 18 Pro on the required iOS runtime', (
       '  exit 97',
       'fi',
     ].join('\n'),
-    (logPath) => [logPath],
+    (logPath, identityPath) => [logPath, identityPath],
   );
   assert.equal(result.result.status, 0, result.result.stderr + result.log);
   assert.equal(result.output.trim(), simulatorId);
+  assert.equal(result.identity, `${simulatorId}\n`);
+  assert.equal(result.githubOutput, `udid=${simulatorId}\n`);
+  assert.equal(
+    result.githubEnv,
+    `OROT_DETOX_SIMULATOR_UDID=${simulatorId}\nOROT_OPENAI_PROVIDER_SIMULATOR_UDID=${simulatorId}\n`,
+  );
   assert.equal(result.calls.length, 3);
   assert.match(
     result.calls[1],
@@ -85,7 +100,7 @@ test('fails closed when the required iOS runtime is unavailable before creating 
       'fi',
       'exit 97',
     ].join('\n'),
-    (logPath) => [logPath],
+    (logPath, identityPath) => [logPath, identityPath],
   );
   assert.notEqual(result.result.status, 0);
   assert.deepEqual(result.calls, ['simctl list runtimes --json']);
@@ -119,6 +134,29 @@ test('tears down only the dedicated Simulator and confirms it is absent', () => 
     'simctl list devices',
   ]);
   assert.match(result.output, new RegExp(`Deleted dedicated Simulator ${simulatorId}`));
+});
+
+test('attempts deletion and preserves a shutdown failure', () => {
+  const result = runFakeXcrun(
+    teardownScript,
+    [
+      `if [[ "$*" == "simctl list devices" ]]; then`,
+      `  if [[ ! -f "$DELETED_SIMULATOR_MARKER" ]]; then printf '%s\\n' '${simulatorId} (Booted)'; fi`,
+      `elif [[ "$*" == "simctl list devices booted" ]]; then`,
+      `  printf '%s\\n' '${simulatorId} (Booted)'`,
+      `elif [[ "$*" == "simctl shutdown ${simulatorId}" ]]; then`,
+      '  exit 23',
+      `elif [[ "$*" == "simctl delete ${simulatorId}" ]]; then`,
+      '  touch "$DELETED_SIMULATOR_MARKER"',
+      'else',
+      '  exit 97',
+      'fi',
+    ].join('\n'),
+    (logPath) => [simulatorId, logPath],
+  );
+  assert.equal(result.result.status, 23);
+  assert.ok(result.calls.includes(`simctl delete ${simulatorId}`));
+  assert.match(result.log, /shutdown failed/);
 });
 
 test('rejects a malformed Simulator identifier without invoking simctl', () => {

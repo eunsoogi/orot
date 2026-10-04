@@ -18,6 +18,9 @@ switch (selectEntryRoute(launchSettings)) {
   case 'graph':
     require('./graphProbeEntry');
     break;
+  case 'checkpoint':
+    require('./checkpointProbeEntry');
+    break;
   case 'storage':
     require('./storageProbeEntry');
     break;

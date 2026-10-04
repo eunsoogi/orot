@@ -1,48 +1,49 @@
 # Detox CI performance
 
-## Problem
+## Hosted baseline
 
-The Detox workflow built three Release app variants and one Debug OpenAI probe app, installed Pods twice, and started four Jest/Detox runs. The Release variants differed by JavaScript entry file while using the same native build settings, so Swift Crypto and other native targets were compiled again in separate DerivedData directories.
+The comparable baseline is the successful `main` run [37168559096, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37168559096/attempts/2), at `b128021a3330c1f2d432c218ba70f13c86c273e9`. It includes the checkpoint probe added by PR #72. All three required jobs passed. Attempt 1 of the same run failed in the old multi-build workflow during a later CocoaPods install with `ArgumentError - path name contains null byte`; attempt 2 passed. This change reduces the install to one and does not claim to have fixed that error's root cause.
 
-## Evidence
+| Hosted measure | Baseline | Candidate |
+| --- | ---: | ---: |
+| Detox build step | 17m03s | Pending hosted run |
+| Detox E2E test step | 15m00s | Pending hosted run |
+| Complete Detox job | 33m32s | Pending hosted run |
+| Native app builds | 4 Release + 1 Debug | 1 Release + 1 Debug |
+| CocoaPods installs | 3 | 1 |
+| Detox/Jest invocations | 5 | 2 |
+| Workload | 9 tests across 7 suites | 9 tests across 7 suites |
 
-The comparable hosted baseline is successful run `37162652878`, attempt 2, at `98a980f89ada92ff71e311108f5a9a03fcb70b5a`. Its `Detox iOS E2E` job used the `xcode-27-arm64` image release `20260928.0222.1`, macOS 27.0 build 26A428, and verified Xcode/iOS SDK 27.0, Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The pnpm cache restored successfully; the workflow does not configure a DerivedData cache.
+The baseline build log records one shared app build, agent-memory, graph, checkpoint, and OpenAI Debug builds. Its E2E log records the same nine test cases listed below across five Detox invocations. The candidate combines the six Release suites into one app and one invocation, while retaining the OpenAI Debug app and its separate invocation. Hosted candidate timings, cache state, and exact-head required checks will be added after the pull-request run completes.
 
-| Hosted baseline measure | Value |
-| --- | ---: |
-| Native build workflow step, including two Pods installs | 14m57s |
-| Detox E2E test workflow step | 10m30s |
-| Complete Detox job | 26m58s |
-| App builds | 3 Release + 1 Debug |
-| Pods installs | 2 |
-| Jest/Detox runs | 4 |
-| Coverage | 8/8 tests, 6 suites, no skipped or pending tests |
+The baseline Detox job used the `xcode-27-arm64` image, release `20260928.0222.1`, macOS 27.0, Xcode 27.0, and iOS Simulator SDK 27.0. The verified toolchain was Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The pnpm cache was restored. The workflow does not configure a DerivedData cache; the baseline built Detox framework and downloaded the React Native Debug and Release dependency archives on the runner.
 
-The successful hosted test groups were app/storage (5 tests, 3 suites), agent memory (1/1), graph (1/1), and the OpenAI synthetic Debug probe (1/1). OAuth against a real account remains unverified. Attempt 1 of run `37162652878` failed during the second `pod install` with CocoaPods `ArgumentError - path name contains null byte`; attempt 2 succeeded. This change runs one Pods install and does not claim to fix that error's root cause.
+## Local candidate evidence
 
-The local baseline was measured before source edits at `98a980f89ada92ff71e311108f5a9a03fcb70b5a`, using Xcode 27.0 build 27A266a, iOS Simulator 27.0, Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. With the same dedicated iPhone 18 Pro Simulator prebooted, `pnpm e2e:build:ios` took 409.77s real (2063.74s user, 313.44s system), and `scripts/ci/run-test-suite.sh e2e ...` took 141.62s real (13.82s user, 12.37s system). The pnpm store was warm (937 reused, 0 downloaded); all four DerivedData directories were absent before this run. Local test results were 8/8 across 6 suites and 4 Jest runs. Remote CPU, peak RSS, disk, child-process count/time, and fixture bytes were not measured. Local peak RSS, child-process count/time, and fixture bytes were not measured.
+The post-checkpoint local candidate used the same six Release suites and OpenAI Debug suite: 9/9 tests passed across 7 suites in 2 Detox/Jest runs, with no skipped or pending tests. On Xcode 27.0 build 27A266a, iOS SDK 27.0, Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12, the candidate build took 418.74s real (1371.81s user, 244.71s system), and the E2E step took 213.60s real (18.50s user, 17.15s system). It used one Pods install and the same prebooted, task-created iPhone 18 Pro Simulator for both configurations. Teardown succeeded and the exact device was absent afterward.
 
-The local candidate was measured on the same host and toolchain, from an uncommitted worktree based on `98a980f89ada92ff71e311108f5a9a03fcb70b5a`. Its pnpm store was warm, and both candidate DerivedData directories were absent before the build. The same dedicated iPhone 18 Pro / iOS 27.0 Simulator was booted before the build and already booted before both test invocations.
+These are local measurements, not hosted CI timings. The earlier local baseline at `98a980f` covered only 8 tests across 6 suites and omitted the checkpoint probe, so it is not a valid comparison for this candidate. No local or remote speedup is claimed from those runs. The local candidate's post-build DerivedData directories were 1,348,916 KiB (Release) and 1,734,840 KiB (OpenAI Debug); these are directory sizes after the build, not peak disk use.
 
-| Local stage | Baseline | Candidate | Change |
-| --- | ---: | ---: | ---: |
-| Native build wall time | 409.77s | 209.70s | 48.8% lower |
-| Detox E2E wall time | 141.62s | 135.31s | 4.5% lower |
-| Sum of measured build and test stages | 551.39s | 345.01s | 37.4% lower |
-| Post-build DerivedData size | 5,736,240 KiB | 3,059,396 KiB | 46.7% lower |
-| App builds / Pods installs | 3 Release + 1 Debug / 2 | 1 Release + 1 Debug / 1 | — |
-| Jest/Detox runs / coverage | 4 / 8 tests, 6 suites | 2 / 8 tests, 6 suites | No skips or pending tests |
+## Preserved E2E scenarios and oracles
 
-The stage sum excludes dependency installation, Simulator preparation, and other workflow work. DerivedData figures are post-build directory sizes, not peak disk usage. These local measurements show the candidate's local behavior; they are not hosted CI evidence and do not satisfy the remote comparison criterion. The measured candidate source tree is committed as `df050e6`; equivalent hosted-run timings, runner image, and cache state remain pending. OAuth against a real account remains unverified. Peak RSS, child-process count/time, and fixture bytes remain unmeasured locally and remotely.
+| Configuration | Scenario | Oracle |
+| --- | --- | --- |
+| Release | App smoke | Launches in English and still renders the Korean welcome screen. |
+| Release | Appointments | Creates, edits, and cancels an appointment that survives process restarts. |
+| Release | Encrypted storage: fresh install | Creates encrypted source and evidence records on a fresh install. |
+| Release | Encrypted storage: restart | Reopens a source and evidence span after an app process restart. |
+| Release | Encrypted storage: migration | Migrates the earlier test schema on a fresh install. |
+| Release | Agent memory | Persists, corrects, recalls, and removes Korean memory with its source across an app restart. |
+| Release | LangGraph | Invokes and consumes a stateful two-node graph 20 consecutive times. |
+| Release | Checkpoint resume | Saves after `increment`, restarts the app, resumes without rerunning the completed node, and checks the result `value=8; nodes=increment,double` plus Unicode checkpoint metadata `환자 기록: café 🌱🩺`. |
+| Debug | OpenAI provider synthetic probe | Checks visible-model-only catalog, completion, usage-limit, and cancellation behavior; asserts the real account remains unverified and no synthetic access token is exposed. |
 
-## Smallest improvement
+The Release router selects the existing storage, agent-memory, graph, or checkpoint entry from explicit launch settings. Its Jest configuration enumerates all six Release test files. The OpenAI synthetic fixture remains in its separate Debug-only app. No probe semantics or assertions were changed.
 
-One Release router selects the existing app, storage, agent-memory, or graph entry at runtime. The existing storage and memory launch arguments continue to select their probe; the graph test now passes an explicit route selector. One Release Jest configuration runs all five Release test files together. The OpenAI synthetic fixture remains in its Debug-only app and runs in one separate Detox invocation.
+## CI changes and verification
 
-The workflow creates and boots one named iPhone 18 Pro Simulator before dependency installation, waits for it after both app builds, passes that exact UDID to the Release and Debug configurations, captures its logs, and deletes only that device. The Release and Debug app builds share one Pods install. The production app build and standalone OAuth package and Simulator harness checks remain in the separate `iOS Simulator Build` job.
+The Detox job prepares one dedicated iOS 27 iPhone 18 Pro Simulator before dependency installation, persists its UDID before boot, and passes that exact ID to both configurations. Each `simctl` operation and each lifecycle workflow step has a bound. Cleanup targets only the recorded device, attempts deletion after shutdown errors, and preserves logs. Summary validation requires both the configured six-suite Release run and one-suite OpenAI Debug run, and rejects missing, failed, skipped, pending, or todo tests.
 
-## Verification
+The production app build and standalone OAuth package/Simulator harness checks remain in the separate `iOS Simulator Build` job. Real-account OAuth remains unverified. Peak RSS, CPU time by child process, child-process count, fixture bytes, peak disk usage, and remote DerivedData size remain unmeasured.
 
-The CI summary guard requires one nonempty Release Jest summary and one nonempty OpenAI Debug Jest summary; it rejects missing or skipped results. Portable checks cover entry selection, explicit Release test inventory, per-run aggregation, both Detox invocations, fail-closed Simulator selection, and scoped Simulator teardown.
-
-Hosted candidate timing and exact baseline/candidate SHA comparison remain pending until the candidate completes on the pull request's hosted runner.
+Local portable validation passed 45/45 tests, along with lint, typecheck, unit/component tests, the 250-line audit, shell and Node syntax checks, workflow YAML parsing, and `git diff --check`. Hosted required checks on the candidate head are pending. This document will be updated with the hosted candidate run's exact SHA, runner/toolchain/cache state, build/test/job timings, and final check results before handoff.

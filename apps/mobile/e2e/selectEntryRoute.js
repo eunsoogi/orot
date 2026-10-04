@@ -4,13 +4,14 @@ function selectEntryRoute(settings) {
   const launchSettings = settings && typeof settings === 'object' ? settings : {};
 
   if (owns(launchSettings, 'OROT_E2E_PROBE')) {
-    if (launchSettings.OROT_E2E_PROBE !== 'graph') {
+    const probe = launchSettings.OROT_E2E_PROBE;
+    if (probe !== 'graph' && probe !== 'checkpoint') {
       throw new Error('Unsupported OROT_E2E_PROBE value');
     }
     if (owns(launchSettings, 'OROT_AGENT_MEMORY_PROBE') || owns(launchSettings, 'OROT_STORAGE_PROBE')) {
       throw new Error('Conflicting Orot E2E probe selectors');
     }
-    return 'graph';
+    return probe;
   }
 
   if (owns(launchSettings, 'OROT_AGENT_MEMORY_PROBE')) {

@@ -26,7 +26,11 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
       'printf \'%s\\n%s\\n\' "$PWD" "$DETOX_ARTIFACTS_LOCATION" > "$DETOX_LOCATION_CAPTURE"',
       'mkdir -p "$DETOX_ARTIFACTS_LOCATION"',
       'printf \'retained failure artifact\\n\' > "$DETOX_ARTIFACTS_LOCATION/failure-artifact.txt"',
-      'printf \'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n\'',
+      'if [[ "$*" == *openai-provider* ]]; then',
+      '  printf \'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n\'',
+      'else',
+      '  printf \'Test Suites: 6 passed, 6 total\\nTests: 8 passed, 8 total\\n\'',
+      'fi',
     ].join('\n'), { mode: 0o755 });
 
     const result = spawnSync('bash', [runner, 'e2e', artifactRelativePath], {

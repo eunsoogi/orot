@@ -57,3 +57,40 @@ test('captures logs by the assigned UDID when Detox reports an unknown device na
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('uses the recorded dedicated UDID when Detox never assigns a test', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-detox-diagnostics-'));
+  const binDirectory = join(directory, 'bin');
+  const fakeXcrun = join(binDirectory, 'xcrun');
+  const outputLog = join(directory, 'artifacts', 'simulator.log');
+  const argsPath = join(directory, 'xcrun-args.txt');
+  const identityPath = join(directory, 'simulator.udid');
+  const simulatorId = 'A5BC9CEB-DCB4-40BF-B43B-EFE5B1DBBD8F';
+  try {
+    mkdirSync(binDirectory, { recursive: true });
+    writeFileSync(identityPath, `${simulatorId}\n`);
+    writeFileSync(fakeXcrun, [
+      '#!/usr/bin/env bash',
+      'printf \'%s\\n\' "$*" > "$XCRUN_CAPTURE"',
+      'printf \'captured simulator log\\n\'',
+    ].join('\n'), { mode: 0o755 });
+
+    const result = spawnSync('bash', [collectScript, join(directory, 'missing-e2e.log'), outputLog, identityPath], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: [binDirectory, process.env.PATH].join(':'),
+        XCRUN_CAPTURE: argsPath,
+      },
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(argsPath, 'utf8').trim(),
+      `simctl spawn ${simulatorId} log show --last 20m --style compact --predicate process == "Orot"`,
+    );
+    assert.match(readFileSync(outputLog, 'utf8'), /captured simulator log/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

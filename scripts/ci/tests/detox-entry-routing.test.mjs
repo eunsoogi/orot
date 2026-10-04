@@ -9,12 +9,14 @@ const requireFromRepository = createRequire(join(repositoryRoot, 'package.json')
 const selectEntryRoute = requireFromRepository('./apps/mobile/e2e/selectEntryRoute.js').selectEntryRoute;
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
+const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 
 test('routes the existing launch arguments to one Release entry and rejects unknown selectors', () => {
   assert.equal(selectEntryRoute({}), 'storage');
   assert.equal(selectEntryRoute({ OROT_STORAGE_PROBE: 'legacy' }), 'storage');
   assert.equal(selectEntryRoute({ OROT_AGENT_MEMORY_PROBE: 'fresh' }), 'agent-memory');
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'graph' }), 'graph');
+  assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'checkpoint' }), 'checkpoint');
   assert.throws(() => selectEntryRoute({ OROT_E2E_PROBE: 'typo' }), /Unsupported OROT_E2E_PROBE/);
   assert.throws(
     () => selectEntryRoute({ OROT_E2E_PROBE: 'graph', OROT_AGENT_MEMORY_PROBE: 'fresh' }),
@@ -22,6 +24,10 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
   );
   assert.throws(
     () => selectEntryRoute({ OROT_AGENT_MEMORY_PROBE: 'fresh', OROT_STORAGE_PROBE: 'fresh' }),
+    /Conflicting Orot E2E probe selectors/,
+  );
+  assert.throws(
+    () => selectEntryRoute({ OROT_E2E_PROBE: 'checkpoint', OROT_STORAGE_PROBE: 'fresh' }),
     /Conflicting Orot E2E probe selectors/,
   );
 });
@@ -36,7 +42,9 @@ test('the shared Release app config bundles the router and explicitly selects ev
     '<rootDir>/e2e/storage.test.js',
     '<rootDir>/e2e/agentMemory.test.js',
     '<rootDir>/e2e/graph.test.js',
+    '<rootDir>/e2e/checkpoint.detox.e2e.js',
   ]);
+  assert.deepEqual(openAiJestConfig.testMatch, ['<rootDir>/e2e/openai-provider.e2e.js']);
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
 });

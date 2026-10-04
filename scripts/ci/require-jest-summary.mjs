@@ -1,4 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const [logPath, suiteName] = process.argv.slice(2);
 if (!logPath || !suiteName) {
@@ -26,6 +29,23 @@ if (suiteName === 'e2e' && testSummaries.length !== 2) {
   throw new Error(`e2e: expected one Release and one OpenAI Debug Jest summary, received ${testSummaries.length}`);
 }
 
+let expectedE2ESuites;
+if (suiteName === 'e2e') {
+  const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
+  const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
+  const releaseConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
+  const debugConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
+  expectedE2ESuites = [
+    ['Release', releaseConfig.testMatch],
+    ['OpenAI Debug', debugConfig.testMatch],
+  ].map(([configuration, testMatch]) => {
+    if (!Array.isArray(testMatch) || testMatch.length === 0) {
+      throw new Error(`e2e: ${configuration} Jest config must enumerate its suites explicitly`);
+    }
+    return { configuration, count: testMatch.length };
+  });
+}
+
 let totalTests = 0;
 let totalSuites = 0;
 let passedTests = 0;
@@ -44,6 +64,12 @@ for (const [index, testSummary] of testSummaries.entries()) {
 
   if (testTotal < 1 || suiteTotal < 1) {
     throw new Error(`${suiteName}: Jest run ${index + 1} discovered zero tests or suites`);
+  }
+  const expected = expectedE2ESuites?.[index];
+  if (expected && suiteTotal !== expected.count) {
+    throw new Error(
+      `e2e: ${expected.configuration} summary expected ${expected.count} configured suites, received ${suiteTotal}`,
+    );
   }
   if (passed !== testTotal || failed !== 0 || pending !== 0 || skipped !== 0 || todo !== 0 || failedSuites !== 0 || pendingSuites !== 0 || skippedSuites !== 0) {
     throw new Error(`${suiteName}: Jest run ${index + 1} includes a failure, skip, pending test, or todo`);
