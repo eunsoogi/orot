@@ -2,7 +2,7 @@
 set -uo pipefail
 
 if [[ $# -ne 2 ]]; then
-  printf 'Usage: %s <unit|e2e> <artifact-directory>\n' "$0" >&2
+  printf 'Usage: %s <unit|e2e|e2e-release|e2e-openai-provider> <artifact-directory>\n' "$0" >&2
   exit 2
 fi
 
@@ -23,7 +23,31 @@ case "$suite" in
       DETOX_RECORD_VIDEOS=none
       DETOX_CAPTURE_VIEW_HIERARCHY=enabled
       DETOX_HEADLESS=true
-      bash scripts/ci/run-detox-e2e.sh)
+      OROT_DETOX_RESOURCE_LOG_PATH="$artifact_dir/detox-resource-samples.log"
+      bash scripts/ci/run-detox-e2e.sh both)
+    ;;
+  e2e-release)
+    log_path="$artifact_dir/e2e-test.log"
+    command=(env
+      "DETOX_ARTIFACTS_LOCATION=$artifact_dir/detox"
+      DETOX_RECORD_LOGS=all
+      DETOX_RECORD_VIDEOS=none
+      DETOX_CAPTURE_VIEW_HIERARCHY=enabled
+      DETOX_HEADLESS=true
+      OROT_DETOX_TEST_LOG_LEVEL=trace
+      OROT_DETOX_RESOURCE_LOG_PATH="$artifact_dir/detox-resource-samples.log"
+      bash scripts/ci/run-detox-e2e.sh release)
+    ;;
+  e2e-openai-provider)
+    log_path="$artifact_dir/e2e-test.log"
+    command=(env
+      "DETOX_ARTIFACTS_LOCATION=$artifact_dir/detox"
+      DETOX_RECORD_LOGS=failing
+      DETOX_RECORD_VIDEOS=none
+      DETOX_CAPTURE_VIEW_HIERARCHY=enabled
+      DETOX_HEADLESS=true
+      OROT_DETOX_RESOURCE_LOG_PATH="$artifact_dir/detox-resource-samples.log"
+      bash scripts/ci/run-detox-e2e.sh openai-provider)
     ;;
   *)
     printf 'Unknown test suite: %s\n' "$suite" >&2
@@ -34,7 +58,11 @@ esac
 set +e
 scripts/ci/run-command.sh "$suite" "$log_path" -- "${command[@]}"
 command_status=$?
-node scripts/ci/require-jest-summary.mjs "$log_path" "$suite"
+summary_args=("$log_path" "$suite")
+if [[ ( "$suite" == e2e-release || "$suite" == e2e-openai-provider ) && -n "${GITHUB_OUTPUT:-}" ]]; then
+  summary_args+=("$GITHUB_OUTPUT")
+fi
+node scripts/ci/require-jest-summary.mjs "${summary_args[@]}"
 summary_status=$?
 set -e
 

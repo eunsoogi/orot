@@ -1,14 +1,21 @@
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [logPath, suiteName] = process.argv.slice(2);
+const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
 if (!logPath || !suiteName) {
-  throw new Error('Usage: node require-jest-summary.mjs <log-path> <suite-name>');
+  throw new Error('Usage: node require-jest-summary.mjs <log-path> <suite-name> [github-output-path]');
 }
 
 const log = readFileSync(logPath, 'utf8').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
+const e2eSuites = ['e2e', 'e2e-release', 'e2e-openai-provider'];
+if (suiteName.startsWith('e2e') && !e2eSuites.includes(suiteName)) {
+  throw new Error(`Unknown E2E summary profile: ${suiteName}`);
+}
+if (githubOutputPath && suiteName === 'e2e') {
+  throw new Error('e2e: GitHub outputs require a single E2E profile summary');
+}
 const testSummaries = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
 const suiteSummaries = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
 
@@ -25,12 +32,8 @@ function total(summary) {
 if (testSummaries.length === 0 || suiteSummaries.length === 0 || testSummaries.length !== suiteSummaries.length) {
   throw new Error(`${suiteName}: Jest did not produce a matching test and suite summary for every run`);
 }
-if (suiteName === 'e2e' && testSummaries.length !== 2) {
-  throw new Error(`e2e: expected one Release and one OpenAI Debug Jest summary, received ${testSummaries.length}`);
-}
-
 let expectedE2ESuites;
-if (suiteName === 'e2e') {
+if (e2eSuites.includes(suiteName)) {
   const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
   const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
   const releaseConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
@@ -53,7 +56,7 @@ if (suiteName === 'e2e') {
   if (JSON.stringify(debugConfig.testMatch) !== JSON.stringify(['<rootDir>/e2e/openai-provider.e2e.js'])) {
     throw new Error('e2e: OpenAI Debug Jest config must select its dedicated probe');
   }
-  expectedE2ESuites = [
+  const profiles = [
     ['Release', releaseConfig.testMatch, 8],
     ['OpenAI Debug', debugConfig.testMatch, 1],
   ].map(([configuration, testMatch, tests]) => {
@@ -62,6 +65,17 @@ if (suiteName === 'e2e') {
     }
     return { configuration, suites: testMatch.length, tests };
   });
+  expectedE2ESuites = suiteName === 'e2e'
+    ? profiles
+    : [suiteName === 'e2e-release' ? profiles[0] : profiles[1]];
+  if (testSummaries.length !== expectedE2ESuites.length) {
+    if (suiteName === 'e2e') {
+      throw new Error(`e2e: expected one Release and one OpenAI Debug Jest summary, received ${testSummaries.length}`);
+    }
+    throw new Error(`${suiteName}: expected exactly one profile summary, received ${testSummaries.length}`);
+  }
+} else if (githubOutputPath) {
+  throw new Error(`${suiteName}: GitHub outputs are only supported for a single E2E profile`);
 }
 
 let totalTests = 0;
@@ -103,3 +117,8 @@ for (const [index, testSummary] of testSummaries.entries()) {
 }
 
 console.log(`${suiteName}: ${passedTests}/${totalTests} tests passed across ${totalSuites} suites in ${testSummaries.length} Jest runs; no skipped or pending tests`);
+
+if (githubOutputPath) {
+  const profile = suiteName === 'e2e-release' ? 'release' : 'openai-provider';
+  appendFileSync(githubOutputPath, `e2e_profile=${profile}\ne2e_test_cases=${totalTests}\ne2e_test_suites=${totalSuites}\n`);
+}

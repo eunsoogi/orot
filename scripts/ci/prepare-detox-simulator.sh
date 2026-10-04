@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
-  printf 'Usage: %s <setup-log-path> <simulator-identity-path>\n' "$0" >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  printf 'Usage: %s <setup-log-path> <simulator-identity-path> [both|release|openai-provider]\n' "$0" >&2
   exit 2
 fi
 
 log_path="$1"
 identity_path="$2"
+profile="${3:-both}"
+case "$profile" in
+  both|release|openai-provider) ;;
+  *) printf 'Unknown Detox Simulator profile: %s\n' "$profile" >&2; exit 2 ;;
+esac
+
 script_dir="$(cd -- "$(dirname -- "$0")" && pwd)"
 mkdir -p "$(dirname "$log_path")"
 mkdir -p "$(dirname "$identity_path")"
@@ -71,8 +77,12 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'udid=%s\n' "$simulator_udid" >> "$GITHUB_OUTPUT"
 fi
 if [[ -n "${GITHUB_ENV:-}" ]]; then
-  printf 'OROT_DETOX_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
-  printf 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
+  if [[ "$profile" == both || "$profile" == release ]]; then
+    printf 'OROT_DETOX_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
+  fi
+  if [[ "$profile" == both || "$profile" == openai-provider ]]; then
+    printf 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID=%s\n' "$simulator_udid" >> "$GITHUB_ENV"
+  fi
 fi
 
 printf 'Created %s with runtime %s and UDID %s.\n' "$simulator_name" "$runtime_id" "$simulator_udid" >> "$log_path"

@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ $# -gt 1 ]]; then
+  printf 'Usage: %s [all|release|openai-provider]\n' "$0" >&2
+  exit 2
+fi
+
+profile="${1:-all}"
+case "$profile" in
+  all|release|openai-provider) ;;
+  *) printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider]\n' "$profile" "$0" >&2; exit 2 ;;
+esac
+
 host_arch="$(uname -m)"
 release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build}"
 openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-openai-provider}"
@@ -59,9 +70,15 @@ resolve_mobile_path() {
 }
 
 run_timed_stage pods pnpm --filter @orot/mobile ios:pods
-run_timed_stage release pnpm --filter @orot/mobile exec -- detox build --configuration ios.sim.release
-verify_app_architecture "$(resolve_mobile_path "$release_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"
-run_timed_stage openai-debug pnpm --filter @orot/mobile exec -- detox build \
-  --config-path ./e2e/openai-provider.detox.config.js \
-  --configuration ios.sim.debug.openai-provider
-verify_app_architecture "$(resolve_mobile_path "$openai_derived_data_path")/Build/Products/Debug-iphonesimulator/Orot.app/Orot"
+
+if [[ "$profile" == all || "$profile" == release ]]; then
+  run_timed_stage release pnpm --filter @orot/mobile exec -- detox build --configuration ios.sim.release
+  verify_app_architecture "$(resolve_mobile_path "$release_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"
+fi
+
+if [[ "$profile" == all || "$profile" == openai-provider ]]; then
+  run_timed_stage openai-debug pnpm --filter @orot/mobile exec -- detox build \
+    --config-path ./e2e/openai-provider.detox.config.js \
+    --configuration ios.sim.debug.openai-provider
+  verify_app_architecture "$(resolve_mobile_path "$openai_derived_data_path")/Build/Products/Debug-iphonesimulator/Orot.app/Orot"
+fi

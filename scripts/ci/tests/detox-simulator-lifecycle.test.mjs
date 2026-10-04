@@ -90,6 +90,26 @@ test('creates and starts one named iPhone 18 Pro on the required iOS runtime', (
   assert.match(result.log, new RegExp(`UDID ${simulatorId}`));
 });
 
+test('exports only the selected OpenAI Debug Simulator identity', () => {
+  const result = runFakeXcrun(
+    prepareScript,
+    [
+      'if [[ "$*" == "simctl list runtimes --json" ]]; then',
+      '  printf \'{"runtimes":[{"name":"iOS 27.0","identifier":"com.apple.CoreSimulator.SimRuntime.iOS-27-0","isAvailable":true}]}\\n\'',
+      'elif [[ "$1 $2" == "simctl create" ]]; then',
+      `  printf '%s\\n' "$TEST_DETOX_SIMULATOR_UDID"`,
+      `elif [[ "$*" == "simctl boot ${simulatorId}" ]]; then`,
+      '  exit 0',
+      'else',
+      '  exit 97',
+      'fi',
+    ].join('\n'),
+    (logPath, identityPath) => [logPath, identityPath, 'openai-provider'],
+  );
+  assert.equal(result.result.status, 0, result.result.stderr + result.log);
+  assert.equal(result.githubEnv, `OROT_OPENAI_PROVIDER_SIMULATOR_UDID=${simulatorId}\n`);
+});
+
 test('fails closed when the required iOS runtime is unavailable before creating a device', () => {
   const result = runFakeXcrun(
     prepareScript,

@@ -147,92 +147,40 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  detox-ios-e2e:
+  detox_release_e2e:
+    name: Detox Release iOS E2E
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+
+  detox_openai_provider_e2e:
+    name: Detox OpenAI Debug iOS E2E
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: openai-provider
+
+  detox_ios_e2e:
     name: Detox iOS E2E
-    runs-on: xcode-27
-    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [detox_release_e2e, detox_openai_provider_e2e]
+    if: ${{ always() }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: false
-
-      - name: Install CocoaPods
+      - name: Require both child jobs and full E2E coverage
+        env:
+          RELEASE_JOB_RESULT: ${{ needs.detox_release_e2e.result }}
+          RELEASE_PROFILE: ${{ needs.detox_release_e2e.outputs.profile }}
+          RELEASE_TEST_CASES: ${{ needs.detox_release_e2e.outputs.test_cases }}
+          RELEASE_TEST_SUITES: ${{ needs.detox_release_e2e.outputs.test_suites }}
+          OPENAI_JOB_RESULT: ${{ needs.detox_openai_provider_e2e.result }}
+          OPENAI_PROFILE: ${{ needs.detox_openai_provider_e2e.outputs.profile }}
+          OPENAI_TEST_CASES: ${{ needs.detox_openai_provider_e2e.outputs.test_cases }}
+          OPENAI_TEST_SUITES: ${{ needs.detox_openai_provider_e2e.outputs.test_suites }}
         run: |
-          scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-
-      - name: Verify runner toolchain
-        run: scripts/ci/verify-toolchain.sh --cocoapods
-
-      - name: Install frozen workspace dependencies
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
-
-      - name: Build Detox iOS framework cache
-        timeout-minutes: 20
-        run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
-
-      - name: Build Detox iOS Simulator app
-        timeout-minutes: 45
-        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh
-
-      - name: Install Detox Simulator utilities
-        timeout-minutes: 10
-        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
-
-      - name: Prepare dedicated Detox Simulator
-        id: prepare-detox-simulator
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid
-
-      - name: Wait for dedicated Detox Simulator
-        timeout-minutes: 20
-        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "$OROT_DETOX_SIMULATOR_UDID"
-
-      - name: Run Detox iOS Simulator tests
-        timeout-minutes: 45
-        run: scripts/ci/run-test-suite.sh e2e artifacts/detox
-
-      - name: Collect simulator logs
-        if: ${{ always() }}
-        timeout-minutes: 5
-        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log artifacts/detox/simulator.udid
-
-      - name: Delete dedicated Detox Simulator
-        if: ${{ always() }}
-        timeout-minutes: 15
-        run: |
-          if [[ ! -s artifacts/detox/simulator.udid ]]; then
-            printf 'No dedicated Simulator ID was recorded; no device will be targeted.\n' > artifacts/detox/simulator-teardown.log
-            exit 0
-          fi
-          simulator_udid="$(cat artifacts/detox/simulator.udid)"
-          scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log
-
-      - name: Upload Detox reports, logs, screenshots, and videos
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-detox-ios-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/detox/
-          if-no-files-found: error
-          retention-days: 14
+          node scripts/ci/require-detox-e2e-aggregate.mjs \
+            "$RELEASE_JOB_RESULT" "$RELEASE_PROFILE" "$RELEASE_TEST_CASES" "$RELEASE_TEST_SUITES" \
+            "$OPENAI_JOB_RESULT" "$OPENAI_PROFILE" "$OPENAI_TEST_CASES" "$OPENAI_TEST_SUITES"

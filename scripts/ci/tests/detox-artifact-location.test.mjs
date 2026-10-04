@@ -59,3 +59,57 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
     if (createdArtifactParent && readdirSync(artifactParent).length === 0) rmdirSync(artifactParent);
   }
 });
+
+test('publishes the validated Release count and preserves successful-run diagnostics', () => {
+  const artifactParent = join(repositoryRoot, 'artifacts');
+  const createdArtifactParent = !existsSync(artifactParent);
+  mkdirSync(artifactParent, { recursive: true });
+  const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-release-'));
+  const artifactRelativePath = relative(repositoryRoot, artifactRoot);
+  const tempDirectory = mkdtempSync(join(tmpdir(), 'orot-detox-release-'));
+  const fakePnpm = join(tempDirectory, 'pnpm');
+  const summaryOutput = join(tempDirectory, 'github-output');
+  const envCapture = join(tempDirectory, 'detox-env.txt');
+  const commandCapture = join(tempDirectory, 'detox-command.txt');
+  const simulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
+
+  try {
+    writeFileSync(fakePnpm, [
+      '#!/usr/bin/env bash',
+      'cd "$MOBILE_PACKAGE_DIRECTORY" || exit 93',
+      'printf \'%s\\n%s\\n\' "$DETOX_RECORD_LOGS" "$OROT_DETOX_TEST_LOG_LEVEL" > "$DETOX_ENV_CAPTURE"',
+      'printf \'%s\\n\' "$*" > "$DETOX_COMMAND_CAPTURE"',
+      'printf \'Test Suites: 1 passed, 1 total\\nTests: 8 passed, 8 total\\n\'',
+      'mkdir -p "$DETOX_ARTIFACTS_LOCATION/release"',
+      'printf \'success log\\n\' > "$DETOX_ARTIFACTS_LOCATION/release/success.log"',
+    ].join('\n'), { mode: 0o755 });
+
+    const result = spawnSync('bash', [runner, 'e2e-release', artifactRelativePath], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: summaryOutput,
+        DETOX_ENV_CAPTURE: envCapture,
+        DETOX_COMMAND_CAPTURE: commandCapture,
+        MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        OROT_DETOX_SIMULATOR_UDID: simulatorId,
+        OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
+        PATH: [tempDirectory, process.env.PATH].join(':'),
+      },
+    });
+
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.equal(readFileSync(summaryOutput, 'utf8'), 'e2e_profile=release\ne2e_test_cases=8\ne2e_test_suites=1\n');
+    assert.equal(readFileSync(envCapture, 'utf8'), 'all\ntrace\n');
+    assert.match(readFileSync(commandCapture, 'utf8'), /--artifacts-location .*\/detox\/release/);
+    assert.equal(existsSync(join(artifactRoot, 'e2e-test.log')), true);
+    assert.match(readFileSync(join(artifactRoot, 'detox-resource-samples.log'), 'utf8'), /DETOX_RESOURCE_SAMPLE/);
+    assert.equal(existsSync(join(artifactRoot, 'detox/release/success.log')), true);
+  } finally {
+    rmSync(artifactRoot, { recursive: true, force: true });
+    rmSync(join(repositoryRoot, 'apps/mobile', artifactRelativePath), { recursive: true, force: true });
+    rmSync(tempDirectory, { recursive: true, force: true });
+    if (createdArtifactParent && readdirSync(artifactParent).length === 0) rmdirSync(artifactParent);
+  }
+});

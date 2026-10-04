@@ -74,13 +74,31 @@ test('Release probes share one app build while OpenAI keeps its separate Debug-o
   assert.match(buildCommands[1], /ENTRY_FILE=e2e\/openaiProviderProbeEntry\.tsx/);
 });
 
-test('installs Detox Simulator utilities before creating or booting the dedicated Simulator', () => {
+test('runs Release and OpenAI Debug in independent jobs behind a fail-closed aggregate check', () => {
   const workflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
-  const detoxJob = workflow.slice(workflow.indexOf('  detox-ios-e2e:'));
-  const buildStep = detoxJob.indexOf('- name: Build Detox iOS Simulator app');
-  const utilitiesStep = detoxJob.indexOf('- name: Install Detox Simulator utilities');
-  const prepareStep = detoxJob.indexOf('- name: Prepare dedicated Detox Simulator');
-  const bootWaitStep = detoxJob.indexOf('- name: Wait for dedicated Detox Simulator');
+  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
+  const releaseCall = workflow.slice(workflow.indexOf('  detox_release_e2e:'), workflow.indexOf('  detox_openai_provider_e2e:'));
+  const debugCall = workflow.slice(workflow.indexOf('  detox_openai_provider_e2e:'), workflow.indexOf('  detox_ios_e2e:'));
+  const aggregate = workflow.slice(workflow.indexOf('  detox_ios_e2e:'));
+  assert.match(releaseCall, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
+  assert.match(releaseCall, /profile: release/);
+  assert.match(debugCall, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
+  assert.match(debugCall, /profile: openai-provider/);
+  assert.match(aggregate, /name: Detox iOS E2E/);
+  assert.match(aggregate, /needs:\s*\[detox_release_e2e, detox_openai_provider_e2e\]/);
+  assert.match(aggregate, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(aggregate, /require-detox-e2e-aggregate\.mjs/);
+  assert.match(profileWorkflow, /runs-on: xcode-27/);
+  assert.match(profileWorkflow, /build-detox-apps\.sh "\$\{\{ inputs\.profile \}\}"/);
+  assert.match(profileWorkflow, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
+});
+
+test('installs Detox Simulator utilities before each independent Simulator is prepared', () => {
+  const profileWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'), 'utf8');
+  const buildStep = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
+  const utilitiesStep = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
+  const prepareStep = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
+  const bootWaitStep = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
 
   assert.ok(buildStep >= 0 && utilitiesStep > buildStep && prepareStep > utilitiesStep && bootWaitStep > prepareStep);
 });
