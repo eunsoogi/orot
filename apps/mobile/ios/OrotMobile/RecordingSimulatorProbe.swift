@@ -14,8 +14,30 @@ extension RecordingModule {
         reject("RECORDING_ALREADY_ACTIVE", "Stop the current recording first.", nil)
         return
       }
+      self.syntheticStartFailurePoint = nil
       self.syntheticCaptureRequested = true
       resolve(true)
+    }
+  }
+
+  @objc(prepareSyntheticStartFailure:resolver:rejecter:)
+  public func prepareSyntheticStartFailure(
+    _ point: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    workQueue.async {
+      guard self.status == .idle || self.status == .completed else {
+        reject("RECORDING_ALREADY_ACTIVE", "Stop the current recording first.", nil)
+        return
+      }
+      guard point == "beforeFileURL" || point == "afterFileCreated" else {
+        reject("INVALID_RECORDING_FAILURE_PROBE", "The failure probe point is invalid.", nil)
+        return
+      }
+      self.syntheticStartFailurePoint = point
+      self.syntheticCaptureRequested = true
+      resolve(nil)
     }
   }
 

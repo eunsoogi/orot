@@ -13,6 +13,7 @@ interface NativeRecordingModule {
   resumeRecording(): Promise<RecordingSnapshot>;
   stopRecording(): Promise<CompletedRecording>;
   prepareSyntheticCapture?: () => Promise<boolean>;
+  prepareSyntheticStartFailure?: (point: 'beforeFileURL' | 'afterFileCreated') => Promise<void>;
   simulateInterruption?: (phase: 'began' | 'ended') => Promise<void>;
 }
 
@@ -68,8 +69,19 @@ export function isSyntheticRecordingProbeAvailable(): boolean {
   return (
     __DEV__ &&
     module?.prepareSyntheticCapture !== undefined &&
+    module.prepareSyntheticStartFailure !== undefined &&
     module.simulateInterruption !== undefined
   );
+}
+
+export async function prepareSyntheticRecordingStartFailure(
+  point: 'beforeFileURL' | 'afterFileCreated',
+): Promise<void> {
+  const module = requireNativeModule();
+  if (!__DEV__ || !module.prepareSyntheticStartFailure) {
+    throw new Error('Recording start failures can be simulated only in an iOS Simulator debug build.');
+  }
+  await module.prepareSyntheticStartFailure(point);
 }
 
 export async function prepareSyntheticRecordingProbe(): Promise<void> {

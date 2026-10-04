@@ -20,6 +20,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
   var recorder: AVAudioRecorder?
   var recordingID: String?
   var recordingURL: URL?
+  var pendingRecordingURL: URL?
   var startedAt: Date?
   var lastDurationMs = 0
   var wasInterrupted = false
@@ -29,6 +30,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
   #if DEBUG && targetEnvironment(simulator)
   var syntheticCapture: RecordingSyntheticCapture?
   var syntheticCaptureRequested = false
+  var syntheticStartFailurePoint: String?
   #endif
 
   @objc override public static func requiresMainQueueSetup() -> Bool { false }
@@ -165,15 +167,20 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     syntheticCapture = nil
     syntheticCaptureRequested = false
     #endif
-    if let recordingURL { try? FileManager.default.removeItem(at: recordingURL) }
-    recordingID = nil
-    recordingURL = nil
-    startedAt = nil
-    lastDurationMs = 0
+    if let pendingRecordingURL {
+      try? FileManager.default.removeItem(at: pendingRecordingURL)
+    }
+    pendingRecordingURL = nil
     startInProgress = false
     consentAcknowledged = false
     wasInterrupted = false
-    status = .idle
+    if status != .completed {
+      recordingID = nil
+      recordingURL = nil
+      startedAt = nil
+      lastDurationMs = 0
+      status = .idle
+    }
     emitState()
     deactivateAudioSession()
     reject("RECORDING_START_FAILED", error.localizedDescription, error as NSError)
@@ -204,11 +211,13 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
 enum RecordingModuleError: LocalizedError {
   case prepareFailed
   case startFailed
+  case syntheticStartFailure
 
   var errorDescription: String? {
     switch self {
     case .prepareFailed: return "The audio recorder could not prepare its local file."
     case .startFailed: return "The audio recorder could not start."
+    case .syntheticStartFailure: return "The synthetic recording failure probe was triggered."
     }
   }
 }

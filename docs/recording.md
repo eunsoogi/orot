@@ -17,6 +17,10 @@ interpret the recording, or add it to RAG. If writing source metadata fails
 after file protection was verified, the audio remains on the device and the
 screen offers a retry. If the native module cannot verify file protection at
 completion, it withholds the source link and does not offer that retry.
+While a verified source link is pending, the screen keeps its recording details
+available and prevents leaving or starting another recording. A failed attempt
+to start a new recording keeps the previous completed recording and its local
+file.
 
 Pausing, an audio-session interruption, or the app leaving the active state
 stops capture. An interruption does not resume automatically. The user must

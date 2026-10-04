@@ -12,6 +12,7 @@ RCT_EXTERN_METHOD(stopRecording:(RCTPromiseResolveBlock)resolve rejecter:(RCTPro
 
 #if DEBUG && TARGET_OS_SIMULATOR
 RCT_EXTERN_METHOD(prepareSyntheticCapture:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(prepareSyntheticStartFailure:(NSString *)point resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(simulateInterruption:(NSString *)phase resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 #endif
 

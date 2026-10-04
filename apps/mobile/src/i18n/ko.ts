@@ -26,7 +26,7 @@ export const ko = {
   'recording.stop': '녹음 완료 및 저장',
   'recording.saved': '녹음을 이 기기에 저장했어요.',
   'recording.sourcePending':
-    '오디오 파일은 이 기기에 남아 있지만 기록에 연결하지 못했어요.',
+    '녹음 파일은 이 기기에 보관 중이에요. 기록 연결을 다시 저장한 뒤 화면을 나갈 수 있어요.',
   'recording.retrySave': '기록 다시 저장',
   'recording.errors.consent': '녹음을 시작하기 전에 앱에서 동의를 확인해 주세요.',
   'recording.errors.microphonePermission':
@@ -37,6 +37,8 @@ export const ko = {
     '녹음 파일 보호 상태를 확인하지 못해 기록 연결을 보류했어요. 파일은 이 기기에 남아 있습니다.',
   'recording.errors.generic': '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
   'recording.probe.synthetic': '시뮬레이터용 합성 녹음 준비',
+  'recording.probe.failBeforeFile': '파일 준비 전 실패 시뮬레이션',
+  'recording.probe.failAfterFile': '임시 파일 생성 후 실패 시뮬레이션',
   'recording.probe.interruptionBegan': '중단 시작 시뮬레이션',
   'recording.probe.interruptionEnded': '중단 종료 시뮬레이션',
   'appointments.title': '예약',

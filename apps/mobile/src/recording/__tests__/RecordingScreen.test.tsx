@@ -135,11 +135,64 @@ test('offers metadata retry after audio has already been saved locally', async (
   await fireEvent.press(screen.getByTestId('recording-consent'));
   await fireEvent.press(screen.getByTestId('recording-start'));
   await fireEvent.press(screen.getByTestId('recording-stop'));
-  expect(await screen.findByText(/기록에 연결하지 못했어요/)).toBeTruthy();
+  expect(await screen.findByText(/기록 연결을 다시 저장한 뒤/)).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('recording-retry-save'));
   expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
   expect(service.saveSource).toHaveBeenCalledTimes(2);
+});
+
+test('keeps a protected recording retryable after remount until metadata linking succeeds', async () => {
+  const { service } = createService();
+  (service.saveSource as jest.Mock)
+    .mockRejectedValueOnce(new Error('local database unavailable'))
+    .mockResolvedValueOnce(savedSource);
+  const view = await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-start'));
+  await fireEvent.press(screen.getByTestId('recording-stop'));
+
+  expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
+  expect(screen.queryByTestId('recording-back')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  expect(screen.getByTestId('recording-start')).toBeDisabled();
+
+  await view.unmount();
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
+  expect(screen.getByTestId('recording-source-id')).toHaveTextContent(
+    new RegExp(completed.id),
+  );
+  expect(screen.queryByTestId('recording-back')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  expect(screen.getByTestId('recording-start')).toBeDisabled();
+
+  await fireEvent.press(screen.getByTestId('recording-retry-save'));
+  expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+  expect(screen.getByTestId('recording-back')).toBeTruthy();
+  expect(service.saveSource).toHaveBeenNthCalledWith(2, completed);
+});
+
+test('preserves the previous completion when a later start fails', async () => {
+  const { service } = createService();
+  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-start'));
+  await fireEvent.press(screen.getByTestId('recording-stop'));
+  expect(await screen.findByTestId('recording-source-id')).toHaveTextContent(
+    new RegExp(completed.id),
+  );
+
+  (service.start as jest.Mock).mockRejectedValueOnce(new Error('new start failed'));
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-start'));
+
+  expect(await screen.findByTestId('recording-source-id')).toHaveTextContent(
+    new RegExp(completed.id),
+  );
+  expect(screen.getByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
 });
 
 test('withholds source linking when the completed file protection is unverified', async () => {

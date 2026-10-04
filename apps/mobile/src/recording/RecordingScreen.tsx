@@ -4,8 +4,14 @@ import { t } from '../i18n';
 import {
   isSyntheticRecordingProbeAvailable,
   prepareSyntheticRecordingProbe,
+  prepareSyntheticRecordingStartFailure,
   simulateRecordingInterruption,
 } from './nativeRecordingBridge';
+import {
+  clearPendingRecordingRetry,
+  getPendingRecordingRetry,
+  setPendingRecordingRetry,
+} from './recordingRetryState';
 import { recordingService } from './recordingService';
 import type {
   CompletedRecording,
@@ -53,8 +59,12 @@ export default function RecordingScreen({
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(null);
-  const [sourceSaved, setSourceSaved] = useState(false);
+  const [lastRecording, setLastRecording] = useState<CompletedRecording | null>(() =>
+    getPendingRecordingRetry(service),
+  );
+  const [sourceSaved, setSourceSaved] = useState(() =>
+    getPendingRecordingRetry(service) === null,
+  );
   const [syntheticProbeReady, setSyntheticProbeReady] = useState(false);
   const [probeError, setProbeError] = useState('');
   const syntheticProbeAvailable = isSyntheticRecordingProbeAvailable();
@@ -62,6 +72,9 @@ export default function RecordingScreen({
   useEffect(() => {
     let mounted = true;
     let unsubscribe: () => void = () => {};
+    const pendingRetry = getPendingRecordingRetry(service);
+    setLastRecording(pendingRetry);
+    setSourceSaved(pendingRetry === null);
     try {
       unsubscribe = service.subscribe(value => {
         if (mounted) {
@@ -108,9 +121,13 @@ export default function RecordingScreen({
   }
 
   async function start() {
-    setLastRecording(null);
-    setSourceSaved(false);
-    await runAction(() => service.start(consentAcknowledged));
+    await runAction(async () => {
+      const next = await service.start(consentAcknowledged);
+      clearPendingRecordingRetry(service);
+      setLastRecording(null);
+      setSourceSaved(false);
+      return next;
+    });
   }
 
   async function stop() {
@@ -119,6 +136,11 @@ export default function RecordingScreen({
     try {
       const result = await service.stop();
       setLastRecording(result);
+      if (result.fileProtection === 'complete' && result.excludedFromBackup) {
+        setPendingRecordingRetry(service, result);
+      } else {
+        clearPendingRecordingRetry(service);
+      }
       setSnapshot({
         status: 'completed',
         id: result.id,
@@ -128,6 +150,7 @@ export default function RecordingScreen({
       setConsentAcknowledged(false);
       try {
         await service.saveSource(result);
+        clearPendingRecordingRetry(service);
         setSourceSaved(true);
       } catch (reason) {
         setSourceSaved(false);
@@ -147,6 +170,7 @@ export default function RecordingScreen({
     setError('');
     try {
       await service.saveSource(lastRecording);
+      clearPendingRecordingRetry(service);
       setSourceSaved(true);
     } catch (reason) {
       setError(sourceSaveErrorMessage(reason));
@@ -159,6 +183,18 @@ export default function RecordingScreen({
     setProbeError('');
     try {
       await prepareSyntheticRecordingProbe();
+      setSyntheticProbeReady(true);
+    } catch {
+      setProbeError(t('recording.errors.generic'));
+    }
+  }
+
+  async function prepareSyntheticStartFailure(
+    point: 'beforeFileURL' | 'afterFileCreated',
+  ) {
+    setProbeError('');
+    try {
+      await prepareSyntheticRecordingStartFailure(point);
       setSyntheticProbeReady(true);
     } catch {
       setProbeError(t('recording.errors.generic'));
@@ -194,6 +230,7 @@ export default function RecordingScreen({
       syntheticProbeAvailable={syntheticProbeAvailable}
       syntheticProbeReady={syntheticProbeReady}
       onPrepareSyntheticProbe={prepareSyntheticProbe}
+      onPrepareSyntheticStartFailure={prepareSyntheticStartFailure}
       onSendInterruption={sendInterruption}
       probeError={probeError}
     />

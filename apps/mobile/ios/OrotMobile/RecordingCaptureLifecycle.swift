@@ -20,9 +20,7 @@ extension RecordingModule {
   ) throws {
     let identifier = UUID().uuidString.lowercased()
     let url = try RecordingFileSecurity.fileURL(id: identifier, extension: "m4a")
-    recordingID = identifier
-    recordingURL = url
-    startedAt = Date()
+    pendingRecordingURL = url
     let session = AVAudioSession.sharedInstance()
     try session.setCategory(.record, mode: .default, options: [])
     try session.setActive(true)
@@ -48,17 +46,23 @@ extension RecordingModule {
     reject: @escaping RCTPromiseRejectBlock
   ) throws {
     let identifier = UUID().uuidString.lowercased()
+    if syntheticStartFailurePoint == "beforeFileURL" {
+      syntheticStartFailurePoint = nil
+      throw RecordingModuleError.syntheticStartFailure
+    }
     let url = try RecordingFileSecurity.fileURL(
       id: identifier,
       extension: "caf",
       allowUnverifiedProtectionForSimulator: true
     )
-    recordingID = identifier
-    recordingURL = url
-    startedAt = Date()
+    pendingRecordingURL = url
     let capture = try RecordingSyntheticCapture(url: url)
-    _ = try RecordingFileSecurity.protect(url, allowUnverifiedProtectionForSimulator: true)
     syntheticCapture = capture
+    if syntheticStartFailurePoint == "afterFileCreated" {
+      syntheticStartFailurePoint = nil
+      throw RecordingModuleError.syntheticStartFailure
+    }
+    _ = try RecordingFileSecurity.protect(url, allowUnverifiedProtectionForSimulator: true)
     beginSession(identifier: identifier, url: url)
     resolve(snapshot())
   }
@@ -68,6 +72,7 @@ extension RecordingModule {
     recordingID = identifier
     recordingURL = url
     startedAt = Date()
+    pendingRecordingURL = nil
     startInProgress = false
     lastDurationMs = 0
     status = .recording

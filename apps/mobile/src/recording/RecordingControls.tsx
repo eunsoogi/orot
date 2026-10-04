@@ -22,6 +22,7 @@ interface RecordingControlsProps {
   syntheticProbeAvailable: boolean;
   syntheticProbeReady: boolean;
   onPrepareSyntheticProbe: () => void;
+  onPrepareSyntheticStartFailure: (point: 'beforeFileURL' | 'afterFileCreated') => void;
   onSendInterruption: (phase: 'began' | 'ended') => void;
   probeError: string;
 }
@@ -60,11 +61,20 @@ export default function RecordingControls({
   syntheticProbeAvailable,
   syntheticProbeReady,
   onPrepareSyntheticProbe,
+  onPrepareSyntheticStartFailure,
   onSendInterruption,
   probeError,
 }: RecordingControlsProps) {
+  const sourceRetryPending =
+    lastRecording !== null &&
+    !sourceSaved &&
+    lastRecording.fileProtection === 'complete' &&
+    lastRecording.excludedFromBackup;
   const canLeave =
-    stateReady && (status === 'idle' || status === 'completed') && !busy;
+    stateReady &&
+    (status === 'idle' || status === 'completed') &&
+    !busy &&
+    !sourceRetryPending;
   return (
     <View style={styles.container}>
       {canLeave ? (
@@ -100,7 +110,7 @@ export default function RecordingControls({
       </Text>
       {status === 'idle' || status === 'completed' ? (
         <Button
-          disabled={!consentAcknowledged || busy}
+          disabled={!consentAcknowledged || busy || sourceRetryPending}
           onPress={onStart}
           testID="recording-start"
           title={t('recording.start')}
@@ -143,7 +153,7 @@ export default function RecordingControls({
               duration: formatRecordingDuration(lastRecording.durationMs),
             })}
           </Text>
-          {!sourceSaved && lastRecording.fileProtection === 'complete' && lastRecording.excludedFromBackup ? (
+          {sourceRetryPending ? (
             <Button
               disabled={busy}
               onPress={onRetrySourceSave}
@@ -167,6 +177,20 @@ export default function RecordingControls({
             testID="recording-probe-synthetic"
             title={t('recording.probe.synthetic')}
           />
+          {status === 'completed' ? (
+            <>
+              <Button
+                onPress={() => onPrepareSyntheticStartFailure('beforeFileURL')}
+                testID="recording-probe-fail-before-file-url"
+                title={t('recording.probe.failBeforeFile')}
+              />
+              <Button
+                onPress={() => onPrepareSyntheticStartFailure('afterFileCreated')}
+                testID="recording-probe-fail-after-file-created"
+                title={t('recording.probe.failAfterFile')}
+              />
+            </>
+          ) : null}
           {syntheticProbeReady && (status === 'recording' || status === 'interrupted') ? (
             <>
               {status === 'recording' ? (
