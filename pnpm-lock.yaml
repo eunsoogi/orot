@@ -148,6 +148,9 @@ importers:
       '@orot/provider-openai':
         specifier: workspace:*
         version: link:../../packages/provider-openai
+      '@orot/rag':
+        specifier: workspace:*
+        version: link:../../packages/rag
       '@orot/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -286,6 +289,15 @@ importers:
       '@orot/model-runtime':
         specifier: workspace:*
         version: link:../model-runtime
+
+  packages/rag:
+    dependencies:
+      '@orot/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@orot/storage':
+        specifier: workspace:*
+        version: link:../storage
 
   packages/storage:
     dependencies:

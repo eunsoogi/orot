@@ -34,6 +34,7 @@
     "@orot/agent-runtime": "workspace:*",
     "@orot/domain": "workspace:*",
     "@orot/storage": "workspace:*",
+    "@orot/rag": "workspace:*",
     "fast-text-encoding": "1.0.6",
     "react": "19.2.3",
     "react-native": "0.87.1",
