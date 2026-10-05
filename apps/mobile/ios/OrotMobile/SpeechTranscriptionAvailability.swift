@@ -15,41 +15,21 @@ enum SpeechTranscriptionAvailability {
       speechTranscriberSupportsLocale = speechLocale != nil
       if let speechLocale, SpeechTranscriber.isAvailable {
         let transcriber = SpeechTranscriptionAnalyzer.makeTimeIndexedTranscriber(locale: speechLocale)
-        let installed = await SpeechTranscriber.installedLocales
-        let modelInstalled = installed.contains(where: matchesKorean)
-        if modelInstalled, await transcriber.availableCompatibleAudioFormats.isEmpty {
-          return SpeechTranscriptionAvailabilityResult(
-            status: .modelUnavailable,
-            engine: .speechTranscriber,
-            locale: speechLocale.identifier,
-            modelInstalled: true
-          )
-        }
-        return SpeechTranscriptionAvailabilityResult(
-          status: .available,
+        return await configurationAvailability(
+          assetStatus: await AssetInventory.status(forModules: [transcriber]),
           engine: .speechTranscriber,
           locale: speechLocale.identifier,
-          modelInstalled: modelInstalled
+          hasCompatibleFormat: { !(await transcriber.availableCompatibleAudioFormats).isEmpty }
         )
       }
 
       if let dictationLocale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale) {
-        let installed = await DictationTranscriber.installedLocales
-        let modelInstalled = installed.contains(where: matchesKorean)
         let transcriber = DictationTranscriber(locale: dictationLocale, preset: .timeIndexedLongDictation)
-        if modelInstalled, await transcriber.availableCompatibleAudioFormats.isEmpty {
-          return SpeechTranscriptionAvailabilityResult(
-            status: .modelUnavailable,
-            engine: .dictationTranscriber,
-            locale: dictationLocale.identifier,
-            modelInstalled: true
-          )
-        }
-        return SpeechTranscriptionAvailabilityResult(
-          status: .available,
+        return await configurationAvailability(
+          assetStatus: await AssetInventory.status(forModules: [transcriber]),
           engine: .dictationTranscriber,
           locale: dictationLocale.identifier,
-          modelInstalled: modelInstalled
+          hasCompatibleFormat: { !(await transcriber.availableCompatibleAudioFormats).isEmpty }
         )
       }
     }
@@ -106,8 +86,27 @@ enum SpeechTranscriptionAvailability {
   }
 
   @available(iOS 26.0, *)
-  private static func matchesKorean(_ locale: Locale) -> Bool {
-    let identifier = locale.identifier.replacingOccurrences(of: "_", with: "-").lowercased()
-    return identifier == "ko" || identifier.hasPrefix("ko-")
+  static func configurationAvailability(
+    assetStatus: AssetInventory.Status,
+    engine: SpeechTranscriptionEngineKind,
+    locale: String,
+    hasCompatibleFormat: () async -> Bool
+  ) async -> SpeechTranscriptionAvailabilityResult {
+    let status: SpeechTranscriptionStatus
+    switch assetStatus {
+    case .supported, .downloading:
+      // A locale can be listed as installed while this module configuration still needs assets.
+      // Let the explicit transcription action reach the analyzer's installation request.
+      status = .available
+    case .installed:
+      status = await hasCompatibleFormat() ? .available : .modelUnavailable
+    case .unsupported:
+      status = .unsupportedDevice
+    @unknown default:
+      status = .modelUnavailable
+    }
+    return SpeechTranscriptionAvailabilityResult(
+      status: status, engine: engine, locale: locale, modelInstalled: assetStatus == .installed
+    )
   }
 }

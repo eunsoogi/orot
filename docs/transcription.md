@@ -21,7 +21,13 @@ minute of audio, so the provider does not use it for the consultation path.
 and [the DictationTranscriber presets](https://developer.apple.com/documentation/speech/dictationtranscriber/preset)
 include both short and time-indexed long dictation configurations.
 
-Both iOS 26 transcriber paths check supported and installed locales at runtime.
+Both iOS 26 transcriber paths check supported locales and the selected module's
+`AssetInventory.status(forModules:)` at runtime. A locale listed as installed
+does not establish readiness for a particular configuration. Supported or
+downloading assets remain available for the explicit transcription action,
+which reaches the analyzer's existing installation request. An unsupported
+configuration returns `unsupported_device`; installed assets with no compatible
+format return `model_unavailable`. Availability checks do not initiate downloads.
 If Korean model assets are supported but not installed, Apple `AssetInventory`
 downloads and installs the model before transcription. The speech model runs on
 device; fetching model assets is a separate network operation. If the model has
@@ -98,13 +104,25 @@ permission, or unavailable-recognizer result uses
 `SPEECH_TRANSCRIPTION_SIMULATOR_UNSUPPORTED`. A module-registration or
 recognition error without an explicit unsupported state fails the probe.
 
-The observed iPhone 17e / iOS 27 Simulator result is `model_unavailable` for
+The initial iPhone 17e / iOS 27 Simulator probe at revision `a4295b9` returned `model_unavailable` for
 `dictation_transcriber` (`ko_KR`, `modelInstalled=true`): Korean Dictation was
 reported supported and installed, but the compatible-audio-format list was
 empty. The three synthetic files were not transcribed, so CER and the focused
 medication, number, and negation measures remain unmeasured. This observation
-describes that Simulator runtime and does not establish behavior on a physical
-device.
+records the old availability path, which used installed locales and returned
+before requesting configuration assets. It does not establish that the runtime
+cannot transcribe after configuration-specific asset preparation, nor behavior
+on a physical device.
+
+The corrected configuration-status path was then run on a new dedicated
+iPhone 17e / iOS 27 Simulator on 2026-10-05. Initial availability was
+`available`, `dictation_transcriber`, `ko_KR`, `modelInstalled=false`.
+Transcription reached the analyzer's asset request and then returned
+`MODEL_UNAVAILABLE: Apple has no installed audio format for this on-device
+speech model.` The probe again reported `cases=[]`. The installation path did
+not throw `MODEL_INSTALL_FAILED`, but this run did not measure downloaded bytes
+or independently record post-request asset status. Thus this corrected run
+still supplies no iOS transcript, timestamp ranges, or accuracy observations.
 
 ## Accuracy method and limits
 
@@ -134,3 +152,42 @@ negation phrase is not a clinical safety assessment.
 The table is intentionally left unmeasured because the dedicated Simulator
 probe returned an explicit unavailable-model state before transcription. Do not
 substitute mock output or the fixture's expected text for an Apple result.
+
+## Supplementary macOS observation (2026-10-05)
+
+A standalone macOS 27.0.1 arm64 probe used the same three synthetic fixtures and
+`DictationTranscriber.timeIndexedLongDictation`. Although `ko_KR` appeared in
+installed locales, the module initially reported asset status `supported`.
+After the authorized `assetInstallationRequest(supporting:)` call returned nil,
+status was `installed`; no download request object or transferred bytes were
+observed. Compatible mono Int16 PCM formats were 16 kHz and 8 kHz.
+
+| Case | Actual Apple text | Audio-relative range | CER | Focus retained |
+| --- | --- | --- | ---: | --- |
+| Medication | 가상 의약품 이름은 매트 푸르 입니다 | 0.03–2.58475 s | 18.75% | No: 메트포르민 misrecognized |
+| Number | 복용량은 500mg 입니다 | 0–2.2290625 s | 46.15% | Yes: 500mg |
+| Negation | 오늘은 약을 복용 하지 않았습니다 | 0–2.2269375 s | 0% | Yes |
+
+These final native results were evaluated by the existing
+`accuracyEvaluation.ts`, with fixture hashes checked before evaluation. The
+number CER includes the spoken-to-numeric spelling difference. The medication
+error illustrates why these outputs require review. All three ranges passed
+the existing 0.1-second duration tolerance. These are macOS observations only;
+they do not supply the required iOS Simulator transcript or accuracy evidence.
+
+The native availability routing regression can be compiled on macOS with Swift
+and the macOS 26+ Speech SDK, without installing models or invoking recognition:
+
+```sh
+swiftc -parse-as-library -target arm64-apple-macosx26.0 -framework Speech \
+  apps/mobile/ios/OrotMobile/SpeechTranscriptionTypes.swift \
+  apps/mobile/ios/OrotMobile/SpeechTranscriptionAvailability.swift \
+  apps/mobile/e2e/transcription/availabilityRegression.swift \
+  -o /tmp/orot-availability-regression
+/tmp/orot-availability-regression
+```
+
+It checks both engines across pending assets, unsupported configurations, and
+installed assets with and without compatible formats. It also checks rejection
+of unsupported request languages. These deterministic routing checks supplement
+the real-device-class execution probe; they do not prove Speech service behavior.
