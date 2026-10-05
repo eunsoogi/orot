@@ -80,6 +80,16 @@ test('selects the E2E-only appointments screen backed by encrypted local storage
   assert.doesNotMatch(appointmentsTest, /appointments-probe-ready/);
 });
 
+test('keeps the Release smoke on Calendar linking while manual CRUD stays in its probe', () => {
+  const smokeTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/smoke.test.js'), 'utf8');
+
+  assert.match(smokeTest, /by\.id\('welcome-title'\)/);
+  assert.match(smokeTest, /by\.id\('open-appointments'\)/);
+  assert.match(smokeTest, /by\.id\('calendar-title'\)/);
+  assert.match(smokeTest, /by\.id\('calendar-connect'\)/);
+  assert.doesNotMatch(smokeTest, /by\.id\('appointment-add'\)/);
+});
+
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
