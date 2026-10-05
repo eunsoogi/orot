@@ -82,6 +82,46 @@ export const ko = {
   'appointments.actions.save': '저장',
   'appointments.actions.saving': '저장 중…',
   'appointments.actions.close': '닫기',
+  'calendar.title': '캘린더 연결',
+  'calendar.description':
+    '예정된 일정은 이 기기에서만 확인해요. 외래 일정은 직접 선택하고 확인해 주세요.',
+  'calendar.permissionExplanation':
+    'iOS는 일정을 읽을 때 캘린더 전체 접근(읽기 및 쓰기)을 요구해요. Orot는 선택한 일정 정보만 이 기기에 저장하고, 캘린더를 수정하거나 삭제하지 않아요.',
+  'calendar.connect': '캘린더 일정 불러오기',
+  'calendar.chooseAnother': '다른 일정 선택',
+  'calendar.back': '뒤로',
+  'calendar.loading': '캘린더 일정을 확인하고 있어요…',
+  'calendar.empty': '다가오는 일정이 없어요.',
+  'calendar.candidateHint':
+    '목록의 일정은 모두 후보예요. Orot가 의료 일정으로 판단하지 않아요.',
+  'calendar.selectEvent': '이 일정 선택',
+  'calendar.confirmPrompt': '이 일정을 다음 외래 방문으로 확인할까요?',
+  'calendar.reconfirmPrompt': '변경된 일정 정보를 확인한 뒤 다시 저장할까요?',
+  'calendar.confirm': '다음 외래 방문으로 확인',
+  'calendar.reconfirm': '변경된 일정으로 다시 확인',
+  'calendar.saving': '저장 중…',
+  'calendar.cancelSelection': '다른 일정 고르기',
+  'calendar.confirmed': '다음 외래 방문을 저장했어요.',
+  'calendar.loadError': '캘린더 일정을 불러오지 못했어요. 다시 시도해 주세요.',
+  'calendar.verifyError':
+    '연결한 캘린더 일정을 확인하지 못했어요. 다시 시도해 주세요.',
+  'calendar.confirmError':
+    '다음 외래 방문을 저장하지 못했어요. 다시 시도해 주세요.',
+  'calendar.accessDenied':
+    '캘린더 접근을 허용하지 않았어요. 설정에서 권한을 바꾼 뒤 다시 시도해 주세요.',
+  'calendar.accessRestricted': '이 기기에서는 캘린더에 접근할 수 없어요.',
+  'calendar.fullAccessRequired':
+    '캘린더 일정을 읽으려면 전체 접근 권한이 필요해요. 설정에서 읽기 및 쓰기 접근을 허용해 주세요.',
+  'calendar.tryAgainAfterPermission':
+    '권한을 확인할 수 없어요. 다시 시도해 주세요.',
+  'calendar.nextVisit': '다음 외래 방문',
+  'calendar.eventNoTitle': '제목 없는 일정',
+  'calendar.allDay': '하루 종일',
+  'calendar.eventChanged':
+    '연결한 캘린더 일정이 바뀌었어요. 변경 내용을 확인해 주세요.',
+  'calendar.reviewChange': '변경 내용 확인',
+  'calendar.eventMissing':
+    '연결한 일정을 찾을 수 없어요. 삭제되었거나 일정 정보가 바뀌었을 수 있어요. 다른 일정을 선택해 확인해 주세요.',
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',

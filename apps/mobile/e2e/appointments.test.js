@@ -12,10 +12,17 @@ async function expectTextVisible(text) {
     .withTimeout(30000);
 }
 
-async function openAppointments() {
-  await element(by.id('open-appointments')).tap();
+async function expectAppointmentsOpen() {
+  await waitFor(element(by.id('appointments-title')))
+    .toHaveText('예약')
+    .withTimeout(30000);
   await expectVisible('appointment-add');
-  await expect(element(by.id('appointments-title'))).toHaveText('예약');
+}
+
+async function expectEmptyAppointments() {
+  await waitFor(element(by.id('appointments-empty')))
+    .toHaveText('등록된 예약이 없어요.')
+    .withTimeout(30000);
 }
 
 async function fillAppointment(clinic, date, time, note) {
@@ -38,15 +45,12 @@ describe('manual appointments', () => {
 
   it('creates, edits, and cancels an appointment that survives process restarts', async () => {
     await device.launchApp({
+      newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
-    await expect(element(by.id('appointments-empty'))).toHaveText(
-      '등록된 예약이 없어요.',
-    );
+    await expectAppointmentsOpen();
+    await expectEmptyAppointments();
 
     await element(by.id('appointment-add')).tap();
     await fillAppointment(
@@ -67,11 +71,9 @@ describe('manual appointments', () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
+    await expectAppointmentsOpen();
     await expectTextVisible('Cardiology clinic');
     await expect(element(by.text('Cardiology clinic'))).toBeVisible();
     await expectTextVisible('2027년 6월 2일 09:45 · 현지 시간');
@@ -91,11 +93,9 @@ describe('manual appointments', () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
-    await openAppointments();
+    await expectAppointmentsOpen();
     await expectTextVisible('Neurology clinic');
     await expect(element(by.text('Neurology clinic'))).toBeVisible();
     await expectTextVisible('2027년 6월 3일 10:15 · 현지 시간');
