@@ -1,5 +1,26 @@
 # Detox CI performance
 
+## Latest cache and Simulator measurements
+
+Pull request run [37248816905, attempt 1](https://github.com/eunsoogi/orot/actions/runs/37248816905/attempts/1) and its same-SHA rerun, [attempt 2](https://github.com/eunsoogi/orot/actions/runs/37248816905/attempts/2), both passed the five required jobs, all nine E2E cases, and dedicated Simulator deletion on `b98df1fbf798abbe9f26ceb25e2670600cda5ce5`. They did not meet the issue's ten-minute critical-path target.
+
+| Measurement | Attempt 1: cold cache | Attempt 2: exact cache hit |
+| --- | ---: | ---: |
+| Release Xcode build step | 151s | 135s |
+| Release Simulator boot wait | 90s | 151s |
+| Release E2E workflow step | 394s | 636s |
+| First E2E profile start to aggregate completion | 13m44s | 19m19s |
+| Release E2E cases | 8/8 | 8/8 |
+| OpenAI Debug E2E cases | 1/1 | 1/1 |
+
+Attempt 1 recorded DerivedData cache misses and saved both profile caches. Attempt 2 restored both with `classification=exact`, matching toolchain and input fingerprints, and successfully wrote both manifests. The warm Release build still ran 29 `CompileC` and 4 `SwiftCompile` tasks (64.501s and 10.582s reported task time) plus 12 script phases (51.328s). The Xcode log does not identify a single changed input responsible for those remaining compile tasks. Its individual compile entries include Pods, generated React Native provider files, and Orot app sources.
+
+Attempt 2's Release boot-wait step took 151s; its log ends with “Device already booted, nothing to do,” which does not explain the elapsed time. The Release E2E step took 636s, while the Detox wrapper reported 582s and Jest 429.578s. The wrapper began at 01:16:20Z and Detox emitted the Jest command at 01:18:37.811Z, a 137.8s Detox initialization interval. The first app launch was logged 99.3s after that command. Detox 20.51.4 source confirms initialization installs utility binaries and, with the current `reinstallApp: true` setting, uninstalls and reinstalls the app before starting Jest; the logs do not time those operations separately.
+
+The Release log records 13 app launches across eight cases. Five are the process restarts asserted by the appointments, agent-memory, checkpoint-resume, and storage-restart scenarios. The three storage cases still explicitly uninstall the app, clear Keychain, and install it before their fresh-install, restart, or migration probe. Those oracles and their lifecycle operations remain unchanged.
+
+The current unhosted workflow-order candidate moves Simulator utility installation and dedicated Simulator preparation ahead of the native build, allowing boot to progress during the 135s cached build. The 3-CPU, 7.5-GB hosted runner may contend during that overlap. This candidate has no hosted timing evidence and no speedup is claimed; the required two consecutive same-implementation critical paths under ten minutes remain outstanding.
+
 ## Hosted baseline
 
 The comparable baseline is the successful `main` run [37168559096, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37168559096/attempts/2), at `b128021a3330c1f2d432c218ba70f13c86c273e9`. It includes the checkpoint probe added by PR #72. All three required jobs passed. Attempt 1 of the same run failed in the old multi-build workflow during a later CocoaPods install with `ArgumentError - path name contains null byte`; attempt 2 passed. This change reduces the install to one and does not claim to have fixed that error's root cause.
@@ -89,7 +110,7 @@ The Release Detox configuration now states `behavior.init.reinstallApp: true` ex
 
 The summary gate checks the exact six-file Release manifest, one Release wrapper suite with eight cases, and the separate one-case OpenAI Debug suite. It rejects absent runs, missing cases, skips, pending tests, and failures. Both Detox app configurations retain a failure-only screenshot plugin, logs and view hierarchy diagnostics remain enabled, and the CI runner disables continuous video recording.
 
-The previous hosted `1193ab9` run completed all nine cases in about 19m47, but it predates the single Release wrapper and consolidated startup/reset behavior above. The later `e646675` run validated that wrapper but took 26m52 for the Detox job, as recorded above. It does not meet the ten-minute target. The split-profile timing below also exceeds ten minutes. A later boot/build-overlap attempt is recorded below and also misses the target; the current workflow order builds before preparing the Simulator.
+The previous hosted `1193ab9` run completed all nine cases in about 19m47, but it predates the single Release wrapper and consolidated startup/reset behavior above. The later `e646675` run validated that wrapper but took 26m52 for the Detox job, as recorded above. It does not meet the ten-minute target. The split-profile timing below also exceeds ten minutes. The earlier boot/build-order experiment is recorded below and also misses the target; it does not validate the current working-tree overlap candidate described above.
 
 ## Parallel profile startup measurements
 
@@ -182,6 +203,6 @@ The first correction moved the timed Pods stage before both fingerprints and cac
 
 ## DerivedData cache v3 structural correction
 
-The current unhosted candidate keeps the React Native artifact fingerprint and archive restore before the single Pods installation. It computes the full build-input and native-dependency fingerprints after Pods, so the cache identity reflects CocoaPods' tracked privacy-manifest aggregation. Release and OpenAI Debug use isolated DerivedData roots, `ios/build-detox-release` and `ios/build-detox-openai-provider`; CocoaPods Codegen remains under `ios/build/generated/ios`. The DerivedData cache namespace is v3 so archives produced from the previous shared root are not restored into the isolated roots. The build helper skips only the already-run Pods stage; each profile still executes its native build, JavaScript bundling, architecture check, full E2E suite, diagnostics, and Simulator cleanup.
+The unhosted v3 cache candidate keeps the React Native artifact fingerprint and archive restore before the single Pods installation. It computes the full build-input and native-dependency fingerprints after Pods, so the cache identity reflects CocoaPods' tracked privacy-manifest aggregation. Release and OpenAI Debug use isolated DerivedData roots, `ios/build-detox-release` and `ios/build-detox-openai-provider`; CocoaPods Codegen remains under `ios/build/generated/ios`. The DerivedData cache namespace is v3 so archives produced from the previous shared root are not restored into the isolated roots. The build helper skips only the already-run Pods stage; each profile still executes its native build, JavaScript bundling, architecture check, full E2E suite, diagnostics, and Simulator cleanup.
 
 Local CLI fixtures now check that `PODS_TARGET_SRCROOT` Codegen output survives a cold cache, dependency-compatible app-output cleanup, and incompatible-cache invalidation while only the isolated DerivedData root is managed. Fingerprint CLI modes and workflow ordering also have focused tests. This candidate has not run on GitHub; manifest stability, cache hits, all nine scenarios, cleanup, required checks, and timing remain unverified. The ten-minute target still requires two consecutive successful full-workflow runs on the same implementation; no speedup is claimed.

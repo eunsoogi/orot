@@ -12,7 +12,15 @@ const profileWorkflow = readFileSync(
 const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
 const runner = readFileSync(join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh'), 'utf8');
 
+function workflowStep(name) {
+  const start = profileWorkflow.indexOf(`- name: ${name}`);
+  const end = profileWorkflow.indexOf('\n      - name:', start + 1);
+  return start < 0 ? '' : profileWorkflow.slice(start, end < 0 ? undefined : end);
+}
+
 test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanup and upload in order', () => {
+  const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
+  const simulatorUtilities = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
   const boot = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
@@ -25,9 +33,25 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const testStepStart = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
   const testStepEnd = profileWorkflow.indexOf('\n      - name:', testStepStart + 1);
   const testStep = profileWorkflow.slice(testStepStart, testStepEnd);
+  const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
+  const teardownStep = workflowStep('Delete dedicated Detox Simulator');
 
-  assert.ok(build >= 0 && prepare > build && boot > prepare && tests > boot);
+  assert.ok(
+    pods >= 0 &&
+      simulatorUtilities > pods &&
+      prepare > simulatorUtilities &&
+      build > prepare &&
+      boot > build &&
+      tests > boot,
+  );
   assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
+  assert.match(prepareStep, /id: prepare_detox_simulator/);
+  assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
+  assert.match(teardownStep, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(
+    teardownStep,
+    /if \[\[ ! -s artifacts\/detox\/simulator\.udid \]\][\s\S]*?cat artifacts\/detox\/simulator\.udid/,
+  );
   assert.match(testStep, /timeout-minutes: 45/);
   assert.match(testStep, /run: scripts\/ci\/run-test-suite\.sh/);
   assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);

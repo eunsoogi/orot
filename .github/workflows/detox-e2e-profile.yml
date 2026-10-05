@@ -185,6 +185,15 @@ jobs:
             printf 'architecture=%s\n' "$(uname -m)"
           } > artifacts/detox/native-cache.log
 
+      - name: Install Detox Simulator utilities
+        timeout-minutes: 10
+        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
+
+      - name: Prepare dedicated Detox Simulator
+        id: prepare_detox_simulator
+        timeout-minutes: 15
+        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
+
       - name: Build Detox iOS Simulator app
         timeout-minutes: 45
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}" --skip-pods
@@ -202,15 +211,6 @@ jobs:
         shell: bash
         run: |
           node scripts/ci/detox-derived-data-cache.mjs write "${{ inputs.profile }}" 2>&1 | tee -a artifacts/detox/native-cache.log
-
-      - name: Install Detox Simulator utilities
-        timeout-minutes: 10
-        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
-
-      - name: Prepare dedicated Detox Simulator
-        id: prepare_detox_simulator
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
 
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20
