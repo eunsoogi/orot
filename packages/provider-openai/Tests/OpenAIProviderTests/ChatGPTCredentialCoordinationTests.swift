@@ -141,6 +141,10 @@ private final class LoadCountingCredentialStore: ChatGPTCredentialStore, @unchec
         return account
     }
 
+    func listAccounts() throws -> [ChatGPTStoredAccount] {
+        try base.listAccounts()
+    }
+
     func saveAccount(_ account: ChatGPTStoredAccount) throws {
         try base.saveAccount(account)
     }

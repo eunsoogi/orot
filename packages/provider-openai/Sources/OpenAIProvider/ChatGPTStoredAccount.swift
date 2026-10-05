@@ -1,5 +1,20 @@
 import Foundation
 
+/// A credential-free projection safe to return across the native bridge.
+public struct ChatGPTAccountSummary: Codable, Equatable, Sendable {
+    public let issuedClientID: String
+    public let requiresSignIn: Bool
+    public let hasDirectPlanAccess: Bool
+
+    init(account: ChatGPTStoredAccount) {
+        issuedClientID = account.issuedClientID
+        let expiredWithoutRefresh = account.expiresAt.map { $0 <= Date() } == true
+            && account.credentials?.refreshToken == nil
+        requiresSignIn = account.requiresSignIn || expiredWithoutRefresh
+        hasDirectPlanAccess = account.hasDirectPlanAccess
+    }
+}
+
 public struct ChatGPTStoredAccount: Equatable, Sendable {
     public let issuedClientID: String
     public let hostIdentifier: String
@@ -44,6 +59,7 @@ struct ChatGPTStoredCredentials: Codable, Equatable, Sendable {
 public protocol ChatGPTCredentialStore: Sendable {
     func loadOrCreateHostIdentifier() throws -> String
     func loadAccount(issuedClientID: String) throws -> ChatGPTStoredAccount?
+    func listAccounts() throws -> [ChatGPTStoredAccount]
     func saveAccount(_ account: ChatGPTStoredAccount) throws
     func clearCredentials(issuedClientID: String) throws
     func removeAccount(issuedClientID: String) throws
