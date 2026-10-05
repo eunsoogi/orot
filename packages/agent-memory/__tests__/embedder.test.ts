@@ -41,12 +41,17 @@ describe('Rememori embedding provider adapter', () => {
       async embed() {
         return {
           ok: false,
-          error: { code: 'provider_unavailable', message: 'private provider detail', retryable: true },
+          error: {
+            code: 'provider_unavailable',
+            message: 'private provider detail',
+            retryable: true,
+          },
         };
       },
     };
 
-    await expect(createRememoriEmbedder(provider).embed(['synthetic input']))
-      .rejects.toThrow('Embedding provider failed: provider_unavailable.');
+    await expect(createRememoriEmbedder(provider).embed(['synthetic input'])).rejects.toThrow(
+      'Embedding provider failed: provider_unavailable.',
+    );
   });
 });

@@ -7,7 +7,12 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "lint": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/provider-apple lint && pnpm --filter @orot/provider-openai lint && pnpm --filter @orot/agent-runtime lint && pnpm --filter @orot/storage lint && pnpm --filter @orot/eval lint && pnpm --filter @orot/agent-memory lint",
+    "lint": "node scripts/quality/quality.mjs lint",
+    "lint:workspace": "pnpm --filter @orot/mobile lint && pnpm --filter @orot/domain lint && pnpm --filter @orot/model-runtime lint && pnpm --filter @orot/provider-apple lint && pnpm --filter @orot/provider-openai lint && pnpm --filter @orot/agent-runtime lint && pnpm --filter @orot/storage lint && pnpm --filter @orot/eval lint && pnpm --filter @orot/agent-memory lint",
+    "format:check": "node scripts/quality/quality.mjs format:check",
+    "format:write": "node scripts/quality/quality.mjs format:write",
+    "quality:setup": "node scripts/quality/install-tools.mjs",
+    "quality:inventory": "node scripts/quality/quality.mjs inventory",
     "typecheck": "pnpm --filter @orot/mobile typecheck && pnpm --filter @orot/domain typecheck && pnpm --filter @orot/model-runtime typecheck && pnpm --filter @orot/provider-apple typecheck && pnpm --filter @orot/provider-openai typecheck && pnpm --filter @orot/agent-runtime typecheck && pnpm --filter @orot/storage typecheck && pnpm --filter @orot/eval typecheck && pnpm --filter @orot/agent-memory typecheck",
     "test:unit": "pnpm --filter @orot/mobile test:unit && pnpm --filter @orot/domain test:unit && pnpm --filter @orot/model-runtime test:unit && pnpm --filter @orot/provider-apple test:unit && pnpm --filter @orot/provider-openai test:unit && pnpm --filter @orot/agent-runtime test:unit && pnpm --filter @orot/storage test:unit && pnpm --filter @orot/eval test:unit && pnpm --filter @orot/agent-memory test:unit",
     "ios:build": "pnpm --filter @orot/mobile ios:build",
@@ -17,5 +22,12 @@
     "e2e:test:ios:apple-foundation-models": "pnpm --filter @orot/mobile e2e:test:ios:apple-foundation-models",
     "e2e:build:ios:checkpoint": "pnpm --filter @orot/mobile e2e:build:ios:checkpoint",
     "e2e:test:ios:checkpoint": "pnpm --filter @orot/mobile e2e:test:ios:checkpoint"
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "3.4.2",
+    "eslint": "8.57.1",
+    "npm-groovy-lint": "18.0.0",
+    "prettier": "3.9.9",
+    "prettier-plugin-properties": "0.3.1"
   }
 }

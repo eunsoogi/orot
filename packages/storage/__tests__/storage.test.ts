@@ -119,7 +119,7 @@ describe('encrypted local storage', () => {
     const tables = await database.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     );
-    expect(tables.rows.map(row => row.name)).toEqual([
+    expect(tables.rows.map((row) => row.name)).toEqual([
       'appointments',
       'dose_events',
       'encounters',
@@ -132,8 +132,9 @@ describe('encrypted local storage', () => {
       'visit_questions',
     ]);
     expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(2);
-    expect((await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows)
-      .toHaveLength(0);
+    expect(
+      (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
+    ).toHaveLength(0);
     await database.closeAsync?.();
   });
 
@@ -168,7 +169,7 @@ describe('encrypted local storage', () => {
     );
 
     await expect(
-      repository.transaction(async transaction => {
+      repository.transaction(async (transaction) => {
         await transaction.put('source_record', sampleRecord);
         throw new Error('abort transaction');
       }),
@@ -194,10 +195,12 @@ describe('encrypted local storage', () => {
     ).rejects.toThrow('unsupported record type');
     const reopened = createDatabase(databasePath);
     expect((await reopened.execute('PRAGMA user_version')).rows[0].user_version).toBe(0);
-    expect((await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows)
-      .toHaveLength(1);
-    expect((await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'source_records'")).rows)
-      .toHaveLength(0);
+    expect(
+      (await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
+    ).toHaveLength(1);
+    expect(
+      (await reopened.execute("SELECT name FROM sqlite_master WHERE name = 'source_records'")).rows,
+    ).toHaveLength(0);
     await reopened.closeAsync?.();
     rmSync(directory, { recursive: true, force: true });
   });

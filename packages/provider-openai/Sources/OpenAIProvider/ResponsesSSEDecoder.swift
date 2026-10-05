@@ -20,14 +20,20 @@ struct ResponsesSSEDecoder {
         for byte in chunk {
             if followsCarriageReturn {
                 followsCarriageReturn = false
-                if byte == 0x0A { continue }
+                if byte == 0x0A {
+                    continue
+                }
             }
 
             if byte == 0x0D {
-                if let frame = try finishLine() { frames.append(frame) }
+                if let frame = try finishLine() {
+                    frames.append(frame)
+                }
                 followsCarriageReturn = true
             } else if byte == 0x0A {
-                if let frame = try finishLine() { frames.append(frame) }
+                if let frame = try finishLine() {
+                    frames.append(frame)
+                }
             } else {
                 guard line.count < Self.maximumLineBytes else { throw ResponsesSSEError.lineTooLarge }
                 line.append(byte)
@@ -69,7 +75,9 @@ struct ResponsesSSEDecoder {
         let separator = line.firstIndex(of: ":")
         let field = separator.map { String(line[..<$0]) } ?? line
         var value = separator.map { String(line[line.index(after: $0)...]) } ?? ""
-        if value.first == " " { value.removeFirst() }
+        if value.first == " " {
+            value.removeFirst()
+        }
 
         switch field {
         case "data":

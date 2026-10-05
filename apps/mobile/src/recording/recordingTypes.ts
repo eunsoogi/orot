@@ -3,11 +3,7 @@ import type { RecordMap } from '@orot/storage';
 export type RecordingSourceRecord = RecordMap['source_record'];
 
 export type RecordingStatus =
-  | 'idle'
-  | 'recording'
-  | 'paused'
-  | 'interrupted'
-  | 'completed';
+  'idle' | 'recording' | 'paused' | 'interrupted' | 'completed';
 
 export interface RecordingSnapshot {
   status: RecordingStatus;

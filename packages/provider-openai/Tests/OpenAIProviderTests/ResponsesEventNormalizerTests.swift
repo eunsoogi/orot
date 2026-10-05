@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ResponsesEventNormalizerTests: XCTestCase {
     func testOnlyCompletedTerminalReturnsACompletedResponse() throws {
@@ -19,9 +19,9 @@ final class ResponsesEventNormalizerTests: XCTestCase {
         var normalizer = ResponsesEventNormalizer(requestID: "req_incomplete")
         XCTAssertThrowsError(try normalizer.consume(frame(
             "response.incomplete",
-            #"{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}}}"#
+            #"{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}}}"#,
         ))) { error in
-            guard case .incomplete(let diagnostics) = error as? ChatGPTResponsesError else {
+            guard case let .incomplete(diagnostics) = error as? ChatGPTResponsesError else {
                 return XCTFail("Expected incomplete response error, got \(error).")
             }
             XCTAssertEqual(diagnostics.reason, "max_output_tokens")
@@ -33,9 +33,9 @@ final class ResponsesEventNormalizerTests: XCTestCase {
         var normalizer = ResponsesEventNormalizer(requestID: "req_usage")
         XCTAssertThrowsError(try normalizer.consume(frame(
             "response.failed",
-            #"{"type":"response.failed","response":{"status":"failed","error":{"code":"subscription_sharing_usage_limit_exceeded","param":"model"}}}"#
+            #"{"type":"response.failed","response":{"status":"failed","error":{"code":"subscription_sharing_usage_limit_exceeded","param":"model"}}}"#,
         ))) { error in
-            guard case .responseFailure(let diagnostics) = error as? ChatGPTResponsesError else {
+            guard case let .responseFailure(diagnostics) = error as? ChatGPTResponsesError else {
                 return XCTFail("Expected response failure, got \(error).")
             }
             XCTAssertEqual(diagnostics.code, "subscription_sharing_usage_limit_exceeded")
@@ -54,7 +54,7 @@ final class ResponsesEventNormalizerTests: XCTestCase {
             var normalizer = ResponsesEventNormalizer(requestID: "req_top_level_error")
             let payload = #"{"type":"error","code":"\#(code)","message":"Provider error","param":"\#(parameter)"}"#
             XCTAssertThrowsError(try normalizer.consume(frame("error", payload))) { error in
-                guard case .responseFailure(let diagnostics) = error as? ChatGPTResponsesError else {
+                guard case let .responseFailure(diagnostics) = error as? ChatGPTResponsesError else {
                     return XCTFail("Expected response failure, got \(error).")
                 }
                 XCTAssertEqual(diagnostics.bodyShape, "error_event")
@@ -70,7 +70,7 @@ final class ResponsesEventNormalizerTests: XCTestCase {
         _ = try? normalizer.consume(frame("response.output_text.delta", #"{"type":"response.output_text.delta","delta":"partial"}"#))
         XCTAssertThrowsError(try normalizer.consume(frame(
             "response.completed",
-            #"{"type":"response.completed","response":{"status":"completed","output_text":"different"}}"#
+            #"{"type":"response.completed","response":{"status":"completed","output_text":"different"}}"#,
         ))) { error in
             XCTAssertEqual(error as? ChatGPTResponsesError, .malformedEvent)
         }

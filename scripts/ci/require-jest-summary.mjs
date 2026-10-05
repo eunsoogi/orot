@@ -19,8 +19,14 @@ function total(summary) {
   return match ? Number(match[1]) : 0;
 }
 
-if (testSummaries.length === 0 || suiteSummaries.length === 0 || testSummaries.length !== suiteSummaries.length) {
-  throw new Error(`${suiteName}: Jest did not produce a matching test and suite summary for every run`);
+if (
+  testSummaries.length === 0 ||
+  suiteSummaries.length === 0 ||
+  testSummaries.length !== suiteSummaries.length
+) {
+  throw new Error(
+    `${suiteName}: Jest did not produce a matching test and suite summary for every run`,
+  );
 }
 
 let totalTests = 0;
@@ -42,12 +48,25 @@ for (const [index, testSummary] of testSummaries.entries()) {
   if (testTotal < 1 || suiteTotal < 1) {
     throw new Error(`${suiteName}: Jest run ${index + 1} discovered zero tests or suites`);
   }
-  if (passed !== testTotal || failed !== 0 || pending !== 0 || skipped !== 0 || todo !== 0 || failedSuites !== 0 || pendingSuites !== 0 || skippedSuites !== 0) {
-    throw new Error(`${suiteName}: Jest run ${index + 1} includes a failure, skip, pending test, or todo`);
+  if (
+    passed !== testTotal ||
+    failed !== 0 ||
+    pending !== 0 ||
+    skipped !== 0 ||
+    todo !== 0 ||
+    failedSuites !== 0 ||
+    pendingSuites !== 0 ||
+    skippedSuites !== 0
+  ) {
+    throw new Error(
+      `${suiteName}: Jest run ${index + 1} includes a failure, skip, pending test, or todo`,
+    );
   }
   totalTests += testTotal;
   totalSuites += suiteTotal;
   passedTests += passed;
 }
 
-console.log(`${suiteName}: ${passedTests}/${totalTests} tests passed across ${totalSuites} suites in ${testSummaries.length} Jest runs; no skipped or pending tests`);
+console.log(
+  `${suiteName}: ${passedTests}/${totalTests} tests passed across ${totalSuites} suites in ${testSummaries.length} Jest runs; no skipped or pending tests`,
+);

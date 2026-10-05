@@ -1,5 +1,7 @@
 function unsupportedFileStorage() {
-  throw new Error('Rememori FileStorage is unavailable in the app; inject SQLCipher storage.');
+  throw new Error(
+    'Rememori FileStorage is unavailable in the app; inject SQLCipher storage.',
+  );
 }
 
 module.exports = {

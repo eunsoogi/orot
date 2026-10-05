@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  RecordIdSchema,
-  RecordMetadataSchema,
-  TimestampSchema,
-  compareTimestamps,
-} from './common';
+import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 
@@ -19,10 +14,7 @@ export const PrescriptionAssertionSchema = MedicationAssertionFieldsSchema.safeE
   prescriberId: RecordIdSchema.optional(),
   endsAt: TimestampSchema.optional(),
 }).superRefine((assertion, context) => {
-  if (
-    assertion.endsAt &&
-    compareTimestamps(assertion.endsAt, assertion.effectiveAt) < 0
-  ) {
+  if (assertion.endsAt && compareTimestamps(assertion.endsAt, assertion.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['endsAt'],

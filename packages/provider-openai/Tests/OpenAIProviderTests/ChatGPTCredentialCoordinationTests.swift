@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ChatGPTCredentialCoordinationTests: XCTestCase {
     private static let issuedClientID = "oaiapp_fixture-client"
@@ -73,16 +73,16 @@ final class ChatGPTCredentialCoordinationTests: XCTestCase {
                 accessToken: "fixture-access-token-old",
                 refreshToken: "fixture-refresh-token-old",
                 idToken: "fixture-id-token-old",
-                tokenType: "Bearer"
-            )
+                tokenType: "Bearer",
+            ),
         )
         try store.saveAccount(account)
         let client = ChatGPTOAuthClient(transport: transport, credentialStore: store)
-        let redirect = URL(string: "http://127.0.0.1:54321/auth/callback")!
+        let redirect = try XCTUnwrap(URL(string: "http://127.0.0.1:54321/auth/callback"))
         let prepared = try await client.prepareAuthorization(
             hostIdentifier: Self.hostIdentifier,
             redirectURI: redirect,
-            existingIssuedClientID: Self.issuedClientID
+            existingIssuedClientID: Self.issuedClientID,
         )
         let pending = PendingChatGPTAuthorization(
             authorizationURL: prepared.authorizationURL,
@@ -95,17 +95,17 @@ final class ChatGPTCredentialCoordinationTests: XCTestCase {
             nonce: "fixture-nonce",
             codeVerifier: prepared.codeVerifier,
             discovery: prepared.discovery,
-            authorizationGeneration: prepared.authorizationGeneration
+            authorizationGeneration: prepared.authorizationGeneration,
         )
 
         _ = try await client.signOut(issuedClientID: Self.issuedClientID)
 
         do {
             _ = try await client.completeAuthorization(
-                callbackURL: URL(
-                    string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=\(pending.state)&client_id=\(Self.issuedClientID)"
-                )!,
-                pending: pending
+                callbackURL: XCTUnwrap(URL(
+                    string: "http://127.0.0.1:54321/auth/callback?code=fixture-code&state=\(pending.state)&client_id=\(Self.issuedClientID)",
+                )),
+                pending: pending,
             )
             XCTFail("A sign-in prepared before sign-out must not restore credentials afterward.")
         } catch let error as ChatGPTOAuthError {
@@ -141,9 +141,17 @@ private final class LoadCountingCredentialStore: ChatGPTCredentialStore, @unchec
         return account
     }
 
-    func saveAccount(_ account: ChatGPTStoredAccount) throws { try base.saveAccount(account) }
-    func clearCredentials(issuedClientID: String) throws { try base.clearCredentials(issuedClientID: issuedClientID) }
-    func removeAccount(issuedClientID: String) throws { try base.removeAccount(issuedClientID: issuedClientID) }
+    func saveAccount(_ account: ChatGPTStoredAccount) throws {
+        try base.saveAccount(account)
+    }
+
+    func clearCredentials(issuedClientID: String) throws {
+        try base.clearCredentials(issuedClientID: issuedClientID)
+    }
+
+    func removeAccount(issuedClientID: String) throws {
+        try base.removeAccount(issuedClientID: issuedClientID)
+    }
 
     func waitForLoadCount(_ count: Int) async {
         await loadCounter.wait(until: count)

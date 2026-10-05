@@ -1,6 +1,9 @@
 import type { EmbeddingProvider } from '@orot/agent-memory';
 import type { RecordMap } from '@orot/storage';
-import { closeLocalAgentMemory, openLocalAgentMemory } from './localAgentMemory';
+import {
+  closeLocalAgentMemory,
+  openLocalAgentMemory,
+} from './localAgentMemory';
 import { removeLocalSourceWithMemory } from './removeSourceWithMemory';
 import { openLocalStorage } from '../storage/secureDatabase';
 
@@ -43,19 +46,27 @@ const deterministicProvider: EmbeddingProvider = {
   },
 };
 
-export async function runAgentMemoryProbe(mode: AgentMemoryProbeMode): Promise<void> {
+export async function runAgentMemoryProbe(
+  mode: AgentMemoryProbeMode,
+): Promise<void> {
   const originalFetch = globalThis.fetch;
-  const networkGlobals = globalThis as typeof globalThis & { XMLHttpRequest: typeof XMLHttpRequest };
+  const networkGlobals = globalThis as typeof globalThis & {
+    XMLHttpRequest: typeof XMLHttpRequest;
+  };
   const originalXhr = networkGlobals.XMLHttpRequest;
   let networkAttempts = 0;
   globalThis.fetch = (() => {
     networkAttempts += 1;
-    throw new Error('Network access is disabled in the synthetic memory probe.');
+    throw new Error(
+      'Network access is disabled in the synthetic memory probe.',
+    );
   }) as typeof fetch;
   networkGlobals.XMLHttpRequest = class {
     constructor() {
       networkAttempts += 1;
-      throw new Error('Network access is disabled in the synthetic memory probe.');
+      throw new Error(
+        'Network access is disabled in the synthetic memory probe.',
+      );
     }
   } as typeof XMLHttpRequest;
 
@@ -64,29 +75,54 @@ export async function runAgentMemoryProbe(mode: AgentMemoryProbeMode): Promise<v
     if (mode === 'fresh') {
       const repository = await openLocalStorage();
       await repository.sourceRecords.create(sourceRecord);
-      const originalId = await memory.remember({ ...memoryInput, text: originalText });
-      if (await memory.remember({ ...memoryInput, text: originalText }) !== originalId) {
+      const originalId = await memory.remember({
+        ...memoryInput,
+        text: originalText,
+      });
+      if (
+        (await memory.remember({ ...memoryInput, text: originalText })) !==
+        originalId
+      ) {
         throw new Error('Repeated memory ingestion was not idempotent.');
       }
       await memory.update({ ...memoryInput, text: correctedText });
-      const corrected = await memory.recall(correctedText, { minSimilarity: 0.999 });
+      const corrected = await memory.recall(correctedText, {
+        minSimilarity: 0.999,
+      });
       if (corrected.length !== 1 || corrected[0]?.text !== correctedText) {
         throw new Error('The Korean correction was not recalled.');
       }
-      if ((await memory.recall(originalText, { minSimilarity: 0.999 })).length !== 0) {
+      if (
+        (await memory.recall(originalText, { minSimilarity: 0.999 })).length !==
+        0
+      ) {
         throw new Error('The superseded Korean memory remained visible.');
       }
     } else {
-      const recalled = await memory.recall(correctedText, { minSimilarity: 0.999 });
+      const recalled = await memory.recall(correctedText, {
+        minSimilarity: 0.999,
+      });
       if (recalled.length !== 1 || recalled[0]?.text !== correctedText) {
-        throw new Error('The corrected Korean memory did not survive relaunch.');
+        throw new Error(
+          'The corrected Korean memory did not survive relaunch.',
+        );
       }
-      const deletion = await removeLocalSourceWithMemory(sourceRecord.id, memory);
+      const deletion = await removeLocalSourceWithMemory(
+        sourceRecord.id,
+        memory,
+      );
       if (!deletion.sourceDeleted || deletion.memoriesDeleted !== 1) {
-        throw new Error('Removing the source did not remove its linked memory.');
+        throw new Error(
+          'Removing the source did not remove its linked memory.',
+        );
       }
-      if ((await memory.recall(correctedText, { minSimilarity: 0.999 })).length !== 0) {
-        throw new Error('A memory linked to a removed source remained visible.');
+      if (
+        (await memory.recall(correctedText, { minSimilarity: 0.999 }))
+          .length !== 0
+      ) {
+        throw new Error(
+          'A memory linked to a removed source remained visible.',
+        );
       }
       await closeLocalAgentMemory();
       const reopened = await openLocalAgentMemory(deterministicProvider);
@@ -94,11 +130,16 @@ export async function runAgentMemoryProbe(mode: AgentMemoryProbeMode): Promise<v
       try {
         await reopened.remember({ ...memoryInput, text: correctedText });
       } catch (error) {
-        staleWriteRejected = error instanceof Error && error.message.includes('already removed');
+        staleWriteRejected =
+          error instanceof Error && error.message.includes('already removed');
       }
-      if (!staleWriteRejected) throw new Error('A removed source accepted a memory after service reopen.');
+      if (!staleWriteRejected)
+        throw new Error(
+          'A removed source accepted a memory after service reopen.',
+        );
     }
-    if (networkAttempts !== 0) throw new Error('The memory probe attempted network access.');
+    if (networkAttempts !== 0)
+      throw new Error('The memory probe attempted network access.');
   } finally {
     globalThis.fetch = originalFetch;
     networkGlobals.XMLHttpRequest = originalXhr;

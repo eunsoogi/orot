@@ -1,0 +1,6 @@
+# actionlint's pinned label set predates these GitHub-hosted runner labels.
+# Keep the current workflow labels accepted without suppressing runner-label checks.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - xcode-27

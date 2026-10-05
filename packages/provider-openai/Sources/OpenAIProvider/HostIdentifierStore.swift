@@ -11,7 +11,7 @@ public final class UserDefaultsHostIdentifierStore: HostIdentifierStore, @unchec
 
     public init(
         defaults: UserDefaults = .standard,
-        key: String = "com.orot.provider.openai.ext-agent-host-id"
+        key: String = "com.orot.provider.openai.ext-agent-host-id",
     ) {
         self.defaults = defaults
         self.key = key
@@ -22,7 +22,8 @@ public final class UserDefaultsHostIdentifierStore: HostIdentifierStore, @unchec
         defer { lock.unlock() }
 
         if let existing = defaults.string(forKey: key),
-           Self.isValidHostIdentifier(existing) {
+           Self.isValidHostIdentifier(existing)
+        {
             return existing
         }
 

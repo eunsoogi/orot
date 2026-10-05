@@ -6,7 +6,7 @@ enum TokenExchangeRequestBuilder {
         clientID: String,
         code: String,
         codeVerifier: String,
-        redirectURI: URL
+        redirectURI: URL,
     ) -> URLRequest {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -66,7 +66,7 @@ enum TokenExchangeRequestBuilder {
         encoded.reserveCapacity(value.utf8.count)
         for byte in value.utf8 {
             switch byte {
-            case 0x2A, 0x2D, 0x2E, 0x5F, 0x30...0x39, 0x41...0x5A, 0x61...0x7A:
+            case 0x2A, 0x2D, 0x2E, 0x5F, 0x30 ... 0x39, 0x41 ... 0x5A, 0x61 ... 0x7A:
                 encoded.append(byte)
             case 0x20:
                 encoded.append(0x2B)

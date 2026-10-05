@@ -27,22 +27,23 @@ final class LoopbackCallbackServer: @unchecked Sendable {
                 switch state {
                 case .ready:
                     guard let port = listener.port,
-                          let redirect = URL(string: "http://127.0.0.1:\(port.rawValue)/auth/callback") else {
-                        self.finishReady(.failure(LoopbackError.listenerUnavailable))
+                          let redirect = URL(string: "http://127.0.0.1:\(port.rawValue)/auth/callback")
+                    else {
+                        finishReady(.failure(LoopbackError.listenerUnavailable))
                         return
                     }
-                    self.lock.lock()
+                    lock.lock()
                     self.port = port
-                    self.lock.unlock()
-                    self.finishReady(.success(redirect))
+                    lock.unlock()
+                    finishReady(.success(redirect))
                 case .failed:
-                    self.finishReady(.failure(LoopbackError.listenerUnavailable))
+                    finishReady(.failure(LoopbackError.listenerUnavailable))
                 case .cancelled:
-                    self.finishReady(.failure(CancellationError()))
+                    finishReady(.failure(CancellationError()))
                 case .setup, .waiting:
                     break
                 @unknown default:
-                    self.finishReady(.failure(LoopbackError.listenerUnavailable))
+                    finishReady(.failure(LoopbackError.listenerUnavailable))
                 }
             }
             listener.newConnectionHandler = { [weak self] connection in
@@ -67,13 +68,15 @@ final class LoopbackCallbackServer: @unchecked Sendable {
 
     func stop() {
         lock.lock()
-        let listener = self.listener
+        let listener = listener
         self.listener = nil
         let ready = readyContinuation
         readyContinuation = nil
         let callback = callbackContinuation
         callbackContinuation = nil
-        if case .none = callbackResult { callbackResult = .failure(CancellationError()) }
+        if case .none = callbackResult {
+            callbackResult = .failure(CancellationError())
+        }
         lock.unlock()
 
         listener?.cancel()
@@ -106,7 +109,7 @@ final class LoopbackCallbackServer: @unchecked Sendable {
         connection.stateUpdateHandler = { [weak self, weak connection] state in
             guard let self, let connection else { return }
             if case .ready = state {
-                self.receiveBytes(on: connection, buffered: buffered)
+                receiveBytes(on: connection, buffered: buffered)
             }
         }
         connection.start(queue: queue)
@@ -116,31 +119,35 @@ final class LoopbackCallbackServer: @unchecked Sendable {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, complete, error in
             guard let self else { return }
             var request = buffered
-            if let data { request.append(data) }
+            if let data {
+                request.append(data)
+            }
 
             let headerEnd = Data("\r\n\r\n".utf8)
             if request.range(of: headerEnd) != nil {
-                self.handleRequest(request, on: connection)
+                handleRequest(request, on: connection)
             } else if request.count >= 8192 || complete || error != nil {
-                self.respond(400, body: "콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.", on: connection)
+                respond(400, body: "콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.", on: connection)
             } else {
-                self.receiveBytes(on: connection, buffered: request)
+                receiveBytes(on: connection, buffered: request)
             }
         }
     }
 
     private func handleRequest(_ data: Data, on connection: NWConnection) {
         guard let port, let text = String(data: data, encoding: .utf8),
-              let firstLine = text.components(separatedBy: "\r\n").first else {
+              let firstLine = text.components(separatedBy: "\r\n").first
+        else {
             respond(400, body: "콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.", on: connection)
             return
         }
         let fields = firstLine.split(separator: " ", omittingEmptySubsequences: true)
         guard fields.count == 3, fields[0] == "GET",
               let callbackURL = URL(
-                string: "http://127.0.0.1:\(port.rawValue)\(fields[1])"
+                  string: "http://127.0.0.1:\(port.rawValue)\(fields[1])",
               ),
-              callbackURL.path == "/auth/callback" else {
+              callbackURL.path == "/auth/callback"
+        else {
             respond(404, body: "로그인 응답을 찾지 못했습니다. Orot 앱으로 돌아가세요.", on: connection)
             return
         }
@@ -154,12 +161,12 @@ final class LoopbackCallbackServer: @unchecked Sendable {
         _ status: Int,
         body: String,
         on connection: NWConnection,
-        completion: @escaping @Sendable () -> Void = {}
+        completion: @escaping @Sendable () -> Void = {},
     ) {
         let reason = status == 200 ? "OK" : (status == 404 ? "Not Found" : "Bad Request")
         let bodyData = Data(body.utf8)
         var response = Data(
-            "HTTP/1.1 \(status) \(reason)\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(bodyData.count)\r\nConnection: close\r\n\r\n".utf8
+            "HTTP/1.1 \(status) \(reason)\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(bodyData.count)\r\nConnection: close\r\n\r\n".utf8,
         )
         response.append(bodyData)
         connection.send(content: response, completion: .contentProcessed { _ in

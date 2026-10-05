@@ -19,7 +19,11 @@ function assertState(
     state.nodeRuns.join(',') !== nodeRuns.join(',')
   ) {
     throw new Error(
-      label + ' returned value=' + state.value + ', nodes=' + state.nodeRuns.join(','),
+      label +
+        ' returned value=' +
+        state.value +
+        ', nodes=' +
+        state.nodeRuns.join(','),
     );
   }
 }
@@ -37,24 +41,39 @@ async function runGraphSmoke() {
       );
       const states: AgentGraphState[] = [];
       phase = 'stream';
-      for await (const state of await graph.stream({ value: input }, { streamMode: 'values' })) {
+      for await (const state of await graph.stream(
+        { value: input },
+        { streamMode: 'values' },
+      )) {
         states.push(state);
       }
       if (states.length !== expectedNodeRuns.length + 1) {
-        throw new Error('stream ' + input + ' returned ' + states.length + ' states');
+        throw new Error(
+          'stream ' + input + ' returned ' + states.length + ' states',
+        );
       }
       assertState('stream initial ' + input, states[0], input, []);
-      assertState('stream increment ' + input, states[1], input + 1, ['increment']);
-      assertState('stream double ' + input, states[2], (input + 1) * 2, expectedNodeRuns);
+      assertState('stream increment ' + input, states[1], input + 1, [
+        'increment',
+      ]);
+      assertState(
+        'stream double ' + input,
+        states[2],
+        (input + 1) * 2,
+        expectedNodeRuns,
+      );
     } catch (error) {
-      const detail = error instanceof Error ? error.stack ?? error.message : String(error);
+      const detail =
+        error instanceof Error ? (error.stack ?? error.message) : String(error);
       throw new Error(phase + ' ' + input + ': ' + detail);
     }
   }
 }
 
 function GraphProbeEntry() {
-  const [status, setStatus] = useState<'running' | 'success' | 'failure'>('running');
+  const [status, setStatus] = useState<'running' | 'success' | 'failure'>(
+    'running',
+  );
   const [failure, setFailure] = useState('');
 
   useEffect(() => {
@@ -69,17 +88,20 @@ function GraphProbeEntry() {
     );
   }, []);
 
-  const message = status === 'success'
-    ? 'Hermes graph passed: 20/20 invocations and streams, no duplicate nodes'
-    : status === 'failure'
-      ? 'Hermes graph failed: ' + failure
-      : 'Hermes graph running: 0/20';
+  const message =
+    status === 'success'
+      ? 'Hermes graph passed: 20/20 invocations and streams, no duplicate nodes'
+      : status === 'failure'
+        ? 'Hermes graph failed: ' + failure
+        : 'Hermes graph running: 0/20';
 
   return (
     <View style={styles.container}>
       <Text
         accessibilityRole="header"
-        testID={status === 'running' ? 'agent-graph-running' : 'agent-graph-' + status}
+        testID={
+          status === 'running' ? 'agent-graph-running' : 'agent-graph-' + status
+        }
       >
         {message}
       </Text>

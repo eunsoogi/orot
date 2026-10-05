@@ -25,12 +25,21 @@ describe('stateful LangGraph', () => {
 
   it('invokes a normalized language-model provider from a LangGraph node', async () => {
     const request = { messages: [{ role: 'user' as const, content: 'Suggest one question.' }] };
-    const response = { text: '무엇을 더 말씀드리면 좋을까요?', toolCalls: [], finishReason: 'complete' as const };
+    const response = {
+      text: '무엇을 더 말씀드리면 좋을까요?',
+      toolCalls: [],
+      finishReason: 'complete' as const,
+    };
     const provider: LanguageModelProvider = {
       kind: 'language-model',
       id: 'test-provider',
       displayName: 'Test provider',
-      capabilities: { inputTypes: ['text'], streaming: false, structuredOutput: false, toolCalling: false },
+      capabilities: {
+        inputTypes: ['text'],
+        streaming: false,
+        structuredOutput: false,
+        toolCalling: false,
+      },
       generate: jest.fn(async () => providerSuccess(response)),
     };
     const graph = createLanguageModelProviderGraph(provider);

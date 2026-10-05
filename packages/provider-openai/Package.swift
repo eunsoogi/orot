@@ -19,7 +19,7 @@ let package = Package(
             name: "OpenAIProvider",
             dependencies: [
                 .product(name: "JWTKit", package: "jwt-kit"),
-            ]
+            ],
         ),
         .testTarget(
             name: "OpenAIProviderTests",
@@ -27,7 +27,7 @@ let package = Package(
                 "OpenAIProvider",
                 .product(name: "JWTKit", package: "jwt-kit"),
             ],
-            resources: [.process("Fixtures")]
+            resources: [.process("Fixtures")],
         ),
-    ]
+    ],
 )
