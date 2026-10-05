@@ -17,6 +17,9 @@ const openAiDetoxConfig = requireFromRepository(
   './apps/mobile/e2e/openai-provider.detox.config.js',
 );
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+const { createStorageResetGuard, failureMessage } = requireFromRepository(
+  './apps/mobile/e2e/storageProbeResetGuard.e2e.js',
+);
 
 function requireWithDetoxProfile(modulePath, profile) {
   const previousProfile = process.env.OROT_DETOX_TEST_PROFILE;
@@ -110,12 +113,66 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
-  assert.equal((storageTest.match(/await installFreshApp\(\);/g) ?? []).length, 3);
+  assert.equal((storageTest.match(/await installFreshApp\(\);/g) ?? []).length, 2);
+  assert.equal((storageTest.match(/^  it\(/gm) ?? []).length, 3);
   assert.match(storageTest, /await launchProbe\('restart', true\);/);
   assert.match(
     storageTest,
     /async function installFreshApp\(\)[\s\S]*?await device\.uninstallApp\(\);[\s\S]*?await device\.clearKeychain\(\);[\s\S]*?await device\.installApp\(\);/,
   );
+  assert.match(storageTest, /beforeEach\(\(\) => resetGuard\.assertResetMayContinue\(\)\)/);
+  assert.match(storageTest, /afterEach\(\(\) => resetGuard\.afterTest\(\)\)/);
+  assert.match(
+    storageTest,
+    /it\('creates encrypted source and evidence records on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await expectProbeSuccess\('fresh'\);/,
+  );
+  assert.match(
+    storageTest,
+    /it\('migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await launchProbe\('legacy', false\);/,
+  );
+  const restartCase = storageTest.match(
+    /it\('reopens a source and its evidence span after an app process restart'[\s\S]*?^  \}\);/m,
+  );
+  assert.ok(restartCase, 'the process-restart scenario remains a separate Release case');
+  assert.doesNotMatch(restartCase[0], /installFreshApp/);
+  assert.match(
+    restartCase[0],
+    /await device\.terminateApp\(\);[\s\S]*?await launchProbe\('restart', true\);/,
+  );
+  assert.match(
+    storageTest,
+    /await device\.uninstallApp\(\);\s*resetGuard\.assertResetMayContinue\(\);\s*await device\.clearKeychain\(\);\s*resetGuard\.assertResetMayContinue\(\);\s*await device\.installApp\(\);\s*resetGuard\.assertResetMayContinue\(\);/,
+  );
+});
+
+test('a timed-out storage reset blocks its remaining Simulator operations', async () => {
+  const guard = createStorageResetGuard();
+  let completeUninstall;
+  const uninstall = new Promise((resolve) => {
+    completeUninstall = resolve;
+  });
+  const simulatorCalls = [];
+  const pendingReset = (async () => {
+    guard.beginReset();
+    try {
+      simulatorCalls.push('uninstallApp');
+      await uninstall;
+      guard.assertResetMayContinue();
+      simulatorCalls.push('clearKeychain');
+    } finally {
+      guard.finishReset();
+    }
+  })();
+
+  // Jest can start the next case after timing out while a Detox command is still pending.
+  guard.afterTest();
+  assert.throws(() => guard.assertResetMayContinue(), { message: failureMessage });
+  assert.throws(() => guard.beginReset(), { message: failureMessage });
+
+  completeUninstall();
+  await assert.rejects(pendingReset, { message: failureMessage });
+  assert.deepEqual(simulatorCalls, ['uninstallApp']);
+  assert.throws(() => guard.assertResetMayContinue(), { message: failureMessage });
 });
 
 test('the Detox runner profile keeps the existing test inventories while limiting Jest to CommonJS E2E files', () => {
