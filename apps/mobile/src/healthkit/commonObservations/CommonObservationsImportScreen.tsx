@@ -131,7 +131,10 @@ export function CommonObservationsImportScreen({
         accessibilityRole="button"
         accessibilityState={{ disabled: selected.size === 0 || isImporting }}
         disabled={selected.size === 0 || isImporting}
-        onPress={startImport}
+        // Let the parent route handle Back while HealthKit I/O continues.
+        onPress={() => {
+          startImport().catch(() => undefined);
+        }}
         style={styles.importButton}
         testID="common-observations-import"
       >

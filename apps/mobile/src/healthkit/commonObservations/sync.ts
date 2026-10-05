@@ -44,8 +44,22 @@ export interface SyncCommonObservationChangesOptions {
   readonly now: () => string;
 }
 
+const pendingSyncs = new WeakMap<
+  CommonObservationRepository,
+  Map<CommonObservationFeature, Promise<void>>
+>();
+
+/** Serializes same-feature runs because screen navigation can remount an importer. */
+export function syncCommonObservationChanges(
+  options: SyncCommonObservationChangesOptions,
+): Promise<CommonObservationSyncResult> {
+  return serializeFeatureSync(options, () =>
+    syncCommonObservationChangesExclusive(options),
+  );
+}
+
 /** Commits each complete native page before using its opaque cursor for the next one. */
-export async function syncCommonObservationChanges(
+async function syncCommonObservationChangesExclusive(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
   const { feature, healthKit, repository, now } = options;
@@ -176,6 +190,33 @@ export async function syncCommonObservationChanges(
       );
     }
   }
+}
+
+function serializeFeatureSync<T>(
+  options: SyncCommonObservationChangesOptions,
+  operation: () => Promise<T>,
+): Promise<T> {
+  let featureTails = pendingSyncs.get(options.repository);
+  if (!featureTails) {
+    featureTails = new Map();
+    pendingSyncs.set(options.repository, featureTails);
+  }
+
+  const previous = featureTails.get(options.feature) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const tail = previous.then(() => gate);
+  featureTails.set(options.feature, tail);
+
+  return previous.then(operation).finally(() => {
+    release();
+    if (featureTails?.get(options.feature) === tail) {
+      featureTails.delete(options.feature);
+      if (featureTails.size === 0) pendingSyncs.delete(options.repository);
+    }
+  });
 }
 
 function result(
