@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import { createHealthKitClient } from '../src/healthkit/client';
+import { healthKitSampleChangesCheckpointKey } from '../src/healthkit/sampleChangesCheckpoint';
 import type {
   HealthKitFeature,
   HealthKitNativeModule,
   HealthKitSampleChangesQuery,
 } from '../src/healthkit/types';
 import { syncHealthKitBloodPressure } from '../src/healthkit/bloodPressure';
-import type {
-  BloodPressureRepository,
-  BloodPressureSyncOptions,
-} from '../src/healthkit/bloodPressure';
-import type {
-  RecordKind,
-  RecordMap,
-  RecordWriter,
-  SyncCheckpoint,
-} from '@orot/storage';
+import { bloodPressureObservationId } from '../src/healthkit/bloodPressure/types';
+import type { BloodPressureSyncOptions } from '../src/healthkit/bloodPressure';
+import {
+  getCipherVersion,
+  openLocalStorage,
+} from '../src/storage/secureDatabase';
+import type { RecordMap } from '@orot/storage';
 
 interface BloodPressureProbeModule extends HealthKitNativeModule {
   prepareSyntheticFixture(
@@ -84,28 +82,55 @@ async function runProbe(): Promise<string> {
         return result;
       },
     };
-    const memory = createMemoryRepository();
+    // Use the same encrypted record repository as the app; Detox restarts the
+    // process to prove that observations and the HealthKit cursor survive reopen.
+    const repository = await openLocalStorage();
+    const cipherVersion = await getCipherVersion();
+    if (!cipherVersion)
+      throw new Error('SQLCipher is not active for local storage.');
+    const checkpointKey = healthKitSampleChangesCheckpointKey(
+      'bloodPressure',
+      'bloodPressure',
+    );
+    const checkpointBefore = await repository.getSyncCheckpoint(checkpointKey);
+    const session = checkpointBefore ? 'reopened' : 'initial';
     const options: BloodPressureSyncOptions = {
       healthKit: healthKitPort,
-      repository: memory.repository,
+      repository,
       now: () => '2026-10-05T10:00:00.000Z',
     };
     const imported = await syncHealthKitBloodPressure(options);
-    const replayed = await syncHealthKitBloodPressure(options);
-    const readings = memory.observations();
-    const systolic = readings.find(
-      record => record.concept === 'blood pressure systolic',
+    const replayed =
+      session === 'initial' ? await syncHealthKitBloodPressure(options) : null;
+    const systolic = await repository.get(
+      'health_observation',
+      bloodPressureObservationId('synthetic-blood-pressure', 'systolic'),
     );
-    const diastolic = readings.find(
-      record => record.concept === 'blood pressure diastolic',
+    const diastolic = await repository.get(
+      'health_observation',
+      bloodPressureObservationId('synthetic-blood-pressure', 'diastolic'),
     );
+    const checkpointAfter = await repository.getSyncCheckpoint(checkpointKey);
+    const cursorPersisted = checkpointBefore
+      ? checkpointAfter?.value === checkpointBefore.value
+      : typeof checkpointAfter?.value === 'string' &&
+        checkpointAfter.value.length > 0;
 
     if (
       imported.status !== 'completed' ||
-      imported.upserted !== 2 ||
-      replayed.status !== 'completed' ||
-      replayed.upserted !== 0 ||
-      readings.length !== 2 ||
+      (session === 'initial' &&
+        (imported.upserted !== 2 ||
+          imported.deleted !== 0 ||
+          imported.cursorAdvanced !== true ||
+          replayed?.status !== 'completed' ||
+          replayed.upserted !== 0 ||
+          replayed.deleted !== 0 ||
+          replayed.cursorAdvanced !== false)) ||
+      (session === 'reopened' &&
+        (imported.upserted !== 0 ||
+          imported.deleted !== 0 ||
+          imported.cursorAdvanced !== false)) ||
+      !cursorPersisted ||
       !isSyntheticReading(systolic, 120) ||
       !isSyntheticReading(diastolic, 80) ||
       queryReadAuthorization !== 'notObservable'
@@ -119,7 +144,10 @@ async function runProbe(): Promise<string> {
       `healthStoreAvailability=${availability.status}; productionQuery=notRun; ` +
       'productionSamples=unverified; productionValues=withheld; syntheticChanges=completed; ' +
       'syntheticCorrelation=passed; systolicDiastolicMapping=passed; ' +
-      'originalDisplayUnit=unavailable; syntheticReplay=passed; ' +
+      'originalDisplayUnit=unavailable; ' +
+      (session === 'initial'
+        ? 'sqlCipher=available; persistedReadback=passed; sameProcessReplay=passed; '
+        : 'sqlCipher=available; processReopenReadback=passed; persistedCursor=passed; ') +
       'syntheticReadAuthorization=notObservable; healthStoreWrites=none'
     );
   } finally {
@@ -128,7 +156,7 @@ async function runProbe(): Promise<string> {
 }
 
 function isSyntheticReading(
-  record: RecordMap['health_observation'] | undefined,
+  record: RecordMap['health_observation'] | null,
   expectedAmount: number,
 ): boolean {
   if (!record || record.provenance.origin !== 'imported') return false;
@@ -144,57 +172,6 @@ function isSyntheticReading(
     record.value.unit === 'mmHg' &&
     record.value.sourceRepresentation?.status === 'unavailable'
   );
-}
-
-/** This probe adapter keeps repository writes in memory and never writes to HealthKit. */
-function createMemoryRepository() {
-  let records = new Map<string, RecordMap['health_observation']>();
-  let checkpoints = new Map<string, SyncCheckpoint>();
-  const repository: BloodPressureRepository = {
-    async getSyncCheckpoint(key) {
-      return checkpoints.get(key) ?? null;
-    },
-    async transaction<T>(operation: (writer: RecordWriter) => Promise<T>) {
-      const pendingRecords = new Map(records);
-      const pendingCheckpoints = new Map(checkpoints);
-      const writer: RecordWriter = {
-        async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
-          if (kind !== 'health_observation') {
-            throw new Error('The probe repository only stores observations.');
-          }
-          pendingRecords.set(
-            record.id,
-            record as RecordMap['health_observation'],
-          );
-        },
-        async delete<K extends RecordKind>(kind: K, id: string) {
-          return kind === 'health_observation'
-            ? pendingRecords.delete(id)
-            : false;
-        },
-        async get<K extends RecordKind>(kind: K, id: string) {
-          return (
-            kind === 'health_observation'
-              ? (pendingRecords.get(id) ?? null)
-              : null
-          ) as RecordMap[K] | null;
-        },
-        async list<K extends RecordKind>(kind: K) {
-          return (
-            kind === 'health_observation' ? [...pendingRecords.values()] : []
-          ) as RecordMap[K][];
-        },
-        async putSyncCheckpoint(checkpoint) {
-          pendingCheckpoints.set(checkpoint.key, checkpoint);
-        },
-      };
-      const result = await operation(writer);
-      records = pendingRecords;
-      checkpoints = pendingCheckpoints;
-      return result;
-    },
-  };
-  return { repository, observations: () => [...records.values()] };
 }
 
 const styles = StyleSheet.create({
