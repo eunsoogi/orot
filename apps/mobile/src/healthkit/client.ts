@@ -4,6 +4,8 @@ import type {
   HealthKitFeature,
   HealthKitMedicationQueryResult,
   HealthKitNativeModule,
+  HealthKitSampleChangesQuery,
+  HealthKitSampleChangesResult,
   HealthKitSampleQuery,
   HealthKitSampleQueryResult,
 } from './types';
@@ -14,9 +16,13 @@ import {
   requireAvailability,
   requireMedicationQueryResult,
   requireSampleQueryResult,
-  validateLimit,
+  validateMedicationDefinitionLimit,
   validateSampleQuery,
 } from './validation';
+import {
+  requireSampleChangesResult,
+  validateSampleChangesQuery,
+} from './sampleChangesValidation';
 
 type MobilePlatform = 'ios' | 'android' | 'other';
 
@@ -78,7 +84,7 @@ export function createHealthKitClient(
     async queryMedicationDefinitions(
       limit = 200,
     ): Promise<HealthKitMedicationQueryResult> {
-      validateLimit(limit);
+      validateMedicationDefinitionLimit(limit);
       if (platform !== 'ios') {
         return {
           availability: 'unsupportedPlatform',
@@ -88,6 +94,23 @@ export function createHealthKitClient(
       }
       return requireMedicationQueryResult(
         await requireNativeModule().queryMedicationDefinitions(limit),
+      );
+    },
+
+    // The cursor belongs to the requested feature and sample kind and stays opaque to callers.
+    async querySampleChanges(
+      query: HealthKitSampleChangesQuery,
+    ): Promise<HealthKitSampleChangesResult> {
+      validateSampleChangesQuery(query);
+      if (platform !== 'ios') {
+        return {
+          availability: 'unsupportedPlatform',
+          status: 'notRun',
+          readAuthorization: 'notObservable',
+        };
+      }
+      return requireSampleChangesResult(
+        await requireNativeModule().querySampleChanges(query),
       );
     },
   };

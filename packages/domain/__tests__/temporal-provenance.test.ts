@@ -88,6 +88,30 @@ describe('record time, provenance, and review validation', () => {
     expect(appointment.effectiveAt).toBe('2027-03-01T10:00:00-05:00');
   });
 
+  it('preserves health observation intervals and rejects an end before the start', () => {
+    const valid = HealthObservationSchema.parse({
+      ...metadata('interval-observation-1', {
+        effectiveAt: '2026-02-03T09:00:00-05:00',
+      }),
+      endedAt: '2026-02-03T09:05:00-05:00',
+      observationKind: 'measurement',
+      concept: 'sleep interval',
+      value: { kind: 'text', text: 'sleep' },
+    });
+    const invalid = HealthObservationSchema.safeParse({
+      ...metadata('interval-observation-2', {
+        effectiveAt: '2026-02-03T09:04:00-05:00',
+      }),
+      endedAt: '2026-02-03T09:03:00-05:00',
+      observationKind: 'measurement',
+      concept: 'sleep interval',
+      value: { kind: 'text', text: 'sleep' },
+    });
+
+    expect(valid.endedAt).toBe('2026-02-03T09:05:00-05:00');
+    expect(invalid.success).toBe(false);
+  });
+
   it('requires derived records to cite sources and evidence spans to match their source', () => {
     const briefWithoutSource = VisitBriefSchema.safeParse({
       ...metadata('brief-no-source-1', {

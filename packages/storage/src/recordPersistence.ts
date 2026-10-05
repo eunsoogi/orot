@@ -18,8 +18,8 @@ function values<K extends RecordKind>(kind: K, input: RecordMap[K]) {
     table: STORAGE_TABLES[kind].table,
     parameters: [
       record.id,
-      record.effectiveAt,
-      record.recordedAt,
+      record.effectiveAt ?? null,
+      record.recordedAt ?? null,
       record.ingestedAt,
       JSON.stringify(record),
     ],
@@ -36,6 +36,16 @@ export async function readStoredRecord<K extends RecordKind>(
     [id],
   );
   return result.rows.length === 0 ? null : decodeStoredRecord(kind, result.rows[0].payload_json);
+}
+
+export async function listStoredRecords<K extends RecordKind>(
+  executor: SqlExecutor,
+  kind: K,
+): Promise<RecordMap[K][]> {
+  const result = await executor.execute(
+    'SELECT payload_json FROM ' + STORAGE_TABLES[kind].table + ' ORDER BY id',
+  );
+  return result.rows.map((row) => decodeStoredRecord(kind, row.payload_json));
 }
 
 export async function insertStoredRecord<K extends RecordKind>(
@@ -62,7 +72,13 @@ export async function updateStoredRecord<K extends RecordKind>(
     'UPDATE ' +
       table +
       ' SET effective_at = ?, recorded_at = ?, ingested_at = ?, payload_json = ? WHERE id = ?',
-    [record.effectiveAt, record.recordedAt, record.ingestedAt, JSON.stringify(record), record.id],
+    [
+      record.effectiveAt ?? null,
+      record.recordedAt ?? null,
+      record.ingestedAt,
+      JSON.stringify(record),
+      record.id,
+    ],
   );
   return (result.rowsAffected ?? 0) > 0;
 }
