@@ -144,15 +144,16 @@ jobs:
       - name: Compute production app cache fingerprints
         id: production_app_fingerprint
         run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
-      - name: Cache production app DerivedData
+      - name: Cache production app DerivedData and CocoaPods
         id: production_app_cache
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: apps/mobile/ios/build-production
-          key: orot-ios-app-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          restore-keys: |
-            orot-ios-app-deriveddata-v2-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
+          path: |
+            apps/mobile/ios/build-production
+            apps/mobile/ios/Pods
+          key: orot-ios-app-deriveddata-v3-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          restore-keys: orot-ios-app-deriveddata-v3-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
       - name: Prepare production app DerivedData cache
         id: prepare_production_app_cache
         env:
@@ -162,7 +163,6 @@ jobs:
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
           APP_CACHE_HIT: ${{ steps.production_app_cache.outputs.cache-hit }}
         run: |
-          mkdir -p artifacts/ios-build
           set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs prepare production 2>&1 | tee artifacts/ios-build/native-cache.log
           printf 'derived_data_cache_hit=%s\n' "${APP_CACHE_HIT:-false}" >> artifacts/ios-build/native-cache.log
       - name: Install app CocoaPods dependencies

@@ -6,9 +6,11 @@ async function expectProbeSuccess(mode) {
     .withTimeout(30000);
 }
 
-async function clearStorageKeychain() {
-  // Detox reinstalls the app before each test; Keychain survives that sandbox reset and needs its own reset for these key-loss cases.
+async function installFreshApp() {
+  // Detox reinstalls once per worker; storage cases reset the app sandbox and Keychain independently.
+  await device.uninstallApp();
   await device.clearKeychain();
+  await device.installApp();
 }
 
 async function launchProbe(mode, newInstance) {
@@ -20,13 +22,13 @@ async function launchProbe(mode, newInstance) {
 
 describe('encrypted local storage', () => {
   it('creates encrypted source and evidence records on fresh install', async () => {
-    await clearStorageKeychain();
+    await installFreshApp();
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
   });
 
   it('reopens a source and its evidence span after an app process restart', async () => {
-    await clearStorageKeychain();
+    await installFreshApp();
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
     await device.terminateApp();
@@ -35,7 +37,7 @@ describe('encrypted local storage', () => {
   });
 
   it('migrates the earlier test schema on fresh install', async () => {
-    await clearStorageKeychain();
+    await installFreshApp();
     await launchProbe('legacy', false);
     await expectProbeSuccess('legacy');
   });
