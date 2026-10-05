@@ -7,6 +7,8 @@
 	<string>OROTSIM000.com.orot.mobile</string>
 	<key>com.apple.developer.team-identifier</key>
 	<string>OROTSIM000</string>
+	<key>com.apple.developer.healthkit</key>
+	<true />
 	<key>keychain-access-groups</key>
 	<array>
 		<string>OROTSIM000.com.orot.mobile</string>
