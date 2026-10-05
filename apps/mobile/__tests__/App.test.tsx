@@ -4,6 +4,12 @@ import App from '../App';
 import type { CalendarBridge } from '../src/calendar/types';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
+// Unit tests omit native window insets; Detox verifies the actual simulator layout.
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 function createCalendarBridge(): CalendarBridge {
   return {
     requestAccessAndListUpcomingEvents: jest.fn(async () => ({
@@ -18,7 +24,7 @@ function createCalendarBridge(): CalendarBridge {
   };
 }
 
-test('restores the welcome entry and opens Calendar linking from the appointments action', async () => {
+test('restores the welcome entry and opens Calendar linking from appointments', async () => {
   const store = createAppointmentStore();
   const bridge = createCalendarBridge();
   const loadAppointments = jest.fn(async () => store.repository);
@@ -46,7 +52,20 @@ test('restores the welcome entry and opens Calendar linking from the appointment
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 });
 
-test('keeps the consent-gated recording screen reachable from Calendar linking', async () => {
+test('opens provider selection from the welcome screen', async () => {
+  await render(<App />);
+
+  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+
+  expect(
+    await screen.findByRole('header', { name: '추천에 사용할 AI 선택' }),
+  ).toBeTruthy();
+  expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('provider-selection-back'));
+  expect(screen.getByTestId('welcome-title')).toBeTruthy();
+});
+
+test('keeps consent-gated recording reachable from Calendar linking', async () => {
   const store = createAppointmentStore();
   await render(<App loadAppointments={async () => store.repository} />);
 

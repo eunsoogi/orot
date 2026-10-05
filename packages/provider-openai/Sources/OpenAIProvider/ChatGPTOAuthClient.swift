@@ -197,6 +197,10 @@ public final class ChatGPTOAuthClient: Sendable {
         try await sessionManager.accountWithFreshAccessToken(issuedClientID: issuedClientID)
     }
 
+    public func listStoredAccounts() throws -> [ChatGPTAccountSummary] {
+        try credentialStore.listAccounts().map(ChatGPTAccountSummary.init(account:))
+    }
+
     public func signOut(issuedClientID: String) async throws -> ChatGPTSignOutResult {
         try await sessionManager.signOut(issuedClientID: issuedClientID)
     }
