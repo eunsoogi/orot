@@ -1,7 +1,8 @@
+// Keep this pure helper suite in the unit-test tree; Detox replaces Jest's async matchers.
 const {
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
-} = require('./transcriptEvidenceDetoxHelpers');
+} = require('../../../e2e/transcription/transcriptEvidenceDetoxHelpers');
 
 const syntheticFixture = { synthetic: true };
 
