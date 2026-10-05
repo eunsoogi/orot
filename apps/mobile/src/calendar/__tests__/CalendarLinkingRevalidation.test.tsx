@@ -1,5 +1,5 @@
-import { AppState } from 'react-native';
-import { render, screen } from '@testing-library/react-native';
+import { AppState, type AppStateStatus } from 'react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import type { CalendarBridge, CalendarEvent } from '../types';
@@ -81,6 +81,89 @@ function floatingDateTime(date: Date): string {
 }
 
 describe('Calendar linked event revalidation', () => {
+  it('hides an unchanged visit after it starts while the screen stays active', async () => {
+    const initialTime = Date.now();
+    const appointmentStart = initialTime + 2_000;
+    const selected = event(
+      'starting-visit',
+      new Date(appointmentStart).toISOString(),
+    );
+    const appointments = repository(async () => [appointmentFor(selected)]);
+    const findEvent = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: selected,
+    }));
+    const calendar = bridge({ findEvent });
+    const appStateSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as never);
+    try {
+      await render(
+        <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      );
+      expect(await screen.findByTestId('calendar-next-visit')).toBeTruthy();
+      await act(async () => {
+        await new Promise(resolve =>
+          setTimeout(resolve, appointmentStart - initialTime + 250),
+        );
+      });
+
+      expect(screen.queryByTestId('calendar-next-visit')).toBeNull();
+      expect(findEvent).toHaveBeenCalledTimes(1);
+    } finally {
+      appStateSpy.mockRestore();
+    }
+  });
+
+  it('hides an unchanged visit after it elapses while the app was backgrounded', async () => {
+    let currentTime = Date.now();
+    const appointmentStart = currentTime + 60_000;
+    const selected = event(
+      'elapsing-visit',
+      new Date(appointmentStart).toISOString(),
+    );
+    const appointments = repository(async () => [appointmentFor(selected)]);
+    const findEvent = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: selected,
+    }));
+    const calendar = bridge({ findEvent });
+    let onAppStateChange: ((state: AppStateStatus) => void) | undefined;
+    const appStateSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        onAppStateChange = listener;
+        return { remove: jest.fn() } as never;
+      });
+    const clockSpy = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => currentTime);
+    try {
+      await render(
+        <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      );
+
+      expect(await screen.findByTestId('calendar-next-visit')).toBeTruthy();
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(findEvent).toHaveBeenCalledTimes(1);
+
+      onAppStateChange?.('background');
+      currentTime = appointmentStart + 1;
+      await act(async () => {
+        onAppStateChange?.('active');
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId('calendar-next-visit')).toBeNull();
+      expect(findEvent).toHaveBeenCalledTimes(2);
+    } finally {
+      appStateSpy.mockRestore();
+      clockSpy.mockRestore();
+    }
+  });
+
   it('rechecks a linked event whose saved time passed while the app was closed', async () => {
     const current = appointmentFor(
       event(

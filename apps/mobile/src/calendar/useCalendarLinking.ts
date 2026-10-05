@@ -3,47 +3,17 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { calendarSnapshotsEqual } from './calendarSnapshot';
+import { appointmentStartTime } from './appointmentTime';
 import type {
   CalendarAccessState,
   CalendarBridge,
   CalendarEvent,
 } from './types';
 
+const MAX_TIME_REFRESH_DELAY_MS = 24 * 60 * 60 * 1000;
+
 type PendingCalendarChange =
   { kind: 'changed'; event: CalendarEvent } | { kind: 'missing' };
-
-function appointmentStartTime(appointment: Appointment): number {
-  const snapshot = appointment.calendarEventSnapshot;
-  const match =
-    snapshot?.timeZoneIdentifier === null &&
-    typeof snapshot.floatingStartAt === 'string'
-      ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})$/.exec(
-          snapshot.floatingStartAt,
-        )
-      : null;
-  if (match) {
-    const [, year, month, day, hour, minute, second, millisecond] = match;
-    const localDate = new Date(0);
-    localDate.setFullYear(Number(year), Number(month) - 1, Number(day));
-    localDate.setHours(
-      Number(hour),
-      Number(minute),
-      Number(second),
-      Number(millisecond),
-    );
-    if (
-      localDate.getFullYear() === Number(year) &&
-      localDate.getMonth() === Number(month) - 1 &&
-      localDate.getDate() === Number(day) &&
-      localDate.getHours() === Number(hour) &&
-      localDate.getMinutes() === Number(minute) &&
-      localDate.getSeconds() === Number(second)
-    ) {
-      return localDate.getTime();
-    }
-  }
-  return new Date(appointment.effectiveAt).getTime();
-}
 
 function selectLinkedAppointment(
   appointments: Appointment[],
@@ -99,6 +69,7 @@ export function useCalendarLinking(
   bridge: CalendarBridge,
 ) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [now, setNow] = useState(() => Date.now());
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -113,9 +84,12 @@ export function useCalendarLinking(
   const [notice, setNotice] = useState('');
   const linkedAppointment = selectLinkedAppointment(appointments);
   const nextVisitAppointment =
-    linkedAppointment && appointmentStartTime(linkedAppointment) > Date.now()
+    linkedAppointment && appointmentStartTime(linkedAppointment) > now
       ? linkedAppointment
       : null;
+  const linkedAppointmentStart = linkedAppointment
+    ? appointmentStartTime(linkedAppointment)
+    : null;
 
   const reloadAppointments = useCallback(async () => {
     setLoadingAppointments(true);
@@ -168,12 +142,26 @@ export function useCalendarLinking(
   }, [reloadAppointments]);
 
   useEffect(() => {
+    if (linkedAppointmentStart === null || linkedAppointmentStart <= now) {
+      return undefined;
+    }
+    // Recheck at the visit boundary; cap long waits so distant visits stay within timer limits.
+    const timeout = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(linkedAppointmentStart - now, MAX_TIME_REFRESH_DELAY_MS),
+    );
+    return () => clearTimeout(timeout);
+  }, [linkedAppointmentStart, now]);
+
+  useEffect(() => {
     if (!linkedAppointment) return undefined;
     const eventSubscription = bridge.addEventStoreListener(() => {
       verifyLinkedEvent(linkedAppointment).catch(() => undefined);
     });
     const appStateSubscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
+        // EventKit can be unchanged after time passes, so refresh the time-derived visit filter too.
+        setNow(Date.now());
         verifyLinkedEvent(linkedAppointment).catch(() => undefined);
       }
     });
