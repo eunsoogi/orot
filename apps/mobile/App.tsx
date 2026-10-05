@@ -6,6 +6,13 @@ import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
 import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
+import { CommonObservationsImportScreen } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
+import type {
+  CommonObservationsImportCopy,
+  CommonObservationsImportResult as CommonObservationsScreenResult,
+} from './src/healthkit/commonObservations/CommonObservationsImportScreen';
+import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
+import { importLocalCommonObservations } from './src/healthkit/commonObservations/importLocal';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
 import { providerSelectionText } from './src/providers/selection/text';
 
@@ -16,18 +23,57 @@ declare const require: (path: string) => {
 interface AppProps {
   loadAppointments?: () => Promise<AppointmentRepository>;
   calendarBridge?: CalendarBridge;
+  importHealthObservations?: (
+    features: readonly CommonObservationFeature[],
+  ) => Promise<CommonObservationsScreenResult>;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
   return require('./src/appointments/localRepository').openLocalAppointmentRepository();
 }
 
+const commonObservationsCopy: CommonObservationsImportCopy = {
+  title: t('healthkit.commonObservations.title'),
+  description: t('healthkit.commonObservations.description'),
+  localOnly: t('healthkit.commonObservations.localOnly'),
+  importButton: t('healthkit.commonObservations.import'),
+  featureNames: {
+    heartRate: t('healthkit.commonObservations.heartRate'),
+    steps: t('healthkit.commonObservations.steps'),
+    bodyMass: t('healthkit.commonObservations.bodyMass'),
+  },
+  statuses: {
+    idle: t('healthkit.commonObservations.status.idle'),
+    importing: t('healthkit.commonObservations.status.importing'),
+    complete: t('healthkit.commonObservations.status.complete'),
+    empty: t('healthkit.commonObservations.status.empty'),
+    unavailable: t('healthkit.commonObservations.status.unavailable'),
+    unsupportedFeature: t(
+      'healthkit.commonObservations.status.unsupportedFeature',
+    ),
+    unsupportedPlatform: t(
+      'healthkit.commonObservations.status.unsupportedPlatform',
+    ),
+    unsupportedData: t('healthkit.commonObservations.status.unsupportedData'),
+    partial: t('healthkit.commonObservations.status.partial'),
+    failed: t('healthkit.commonObservations.status.failed'),
+  },
+  changeSummary: (importedCount, deletedCount, unsupportedCount) =>
+    t('healthkit.commonObservations.status.summary', {
+      imported: importedCount,
+      deleted: deletedCount,
+      unsupported: unsupportedCount,
+    }),
+};
+
 export default function App({
   loadAppointments = defaultAppointmentLoader,
   calendarBridge = eventKitCalendarBridge,
+  importHealthObservations = importLocalCommonObservations,
 }: AppProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showCommonObservations, setShowCommonObservations] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
   // Keep only the selected display label in route state; selection identifiers stay in the provider store.
@@ -53,8 +99,28 @@ export default function App({
     }
   }
 
+  function openCommonObservations() {
+    setShowCommonObservations(true);
+  }
+
   if (showRecording) {
     return <RecordingScreen onBack={() => setShowRecording(false)} />;
+  }
+
+  if (showCommonObservations) {
+    return (
+      <View style={styles.commonObservationsContainer}>
+        <Button
+          onPress={() => setShowCommonObservations(false)}
+          testID="common-observations-back"
+          title={t('healthkit.commonObservations.back')}
+        />
+        <CommonObservationsImportScreen
+          copy={commonObservationsCopy}
+          onImport={importHealthObservations}
+        />
+      </View>
+    );
   }
 
   if (showProviderSelection) {
@@ -142,6 +208,11 @@ export default function App({
         title={t('app.actions.appointments')}
       />
       <Button
+        onPress={openCommonObservations}
+        testID="open-common-observations"
+        title={t('healthkit.commonObservations.open')}
+      />
+      <Button
         onPress={() => setShowRecording(true)}
         testID="open-recording"
         title={t('app.actions.recording')}
@@ -151,6 +222,12 @@ export default function App({
 }
 
 const styles = StyleSheet.create({
+  commonObservationsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#f7f8fa',
+  },
   container: {
     flex: 1,
     alignItems: 'center',
