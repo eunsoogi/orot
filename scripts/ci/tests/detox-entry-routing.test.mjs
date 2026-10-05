@@ -92,9 +92,11 @@ test('keeps the Release smoke on Calendar linking while manual CRUD stays in its
 
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
+  const storageTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/storage.test.js'), 'utf8');
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
+  assert.equal(releaseJestConfig.bail, 1);
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
@@ -108,6 +110,9 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
+  assert.equal((storageTest.match(/await clearStorageKeychain\(\);/g) ?? []).length, 3);
+  assert.match(storageTest, /async function clearStorageKeychain\(\)[\s\S]*?await device\.clearKeychain\(\);/);
+  assert.doesNotMatch(storageTest, /device\.(?:uninstallApp|installApp)\(/);
 });
 
 test('the Detox runner profile keeps the existing test inventories while limiting Jest to CommonJS E2E files', () => {
@@ -133,6 +138,7 @@ test('the Detox runner profile keeps the existing test inventories while limitin
       'testEnvironment',
       'testTimeout',
       'maxWorkers',
+      'bail',
     ]) {
       assert.deepEqual(candidate[preservedKey], baseConfig[preservedKey]);
     }
