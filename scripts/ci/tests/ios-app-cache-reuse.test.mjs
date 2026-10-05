@@ -170,6 +170,8 @@ test('production build uses isolated DerivedData and the cache-compatible host a
       cwd: repositoryRoot,
       env: {
         ...process.env,
+        // This stub exercises the local build path; GitHub Actions provenance has separate tests.
+        GITHUB_ACTIONS: 'false',
         PATH: join(root, 'bin') + ':' + process.env.PATH,
         OROT_XCODEBUILD_ARGS: capturePath,
       },

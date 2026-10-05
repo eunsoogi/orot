@@ -50,6 +50,8 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
       encoding: 'utf8',
       env: {
         ...process.env,
+        // These stubs exercise local helper behavior; CI provenance has separate coverage.
+        GITHUB_ACTIONS: 'false',
         PATH: [binDirectory, process.env.PATH].join(':'),
         BUILD_CALLS: callsPath,
         EXPECTED_HOST_ARCH: hostArch,
