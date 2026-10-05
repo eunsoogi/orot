@@ -1,7 +1,7 @@
-import type { TranscriptionResponse } from '@orot/model-runtime';
+import type { NativeSpeechTranscriptionResponse } from './types';
 
 export type ResponseValidation =
-  | { readonly ok: true; readonly response: TranscriptionResponse }
+  | { readonly ok: true; readonly response: NativeSpeechTranscriptionResponse }
   | { readonly ok: false; readonly message: string };
 
 // Reject broken native time ranges instead of returning evidence links that point at the wrong audio.
@@ -31,6 +31,35 @@ export function validateNativeTranscriptionResponse(
       message: 'The native speech module returned an invalid language.',
     };
   }
+  if (
+    response.engine !== 'speech_transcriber' &&
+    response.engine !== 'dictation_transcriber' &&
+    response.engine !== 'on_device_speech_recognizer'
+  ) {
+    return {
+      ok: false,
+      message: 'The native speech module returned no selected engine.',
+    };
+  }
+  if (
+    typeof response.runtimeVersion !== 'string' ||
+    response.runtimeVersion.trim().length === 0
+  ) {
+    return {
+      ok: false,
+      message: 'The native speech module returned no runtime version.',
+    };
+  }
+  if (
+    typeof response.recordingDurationMs !== 'number' ||
+    !Number.isSafeInteger(response.recordingDurationMs) ||
+    response.recordingDurationMs <= 0
+  ) {
+    return {
+      ok: false,
+      message: 'The native speech module returned an invalid audio duration.',
+    };
+  }
 
   let previousStart = -1;
   for (const candidate of response.segments) {
@@ -51,6 +80,7 @@ export function validateNativeTranscriptionResponse(
       !Number.isFinite(segment.endSeconds) ||
       segment.startSeconds < 0 ||
       segment.endSeconds <= segment.startSeconds ||
+      segment.endSeconds > response.recordingDurationMs / 1000 + 0.1 ||
       segment.startSeconds < previousStart
     ) {
       return {
@@ -67,7 +97,11 @@ export function validateNativeTranscriptionResponse(
     response: {
       text: response.text,
       language: response.language as string | undefined,
-      segments: response.segments as TranscriptionResponse['segments'],
+      segments:
+        response.segments as NativeSpeechTranscriptionResponse['segments'],
+      engine: response.engine as NativeSpeechTranscriptionResponse['engine'],
+      runtimeVersion: response.runtimeVersion,
+      recordingDurationMs: response.recordingDurationMs,
     },
   };
 }

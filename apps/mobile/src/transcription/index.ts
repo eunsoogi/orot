@@ -10,6 +10,7 @@ export {
 export { appleSpeechTranscriptionNativeBridge } from './nativeBridge';
 export type {
   NativeSpeechTranscriptionBridge,
+  NativeRecordingTranscriptionRequest,
   NativeSpeechTranscriptionRequest,
   NativeSpeechTranscriptionResponse,
   SpeechAvailability,

@@ -30,13 +30,24 @@ export interface NativeSpeechTranscriptionRequest {
   readonly language: string;
 }
 
+export interface NativeRecordingTranscriptionRequest {
+  readonly recordingId: string;
+  readonly language: string;
+  readonly syntheticFixture?: boolean;
+}
+
 export interface NativeSpeechTranscriptionResponse extends TranscriptionResponse {
   readonly engine: Exclude<SpeechRecognitionEngine, 'none'>;
+  readonly runtimeVersion: string;
+  readonly recordingDurationMs: number;
 }
 
 export interface NativeSpeechTranscriptionBridge {
   getAvailability(language: string): Promise<SpeechAvailability>;
   transcribe(
     request: NativeSpeechTranscriptionRequest,
+  ): Promise<NativeSpeechTranscriptionResponse>;
+  transcribeRecording?(
+    request: NativeRecordingTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
 }

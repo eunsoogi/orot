@@ -25,6 +25,10 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     var lastDurationMs = 0
     var wasInterrupted = false
     var timer: DispatchSourceTimer?
+    var playbackPlayer: AVAudioPlayer?
+    var playbackTimer: DispatchSourceTimer?
+    var playbackResolve: RCTPromiseResolveBlock?
+    var playbackResult: NSDictionary?
     var lastStateEvent = Date.distantPast
     var observers: [NSObjectProtocol] = []
     #if DEBUG && targetEnvironment(simulator)
@@ -66,6 +70,8 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     deinit {
         observers.forEach(NotificationCenter.default.removeObserver)
         timer?.cancel()
+        playbackTimer?.cancel()
+        playbackPlayer?.stop()
     }
 
     func handle(_ interruption: AVAudioSession.InterruptionType) {
@@ -89,6 +95,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     }
 
     func pauseForBackgrounding() {
+        stopPlayback()
         guard status == .recording else { return }
         recorder?.pause()
         deactivateAudioSession()

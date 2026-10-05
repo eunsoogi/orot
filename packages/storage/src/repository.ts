@@ -7,6 +7,8 @@ import {
 } from './recordPersistence';
 import { createSourceEvidenceRepositories } from './sourceEvidence';
 import type { EvidenceSpanRepository, SourceRecordRepository } from './sourceEvidence';
+import { createTranscriptEvidenceRepository } from './transcriptEvidence';
+import type { TranscriptEvidenceRepository } from './transcriptEvidence';
 import type { SqlDatabase, SqlTransaction } from './sql';
 
 export interface RecordWriter {
@@ -20,6 +22,7 @@ export interface RecordWriter {
 export interface RecordRepository extends RecordWriter {
   sourceRecords: SourceRecordRepository;
   evidenceSpans: EvidenceSpanRepository;
+  transcripts: TranscriptEvidenceRepository;
   get<K extends RecordKind>(kind: K, id: string): Promise<RecordMap[K] | null>;
   getSyncCheckpoint(key: string): Promise<SyncCheckpoint | null>;
   transaction<T>(operation: (writer: RecordWriter) => Promise<T>): Promise<T>;
@@ -47,8 +50,18 @@ async function readSyncCheckpoint(
 
 function createWriter(executor: SqlTransaction): RecordWriter {
   return {
-    put: (kind, record) => upsertStoredRecord(executor, kind, record),
-    delete: (kind, id) => deleteStoredRecord(executor, kind, id),
+    async put(kind, record) {
+      if (kind === 'transcript_segment') {
+        throw new Error('Transcript revisions must be appended through the transcript repository.');
+      }
+      await upsertStoredRecord(executor, kind, record);
+    },
+    async delete(kind, id) {
+      if (kind === 'transcript_segment') {
+        throw new Error('Transcript revisions cannot be deleted independently of their recording.');
+      }
+      return deleteStoredRecord(executor, kind, id);
+    },
     get: (kind, id) => readStoredRecord(executor, kind, id),
     list: (kind) => listStoredRecords(executor, kind),
     async putSyncCheckpoint(checkpoint) {
@@ -63,8 +76,10 @@ function createWriter(executor: SqlTransaction): RecordWriter {
 
 export function createRecordRepository(database: SqlDatabase): RecordRepository {
   const sourceEvidenceRepositories = createSourceEvidenceRepositories(database);
+  const transcripts = createTranscriptEvidenceRepository(database);
   return {
     ...sourceEvidenceRepositories,
+    transcripts,
     async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
       await database.transaction(async (transaction) => {
         await createWriter(transaction).put(kind, record);
