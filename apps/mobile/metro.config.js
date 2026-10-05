@@ -7,8 +7,9 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 function isRememoriFileStorageRequest(context, moduleName) {
   if (moduleName !== 'fs/promises') return false;
   const segments = path.normalize(context.originModulePath).split(path.sep);
-  return segments.some((segment, index) =>
-    segment === 'node_modules' && segments[index + 1] === 'rememori',
+  return segments.some(
+    (segment, index) =>
+      segment === 'node_modules' && segments[index + 1] === 'rememori',
   );
 }
 
@@ -28,7 +29,10 @@ const config = {
     resolveRequest(context, moduleName, platform) {
       if (isRememoriFileStorageRequest(context, moduleName)) {
         return {
-          filePath: path.resolve(projectRoot, 'src/storage/unsupportedRememoriFileStorage.js'),
+          filePath: path.resolve(
+            projectRoot,
+            'src/storage/unsupportedRememoriFileStorage.js',
+          ),
           type: 'sourceFile',
         };
       }

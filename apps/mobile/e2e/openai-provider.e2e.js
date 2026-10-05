@@ -9,7 +9,8 @@ describe('ChatGPT plan provider on iOS Simulator', () => {
     await waitFor(result).toBeVisible().withTimeout(240000);
     const attributes = await result.getAttributes();
     const summary = attributes.label || attributes.text;
-    if (summary.startsWith('ChatGPT plan provider probe failed')) throw new Error(summary);
+    if (summary.startsWith('ChatGPT plan provider probe failed'))
+      throw new Error(summary);
     jestExpect(summary).toContain('catalog=visible-model-only');
     jestExpect(summary).toContain('terminal=completed');
     jestExpect(summary).toContain('usageLimit=rate_limited');

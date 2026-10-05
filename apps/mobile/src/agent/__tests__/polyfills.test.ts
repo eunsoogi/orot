@@ -41,6 +41,10 @@ describe('agent polyfills', () => {
     expect(globalThis.TextEncoder).toBe(nativeTextEncoder);
     expect(globalThis.TextDecoder).toEqual(expect.any(Function));
     const text = '환자 기록: café 🌱🩺';
-    expect(new globalThis.TextDecoder().decode(new globalThis.TextEncoder().encode(text))).toBe(text);
+    expect(
+      new globalThis.TextDecoder().decode(
+        new globalThis.TextEncoder().encode(text),
+      ),
+    ).toBe(text);
   });
 });

@@ -1,9 +1,13 @@
 /** @type {Detox.DetoxConfig} */
-const derivedDataPath = process.env.OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH || 'ios/build-openai-provider';
+const derivedDataPath =
+  process.env.OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH ||
+  'ios/build-openai-provider';
 const simulatorId = process.env.OROT_OPENAI_PROVIDER_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
-  throw new Error('The OpenAI provider DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.');
+  throw new Error(
+    'The OpenAI provider DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.',
+  );
 }
 
 module.exports = {
@@ -14,8 +18,12 @@ module.exports = {
   apps: {
     'ios.openai-provider': {
       type: 'ios.app',
-      binaryPath: derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
-      build: 'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' + derivedDataPath + ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx',
+      binaryPath:
+        derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
+      build:
+        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' +
+        derivedDataPath +
+        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx',
     },
   },
   devices: {
@@ -25,6 +33,9 @@ module.exports = {
     },
   },
   configurations: {
-    'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' },
+    'ios.sim.debug.openai-provider': {
+      device: 'simulator',
+      app: 'ios.openai-provider',
+    },
   },
 };

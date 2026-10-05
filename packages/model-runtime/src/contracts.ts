@@ -3,12 +3,7 @@ export type ProviderId = string;
 export type ProviderInputType = 'audio' | 'image' | 'text';
 
 export type JsonValue =
-  | boolean
-  | null
-  | number
-  | string
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
+  boolean | null | number | string | readonly JsonValue[] | { readonly [key: string]: JsonValue };
 
 export type JsonObject = Readonly<Record<string, JsonValue>>;
 
@@ -31,8 +26,7 @@ export interface ProviderError {
 }
 
 export type ProviderResult<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: ProviderError };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: ProviderError };
 
 export function providerSuccess<T>(value: T): ProviderResult<T> {
   return { ok: true, value };
@@ -105,10 +99,7 @@ export interface LanguageModelRequest {
 }
 
 export type LanguageModelFinishReason =
-  | 'complete'
-  | 'content_filtered'
-  | 'length_limit'
-  | 'tool_calls';
+  'complete' | 'content_filtered' | 'length_limit' | 'tool_calls';
 
 export interface LanguageModelResponse {
   readonly text: string;
@@ -128,9 +119,7 @@ export interface LanguageModelProvider {
   readonly displayName: string;
   readonly capabilities: LanguageModelCapabilities;
   generate(request: LanguageModelRequest): Promise<ProviderResult<LanguageModelResponse>>;
-  stream?(
-    request: LanguageModelRequest,
-  ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>>;
+  stream?(request: LanguageModelRequest): AsyncIterable<ProviderResult<LanguageModelStreamEvent>>;
 }
 
 export interface AudioInput {
@@ -165,9 +154,7 @@ export interface TranscriptionProvider {
   readonly displayName: string;
   readonly capabilities: TranscriptionCapabilities;
   transcribe(request: TranscriptionRequest): Promise<ProviderResult<TranscriptionResponse>>;
-  stream?(
-    request: TranscriptionRequest,
-  ): AsyncIterable<ProviderResult<TranscriptionStreamEvent>>;
+  stream?(request: TranscriptionRequest): AsyncIterable<ProviderResult<TranscriptionStreamEvent>>;
 }
 
 export interface EmbeddingRequest {

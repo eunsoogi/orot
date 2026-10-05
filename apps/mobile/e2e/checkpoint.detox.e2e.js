@@ -14,7 +14,8 @@ describe('SQLCipher LangGraph checkpoint resume', () => {
     await waitFor(element(by.id('checkpoint-complete')))
       .toBeVisible()
       .withTimeout(30000);
-    await expect(element(by.id('checkpoint-result')))
-      .toHaveText('value=8; nodes=increment,double; note=환자 기록: café 🌱🩺');
+    await expect(element(by.id('checkpoint-result'))).toHaveText(
+      'value=8; nodes=increment,double; note=환자 기록: café 🌱🩺',
+    );
   });
 });

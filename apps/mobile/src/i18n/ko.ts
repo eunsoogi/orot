@@ -4,6 +4,45 @@ export const ko = {
   'app.welcome.started': '이제 시작할 수 있어요.',
   'app.actions.getStarted': '시작하기',
   'app.actions.appointments': '예약',
+  'app.actions.recording': '상담 녹음',
+  'recording.title': '상담 녹음',
+  'recording.back': '뒤로',
+  'recording.consent.description':
+    '녹음 전에 상담 참여자 모두에게 녹음 사실을 알리고 동의를 받아 주세요.',
+  'recording.consent.acknowledgement':
+    '참여자에게 녹음 사실을 알리고 동의를 받았습니다.',
+  'recording.localOnly':
+    '녹음 파일은 이 기기에 보관되고 Orot 서버로 전송되지 않습니다.',
+  'recording.status.idle': '녹음하지 않음',
+  'recording.status.recording': '녹음 중',
+  'recording.status.paused': '일시 정지됨',
+  'recording.status.interrupted': '오디오가 중단되어 녹음이 일시 정지됨',
+  'recording.status.completed': '녹음 저장됨',
+  'recording.duration': '녹음 시간: {duration}',
+  'recording.id': '녹음 ID: {id}',
+  'recording.start': '녹음 시작',
+  'recording.pause': '일시 정지',
+  'recording.resume': '녹음 재개',
+  'recording.stop': '녹음 완료 및 저장',
+  'recording.saved': '녹음을 이 기기에 저장했어요.',
+  'recording.sourcePending':
+    '녹음 파일은 이 기기에 보관 중이에요. 기록 연결을 다시 저장한 뒤 화면을 나갈 수 있어요.',
+  'recording.retrySave': '기록 다시 저장',
+  'recording.errors.consent':
+    '녹음을 시작하기 전에 앱에서 동의를 확인해 주세요.',
+  'recording.errors.microphonePermission':
+    '마이크 권한이 필요해요. 설정에서 권한을 허용한 뒤 다시 시도해 주세요.',
+  'recording.errors.sourceSave':
+    '녹음 파일은 이 기기에 남아 있어요. 기록 연결을 다시 시도해 주세요.',
+  'recording.errors.fileProtection':
+    '녹음 파일 보호 상태를 확인하지 못해 기록 연결을 보류했어요. 파일은 이 기기에 남아 있습니다.',
+  'recording.errors.generic':
+    '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
+  'recording.probe.synthetic': '시뮬레이터용 합성 녹음 준비',
+  'recording.probe.failBeforeFile': '파일 준비 전 실패 시뮬레이션',
+  'recording.probe.failAfterFile': '임시 파일 생성 후 실패 시뮬레이션',
+  'recording.probe.interruptionBegan': '중단 시작 시뮬레이션',
+  'recording.probe.interruptionEnded': '중단 종료 시뮬레이션',
   'appointments.title': '예약',
   'appointments.back': '뒤로',
   'appointments.opening': '예약 정보를 준비하고 있어요…',
@@ -43,10 +82,13 @@ export const ko = {
   'appointments.actions.save': '저장',
   'appointments.actions.saving': '저장 중…',
   'appointments.actions.close': '닫기',
-  'provider.apple.available': '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
+  'provider.apple.available':
+    '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
   'provider.apple.modelNotReady': 'Apple Intelligence 모델을 준비하고 있어요.',
-  'provider.apple.unsupportedDevice': '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
+  'provider.apple.unsupportedDevice':
+    '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
   'provider.apple.unsupportedLanguage': '현재 한국어를 지원하지 않아요.',
-  'provider.apple.generationFailed': '질문을 만들지 못했어요. 다시 시도해 주세요.',
+  'provider.apple.generationFailed':
+    '질문을 만들지 못했어요. 다시 시도해 주세요.',
 } as const;

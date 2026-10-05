@@ -1,22 +1,31 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { AppRegistry, NativeModules, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import App from '../App';
 import { name as appName } from '../app.json';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import type { StorageProbeMode } from '../src/storage/e2eProbe';
 
 function getStorageProbeMode(): StorageProbeMode | null {
-  const settingsManager = (NativeModules as unknown as {
-    SettingsManager?: {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    };
-  }).SettingsManager;
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
   const value =
     settingsManager?.settings?.OROT_STORAGE_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_STORAGE_PROBE;
-  if (value === 'fresh' || value === 'restart' || value === 'legacy') return value;
+  if (value === 'fresh' || value === 'restart' || value === 'legacy')
+    return value;
   return null;
 }
 

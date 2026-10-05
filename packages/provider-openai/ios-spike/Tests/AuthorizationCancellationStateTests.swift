@@ -1,5 +1,5 @@
-import XCTest
 @testable import ChatGPTOAuthSpikeSupport
+import XCTest
 
 final class AuthorizationCancellationStateTests: XCTestCase {
     func testCancellationBeforeCredentialPersistenceReportsNoSavedSession() {
@@ -8,7 +8,7 @@ final class AuthorizationCancellationStateTests: XCTestCase {
         XCTAssertEqual(state.cancelButtonTitle, "로그인 취소")
         XCTAssertEqual(
             state.cancellationMessage,
-            "로그인이 취소되었습니다. 인증 정보는 저장하지 않았습니다."
+            "로그인이 취소되었습니다. 인증 정보는 저장하지 않았습니다.",
         )
     }
 
@@ -29,7 +29,7 @@ final class AuthorizationCancellationStateTests: XCTestCase {
         } catch {
             XCTAssertEqual(
                 state.failureMessage(for: error, taskIsCancelled: modelRequest.isCancelled),
-                state.cancellationMessage
+                state.cancellationMessage,
             )
         }
 
