@@ -81,6 +81,39 @@ async function runProbe(): Promise<string> {
       );
     }
 
+    const stepChanges = await healthKit.querySampleChanges({
+      feature: 'steps',
+      sampleKind: 'steps',
+      limit: 10,
+      cursor: null,
+    });
+    if (
+      stepChanges.availability !== 'available' ||
+      stepChanges.status !== 'completed' ||
+      stepChanges.addedSamples[0]?.id !== 'synthetic-steps' ||
+      stepChanges.addedSamples[0]?.sourceRepresentation?.reason !==
+        'healthkit_does_not_expose_original_display_unit' ||
+      stepChanges.hasMore ||
+      stepChanges.cursor !== 'steps:steps:anchor-v1'
+    ) {
+      throw new Error('The shared anchored sample-change query failed.');
+    }
+    const repeatedStepChanges = await healthKit.querySampleChanges({
+      feature: 'steps',
+      sampleKind: 'steps',
+      limit: 10,
+      cursor: stepChanges.cursor,
+    });
+    if (
+      repeatedStepChanges.status !== 'completed' ||
+      repeatedStepChanges.addedSamples.length !== 0 ||
+      repeatedStepChanges.deletedSampleIds.length !== 0
+    ) {
+      throw new Error(
+        'The shared anchored sample-change cursor did not resume.',
+      );
+    }
+
     const sleep = await healthKit.querySamples(query('sleep', 'sleep'));
     if (
       sleep.availability !== 'available' ||
@@ -110,19 +143,65 @@ async function runProbe(): Promise<string> {
     let medicationResult = 'unsupportedFeature';
     if (medicationPlan?.availability === 'available') {
       await native.prepareSyntheticFixture('medications');
-      const medications = await healthKit.queryMedicationDefinitions(25);
+      const medications = await healthKit.queryMedicationDefinitions(0);
       if (
         medications.availability !== 'available' ||
         medications.status !== 'completed' ||
-        medications.medications[0]?.displayText !== 'Synthetic medication'
+        medications.medications[0]?.displayText !== 'Synthetic medication' ||
+        !medications.completeSnapshot
       ) {
         throw new Error('The synthetic medication-definition query failed.');
+      }
+      const initialDoseChanges = await healthKit.querySampleChanges({
+        feature: 'medications',
+        sampleKind: 'medicationDoseEvents',
+        limit: 10,
+        cursor: null,
+      });
+      if (
+        initialDoseChanges.availability !== 'available' ||
+        initialDoseChanges.status !== 'completed' ||
+        initialDoseChanges.readAuthorization !== 'notObservable' ||
+        initialDoseChanges.addedSamples[0]?.id !== 'synthetic-dose-event' ||
+        initialDoseChanges.addedSamples[0]?.doseStatusName !== 'taken' ||
+        initialDoseChanges.deletedSampleIds.length !== 0 ||
+        initialDoseChanges.cursor !==
+          'medications:medicationDoseEvents:anchor-v1'
+      ) {
+        throw new Error('The synthetic anchored dose-event query failed.');
+      }
+      const repeatedDoseChanges = await healthKit.querySampleChanges({
+        feature: 'medications',
+        sampleKind: 'medicationDoseEvents',
+        limit: 10,
+        cursor: initialDoseChanges.cursor,
+      });
+      if (
+        repeatedDoseChanges.status !== 'completed' ||
+        repeatedDoseChanges.addedSamples.length !== 0 ||
+        repeatedDoseChanges.deletedSampleIds.length !== 0
+      ) {
+        throw new Error(
+          'The synthetic anchored query did not resume idempotently.',
+        );
+      }
+      const deletionChanges = await healthKit.querySampleChanges({
+        feature: 'medications',
+        sampleKind: 'medicationDoseEvents',
+        limit: 10,
+        cursor: 'medications:medicationDoseEvents:deletion',
+      });
+      if (
+        deletionChanges.status !== 'completed' ||
+        deletionChanges.deletedSampleIds[0] !== 'synthetic-dose-event'
+      ) {
+        throw new Error('The synthetic anchored deletion was not preserved.');
       }
       medicationResult = 'supported';
     }
 
     return `availability=${availability.status}; authorizationPlan=feature-scoped; writeTypes=0; \
-syntheticSteps=passed; unrelatedSleep=passed; emptyQuery=completed; medications=${medicationResult}; \
+syntheticSteps=passed; genericSampleChanges=passed; unrelatedSleep=passed; emptyQuery=completed; medications=${medicationResult}; medicationSampleChanges=passed; \
 sampleTypes=passed; readAuthorization=notObservable; realSamples=unverified`;
   } finally {
     if (fixtureInstalled) await native.removeSyntheticFixture();

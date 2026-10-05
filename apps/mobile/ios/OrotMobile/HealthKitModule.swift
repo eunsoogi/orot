@@ -5,7 +5,7 @@ import React
 /// Exposes feature-scoped HealthKit requests and queries to the React Native layer.
 @objc(HealthKitModule)
 public final class HealthKitModule: NSObject {
-    private let store = HKHealthStore()
+    let store = HKHealthStore()
     #if DEBUG && targetEnvironment(simulator)
         private let fixtureLock = NSLock()
         private var syntheticFixtureFeature: String?
@@ -113,61 +113,6 @@ public final class HealthKitModule: NSObject {
         store.execute(nativeQuery)
     }
 
-    @objc(queryMedicationDefinitions:resolver:rejecter:)
-    public func queryMedicationDefinitions(_ rawLimit: NSNumber,
-                                           resolver resolve: @escaping RCTPromiseResolveBlock,
-                                           rejecter reject: @escaping RCTPromiseRejectBlock)
-    {
-        let limit = rawLimit.intValue
-        guard rawLimit.doubleValue == Double(limit), (1 ... 500).contains(limit) else {
-            reject("INVALID_LIMIT", "HealthKit query limit must be between 1 and 500.", nil)
-            return
-        }
-        guard HealthKitBoundary.isSupported("medications") else {
-            resolve(HealthKitBoundary.medicationResult(availability: "unsupportedFeature", medications: nil))
-            return
-        }
-        #if DEBUG && targetEnvironment(simulator)
-            if hasSyntheticFixture(for: "medications") {
-                resolve(HealthKitBoundary.medicationResult(
-                    availability: "available", medications: HealthKitSimulatorFixture.medications,
-                ))
-                return
-            }
-        #endif
-        guard HKHealthStore.isHealthDataAvailable() else {
-            resolve(HealthKitBoundary.medicationResult(availability: "unavailable", medications: nil))
-            return
-        }
-        guard #available(iOS 26.0, *) else {
-            resolve(HealthKitBoundary.medicationResult(availability: "unsupportedFeature", medications: nil))
-            return
-        }
-        var medications: [[String: Any]] = []
-        var finished = false
-        let query = HKUserAnnotatedMedicationQuery(predicate: nil, limit: limit) { _, medication, done, error in
-            guard !finished else { return }
-            if let error {
-                finished = true
-                reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
-                return
-            }
-            do {
-                if let medication {
-                    try medications.append(HealthKitBoundary.medicationSnapshot(medication))
-                }
-                if done {
-                    finished = true
-                    resolve(HealthKitBoundary.medicationResult(availability: "available", medications: medications))
-                }
-            } catch {
-                finished = true
-                reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
-            }
-        }
-        store.execute(query)
-    }
-
     #if DEBUG && targetEnvironment(simulator)
         @objc(prepareSyntheticFixture:resolver:rejecter:)
         public func prepareSyntheticFixture(_ feature: String,
@@ -225,13 +170,13 @@ public final class HealthKitModule: NSObject {
             resolve(sampleType.identifier)
         }
 
-        private var hasSyntheticFixture: Bool {
+        var hasSyntheticFixture: Bool {
             fixtureLock.lock()
             defer { fixtureLock.unlock() }
             return syntheticFixtureFeature != nil
         }
 
-        private func hasSyntheticFixture(for feature: String) -> Bool {
+        func hasSyntheticFixture(for feature: String) -> Bool {
             fixtureLock.lock()
             defer { fixtureLock.unlock() }
             return syntheticFixtureFeature == feature
