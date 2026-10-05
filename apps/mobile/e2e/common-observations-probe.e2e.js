@@ -12,6 +12,7 @@ describe('common HealthKit observations on iOS Simulator', () => {
       newInstance: false,
       launchArgs: { RCT_jsLocation: `localhost:${metroPort}` },
     });
+    await element(by.id('open-common-observations')).tap();
     await element(by.id('common-observations-toggle-heartRate')).tap();
     await element(by.id('common-observations-toggle-steps')).tap();
     await element(by.id('common-observations-toggle-bodyMass')).tap();
@@ -22,7 +23,7 @@ describe('common HealthKit observations on iOS Simulator', () => {
     const statusAttributes = await status.getAttributes();
     const statusText = statusAttributes.label || statusAttributes.text;
     jestExpect(statusText).toContain(
-      '조회와 변환을 마쳤어요. 2개 확인, 0개 삭제, 0개 미지원',
+      '선택한 기록의 변경을 가져왔어요. 2개 저장, 0개 삭제, 0개 미지원',
     );
     const attributes = await element(
       by.id('common-observations-probe-summary'),
