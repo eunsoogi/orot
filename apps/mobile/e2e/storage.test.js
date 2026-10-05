@@ -30,7 +30,7 @@ describe('encrypted local storage', () => {
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
     await device.terminateApp();
-    await launchProbe('restart', false);
+    await launchProbe('restart', true);
     await expectProbeSuccess('restart');
   });
 

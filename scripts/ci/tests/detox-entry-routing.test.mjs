@@ -111,7 +111,11 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
   assert.equal((storageTest.match(/await clearStorageKeychain\(\);/g) ?? []).length, 3);
-  assert.match(storageTest, /async function clearStorageKeychain\(\)[\s\S]*?await device\.clearKeychain\(\);/);
+  assert.match(storageTest, /await launchProbe\('restart', true\);/);
+  assert.match(
+    storageTest,
+    /async function clearStorageKeychain\(\)[\s\S]*?await device\.clearKeychain\(\);/,
+  );
   assert.doesNotMatch(storageTest, /device\.(?:uninstallApp|installApp)\(/);
 });
 
