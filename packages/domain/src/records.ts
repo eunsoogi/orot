@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
+import {
+  ImportedRecordMetadataSchema,
+  ObservationIntervalSchema,
+  RecordIdSchema,
+  RecordMetadataSchema,
+  TimestampSchema,
+  compareTimestamps,
+} from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const NonNegativeIntegerSchema = z.number().int().min(0);
@@ -118,15 +125,57 @@ export const ObservationValueSchema = z.discriminatedUnion('kind', [
     kind: z.literal('quantity'),
     amount: z.number().finite(),
     unit: NonEmptyTextSchema,
+    // Keep a source-reported representation separate from normalized query units.
+    sourceRepresentation: z
+      .discriminatedUnion('status', [
+        z.strictObject({
+          status: z.literal('available'),
+          amount: z.number().finite(),
+          unit: NonEmptyTextSchema,
+        }),
+        z.strictObject({
+          status: z.literal('unavailable'),
+          reason: NonEmptyTextSchema,
+        }),
+      ])
+      .optional(),
   }),
   z.strictObject({ kind: z.literal('text'), text: NonEmptyTextSchema }),
   z.strictObject({ kind: z.literal('boolean'), value: z.boolean() }),
 ]);
 
-export const HealthObservationSchema = RecordMetadataSchema.safeExtend({
+export const HealthObservationSchema = ImportedRecordMetadataSchema.safeExtend({
+  effectiveAt: TimestampSchema,
+  ...ObservationIntervalSchema.shape,
   observationKind: z.enum(['measurement', 'diagnosis', 'allergy', 'procedure', 'other']),
   concept: NonEmptyTextSchema,
   value: ObservationValueSchema,
+}).superRefine((observation, context) => {
+  if (!observation.recordedAt && observation.provenance.origin !== 'imported') {
+    context.addIssue({
+      code: 'custom',
+      path: ['recordedAt'],
+      message: 'A missing recordedAt is only valid when the source does not provide it.',
+    });
+  }
+  if (
+    observation.recordedAt &&
+    observation.reviewState.status === 'reviewed' &&
+    compareTimestamps(observation.reviewState.reviewedAt, observation.recordedAt) < 0
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['reviewState', 'reviewedAt'],
+      message: 'reviewedAt must not precede recordedAt.',
+    });
+  }
+  if (observation.endedAt && compareTimestamps(observation.endedAt, observation.effectiveAt) < 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['endedAt'],
+      message: 'endedAt must not precede effectiveAt.',
+    });
+  }
 });
 
 export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
@@ -150,5 +199,9 @@ export type EvidenceSpan = z.infer<typeof EvidenceSpanSchema>;
 export type EvidenceSpanLocator = z.infer<typeof EvidenceSpanLocatorSchema>;
 export type Encounter = z.infer<typeof EncounterSchema>;
 export type ObservationValue = z.infer<typeof ObservationValueSchema>;
+export type QuantitySourceRepresentation = Extract<
+  ObservationValue,
+  { kind: 'quantity' }
+>['sourceRepresentation'];
 export type HealthObservation = z.infer<typeof HealthObservationSchema>;
 export type SymptomEntry = z.infer<typeof SymptomEntrySchema>;

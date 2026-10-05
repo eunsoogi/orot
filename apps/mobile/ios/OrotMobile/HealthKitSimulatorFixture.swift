@@ -12,6 +12,52 @@
             "hasSchedule": true,
         ]]
 
+        static func sampleChanges(for request: HealthKitSampleChangesRequest) -> NSDictionary {
+            let key = "\(request.feature):\(request.sampleKind)"
+            let anchor = "\(key):anchor-v1"
+            if request.cursor == "\(key):deletion", request.feature == "medications" {
+                return HealthKitBoundary.sampleChangesResult(
+                    availability: "available",
+                    addedSamples: [],
+                    deletedSampleIDs: ["synthetic-dose-event"],
+                    cursor: "\(key):anchor-v2",
+                )
+            }
+            if request.cursor == anchor {
+                return HealthKitBoundary.sampleChangesResult(
+                    availability: "available",
+                    addedSamples: [],
+                    cursor: anchor,
+                )
+            }
+
+            let start = "2026-10-01T08:00:00.000Z"
+            let end = "2026-10-01T08:00:00.000Z"
+            let referenceDate = Date()
+            let sampleRequest = HealthKitBoundary.SampleRequest(
+                feature: request.feature,
+                sampleKind: request.sampleKind,
+                startDate: referenceDate,
+                endDate: referenceDate,
+                limit: request.limit,
+            )
+            var additions = samples(for: sampleRequest)
+            if request.feature == "medications", let doseIndex = additions.firstIndex(where: {
+                $0["id"] as? String == "synthetic-dose-event"
+            }) {
+                additions[doseIndex]["scheduledDate"] = start
+                additions[doseIndex]["doseStatusName"] = "taken"
+                additions[doseIndex]["doseStatus"] = 4
+                additions[doseIndex]["scheduleTypeName"] = "schedule"
+                additions[doseIndex]["scheduleType"] = 2
+            }
+            return HealthKitBoundary.sampleChangesResult(
+                availability: "available",
+                addedSamples: additions,
+                cursor: anchor,
+            )
+        }
+
         static func samples(for query: HealthKitBoundary.SampleRequest) -> [[String: Any]] {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -67,6 +113,10 @@
             }
             if let unit {
                 result["unit"] = unit
+                result["sourceRepresentation"] = [
+                    "status": "unavailable",
+                    "reason": "healthkit_does_not_expose_original_display_unit",
+                ]
             }
             if let medicationConceptIdentifier {
                 result["medicationConceptIdentifier"] = medicationConceptIdentifier

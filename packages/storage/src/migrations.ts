@@ -2,7 +2,7 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -15,12 +15,18 @@ async function readUserVersion(database: SqlExecutor): Promise<number> {
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
+    const nullableSourceTimes =
+      'nullableSourceTimes' in definition && definition.nullableSourceTimes;
+    const nullableRecordedAt =
+      nullableSourceTimes || ('nullableRecordedAt' in definition && definition.nullableRecordedAt);
     await transaction.execute(
       'CREATE TABLE IF NOT EXISTS ' +
         definition.table +
         ' (' +
-        'id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, ' +
-        'recorded_at TEXT NOT NULL, ingested_at TEXT NOT NULL, ' +
+        'id TEXT PRIMARY KEY NOT NULL, effective_at TEXT' +
+        (nullableSourceTimes ? ', recorded_at TEXT' : ' NOT NULL, recorded_at TEXT') +
+        (nullableRecordedAt ? '' : ' NOT NULL') +
+        ', ingested_at TEXT NOT NULL, ' +
         'payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
     );
     await transaction.execute(
@@ -31,6 +37,36 @@ async function createInitialTables(transaction: SqlExecutor): Promise<void> {
         ' (effective_at)',
     );
   }
+}
+
+async function makeHealthObservationRecordedAtNullable(transaction: SqlExecutor): Promise<void> {
+  const table = await transaction.execute('PRAGMA table_info(health_observations)');
+  const recordedAt = table.rows.find((column) => column.name === 'recorded_at');
+  if (!recordedAt || Number(recordedAt.notnull) === 0) return;
+
+  // Rebuild only this table so existing observation rows and their source times survive v4.
+  await transaction.execute('DROP INDEX IF EXISTS health_observations_effective_at_idx');
+  await transaction.execute(
+    'CREATE TABLE health_observations_v4 (' +
+      'id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, recorded_at TEXT, ' +
+      'ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
+  );
+  await transaction.execute(
+    'INSERT INTO health_observations_v4 (id, effective_at, recorded_at, ingested_at, payload_json) ' +
+      'SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM health_observations',
+  );
+  await transaction.execute('DROP TABLE health_observations');
+  await transaction.execute('ALTER TABLE health_observations_v4 RENAME TO health_observations');
+  await transaction.execute(
+    'CREATE INDEX health_observations_effective_at_idx ON health_observations (effective_at)',
+  );
+}
+
+async function createSyncCheckpoints(transaction: SqlExecutor): Promise<void> {
+  await transaction.execute(
+    'CREATE TABLE IF NOT EXISTS healthkit_sync_checkpoints (' +
+      'checkpoint_key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL)',
+  );
 }
 
 async function createSourceEvidenceIntegrity(transaction: SqlExecutor): Promise<void> {
@@ -68,7 +104,13 @@ async function insertLegacyRecord<K extends RecordKind>(
     'INSERT INTO ' +
       STORAGE_TABLES[kind].table +
       ' (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
-    [parsed.id, parsed.effectiveAt, parsed.recordedAt, parsed.ingestedAt, JSON.stringify(parsed)],
+    [
+      parsed.id,
+      parsed.effectiveAt ?? null,
+      parsed.recordedAt ?? null,
+      parsed.ingestedAt,
+      JSON.stringify(parsed),
+    ],
   );
 }
 
@@ -106,8 +148,13 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
         await migrateLegacyRows(transaction);
         await transaction.execute('DROP TABLE records');
       }
+    } else {
+      // Version 3 adds the medication-definition table without changing existing records.
+      await createInitialTables(transaction);
     }
+    await makeHealthObservationRecordedAtNullable(transaction);
     await createSourceEvidenceIntegrity(transaction);
-    await transaction.execute('PRAGMA user_version = 2');
+    await createSyncCheckpoints(transaction);
+    await transaction.execute('PRAGMA user_version = 4');
   });
 }

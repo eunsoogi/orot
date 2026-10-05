@@ -88,6 +88,78 @@ describe('record time, provenance, and review validation', () => {
     expect(appointment.effectiveAt).toBe('2027-03-01T10:00:00-05:00');
   });
 
+  it('preserves health observation intervals and rejects an end before the start', () => {
+    const valid = HealthObservationSchema.parse({
+      ...metadata('interval-observation-1', {
+        effectiveAt: '2026-02-03T09:00:00-05:00',
+      }),
+      endedAt: '2026-02-03T09:05:00-05:00',
+      observationKind: 'measurement',
+      concept: 'sleep interval',
+      value: { kind: 'text', text: 'sleep' },
+    });
+    const invalid = HealthObservationSchema.safeParse({
+      ...metadata('interval-observation-2', {
+        effectiveAt: '2026-02-03T09:04:00-05:00',
+      }),
+      endedAt: '2026-02-03T09:03:00-05:00',
+      observationKind: 'measurement',
+      concept: 'sleep interval',
+      value: { kind: 'text', text: 'sleep' },
+    });
+
+    expect(valid.endedAt).toBe('2026-02-03T09:05:00-05:00');
+    expect(invalid.success).toBe(false);
+  });
+
+  it('keeps a missing imported source time unknown and records the unavailable input unit', () => {
+    const imported = HealthObservationSchema.parse({
+      id: 'healthkit-observation-1',
+      effectiveAt: '2026-10-01T08:00:00Z',
+      endedAt: '2026-10-01T08:00:00Z',
+      ingestedAt: '2026-10-01T08:02:00Z',
+      provenance: {
+        origin: 'imported',
+        sourceRecordIds: ['source-observation-1'],
+        source: { system: 'healthkit' },
+      },
+      reviewState: { status: 'unreviewed' },
+      observationKind: 'measurement',
+      concept: 'body mass',
+      value: {
+        kind: 'quantity',
+        amount: 70,
+        unit: 'kg',
+        sourceRepresentation: {
+          status: 'unavailable',
+          reason: 'healthkit_does_not_expose_original_display_unit',
+        },
+      },
+    });
+    const manualWithoutRecordingTime = HealthObservationSchema.safeParse({
+      ...metadata('manual-without-recording-time-1', {
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      }),
+      recordedAt: undefined,
+      observationKind: 'measurement',
+      concept: 'body mass',
+      value: { kind: 'quantity', amount: 70, unit: 'kg' },
+    });
+
+    expect(imported).not.toHaveProperty('recordedAt');
+    expect(imported.effectiveAt).toBe('2026-10-01T08:00:00Z');
+    expect(imported.value).toMatchObject({
+      kind: 'quantity',
+      amount: 70,
+      unit: 'kg',
+      sourceRepresentation: {
+        status: 'unavailable',
+        reason: 'healthkit_does_not_expose_original_display_unit',
+      },
+    });
+    expect(manualWithoutRecordingTime.success).toBe(false);
+  });
+
   it('requires derived records to cite sources and evidence spans to match their source', () => {
     const briefWithoutSource = VisitBriefSchema.safeParse({
       ...metadata('brief-no-source-1', {

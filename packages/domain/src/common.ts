@@ -35,11 +35,30 @@ export const ProvenanceOriginSchema = z.enum([
   'derived',
 ]);
 
+const NonEmptyTextSchema = z.string().trim().min(1);
+
+export const ProvenanceSourceSchema = z.strictObject({
+  system: NonEmptyTextSchema,
+  sourceIdentifier: NonEmptyTextSchema.optional(),
+  sourceName: NonEmptyTextSchema.optional(),
+  sourceVersion: NonEmptyTextSchema.optional(),
+  productType: NonEmptyTextSchema.optional(),
+  device: z
+    .strictObject({
+      manufacturer: NonEmptyTextSchema.optional(),
+      model: NonEmptyTextSchema.optional(),
+      hardwareVersion: NonEmptyTextSchema.optional(),
+      softwareVersion: NonEmptyTextSchema.optional(),
+    })
+    .optional(),
+});
+
 export const ProvenanceSchema = z.strictObject({
   origin: ProvenanceOriginSchema,
   sourceRecordIds: z
     .array(RecordIdSchema)
     .refine((ids) => new Set(ids).size === ids.length, 'Source record IDs must be unique.'),
+  source: ProvenanceSourceSchema.optional(),
 });
 
 export const ReviewStateSchema = z.discriminatedUnion('status', [
@@ -93,8 +112,36 @@ export const RecordMetadataSchema = z
     }
   });
 
+// Some imported HealthKit objects expose event dates but no source creation date.
+// Keep those source times optional instead of filling them with the local ingest time.
+export const ImportedRecordMetadataSchema = z
+  .strictObject({
+    id: RecordIdSchema,
+    effectiveAt: TimestampSchema.optional(),
+    recordedAt: TimestampSchema.optional(),
+    ingestedAt: TimestampSchema,
+    provenance: ProvenanceSchema,
+    reviewState: ReviewStateSchema,
+  })
+  .superRefine((record, context) => {
+    if (record.recordedAt && compareTimestamps(record.recordedAt, record.ingestedAt) > 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['ingestedAt'],
+        message: 'ingestedAt must not precede recordedAt.',
+      });
+    }
+  });
+
+export const ObservationIntervalSchema = z.strictObject({
+  endedAt: TimestampSchema.optional(),
+});
+
 export type RecordId = z.infer<typeof RecordIdSchema>;
 export type Timestamp = z.infer<typeof TimestampSchema>;
 export type Provenance = z.infer<typeof ProvenanceSchema>;
+export type ProvenanceSource = z.infer<typeof ProvenanceSourceSchema>;
 export type ReviewState = z.infer<typeof ReviewStateSchema>;
 export type RecordMetadata = z.infer<typeof RecordMetadataSchema>;
+export type ImportedRecordMetadata = z.infer<typeof ImportedRecordMetadataSchema>;
+export type ObservationInterval = z.infer<typeof ObservationIntervalSchema>;

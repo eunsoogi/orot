@@ -3,6 +3,10 @@ import HealthKit
 
 /// Maps named Orot features to narrow HealthKit types while keeping read grants unobservable.
 enum HealthKitBoundary {
+    enum AnchorError: Error {
+        case invalid
+    }
+
     struct SampleRequest {
         let feature: String
         let sampleKind: String
@@ -80,7 +84,7 @@ enum HealthKitBoundary {
         return AuthorizationPlan(shareTypes: [], readTypes: readTypes)
     }
 
-    private static func isValidSampleKind(_ kind: String, for feature: String) -> Bool {
+    static func isValidSampleKind(_ kind: String, for feature: String) -> Bool {
         switch (feature, kind) {
         case ("medications", "medicationDoseEvents"), ("bloodPressure", "bloodPressure"),
              ("sleep", "sleep"), ("heartRate", "heartRate"), ("steps", "steps"),
@@ -125,10 +129,39 @@ enum HealthKitBoundary {
             "sourceIdentifier": sample.sourceRevision.source.bundleIdentifier,
             "sourceName": sample.sourceRevision.source.name,
         ]
+        if let version = sample.sourceRevision.version {
+            result["sourceVersion"] = version
+        }
+        if let productType = sample.sourceRevision.productType {
+            result["sourceProductType"] = productType
+        }
+        if let device = sample.device {
+            var deviceSnapshot: [String: String] = [:]
+            if let value = device.manufacturer {
+                deviceSnapshot["manufacturer"] = value
+            }
+            if let value = device.model {
+                deviceSnapshot["model"] = value
+            }
+            if let value = device.hardwareVersion {
+                deviceSnapshot["hardwareVersion"] = value
+            }
+            if let value = device.softwareVersion {
+                deviceSnapshot["softwareVersion"] = value
+            }
+            if !deviceSnapshot.isEmpty {
+                result["device"] = deviceSnapshot
+            }
+        }
         if let quantity = sample as? HKQuantitySample {
             let unit = Self.unit(for: quantity.quantityType.identifier)
             result["value"] = quantity.quantity.doubleValue(for: unit)
             result["unit"] = unit.unitString
+            // The query uses a canonical unit because HealthKit omits each entry's display unit.
+            result["sourceRepresentation"] = [
+                "status": "unavailable",
+                "reason": "healthkit_does_not_expose_original_display_unit",
+            ]
         }
         if let category = sample as? HKCategorySample {
             result["categoryValue"] = category.value
@@ -138,35 +171,19 @@ enum HealthKitBoundary {
         }
         if #available(iOS 26.0, *), let dose = sample as? HKMedicationDoseEvent {
             result["medicationConceptIdentifier"] = try Self.encodedIdentifier(dose.medicationConceptIdentifier)
+            if let scheduledDate = dose.scheduledDate {
+                result["scheduledDate"] = formatter.string(from: scheduledDate)
+            }
             if let quantity = dose.doseQuantity {
                 result["doseQuantity"] = quantity
             }
             result["doseUnit"] = dose.unit.unitString
             result["doseStatus"] = dose.logStatus.rawValue
+            result["doseStatusName"] = Self.doseStatusName(dose.logStatus.rawValue)
             result["scheduleType"] = dose.scheduleType.rawValue
+            result["scheduleTypeName"] = Self.scheduleTypeName(dose.scheduleType.rawValue)
         }
         return result
-    }
-
-    @available(iOS 26.0, *)
-    static func medicationSnapshot(_ medication: HKUserAnnotatedMedication) throws -> [String: Any] {
-        var result: [String: Any] = try [
-            "conceptIdentifier": encodedIdentifier(medication.medication.identifier),
-            "displayText": medication.medication.displayText,
-            "generalForm": medication.medication.generalForm.rawValue,
-            "isArchived": medication.isArchived,
-            "hasSchedule": medication.hasSchedule,
-        ]
-        if let nickname = medication.nickname {
-            result["nickname"] = nickname
-        }
-        return result
-    }
-
-    @available(iOS 26.0, *)
-    private static func encodedIdentifier(_ identifier: HKHealthConceptIdentifier) throws -> String {
-        let data = try NSKeyedArchiver.archivedData(withRootObject: identifier, requiringSecureCoding: true)
-        return data.base64EncodedString()
     }
 
     private static func unit(for identifier: String) -> HKUnit {
@@ -194,10 +211,34 @@ enum HealthKitBoundary {
         return result as NSDictionary
     }
 
-    static func medicationResult(availability: String, medications: [[String: Any]]?) -> NSDictionary {
+    static func medicationResult(availability: String,
+                                 medications: [[String: Any]]?,
+                                 completeSnapshot: Bool = false) -> NSDictionary
+    {
         var result: [String: Any] = ["availability": availability, "readAuthorization": "notObservable"]
         if let medications {
-            result["status"] = "completed"; result["medications"] = medications
+            result["status"] = "completed"
+            result["medications"] = medications
+            result["completeSnapshot"] = completeSnapshot
+        } else {
+            result["status"] = "notRun"
+        }
+        return result as NSDictionary
+    }
+
+    static func sampleChangesResult(availability: String,
+                                    addedSamples: [[String: Any]]?,
+                                    deletedSampleIDs: [String] = [],
+                                    cursor: String? = nil,
+                                    hasMore: Bool = false) -> NSDictionary
+    {
+        var result: [String: Any] = ["availability": availability, "readAuthorization": "notObservable"]
+        if let addedSamples {
+            result["status"] = "completed"
+            result["addedSamples"] = addedSamples
+            result["deletedSampleIds"] = deletedSampleIDs
+            result["cursor"] = cursor as Any? ?? NSNull()
+            result["hasMore"] = hasMore
         } else {
             result["status"] = "notRun"
         }
