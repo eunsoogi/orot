@@ -1,7 +1,7 @@
 #if DEBUG && targetEnvironment(simulator)
     import Foundation
 
-    // Fixtures stay in memory and never write samples into the HealthKit store.
+    /// Supplies in-memory records without writing samples into the HealthKit store.
     enum HealthKitSimulatorFixture {
         static let medications: [[String: Any]] = [[
             "conceptIdentifier": "c3ludGhldGljLW1lZGljYXRpb24=",
