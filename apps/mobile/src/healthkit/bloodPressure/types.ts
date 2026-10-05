@@ -1,3 +1,9 @@
+import type { RecordMap, RecordRepository } from '@orot/storage';
+import type {
+  HealthKitNativeModule,
+  HealthKitSampleChangesResult,
+} from '../types';
+
 export const bloodPressureSampleTypeIdentifiers = {
   correlation: 'HKCorrelationTypeIdentifierBloodPressure',
   systolic: 'HKQuantityTypeIdentifierBloodPressureSystolic',
@@ -5,83 +11,45 @@ export const bloodPressureSampleTypeIdentifiers = {
 } as const;
 
 export type BloodPressureComponent = 'systolic' | 'diastolic';
-export type BloodPressureUnit = 'mmHg' | 'kPa';
+export type BloodPressureObservation = RecordMap['health_observation'];
+export interface BloodPressureMappedCorrelation {
+  readonly correlationId: string;
+  readonly observations: readonly BloodPressureObservation[];
+}
+export type BloodPressureChangePage = Extract<
+  HealthKitSampleChangesResult,
+  { readonly status: 'completed' }
+>;
 
-export interface HealthKitDeviceSnapshot {
-  readonly name?: string;
-  readonly manufacturer?: string;
-  readonly model?: string;
-  readonly hardwareVersion?: string;
-  readonly softwareVersion?: string;
+export type BloodPressureHealthKitClient = Pick<
+  HealthKitNativeModule,
+  'querySampleChanges'
+>;
+
+export type BloodPressureRepository = Pick<
+  RecordRepository,
+  'getSyncCheckpoint' | 'transaction'
+>;
+
+export interface BloodPressureSyncOptions {
+  readonly healthKit: BloodPressureHealthKitClient;
+  readonly repository: BloodPressureRepository;
+  readonly now: () => string;
 }
 
-export interface BloodPressureQuantitySnapshot {
-  readonly id: string;
-  readonly typeIdentifier: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly sourceIdentifier: string;
-  readonly sourceName: string;
-  readonly device?: HealthKitDeviceSnapshot;
-  readonly originalValue: number;
-  readonly originalUnit: string;
+export interface BloodPressureSyncResult {
+  readonly status: 'completed' | 'notRun' | 'partial';
+  readonly upserted: number;
+  readonly deleted: number;
+  readonly cursorAdvanced: boolean;
 }
 
-export interface BloodPressureCorrelationSnapshot {
-  readonly id: string;
-  readonly typeIdentifier: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly sourceIdentifier: string;
-  readonly sourceName: string;
-  readonly device?: HealthKitDeviceSnapshot;
-  readonly components?: readonly BloodPressureQuantitySnapshot[];
-}
-
-export interface BloodPressureReading {
-  readonly sampleId: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly sourceIdentifier: string;
-  readonly sourceName: string;
-  readonly device?: HealthKitDeviceSnapshot;
-  readonly originalValue: number;
-  readonly originalUnit: BloodPressureUnit;
-  readonly normalizedValue: number;
-  readonly normalizedUnit: 'mmHg';
-}
-
-export interface BloodPressureObservation {
-  /** The HealthKit correlation UUID is the stable upsert and deletion key. */
-  readonly id: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly sourceIdentifier: string;
-  readonly sourceName: string;
-  readonly device?: HealthKitDeviceSnapshot;
-  readonly provenance: {
-    readonly origin: 'imported';
-    readonly sourceSystem: 'HealthKit';
-    readonly sourceSampleId: string;
-    readonly sourceIdentifier: string;
-    readonly sourceName: string;
-  };
-  readonly systolic: BloodPressureReading | null;
-  readonly diastolic: BloodPressureReading | null;
-}
-
-export interface BloodPressureChangePage {
-  readonly insertedOrUpdated: readonly BloodPressureCorrelationSnapshot[];
-  readonly deletedCorrelationIds: readonly string[];
-}
-
-export interface BloodPressureTransaction {
-  upsert(observation: BloodPressureObservation): Promise<void>;
-  delete(correlationId: string): Promise<void>;
-}
-
-export interface BloodPressureWriter {
-  transaction<T>(
-    operation: (transaction: BloodPressureTransaction) => Promise<T>,
-  ): Promise<T>;
+/** Correlation-based IDs let one HealthKit deletion remove both pressure values. */
+export function bloodPressureObservationId(
+  correlationId: string,
+  component: BloodPressureComponent,
+): string {
+  return (
+    'healthkit-blood-pressure:' + correlationId.toLowerCase() + ':' + component
+  );
 }

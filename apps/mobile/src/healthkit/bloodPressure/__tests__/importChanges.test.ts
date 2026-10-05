@@ -1,104 +1,174 @@
 import { applyBloodPressureChanges } from '../importChanges';
+import type { BloodPressureChangePage } from '../types';
 import {
-  bloodPressureSampleTypeIdentifiers as typeIds,
-  type BloodPressureObservation,
-  type BloodPressureTransaction,
-  type BloodPressureWriter,
-} from '../types';
+  correlation,
+  createMemoryBloodPressureRepository,
+  observationId,
+} from '../testSupport';
 
-function sample(value = 120) {
+function page(
+  addedSamples: BloodPressureChangePage['addedSamples'] = [],
+  deletedSampleIds: readonly string[] = [],
+  cursor: string | null = null,
+): BloodPressureChangePage {
   return {
-    id: 'correlation-1',
-    typeIdentifier: typeIds.correlation,
-    startDate: '2026-10-02T12:34:56.123456789Z',
-    endDate: '2026-10-02T12:34:56.123456789Z',
-    sourceIdentifier: 'com.example.device',
-    sourceName: 'Blood pressure monitor',
-    components: [
-      {
-        id: 'systolic-1',
-        typeIdentifier: typeIds.systolic,
-        startDate: '2026-10-02T12:34:56.123456789Z',
-        endDate: '2026-10-02T12:34:56.123456789Z',
-        sourceIdentifier: 'com.example.device',
-        sourceName: 'Blood pressure monitor',
-        originalValue: value,
-        originalUnit: 'mmHg',
-      },
-    ],
+    availability: 'available',
+    status: 'completed',
+    readAuthorization: 'notObservable',
+    addedSamples,
+    deletedSampleIds,
+    cursor,
+    hasMore: false,
   };
-}
-
-function memoryWriter() {
-  let records = new Map<string, BloodPressureObservation>();
-  const writer: BloodPressureWriter = {
-    async transaction(operation) {
-      const pending = new Map(records);
-      const transaction: BloodPressureTransaction = {
-        async upsert(observation) {
-          pending.set(observation.id, observation);
-        },
-        async delete(correlationId) {
-          pending.delete(correlationId);
-        },
-      };
-      const result = await operation(transaction);
-      records = pending;
-      return result;
-    },
-  };
-  return { writer, records: () => records };
 }
 
 describe('applyBloodPressureChanges', () => {
-  it('upserts by stable correlation ID so replay and changed observations are idempotent', async () => {
-    const store = memoryWriter();
-    const page = { insertedOrUpdated: [sample()], deletedCorrelationIds: [] };
-
-    await applyBloodPressureChanges(page, store.writer);
-    await applyBloodPressureChanges(page, store.writer);
-    expect(store.records().size).toBe(1);
-
-    await applyBloodPressureChanges(
-      { ...page, insertedOrUpdated: [sample(130)] },
-      store.writer,
+  it('stores both readings and advances the cursor in one transaction', async () => {
+    const store = createMemoryBloodPressureRepository();
+    const applied = await applyBloodPressureChanges(
+      store.repository,
+      page([correlation()], [], 'cursor-1'),
+      null,
+      () => '2026-10-05T10:00:00.000Z',
     );
-    expect(store.records().get('correlation-1')?.systolic?.originalValue).toBe(
-      130,
-    );
-    expect(store.records().get('correlation-1')?.diastolic).toBeNull();
+
+    expect(applied).toEqual({
+      upserted: 2,
+      deleted: 0,
+      cursorAdvanced: true,
+    });
+    expect(store.observations()).toHaveLength(2);
+    expect(store.checkpoint('healthkit:bloodPressure:bloodPressure')).toEqual({
+      key: 'healthkit:bloodPressure:bloodPressure',
+      value: 'cursor-1',
+      updatedAt: '2026-10-05T10:00:00.000Z',
+    });
   });
 
-  it('deletes only explicitly reported correlations and treats an empty page as a no-op', async () => {
-    const store = memoryWriter();
+  it('keeps replays idempotent and refreshes changed readings without changing ingest time', async () => {
+    const store = createMemoryBloodPressureRepository();
+    const now = () => '2026-10-05T10:00:00.000Z';
     await applyBloodPressureChanges(
-      { insertedOrUpdated: [sample()], deletedCorrelationIds: [] },
-      store.writer,
+      store.repository,
+      page([correlation()], [], 'cursor-1'),
+      null,
+      now,
     );
-    await applyBloodPressureChanges(
-      { insertedOrUpdated: [], deletedCorrelationIds: [] },
-      store.writer,
+    const replay = await applyBloodPressureChanges(
+      store.repository,
+      page([correlation()], [], 'cursor-1'),
+      'cursor-1',
+      () => '2026-10-06T10:00:00.000Z',
     );
-    expect(store.records().has('correlation-1')).toBe(true);
 
-    const deletion = {
-      insertedOrUpdated: [],
-      deletedCorrelationIds: ['correlation-1'],
-    };
-    await applyBloodPressureChanges(deletion, store.writer);
-    await applyBloodPressureChanges(deletion, store.writer);
-    expect(store.records().has('correlation-1')).toBe(false);
+    expect(replay.upserted).toBe(0);
+    expect(store.observations()).toHaveLength(2);
+    expect(
+      store.observations().every(record => record.ingestedAt === now()),
+    ).toBe(true);
+
+    const changed = await applyBloodPressureChanges(
+      store.repository,
+      page([correlation('correlation-1', 130, 85)], [], 'cursor-1'),
+      'cursor-1',
+      () => '2026-10-07T10:00:00.000Z',
+    );
+    expect(changed.upserted).toBe(2);
+    expect(
+      store
+        .observations()
+        .find(
+          record => record.id === observationId('correlation-1', 'systolic'),
+        )?.value,
+    ).toMatchObject({ amount: 130, unit: 'mmHg' });
+    expect(
+      store.observations().every(record => record.ingestedAt === now()),
+    ).toBe(true);
   });
 
-  it('lets an explicit deletion win when one UUID appears in both change lists', async () => {
-    const store = memoryWriter();
+  it('deletes only explicit correlations and removes a missing component on update', async () => {
+    const store = createMemoryBloodPressureRepository();
+    const now = () => '2026-10-05T10:00:00.000Z';
     await applyBloodPressureChanges(
-      {
-        insertedOrUpdated: [sample()],
-        deletedCorrelationIds: ['correlation-1'],
-      },
-      store.writer,
+      store.repository,
+      page([correlation('keep'), correlation('remove')], [], 'cursor-1'),
+      null,
+      now,
     );
-    expect(store.records().size).toBe(0);
+    await applyBloodPressureChanges(
+      store.repository,
+      page([], [], 'cursor-1'),
+      'cursor-1',
+      now,
+    );
+    expect(store.observations()).toHaveLength(4);
+
+    const partial = correlation('keep');
+    await applyBloodPressureChanges(
+      store.repository,
+      page(
+        [
+          {
+            ...partial,
+            components: partial.components?.filter(component =>
+              component.typeIdentifier.includes('Systolic'),
+            ),
+          },
+        ],
+        [],
+        'cursor-1',
+      ),
+      'cursor-1',
+      now,
+    );
+    expect(store.observations()).toHaveLength(3);
+    expect(
+      store
+        .observations()
+        .some(record => record.id === observationId('keep', 'diastolic')),
+    ).toBe(false);
+
+    const deletion = await applyBloodPressureChanges(
+      store.repository,
+      page([], ['remove'], 'cursor-1'),
+      'cursor-1',
+      now,
+    );
+    expect(deletion.deleted).toBe(2);
+    expect(store.observations()).toHaveLength(1);
+    await applyBloodPressureChanges(
+      store.repository,
+      page([], ['remove'], 'cursor-1'),
+      'cursor-1',
+      now,
+    );
+    expect(store.observations()).toHaveLength(1);
+  });
+
+  it('rejects conflicting add/delete IDs and rolls back values when checkpoint persistence fails', async () => {
+    const conflictStore = createMemoryBloodPressureRepository();
+    await expect(
+      applyBloodPressureChanges(
+        conflictStore.repository,
+        page([correlation()], ['correlation-1'], 'cursor-1'),
+        null,
+        () => '2026-10-05T10:00:00.000Z',
+      ),
+    ).rejects.toThrow('conflicting blood-pressure correlation IDs');
+
+    const failedStore = createMemoryBloodPressureRepository();
+    failedStore.failNextCheckpointWrite();
+    await expect(
+      applyBloodPressureChanges(
+        failedStore.repository,
+        page([correlation()], [], 'cursor-1'),
+        null,
+        () => '2026-10-05T10:00:00.000Z',
+      ),
+    ).rejects.toThrow('simulated checkpoint write failure');
+    expect(failedStore.observations()).toHaveLength(0);
+    expect(
+      failedStore.checkpoint('healthkit:bloodPressure:bloodPressure'),
+    ).toBeNull();
   });
 });

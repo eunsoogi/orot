@@ -4,11 +4,19 @@ import { createHealthKitClient } from '../src/healthkit/client';
 import type {
   HealthKitFeature,
   HealthKitNativeModule,
-  HealthKitSampleQuery,
-  HealthKitSampleSnapshot,
+  HealthKitSampleChangesQuery,
 } from '../src/healthkit/types';
-import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
-import { bloodPressureSampleTypeIdentifiers as typeIds } from '../src/healthkit/bloodPressure/types';
+import { syncHealthKitBloodPressure } from '../src/healthkit/bloodPressure';
+import type {
+  BloodPressureRepository,
+  BloodPressureSyncOptions,
+} from '../src/healthkit/bloodPressure';
+import type {
+  RecordKind,
+  RecordMap,
+  RecordWriter,
+  SyncCheckpoint,
+} from '@orot/storage';
 
 interface BloodPressureProbeModule extends HealthKitNativeModule {
   prepareSyntheticFixture(
@@ -19,10 +27,6 @@ interface BloodPressureProbeModule extends HealthKitNativeModule {
 
 const native = NativeModules.HealthKitModule as BloodPressureProbeModule;
 const healthKit = createHealthKitClient(native, 'ios');
-const measurementWindow = {
-  startDate: '2026-10-01T00:00:00.000Z',
-  endDate: '2026-10-03T00:00:00.000Z',
-};
 
 export function BloodPressureProbe() {
   const [result, setResult] = useState(
@@ -31,7 +35,7 @@ export function BloodPressureProbe() {
 
   useEffect(() => {
     runProbe().then(setResult, (error: unknown) => {
-      // Native framework errors are withheld to keep production HealthKit details out of artifacts.
+      // Keep native HealthKit details out of the synthetic runtime evidence.
       console.error(
         'Blood-pressure Simulator probe failed:',
         error instanceof Error ? error.name : 'UnknownError',
@@ -54,7 +58,7 @@ async function runProbe(): Promise<string> {
   try {
     const availability = await healthKit.getAvailability();
 
-    // This probe uses synthetic samples; real-store reads belong to the user-consented import flow.
+    // The dedicated bridge fixture avoids querying the user's HealthKit store.
     const fixture = await native.prepareSyntheticFixture('bloodPressure');
     fixtureInstalled = true;
     if (fixture.mode !== 'synthetic')
@@ -72,45 +76,50 @@ async function runProbe(): Promise<string> {
       );
     }
 
-    const result = await healthKit.querySamples(query());
-    if (
-      result.availability !== 'available' ||
-      result.status !== 'completed' ||
-      result.readAuthorization !== 'notObservable' ||
-      result.samples.length !== 1
-    ) {
-      throw new Error(
-        'The synthetic blood-pressure correlation did not cross the native bridge.',
-      );
-    }
-
-    const correlation = result.samples[0];
-    if (
-      correlation?.typeIdentifier !== typeIds.correlation ||
-      correlation.sourceIdentifier !== 'com.orot.healthkit.synthetic'
-    ) {
-      throw new Error(
-        'The synthetic blood-pressure source was not identified.',
-      );
-    }
-
-    const mapped = mapBloodPressureCorrelation(
-      asSyntheticCorrelation(correlation),
+    let queryReadAuthorization = 'missing';
+    const healthKitPort = {
+      async querySampleChanges(query: HealthKitSampleChangesQuery) {
+        const result = await healthKit.querySampleChanges(query);
+        queryReadAuthorization = result.readAuthorization;
+        return result;
+      },
+    };
+    const memory = createMemoryRepository();
+    const options: BloodPressureSyncOptions = {
+      healthKit: healthKitPort,
+      repository: memory.repository,
+      now: () => '2026-10-05T10:00:00.000Z',
+    };
+    const imported = await syncHealthKitBloodPressure(options);
+    const replayed = await syncHealthKitBloodPressure(options);
+    const readings = memory.observations();
+    const systolic = readings.find(
+      record => record.concept === 'blood pressure systolic',
     );
+    const diastolic = readings.find(
+      record => record.concept === 'blood pressure diastolic',
+    );
+
     if (
-      mapped.systolic?.normalizedValue !== 120 ||
-      mapped.diastolic?.normalizedValue !== 80 ||
-      mapped.provenance.sourceSampleId !== correlation.id
+      imported.status !== 'completed' ||
+      imported.upserted !== 2 ||
+      replayed.status !== 'completed' ||
+      replayed.upserted !== 0 ||
+      readings.length !== 2 ||
+      !isSyntheticReading(systolic, 120) ||
+      !isSyntheticReading(diastolic, 80) ||
+      queryReadAuthorization !== 'notObservable'
     ) {
       throw new Error(
-        'The synthetic systolic/diastolic mapping did not match its fixture.',
+        'The synthetic incremental blood-pressure import did not match its fixture.',
       );
     }
 
     return (
       `healthStoreAvailability=${availability.status}; productionQuery=notRun; ` +
-      'productionSamples=unverified; productionValues=withheld; syntheticCorrelation=passed; ' +
-      'systolicDiastolicMapping=passed; ' +
+      'productionSamples=unverified; productionValues=withheld; syntheticChanges=completed; ' +
+      'syntheticCorrelation=passed; systolicDiastolicMapping=passed; ' +
+      'originalDisplayUnit=unavailable; syntheticReplay=passed; ' +
       'syntheticReadAuthorization=notObservable; healthStoreWrites=none'
     );
   } finally {
@@ -118,26 +127,74 @@ async function runProbe(): Promise<string> {
   }
 }
 
-function asSyntheticCorrelation(
-  sample: HealthKitSampleSnapshot,
-): Parameters<typeof mapBloodPressureCorrelation>[0] {
-  return {
-    ...sample,
-    components: (sample.components ?? []).map(component => ({
-      ...component,
-      originalValue: component.value ?? Number.NaN,
-      originalUnit: component.unit ?? '',
-    })),
-  };
+function isSyntheticReading(
+  record: RecordMap['health_observation'] | undefined,
+  expectedAmount: number,
+): boolean {
+  if (!record || record.provenance.origin !== 'imported') return false;
+  if (
+    record.provenance.source?.sourceIdentifier !==
+    'com.orot.healthkit.synthetic'
+  ) {
+    return false;
+  }
+  if (record.value.kind !== 'quantity') return false;
+  return (
+    record.value.amount === expectedAmount &&
+    record.value.unit === 'mmHg' &&
+    record.value.sourceRepresentation?.status === 'unavailable'
+  );
 }
 
-function query(): HealthKitSampleQuery {
-  return {
-    feature: 'bloodPressure',
-    sampleKind: 'bloodPressure',
-    ...measurementWindow,
-    limit: 25,
+/** This probe adapter keeps repository writes in memory and never writes to HealthKit. */
+function createMemoryRepository() {
+  let records = new Map<string, RecordMap['health_observation']>();
+  let checkpoints = new Map<string, SyncCheckpoint>();
+  const repository: BloodPressureRepository = {
+    async getSyncCheckpoint(key) {
+      return checkpoints.get(key) ?? null;
+    },
+    async transaction<T>(operation: (writer: RecordWriter) => Promise<T>) {
+      const pendingRecords = new Map(records);
+      const pendingCheckpoints = new Map(checkpoints);
+      const writer: RecordWriter = {
+        async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
+          if (kind !== 'health_observation') {
+            throw new Error('The probe repository only stores observations.');
+          }
+          pendingRecords.set(
+            record.id,
+            record as RecordMap['health_observation'],
+          );
+        },
+        async delete<K extends RecordKind>(kind: K, id: string) {
+          return kind === 'health_observation'
+            ? pendingRecords.delete(id)
+            : false;
+        },
+        async get<K extends RecordKind>(kind: K, id: string) {
+          return (
+            kind === 'health_observation'
+              ? (pendingRecords.get(id) ?? null)
+              : null
+          ) as RecordMap[K] | null;
+        },
+        async list<K extends RecordKind>(kind: K) {
+          return (
+            kind === 'health_observation' ? [...pendingRecords.values()] : []
+          ) as RecordMap[K][];
+        },
+        async putSyncCheckpoint(checkpoint) {
+          pendingCheckpoints.set(checkpoint.key, checkpoint);
+        },
+      };
+      const result = await operation(writer);
+      records = pendingRecords;
+      checkpoints = pendingCheckpoints;
+      return result;
+    },
   };
+  return { repository, observations: () => [...records.values()] };
 }
 
 const styles = StyleSheet.create({
