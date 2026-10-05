@@ -15,13 +15,7 @@ enum SpeechTranscriptionAnalyzer {
 
         // Enable source audio ranges without requesting alternatives or provisional results.
         let transcriber = makeTimeIndexedTranscriber(locale: supportedLocale)
-        do {
-            if let installation = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                try await installation.downloadAndInstall()
-            }
-        } catch {
-            throw SpeechTranscriptionFailure("MODEL_INSTALL_FAILED", "The Korean on-device speech model could not be installed.")
-        }
+        try await installAssets(for: transcriber, engine: "speech_transcriber")
 
         return try await analyze(
             file,
@@ -42,13 +36,7 @@ enum SpeechTranscriptionAnalyzer {
 
         // Consultation files can exceed a minute, and evidence links need the source audio time range.
         let transcriber = DictationTranscriber(locale: supportedLocale, preset: .timeIndexedLongDictation)
-        do {
-            if let installation = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                try await installation.downloadAndInstall()
-            }
-        } catch {
-            throw SpeechTranscriptionFailure("MODEL_INSTALL_FAILED", "The Korean on-device speech model could not be installed.")
-        }
+        try await installAssets(for: transcriber, engine: "dictation_transcriber")
 
         return try await analyze(
             file,
@@ -66,6 +54,74 @@ enum SpeechTranscriptionAnalyzer {
             reportingOptions: preset.reportingOptions.subtracting([.alternativeTranscriptions]),
             attributeOptions: preset.attributeOptions,
         )
+    }
+
+    /// Capture both installation snapshots because a request returning nil only proves readiness when status and formats agree.
+    private static func installAssets(for module: any SpeechModule, engine: String) async throws {
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            let startedAt = Date()
+            let statusBefore = await AssetInventory.status(forModules: [module])
+            let reservationsBefore = await AssetInventory.reservedLocales
+            var requestNilResult = "not_returned"
+            var downloadWasCalled = false
+        #endif
+
+        do {
+            let installation = try await AssetInventory.assetInstallationRequest(supporting: [module])
+            if let installation {
+                #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                    requestNilResult = "false"
+                    downloadWasCalled = true
+                #endif
+                try await installation.downloadAndInstall()
+            } else {
+                #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                    requestNilResult = "true"
+                #endif
+            }
+        } catch {
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                let statusAfter = await AssetInventory.status(forModules: [module])
+                let reservationsAfter = await AssetInventory.reservedLocales
+                let nativeError = error as NSError
+                NSLog(
+                    "OROT_SPEECH_DIAGNOSTIC install engine=%@ status_before=%@ request_nil=%@ download_called=%@ status_after=%@ reservations_before=%@ reservations_after=%@ elapsed_ms=%.1f error_domain=%@ error_code=%ld",
+                    engine,
+                    String(describing: statusBefore),
+                    requestNilResult,
+                    downloadWasCalled ? "true" : "false",
+                    String(describing: statusAfter),
+                    reservationsBefore.map(\.identifier).joined(separator: ","),
+                    reservationsAfter.map(\.identifier).joined(separator: ","),
+                    Date().timeIntervalSince(startedAt) * 1000,
+                    nativeError.domain,
+                    nativeError.code,
+                )
+            #endif
+            throw SpeechTranscriptionFailure("MODEL_INSTALL_FAILED", "The Korean on-device speech model could not be installed.")
+        }
+
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            let statusAfter = await AssetInventory.status(forModules: [module])
+            let compatibleFormats = await module.availableCompatibleAudioFormats
+            let bestAvailableFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module])
+            let reservationsAfter = await AssetInventory.reservedLocales
+            let formatSummary = compatibleFormats.map { "\($0.sampleRate)Hz/\($0.channelCount)ch" }.joined(separator: ",")
+            NSLog(
+                "OROT_SPEECH_DIAGNOSTIC install engine=%@ status_before=%@ request_nil=%@ download_called=%@ status_after=%@ compatible_format_count=%ld compatible_formats=%@ best_format_available=%@ reservations_before=%@ reservations_after=%@ elapsed_ms=%.1f",
+                engine,
+                String(describing: statusBefore),
+                requestNilResult,
+                downloadWasCalled ? "true" : "false",
+                String(describing: statusAfter),
+                compatibleFormats.count,
+                formatSummary,
+                bestAvailableFormat == nil ? "false" : "true",
+                reservationsBefore.map(\.identifier).joined(separator: ","),
+                reservationsAfter.map(\.identifier).joined(separator: ","),
+                Date().timeIntervalSince(startedAt) * 1000,
+            )
+        #endif
     }
 
     private static func analyze(

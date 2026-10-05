@@ -121,8 +121,9 @@ Transcription reached the analyzer's asset request and then returned
 `MODEL_UNAVAILABLE: Apple has no installed audio format for this on-device
 speech model.` The probe again reported `cases=[]`. The installation path did
 not throw `MODEL_INSTALL_FAILED`, but this run did not measure downloaded bytes
-or independently record post-request asset status. Thus this corrected run
-still supplies no iOS transcript, timestamp ranges, or accuracy observations.
+or independently record post-request asset status. This iOS 27 run supplies no
+transcript, timestamp ranges, or accuracy observations. The separate iOS 26.2
+Simulator run below did produce them.
 
 ## Accuracy method and limits
 
@@ -143,15 +144,31 @@ with real speakers, accents, background noise, overlapping speakers, longer
 consultations, or clinical meaning. A matched medication name, number, or
 negation phrase is not a clinical safety assessment.
 
-| Case | Input duration | Input SHA-256 | Recognized text | CER | Medication | Number | Negation |
-| --- | ---: | --- | --- | ---: | --- | --- | --- |
-| Medication name | 2.584717 s | `aa4f2369c0a602b49a920942e4055e2d129a643a0bbfc5eefb5b72997271cda8` | Not measured yet | — | — | — | — |
-| Number | 2.229070 s | `1baae7c13b6c9f77824a73a88357953a371911c8ae884a51888d1381cc133dd3` | Not measured yet | — | — | — | — |
-| Negation | 2.226939 s | `51ad11350d6c6e96eab75399f37a3cdf3f83e3d05a015792e32dbc57282bb210` | Not measured yet | — | — | — | — |
+| Case | Input duration | Input SHA-256 | Recognized text | Audio-relative range | CER | Medication | Number | Negation |
+| --- | ---: | --- | --- | ---: | ---: | --- | --- | --- |
+| Medication name | 2.584717 s | `aa4f2369c0a602b49a920942e4055e2d129a643a0bbfc5eefb5b72997271cda8` | 가상 의약품 이름은 매트 푸르 인 입니다 | 0.06–2.58475 s | 18.75% | No | — | — |
+| Number | 2.229070 s | `1baae7c13b6c9f77824a73a88357953a371911c8ae884a51888d1381cc133dd3` | 복용량은 500mg 입니다 | 0–2.2290625 s | 46.15% | — | Yes | — |
+| Negation | 2.226939 s | `51ad11350d6c6e96eab75399f37a3cdf3f83e3d05a015792e32dbc57282bb210` | 오늘은 약을 복용 하지 않았습니다 | 0–2.2269375 s | 0% | — | — | Yes |
 
-The table is intentionally left unmeasured because the dedicated Simulator
-probe returned an explicit unavailable-model state before transcription. Do not
-substitute mock output or the fixture's expected text for an Apple result.
+## iOS 26.2 Simulator observation (2026-10-05)
+
+A dedicated iPhone 17 Simulator (`iPhone18,3`) on iOS 26.2 (build `23C54`)
+ran the Release Detox probe: one suite and one test passed. Initial availability
+selected `DictationTranscriber` for `ko_KR` with `modelInstalled=false`. The
+native run requested the configuration assets, called
+`downloadAndInstall()`, then reported the assets installed with compatible
+mono 16 kHz and 8 kHz formats. Runtime diagnostics record the
+`dictation_transcriber` engine for all three fixture operations. Each operation
+returned one real segment with audio-relative start and end times shown above;
+the 33-microsecond overrun on the first segment is within the probe's existing
+0.1-second duration tolerance. No legacy recognizer fallback or remote speech
+service produced these results.
+
+All three inputs are synthetic macOS Yuna speech. The results demonstrate the
+current Simulator path and its observed transcription only; they are not a
+clinical accuracy estimate. The medication name was misrecognized, while the
+number/unit and negation focus checks matched. Do not replace the recognized
+text with the fixture's expected input.
 
 ## Supplementary macOS observation (2026-10-05)
 
@@ -172,8 +189,8 @@ These final native results were evaluated by the existing
 `accuracyEvaluation.ts`, with fixture hashes checked before evaluation. The
 number CER includes the spoken-to-numeric spelling difference. The medication
 error illustrates why these outputs require review. All three ranges passed
-the existing 0.1-second duration tolerance. These are macOS observations only;
-they do not supply the required iOS Simulator transcript or accuracy evidence.
+the existing 0.1-second duration tolerance. These are macOS observations only
+and are kept separate from the iOS 26.2 Simulator measurements above.
 
 The native availability routing regression can be compiled on macOS with Swift
 and the macOS 26+ Speech SDK, without installing models or invoking recognition:

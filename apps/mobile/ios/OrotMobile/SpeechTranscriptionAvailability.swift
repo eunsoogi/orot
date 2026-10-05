@@ -13,24 +13,47 @@ enum SpeechTranscriptionAvailability {
             let requestedLocale = Locale(identifier: SpeechTranscriptionLanguage.localeIdentifier)
             let speechLocale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale)
             speechTranscriberSupportsLocale = speechLocale != nil
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                NSLog(
+                    "OROT_SPEECH_DIAGNOSTIC modules os=%@ speech_locale=%@ speech_hardware_available=%@",
+                    ProcessInfo.processInfo.operatingSystemVersionString,
+                    speechLocale?.identifier ?? "none",
+                    SpeechTranscriber.isAvailable ? "true" : "false",
+                )
+            #endif
             if let speechLocale, SpeechTranscriber.isAvailable {
                 let transcriber = SpeechTranscriptionAnalyzer.makeTimeIndexedTranscriber(locale: speechLocale)
-                return await configurationAvailability(
+                let configuration = await configurationAvailability(
                     assetStatus: AssetInventory.status(forModules: [transcriber]),
                     engine: .speechTranscriber,
                     locale: speechLocale.identifier,
                     hasCompatibleFormat: { await !(transcriber.availableCompatibleAudioFormats).isEmpty },
                 )
+                return useLegacyFallbackIfNeeded(for: configuration)
             }
 
-            if let dictationLocale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale) {
+            let dictationLocale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale)
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                // Read the legacy engine without requesting permission to check whether a local fallback exists.
+                let legacyRecognizer = SFSpeechRecognizer(locale: requestedLocale)
+                NSLog(
+                    "OROT_SPEECH_DIAGNOSTIC modules dictation_locale=%@ legacy_locale=%@ legacy_on_device=%@ legacy_available=%@ speech_authorization=%@",
+                    dictationLocale?.identifier ?? "none",
+                    legacyRecognizer?.locale.identifier ?? "none",
+                    legacyRecognizer.map { $0.supportsOnDeviceRecognition ? "true" : "false" } ?? "none",
+                    legacyRecognizer.map { $0.isAvailable ? "true" : "false" } ?? "none",
+                    String(describing: SFSpeechRecognizer.authorizationStatus()),
+                )
+            #endif
+            if let dictationLocale {
                 let transcriber = DictationTranscriber(locale: dictationLocale, preset: .timeIndexedLongDictation)
-                return await configurationAvailability(
+                let configuration = await configurationAvailability(
                     assetStatus: AssetInventory.status(forModules: [transcriber]),
                     engine: .dictationTranscriber,
                     locale: dictationLocale.identifier,
                     hasCompatibleFormat: { await !(transcriber.availableCompatibleAudioFormats).isEmpty },
                 )
+                return useLegacyFallbackIfNeeded(for: configuration)
             }
         }
 
@@ -48,6 +71,20 @@ enum SpeechTranscriptionAvailability {
         SFSpeechRecognizer.authorizationStatus()
     }
 
+    /// Keep a legacy permission denial distinct from the model failure that started fallback.
+    static func permissionFailureDuringLegacyFallback(
+        for legacy: SpeechTranscriptionAvailabilityResult,
+    ) -> SpeechTranscriptionFailure? {
+        switch legacy.status {
+        case .permissionDenied:
+            SpeechTranscriptionFailure("PERMISSION_DENIED", "Speech recognition permission was denied.")
+        case .permissionRestricted:
+            SpeechTranscriptionFailure("PERMISSION_RESTRICTED", "Speech recognition is restricted on this device.")
+        default:
+            nil
+        }
+    }
+
     static func requestAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
@@ -56,7 +93,7 @@ enum SpeechTranscriptionAvailability {
         }
     }
 
-    private static func legacyAvailability() -> SpeechTranscriptionAvailabilityResult {
+    static func legacyAvailability() -> SpeechTranscriptionAvailabilityResult {
         let locale = Locale(identifier: SpeechTranscriptionLanguage.localeIdentifier)
         guard let recognizer = SFSpeechRecognizer(locale: locale) else {
             return .failure(.unsupportedLanguage, locale: locale.identifier)
@@ -87,6 +124,32 @@ enum SpeechTranscriptionAvailability {
         }
     }
 
+    /// Use the legacy API only when it advertises local recognition; its request also requires on-device processing.
+    private static func useLegacyFallbackIfNeeded(
+        for configuration: SpeechTranscriptionAvailabilityResult,
+    ) -> SpeechTranscriptionAvailabilityResult {
+        guard shouldSelectLegacyFallback(for: configuration.status) else { return configuration }
+        let legacy = legacyAvailability()
+        return selectLegacyFallback(configuration: configuration, legacy: legacy)
+    }
+
+    static func shouldSelectLegacyFallback(for status: SpeechTranscriptionStatus) -> Bool {
+        status == .modelUnavailable || status == .unsupportedDevice
+    }
+
+    static func selectLegacyFallback(
+        configuration: SpeechTranscriptionAvailabilityResult,
+        legacy: SpeechTranscriptionAvailabilityResult,
+    ) -> SpeechTranscriptionAvailabilityResult {
+        guard shouldSelectLegacyFallback(for: configuration.status),
+              legacy.engine == .onDeviceSpeechRecognizer,
+              legacy.status != .unsupportedDevice
+        else {
+            return configuration
+        }
+        return legacy
+    }
+
     @available(iOS 26.0, *)
     static func configurationAvailability(
         assetStatus: AssetInventory.Status,
@@ -106,6 +169,16 @@ enum SpeechTranscriptionAvailability {
         @unknown default:
             .modelUnavailable
         }
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            NSLog(
+                "OROT_SPEECH_DIAGNOSTIC availability engine=%@ locale=%@ asset_status=%@ result=%@ model_installed=%@",
+                engine.rawValue,
+                locale,
+                String(describing: assetStatus),
+                status.rawValue,
+                assetStatus == .installed ? "true" : "false",
+            )
+        #endif
         return SpeechTranscriptionAvailabilityResult(
             status: status, engine: engine, locale: locale, modelInstalled: assetStatus == .installed,
         )

@@ -46,25 +46,37 @@ enum SpeechTranscriptionEngine {
         ) { file in
             let text: String
             let segments: [SpeechTranscriptionSegment]
+            var selectedEngine = available.engine
             switch available.engine {
             case .speechTranscriber:
                 guard #available(iOS 26.0, *) else {
                     throw SpeechTranscriptionFailure("UNSUPPORTED_DEVICE", "SpeechTranscriber requires iOS 26.")
                 }
-                segments = try await SpeechTranscriptionAnalyzer.transcribe(
-                    file,
-                    allowUnverifiedProtectionForSyntheticFixture: isSyntheticFixture,
-                )
-                text = join(segments)
+                do {
+                    segments = try await SpeechTranscriptionAnalyzer.transcribe(
+                        file,
+                        allowUnverifiedProtectionForSyntheticFixture: isSyntheticFixture,
+                    )
+                    text = join(segments)
+                } catch let error as SpeechTranscriptionFailure where error.code == "MODEL_UNAVAILABLE" {
+                    // A usable legacy recognizer can keep processing local when a module has no compatible audio format.
+                    (text, segments) = try await transcribeWithLegacyFallback(file, after: error)
+                    selectedEngine = .onDeviceSpeechRecognizer
+                }
             case .dictationTranscriber:
                 guard #available(iOS 26.0, *) else {
                     throw SpeechTranscriptionFailure("UNSUPPORTED_DEVICE", "DictationTranscriber requires iOS 26.")
                 }
-                segments = try await SpeechTranscriptionAnalyzer.transcribeWithDictation(
-                    file,
-                    allowUnverifiedProtectionForSyntheticFixture: isSyntheticFixture,
-                )
-                text = join(segments)
+                do {
+                    segments = try await SpeechTranscriptionAnalyzer.transcribeWithDictation(
+                        file,
+                        allowUnverifiedProtectionForSyntheticFixture: isSyntheticFixture,
+                    )
+                    text = join(segments)
+                } catch let error as SpeechTranscriptionFailure where error.code == "MODEL_UNAVAILABLE" {
+                    (text, segments) = try await transcribeWithLegacyFallback(file, after: error)
+                    selectedEngine = .onDeviceSpeechRecognizer
+                }
             case .onDeviceSpeechRecognizer:
                 // The legacy request is also pinned to local processing and cannot fall back to Apple servers.
                 (text, segments) = try await SpeechTranscriptionLegacyRecognizer.transcribe(file)
@@ -75,9 +87,29 @@ enum SpeechTranscriptionEngine {
                 "text": text,
                 "language": SpeechTranscriptionLanguage.localeIdentifier,
                 "segments": segments.map(\.dictionary),
-                "engine": available.engine.rawValue,
+                "engine": selectedEngine.rawValue,
             ]
         }
+    }
+
+    private static func transcribeWithLegacyFallback(
+        _ file: SpeechTranscriptionAudioFile,
+        after modelFailure: SpeechTranscriptionFailure,
+    ) async throws -> (String, [SpeechTranscriptionSegment]) {
+        var legacy = SpeechTranscriptionAvailability.legacyAvailability()
+        if legacy.status == .permissionNotDetermined {
+            let permission = await SpeechTranscriptionAvailability.requestAuthorization()
+            guard permission == .authorized else {
+                let status: SpeechTranscriptionStatus = permission == .restricted ? .permissionRestricted : .permissionDenied
+                throw failure(for: .failure(status, locale: SpeechTranscriptionLanguage.localeIdentifier, engine: .onDeviceSpeechRecognizer))
+            }
+            legacy = SpeechTranscriptionAvailability.legacyAvailability()
+        }
+        if let permissionFailure = SpeechTranscriptionAvailability.permissionFailureDuringLegacyFallback(for: legacy) {
+            throw permissionFailure
+        }
+        guard legacy.status == .available else { throw modelFailure }
+        return try await SpeechTranscriptionLegacyRecognizer.transcribe(file)
     }
 
     private static func failure(for availability: SpeechTranscriptionAvailabilityResult) -> SpeechTranscriptionFailure {

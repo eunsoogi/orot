@@ -41,7 +41,38 @@ struct AvailabilityRegression {
         }
         let unsupportedLanguage = await SpeechTranscriptionAvailability.check(language: "en-US")
         require(unsupportedLanguage.status == .unsupportedLanguage, "Unsupported language reached native model queries")
-        print("PASS: 10 configuration routes and unsupported-language guard")
+
+        let missingFormat = SpeechTranscriptionAvailabilityResult.failure(.modelUnavailable, locale: "ko_KR")
+        let localLegacy = SpeechTranscriptionAvailabilityResult(
+            status: .available, engine: .onDeviceSpeechRecognizer, locale: "ko_KR", modelInstalled: nil,
+        )
+        let selectedFallback = SpeechTranscriptionAvailability.selectLegacyFallback(
+            configuration: missingFormat, legacy: localLegacy,
+        )
+        require(selectedFallback.engine == .onDeviceSpeechRecognizer, "Missing module format did not select local fallback")
+        let remoteOnlyLegacy = SpeechTranscriptionAvailabilityResult.failure(.unsupportedDevice, locale: "ko_KR")
+        let keptUnsupported = SpeechTranscriptionAvailability.selectLegacyFallback(
+            configuration: missingFormat, legacy: remoteOnlyLegacy,
+        )
+        require(keptUnsupported.status == .modelUnavailable, "Remote-only fallback replaced the model failure")
+        let deniedLegacy = SpeechTranscriptionAvailabilityResult.failure(
+            .permissionDenied, locale: "ko_KR", engine: .onDeviceSpeechRecognizer,
+        )
+        let restrictedLegacy = SpeechTranscriptionAvailabilityResult.failure(
+            .permissionRestricted, locale: "ko_KR", engine: .onDeviceSpeechRecognizer,
+        )
+        require(
+            SpeechTranscriptionAvailability.permissionFailureDuringLegacyFallback(for: deniedLegacy)?.code == "PERMISSION_DENIED",
+            "Existing denied permission was hidden by model failure",
+        )
+        require(
+            SpeechTranscriptionAvailability.permissionFailureDuringLegacyFallback(for: restrictedLegacy)?.code == "PERMISSION_RESTRICTED",
+            "Existing restricted permission was hidden by model failure",
+        )
+        require(!SpeechTranscriptionAvailability.shouldSelectLegacyFallback(for: .unsupportedLanguage),
+                "Unsupported request language selected a fallback")
+
+        print("PASS: 10 configuration routes, local fallback permission errors, and unsupported-language guard")
     }
 
     static func require(_ condition: Bool, _ message: String) {
