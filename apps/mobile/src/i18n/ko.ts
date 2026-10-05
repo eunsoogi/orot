@@ -141,8 +141,6 @@ export const ko = {
     '선택한 기록의 변경을 가져왔어요.',
   'healthkit.commonObservations.status.empty':
     '새로운 변경이 없어요. HealthKit 읽기 권한 상태는 앱에서 확인할 수 없어요.',
-  'healthkit.commonObservations.status.overlap':
-    '겹치는 걸음 기록이 있어 합계를 계산하지 않았어요.',
   'healthkit.commonObservations.status.unavailable':
     'HealthKit을 사용할 수 없어요.',
   'healthkit.commonObservations.status.unsupportedFeature':

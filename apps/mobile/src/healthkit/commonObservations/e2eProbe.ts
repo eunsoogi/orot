@@ -123,11 +123,6 @@ export async function runCommonObservationsStorageProbe(
       firstImport.readAuthorization === 'notObservable',
       'HealthKit read authorization must remain opaque.',
     );
-    assert(
-      firstImport.stepAggregation?.status === 'invalid' &&
-        firstImport.stepAggregation.total === null,
-      'A zero-duration synthetic step sample must not produce a total.',
-    );
 
     const firstRecords = await repository.list('health_observation');
     const heartRate = findCommonObservationRecord(firstRecords, 'heartRate');
@@ -203,7 +198,6 @@ export async function runCommonObservationsStorageProbe(
         `heartRate=${heartRate.value.kind === 'quantity' ? `${heartRate.value.amount} ${heartRate.value.unit}` : 'invalid'}`,
         `steps=${steps.value.kind === 'quantity' ? `${steps.value.amount} ${steps.value.unit}` : 'invalid'}`,
         'bodyMass=empty',
-        'stepAggregation=invalid:no-total',
         `readAuthorization=${firstImport.readAuthorization}`,
         `replay=${replay.status}:${replay.importedCount}:${replay.deletedCount}:cursor=${replay.cursorAdvanced}`,
         'records=2',

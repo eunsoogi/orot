@@ -130,7 +130,6 @@ test('calls the production importer only after explicit selection', async () => 
     deletedCount: 0,
     unsupportedCount: 0,
     cursorAdvanced: true,
-    stepAggregation: null,
   });
   await render(<App />);
 

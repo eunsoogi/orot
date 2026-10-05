@@ -85,7 +85,7 @@ describe('common observation import selection and status', () => {
     });
   });
 
-  it('returns a non-numeric step summary when different sources overlap', async () => {
+  it('keeps overlapping step samples as separate source records', async () => {
     const repository = new MemoryObservationRepository();
     const result = await importCommonObservations({
       features: ['steps'],
@@ -114,10 +114,37 @@ describe('common observation import selection and status', () => {
       now: () => '2026-10-05T10:00:00.000Z',
     });
 
-    expect(result.status).toBe('overlap');
-    expect(result.stepAggregation).toMatchObject({
-      status: 'overlap',
-      total: null,
+    expect(result).toMatchObject({
+      status: 'complete',
+      importedCount: 2,
+    });
+    const records = await repository.list('health_observation');
+    expect(records).toHaveLength(2);
+    const bySource = new Map(
+      records.map(record => [
+        record.provenance.source?.sourceIdentifier,
+        record,
+      ]),
+    );
+    expect(bySource.get('com.example.watch')).toMatchObject({
+      id: 'healthkit:steps:watch-1',
+      effectiveAt: '2026-10-04T10:00:00.000Z',
+      endedAt: '2026-10-04T10:10:00.000Z',
+      provenance: {
+        sourceRecordIds: ['watch-1'],
+        source: { sourceIdentifier: 'com.example.watch' },
+      },
+      value: { kind: 'quantity', amount: 120, unit: 'count' },
+    });
+    expect(bySource.get('com.example.phone')).toMatchObject({
+      id: 'healthkit:steps:phone-1',
+      effectiveAt: '2026-10-04T10:05:00.000Z',
+      endedAt: '2026-10-04T10:15:00.000Z',
+      provenance: {
+        sourceRecordIds: ['phone-1'],
+        source: { sourceIdentifier: 'com.example.phone' },
+      },
+      value: { kind: 'quantity', amount: 100, unit: 'count' },
     });
   });
 

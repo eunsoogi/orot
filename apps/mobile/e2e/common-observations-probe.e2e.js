@@ -33,7 +33,6 @@ describe('common HealthKit observations on iOS Simulator', () => {
     jestExpect(summary).toContain('heartRate=72 count/min');
     jestExpect(summary).toContain('steps=1200 count');
     jestExpect(summary).toContain('bodyMass=empty');
-    jestExpect(summary).toContain('stepAggregation=invalid:no-total');
     jestExpect(summary).toContain('readAuthorization=notObservable');
     jestExpect(summary).toContain('replay=empty:0:0:cursor=false');
     jestExpect(summary).toContain('records=2');

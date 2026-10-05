@@ -25,7 +25,6 @@ describe('local common-observation app importer', () => {
       deletedCount: 0,
       unsupportedCount: 0,
       cursorAdvanced: true,
-      stepAggregation: null,
     };
     jest.mocked(openLocalStorage).mockResolvedValue(repository);
     jest.mocked(importCommonObservations).mockResolvedValue(result);

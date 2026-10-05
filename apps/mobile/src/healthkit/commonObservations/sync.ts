@@ -13,7 +13,7 @@ const PAGE_SIZE = 200;
 
 export type CommonObservationRepository = Pick<
   RecordRepository,
-  'getSyncCheckpoint' | 'list' | 'transaction'
+  'getSyncCheckpoint' | 'transaction'
 >;
 
 export type CommonObservationSyncStatus =

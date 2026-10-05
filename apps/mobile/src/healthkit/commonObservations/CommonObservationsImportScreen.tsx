@@ -10,7 +10,6 @@ export const commonObservationImportStatuses = [
   'importing',
   'complete',
   'empty',
-  'overlap',
   'unavailable',
   'unsupportedFeature',
   'unsupportedPlatform',

@@ -1,6 +1,4 @@
 import type { HealthKitNativeModule } from '../types';
-import { evaluateStoredStepAggregation } from './steps';
-import type { StepAggregationResult } from './steps';
 import { syncCommonObservationChanges } from './sync';
 import type {
   CommonObservationRepository,
@@ -9,8 +7,7 @@ import type {
 import { commonObservationFeatures } from './types';
 import type { CommonObservationFeature } from './types';
 
-export type CommonObservationsImportStatus =
-  CommonObservationSyncStatus | 'overlap';
+export type CommonObservationsImportStatus = CommonObservationSyncStatus;
 
 export interface CommonObservationsImportResult {
   readonly status: CommonObservationsImportStatus;
@@ -19,7 +16,6 @@ export interface CommonObservationsImportResult {
   readonly deletedCount: number;
   readonly unsupportedCount: number;
   readonly cursorAdvanced: boolean;
-  readonly stepAggregation: StepAggregationResult | null;
 }
 
 export interface ImportCommonObservationsOptions {
@@ -32,7 +28,7 @@ export interface ImportCommonObservationsOptions {
   readonly now: () => string;
 }
 
-/** Imports only selected feature types and reports aggregate uncertainty explicitly. */
+/** Imports only selected types and leaves HealthKit samples as separate source records. */
 export async function importCommonObservations(
   options: ImportCommonObservationsOptions,
 ): Promise<CommonObservationsImportResult> {
@@ -49,11 +45,6 @@ export async function importCommonObservations(
     );
   }
 
-  const stepAggregation = selected.includes('steps')
-    ? evaluateStoredStepAggregation(
-        await options.repository.list('health_observation'),
-      )
-    : null;
   const failed = outcomes.filter(
     outcome => outcome.status !== 'complete' && outcome.status !== 'empty',
   );
@@ -62,8 +53,6 @@ export async function importCommonObservations(
     status = onlyOneFailure(outcomes, failed)
       ? (failed[0]?.status ?? 'partial')
       : 'partial';
-  } else if (stepAggregation?.status === 'overlap') {
-    status = 'overlap';
   } else if (
     outcomes.some(outcome => outcome.upserted > 0 || outcome.deleted > 0)
   ) {
@@ -88,7 +77,6 @@ export async function importCommonObservations(
       0,
     ),
     cursorAdvanced: outcomes.some(outcome => outcome.cursorAdvanced),
-    stepAggregation,
   };
 }
 

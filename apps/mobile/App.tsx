@@ -45,7 +45,6 @@ const commonObservationsCopy: CommonObservationsImportCopy = {
     importing: t('healthkit.commonObservations.status.importing'),
     complete: t('healthkit.commonObservations.status.complete'),
     empty: t('healthkit.commonObservations.status.empty'),
-    overlap: t('healthkit.commonObservations.status.overlap'),
     unavailable: t('healthkit.commonObservations.status.unavailable'),
     unsupportedFeature: t(
       'healthkit.commonObservations.status.unsupportedFeature',
