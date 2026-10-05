@@ -8,6 +8,7 @@ import type {
   ChatGPTPlanModelDescriptor,
   ChatGPTPlanNativeBridge,
   ChatGPTPlanNativeError,
+  ChatGPTPlanNativeToolCall,
   ChatGPTPlanRequest,
 } from '@orot/provider-openai';
 
@@ -34,7 +35,13 @@ interface NativeOpenAIProviderEvent {
 
 type NativeOpenAIProviderPacket =
   | { readonly type: 'text_delta'; readonly text: string }
-  | { readonly type: 'completed'; readonly text: string }
+  | { readonly type: 'tool_call'; readonly toolCall: ChatGPTPlanNativeToolCall }
+  | {
+      readonly type: 'completed';
+      readonly text: string;
+      readonly toolCalls?: readonly ChatGPTPlanNativeToolCall[];
+      readonly continuationItems?: readonly string[];
+    }
   | { readonly type: 'failed'; readonly error: ChatGPTPlanNativeError };
 
 const nativeModule = NativeModules.OpenAIProviderModule as
@@ -56,7 +63,16 @@ export const chatGPTPlanNativeBridge: ChatGPTPlanNativeBridge = {
       (...args: readonly Object[]) => {
         const value = args[0] as unknown as
           NativeOpenAIProviderEvent | undefined;
-        if (!isNativeEvent(value)) return;
+        if (!isNativeEnvelope(value)) return;
+        if (!isPacket(value.packet)) {
+          nativeModule?.cancelResponse(value.requestId);
+          listener({
+            requestId: value.requestId,
+            type: 'failed',
+            error: { kind: 'malformed_response' },
+          });
+          return;
+        }
         listener({ requestId: value.requestId, ...value.packet });
       },
     );
@@ -90,17 +106,28 @@ export function createOpenAIPlanProvider(
   });
 }
 
-function isNativeEvent(value: unknown): value is NativeOpenAIProviderEvent {
+function isNativeEnvelope(value: unknown): value is NativeOpenAIProviderEvent {
   if (!value || typeof value !== 'object') return false;
   const event = value as Record<string, unknown>;
-  return typeof event.requestId === 'string' && isPacket(event.packet);
+  return typeof event.requestId === 'string';
 }
 
 function isPacket(value: unknown): value is NativeOpenAIProviderPacket {
   if (!value || typeof value !== 'object') return false;
   const packet = value as Record<string, unknown>;
-  if (packet.type === 'text_delta' || packet.type === 'completed')
-    return typeof packet.text === 'string';
+  if (packet.type === 'text_delta') return typeof packet.text === 'string';
+  if (packet.type === 'tool_call') return isToolCall(packet.toolCall);
+  if (packet.type === 'completed') {
+    return (
+      typeof packet.text === 'string' &&
+      (packet.toolCalls === undefined ||
+        (Array.isArray(packet.toolCalls) &&
+          packet.toolCalls.every(isToolCall))) &&
+      (packet.continuationItems === undefined ||
+        (Array.isArray(packet.continuationItems) &&
+          packet.continuationItems.every(item => typeof item === 'string')))
+    );
+  }
   if (
     packet.type !== 'failed' ||
     !packet.error ||
@@ -109,6 +136,16 @@ function isPacket(value: unknown): value is NativeOpenAIProviderPacket {
     return false;
   const error = packet.error as Record<string, unknown>;
   return typeof error.kind === 'string' || typeof error.code === 'string';
+}
+
+function isToolCall(value: unknown): value is ChatGPTPlanNativeToolCall {
+  if (!value || typeof value !== 'object') return false;
+  const toolCall = value as Record<string, unknown>;
+  return (
+    typeof toolCall.id === 'string' &&
+    typeof toolCall.name === 'string' &&
+    typeof toolCall.arguments === 'string'
+  );
 }
 
 function bridgeUnavailable(): Error {
