@@ -6,6 +6,7 @@ const {
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,
+  verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
@@ -195,6 +196,13 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       assertionFailure = new Error(
         `${assertionStage}: ${failureDescription(failure)}`,
       );
+    }
+
+    try {
+      // The native probe runs asynchronously while the synthetic review flow is exercised.
+      await verifyFinalNativeSpeechProbe(reportElement);
+    } catch (failure) {
+      nativeProbeFailure ??= failure;
     }
 
     let cleanupFailure;

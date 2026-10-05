@@ -75,6 +75,15 @@ async function verifyNativeSpeechProbe(reportElement) {
   return report;
 }
 
+async function verifyFinalNativeSpeechProbe(reportElement) {
+  // Read the same live report after review so an asynchronous provider failure cannot escape the test verdict.
+  const report = await verifyNativeSpeechProbe(reportElement);
+  console.log(
+    'SPEECH_TRANSCRIPTION_SIMULATOR_FINAL_STATUS ' + JSON.stringify(report),
+  );
+  return report;
+}
+
 async function cleanupTranscriptEvidenceIfPresent() {
   const cleanupState = await element(
     by.id('transcript-evidence-cleanup-available'),
@@ -125,6 +134,7 @@ module.exports = {
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,
+  verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
   waitForProbeControl,
 };

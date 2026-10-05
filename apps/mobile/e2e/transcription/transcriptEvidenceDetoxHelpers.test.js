@@ -1,4 +1,7 @@
-const { verifyNativeSpeechProbe } = require('./transcriptEvidenceDetoxHelpers');
+const {
+  verifyFinalNativeSpeechProbe,
+  verifyNativeSpeechProbe,
+} = require('./transcriptEvidenceDetoxHelpers');
 
 const syntheticFixture = { synthetic: true };
 
@@ -80,5 +83,32 @@ describe('native speech probe report validation', () => {
     await expect(
       verifyNativeSpeechProbe(reportElement(report)),
     ).resolves.toEqual(report);
+  });
+
+  it('rejects a failure that appears after the initial running report', async () => {
+    const reports = [
+      baseReport('running'),
+      baseReport('failed', {
+        reason: {
+          code: 'TRANSCRIPTION_PROBE_FAILED',
+          message: 'The native probe failed after it started.',
+        },
+      }),
+    ];
+    let readCount = 0;
+    const transitioningElement = {
+      getAttributes: async () => ({
+        label: JSON.stringify(
+          reports[Math.min(readCount++, reports.length - 1)],
+        ),
+      }),
+    };
+
+    await expect(
+      verifyNativeSpeechProbe(transitioningElement),
+    ).resolves.toMatchObject({ outcome: 'running' });
+    await expect(
+      verifyFinalNativeSpeechProbe(transitioningElement),
+    ).rejects.toThrow('The native speech probe failed');
   });
 });
