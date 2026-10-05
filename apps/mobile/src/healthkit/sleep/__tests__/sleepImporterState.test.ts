@@ -1,6 +1,4 @@
 import type { HealthKitSampleChangesQuery } from '../../types';
-import { mapHealthRecordToSleepObservation } from '../recordMapper';
-import { summarizeSleepByDay } from '../summary';
 import { syncHealthKitSleep, type SleepHealthKitClient } from '../importer';
 import {
   createStore,
@@ -45,7 +43,7 @@ describe('HealthKit sleep importer state', () => {
     expect(store.record(sleepRecordId('first-page'))).not.toBeNull();
   });
 
-  it('deleting the final stored sample leaves its day as no-data', async () => {
+  it('deleting the final stored sample leaves no imported sleep evidence', async () => {
     const store = createStore([storedSample(sample('last-sample'))]);
     const healthKit: SleepHealthKitClient = {
       querySampleChanges: jest
@@ -57,17 +55,7 @@ describe('HealthKit sleep importer state', () => {
       repository: store.repository,
       now: () => '2026-10-05T10:00:00.000Z',
     });
-    const remaining = store
-      .records()
-      .map(mapHealthRecordToSleepObservation)
-      .filter((value): value is NonNullable<typeof value> => value !== null);
     expect(result.deleted).toBe(1);
-    expect(
-      summarizeSleepByDay(remaining, {
-        fromDay: '2026-10-01',
-        throughDay: '2026-10-01',
-        timeZone: 'UTC',
-      })[0],
-    ).toMatchObject({ status: 'noData', asleepDurationMs: 0 });
+    expect(store.records()).toEqual([]);
   });
 });

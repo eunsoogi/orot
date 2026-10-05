@@ -52,7 +52,6 @@ describe('HealthKit sleep sample mapping', () => {
     expect(mapped.timeZone).toBe('America/Los_Angeles');
     expect(mapped.startDate).toBe(input.startDate);
     expect(mapped.endDate).toBe(input.endDate);
-    expect(mapped.endEpochMs - mapped.startEpochMs).toBe(90 * 60 * 1000);
   });
 
   it('keeps an unknown integer category observable without assigning it a sleep stage', () => {

@@ -10,9 +10,6 @@ export type SleepStage =
   | 'asleepREM'
   | 'unsupported';
 
-export type AsleepStage =
-  'asleepUnspecified' | 'asleepCore' | 'asleepDeep' | 'asleepREM';
-
 export interface SleepSourceRevision {
   readonly version?: string | null;
   readonly productType?: string | null;
@@ -57,29 +54,9 @@ export interface SleepObservation {
   readonly categoryValue: number;
   readonly startDate: string;
   readonly endDate: string;
-  readonly startEpochMs: number;
-  readonly endEpochMs: number;
   readonly source: SleepSourceMetadata;
   readonly device?: SleepDeviceMetadata | null;
   readonly timeZone?: string | null;
-}
-
-export interface SleepSummaryRange {
-  readonly fromDay: string;
-  readonly throughDay: string;
-  readonly timeZone: string;
-}
-
-export interface SleepDaySummary {
-  readonly localDate: string;
-  readonly timeZone: string;
-  readonly status: 'observed' | 'noData';
-  readonly sampleCount: number;
-  readonly inBedDurationMs: number;
-  readonly asleepDurationMs: number;
-  readonly awakeDurationMs: number;
-  readonly unclassifiedDurationMs: number;
-  readonly stageDurationMs: Readonly<Record<AsleepStage, number>>;
 }
 
 export interface SleepImportState {

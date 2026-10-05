@@ -1,10 +1,8 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { summarizeSleepByDay } from '../summary';
 import { SLEEP_SAMPLE_CHECKPOINT_KEY, syncHealthKitSleep } from '../importer';
 import type { SleepHealthKitClient } from '../importer';
-import { mapHealthRecordToSleepObservation } from '../recordMapper';
 import {
   page,
   sample,
@@ -122,15 +120,7 @@ describe('HealthKit sleep importer with SQLite storage', () => {
       expect(
         await repository.getSyncCheckpoint(SLEEP_SAMPLE_CHECKPOINT_KEY),
       ).toMatchObject({ value: 'anchor-4' });
-      const remaining = await repository.list('health_observation');
-      expect(
-        summarizeSleepByDay(
-          remaining
-            .map(mapHealthRecordToSleepObservation)
-            .filter(value => value !== null),
-          { fromDay: '2026-10-05', throughDay: '2026-10-05', timeZone: 'UTC' },
-        ),
-      ).toMatchObject([{ status: 'noData', sampleCount: 0 }]);
+      expect(await repository.list('health_observation')).toEqual([]);
     } finally {
       close();
     }

@@ -13,8 +13,8 @@ describe('HealthKit sleep import on iOS Simulator', () => {
     if (summary.startsWith('Sleep import Simulator probe failed'))
       throw new Error(summary);
     jestExpect(summary).toContain('stage=asleepUnspecified');
-    jestExpect(summary).toContain('midnightSplit=passed');
-    jestExpect(summary).toContain('noData=preserved');
+    jestExpect(summary).toContain('category=1');
+    jestExpect(summary).toContain('interval=preserved');
     jestExpect(summary).toContain('anchorResume=passed');
     jestExpect(summary).toContain('anchoredNormalization=passed');
     jestExpect(summary).toContain('readAuthorization=notObservable');

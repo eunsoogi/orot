@@ -1,5 +1,4 @@
 import type { HealthKitSampleChangesQuery } from '../../types';
-import { mapHealthRecordToSleepObservation } from '../recordMapper';
 import {
   SLEEP_SAMPLE_CHECKPOINT_KEY,
   SLEEP_SAMPLE_PAGE_SIZE,
@@ -157,14 +156,19 @@ describe('HealthKit sleep importer', () => {
     const repeated = await syncHealthKitSleep(options);
     expect(repeated.upserted).toBe(0);
     expect(store.records()).toHaveLength(1);
-    expect(
-      mapHealthRecordToSleepObservation(store.records()[0]!),
-    ).toMatchObject({
-      id: 'stable-sample',
-      stage: 'asleepUnspecified',
-      categoryValue: 1,
-      source: { identifier: 'com.example.sleep', name: 'Sleep source' },
-      device: { manufacturer: 'Example', model: 'Watch' },
+    expect(store.records()[0]).toMatchObject({
+      effectiveAt: unchanged.startDate,
+      endedAt: unchanged.endDate,
+      concept: 'HKCategoryTypeIdentifierSleepAnalysis',
+      value: { kind: 'text', text: '1' },
+      provenance: {
+        sourceRecordIds: ['stable-sample'],
+        source: {
+          sourceIdentifier: 'com.example.sleep',
+          sourceName: 'Sleep source',
+          device: { manufacturer: 'Example', model: 'Watch' },
+        },
+      },
     });
   });
 

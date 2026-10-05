@@ -3,7 +3,6 @@ import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import { createHealthKitClient } from '../src/healthkit/client';
 import type { HealthKitSampleSnapshot } from '../src/healthkit/types';
 import { mapHealthKitSleepSample } from '../src/healthkit/sleep/mapper';
-import { summarizeSleepByDay } from '../src/healthkit/sleep/summary';
 import type {
   HealthKitSleepSampleSnapshot,
   SleepDeviceMetadata,
@@ -140,7 +139,8 @@ async function runProbe(): Promise<string> {
       anchoredObservation.stage !== 'asleepUnspecified' ||
       anchoredObservation.source.identifier !==
         anchoredSample.sourceIdentifier ||
-      anchoredObservation.startEpochMs >= anchoredObservation.endEpochMs
+      Date.parse(anchoredObservation.startDate) >=
+        Date.parse(anchoredObservation.endDate)
     ) {
       throw new Error(
         'The anchored sleep addition did not normalize as a valid interval.',
@@ -167,26 +167,14 @@ async function runProbe(): Promise<string> {
     if (
       observation.id !== raw.id ||
       observation.stage !== 'asleepUnspecified' ||
+      observation.categoryValue !== raw.categoryValue ||
+      observation.startDate !== raw.startDate ||
+      observation.endDate !== raw.endDate ||
       observation.source.identifier !== raw.sourceIdentifier ||
       observation.source.name !== raw.sourceName
     ) {
       throw new Error(
         'Sleep normalization lost category or source provenance.',
-      );
-    }
-
-    const summaries = summarizeSleepByDay([observation], {
-      fromDay: '2026-10-01',
-      throughDay: '2026-10-03',
-      timeZone: 'UTC',
-    });
-    if (
-      summaries[0]?.asleepDurationMs !== 30 * 60 * 1000 ||
-      summaries[1]?.asleepDurationMs !== 30 * 60 * 1000 ||
-      summaries[2]?.status !== 'noData'
-    ) {
-      throw new Error(
-        'Sleep summaries did not split at midnight or preserve no-data.',
       );
     }
 
@@ -203,7 +191,9 @@ async function runProbe(): Promise<string> {
       availability.status +
       '; sleepAuthorization=' +
       authorization.requestStatus +
-      '; readAuthorization=notObservable; stage=asleepUnspecified; midnightSplit=passed; noData=preserved; anchorResume=passed; anchoredNormalization=passed; device=' +
+      '; readAuthorization=notObservable; category=' +
+      observation.categoryValue +
+      '; interval=preserved; stage=asleepUnspecified; anchorResume=passed; anchoredNormalization=passed; device=' +
       deviceState +
       '; source=synthetic; realSamples=unverified'
     );

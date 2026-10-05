@@ -85,8 +85,6 @@ export function mapHealthKitSleepSample(value: unknown): SleepObservation {
     categoryValue: value.categoryValue,
     startDate: startDate.value,
     endDate: endDate.value,
-    startEpochMs: startDate.epochMs,
-    endEpochMs: endDate.epochMs,
     source,
     ...(value.device === undefined ? {} : { device: copyDevice(value.device) }),
     ...(timeZone === undefined ? {} : { timeZone }),

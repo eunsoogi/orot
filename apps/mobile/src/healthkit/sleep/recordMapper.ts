@@ -1,7 +1,6 @@
 import { parseRecord } from '@orot/storage';
 import type { RecordMap } from '@orot/storage';
 import { SleepImportError } from './errors';
-import { mapHealthKitSleepSample } from './mapper';
 import {
   sleepAnalysisTypeIdentifier,
   type SleepDeviceMetadata,
@@ -56,59 +55,6 @@ export function mapSleepObservationToHealthRecord(
     observationKind: 'other',
     concept: sleepAnalysisTypeIdentifier,
     value: { kind: 'text', text: String(observation.categoryValue) },
-  });
-}
-
-/** Rehydrates only records owned by this importer; other health observations are ignored. */
-export function mapHealthRecordToSleepObservation(
-  record: RecordMap['health_observation'],
-): SleepObservation | null {
-  if (!record.id.startsWith(SLEEP_RECORD_PREFIX)) return null;
-  const source = record.provenance.source;
-  const sampleId = record.provenance.sourceRecordIds[0];
-  if (
-    record.concept !== sleepAnalysisTypeIdentifier ||
-    record.value.kind !== 'text' ||
-    record.provenance.origin !== 'imported' ||
-    source?.system !== HEALTHKIT_SYSTEM ||
-    !source.sourceIdentifier ||
-    !source.sourceName ||
-    !sampleId ||
-    !record.endedAt
-  ) {
-    throw new SleepImportError(
-      'INVALID_STORED_SLEEP_OBSERVATION',
-      'A stored sleep observation is missing its imported sample provenance.',
-    );
-  }
-
-  const categoryValue = Number(record.value.text);
-  if (
-    !Number.isSafeInteger(categoryValue) ||
-    String(categoryValue) !== record.value.text
-  ) {
-    throw new SleepImportError(
-      'INVALID_STORED_SLEEP_CATEGORY',
-      'A stored HealthKit sleep category is invalid.',
-    );
-  }
-
-  const device = source.device;
-  return mapHealthKitSleepSample({
-    id: sampleId,
-    typeIdentifier: record.concept,
-    startDate: record.effectiveAt,
-    endDate: record.endedAt,
-    categoryValue,
-    sourceIdentifier: source.sourceIdentifier,
-    sourceName: source.sourceName,
-    ...(source.sourceVersion === undefined
-      ? {}
-      : { sourceVersion: source.sourceVersion }),
-    ...(source.productType === undefined
-      ? {}
-      : { sourceProductType: source.productType }),
-    ...(device === undefined ? {} : { device }),
   });
 }
 

@@ -1,4 +1,3 @@
-import { summarizeSleepByDay } from '../summary';
 import { applySleepChanges } from '../sync';
 import type { SleepImportState, SleepSyncChanges } from '../types';
 import { healthKitSleepSample } from '../testFixtures';
@@ -87,28 +86,34 @@ describe('sleep incremental import state', () => {
     expect(repeated).toEqual(deleted);
   });
 
-  it('keeps the affected day as no-data after its final observation is deleted', () => {
-    const initial = applySleepChanges(empty, {
-      addedOrUpdated: [healthKitSleepSample()],
+  it('retains overlapping intervals from distinct HealthKit sample IDs', () => {
+    const first = healthKitSleepSample({
+      id: 'sleep-first',
+      categoryValue: 3,
+      startDate: '2026-10-01T22:00:00.000Z',
+      endDate: '2026-10-01T23:00:00.000Z',
+    });
+    const second = healthKitSleepSample({
+      id: 'sleep-second',
+      categoryValue: 5,
+      startDate: '2026-10-01T22:30:00.000Z',
+      endDate: '2026-10-01T23:30:00.000Z',
+    });
+
+    const imported = applySleepChanges(empty, {
+      addedOrUpdated: [first, second],
       deletedSampleIds: [],
       nextAnchor: 'anchor-1',
       complete: true,
     });
-    const deleted = applySleepChanges(initial, {
-      addedOrUpdated: [],
-      deletedSampleIds: ['sample-1'],
-      nextAnchor: 'anchor-2',
-      complete: true,
-    });
 
-    // Deleting the final sample must not turn absence into a normal sleep summary.
-    expect(
-      summarizeSleepByDay(deleted.samples, {
-        fromDay: '2026-10-01',
-        throughDay: '2026-10-01',
-        timeZone: 'UTC',
-      })[0],
-    ).toMatchObject({ status: 'noData', asleepDurationMs: 0 });
+    expect(imported.samples.map(sample => sample.id)).toEqual([
+      'sleep-first',
+      'sleep-second',
+    ]);
+    expect(imported.samples.map(sample => sample.categoryValue)).toEqual([
+      3, 5,
+    ]);
   });
 
   it('leaves the prior state untouched when a page is incomplete or internally contradictory', () => {
