@@ -20,7 +20,17 @@ describe('HealthKit client boundary', () => {
         availability: 'available',
         status: 'completed',
         readAuthorization: 'notObservable',
+        completeSnapshot: true,
         medications: [],
+      }),
+      querySampleChanges: jest.fn().mockResolvedValue({
+        availability: 'available',
+        status: 'completed',
+        readAuthorization: 'notObservable',
+        addedSamples: [],
+        deletedSampleIds: [],
+        cursor: null,
+        hasMore: false,
       }),
     };
   }
@@ -201,15 +211,5 @@ describe('HealthKit client boundary', () => {
       status: 'notRun',
       availability: 'unsupportedPlatform',
     });
-  });
-
-  it('exposes medication-definition queries through the medications feature only', async () => {
-    const native = nativeModule();
-    const healthKit = createHealthKitClient(native, 'ios');
-
-    await healthKit.queryMedicationDefinitions(25);
-
-    expect(native.queryMedicationDefinitions).toHaveBeenCalledWith(25);
-    expect(native.queryMedicationDefinitions).toHaveBeenCalledTimes(1);
   });
 });

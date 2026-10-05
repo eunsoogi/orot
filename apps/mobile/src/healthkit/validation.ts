@@ -29,21 +29,30 @@ export function validateSampleQuery(query: HealthKitSampleQuery): void {
       'A HealthKit sample query is required.',
     );
   }
-  assertFeature(query.feature);
-  if (!healthKitSampleKinds.includes(query.sampleKind)) {
+  validateFeatureSampleKind(query.feature, query.sampleKind);
+  validateDateRange(query.startDate, query.endDate);
+  validateLimit(query.limit);
+}
+
+export function validateFeatureSampleKind(
+  featureValue: unknown,
+  sampleKindValue: unknown,
+): { feature: HealthKitFeature; sampleKind: HealthKitSampleKind } {
+  assertFeature(featureValue);
+  if (!healthKitSampleKinds.includes(sampleKindValue as HealthKitSampleKind)) {
     throw codedError(
       'UNSUPPORTED_SAMPLE_KIND',
       'HealthKit sample kind is unsupported.',
     );
   }
-  if (!sampleKindByFeature[query.feature].includes(query.sampleKind)) {
+  const sampleKind = sampleKindValue as HealthKitSampleKind;
+  if (!sampleKindByFeature[featureValue].includes(sampleKind)) {
     throw codedError(
       'FEATURE_SAMPLE_MISMATCH',
       'Sample kind does not belong to the requested feature.',
     );
   }
-  validateDateRange(query.startDate, query.endDate);
-  validateLimit(query.limit);
+  return { feature: featureValue, sampleKind };
 }
 
 export function assertFeature(
@@ -79,6 +88,15 @@ export function validateLimit(value: number): void {
     throw codedError(
       'INVALID_LIMIT',
       'HealthKit query limit must be between 1 and 500.',
+    );
+  }
+}
+
+export function validateMedicationDefinitionLimit(value: number): void {
+  if (!Number.isInteger(value) || value < 0 || value > 500) {
+    throw codedError(
+      'INVALID_LIMIT',
+      'Medication query limit must be zero or between 1 and 500.',
     );
   }
 }
@@ -177,12 +195,14 @@ export function requireMedicationQueryResult(
   if (
     value.availability === 'available' &&
     value.status === 'completed' &&
-    Array.isArray(value.medications)
+    Array.isArray(value.medications) &&
+    typeof value.completeSnapshot === 'boolean'
   ) {
     return {
       availability: 'available',
       status: 'completed',
       readAuthorization: 'notObservable',
+      completeSnapshot: value.completeSnapshot,
       medications: value.medications,
     };
   }
@@ -205,7 +225,7 @@ export function codedError(code: string, message: string): Error {
   return error;
 }
 
-function isUnavailable(
+export function isUnavailable(
   value: unknown,
 ): value is 'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform' {
   return (
