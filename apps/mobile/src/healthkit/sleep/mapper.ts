@@ -1,7 +1,6 @@
 import { SleepImportError } from './errors';
 import {
   sleepAnalysisTypeIdentifier,
-  type HealthKitSleepSampleSnapshot,
   type SleepDeviceMetadata,
   type SleepObservation,
   type SleepSourceRevision,
@@ -31,9 +30,8 @@ const deviceFields = [
 const isoTimestamp =
   /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))$/;
 
-export function mapHealthKitSleepSample(
-  value: HealthKitSleepSampleSnapshot,
-): SleepObservation {
+export function mapHealthKitSleepSample(value: unknown): SleepObservation {
+  // Native bridge payloads are runtime data; reject malformed values before persistence.
   if (!isRecord(value)) {
     throw new SleepImportError(
       'INVALID_SLEEP_SAMPLE',

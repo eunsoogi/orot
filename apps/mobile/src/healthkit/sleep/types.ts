@@ -29,7 +29,7 @@ export interface SleepDeviceMetadata {
   readonly udiDeviceIdentifier?: string | null;
 }
 
-// This is a feature-local input contract until the shared HealthKit contract lands.
+// Narrows common samples to sleep categories while retaining nullable sleep metadata.
 export interface HealthKitSleepSampleSnapshot {
   readonly id: string;
   readonly typeIdentifier: string;

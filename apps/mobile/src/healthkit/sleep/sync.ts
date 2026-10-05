@@ -52,6 +52,12 @@ export function applySleepChanges(
         'A deleted HealthKit sample must include its stable ID.',
       );
     }
+    if (deletedIds.has(id)) {
+      throw new SleepImportError(
+        'DUPLICATE_SLEEP_DELETION',
+        'A HealthKit delta cannot delete the same sample ID more than once.',
+      );
+    }
     deletedIds.add(id);
   }
   for (const id of addedById.keys()) {

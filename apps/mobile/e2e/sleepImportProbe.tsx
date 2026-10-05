@@ -109,6 +109,45 @@ async function runProbe(): Promise<string> {
       throw new Error('The sleep sample category or type is invalid.');
     }
 
+    // Verify the sleep-specific anchored bridge and resume cursor without reading HealthKit storage.
+    const changes = await healthKit.querySampleChanges({
+      feature: 'sleep',
+      sampleKind: 'sleep',
+      limit: 25,
+      cursor: null,
+    });
+    if (
+      changes.availability !== 'available' ||
+      changes.status !== 'completed' ||
+      changes.addedSamples.length !== 1 ||
+      changes.addedSamples[0]?.id !== 'synthetic-sleep' ||
+      changes.addedSamples[0]?.categoryValue !== 1 ||
+      changes.addedSamples[0]?.sourceIdentifier !==
+        'com.orot.healthkit.synthetic' ||
+      changes.hasMore ||
+      typeof changes.cursor !== 'string'
+    ) {
+      throw new Error(
+        'The anchored sleep sample change did not cross the native boundary.',
+      );
+    }
+    const resumedChanges = await healthKit.querySampleChanges({
+      feature: 'sleep',
+      sampleKind: 'sleep',
+      limit: 25,
+      cursor: changes.cursor,
+    });
+    if (
+      resumedChanges.status !== 'completed' ||
+      resumedChanges.addedSamples.length !== 0 ||
+      resumedChanges.deletedSampleIds.length !== 0 ||
+      resumedChanges.cursor !== changes.cursor
+    ) {
+      throw new Error(
+        'The sleep change cursor did not resume deterministically.',
+      );
+    }
+
     const bridge = raw as HealthKitSampleSnapshot & SleepBridgeMetadata;
     const input: HealthKitSleepSampleSnapshot = {
       id: raw.id,
@@ -167,7 +206,7 @@ async function runProbe(): Promise<string> {
       availability.status +
       '; sleepAuthorization=' +
       authorization.requestStatus +
-      '; readAuthorization=notObservable; stage=asleepUnspecified; midnightSplit=passed; noData=preserved; device=' +
+      '; readAuthorization=notObservable; stage=asleepUnspecified; midnightSplit=passed; noData=preserved; anchorResume=passed; device=' +
       deviceState +
       '; source=synthetic; realSamples=unverified'
     );

@@ -15,6 +15,7 @@ describe('HealthKit sleep import on iOS Simulator', () => {
     jestExpect(summary).toContain('stage=asleepUnspecified');
     jestExpect(summary).toContain('midnightSplit=passed');
     jestExpect(summary).toContain('noData=preserved');
+    jestExpect(summary).toContain('anchorResume=passed');
     jestExpect(summary).toContain('readAuthorization=notObservable');
     jestExpect(summary).toContain('source=synthetic');
     jestExpect(summary).toContain('realSamples=unverified');
