@@ -134,6 +134,9 @@ jobs:
       - name: Build the iOS Simulator app
         run: scripts/ci/run-command.sh ios-simulator-build artifacts/ios-build/build.log -- pnpm ios:build
 
+      - name: Verify Simulator Keychain signing defaults
+        run: node scripts/ci/verify-simulator-keychain-defaults.mjs
+
       - name: Test the standalone ChatGPT OAuth package
         run: scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
 
