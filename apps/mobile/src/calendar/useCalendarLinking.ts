@@ -95,7 +95,10 @@ export function useCalendarLinking(
     setLoadingAppointments(true);
     setError('');
     try {
-      setAppointments(await repository.list());
+      const loadedAppointments = await repository.list();
+      // Linking can take long enough for a saved visit to pass its start time.
+      setNow(Date.now());
+      setAppointments(loadedAppointments);
     } catch {
       setError(t('appointments.loadError'));
     } finally {

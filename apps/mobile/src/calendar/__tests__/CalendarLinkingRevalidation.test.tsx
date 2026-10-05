@@ -1,89 +1,64 @@
 import { AppState, type AppStateStatus } from 'react-native';
 import { act, render, screen } from '@testing-library/react-native';
-import type { Appointment, AppointmentRepository } from '@orot/storage';
+import type { Appointment } from '@orot/storage';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
-import type { CalendarBridge, CalendarEvent } from '../types';
-
-function event(identifier: string, effectiveAt: string): CalendarEvent {
-  return {
-    calendarEventIdentifier: identifier,
-    effectiveAt,
-    endsAt: new Date(new Date(effectiveAt).getTime() + 3_600_000).toISOString(),
-    calendarEventSnapshot: {
-      title: identifier,
-      timeZoneIdentifier: 'Asia/Seoul',
-      isAllDay: false,
-      occurrenceDate: null,
-      isDetached: false,
-      recurrenceRules: [],
-    },
-  };
-}
-
-function appointmentFor(selected: CalendarEvent): Appointment {
-  return {
-    id: 'calendar-appointment-1',
-    effectiveAt: selected.effectiveAt,
-    endsAt: selected.endsAt,
-    recordedAt: '2035-01-01T00:00:00.000Z',
-    ingestedAt: '2035-01-01T00:00:00.000Z',
-    provenance: { origin: 'user_reported', sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' },
-    status: 'scheduled',
-    calendarEventIdentifier: selected.calendarEventIdentifier,
-    calendarEventSnapshot: selected.calendarEventSnapshot,
-  };
-}
-
-function repository(list: () => Promise<Appointment[]>) {
-  return {
-    list: jest.fn(list),
-    create: jest.fn(),
-    confirmCalendarEvent: jest.fn(async () =>
-      appointmentFor(event('saved', '2035-06-02T00:00:00.000Z')),
-    ),
-    reconfirmCalendarEvent: jest.fn(async () =>
-      appointmentFor(event('saved', '2035-06-02T00:00:00.000Z')),
-    ),
-    update: jest.fn(),
-    cancel: jest.fn(),
-  } as unknown as AppointmentRepository;
-}
-
-function bridge(overrides: Partial<CalendarBridge> = {}): CalendarBridge {
-  return {
-    requestAccessAndListUpcomingEvents: jest.fn(async () => ({
-      access: 'fullAccess' as const,
-      events: [],
-    })),
-    findEvent: jest.fn(async () => ({
-      access: 'fullAccess' as const,
-      event: null,
-    })),
-    addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
-    ...overrides,
-  };
-}
-
-function floatingDateTime(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find(value => value.type === type)?.value ?? '';
-  return `${part('year').padStart(4, '0')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}:${part('second')}.${String(date.getMilliseconds()).padStart(3, '0')}`;
-}
+import type { CalendarEvent } from '../types';
+import {
+  appointmentFor,
+  bridge,
+  event,
+  floatingDateTime,
+  repository,
+} from '../calendarTestUtils';
 
 describe('Calendar linked event revalidation', () => {
+  it('uses the current time when linked appointments finish loading', async () => {
+    let currentTime = Date.now();
+    const appointmentStart = currentTime + 60_000;
+    const selected = event(
+      'loaded-after-start',
+      new Date(appointmentStart).toISOString(),
+    );
+    let resolveAppointments: ((items: Appointment[]) => void) | undefined;
+    const appointments = repository(
+      () =>
+        new Promise(resolve => {
+          resolveAppointments = resolve;
+        }),
+    );
+    const findEvent = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: selected,
+    }));
+    const calendar = bridge({ findEvent });
+    const appStateSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as never);
+    const clockSpy = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => currentTime);
+    try {
+      await render(
+        <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      );
+      currentTime = appointmentStart + 1;
+      await act(async () => {
+        resolveAppointments?.([appointmentFor(selected)]);
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId('calendar-next-visit')).toBeNull();
+      expect(findEvent).toHaveBeenCalledTimes(1);
+    } finally {
+      appStateSpy.mockRestore();
+      clockSpy.mockRestore();
+    }
+  });
+
   it('hides an unchanged visit after it starts while the screen stays active', async () => {
     const initialTime = Date.now();
-    const appointmentStart = initialTime + 2_000;
+    jest.useFakeTimers({ now: initialTime });
+    const appointmentStart = initialTime + 60_000;
     const selected = event(
       'starting-visit',
       new Date(appointmentStart).toISOString(),
@@ -101,17 +76,20 @@ describe('Calendar linked event revalidation', () => {
       await render(
         <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
       );
-      expect(await screen.findByTestId('calendar-next-visit')).toBeTruthy();
       await act(async () => {
-        await new Promise(resolve =>
-          setTimeout(resolve, appointmentStart - initialTime + 250),
-        );
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('calendar-next-visit')).toBeTruthy();
+      await act(async () => {
+        jest.advanceTimersByTime(60_000);
       });
 
       expect(screen.queryByTestId('calendar-next-visit')).toBeNull();
       expect(findEvent).toHaveBeenCalledTimes(1);
     } finally {
       appStateSpy.mockRestore();
+      jest.useRealTimers();
     }
   });
 
