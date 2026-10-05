@@ -59,6 +59,7 @@ export type {
 } from './medications';
 export {
   AppointmentCreateInputSchema,
+  CalendarAppointmentSnapshotSchema,
   AppointmentSchema,
   AppointmentStatusSchema,
   AppointmentUpdateInputSchema,
@@ -69,6 +70,7 @@ export {
   VisitQuestionSchema,
 } from './visits';
 export type {
+  CalendarAppointmentSnapshot,
   Appointment,
   AppointmentStatus,
   AppointmentUpdateInput,
