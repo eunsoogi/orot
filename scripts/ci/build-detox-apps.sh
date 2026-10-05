@@ -27,8 +27,8 @@ if [[ "$profile" == pods && ("$skip_pods" == true || $# -ne 1) ]]; then
 fi
 
 host_arch="$(uname -m)"
-release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build}"
-openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-openai-provider}"
+release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build-detox-release}"
+openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-detox-openai-provider}"
 case "$host_arch" in
   arm64 | x86_64) ;;
   *)

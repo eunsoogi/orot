@@ -1,7 +1,7 @@
 /** @type {Detox.DetoxConfig} */
 const derivedDataPath =
   process.env.OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH ||
-  'ios/build-openai-provider';
+  'ios/build-detox-openai-provider';
 const simulatorId = process.env.OROT_OPENAI_PROVIDER_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {

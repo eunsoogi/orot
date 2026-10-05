@@ -1,7 +1,7 @@
 /** @type {Detox.DetoxConfig} */
 const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
 const releaseDerivedDataPath =
-  process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build';
+  process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build-detox-release';
 
 if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
   throw new Error(

@@ -87,20 +87,6 @@ test('runs Release and OpenAI Debug in independent jobs behind a fail-closed agg
   assert.match(profileWorkflow, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
 });
 
-test('installs Pods before cache fingerprints and avoids a second install during the build', () => {
-  const frameworkCache = profileWorkflow.indexOf('- name: Build Detox iOS framework cache');
-  const podsInstall = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const fingerprints = profileWorkflow.indexOf('- name: Compute stable Detox cache fingerprints');
-  const buildStart = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
-  const buildEnd = profileWorkflow.indexOf('\n      - name:', buildStart + 1);
-  const buildStep = profileWorkflow.slice(buildStart, buildEnd);
-
-  assert.ok(frameworkCache >= 0 && frameworkCache < podsInstall);
-  assert.ok(podsInstall < fingerprints && fingerprints < buildStart);
-  assert.match(profileWorkflow.slice(podsInstall, fingerprints), /build-detox-apps\.sh pods/);
-  assert.match(buildStep, /build-detox-apps\.sh "\$\{\{ inputs\.profile \}\}" --skip-pods/);
-});
-
 test('keys native dependency and per-profile DerivedData caches by the exact toolchain and build inputs', () => {
   const fingerprintSource = readFileSync(
     join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
@@ -112,6 +98,7 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
     return profileWorkflow.slice(start, end < 0 ? undefined : end);
   };
   const rnCache = getStep('Cache React Native artifact archives');
+  const rnFingerprint = getStep('Compute React Native artifact fingerprint');
   const releaseCache = getStep('Cache Release Detox DerivedData');
   const debugCache = getStep('Cache OpenAI Debug Detox DerivedData');
   const prepareCache = getStep('Prepare restored Detox DerivedData cache');
@@ -124,6 +111,7 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   );
   const rnCacheStepIndex = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
   const buildStepIndex = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
+  const podsInstallIndex = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const prepareCacheIndex = profileWorkflow.indexOf(
     '- name: Prepare restored Detox DerivedData cache',
   );
@@ -134,11 +122,17 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
 
   assert.ok(
     fingerprintStep.length > 0 &&
-      fingerprintStep.includes('run: node scripts/ci/detox-cache-fingerprint.mjs') &&
+      fingerprintStep.includes(
+        'run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only',
+      ) &&
       fingerprintStepIndex >= 0 &&
-      fingerprintStepIndex < rnCacheStepIndex &&
+      fingerprintStepIndex > podsInstallIndex &&
       fingerprintStepIndex < buildStepIndex,
   );
+
+  assert.match(rnFingerprint, /id: rn_artifact_fingerprint/);
+  assert.match(rnFingerprint, /detox-cache-fingerprint-cli\.mjs --react-native-artifacts-only/);
+  assert.match(rnCache, /steps\.rn_artifact_fingerprint\.outputs\.react_native_artifacts/);
 
   assert.match(rnCache, /uses: actions\/cache@[0-9a-f]{40}/);
   assert.match(rnCache, /path: ~\/Library\/Caches\/ReactNative/);
@@ -147,7 +141,7 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   assert.match(rnCache, /EXPECTED_XCODE_VERSION/);
   assert.match(rnCache, /EXPECTED_IOS_SIMULATOR_SDK/);
   assert.match(rnCache, /inputs\.profile/);
-  assert.match(rnCache, /steps\.detox_cache_fingerprint\.outputs\.react_native_artifacts/);
+  assert.match(rnCache, /steps\.rn_artifact_fingerprint\.outputs\.react_native_artifacts/);
   assert.doesNotMatch(rnCache, /hashFiles\(/);
 
   assert.ok(
@@ -165,7 +159,7 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
 
   for (const cache of [releaseCache, debugCache]) {
     assert.match(cache, /uses: actions\/cache@[0-9a-f]{40}/);
-    assert.match(cache, /key: orot-detox-deriveddata-v2-/);
+    assert.match(cache, /key: orot-detox-deriveddata-v3-/);
     assert.match(cache, /runner\.os/);
     assert.match(cache, /runner\.arch/);
     assert.match(cache, /EXPECTED_MACOS_VERSION/);
@@ -198,10 +192,11 @@ test('keys native dependency and per-profile DerivedData caches by the exact too
   assert.match(fingerprintSource, /build\(\?:-\|\$\)/);
 
   assert.match(releaseCache, /if: \$\{\{ inputs\.profile == 'release' \}\}/);
-  assert.match(releaseCache, /path: apps\/mobile\/ios\/build\n/);
+  assert.match(releaseCache, /path: apps\/mobile\/ios\/build-detox-release\n/);
+  assert.doesNotMatch(releaseCache, /path: apps\/mobile\/ios\/build\n/);
   assert.match(releaseCache, /-release-/);
   assert.match(debugCache, /if: \$\{\{ inputs\.profile == 'openai-provider' \}\}/);
-  assert.match(debugCache, /path: apps\/mobile\/ios\/build-openai-provider\n/);
+  assert.match(debugCache, /path: apps\/mobile\/ios\/build-detox-openai-provider\n/);
   assert.match(debugCache, /-openai-provider-/);
   assert.doesNotMatch(buildStep, /if:/);
 });

@@ -14,11 +14,11 @@ import {
 
 const PROFILES = {
   release: {
-    derivedDataPath: 'apps/mobile/ios/build',
+    derivedDataPath: 'apps/mobile/ios/build-detox-release',
     configuration: 'Release-iphonesimulator',
   },
   'openai-provider': {
-    derivedDataPath: 'apps/mobile/ios/build-openai-provider',
+    derivedDataPath: 'apps/mobile/ios/build-detox-openai-provider',
     configuration: 'Debug-iphonesimulator',
   },
 };

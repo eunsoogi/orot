@@ -1,9 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -18,6 +17,7 @@ const BUILD_INPUT_PATHS = [
   'packages',
   'scripts/ci/build-detox-apps.sh',
   'scripts/ci/detox-cache-fingerprint.mjs',
+  'scripts/ci/detox-cache-fingerprint-cli.mjs',
   'scripts/ci/detox-derived-data-cache.mjs',
 ];
 
@@ -42,7 +42,7 @@ const BUILD_CONFIGS = [
     configuration: 'ios.sim.release',
     derivedDataEnv: 'OROT_DETOX_RELEASE_DERIVED_DATA_PATH',
     simulatorEnv: 'OROT_DETOX_SIMULATOR_UDID',
-    derivedDataPath: 'ios/build',
+    derivedDataPath: 'ios/build-detox-release',
   },
   {
     path: 'apps/mobile/e2e/openai-provider.detox.config.js',
@@ -50,7 +50,7 @@ const BUILD_CONFIGS = [
     configuration: 'ios.sim.debug.openai-provider',
     derivedDataEnv: 'OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH',
     simulatorEnv: 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID',
-    derivedDataPath: 'ios/build-openai-provider',
+    derivedDataPath: 'ios/build-detox-openai-provider',
   },
 ];
 
@@ -183,32 +183,34 @@ export function computeDetoxCacheFingerprints(repositoryRoot = process.cwd()) {
   const buildInputs = hashTrackedInputs(root, BUILD_INPUT_PATHS);
   const reactNativeArtifacts = hashTrackedInputs(root, REACT_NATIVE_ARTIFACT_PATHS);
   const nativeDependencies = hashNativeDependencyInputs(root);
-  return {
-    buildInputs: buildInputs.fingerprint,
-    buildInputCount: buildInputs.count,
-    reactNativeArtifacts: reactNativeArtifacts.fingerprint,
-    reactNativeArtifactInputCount: reactNativeArtifacts.count,
-    nativeDependencies: nativeDependencies.fingerprint,
-    nativeDependencyInputCount: nativeDependencies.count,
-  };
+  return makeFingerprintOutput({ buildInputs, reactNativeArtifacts, nativeDependencies });
 }
 
-function writeGitHubOutputs(outputPath, fingerprints) {
-  appendFileSync(
-    outputPath,
-    `build_inputs=${fingerprints.buildInputs}\nreact_native_artifacts=${fingerprints.reactNativeArtifacts}\nnative_dependencies=${fingerprints.nativeDependencies}\n`,
-  );
+export function computeDetoxReactNativeArtifactFingerprint(repositoryRoot = process.cwd()) {
+  const artifacts = hashTrackedInputs(resolve(repositoryRoot), REACT_NATIVE_ARTIFACT_PATHS);
+  return makeFingerprintOutput({ reactNativeArtifacts: artifacts });
 }
 
-function main() {
-  const outputPath = process.env.GITHUB_OUTPUT;
-  if (!outputPath)
-    throw new Error('GITHUB_OUTPUT is required to publish Detox cache fingerprints.');
-  const fingerprints = computeDetoxCacheFingerprints();
-  writeGitHubOutputs(outputPath, fingerprints);
-  console.log(
-    `DETOX_CACHE_FINGERPRINT build_inputs=${fingerprints.buildInputs} tracked_files=${fingerprints.buildInputCount} react_native_artifacts=${fingerprints.reactNativeArtifacts} lockfiles=${fingerprints.reactNativeArtifactInputCount} native_dependencies=${fingerprints.nativeDependencies} native_inputs=${fingerprints.nativeDependencyInputCount}`,
-  );
+export function computeDetoxDerivedDataFingerprints(repositoryRoot = process.cwd()) {
+  const root = resolve(repositoryRoot);
+  const buildInputs = hashTrackedInputs(root, BUILD_INPUT_PATHS);
+  const nativeDependencies = hashNativeDependencyInputs(root);
+  return makeFingerprintOutput({ buildInputs, nativeDependencies });
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+function makeFingerprintOutput({ buildInputs, reactNativeArtifacts, nativeDependencies }) {
+  const fingerprints = {};
+  if (buildInputs) {
+    fingerprints.buildInputs = buildInputs.fingerprint;
+    fingerprints.buildInputCount = buildInputs.count;
+  }
+  if (reactNativeArtifacts) {
+    fingerprints.reactNativeArtifacts = reactNativeArtifacts.fingerprint;
+    fingerprints.reactNativeArtifactInputCount = reactNativeArtifacts.count;
+  }
+  if (nativeDependencies) {
+    fingerprints.nativeDependencies = nativeDependencies.fingerprint;
+    fingerprints.nativeDependencyInputCount = nativeDependencies.count;
+  }
+  return fingerprints;
+}

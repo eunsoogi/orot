@@ -49,6 +49,7 @@ function createFixtureRepository() {
     'packages/storage/src/index.ts',
     'scripts/ci/build-detox-apps.sh',
     'scripts/ci/detox-cache-fingerprint.mjs',
+    'scripts/ci/detox-cache-fingerprint-cli.mjs',
     'scripts/ci/detox-derived-data-cache.mjs',
   ]) {
     writeFixtureFile(root, path, `fixture:${path}`);
@@ -58,7 +59,7 @@ function createFixtureRepository() {
     root,
     'apps/mobile/.detoxrc.js',
     `module.exports = {
-      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build/Orot.app', build: 'xcodebuild -derivedDataPath ios/build ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
+      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build-detox-release/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-release ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
       configurations: { 'ios.sim.release': { device: 'simulator', app: 'ios.release' } },
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
@@ -67,7 +68,7 @@ function createFixtureRepository() {
     root,
     'apps/mobile/e2e/openai-provider.detox.config.js',
     `module.exports = {
-      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-openai-provider ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx' } },
+      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-detox-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-openai-provider ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx' } },
       configurations: { 'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' } },
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
@@ -122,7 +123,7 @@ test('records the invalidation diagnostic and passes prebuild hashes to manifest
 
 test('reports the static mismatch field and hashes before invalidating an incompatible cache', () => {
   const root = createFixtureRepository();
-  const derivedData = join(root, 'apps/mobile/ios/build');
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
   const manifestPath = join(derivedData, '.orot-detox-cache.json');
   const outputPath = join(root, 'prepare-output.txt');
 
@@ -152,7 +153,7 @@ test('reports the static mismatch field and hashes before invalidating an incomp
 
 test('keeps unknown toolchain manifest keys out of diagnostic and GitHub output fields', () => {
   const root = createFixtureRepository();
-  const derivedData = join(root, 'apps/mobile/ios/build');
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
   const manifestPath = join(derivedData, '.orot-detox-cache.json');
   const outputPath = join(root, 'prepare-output.txt');
 
@@ -177,7 +178,7 @@ test('keeps unknown toolchain manifest keys out of diagnostic and GitHub output 
 
 test('refuses to write a cache manifest when build fingerprints drift after the build', () => {
   const root = createFixtureRepository();
-  const derivedData = join(root, 'apps/mobile/ios/build');
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
   const manifestPath = join(derivedData, '.orot-detox-cache.json');
   const outputPath = join(root, 'write-output.txt');
 
@@ -208,7 +209,7 @@ test('refuses to write a cache manifest when build fingerprints drift after the 
 
 test('names changed tracked build inputs when refusing a drifted cache manifest', () => {
   const root = createFixtureRepository();
-  const derivedData = join(root, 'apps/mobile/ios/build');
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
 
   try {
     mkdirSync(derivedData, { recursive: true });

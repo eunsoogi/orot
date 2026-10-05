@@ -8,7 +8,7 @@ import test from 'node:test';
 import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
 
 const fingerprintScriptPath = fileURLToPath(
-  new URL('../detox-cache-fingerprint.mjs', import.meta.url),
+  new URL('../detox-cache-fingerprint-cli.mjs', import.meta.url),
 );
 
 function writeFixtureFile(root, path, content) {
@@ -23,7 +23,7 @@ function writeDetoxBuildConfigs(root) {
     root,
     'apps/mobile/.detoxrc.js',
     `module.exports = {
-      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build/Orot.app', build: 'xcodebuild -derivedDataPath ios/build ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
+      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build-detox-release/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-release ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
       configurations: { 'ios.sim.release': { device: 'simulator', app: 'ios.release' } },
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
@@ -32,7 +32,7 @@ function writeDetoxBuildConfigs(root) {
     root,
     'apps/mobile/e2e/openai-provider.detox.config.js',
     `module.exports = {
-      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-openai-provider' } },
+      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-detox-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-openai-provider' } },
       configurations: { 'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' } },
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
@@ -59,13 +59,15 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       'packages/storage/src/index.ts',
       'scripts/ci/build-detox-apps.sh',
       'scripts/ci/detox-cache-fingerprint.mjs',
+      'scripts/ci/detox-cache-fingerprint-cli.mjs',
       'scripts/ci/detox-derived-data-cache.mjs',
       'scripts/ci/run-detox-e2e.sh',
       'scripts/ci/detox-e2e-profile.detox.config.cjs',
       'scripts/ci/detox-e2e-profile.jest.config.cjs',
-      'apps/mobile/ios/build/DerivedData.db',
-      'apps/mobile/ios/build-openai-provider/DerivedData.db',
+      'apps/mobile/ios/build-detox-release/DerivedData.db',
+      'apps/mobile/ios/build-detox-openai-provider/DerivedData.db',
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
+      'apps/mobile/ios/build/generated/ios/ReactCodegen/ReactCodegen.xcconfig',
       'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj',
       'apps/mobile/node_modules/generated.js',
       'packages/storage/node_modules/generated.js',
@@ -91,16 +93,45 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\n`,
     );
 
-    writeFixtureFile(root, 'apps/mobile/ios/build/DerivedData.db', 'changed Release build output');
+    for (const [mode, output, expected] of [
+      [
+        '--react-native-artifacts-only',
+        join(root, 'react-native-output.txt'),
+        `react_native_artifacts=${initial.reactNativeArtifacts}\n`,
+      ],
+      [
+        '--derived-data-only',
+        join(root, 'derived-data-output.txt'),
+        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\n`,
+      ],
+    ]) {
+      execFileSync('node', [fingerprintScriptPath, mode], {
+        cwd: root,
+        env: { ...process.env, GITHUB_OUTPUT: output },
+        encoding: 'utf8',
+      });
+      assert.equal(readFileSync(output, 'utf8'), expected);
+    }
+
     writeFixtureFile(
       root,
-      'apps/mobile/ios/build-openai-provider/DerivedData.db',
+      'apps/mobile/ios/build-detox-release/DerivedData.db',
+      'changed Release build output',
+    );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/build-detox-openai-provider/DerivedData.db',
       'changed Debug build output',
     );
     writeFixtureFile(
       root,
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
       'changed feature build output',
+    );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/build/generated/ios/ReactCodegen/ReactCodegen.xcconfig',
+      'changed CocoaPods codegen output',
     );
     writeFixtureFile(
       root,
@@ -190,8 +221,8 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       root,
       'apps/mobile/.detoxrc.js',
       readFileSync(join(root, 'apps/mobile/.detoxrc.js'), 'utf8').replace(
-        '-derivedDataPath ios/build',
-        '-derivedDataPath ios/build-v2',
+        '-derivedDataPath ios/build-detox-release',
+        '-derivedDataPath ios/build-detox-release-v2',
       ),
     );
     git(root, 'add', '--all');
