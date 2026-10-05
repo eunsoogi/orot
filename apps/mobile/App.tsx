@@ -13,6 +13,8 @@ import type {
 } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
 import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
 import { importLocalCommonObservations } from './src/healthkit/commonObservations/importLocal';
+import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
+import { providerSelectionText } from './src/providers/selection/text';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -73,6 +75,10 @@ export default function App({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCommonObservations, setShowCommonObservations] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
+  const [showProviderSelection, setShowProviderSelection] = useState(false);
+  // Keep only the selected display label in route state; selection identifiers stay in the provider store.
+  const [selectedRecommendationProvider, setSelectedRecommendationProvider] =
+    useState('');
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -114,6 +120,17 @@ export default function App({
           onImport={importHealthObservations}
         />
       </View>
+    );
+  }
+
+  if (showProviderSelection) {
+    return (
+      <ProviderSelectionFlow
+        onBack={() => setShowProviderSelection(false)}
+        onSelectionCommitted={(_, provider) =>
+          setSelectedRecommendationProvider(provider.displayName)
+        }
+      />
     );
   }
 
@@ -169,6 +186,17 @@ export default function App({
       <Text style={styles.message}>
         {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
       </Text>
+      {selectedRecommendationProvider ? (
+        <Text testID="selected-recommendation-provider">
+          {providerSelectionText.selectedPrefix}{' '}
+          {selectedRecommendationProvider}
+        </Text>
+      ) : null}
+      <Button
+        onPress={() => setShowProviderSelection(true)}
+        testID="open-provider-selection"
+        title={providerSelectionText.title}
+      />
       <Button
         onPress={() => setHasStarted(true)}
         testID="get-started"

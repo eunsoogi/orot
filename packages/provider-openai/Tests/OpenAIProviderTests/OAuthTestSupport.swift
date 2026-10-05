@@ -18,6 +18,12 @@ final class InMemoryChatGPTCredentialStore: ChatGPTCredentialStore, @unchecked S
         return accounts[issuedClientID]
     }
 
+    func listAccounts() throws -> [ChatGPTStoredAccount] {
+        lock.lock()
+        defer { lock.unlock() }
+        return accounts.values.sorted { $0.issuedClientID < $1.issuedClientID }
+    }
+
     func saveAccount(_ account: ChatGPTStoredAccount) throws {
         lock.lock()
         defer { lock.unlock() }
