@@ -11,7 +11,12 @@ import {
 } from './options';
 import { providerSelectionText } from './text';
 import { providerSelectionStore } from './keychainSelectionStore';
-import { isSignInCancelled, sortAccounts } from './flowHelpers';
+import {
+  isSignInCancelled,
+  markAccountAsRequiringSignIn,
+  sortAccounts,
+  useCancelSignInOnUnmount,
+} from './flowHelpers';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
@@ -51,6 +56,7 @@ export default function ProviderSelectionFlow({
   const [signingIn, setSigningIn] = useState(false);
   const [actionStatus, setActionStatus] = useState('');
   const [actionError, setActionError] = useState(false);
+  useCancelSignInOnUnmount(chatGPTServices.cancelSignIn);
 
   useEffect(() => {
     let mounted = true;
@@ -148,6 +154,10 @@ export default function ProviderSelectionFlow({
       const models = await chatGPTServices.listModels(account.issuedClientID);
       if (!models.ok) {
         // A failed remote catalog keeps ChatGPT unavailable; it never chooses Apple as a substitute.
+        if (models.error.code === 'authentication_required') {
+          // Catalog rejection may not update the cached native account summary.
+          setAccounts(markAccountAsRequiringSignIn(account.issuedClientID));
+        }
         setOptions(appleOption ? [appleOption] : []);
         setActionStatus(providerSelectionText.chatGPTModelsUnavailable);
         setActionError(true);
