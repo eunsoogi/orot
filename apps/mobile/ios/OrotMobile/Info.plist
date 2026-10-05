@@ -65,6 +65,9 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string
     >상담 내용을 이 기기에 녹음해 보관하기 위해 마이크를 사용합니다. 녹음 시작 전 참여자의 동의를 확인합니다.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string
+    >상담 음성을 한국어로 전사하기 위해 음성 인식을 사용합니다. 전사는 이 기기에서 처리됩니다.</string>
 	<key>RCTNewArchEnabled</key>
 	<true />
 	<key>UILaunchStoryboardName</key>
