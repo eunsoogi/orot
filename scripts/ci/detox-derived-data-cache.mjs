@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { existsSync, lstatSync, renameSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   inspectCacheManifest,
@@ -11,28 +11,18 @@ import {
   computeDetoxCacheFingerprints,
   listChangedDetoxBuildInputs,
 } from './detox-cache-fingerprint.mjs';
-
-const PROFILES = {
-  release: {
-    derivedDataPath: 'apps/mobile/ios/build-detox-release',
-    configuration: 'Release-iphonesimulator',
-  },
-  'openai-provider': {
-    derivedDataPath: 'apps/mobile/ios/build-detox-openai-provider',
-    configuration: 'Debug-iphonesimulator',
-  },
-};
+import {
+  clearAppOutputs,
+  getDerivedDataRoot,
+  getProfile,
+  inspectCachedApp,
+  removeDerivedDataRoot,
+} from './ios-derived-data-cache-paths.mjs';
 
 function requireGitHubActions() {
   if (process.env.GITHUB_ACTIONS !== 'true') {
-    throw new Error('Detox DerivedData cache cleanup is limited to GitHub Actions runners.');
+    throw new Error('iOS DerivedData cache cleanup is limited to GitHub Actions runners.');
   }
-}
-
-function getProfile(profile) {
-  const configuration = PROFILES[profile];
-  if (!configuration) throw new Error(`Unknown Detox cache profile: ${profile}`);
-  return configuration;
 }
 
 function getToolchain() {
@@ -55,88 +45,18 @@ function getToolchain() {
   return toolchain;
 }
 
-function getDerivedDataRoot(repositoryRoot, profile) {
-  const root = realpathSync(resolve(repositoryRoot));
-  for (const directory of [join(root, 'apps'), join(root, 'apps/mobile')]) {
-    if (
-      !existsSync(directory) ||
-      lstatSync(directory).isSymbolicLink() ||
-      !lstatSync(directory).isDirectory()
-    ) {
-      throw new Error(`Refusing to use a symlinked Detox project directory: ${directory}`);
-    }
-  }
-  const iosRoot = resolve(root, 'apps/mobile/ios');
-  if (
-    !existsSync(iosRoot) ||
-    lstatSync(iosRoot).isSymbolicLink() ||
-    !lstatSync(iosRoot).isDirectory()
-  ) {
-    throw new Error(`Refusing to use an unsafe iOS project directory: ${iosRoot}`);
-  }
-  const dataRoot = resolve(root, getProfile(profile).derivedDataPath);
-  const relativeToIos = relative(iosRoot, dataRoot);
-  if (!relativeToIos || relativeToIos.startsWith('..') || isAbsolute(relativeToIos)) {
-    throw new Error(`Unsafe Detox DerivedData path: ${dataRoot}`);
-  }
-  return dataRoot;
-}
-
 function makeManifest(repositoryRoot, profile) {
-  const fingerprints = computeDetoxCacheFingerprints(repositoryRoot);
+  const fingerprints = computeDetoxCacheFingerprints(repositoryRoot, {
+    privacyManifestInputHash: process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256,
+  });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile,
     toolchain: getToolchain(),
     nativeDependencies: fingerprints.nativeDependencies,
     buildInputs: fingerprints.buildInputs,
+    privacyManifestInputHash: fingerprints.privacyManifestInputHash,
   };
-}
-
-function assertManagedDirectory(directoryPath, expectedRoot) {
-  const relativeToRoot = relative(expectedRoot, directoryPath);
-  if (!relativeToRoot || relativeToRoot.startsWith('..') || isAbsolute(relativeToRoot)) {
-    throw new Error(`Refusing to remove a path outside cached DerivedData: ${directoryPath}`);
-  }
-  if (
-    !existsSync(expectedRoot) ||
-    lstatSync(expectedRoot).isSymbolicLink() ||
-    !lstatSync(expectedRoot).isDirectory()
-  ) {
-    throw new Error(`Refusing to remove a path through an unsafe cache root: ${expectedRoot}`);
-  }
-
-  let currentPath = expectedRoot;
-  for (const segment of relativeToRoot.split(sep)) {
-    currentPath = join(currentPath, segment);
-    if (!existsSync(currentPath)) return false;
-    const stat = lstatSync(currentPath);
-    if (stat.isSymbolicLink()) {
-      throw new Error(`Refusing to follow a symbolic link in cached DerivedData: ${currentPath}`);
-    }
-    if (!stat.isDirectory()) {
-      throw new Error(`Refusing to remove a non-directory cache path: ${currentPath}`);
-    }
-  }
-  return true;
-}
-
-function removeManagedDirectory(directoryPath, expectedRoot) {
-  if (assertManagedDirectory(directoryPath, expectedRoot)) {
-    rmSync(directoryPath, { recursive: true });
-  }
-}
-
-function clearAppOutputs(profile, dataRoot) {
-  // With toolchain/native inputs compatible, only app outputs are stale; keep
-  // Pods/Codegen and validate both deletion paths before clearing either.
-  const configuration = getProfile(profile).configuration;
-  const appOutputs = [
-    join(dataRoot, 'Build/Intermediates.noindex/OrotMobile.build', configuration),
-    join(dataRoot, 'Build/Products', configuration, 'Orot.app'),
-  ];
-  appOutputs.forEach((path) => assertManagedDirectory(path, dataRoot));
-  appOutputs.forEach((path) => removeManagedDirectory(path, dataRoot));
 }
 
 function writeManifest(repositoryRoot, profile) {
@@ -150,6 +70,14 @@ function writeManifest(repositoryRoot, profile) {
   }
 
   const manifest = makeManifest(repositoryRoot, profile);
+  const app = inspectCachedApp(profile, dataRoot);
+  if (app.reason) {
+    console.log(
+      `DETOX_DERIVEDDATA_CACHE manifest_write=refused profile=${profile} app_reason=${app.reason}`,
+    );
+    throw new Error(`Refusing to cache an invalid iOS app artifact: ${app.reason}`);
+  }
+  manifest.appArtifacts = app.artifacts;
   const fingerprintCheck = inspectManifestFingerprints(
     manifest,
     process.env.EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT,
@@ -157,7 +85,7 @@ function writeManifest(repositoryRoot, profile) {
   );
   const changedInputsDiagnostic =
     fingerprintCheck.match === 'false'
-      ? ` tracked_build_input_changes=${JSON.stringify(listChangedDetoxBuildInputs(repositoryRoot))}`
+      ? ' build_input_changes=' + JSON.stringify(listChangedDetoxBuildInputs(repositoryRoot))
       : '';
   console.log(
     `DETOX_DERIVEDDATA_CACHE manifest_write=${fingerprintCheck.match === 'false' ? 'refused' : 'written'} profile=${profile} ${fingerprintCheck.diagnostic}${changedInputsDiagnostic}`,
@@ -198,24 +126,41 @@ function prepareCache(repositoryRoot, profile) {
   const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
   const expected = makeManifest(repositoryRoot, profile);
   if (!existsSync(dataRoot)) {
-    return inspectCacheManifest({ manifest: null, reason: 'derived_data_absent' }, expected);
+    return {
+      ...inspectCacheManifest({ manifest: null, reason: 'derived_data_absent' }, expected),
+      appReusable: false,
+      appReuseReason: 'derived_data_absent',
+    };
   }
   if (lstatSync(dataRoot).isSymbolicLink() || !lstatSync(dataRoot).isDirectory()) {
     throw new Error(`Refusing to inspect an unsafe Detox DerivedData cache path: ${dataRoot}`);
   }
 
-  const result = inspectCacheManifest(readCacheManifest(dataRoot), expected);
+  const manifestResult = readCacheManifest(dataRoot);
+  const result = inspectCacheManifest(manifestResult, expected);
+  let appReusable = false;
+  let appReuseReason = 'cache_not_exact';
+  if (result.classification === 'exact') {
+    const app = inspectCachedApp(profile, dataRoot, manifestResult.manifest?.appArtifacts ?? null);
+    appReuseReason = app.reason ?? 'validated';
+    if (app.reason) {
+      requireGitHubActions();
+      clearAppOutputs(profile, dataRoot);
+    } else {
+      appReusable = true;
+    }
+  }
   if (result.classification === 'invalidated') {
     requireGitHubActions();
-    // A noncompatible manifest invalidates this isolated profile root; shared
-    // CocoaPods Codegen remains under ios/build/generated/ios outside this path.
-    removeManagedDirectory(dataRoot, resolve(repositoryRoot, 'apps/mobile/ios'));
+    removeDerivedDataRoot(profile, dataRoot);
+    appReuseReason = 'cache_invalidated';
   }
   if (result.classification === 'dependency-compatible') {
     requireGitHubActions();
     clearAppOutputs(profile, dataRoot);
+    appReuseReason = 'build_inputs_changed';
   }
-  return result;
+  return { ...result, appReusable, appReuseReason };
 }
 
 function writeGitHubOutput(result) {
@@ -228,18 +173,22 @@ function writeGitHubOutput(result) {
         `derived_data_cache_reason=${result.reason}`,
         `derived_data_cache_mismatch_fields=${result.mismatchFields.join(',') || 'none'}`,
         `derived_data_cache_diagnostic=${result.diagnostic}`,
+        `app_reusable=${result.appReusable}`,
+        `app_reuse_reason=${result.appReuseReason}`,
       ].join('\n') + '\n',
       { flag: 'a' },
     );
   }
-  console.log(`DETOX_DERIVEDDATA_CACHE ${result.diagnostic}`);
+  console.log(
+    `DETOX_DERIVEDDATA_CACHE ${result.diagnostic} app_reusable=${result.appReusable} app_reuse_reason=${result.appReuseReason}`,
+  );
 }
 
 function main() {
   const [command, profile, ...extra] = process.argv.slice(2);
   if (extra.length > 0 || !['prepare', 'write'].includes(command) || !profile) {
     throw new Error(
-      'Usage: detox-derived-data-cache.mjs <prepare|write> <release|openai-provider>',
+      'Usage: detox-derived-data-cache.mjs <prepare|write> <release|openai-provider|production>',
     );
   }
   getProfile(profile);

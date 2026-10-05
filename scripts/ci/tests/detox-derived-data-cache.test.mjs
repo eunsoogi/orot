@@ -153,6 +153,7 @@ test('refuses to follow symlinks restored inside a compatible cache', () => {
     );
     writeFixtureFile(root, 'external/Orot.app/stale.txt', 'preserve');
     mkdirSync(dirname(appProduct), { recursive: true });
+    rmSync(appProduct, { recursive: true, force: true });
     symlinkSync(externalProduct, appProduct, 'dir');
     writeFixtureFile(root, 'apps/mobile/App.tsx', 'changed JavaScript source');
     git(root, 'add', '--all');
@@ -163,6 +164,23 @@ test('refuses to follow symlinks restored inside a compatible cache', () => {
     );
     assert.equal(readFileSync(join(externalProduct, 'stale.txt'), 'utf8'), 'preserve');
     assert.equal(existsSync(join(appTarget, 'stale.o')), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects a dangling DerivedData root symlink instead of treating it as a cache miss', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
+  const danglingTarget = join(root, 'outside/cache-target');
+
+  try {
+    symlinkSync(danglingTarget, derivedData, 'dir');
+    assert.throws(
+      () => runCacheCommand(root, 'prepare'),
+      (error) => /symbolic link/.test(error.stderr.toString()),
+    );
+    assert.equal(existsSync(danglingTarget), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

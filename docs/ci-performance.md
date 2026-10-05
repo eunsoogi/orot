@@ -1,17 +1,34 @@
 # Detox CI performance
 
-## Latest cache and Simulator measurements
+## Current exact-app reuse candidate
+
+The latest hosted runs were on PR head `10bc8b1`, before the exact-app reuse change. Both attempts passed all five required jobs, all nine E2E cases, the separate production/OAuth checks, and deletion of both dedicated Simulators. Attempt 1 took 20m39s from the first required job to the aggregate; attempt 2 took 27m06s. Attempt 2 reported exact DerivedData cache hits, but still ran both Detox Xcode builds and the separate production app build. Neither run met the ten-minute target.
+
+| Hosted run                                                                                     | Cache state                              | Required-job path | E2E and cleanup                                 | Production/OAuth |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------------: | ----------------------------------------------- | ---------------- |
+| [37269487968, attempt 1](https://github.com/eunsoogi/orot/actions/runs/37269487968/attempts/1) | DerivedData miss                         |            20m39s | Release 8/8, Debug 1/1; both Simulators deleted | Passed           |
+| [37269487968, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37269487968/attempts/2) | Exact DerivedData hits; builds still ran |            27m06s | Release 8/8, Debug 1/1; both Simulators deleted | Passed           |
+
+The local candidate reuses a cached app only when its toolchain, profile, and build-input manifest match and the `.app` identity, Simulator platform, host architecture, binary, plist, and embedded Detox JavaScript bundle pass validation. A malformed or mismatched artifact falls back to the full Pods and app-build path. Dependency-compatible cleanup removes only app outputs and leaves Pods build products intact.
+
+React Native archives are restored before Pods. Release, OpenAI Debug, and production app DerivedData use separate roots, leaving CocoaPods Codegen under `ios/build/generated/ios`. Exact valid app caches skip redundant CocoaPods and Xcode app-build steps; every E2E case, Simulator setup, diagnostics, artifact upload, and teardown still runs. The production app cache is separate, while standalone OAuth package tests and the OAuth Simulator harness remain unconditional.
+
+The app-output fingerprint reads current worktree bytes for indexed files and non-ignored untracked files. Unstaged source, lockfile, Detox configuration, and build-helper edits therefore change the fingerprint before they are staged. Known generated outputs remain excluded. The cache key and manifest also bind the selected profile and verified runner/toolchain versions; a mismatch invalidates the cache.
+
+The full portable CI/release/quality suite passed 90/90 before this final input-enumeration correction. After the correction, focused fingerprint, cache, and diagnostic tests passed 9/9; `pnpm lint`, changed-file formatting, syntax, LOC, and diff checks also passed. The earlier typecheck and package-unit results remain applicable because this correction changes only CI helper code and fixtures. This worktree candidate remains unpublished and has no current-head Sentinel review or hosted cache measurement. No local native build or Simulator run was performed. The two consecutive under-ten-minute hosted paths remain unproved; no speedup is claimed.
+
+## Historical cache and Simulator measurements
 
 Pull request run [37248816905, attempt 1](https://github.com/eunsoogi/orot/actions/runs/37248816905/attempts/1) and its same-SHA rerun, [attempt 2](https://github.com/eunsoogi/orot/actions/runs/37248816905/attempts/2), both passed the five required jobs, all nine E2E cases, and dedicated Simulator deletion on `b98df1fbf798abbe9f26ceb25e2670600cda5ce5`. They did not meet the issue's ten-minute critical-path target.
 
-| Measurement | Attempt 1: cold cache | Attempt 2: exact cache hit |
-| --- | ---: | ---: |
-| Release Xcode build step | 151s | 135s |
-| Release Simulator boot wait | 90s | 151s |
-| Release E2E workflow step | 394s | 636s |
-| First E2E profile start to aggregate completion | 13m44s | 19m19s |
-| Release E2E cases | 8/8 | 8/8 |
-| OpenAI Debug E2E cases | 1/1 | 1/1 |
+| Measurement                                     | Attempt 1: cold cache | Attempt 2: exact cache hit |
+| ----------------------------------------------- | --------------------: | -------------------------: |
+| Release Xcode build step                        |                  151s |                       135s |
+| Release Simulator boot wait                     |                   90s |                       151s |
+| Release E2E workflow step                       |                  394s |                       636s |
+| First E2E profile start to aggregate completion |                13m44s |                     19m19s |
+| Release E2E cases                               |                   8/8 |                        8/8 |
+| OpenAI Debug E2E cases                          |                   1/1 |                        1/1 |
 
 Attempt 1 recorded DerivedData cache misses and saved both profile caches. Attempt 2 restored both with `classification=exact`, matching toolchain and input fingerprints, and successfully wrote both manifests. The warm Release build still ran 29 `CompileC` and 4 `SwiftCompile` tasks (64.501s and 10.582s reported task time) plus 12 script phases (51.328s). The Xcode log does not identify a single changed input responsible for those remaining compile tasks. Its individual compile entries include Pods, generated React Native provider files, and Orot app sources.
 
@@ -37,16 +54,16 @@ The current workflow installs Simulator utilities and prepares each dedicated Si
 
 The comparable baseline is the successful `main` run [37168559096, attempt 2](https://github.com/eunsoogi/orot/actions/runs/37168559096/attempts/2), at `b128021a3330c1f2d432c218ba70f13c86c273e9`. It includes the checkpoint probe added by PR #72. All three required jobs passed. Attempt 1 of the same run failed in the old multi-build workflow during a later CocoaPods install with `ArgumentError - path name contains null byte`; attempt 2 passed. This change reduces the install to one and does not claim to have fixed that error's root cause.
 
-| Hosted measure | Baseline | First candidate | Corrected candidate (`6713cd2`) |
-| --- | ---: | ---: | ---: |
-| Frozen workspace install | 4s | 3m51s | 4s |
-| Detox build step | 17m03s | 19m19s | 6m59s |
-| Detox E2E test step | 15m00s | 8m34s | 12m47s |
-| Complete Detox job | 33m32s | 33m34s | 22m30s |
-| Native app builds | 4 Release + 1 Debug | 1 Release + 1 Debug | 1 Release + 1 Debug |
-| CocoaPods installs | 3 | 1 | 1 |
-| Detox/Jest invocations | 5 | 2 | 2 |
-| Workload | 9 tests across 7 suites | 9 tests across 7 suites | 9 tests across 7 suites |
+| Hosted measure           |                Baseline |         First candidate | Corrected candidate (`6713cd2`) |
+| ------------------------ | ----------------------: | ----------------------: | ------------------------------: |
+| Frozen workspace install |                      4s |                   3m51s |                              4s |
+| Detox build step         |                  17m03s |                  19m19s |                           6m59s |
+| Detox E2E test step      |                  15m00s |                   8m34s |                          12m47s |
+| Complete Detox job       |                  33m32s |                  33m34s |                          22m30s |
+| Native app builds        |     4 Release + 1 Debug |     1 Release + 1 Debug |             1 Release + 1 Debug |
+| CocoaPods installs       |                       3 |                       1 |                               1 |
+| Detox/Jest invocations   |                       5 |                       2 |                               2 |
+| Workload                 | 9 tests across 7 suites | 9 tests across 7 suites |         9 tests across 7 suites |
 
 The successful hosted candidate was run 37172401876 at `6e2a34a3fe6670c11500743bab59d7549f6f20d4`. Its three required checks passed. The E2E log records all nine test cases across seven suites in two invocations, and the dedicated Simulator was deleted successfully. Compared with the baseline, the test step is 6m26s shorter, the build step is 2m16s longer, and the complete Detox job is 2s longer. This run therefore does not demonstrate a whole-job speedup.
 
@@ -70,15 +87,15 @@ The first candidate workspace install took 3m51s versus 4s on the baseline. Its 
 
 Run [37174832554](https://github.com/eunsoogi/orot/actions/runs/37174832554) used `db2c1846e19503f3651e059d8fc8e003f31a9037`, moving Simulator preparation until after the two app builds. It used the same `xcode-27-arm64` image release and restored pnpm cache as the baseline and first candidate, but a different hosted runner instance.
 
-| Detox job step | Time (UTC) | Duration | Result |
-| --- | --- | ---: | --- |
-| Frozen workspace install | 03:43:33–03:43:37 | 4s | 938 reused, 0 downloaded |
-| Shared Release + OpenAI Debug build | 03:43:39–03:56:37 | 12m58s | Passed |
-| Create and boot Simulator | 03:56:37–03:56:50 | 13s | Passed |
-| Install applesimutils | 03:56:50–04:03:36 | 6m46s | Passed |
-| Wait for Simulator boot | 04:03:36–04:03:40 | 4s | Passed |
-| E2E | 04:03:40–04:16:29 | 12m49s | Failed |
-| Complete Detox job | 03:42:40–04:17:04 | 34m24s | Failed |
+| Detox job step                      | Time (UTC)        | Duration | Result                   |
+| ----------------------------------- | ----------------- | -------: | ------------------------ |
+| Frozen workspace install            | 03:43:33–03:43:37 |       4s | 938 reused, 0 downloaded |
+| Shared Release + OpenAI Debug build | 03:43:39–03:56:37 |   12m58s | Passed                   |
+| Create and boot Simulator           | 03:56:37–03:56:50 |      13s | Passed                   |
+| Install applesimutils               | 03:56:50–04:03:36 |    6m46s | Passed                   |
+| Wait for Simulator boot             | 04:03:36–04:03:40 |       4s | Passed                   |
+| E2E                                 | 04:03:40–04:16:29 |   12m49s | Failed                   |
+| Complete Detox job                  | 03:42:40–04:17:04 |   34m24s | Failed                   |
 
 The candidate build was 4m05s shorter than the baseline and 6m21s shorter than the first candidate, but these are single samples from different hosted runner instances and do not isolate the effect of step ordering. The applesimutils stage was not a six-minute download: the wrapper started at 03:57:31, Homebrew tap/clone began at 04:03:20, and tap, trust, bottle, and install completed by 04:03:36. The long gap after Simulator boot is consistent with possible resource contention, but does not prove it.
 
@@ -102,17 +119,17 @@ These are local measurements, not hosted CI timings. The earlier local baseline 
 
 ## Preserved E2E scenarios and oracles
 
-| Configuration | Scenario | Oracle |
-| --- | --- | --- |
-| Release | App smoke | Renders the Korean welcome screen, opens Appointments from the English home screen, and checks the Korean appointments title and add control. |
-| Release | Appointments | Creates, edits, and cancels an appointment that survives process restarts. |
-| Release | Encrypted storage: fresh install | Creates encrypted source and evidence records on a fresh install. |
-| Release | Encrypted storage: restart | Reopens a source and evidence span after an app process restart. |
-| Release | Encrypted storage: migration | Migrates the earlier test schema on a fresh install. |
-| Release | Agent memory | Persists, corrects, recalls, and removes Korean memory with its source across an app restart. |
-| Release | LangGraph | Invokes and consumes a stateful two-node graph 20 consecutive times. |
-| Release | Checkpoint resume | Saves after `increment`, restarts the app, resumes without rerunning the completed node, and checks the result `value=8; nodes=increment,double` plus Unicode checkpoint metadata `환자 기록: café 🌱🩺`. |
-| Debug | OpenAI provider synthetic probe | Checks visible-model-only catalog, completion, usage-limit, and cancellation behavior; asserts the real account remains unverified and no synthetic access token is exposed. |
+| Configuration | Scenario                         | Oracle                                                                                                                                                                                                    |
+| ------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Release       | App smoke                        | Renders the Korean welcome screen, opens Appointments from the English home screen, and checks the Korean appointments title and add control.                                                             |
+| Release       | Appointments                     | Creates, edits, and cancels an appointment that survives process restarts.                                                                                                                                |
+| Release       | Encrypted storage: fresh install | Creates encrypted source and evidence records on a fresh install.                                                                                                                                         |
+| Release       | Encrypted storage: restart       | Reopens a source and evidence span after an app process restart.                                                                                                                                          |
+| Release       | Encrypted storage: migration     | Migrates the earlier test schema on a fresh install.                                                                                                                                                      |
+| Release       | Agent memory                     | Persists, corrects, recalls, and removes Korean memory with its source across an app restart.                                                                                                             |
+| Release       | LangGraph                        | Invokes and consumes a stateful two-node graph 20 consecutive times.                                                                                                                                      |
+| Release       | Checkpoint resume                | Saves after `increment`, restarts the app, resumes without rerunning the completed node, and checks the result `value=8; nodes=increment,double` plus Unicode checkpoint metadata `환자 기록: café 🌱🩺`. |
+| Debug         | OpenAI provider synthetic probe  | Checks visible-model-only catalog, completion, usage-limit, and cancellation behavior; asserts the real account remains unverified and no synthetic access token is exposed.                              |
 
 The Release router selects the existing storage, agent-memory, graph, or checkpoint entry from explicit launch settings. The Release Jest wrapper loads the six-file suite manifest in the order above; the OpenAI synthetic fixture remains in its separate Debug-only app. No probe assertions or product semantics were changed.
 
@@ -128,10 +145,10 @@ The previous hosted `1193ab9` run completed all nine cases in about 19m47, but i
 
 The split-profile run [37192379114](https://github.com/eunsoogi/orot/actions/runs/37192379114) passed all required checks on `fbdad21cb055edc9c30cd94d5a0c2731ef667866`. Release passed all eight cases in one suite, and OpenAI Debug passed its one case in one suite. Both profile Simulators were deleted and their artifacts uploaded. The run started at 09:30:33 UTC; the earliest E2E profile job started at 09:30:39, and the fail-closed aggregate finished at 09:43:24. That is 12m51s from run creation, including queue time, or 12m45s from the earliest E2E job. It misses the ten-minute target.
 
-| Profile | Pods | Native build | Simulator boot wait | E2E step | Whole profile job |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Release | 70.5s | 153.1s | 86s | 358s | 12m37s |
-| OpenAI Debug | 75.1s | 138.8s | 118s | 153s | 10m15s |
+| Profile      |  Pods | Native build | Simulator boot wait | E2E step | Whole profile job |
+| ------------ | ----: | -----------: | ------------------: | -------: | ----------------: |
+| Release      | 70.5s |       153.1s |                 86s |     358s |            12m37s |
+| OpenAI Debug | 75.1s |       138.8s |                118s |     153s |            10m15s |
 
 The Release Detox CLI started at 09:38:13.362 UTC, and Jest assigned the suite at 09:39:24.839, a 71.5s gap. The wrapper had started about 64s before the CLI. Lightweight samples show Simulator wallpaper/background processes using CPU while Node was mostly idle; `vm_stat` showed about 65–73 MiB of free pages, which does not establish swapping or memory pressure. Later `simctl` and `get_app_container` operations also took seconds to tens of seconds. These observations locate delay around Simulator/command startup but do not prove its cause.
 
@@ -139,10 +156,10 @@ The Release Detox CLI started at 09:38:13.362 UTC, and Jest assigned the suite a
 
 Run [37193964243](https://github.com/eunsoogi/orot/actions/runs/37193964243) at `ef2479954076d5526ad65e69c6055fc874eda77c` passed Quality, the production/OAuth job, both profile jobs, and the fail-closed aggregate. It preserved all nine cases (Release 8/8, OpenAI Debug 1/1), recorded diagnostics, and deleted both dedicated Simulators. The run started at 10:00:29 UTC; the first E2E profile started at 10:00:35 and the aggregate finished at 10:16:34. That is 16m05s including run queue time, or 15m59s from the first profile start. It does not meet the ten-minute target and is 3m14s longer than the preceding split-profile run.
 
-| Profile | Build workflow step | Pods install | Xcode build | Boot wait after build | E2E step | Whole profile job |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Release | 10m33s | 356.00s | 252.18s | 5s | 224s | 15m48s |
-| OpenAI Debug | 12m46s | 474.81s | 270.80s | 4s | 41s | 14m52s |
+| Profile      | Build workflow step | Pods install | Xcode build | Boot wait after build | E2E step | Whole profile job |
+| ------------ | ------------------: | -----------: | ----------: | --------------------: | -------: | ----------------: |
+| Release      |              10m33s |      356.00s |     252.18s |                    5s |     224s |            15m48s |
+| OpenAI Debug |              12m46s |      474.81s |     270.80s |                    4s |      41s |            14m52s |
 
 Both jobs used `xcode-27` arm64 runners with macOS 27.0, Xcode 27.0, iOS Simulator SDK 27.0, 3 logical CPUs, and 7,516,192,768 bytes of memory. Each frozen pnpm install reused all 938 packages and downloaded none. Both Pods logs report cache misses for React Native dependency/core and Hermes archives; Xcode completed and the app architecture checks reported `arm64`. These logs do not isolate how much of the slow Pods stage came from downloads, storage, or runner conditions. The preceding run also reported the same vendor archive misses but finished Pods in 70.47s/75.07s, so those misses alone do not explain the variation.
 
@@ -194,10 +211,10 @@ The local candidate passed the 66-test portable/release suite, lint, typecheck, 
 
 Run [37220492826](https://github.com/eunsoogi/orot/actions/runs/37220492826) passed the required checks at `767eed7f45e29c9a9f5a5a20af728f3991baa362`. Its Release profile passed all eight cases and its OpenAI Debug profile passed its one case; both dedicated Simulators were deleted and the run's Detox artifacts were uploaded. Both React Native and profile DerivedData caches restored with exact keys. This was still the v1 cache implementation and does not validate the local v2 changes described below.
 
-| Profile | Job duration | Detox build step | Simulator boot wait | E2E step | Result |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Release | 14m03s | 3m19s | 2m55s | 5m24s | 8/8 passed |
-| OpenAI Debug | 12m52s | 4m22s | 2m49s | 3m31s | 1/1 passed |
+| Profile      | Job duration | Detox build step | Simulator boot wait | E2E step | Result     |
+| ------------ | -----------: | ---------------: | ------------------: | -------: | ---------- |
+| Release      |       14m03s |            3m19s |               2m55s |    5m24s | 8/8 passed |
+| OpenAI Debug |       12m52s |            4m22s |               2m49s |    3m31s | 1/1 passed |
 
 Both profile jobs exceeded the ten-minute limit despite exact cache hits. The first profile job started at 17:26:14 UTC and the fail-closed aggregate completed at 19:03:58 UTC, an elapsed workflow interval of 1h37m44s. The Release job started 1h10m22s after the OpenAI Debug job completed. That interval includes job scheduling delay and is recorded separately from profile execution time; its cause is not established by these timestamps. Jest reported 289.136s for Release and 91.353s for OpenAI Debug within the longer E2E workflow steps.
 

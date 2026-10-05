@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,11 +30,82 @@ export function git(root, ...args) {
 }
 
 export function runCacheCommand(root, command, profile = 'release', environment = {}) {
+  if (typeof profile !== 'string') {
+    environment = profile;
+    profile = 'release';
+  }
+  if (command === 'write') writeAppFixture(root, profile);
   return execFileSync('node', [cacheScriptPath, command, profile], {
     cwd: root,
-    env: { ...process.env, ...baseEnvironment, GITHUB_ACTIONS: 'true', ...environment },
+    env: {
+      ...process.env,
+      ...baseEnvironment,
+      GITHUB_ACTIONS: 'true',
+      PATH: join(root, 'bin') + ':' + (environment.PATH ?? process.env.PATH),
+      ...environment,
+    },
     encoding: 'utf8',
   });
+}
+
+function writeAppFixture(root, profile) {
+  const buildFolder =
+    profile === 'production'
+      ? 'build-production'
+      : profile === 'release'
+        ? 'build-detox-release'
+        : 'build-detox-openai-provider';
+  const configuration = profile === 'release' ? 'Release-iphonesimulator' : 'Debug-iphonesimulator';
+  const product = join(
+    root,
+    'apps/mobile/ios',
+    buildFolder,
+    'Build/Products',
+    configuration,
+    'Orot.app',
+  );
+  writeFixtureFile(
+    root,
+    join('apps/mobile/ios', buildFolder, 'Build/Products', configuration, 'Orot.app/Orot'),
+    'valid-architecture',
+  );
+  writeFixtureFile(
+    root,
+    join('apps/mobile/ios', buildFolder, 'Build/Products', configuration, 'Orot.app/Info.plist'),
+    'valid-plist',
+  );
+  if (profile !== 'production') {
+    writeFixtureFile(
+      root,
+      join(
+        'apps/mobile/ios',
+        buildFolder,
+        'Build/Products',
+        configuration,
+        'Orot.app/main.jsbundle',
+      ),
+      'valid-js-bundle',
+    );
+  }
+  mkdirSync(product, { recursive: true });
+}
+
+function installIosAppTools(root) {
+  const architecture = process.arch === 'x64' ? 'x86_64' : process.arch;
+  const xcrunPath = join(root, 'bin/xcrun');
+  const plutilPath = join(root, 'bin/plutil');
+  writeFixtureFile(
+    root,
+    'bin/xcrun',
+    `#!/bin/sh\n[ "$1:$2" = "lipo:-archs" ] || exit 2\n[ "$(cat "$3")" = valid-architecture ] || exit 1\nprintf '%s\\n' '${architecture}'\n`,
+  );
+  writeFixtureFile(
+    root,
+    'bin/plutil',
+    `#!/bin/sh\nplist=$(cat "$6")\ncase "$2" in\n  CFBundleIdentifier) [[ "$plist" == wrong-bundle-id ]] && echo com.invalid || [[ "$plist" == valid-plist ]] && echo com.orot.mobile ;;\n  CFBundleExecutable) [[ "$plist" == valid-plist ]] && echo Orot ;;\n  CFBundlePackageType) [[ "$plist" == valid-plist ]] && echo APPL ;;\n  CFBundleSupportedPlatforms) [[ "$plist" == valid-plist ]] && echo '["iPhoneSimulator"]' ;;\n  *) exit 2 ;;\nesac\n`,
+  );
+  chmodSync(xcrunPath, 0o755);
+  chmodSync(plutilPath, 0o755);
 }
 
 export function createFixtureRepository() {
@@ -56,6 +127,7 @@ export function createFixtureRepository() {
     'apps/mobile/e2e/release-e2e.test.js',
     'packages/storage/src/index.ts',
     'scripts/ci/build-detox-apps.sh',
+    'scripts/ci/build-ios-simulator-app.sh',
     'scripts/ci/detox-cache-fingerprint.mjs',
     'scripts/ci/detox-cache-fingerprint-cli.mjs',
     'scripts/ci/detox-derived-data-cache.mjs',
@@ -86,6 +158,20 @@ export function createFixtureRepository() {
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
   );
+  installIosAppTools(root);
   git(root, 'add', '--all');
+  git(
+    root,
+    '-c',
+    'user.name=CI fixture',
+    '-c',
+    'user.email=ci-fixture@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '--quiet',
+    '--message',
+    'fixture',
+  );
   return root;
 }

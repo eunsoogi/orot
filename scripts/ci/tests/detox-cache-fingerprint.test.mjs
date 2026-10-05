@@ -43,7 +43,7 @@ function git(root, ...args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
 
-test('keeps the cache fingerprint stable for tracked build inputs and ignores generated outputs', () => {
+test('normalizes the known CocoaPods privacy edit while tracking source changes', () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-detox-cache-fingerprint-'));
   try {
     git(root, 'init', '-q');
@@ -56,8 +56,10 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       'pnpm-workspace.yaml',
       'apps/mobile/App.tsx',
       'apps/mobile/ios/Podfile.lock',
+      'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
       'packages/storage/src/index.ts',
       'scripts/ci/build-detox-apps.sh',
+      'scripts/ci/build-ios-simulator-app.sh',
       'scripts/ci/detox-cache-fingerprint.mjs',
       'scripts/ci/detox-cache-fingerprint-cli.mjs',
       'scripts/ci/detox-derived-data-cache.mjs',
@@ -82,6 +84,28 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     git(root, 'add', '--all');
 
     const initial = computeDetoxCacheFingerprints(root);
+
+    const privacyManifestInputHash = initial.privacyManifestInputHash;
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
+      'CocoaPods aggregated privacy reasons',
+    );
+    assert.deepEqual(computeDetoxCacheFingerprints(root, { privacyManifestInputHash }), initial);
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
+      'unstaged source edit before cache lookup',
+    );
+    const afterUnstagedSourceEdit = computeDetoxCacheFingerprints(root);
+    assert.notEqual(afterUnstagedSourceEdit.buildInputs, initial.buildInputs);
+    assert.notEqual(afterUnstagedSourceEdit.nativeDependencies, initial.nativeDependencies);
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
+      'initial:apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
+    );
+
     const outputPath = join(root, 'github-output.txt');
     execFileSync('node', [fingerprintScriptPath], {
       cwd: root,
@@ -90,7 +114,7 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
     });
     assert.equal(
       readFileSync(outputPath, 'utf8'),
-      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\n`,
+      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\n`,
     );
 
     for (const [mode, output, expected] of [
@@ -102,7 +126,7 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       [
         '--derived-data-only',
         join(root, 'derived-data-output.txt'),
-        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\n`,
+        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\n`,
       ],
     ]) {
       execFileSync('node', [fingerprintScriptPath, mode], {
@@ -113,49 +137,21 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
       assert.equal(readFileSync(output, 'utf8'), expected);
     }
 
-    writeFixtureFile(
-      root,
+    for (const path of [
       'apps/mobile/ios/build-detox-release/DerivedData.db',
-      'changed Release build output',
-    );
-    writeFixtureFile(
-      root,
       'apps/mobile/ios/build-detox-openai-provider/DerivedData.db',
-      'changed Debug build output',
-    );
-    writeFixtureFile(
-      root,
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
-      'changed feature build output',
-    );
-    writeFixtureFile(
-      root,
       'apps/mobile/ios/build/generated/ios/ReactCodegen/ReactCodegen.xcconfig',
-      'changed CocoaPods codegen output',
-    );
-    writeFixtureFile(
-      root,
       'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj',
-      'changed Pods output',
-    );
-    writeFixtureFile(root, 'apps/mobile/node_modules/generated.js', 'changed app dependency');
-    writeFixtureFile(
-      root,
+      'apps/mobile/node_modules/generated.js',
       'packages/storage/node_modules/generated.js',
-      'changed package dependency',
-    );
-    writeFixtureFile(root, 'apps/mobile/.cache/generated.js', 'changed cache output');
-    writeFixtureFile(
-      root,
+      'apps/mobile/.cache/generated.js',
       'apps/mobile/ios/CoreSimulator/devices/generated.plist',
-      'changed Simulator output',
-    );
-    writeFixtureFile(
-      root,
       'apps/mobile/ios/Simulator/devices/generated.plist',
-      'changed Simulator output',
-    );
-    writeFixtureFile(root, 'apps/mobile/ios/Keychains/login.keychain', 'changed Keychain output');
+      'apps/mobile/ios/Keychains/login.keychain',
+    ]) {
+      writeFixtureFile(root, path, 'changed generated output');
+    }
     git(root, 'add', '--all');
     const afterGeneratedOutputs = computeDetoxCacheFingerprints(root);
 

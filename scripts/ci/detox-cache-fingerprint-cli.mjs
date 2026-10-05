@@ -16,6 +16,9 @@ function writeGitHubOutputs(outputPath, fingerprints) {
   if (fingerprints.nativeDependencies) {
     outputLines.push(`native_dependencies=${fingerprints.nativeDependencies}`);
   }
+  if (fingerprints.privacyManifestInputHash) {
+    outputLines.push(`privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash}`);
+  }
   appendFileSync(outputPath, `${outputLines.join('\n')}\n`);
 }
 
@@ -52,6 +55,7 @@ function main() {
       `lockfiles=${fingerprints.reactNativeArtifactInputCount ?? 'not_requested'}`,
       `native_dependencies=${fingerprints.nativeDependencies ?? 'not_requested'}`,
       `native_inputs=${fingerprints.nativeDependencyInputCount ?? 'not_requested'}`,
+      `privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash ?? 'not_requested'}`,
     ].join(' '),
   );
 }
