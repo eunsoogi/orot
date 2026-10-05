@@ -49,7 +49,6 @@ case "$suite" in
       DETOX_RECORD_VIDEOS=none
       DETOX_CAPTURE_VIEW_HIERARCHY=enabled
       DETOX_HEADLESS=true
-      OROT_DETOX_TEST_LOG_LEVEL=info
       "OROT_DETOX_RESOURCE_SAMPLING=$resource_sampling"
       OROT_DETOX_RESOURCE_LOG_PATH=)
     if [[ -n "$resource_log_arg" ]]; then command+=("$resource_log_arg"); fi
