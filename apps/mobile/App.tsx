@@ -4,6 +4,8 @@ import type { AppointmentRepository } from '@orot/storage';
 import AppointmentsScreen from './src/appointments/AppointmentsScreen';
 import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
+import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
+import { providerSelectionText } from './src/providers/selection/text';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -23,6 +25,9 @@ export default function App({
   const [hasStarted, setHasStarted] = useState(false);
   const [showAppointments, setShowAppointments] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
+  const [showProviderSelection, setShowProviderSelection] = useState(false);
+  const [selectedRecommendationProvider, setSelectedRecommendationProvider] =
+    useState('');
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
@@ -44,6 +49,17 @@ export default function App({
 
   if (showRecording) {
     return <RecordingScreen onBack={() => setShowRecording(false)} />;
+  }
+
+  if (showProviderSelection) {
+    return (
+      <ProviderSelectionFlow
+        onBack={() => setShowProviderSelection(false)}
+        onSelectionCommitted={(_, provider) =>
+          setSelectedRecommendationProvider(provider.displayName)
+        }
+      />
+    );
   }
 
   if (showAppointments) {
@@ -94,6 +110,17 @@ export default function App({
       <Text style={styles.message}>
         {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
       </Text>
+      {selectedRecommendationProvider ? (
+        <Text testID="selected-recommendation-provider">
+          {providerSelectionText.selectedPrefix}{' '}
+          {selectedRecommendationProvider}
+        </Text>
+      ) : null}
+      <Button
+        onPress={() => setShowProviderSelection(true)}
+        testID="open-provider-selection"
+        title={providerSelectionText.title}
+      />
       <Button
         onPress={() => setHasStarted(true)}
         testID="get-started"

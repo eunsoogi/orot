@@ -3,6 +3,12 @@ import type { Appointment, AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
+// Unit tests have no native window; Detox covers real device insets and hit targets.
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 test('shows the initial welcome state', async () => {
   await render(<App />);
 
@@ -19,6 +25,19 @@ test('updates the welcome message when the user gets started', async () => {
   await fireEvent.press(screen.getByRole('button', { name: '시작하기' }));
 
   expect(screen.getByText('이제 시작할 수 있어요.')).toBeTruthy();
+});
+
+test('opens the provider selection flow from the welcome screen', async () => {
+  await render(<App />);
+
+  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+
+  expect(
+    await screen.findByRole('header', { name: '추천에 사용할 AI 선택' }),
+  ).toBeTruthy();
+  expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('provider-selection-back'));
+  expect(screen.getByTestId('welcome-title')).toBeTruthy();
 });
 
 test('opens consultation recording behind an explicit consent step', async () => {

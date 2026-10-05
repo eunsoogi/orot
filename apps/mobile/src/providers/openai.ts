@@ -17,6 +17,10 @@ const EVENT_NAME = 'OpenAIProviderEvent';
 interface NativeOpenAIProviderModule {
   addListener(eventName: string): void;
   removeListeners(count: number): void;
+  listAccounts(): Promise<readonly unknown[]>;
+  signIn(existingIssuedClientID: string | null): Promise<unknown>;
+  cancelSignIn(): void;
+  signOut(issuedClientID: string): Promise<unknown>;
   listModels(
     issuedClientID: string,
   ): Promise<readonly ChatGPTPlanModelDescriptor[]>;
@@ -27,6 +31,14 @@ interface NativeOpenAIProviderModule {
   ): void;
   cancelResponse(requestId: string): void;
 }
+
+export interface OpenAIAccountSummary {
+  readonly issuedClientID: string;
+  readonly requiresSignIn: boolean;
+  readonly hasDirectPlanAccess: boolean;
+}
+
+export type OpenAISignOutResult = 'revoked' | 'localCredentialsCleared';
 
 interface NativeOpenAIProviderEvent {
   readonly requestId: string;
@@ -95,6 +107,51 @@ export async function listOpenAIPlanModels(
   return listChatGPTPlanModels(chatGPTPlanNativeBridge, issuedClientID);
 }
 
+export async function listOpenAIAccounts(): Promise<
+  readonly OpenAIAccountSummary[]
+> {
+  if (!nativeModule?.listAccounts) throw bridgeUnavailable();
+  const values = await nativeModule.listAccounts();
+  if (!Array.isArray(values)) throw invalidAccountSummary();
+  const summaries = values.map(readAccountSummary);
+  const identifiers = summaries.map(summary => summary.issuedClientID);
+  if (new Set(identifiers).size !== identifiers.length) {
+    throw invalidAccountSummary();
+  }
+  return summaries;
+}
+
+export async function signInToOpenAI(
+  existingIssuedClientID?: string,
+): Promise<OpenAIAccountSummary> {
+  if (!nativeModule?.signIn) throw bridgeUnavailable();
+  if (
+    existingIssuedClientID !== undefined &&
+    !isIssuedClientID(existingIssuedClientID)
+  ) {
+    throw invalidAccountSummary();
+  }
+  return readAccountSummary(
+    await nativeModule.signIn(existingIssuedClientID ?? null),
+  );
+}
+
+export function cancelOpenAISignIn(): void {
+  nativeModule?.cancelSignIn();
+}
+
+export async function signOutFromOpenAI(
+  issuedClientID: string,
+): Promise<OpenAISignOutResult> {
+  if (!nativeModule?.signOut) throw bridgeUnavailable();
+  if (!isIssuedClientID(issuedClientID)) throw invalidAccountSummary();
+  const result = await nativeModule.signOut(issuedClientID);
+  if (result !== 'revoked' && result !== 'localCredentialsCleared') {
+    throw invalidAccountSummary();
+  }
+  return result;
+}
+
 export function createOpenAIPlanProvider(
   issuedClientID: string,
   model: ChatGPTPlanModelDescriptor | ChatGPTPlanModel,
@@ -148,11 +205,46 @@ function isToolCall(value: unknown): value is ChatGPTPlanNativeToolCall {
   );
 }
 
+function readAccountSummary(value: unknown): OpenAIAccountSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw invalidAccountSummary();
+  }
+  const summary = value as Record<string, unknown>;
+  const keys = Object.keys(summary).sort();
+  if (
+    keys.join(',') !== 'hasDirectPlanAccess,issuedClientID,requiresSignIn' ||
+    !isIssuedClientID(summary.issuedClientID) ||
+    typeof summary.requiresSignIn !== 'boolean' ||
+    typeof summary.hasDirectPlanAccess !== 'boolean'
+  ) {
+    throw invalidAccountSummary();
+  }
+  return {
+    issuedClientID: summary.issuedClientID,
+    requiresSignIn: summary.requiresSignIn,
+    hasDirectPlanAccess: summary.hasDirectPlanAccess,
+  };
+}
+
+function isIssuedClientID(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value !== 'dynamic_agent_client' &&
+    /^[A-Za-z0-9._-]{1,256}$/.test(value)
+  );
+}
+
 function bridgeUnavailable(): Error {
   const error = new Error('The ChatGPT plan native bridge is not registered.');
   Object.assign(error, {
     code: 'NATIVE_MODULE_UNAVAILABLE',
     kind: 'provider' satisfies ChatGPTPlanNativeError['kind'],
   });
+  return error;
+}
+
+function invalidAccountSummary(): Error {
+  const error = new Error('The ChatGPT account summary is invalid.');
+  Object.assign(error, { code: 'INVALID_CHATGPT_ACCOUNT_SUMMARY' });
   return error;
 }
