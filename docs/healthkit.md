@@ -70,7 +70,7 @@ pnpm exec detox test --config-path e2e/blood-pressure-probe.detox.config.js \
   --artifacts-location "$OROT_BLOOD_PRESSURE_ARTIFACTS_DIR"
 ```
 
-This probe runs the production blood-pressure importer against the native synthetic anchored-change fixture and an in-memory repository adapter. It verifies both component values, replay behavior, and `notObservable` authorization while keeping production queries unrun and personal values withheld. It does not establish real HealthKit sample visibility or durable SQLCipher persistence.
+This probe runs the production blood-pressure importer against the native synthetic anchored-change fixture and the app's SQLCipher repository. The first launch verifies both component rows, commits the HealthKit cursor, and replays the fixture without duplicate writes. Detox then terminates and relaunches the app; the second launch reads the observations and cursor back from encrypted storage. This proves the synthetic persistence and process-restart path on the Simulator. It does not query real HealthKit samples: `productionQuery=notRun`, `productionSamples=unverified`, and personal values are withheld. Read authorization remains `notObservable`, and the probe performs no HealthKit writes. The imported canonical pressure values are in mmHg; the source's original amount and display unit remain unavailable through the current HealthKit contract.
 
 ## Apple API references
 
