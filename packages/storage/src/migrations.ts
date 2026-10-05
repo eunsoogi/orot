@@ -2,7 +2,7 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -39,26 +39,35 @@ async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   }
 }
 
-async function makeHealthObservationRecordedAtNullable(transaction: SqlExecutor): Promise<void> {
-  const table = await transaction.execute('PRAGMA table_info(health_observations)');
+async function makeRecordedAtNullable(
+  transaction: SqlExecutor,
+  tableName: 'health_observations' | 'dose_events',
+): Promise<void> {
+  const table = await transaction.execute('PRAGMA table_info(' + tableName + ')');
   const recordedAt = table.rows.find((column) => column.name === 'recorded_at');
   if (!recordedAt || Number(recordedAt.notnull) === 0) return;
 
-  // Rebuild only this table so existing observation rows and their source times survive v4.
-  await transaction.execute('DROP INDEX IF EXISTS health_observations_effective_at_idx');
+  // Preserve existing rows and indexed lookups while allowing the source time to remain unknown.
+  const replacement = tableName + '_v5';
+  await transaction.execute('DROP INDEX IF EXISTS ' + tableName + '_effective_at_idx');
   await transaction.execute(
-    'CREATE TABLE health_observations_v4 (' +
+    'CREATE TABLE ' +
+      replacement +
+      ' (' +
       'id TEXT PRIMARY KEY NOT NULL, effective_at TEXT NOT NULL, recorded_at TEXT, ' +
       'ingested_at TEXT NOT NULL, payload_json TEXT NOT NULL CHECK (json_valid(payload_json)))',
   );
   await transaction.execute(
-    'INSERT INTO health_observations_v4 (id, effective_at, recorded_at, ingested_at, payload_json) ' +
-      'SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM health_observations',
+    'INSERT INTO ' +
+      replacement +
+      ' (id, effective_at, recorded_at, ingested_at, payload_json) ' +
+      'SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM ' +
+      tableName,
   );
-  await transaction.execute('DROP TABLE health_observations');
-  await transaction.execute('ALTER TABLE health_observations_v4 RENAME TO health_observations');
+  await transaction.execute('DROP TABLE ' + tableName);
+  await transaction.execute('ALTER TABLE ' + replacement + ' RENAME TO ' + tableName);
   await transaction.execute(
-    'CREATE INDEX health_observations_effective_at_idx ON health_observations (effective_at)',
+    'CREATE INDEX ' + tableName + '_effective_at_idx ON ' + tableName + ' (effective_at)',
   );
 }
 
@@ -149,12 +158,13 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
         await transaction.execute('DROP TABLE records');
       }
     } else {
-      // Version 3 adds the medication-definition table without changing existing records.
+      // Add newly declared record tables, then preserve older rows while changing their schema.
       await createInitialTables(transaction);
     }
-    await makeHealthObservationRecordedAtNullable(transaction);
+    await makeRecordedAtNullable(transaction, 'health_observations');
+    await makeRecordedAtNullable(transaction, 'dose_events');
     await createSourceEvidenceIntegrity(transaction);
     await createSyncCheckpoints(transaction);
-    await transaction.execute('PRAGMA user_version = 4');
+    await transaction.execute('PRAGMA user_version = 5');
   });
 }

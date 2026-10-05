@@ -113,7 +113,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(4);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(5);
     expect(
       (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
     ).toHaveLength(0);
@@ -140,7 +140,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(4);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(5);
     expect(
       (
         await database.execute(
