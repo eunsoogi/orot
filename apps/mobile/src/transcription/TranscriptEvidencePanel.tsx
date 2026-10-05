@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, ScrollView, Text, View } from 'react-native';
+import { Button, Text, View } from 'react-native';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
 import { t } from '../i18n';
 import TranscriptEvidenceItem from './TranscriptEvidenceItem';
@@ -172,13 +172,8 @@ export default function TranscriptEvidencePanel({
               })}
             </Text>
           ) : null}
-          {/* Keep correction actions reachable when the iOS keyboard covers this bounded evidence list. */}
-          <ScrollView
-            automaticallyAdjustKeyboardInsets
-            style={styles.list}
-            contentContainerStyle={styles.content}
-            testID="transcript-segment-list"
-          >
+          {/* The recording screen owns scrolling so nested transcript lists do not trap review actions on compact screens. */}
+          <View style={styles.segments} testID="transcript-segment-list">
             {latest.map(segment => {
               const history = view.segments.filter(
                 revision =>
@@ -205,7 +200,7 @@ export default function TranscriptEvidencePanel({
                 />
               );
             })}
-          </ScrollView>
+          </View>
         </>
       ) : null}
     </View>

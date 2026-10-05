@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import RecordingScreen from '../RecordingScreen';
+import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import {
   completed,
   createService,
@@ -47,6 +48,34 @@ test('requires an explicit consent action and completes a local source link', as
     /00:12/,
   );
   expect(screen.getByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
+});
+
+test('exposes transcript review from the recording screen', async () => {
+  const { service } = createService();
+  const transcriptService: TranscriptEvidenceService = {
+    load: jest.fn(async () => ({
+      source: savedSource,
+      segments: [],
+      staleArtifacts: [],
+    })),
+    transcribe: jest.fn(async () => []),
+    correct: jest.fn(),
+    play: jest.fn(),
+  };
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      service={service}
+      transcriptService={transcriptService}
+    />,
+  );
+
+  expect(await screen.findByText('전사 검토')).toBeTruthy();
+  expect(
+    await screen.findByText('이 녹음에는 저장된 전사 내용이 없어요.'),
+  ).toBeTruthy();
+  expect(screen.getByTestId('recording-controls-scroll')).toBeTruthy();
+  expect(transcriptService.load).toHaveBeenCalledWith(undefined);
 });
 
 test('keeps an interrupted recording paused until the user resumes it', async () => {

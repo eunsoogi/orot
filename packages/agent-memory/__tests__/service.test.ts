@@ -39,6 +39,45 @@ describe('on-device agent memory lifecycle', () => {
     await memory.close();
   });
 
+  it('hides memory from a superseded transcript revision during recall and after reopening', async () => {
+    const storage = new PersistentMemoryStorage();
+    const memory = await createAgentMemory({ embedder, storage });
+    const transcriptRevision = 'recording-1:segment:0:r1';
+    const transcriptMemory = {
+      ...preference,
+      provenance: {
+        ...preference.provenance,
+        sourceIds: [transcriptRevision],
+        sourceDates: [
+          {
+            sourceId: transcriptRevision,
+            date: '2026-10-05T10:00:06.000Z',
+          },
+        ],
+      },
+    };
+    await memory.remember(transcriptMemory);
+
+    storage.invalidatedSourceIds.add(transcriptRevision);
+
+    await expect(memory.recall(transcriptMemory.text, { minSimilarity: 0.999 })).resolves.toEqual(
+      [],
+    );
+    await expect(memory.remember(transcriptMemory)).rejects.toThrow(
+      'superseded transcript revision',
+    );
+    await memory.close();
+
+    const reopened = await createAgentMemory({ embedder, storage });
+    await expect(reopened.recall(transcriptMemory.text, { minSimilarity: 0.999 })).resolves.toEqual(
+      [],
+    );
+    await expect(reopened.remember(transcriptMemory)).rejects.toThrow(
+      'superseded transcript revision',
+    );
+    await reopened.close();
+  });
+
   it('serializes concurrent corrections and keeps one durable record for the key', async () => {
     const storage = new PersistentMemoryStorage();
     const memory = await createAgentMemory({ embedder, storage });

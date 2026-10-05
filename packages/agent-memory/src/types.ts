@@ -54,6 +54,7 @@ export interface PersistedMemoryRecord extends MemoryRecord {}
 export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listRecords(): Promise<PersistedMemoryRecord[]>;
   listRemovedSourceIds(): Promise<string[]>;
+  listInvalidatedSourceIds(): Promise<string[]>;
   markSourceRemoved(sourceId: string): Promise<void>;
   beginBatch(): void;
   commitBatch(): Promise<void>;

@@ -1,8 +1,15 @@
-import type { SqlDatabase, SqlTransaction } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
 } from '@orot/agent-memory';
+import {
+  assertNoSourceReference,
+  decodeAgentMemoryRecord,
+  insertAgentMemoryRecord,
+  listSupersededTranscriptRevisionIds,
+  referencesAnySource,
+} from './agentMemoryStorageRecords';
 
 type PendingWrite = PersistedMemoryRecord | null;
 interface PendingBatch {
@@ -19,13 +26,35 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
 
   async load(): Promise<PersistedMemoryRecord[]> {
     await this.ensureTable();
-    const result = await this.database.execute(
-      'SELECT record_json FROM agent_memory_records ORDER BY id',
-    );
-    const removedSourceIds = new Set(await this.listRemovedSourceIds());
-    return result.rows
-      .map(row => decodeRecord(row.record_json))
-      .filter(record => !referencesRemovedSource(record, removedSourceIds));
+    const retained: PersistedMemoryRecord[] = [];
+    await this.database.transaction(async transaction => {
+      const removedResult = await transaction.execute(
+        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+      );
+      const removedSourceIds = new Set(
+        removedResult.rows.flatMap(row =>
+          typeof row.source_id === 'string' ? [row.source_id] : [],
+        ),
+      );
+      const invalidatedSourceIds =
+        await listSupersededTranscriptRevisionIds(transaction);
+      const result = await transaction.execute(
+        'SELECT id, record_json FROM agent_memory_records ORDER BY id',
+      );
+      for (const row of result.rows) {
+        const record = decodeAgentMemoryRecord(row.record_json);
+        if (
+          referencesAnySource(record, removedSourceIds) ||
+          referencesAnySource(record, invalidatedSourceIds)
+        ) {
+          await transaction.execute(
+            'DELETE FROM agent_memory_records WHERE id = ?',
+            [record.id],
+          );
+        } else retained.push(record);
+      }
+    });
+    return retained;
   }
 
   async listRecords(): Promise<PersistedMemoryRecord[]> {
@@ -61,10 +90,20 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
           typeof row.source_id === 'string' ? [row.source_id] : [],
         ),
       );
+      const invalidatedSourceIds =
+        await listSupersededTranscriptRevisionIds(transaction);
       for (const record of records)
-        assertNoRemovedSourceReference(record, removedSourceIds);
+        assertNoSourceReference(
+          record,
+          removedSourceIds,
+          'Memory cannot reference a source being or already removed.',
+        );
+      const currentRecords = records.filter(
+        record => !referencesAnySource(record, invalidatedSourceIds),
+      );
       await transaction.execute('DELETE FROM agent_memory_records');
-      for (const record of records) await insertRecord(transaction, record);
+      for (const record of currentRecords)
+        await insertAgentMemoryRecord(transaction, record);
     });
   }
 
@@ -76,6 +115,11 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     return result.rows.flatMap(row =>
       typeof row.source_id === 'string' ? [row.source_id] : [],
     );
+  }
+
+  async listInvalidatedSourceIds(): Promise<string[]> {
+    await this.ensureTable();
+    return [...(await listSupersededTranscriptRevisionIds(this.database))];
   }
 
   async markSourceRemoved(sourceId: string): Promise<void> {
@@ -144,16 +188,32 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       );
       for (const sourceId of removedSourceIdsToAdd)
         removedSourceIds.add(sourceId);
+      const invalidatedSourceIds =
+        await listSupersededTranscriptRevisionIds(transaction);
       for (const record of writes.values()) {
-        if (record) assertNoRemovedSourceReference(record, removedSourceIds);
+        if (record) {
+          assertNoSourceReference(
+            record,
+            removedSourceIds,
+            'Memory cannot reference a source being or already removed.',
+          );
+          assertNoSourceReference(
+            record,
+            invalidatedSourceIds,
+            'Memory cannot reference a superseded transcript revision.',
+          );
+        }
       }
-      if (removedSourceIdsToAdd.size > 0) {
+      if (removedSourceIdsToAdd.size > 0 || invalidatedSourceIds.size > 0) {
         const records = await transaction.execute(
           'SELECT id, record_json FROM agent_memory_records ORDER BY id',
         );
         for (const row of records.rows) {
-          const record = decodeRecord(row.record_json);
-          if (referencesRemovedSource(record, removedSourceIds)) {
+          const record = decodeAgentMemoryRecord(row.record_json);
+          if (
+            referencesAnySource(record, removedSourceIds) ||
+            referencesAnySource(record, invalidatedSourceIds)
+          ) {
             await transaction.execute(
               'DELETE FROM agent_memory_records WHERE id = ?',
               [record.id],
@@ -162,7 +222,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
         }
       }
       for (const [id, record] of writes) {
-        if (record) await insertRecord(transaction, record);
+        if (record) await insertAgentMemoryRecord(transaction, record);
         else
           await transaction.execute(
             'DELETE FROM agent_memory_records WHERE id = ?',
@@ -177,72 +237,4 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       }
     });
   }
-}
-
-function referencesRemovedSource(
-  record: PersistedMemoryRecord,
-  removedSourceIds: Set<string>,
-): boolean {
-  const provenance = record.meta.provenance;
-  if (!provenance || typeof provenance !== 'object') return false;
-  const sourceIds = (provenance as { sourceIds?: unknown }).sourceIds;
-  return (
-    Array.isArray(sourceIds) &&
-    sourceIds.some(
-      sourceId =>
-        typeof sourceId === 'string' && removedSourceIds.has(sourceId),
-    )
-  );
-}
-
-function assertNoRemovedSourceReference(
-  record: PersistedMemoryRecord,
-  removedSourceIds: Set<string>,
-): void {
-  if (referencesRemovedSource(record, removedSourceIds)) {
-    throw new Error(
-      'Memory cannot reference a source being or already removed.',
-    );
-  }
-}
-
-async function insertRecord(
-  transaction: SqlTransaction,
-  record: PersistedMemoryRecord,
-): Promise<void> {
-  const serialized = JSON.stringify({
-    ...record,
-    vector: Array.from(record.vector),
-  });
-  await transaction.execute(
-    'INSERT OR REPLACE INTO agent_memory_records (id, record_json) VALUES (?, ?)',
-    [record.id, serialized],
-  );
-}
-
-function decodeRecord(value: unknown): PersistedMemoryRecord {
-  if (typeof value !== 'string')
-    throw new Error('Encrypted agent-memory data is invalid.');
-  const parsed = JSON.parse(value) as Omit<PersistedMemoryRecord, 'vector'> & {
-    vector?: unknown;
-  };
-  if (
-    typeof parsed.id !== 'string' ||
-    typeof parsed.text !== 'string' ||
-    !Array.isArray(parsed.vector) ||
-    parsed.vector.some(vectorValue => typeof vectorValue !== 'number') ||
-    !Array.isArray(parsed.tags) ||
-    !Array.isArray(parsed.entities) ||
-    typeof parsed.importance !== 'number' ||
-    !parsed.meta ||
-    typeof parsed.meta !== 'object' ||
-    typeof parsed.createdAt !== 'number' ||
-    typeof parsed.reinforcements !== 'number'
-  ) {
-    throw new Error('Encrypted agent-memory data is invalid.');
-  }
-  return {
-    ...parsed,
-    vector: Float32Array.from(parsed.vector),
-  } as PersistedMemoryRecord;
 }

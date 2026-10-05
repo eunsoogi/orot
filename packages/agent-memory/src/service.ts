@@ -75,10 +75,15 @@ class LocalAgentMemory implements AgentMemoryService {
   ): Promise<AgentMemoryHit[]> {
     return this.enqueue(async () => {
       if (!query.trim()) throw new Error('A non-empty memory query is required.');
+      // Transcript corrections can arrive while this memory engine remains open.
+      const invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
       const hits = await (await this.getEngine()).recall(query, { ...options, graph: false });
       return hits.flatMap((hit) => {
         const metadata = metadataFrom(hit.meta);
         if (!metadata || !isAgentMemoryKind(metadata.kind) || !isProvenance(metadata.provenance)) {
+          return [];
+        }
+        if (metadata.provenance.sourceIds.some((sourceId) => invalidatedSourceIds.has(sourceId))) {
           return [];
         }
         return [
@@ -157,6 +162,12 @@ class LocalAgentMemory implements AgentMemoryService {
 
   private async write(input: AgentMemoryInput): Promise<string> {
     const normalized = validateInput(input);
+    const invalidatedSourceIds = new Set(await this.storage.listInvalidatedSourceIds());
+    const invalidatedSourceId = normalized.provenance.sourceIds.find((sourceId) =>
+      invalidatedSourceIds.has(sourceId),
+    );
+    if (invalidatedSourceId)
+      throw new Error('Memory cannot reference a superseded transcript revision.');
     const removedSourceId = normalized.provenance.sourceIds.find((sourceId) =>
       this.removedSourceIds.has(sourceId),
     );
