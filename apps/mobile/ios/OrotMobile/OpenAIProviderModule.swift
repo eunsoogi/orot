@@ -157,7 +157,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         }
     #endif
 
-    private var activeClient: ChatGPTOAuthClient {
+    var activeClient: ChatGPTOAuthClient {
         #if DEBUG && targetEnvironment(simulator)
             lock.lock()
             let fixtureClient = simulatorFixture?.client

@@ -44,6 +44,59 @@ public final class KeychainChatGPTCredentialStore: ChatGPTCredentialStore, @unch
 
         lock.lock()
         defer { lock.unlock() }
+        return try loadAccountLocked(issuedClientID: issuedClientID)
+    }
+
+    public func listAccounts() throws -> [ChatGPTStoredAccount] {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        query.removeValue(forKey: kSecAttrAccount as String)
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound {
+            return []
+        }
+        guard status == errSecSuccess else {
+            throw ChatGPTOAuthError.credentialStoreUnavailable
+        }
+
+        let entries: [[String: Any]]
+        if let allEntries = result as? [[String: Any]] {
+            entries = allEntries
+        } else if let oneEntry = result as? [String: Any] {
+            entries = [oneEntry]
+        } else {
+            throw ChatGPTOAuthError.credentialStoreUnavailable
+        }
+
+        let issuedClientIDs = try entries.compactMap { entry -> String? in
+            guard let accountKey = entry[kSecAttrAccount as String] as? String,
+                  accountKey.hasPrefix("issued-client:")
+            else {
+                return nil
+            }
+            let issuedClientID = String(accountKey.dropFirst("issued-client:".count))
+            guard Self.isValidIssuedClientID(issuedClientID) else {
+                throw ChatGPTOAuthError.credentialStoreUnavailable
+            }
+            return issuedClientID
+        }
+
+        // Resolve each identifier through the same validation path as single-account reads.
+        return try issuedClientIDs.sorted().compactMap { issuedClientID in
+            try loadAccountLocked(issuedClientID: issuedClientID)
+        }
+    }
+
+    private func loadAccountLocked(issuedClientID: String) throws -> ChatGPTStoredAccount? {
         guard let data = try readData(account: Self.accountKey(issuedClientID)) else { return nil }
         guard let account = try? decoder.decode(ChatGPTStoredAccount.self, from: data),
               account.issuedClientID == issuedClientID,
