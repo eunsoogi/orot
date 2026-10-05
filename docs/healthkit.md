@@ -36,14 +36,38 @@ The dedicated probe can be built and run with `pnpm exec detox test --config-pat
 
 The iOS Simulator cannot establish real device data availability, a user's read grant, or the contents of the user's HealthKit store. The probe logs real HealthKit availability and labels all record responses as synthetic; it does not claim physical-device or real-sample verification.
 
-The dedicated blood-pressure probe can be run from `apps/mobile` with a newly created, task-owned Simulator and unique paths/port:
+After installing workspace dependencies and synchronizing iOS Pods from the repository root, create a task-owned Simulator and choose unique DerivedData and artifact paths plus a free Metro port (the example uses 8222):
 
 ```sh
-OROT_BLOOD_PRESSURE_SIMULATOR_UDID=<dedicated-simulator-uuid> \
-OROT_BLOOD_PRESSURE_DERIVED_DATA_PATH=<dedicated-derived-data-path> \
-OROT_BLOOD_PRESSURE_METRO_PORT=<dedicated-port> \
-pnpm exec detox test --config-path e2e/blood-pressure-probe.detox.config.js \
+pnpm install --frozen-lockfile
+pnpm --filter @orot/mobile ios:pods
+```
+
+From `apps/mobile`, set the same simulator, DerivedData path, and port in both terminals:
+
+```sh
+export OROT_BLOOD_PRESSURE_SIMULATOR_UDID="replace-with-dedicated-simulator-uuid"
+export OROT_BLOOD_PRESSURE_DERIVED_DATA_PATH="/tmp/orot-blood-pressure-unique-run"
+export OROT_BLOOD_PRESSURE_METRO_PORT=8222
+export OROT_BLOOD_PRESSURE_ARTIFACTS_DIR="/tmp/orot-blood-pressure-unique-run-artifacts"
+```
+
+Keep the probe-configured Metro server running in one terminal:
+
+```sh
+pnpm exec react-native start \
+  --config e2e/blood-pressure-probe.metro.config.js \
+  --port "$OROT_BLOOD_PRESSURE_METRO_PORT"
+```
+
+Build the probe app and run its Detox test from the other terminal:
+
+```sh
+pnpm exec detox build --config-path e2e/blood-pressure-probe.detox.config.js \
   --configuration ios.sim.debug.blood-pressure-probe
+pnpm exec detox test --config-path e2e/blood-pressure-probe.detox.config.js \
+  --configuration ios.sim.debug.blood-pressure-probe --headless \
+  --artifacts-location "$OROT_BLOOD_PRESSURE_ARTIFACTS_DIR"
 ```
 
 This probe runs the production blood-pressure importer against the native synthetic anchored-change fixture and an in-memory repository adapter. It verifies both component values, replay behavior, and `notObservable` authorization while keeping production queries unrun and personal values withheld. It does not establish real HealthKit sample visibility or durable SQLCipher persistence.
