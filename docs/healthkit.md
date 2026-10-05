@@ -28,6 +28,8 @@ The dedicated probe can be built and run with `pnpm exec detox test --config-pat
 
 The iOS Simulator cannot establish real device data availability, a user's read grant, or the contents of the user's HealthKit store. The probe logs real HealthKit availability and labels all record responses as synthetic; it does not claim physical-device or real-sample verification.
 
+Issue #19 has a dedicated sleep probe. From `apps/mobile`, build it with `pnpm exec detox build --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe`, then run `pnpm exec detox test --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe --headless --no-start --cleanup`. Set `OROT_SLEEP_IMPORT_DERIVED_DATA_PATH` and `OROT_SLEEP_IMPORT_SIMULATOR_UDID` to isolate the build and simulator. `--no-start` keeps Metro from replacing the embedded probe entry, and omitting `--reuse` ensures Detox installs the configured app rather than launching another probe left on the simulator. The Debug-only adapter returns one synthetic `asleepUnspecified` sample and the test checks source normalization, midnight splitting, and an explicit no-data day. It reports `device=omitted`, `source=synthetic`, and `realSamples=unverified`; this probe does not validate real sample access, incremental changes, or persisted sleep records. Issue #19 does not require a physical-device run for 0.1.0.
+
 ## Apple API references
 
 - [Authorizing access to health data](https://developer.apple.com/documentation/HealthKit/authorizing-access-to-health-data)
