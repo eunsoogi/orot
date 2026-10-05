@@ -77,3 +77,9 @@ export type {
   VisitBrief,
   VisitQuestion,
 } from './visits';
+export {
+  createTranscriptCorrection,
+  TranscriptAudioRangeSchema,
+  TranscriptEvidenceSegmentSchema,
+} from './transcripts';
+export type { TranscriptAudioRange, TranscriptEvidenceSegment } from './transcripts';

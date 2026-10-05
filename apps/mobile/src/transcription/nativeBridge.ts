@@ -3,6 +3,7 @@ import type {
   NativeSpeechTranscriptionBridge,
   NativeSpeechTranscriptionRequest,
   NativeSpeechTranscriptionResponse,
+  NativeRecordingTranscriptionRequest,
   SpeechAvailability,
 } from './types';
 
@@ -10,6 +11,9 @@ interface NativeSpeechModule {
   getAvailability(language: string): Promise<SpeechAvailability>;
   transcribeAudio(
     request: NativeSpeechTranscriptionRequest,
+  ): Promise<NativeSpeechTranscriptionResponse>;
+  transcribeRecording?(
+    request: NativeRecordingTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
 }
 
@@ -37,5 +41,17 @@ export const appleSpeechTranscriptionNativeBridge: NativeSpeechTranscriptionBrid
 
     transcribe(request) {
       return requireNativeModule().transcribeAudio(request);
+    },
+
+    transcribeRecording(request) {
+      const module = requireNativeModule();
+      if (!module.transcribeRecording) {
+        const error = new Error(
+          'The native recording transcription method is unavailable.',
+        ) as Error & { code?: string };
+        error.code = 'NATIVE_MODULE_UNAVAILABLE';
+        throw error;
+      }
+      return module.transcribeRecording(request);
     },
   };

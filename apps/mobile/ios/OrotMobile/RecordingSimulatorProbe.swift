@@ -67,3 +67,51 @@
         }
     }
 #endif
+
+import Foundation
+import React
+
+public extension RecordingModule {
+    @objc(installSyntheticTranscriptionFixture:resolver:rejecter:)
+    func installSyntheticTranscriptionFixture(
+        _ base64: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            workQueue.async {
+                do {
+                    try resolve(RecordingFileSecurity.installSyntheticTranscriptionFixture(base64: base64) as NSDictionary)
+                } catch {
+                    reject(
+                        "SYNTHETIC_FIXTURE_FAILED",
+                        "The bundled transcription fixture could not be installed: \(error.localizedDescription)",
+                        error as NSError,
+                    )
+                }
+            }
+        #else
+            reject("SYNTHETIC_FIXTURE_UNAVAILABLE", "Synthetic recording fixtures are available only in the dedicated Simulator transcription build.", nil)
+        #endif
+    }
+
+    @objc(removeSyntheticTranscriptionFixture:resolver:rejecter:)
+    func removeSyntheticTranscriptionFixture(
+        _ recordingID: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            workQueue.async {
+                do {
+                    try RecordingFileSecurity.removeSyntheticTranscriptionFixture(id: recordingID)
+                    resolve(true)
+                } catch {
+                    reject("SYNTHETIC_FIXTURE_CLEANUP_FAILED", "The bundled transcription fixture could not be removed.", error as NSError)
+                }
+            }
+        #else
+            reject("SYNTHETIC_FIXTURE_UNAVAILABLE", "Synthetic recording fixtures are available only in the dedicated Simulator transcription build.", nil)
+        #endif
+    }
+}

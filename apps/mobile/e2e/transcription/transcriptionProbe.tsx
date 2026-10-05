@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import type { SpeechAvailability } from '../../src/transcription';
 import {
   AppleOnDeviceSpeechProvider,
@@ -9,6 +8,7 @@ import {
 } from '../../src/transcription';
 import { evaluateSyntheticSpeech } from '../../src/transcription/accuracyEvaluation';
 import { decodeAudioBase64 } from '../../src/transcription/base64';
+import TranscriptionProbeView from './TranscriptionProbeView';
 import syntheticFixture from './fixtures/synthetic-korean.json';
 
 interface SyntheticTranscriptionCase {
@@ -50,7 +50,7 @@ interface TranscriptionCaseObservation {
   }[];
 }
 
-interface TranscriptionProbeReport {
+export interface TranscriptionProbeReport {
   readonly outcome:
     'running' | 'measured' | 'explicitly_unsupported' | 'failed';
   readonly providerId: string;
@@ -125,14 +125,7 @@ export function TranscriptionProbe() {
     };
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <Text testID="transcription-probe-complete">
-        {report.outcome === 'running' ? 'running' : 'complete'}
-      </Text>
-      <Text testID="transcription-probe-report">{JSON.stringify(report)}</Text>
-    </View>
-  );
+  return <TranscriptionProbeView report={report} />;
 }
 
 async function runNativeProbe(): Promise<TranscriptionProbeReport> {
@@ -238,13 +231,3 @@ function normalizeError(error: unknown): { code: string; message: string } {
     message: typeof value?.message === 'string' ? value.message : String(error),
   };
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-});
