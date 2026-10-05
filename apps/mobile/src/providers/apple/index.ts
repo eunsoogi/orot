@@ -5,4 +5,7 @@ export const appleFoundationModelsProvider = new AppleFoundationModelsProvider(
   appleFoundationModelsNativeBridge,
 );
 
-export { appleAvailabilityMessage, appleGenerationFailureMessage } from './availabilityMessage';
+export {
+  appleAvailabilityMessage,
+  appleGenerationFailureMessage,
+} from './availabilityMessage';

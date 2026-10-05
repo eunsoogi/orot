@@ -11,24 +11,24 @@ public actor ChatGPTSessionManager {
     public init(
         session: URLSession? = nil,
         credentialStore: any ChatGPTCredentialStore = KeychainChatGPTCredentialStore(),
-        refreshLeeway: TimeInterval = 60
+        refreshLeeway: TimeInterval = 60,
     ) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
         let session = session ?? URLSession(configuration: configuration)
-        self.transport = URLSessionOAuthHTTPTransport(session: session)
+        transport = URLSessionOAuthHTTPTransport(session: session)
         self.credentialStore = credentialStore
         self.refreshLeeway = max(0, refreshLeeway)
-        self.now = { Date() }
+        now = { Date() }
     }
 
     init(
         transport: any OAuthHTTPTransport,
         credentialStore: any ChatGPTCredentialStore,
         refreshLeeway: TimeInterval = 60,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
     ) {
         self.transport = transport
         self.credentialStore = credentialStore
@@ -78,13 +78,12 @@ public actor ChatGPTSessionManager {
 
         return try await ChatGPTCredentialOperationCoordinator.shared.withAccountLock(
             hostIdentifier: account.hostIdentifier,
-            invalidatingAuthorizations: true
+            invalidatingAuthorizations: true,
         ) { _ in
             try await self.finishSignOut(
                 issuedClientID: issuedClientID,
-                expectedHostIdentifier: account.hostIdentifier
+                expectedHostIdentifier: account.hostIdentifier,
             )
         }
     }
-
 }

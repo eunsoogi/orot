@@ -58,7 +58,10 @@ function bridge(overrides: Partial<CalendarBridge> = {}): CalendarBridge {
       access: 'fullAccess' as const,
       events: [],
     })),
-    findEvent: jest.fn(async () => ({ access: 'fullAccess' as const, event: null })),
+    findEvent: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: null,
+    })),
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
     ...overrides,
   };
@@ -80,16 +83,24 @@ describe('Calendar linking screen', () => {
 
     expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('calendar-connect'));
-    expect(await screen.findByTestId('calendar-candidate-selected-event')).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('calendar-candidate-selected-event'));
+    expect(
+      await screen.findByTestId('calendar-candidate-selected-event'),
+    ).toBeTruthy();
+    await fireEvent.press(
+      screen.getByTestId('calendar-candidate-selected-event'),
+    );
 
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     expect(screen.getByTestId('calendar-selection')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
 
     expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(selected);
-    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalledWith(unrelated);
-    expect(await screen.findByText('다음 외래 방문을 저장했어요.')).toBeTruthy();
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalledWith(
+      unrelated,
+    );
+    expect(
+      await screen.findByText('다음 외래 방문을 저장했어요.'),
+    ).toBeTruthy();
   });
 
   it('shows a denied permission state without saving or guessing from events', async () => {
@@ -106,9 +117,9 @@ describe('Calendar linking screen', () => {
 
     await fireEvent.press(screen.getByTestId('calendar-connect'));
 
-    expect(await screen.findByTestId('calendar-access-state')).toHaveTextContent(
-      /캘린더 접근을 허용하지 않았어요\./u,
-    );
+    expect(
+      await screen.findByTestId('calendar-access-state'),
+    ).toHaveTextContent(/캘린더 접근을 허용하지 않았어요\./u);
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   });
 
@@ -119,7 +130,10 @@ describe('Calendar linking screen', () => {
     const list = jest.fn(async () => [current]);
     const appointments = repository(list);
     const calendar = bridge({
-      findEvent: jest.fn(async () => ({ access: 'fullAccess' as const, event: changed })),
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: changed,
+      })),
     });
     const appStateSpy = jest
       .spyOn(AppState, 'addEventListener')
@@ -149,7 +163,10 @@ describe('Calendar linking screen', () => {
     const current = appointmentFor(event('deleted-event'));
     const appointments = repository(async () => [current]);
     const calendar = bridge({
-      findEvent: jest.fn(async () => ({ access: 'fullAccess' as const, event: null })),
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: null,
+      })),
     });
     const appStateSpy = jest
       .spyOn(AppState, 'addEventListener')
@@ -158,12 +175,13 @@ describe('Calendar linking screen', () => {
       await render(
         <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
       );
-      expect(await screen.findByTestId('calendar-missing-warning')).toBeTruthy();
+      expect(
+        await screen.findByTestId('calendar-missing-warning'),
+      ).toBeTruthy();
       expect(appointments.cancel).not.toHaveBeenCalled();
       expect(appointments.reconfirmCalendarEvent).not.toHaveBeenCalled();
     } finally {
       appStateSpy.mockRestore();
     }
   });
-
 });

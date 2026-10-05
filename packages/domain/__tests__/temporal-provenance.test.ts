@@ -34,7 +34,7 @@ describe('record time, provenance, and review validation', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some(issue => issue.path.join('.') === 'ingestedAt')).toBe(true);
+      expect(result.error.issues.some((issue) => issue.path.join('.') === 'ingestedAt')).toBe(true);
     }
   });
 

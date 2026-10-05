@@ -58,12 +58,24 @@ const service: RecordingService = {
 
 test('offers early and partial-file start failures in the debug Simulator probe', async () => {
   jest.mocked(isSyntheticRecordingProbeAvailable).mockReturnValue(true);
-  jest.mocked(prepareSyntheticRecordingStartFailure).mockResolvedValue(undefined);
+  jest
+    .mocked(prepareSyntheticRecordingStartFailure)
+    .mockResolvedValue(undefined);
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);
 
-  expect(await screen.findByTestId('recording-probe-fail-before-file-url')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('recording-probe-fail-before-file-url'));
-  expect(prepareSyntheticRecordingStartFailure).toHaveBeenLastCalledWith('beforeFileURL');
-  await fireEvent.press(screen.getByTestId('recording-probe-fail-after-file-created'));
-  expect(prepareSyntheticRecordingStartFailure).toHaveBeenLastCalledWith('afterFileCreated');
+  expect(
+    await screen.findByTestId('recording-probe-fail-before-file-url'),
+  ).toBeTruthy();
+  await fireEvent.press(
+    screen.getByTestId('recording-probe-fail-before-file-url'),
+  );
+  expect(prepareSyntheticRecordingStartFailure).toHaveBeenLastCalledWith(
+    'beforeFileURL',
+  );
+  await fireEvent.press(
+    screen.getByTestId('recording-probe-fail-after-file-created'),
+  );
+  expect(prepareSyntheticRecordingStartFailure).toHaveBeenLastCalledWith(
+    'afterFileCreated',
+  );
 });

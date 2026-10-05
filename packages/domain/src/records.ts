@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  RecordIdSchema,
-  RecordMetadataSchema,
-  TimestampSchema,
-  compareTimestamps,
-} from './common';
+import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const NonNegativeIntegerSchema = z.number().int().min(0);
@@ -109,10 +104,7 @@ export const EncounterSchema = RecordMetadataSchema.safeExtend({
   endedAt: TimestampSchema.optional(),
   summary: NonEmptyTextSchema.optional(),
 }).superRefine((encounter, context) => {
-  if (
-    encounter.endedAt &&
-    compareTimestamps(encounter.endedAt, encounter.effectiveAt) < 0
-  ) {
+  if (encounter.endedAt && compareTimestamps(encounter.endedAt, encounter.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['endedAt'],
@@ -143,10 +135,7 @@ export const SymptomEntrySchema = RecordMetadataSchema.safeExtend({
   severity: z.number().int().min(0).max(10).optional(),
   resolvedAt: TimestampSchema.optional(),
 }).superRefine((symptom, context) => {
-  if (
-    symptom.resolvedAt &&
-    compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0
-  ) {
+  if (symptom.resolvedAt && compareTimestamps(symptom.resolvedAt, symptom.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['resolvedAt'],

@@ -28,14 +28,16 @@ export const ko = {
   'recording.sourcePending':
     '녹음 파일은 이 기기에 보관 중이에요. 기록 연결을 다시 저장한 뒤 화면을 나갈 수 있어요.',
   'recording.retrySave': '기록 다시 저장',
-  'recording.errors.consent': '녹음을 시작하기 전에 앱에서 동의를 확인해 주세요.',
+  'recording.errors.consent':
+    '녹음을 시작하기 전에 앱에서 동의를 확인해 주세요.',
   'recording.errors.microphonePermission':
     '마이크 권한이 필요해요. 설정에서 권한을 허용한 뒤 다시 시도해 주세요.',
   'recording.errors.sourceSave':
     '녹음 파일은 이 기기에 남아 있어요. 기록 연결을 다시 시도해 주세요.',
   'recording.errors.fileProtection':
     '녹음 파일 보호 상태를 확인하지 못해 기록 연결을 보류했어요. 파일은 이 기기에 남아 있습니다.',
-  'recording.errors.generic': '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
+  'recording.errors.generic':
+    '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
   'recording.probe.synthetic': '시뮬레이터용 합성 녹음 준비',
   'recording.probe.failBeforeFile': '파일 준비 전 실패 시뮬레이션',
   'recording.probe.failAfterFile': '임시 파일 생성 후 실패 시뮬레이션',
@@ -101,14 +103,17 @@ export const ko = {
   'calendar.cancelSelection': '다른 일정 고르기',
   'calendar.confirmed': '다음 외래 방문을 저장했어요.',
   'calendar.loadError': '캘린더 일정을 불러오지 못했어요. 다시 시도해 주세요.',
-  'calendar.verifyError': '연결한 캘린더 일정을 확인하지 못했어요. 다시 시도해 주세요.',
-  'calendar.confirmError': '다음 외래 방문을 저장하지 못했어요. 다시 시도해 주세요.',
+  'calendar.verifyError':
+    '연결한 캘린더 일정을 확인하지 못했어요. 다시 시도해 주세요.',
+  'calendar.confirmError':
+    '다음 외래 방문을 저장하지 못했어요. 다시 시도해 주세요.',
   'calendar.accessDenied':
     '캘린더 접근을 허용하지 않았어요. 설정에서 권한을 바꾼 뒤 다시 시도해 주세요.',
   'calendar.accessRestricted': '이 기기에서는 캘린더에 접근할 수 없어요.',
   'calendar.fullAccessRequired':
     '캘린더 일정을 읽으려면 전체 접근 권한이 필요해요. 설정에서 읽기 및 쓰기 접근을 허용해 주세요.',
-  'calendar.tryAgainAfterPermission': '권한을 확인할 수 없어요. 다시 시도해 주세요.',
+  'calendar.tryAgainAfterPermission':
+    '권한을 확인할 수 없어요. 다시 시도해 주세요.',
   'calendar.nextVisit': '다음 외래 방문',
   'calendar.eventNoTitle': '제목 없는 일정',
   'calendar.allDay': '하루 종일',
@@ -117,10 +122,13 @@ export const ko = {
   'calendar.reviewChange': '변경 내용 확인',
   'calendar.eventMissing':
     '연결한 일정을 찾을 수 없어요. 삭제되었거나 일정 정보가 바뀌었을 수 있어요. 다른 일정을 선택해 확인해 주세요.',
-  'provider.apple.available': '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
+  'provider.apple.available':
+    '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
   'provider.apple.modelNotReady': 'Apple Intelligence 모델을 준비하고 있어요.',
-  'provider.apple.unsupportedDevice': '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
+  'provider.apple.unsupportedDevice':
+    '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
   'provider.apple.unsupportedLanguage': '현재 한국어를 지원하지 않아요.',
-  'provider.apple.generationFailed': '질문을 만들지 못했어요. 다시 시도해 주세요.',
+  'provider.apple.generationFailed':
+    '질문을 만들지 못했어요. 다시 시도해 주세요.',
 } as const;

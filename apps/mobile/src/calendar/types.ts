@@ -3,11 +3,7 @@ import type { CalendarAppointmentInput } from '@orot/storage';
 export type CalendarEvent = CalendarAppointmentInput;
 
 export type CalendarAccessState =
-  | 'fullAccess'
-  | 'writeOnly'
-  | 'notDetermined'
-  | 'denied'
-  | 'restricted';
+  'fullAccess' | 'writeOnly' | 'notDetermined' | 'denied' | 'restricted';
 
 export interface UpcomingCalendarEvents {
   access: CalendarAccessState;

@@ -109,9 +109,7 @@ describe('appointment domain API', () => {
       ],
     };
 
-    expect(CalendarAppointmentSnapshotSchema.safeParse(floatingSnapshot).success).toBe(
-      true,
-    );
+    expect(CalendarAppointmentSnapshotSchema.safeParse(floatingSnapshot).success).toBe(true);
     expect(
       CalendarAppointmentSnapshotSchema.safeParse({
         ...floatingSnapshot,
@@ -168,11 +166,7 @@ describe('appointment domain API', () => {
       },
     });
     expect(() =>
-      updateAppointment(
-        confirmed,
-        { calendarEventIdentifier: 'without-snapshot' },
-        timestamp,
-      ),
+      updateAppointment(confirmed, { calendarEventIdentifier: 'without-snapshot' }, timestamp),
     ).toThrow();
   });
 

@@ -2,7 +2,9 @@
 const simulatorId = process.env.OROT_CALENDAR_DETOX_SIMULATOR_UDID;
 
 if (!simulatorId) {
-  throw new Error('OROT_CALENDAR_DETOX_SIMULATOR_UDID must name the assigned simulator.');
+  throw new Error(
+    'OROT_CALENDAR_DETOX_SIMULATOR_UDID must name the assigned simulator.',
+  );
 }
 
 module.exports = {
@@ -16,8 +18,10 @@ module.exports = {
   apps: {
     'ios.release.calendar': {
       type: 'ios.app',
-      binaryPath: 'ios/build-calendar/Build/Products/Release-iphonesimulator/Orot.app',
-      build: "DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination \"platform=iOS Simulator,id=$OROT_CALENDAR_DETOX_SIMULATOR_UDID\" -derivedDataPath ios/build-calendar CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- GCC_PREPROCESSOR_DEFINITIONS='$(inherited) OROT_CALENDAR_DETOX=1' SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) RELEASE OROT_CALENDAR_DETOX' OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/calendarProbeEntry.tsx",
+      binaryPath:
+        'ios/build-calendar/Build/Products/Release-iphonesimulator/Orot.app',
+      build:
+        "DEVELOPMENT_TEAM=OROTSIM000 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination \"platform=iOS Simulator,id=$OROT_CALENDAR_DETOX_SIMULATOR_UDID\" -derivedDataPath ios/build-calendar CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- GCC_PREPROCESSOR_DEFINITIONS='$(inherited) OROT_CALENDAR_DETOX=1' SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) RELEASE OROT_CALENDAR_DETOX' OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/calendarProbeEntry.tsx",
     },
   },
   devices: {

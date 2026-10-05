@@ -19,8 +19,10 @@ export function calendarSnapshotsEqual(
   left: CalendarEvent['calendarEventSnapshot'],
   right: CalendarEvent['calendarEventSnapshot'],
 ): boolean {
-  return canonicalJson(comparableSnapshot(left)) ===
-    canonicalJson(comparableSnapshot(right));
+  return (
+    canonicalJson(comparableSnapshot(left)) ===
+    canonicalJson(comparableSnapshot(right))
+  );
 }
 
 function comparableSnapshot(

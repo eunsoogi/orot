@@ -3,7 +3,7 @@ import Foundation
 extension ChatGPTSessionManager {
     func refreshSingleFlight(
         _ account: ChatGPTStoredAccount,
-        forceRefresh: Bool
+        forceRefresh: Bool,
     ) async throws -> ChatGPTStoredAccount {
         guard !signingOut.contains(account.issuedClientID) else {
             throw ChatGPTOAuthError.sessionSigningOut
@@ -15,7 +15,7 @@ extension ChatGPTSessionManager {
 
         let task = Task {
             try await ChatGPTCredentialOperationCoordinator.shared.withAccountLock(
-                hostIdentifier: account.hostIdentifier
+                hostIdentifier: account.hostIdentifier,
             ) { _ in
                 try await self.refreshUnderLock(account, forceRefresh: forceRefresh)
             }
@@ -33,13 +33,14 @@ extension ChatGPTSessionManager {
 
     private func refreshUnderLock(
         _ requestedAccount: ChatGPTStoredAccount,
-        forceRefresh: Bool
+        forceRefresh: Bool,
     ) async throws -> ChatGPTStoredAccount {
         guard !signingOut.contains(requestedAccount.issuedClientID) else {
             throw ChatGPTOAuthError.sessionSigningOut
         }
         guard let account = try credentialStore.loadAccount(issuedClientID: requestedAccount.issuedClientID),
-              account.hostIdentifier == requestedAccount.hostIdentifier else {
+              account.hostIdentifier == requestedAccount.hostIdentifier
+        else {
             throw ChatGPTOAuthError.accountNotFound
         }
         guard let credentials = account.credentials else {
@@ -64,7 +65,8 @@ extension ChatGPTSessionManager {
 
     private func performRefresh(_ account: ChatGPTStoredAccount) async throws -> ChatGPTStoredAccount {
         guard let oldCredentials = account.credentials,
-              let refreshToken = oldCredentials.refreshToken else {
+              let refreshToken = oldCredentials.refreshToken
+        else {
             throw ChatGPTOAuthError.reauthorizationRequired
         }
 
@@ -72,7 +74,7 @@ extension ChatGPTSessionManager {
         let request = TokenExchangeRequestBuilder.buildRefresh(
             endpoint: configuration.tokenEndpoint,
             clientID: account.issuedClientID,
-            refreshToken: refreshToken
+            refreshToken: refreshToken,
         )
 
         let data: Data
@@ -101,7 +103,8 @@ extension ChatGPTSessionManager {
               let expiresIn = tokens.expiresIn,
               expiresIn.isFinite,
               expiresIn > 0,
-              tokens.scope.map(Self.isValidScopeResponse) ?? true else {
+              tokens.scope.map(Self.isValidScopeResponse) ?? true
+        else {
             throw ChatGPTOAuthError.invalidTokenResponse
         }
 
@@ -110,12 +113,12 @@ extension ChatGPTSessionManager {
             accessToken: accessToken,
             refreshToken: newRefreshToken,
             idToken: oldCredentials.idToken,
-            tokenType: "Bearer"
+            tokenType: "Bearer",
         )
         let refreshed = account.replacingCredentials(
             newCredentials,
             scopes: scopes,
-            expiresAt: now().addingTimeInterval(expiresIn)
+            expiresAt: now().addingTimeInterval(expiresIn),
         )
         try credentialStore.saveAccount(refreshed)
         return refreshed

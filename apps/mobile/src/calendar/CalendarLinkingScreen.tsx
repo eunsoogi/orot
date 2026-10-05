@@ -3,7 +3,11 @@ import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
-import type { CalendarAccessState, CalendarBridge, CalendarEvent } from './types';
+import type {
+  CalendarAccessState,
+  CalendarBridge,
+  CalendarEvent,
+} from './types';
 import { useCalendarLinking } from './useCalendarLinking';
 
 interface CalendarLinkingScreenProps {
@@ -47,7 +51,9 @@ function eventCard(
   onSelect: (event: CalendarEvent) => void,
 ) {
   return (
-    <View key={`${event.calendarEventIdentifier}-${event.calendarEventSnapshot.occurrenceDate ?? event.effectiveAt}`}>
+    <View
+      key={`${event.calendarEventIdentifier}-${event.calendarEventSnapshot.occurrenceDate ?? event.effectiveAt}`}
+    >
       <Text style={styles.eventTitle}>
         {event.calendarEventSnapshot.title || t('calendar.eventNoTitle')}
       </Text>
@@ -70,11 +76,22 @@ export default function CalendarLinkingScreen({
   const calendar = useCalendarLinking(repository, bridge);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} testID="calendar-screen">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      testID="calendar-screen"
+    >
       {onBack ? (
-        <Button onPress={onBack} testID="calendar-back" title={t('calendar.back')} />
+        <Button
+          onPress={onBack}
+          testID="calendar-back"
+          title={t('calendar.back')}
+        />
       ) : null}
-      <Text accessibilityRole="header" style={styles.title} testID="calendar-title">
+      <Text
+        accessibilityRole="header"
+        style={styles.title}
+        testID="calendar-title"
+      >
         {t('calendar.title')}
       </Text>
       <Text style={styles.message}>{t('calendar.description')}</Text>
@@ -88,7 +105,9 @@ export default function CalendarLinkingScreen({
       ) : null}
 
       {calendar.loadingAppointments ? (
-        <Text testID="calendar-storage-loading">{t('appointments.opening')}</Text>
+        <Text testID="calendar-storage-loading">
+          {t('appointments.opening')}
+        </Text>
       ) : calendar.error === t('appointments.loadError') ? (
         <Button
           onPress={calendar.reloadAppointments}
@@ -124,7 +143,11 @@ export default function CalendarLinkingScreen({
         </Text>
       ) : null}
       {calendar.error ? (
-        <Text accessibilityRole="alert" style={styles.error} testID="calendar-error">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="calendar-error"
+        >
           {calendar.error}
         </Text>
       ) : null}
@@ -197,9 +220,7 @@ export default function CalendarLinkingScreen({
       !calendar.selectedEvent ? (
         <View style={styles.card}>
           <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
-          {calendar.events.map(event =>
-            eventCard(event, calendar.selectEvent),
-          )}
+          {calendar.events.map(event => eventCard(event, calendar.selectEvent))}
         </View>
       ) : null}
     </ScrollView>

@@ -58,10 +58,12 @@ describe('on-device agent memory lifecycle', () => {
     const originalId = await memory.remember(preference);
     storage.failNextCommit = true;
 
-    await expect(memory.update({
-      ...preference,
-      text: '사용자는 외래 일정 알림을 오전 10시에 받고 싶어 한다.',
-    })).rejects.toThrow('Synthetic transaction failure.');
+    await expect(
+      memory.update({
+        ...preference,
+        text: '사용자는 외래 일정 알림을 오전 10시에 받고 싶어 한다.',
+      }),
+    ).rejects.toThrow('Synthetic transaction failure.');
 
     expect(await storage.listRecords()).toMatchObject([{ id: originalId, text: preference.text }]);
     await expect(memory.recall(preference.text, { minSimilarity: 0.999 })).resolves.toMatchObject([
@@ -105,7 +107,10 @@ describe('on-device agent memory lifecycle', () => {
       authorizeWrite: async () => ({ provenance: preference.provenance }),
       authorizeDelete: async () => true,
     });
-    const stored = JSON.parse(await authorizedTools[0].invoke(draft)) as { stored: boolean; id: string };
+    const stored = JSON.parse(await authorizedTools[0].invoke(draft)) as {
+      stored: boolean;
+      id: string;
+    };
     expect(stored.stored).toBe(true);
     await expect(authorizedTools[3].invoke({ memoryId: stored.id })).resolves.toBe(
       JSON.stringify({ deleted: true }),

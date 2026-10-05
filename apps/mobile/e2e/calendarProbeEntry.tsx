@@ -5,12 +5,14 @@ import { name as appName } from '../app.json';
 import { createCalendarBridge } from '../src/calendar/calendarBridge';
 
 function syntheticProbeRequested(): boolean {
-  const settingsManager = (NativeModules as unknown as {
-    SettingsManager?: {
-      settings?: Record<string, unknown>;
-      getConstants?: () => { settings?: Record<string, unknown> };
-    };
-  }).SettingsManager;
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
   const value =
     settingsManager?.settings?.OROT_CALENDAR_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_CALENDAR_PROBE;

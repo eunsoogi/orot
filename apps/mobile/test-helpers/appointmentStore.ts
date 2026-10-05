@@ -26,19 +26,21 @@ export function createAppointmentStore(
     appointments = [...appointments, appointment];
     return appointment;
   });
-  const confirmCalendarEvent = jest.fn(async (input: CalendarAppointmentInput) => {
-    const appointment = {
-      id: 'calendar-' + ++nextId,
-      ...input,
-      status: 'scheduled',
-      recordedAt,
-      ingestedAt: recordedAt,
-      provenance: { origin: 'user_reported', sourceRecordIds: [] },
-      reviewState: { status: 'unreviewed' },
-    } as Appointment;
-    appointments = [...appointments, appointment];
-    return appointment;
-  });
+  const confirmCalendarEvent = jest.fn(
+    async (input: CalendarAppointmentInput) => {
+      const appointment = {
+        id: 'calendar-' + ++nextId,
+        ...input,
+        status: 'scheduled',
+        recordedAt,
+        ingestedAt: recordedAt,
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+      } as Appointment;
+      appointments = [...appointments, appointment];
+      return appointment;
+    },
+  );
   const reconfirmCalendarEvent = jest.fn(
     async (id: string, input: CalendarAppointmentInput) => {
       const current = appointments.find(item => item.id === id);
@@ -47,13 +49,16 @@ export function createAppointmentStore(
         ...current,
         ...input,
         status:
-          input.effectiveAt !== current.effectiveAt || input.endsAt !== current.endsAt
+          input.effectiveAt !== current.effectiveAt ||
+          input.endsAt !== current.endsAt
             ? 'rescheduled'
             : current.status,
         recordedAt,
         ingestedAt: recordedAt,
       };
-      appointments = appointments.map(item => (item.id === id ? changed : item));
+      appointments = appointments.map(item =>
+        item.id === id ? changed : item,
+      );
       return changed;
     },
   );
@@ -67,17 +72,20 @@ export function createAppointmentStore(
         changes.effectiveAt && changes.effectiveAt !== current.effectiveAt
           ? 'rescheduled'
           : current.status,
-      note: changes.note === null ? undefined : changes.note ?? current.note,
+      note: changes.note === null ? undefined : (changes.note ?? current.note),
       endsAt:
-        changes.endsAt === null ? undefined : changes.endsAt ?? current.endsAt,
+        changes.endsAt === null
+          ? undefined
+          : (changes.endsAt ?? current.endsAt),
       calendarEventIdentifier:
         changes.calendarEventIdentifier === null
           ? undefined
-          : changes.calendarEventIdentifier ?? current.calendarEventIdentifier,
+          : (changes.calendarEventIdentifier ??
+            current.calendarEventIdentifier),
       calendarEventSnapshot:
         changes.calendarEventSnapshot === null
           ? undefined
-          : changes.calendarEventSnapshot ?? current.calendarEventSnapshot,
+          : (changes.calendarEventSnapshot ?? current.calendarEventSnapshot),
       recordedAt,
       ingestedAt: recordedAt,
     };

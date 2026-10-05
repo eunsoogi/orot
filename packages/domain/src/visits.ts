@@ -1,15 +1,10 @@
 import { z } from 'zod';
-import {
-  RecordIdSchema,
-  RecordMetadataSchema,
-  TimestampSchema,
-  compareTimestamps,
-} from './common';
+import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const UniqueRecordIdsSchema = z
   .array(RecordIdSchema)
-  .refine(ids => new Set(ids).size === ids.length, 'Record IDs must be unique.');
+  .refine((ids) => new Set(ids).size === ids.length, 'Record IDs must be unique.');
 
 export const AppointmentStatusSchema = z.enum([
   'scheduled',
@@ -24,28 +19,30 @@ const NonZeroIntegerSchema = (minimum: number, maximum: number) =>
     .int()
     .min(minimum)
     .max(maximum)
-    .refine(value => value !== 0);
+    .refine((value) => value !== 0);
 
 const FloatingCalendarDateTimeSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/)
-  .refine(value => {
+  .refine((value) => {
     const date = new Date(`${value}Z`);
     return Number.isFinite(date.getTime()) && date.toISOString() === `${value}Z`;
   }, 'Floating Calendar date and time components must be a valid Gregorian date.');
 
 const CalendarRecurrenceEndSchema = z.discriminatedUnion('kind', [
-  z.strictObject({
-    kind: z.literal('date'),
-    date: TimestampSchema.nullable(),
-    floatingDateTime: FloatingCalendarDateTimeSchema.nullable().optional(),
-  }).refine(
-    value =>
-      value.date === null
-        ? typeof value.floatingDateTime === 'string'
-        : value.floatingDateTime == null,
-    'A recurrence end must use either an absolute date or floating civil time.',
-  ),
+  z
+    .strictObject({
+      kind: z.literal('date'),
+      date: TimestampSchema.nullable(),
+      floatingDateTime: FloatingCalendarDateTimeSchema.nullable().optional(),
+    })
+    .refine(
+      (value) =>
+        value.date === null
+          ? typeof value.floatingDateTime === 'string'
+          : value.floatingDateTime == null,
+      'A recurrence end must use either an absolute date or floating civil time.',
+    ),
   z.strictObject({ kind: z.literal('count'), occurrenceCount: z.number().int().min(1) }),
 ]);
 
@@ -102,10 +99,7 @@ export const AppointmentSchema = RecordMetadataSchema.safeExtend({
       message: 'A Calendar event identifier and snapshot must be stored together.',
     });
   }
-  if (
-    appointment.endsAt &&
-    compareTimestamps(appointment.endsAt, appointment.effectiveAt) < 0
-  ) {
+  if (appointment.endsAt && compareTimestamps(appointment.endsAt, appointment.effectiveAt) < 0) {
     context.addIssue({
       code: 'custom',
       path: ['endsAt'],
@@ -145,15 +139,14 @@ export const AppointmentUpdateInputSchema = z
     calendarEventIdentifier: NonEmptyTextSchema.nullable().optional(),
     calendarEventSnapshot: CalendarAppointmentSnapshotSchema.nullable().optional(),
   })
-  .refine(changes => Object.keys(changes).length > 0, 'Provide at least one appointment change.')
+  .refine((changes) => Object.keys(changes).length > 0, 'Provide at least one appointment change.')
   .superRefine((changes, context) => {
     const hasIdentifier = changes.calendarEventIdentifier !== undefined;
     const hasSnapshot = changes.calendarEventSnapshot !== undefined;
     if (
       hasIdentifier !== hasSnapshot ||
       (hasIdentifier &&
-        (changes.calendarEventIdentifier === null) !==
-          (changes.calendarEventSnapshot === null))
+        (changes.calendarEventIdentifier === null) !== (changes.calendarEventSnapshot === null))
     ) {
       context.addIssue({
         code: 'custom',
@@ -171,7 +164,9 @@ function reviewStateAfterChange(appointment: Appointment): Appointment['reviewSt
     : appointment.reviewState;
 }
 
-export function createAppointment(input: z.input<typeof AppointmentCreateInputSchema>): Appointment {
+export function createAppointment(
+  input: z.input<typeof AppointmentCreateInputSchema>,
+): Appointment {
   return AppointmentSchema.parse(AppointmentCreateInputSchema.parse(input));
 }
 
@@ -241,9 +236,7 @@ export const VisitBriefSchema = RecordMetadataSchema.safeExtend({
 });
 
 export type Appointment = z.infer<typeof AppointmentSchema>;
-export type CalendarAppointmentSnapshot = z.infer<
-  typeof CalendarAppointmentSnapshotSchema
->;
+export type CalendarAppointmentSnapshot = z.infer<typeof CalendarAppointmentSnapshotSchema>;
 export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>;
 export type VisitQuestion = z.infer<typeof VisitQuestionSchema>;
 export type VisitBrief = z.infer<typeof VisitBriefSchema>;

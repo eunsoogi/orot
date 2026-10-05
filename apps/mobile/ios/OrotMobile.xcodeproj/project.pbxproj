@@ -14,9 +14,12 @@
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
+		A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */; };
+		A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
+		A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */; };
 		A64F00000000000000000001 /* RecordingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000001 /* RecordingModule.swift */; };
 		A64F00000000000000000002 /* RecordingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000002 /* RecordingModule.m */; };
 		A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000003 /* RecordingModule+Commands.swift */; };
@@ -45,8 +48,11 @@
 		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
+		B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsRequestSlot.swift; path = OrotMobile/AppleFoundationModelsRequestSlot.swift; sourceTree = "<group>"; };
+		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
+		B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderErrorDetails.swift; path = OrotMobile/OpenAIProviderErrorDetails.swift; sourceTree = "<group>"; };
 		B64F00000000000000000001 /* RecordingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingModule.swift; path = OrotMobile/RecordingModule.swift; sourceTree = "<group>"; };
 		B64F00000000000000000002 /* RecordingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingModule.m; path = OrotMobile/RecordingModule.m; sourceTree = "<group>"; };
 		B64F00000000000000000003 /* RecordingModule+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordingModule+Commands.swift"; path = "OrotMobile/RecordingModule+Commands.swift"; sourceTree = "<group>"; };
@@ -83,8 +89,11 @@
 				B62F00000000000000000001 /* AppleFoundationModelsModule.swift */,
 				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
+				B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */,
+				B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
+				B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */,
 				B64F00000000000000000001 /* RecordingModule.swift */,
 				B64F00000000000000000002 /* RecordingModule.m */,
 				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
@@ -309,8 +318,11 @@
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
+				A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */,
+				A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
+				A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */,
 				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
 				A64F00000000000000000002 /* RecordingModule.m in Sources */,
 				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,

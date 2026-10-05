@@ -25,8 +25,9 @@ describe('removeLocalSourceWithMemory', () => {
       }),
     } as unknown as AgentMemoryService;
 
-    await expect(removeLocalSourceWithMemory('synthetic-source', memory))
-      .rejects.toThrow('Synthetic memory-storage failure.');
+    await expect(
+      removeLocalSourceWithMemory('synthetic-source', memory),
+    ).rejects.toThrow('Synthetic memory-storage failure.');
 
     expect(events).toEqual(['memory-removal']);
     expect(deleteSource).not.toHaveBeenCalled();
@@ -39,19 +40,29 @@ describe('removeLocalSourceWithMemory', () => {
       return true;
     });
     const memory = {
-      removeSource: jest.fn(async (_sourceId: string, deleteSourceRecord: () => Promise<boolean>) => {
-        events.push('memory-removal');
-        const sourceDeleted = await deleteSourceRecord();
-        return { sourceDeleted, memoriesDeleted: 2 };
-      }),
+      removeSource: jest.fn(
+        async (
+          _sourceId: string,
+          deleteSourceRecord: () => Promise<boolean>,
+        ) => {
+          events.push('memory-removal');
+          const sourceDeleted = await deleteSourceRecord();
+          return { sourceDeleted, memoriesDeleted: 2 };
+        },
+      ),
     } as unknown as AgentMemoryService;
 
-    await expect(removeLocalSourceWithMemory('synthetic-source', memory)).resolves.toEqual({
+    await expect(
+      removeLocalSourceWithMemory('synthetic-source', memory),
+    ).resolves.toEqual({
       sourceDeleted: true,
       memoriesDeleted: 2,
     });
 
     expect(events).toEqual(['memory-removal', 'source-delete']);
-    expect(memory.removeSource).toHaveBeenCalledWith('synthetic-source', expect.any(Function));
+    expect(memory.removeSource).toHaveBeenCalledWith(
+      'synthetic-source',
+      expect.any(Function),
+    );
   });
 });

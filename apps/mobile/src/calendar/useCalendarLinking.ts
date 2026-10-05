@@ -3,11 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { calendarSnapshotsEqual } from './calendarSnapshot';
-import type { CalendarAccessState, CalendarBridge, CalendarEvent } from './types';
+import type {
+  CalendarAccessState,
+  CalendarBridge,
+  CalendarEvent,
+} from './types';
 
 type PendingCalendarChange =
-  | { kind: 'changed'; event: CalendarEvent }
-  | { kind: 'missing' };
+  { kind: 'changed'; event: CalendarEvent } | { kind: 'missing' };
 
 function appointmentStartTime(appointment: Appointment): number {
   const snapshot = appointment.calendarEventSnapshot;
@@ -42,10 +45,13 @@ function appointmentStartTime(appointment: Appointment): number {
   return new Date(appointment.effectiveAt).getTime();
 }
 
-function selectLinkedAppointment(appointments: Appointment[]): Appointment | null {
+function selectLinkedAppointment(
+  appointments: Appointment[],
+): Appointment | null {
   const linked = appointments.filter(
     appointment =>
-      (appointment.status === 'scheduled' || appointment.status === 'rescheduled') &&
+      (appointment.status === 'scheduled' ||
+        appointment.status === 'rescheduled') &&
       appointment.calendarEventIdentifier !== undefined &&
       appointment.calendarEventSnapshot !== undefined,
   );
@@ -98,7 +104,9 @@ export function useCalendarLinking(
   const [saving, setSaving] = useState(false);
   const [access, setAccess] = useState<CalendarAccessState | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null,
+  );
   const [pendingChange, setPendingChange] =
     useState<PendingCalendarChange | null>(null);
   const [error, setError] = useState('');
@@ -123,7 +131,11 @@ export function useCalendarLinking(
 
   const verifyLinkedEvent = useCallback(
     async (appointment: Appointment) => {
-      if (!appointment.calendarEventIdentifier || !appointment.calendarEventSnapshot) return;
+      if (
+        !appointment.calendarEventIdentifier ||
+        !appointment.calendarEventSnapshot
+      )
+        return;
       try {
         const result = await bridge.findEvent(
           appointment.calendarEventIdentifier,
@@ -137,7 +149,9 @@ export function useCalendarLinking(
         }
         if (!result.event) {
           setPendingChange({ kind: 'missing' });
-        } else if (!calendarEventMatchesAppointment(result.event, appointment)) {
+        } else if (
+          !calendarEventMatchesAppointment(result.event, appointment)
+        ) {
           setPendingChange({ kind: 'changed', event: result.event });
         } else {
           setPendingChange(null);
@@ -192,7 +206,10 @@ export function useCalendarLinking(
     setError('');
     try {
       if (linkedAppointment) {
-        await repository.reconfirmCalendarEvent(linkedAppointment.id, selectedEvent);
+        await repository.reconfirmCalendarEvent(
+          linkedAppointment.id,
+          selectedEvent,
+        );
       } else {
         await repository.confirmCalendarEvent(selectedEvent);
       }
@@ -226,7 +243,8 @@ export function useCalendarLinking(
     selectedEvent,
     clearSelection: () => setSelectedEvent(null),
     reviewChangedEvent: () => {
-      if (pendingChange?.kind === 'changed') setSelectedEvent(pendingChange.event);
+      if (pendingChange?.kind === 'changed')
+        setSelectedEvent(pendingChange.event);
     },
   };
 }

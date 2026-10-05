@@ -15,7 +15,11 @@ function runInstaller(reportedVersion) {
   const applesimutils = join(directory, 'applesimutils');
   try {
     writeFileSync(brew, '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$BREW_LOG"\n', { mode: 0o755 });
-    writeFileSync(applesimutils, `#!/bin/sh\nprintf 'applesimutils version ${reportedVersion}\\n'\n`, { mode: 0o755 });
+    writeFileSync(
+      applesimutils,
+      `#!/bin/sh\nprintf 'applesimutils version ${reportedVersion}\\n'\n`,
+      { mode: 0o755 },
+    );
     const result = spawnSync('bash', [installScript], {
       encoding: 'utf8',
       env: {

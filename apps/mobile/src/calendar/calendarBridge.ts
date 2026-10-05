@@ -1,6 +1,10 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
-import type { CalendarBridge, CalendarEventLookup, UpcomingCalendarEvents } from './types';
+import type {
+  CalendarBridge,
+  CalendarEventLookup,
+  UpcomingCalendarEvents,
+} from './types';
 
 interface NativeCalendarModule {
   requestAccessAndListUpcomingEvents(): Promise<UpcomingCalendarEvents>;
@@ -18,12 +22,15 @@ function unavailable<T>(): Promise<T> {
 }
 
 export function createCalendarBridge(
-  nativeModule: NativeCalendarModule | undefined = NativeModules.EventKitCalendarModule,
+  nativeModule:
+    NativeCalendarModule | undefined = NativeModules.EventKitCalendarModule,
 ): CalendarBridge {
   const emitter = nativeModule ? new NativeEventEmitter(nativeModule) : null;
   return {
     requestAccessAndListUpcomingEvents: () =>
-      nativeModule ? nativeModule.requestAccessAndListUpcomingEvents() : unavailable(),
+      nativeModule
+        ? nativeModule.requestAccessAndListUpcomingEvents()
+        : unavailable(),
     findEvent: (identifier, occurrenceDate, floatingOccurrenceAt) =>
       nativeModule
         ? nativeModule.findEvent(

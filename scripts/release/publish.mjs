@@ -15,20 +15,29 @@ try {
   }
 
   let tagTarget = readTagTarget(context.tag);
-  if (tagTarget && tagTarget !== context.sourceSha) throw new Error('refusing to move an existing release tag');
+  if (tagTarget && tagTarget !== context.sourceSha)
+    throw new Error('refusing to move an existing release tag');
   if (!tagTarget) {
     try {
-      ghApi('POST', `repos/eunsoogi/orot/git/refs`, { ref: `refs/tags/${context.tag}`, sha: context.sourceSha });
+      ghApi('POST', `repos/eunsoogi/orot/git/refs`, {
+        ref: `refs/tags/${context.tag}`,
+        sha: context.sourceSha,
+      });
     } catch {
       tagTarget = readTagTarget(context.tag);
-      if (tagTarget !== context.sourceSha) throw new Error('tag creation raced with another target; no release was created');
+      if (tagTarget !== context.sourceSha)
+        throw new Error('tag creation raced with another target; no release was created');
     }
   }
   tagTarget = readTagTarget(context.tag);
-  if (tagTarget !== context.sourceSha) throw new Error('release tag does not point to the verified source commit');
-  if (readRelease('eunsoogi/orot', context.tag)) throw new Error('release appeared during preflight; refusing to overwrite or duplicate it');
+  if (tagTarget !== context.sourceSha)
+    throw new Error('release tag does not point to the verified source commit');
+  if (readRelease('eunsoogi/orot', context.tag))
+    throw new Error('release appeared during preflight; refusing to overwrite or duplicate it');
 
-  const limitations = context.readiness.knownLimitations.map((item) => `- ${escapeMarkdown(item)}`).join('\n');
+  const limitations = context.readiness.knownLimitations
+    .map((item) => `- ${escapeMarkdown(item)}`)
+    .join('\n');
   const notes = [
     `# Orot v${context.version}`,
     '',
@@ -42,21 +51,40 @@ try {
     'This release contains no installable iPhone IPA. CI simulator builds and Detox results are simulator-only and are not distribution-signing evidence.',
     '',
   ].join('\n');
-  const created = ghApi('POST', 'repos/eunsoogi/orot/releases', buildReleaseRequest({
-    version: context.version,
-    sourceSha: context.sourceSha,
-    notes,
-  }));
+  const created = ghApi(
+    'POST',
+    'repos/eunsoogi/orot/releases',
+    buildReleaseRequest({
+      version: context.version,
+      sourceSha: context.sourceSha,
+      notes,
+    }),
+  );
   const readback = readRelease('eunsoogi/orot', context.tag);
-  if (!readback || readback.id !== created.id || readback.tag_name !== context.tag || readback.body !== notes || (readback.assets ?? []).length !== 0) {
+  if (
+    !readback ||
+    readback.id !== created.id ||
+    readback.tag_name !== context.tag ||
+    readback.body !== notes ||
+    (readback.assets ?? []).length !== 0
+  ) {
     throw new Error('GitHub Release readback did not match the verified candidate');
   }
   if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n## Release published\n\n- Release: ${readback.html_url}\n- Tag: \`${context.tag}\`\n- Source commit: \`${context.sourceSha}\`\n- Release assets: none\n`);
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `\n## Release published\n\n- Release: ${readback.html_url}\n- Tag: \`${context.tag}\`\n- Source commit: \`${context.sourceSha}\`\n- Release assets: none\n`,
+    );
   }
-  console.log(`Published ${context.tag} at ${context.sourceSha}; GitHub Release contains no binary assets.`);
+  console.log(
+    `Published ${context.tag} at ${context.sourceSha}; GitHub Release contains no binary assets.`,
+  );
 } catch (error) {
   console.error(`Release publication failed closed: ${error.message}`);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\nRelease publication failed closed: ${error.message}\n`);
+  if (process.env.GITHUB_STEP_SUMMARY)
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `\nRelease publication failed closed: ${error.message}\n`,
+    );
   process.exitCode = 1;
 }

@@ -4,10 +4,7 @@ import type { Appointment, AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import type { CalendarBridge, CalendarEvent } from '../types';
 
-function event(
-  identifier: string,
-  effectiveAt: string,
-): CalendarEvent {
+function event(identifier: string, effectiveAt: string): CalendarEvent {
   return {
     calendarEventIdentifier: identifier,
     effectiveAt,
@@ -42,8 +39,12 @@ function repository(list: () => Promise<Appointment[]>) {
   return {
     list: jest.fn(list),
     create: jest.fn(),
-    confirmCalendarEvent: jest.fn(async () => appointmentFor(event('saved', '2035-06-02T00:00:00.000Z'))),
-    reconfirmCalendarEvent: jest.fn(async () => appointmentFor(event('saved', '2035-06-02T00:00:00.000Z'))),
+    confirmCalendarEvent: jest.fn(async () =>
+      appointmentFor(event('saved', '2035-06-02T00:00:00.000Z')),
+    ),
+    reconfirmCalendarEvent: jest.fn(async () =>
+      appointmentFor(event('saved', '2035-06-02T00:00:00.000Z')),
+    ),
     update: jest.fn(),
     cancel: jest.fn(),
   } as unknown as AppointmentRepository;
@@ -55,7 +56,10 @@ function bridge(overrides: Partial<CalendarBridge> = {}): CalendarBridge {
       access: 'fullAccess' as const,
       events: [],
     })),
-    findEvent: jest.fn(async () => ({ access: 'fullAccess' as const, event: null })),
+    findEvent: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: null,
+    })),
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
     ...overrides,
   };
@@ -79,7 +83,10 @@ function floatingDateTime(date: Date): string {
 describe('Calendar linked event revalidation', () => {
   it('rechecks a linked event whose saved time passed while the app was closed', async () => {
     const current = appointmentFor(
-      event('rescheduled-while-closed', new Date(Date.now() - 86_400_000).toISOString()),
+      event(
+        'rescheduled-while-closed',
+        new Date(Date.now() - 86_400_000).toISOString(),
+      ),
     );
     const movedEvent = event(
       'rescheduled-while-closed',

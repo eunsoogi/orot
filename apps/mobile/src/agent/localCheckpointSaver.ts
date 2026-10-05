@@ -10,7 +10,9 @@ export function openLocalWorkflowCheckpointSaver(): Promise<SqliteCheckpointSave
     active = openLocalAgentMemoryDatabase()
       .then(database => {
         const storage = createLangGraphCheckpointStorage(database);
-        return storage.ensureSchema().then(() => new SqliteCheckpointSaver(storage));
+        return storage
+          .ensureSchema()
+          .then(() => new SqliteCheckpointSaver(storage));
       })
       .catch(error => {
         active = null;

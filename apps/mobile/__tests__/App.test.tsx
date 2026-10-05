@@ -10,7 +10,10 @@ function createCalendarBridge(): CalendarBridge {
       access: 'fullAccess' as const,
       events: [],
     })),
-    findEvent: jest.fn(async () => ({ access: 'fullAccess' as const, event: null })),
+    findEvent: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      event: null,
+    })),
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
   };
 }
@@ -20,10 +23,7 @@ test('restores the welcome entry and opens Calendar linking from the appointment
   const bridge = createCalendarBridge();
   const loadAppointments = jest.fn(async () => store.repository);
   await render(
-    <App
-      loadAppointments={loadAppointments}
-      calendarBridge={bridge}
-    />,
+    <App loadAppointments={loadAppointments} calendarBridge={bridge} />,
   );
 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent(
@@ -41,9 +41,7 @@ test('restores the welcome entry and opens Calendar linking from the appointment
   expect(screen.getByTestId('calendar-connect')).toHaveTextContent(
     '캘린더 일정 불러오기',
   );
-  expect(
-    screen.getByText(/캘린더 전체 접근\(읽기 및 쓰기\)/u),
-  ).toBeTruthy();
+  expect(screen.getByText(/캘린더 전체 접근\(읽기 및 쓰기\)/u)).toBeTruthy();
   expect(screen.queryByTestId('appointment-add')).toBeNull();
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 });
@@ -69,7 +67,9 @@ test('keeps Calendar linking available when local appointment storage needs a re
     .mockRejectedValueOnce(new Error('storage unavailable'))
     .mockResolvedValueOnce(store.repository);
   const bridge = createCalendarBridge();
-  await render(<App loadAppointments={loadAppointments} calendarBridge={bridge} />);
+  await render(
+    <App loadAppointments={loadAppointments} calendarBridge={bridge} />,
+  );
 
   await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(await screen.findByTestId('calendar-app-opening')).toHaveTextContent(
