@@ -33,6 +33,13 @@
 		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		E16A00000000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000016 /* HealthKit.framework */; };
+		E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000011 /* HealthKitBoundary.swift */; };
+		E16A00000000000000000003 /* HealthKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000012 /* HealthKitModule.swift */; };
+		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
+		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
+		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
+		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 		E14B00000000000000000001 /* SpeechTranscriptionAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000001 /* SpeechTranscriptionAnalyzer.swift */; };
 		E14B00000000000000000002 /* SpeechTranscriptionAudioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000002 /* SpeechTranscriptionAudioStore.swift */; };
 		E14B00000000000000000003 /* SpeechTranscriptionAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000003 /* SpeechTranscriptionAvailability.swift */; };
@@ -41,13 +48,6 @@
 		E14B00000000000000000006 /* SpeechTranscriptionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000006 /* SpeechTranscriptionModule.swift */; };
 		E14B00000000000000000007 /* SpeechTranscriptionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000007 /* SpeechTranscriptionModule.m */; };
 		E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000008 /* SpeechTranscriptionTypes.swift */; };
-		E16A00000000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000016 /* HealthKit.framework */; };
-		E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000011 /* HealthKitBoundary.swift */; };
-		E16A00000000000000000003 /* HealthKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000012 /* HealthKitModule.swift */; };
-		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
-		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
-		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
-		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
