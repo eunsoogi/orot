@@ -12,6 +12,7 @@ on:
         required: false
         type: boolean
         default: false
+      trace_logging: { type: boolean, default: false }
     outputs:
       profile:
         description: The profile whose complete Jest summary passed validation.
@@ -221,7 +222,7 @@ jobs:
         timeout-minutes: 45
         env:
           OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
-        run: scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
+        run: OROT_DETOX_TEST_LOG_LEVEL="${{ inputs.trace_logging && 'trace' || 'info' }}" scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
 
       - name: Collect simulator logs
         if: ${{ always() }}

@@ -53,7 +53,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
     /if \[\[ ! -s artifacts\/detox\/simulator\.udid \]\][\s\S]*?cat artifacts\/detox\/simulator\.udid/,
   );
   assert.match(testStep, /timeout-minutes: 45/);
-  assert.match(testStep, /run: scripts\/ci\/run-test-suite\.sh/);
+  assert.match(testStep, /run:.*scripts\/ci\/run-test-suite\.sh/);
   assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(profileWorkflow, /mdutil|Spotlight|spotlight/i);
   assert.doesNotMatch(ciWorkflow, /mdutil|Spotlight|spotlight/i);

@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      detox_trace:
+        description: Emit Detox lifecycle and device-call traces for diagnosis.
+        required: false
+        type: boolean
+        default: false
       detox_resource_sampling:
         description: Collect bounded process and memory samples for diagnosis.
         required: false
@@ -173,6 +178,7 @@ jobs:
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
+      trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
       resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
 
   detox_openai_provider_e2e:
@@ -180,6 +186,7 @@ jobs:
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: openai-provider
+      trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
       resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
 
   detox_ios_e2e:
