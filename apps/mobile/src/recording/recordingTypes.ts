@@ -21,6 +21,12 @@ export interface CompletedRecording {
   excludedFromBackup: boolean;
 }
 
+export interface RecordingPlaybackRange {
+  readonly startMs: number;
+  readonly endMs: number;
+  readonly actualStartMs: number;
+}
+
 export interface RecordingService {
   getState(): Promise<RecordingSnapshot>;
   subscribe(listener: (snapshot: RecordingSnapshot) => void): () => void;
@@ -28,6 +34,11 @@ export interface RecordingService {
   pause(): Promise<RecordingSnapshot>;
   resume(): Promise<RecordingSnapshot>;
   stop(): Promise<CompletedRecording>;
+  playRange(
+    recordingId: string,
+    startMs: number,
+    endMs: number,
+  ): Promise<RecordingPlaybackRange>;
   saveSource(recording: CompletedRecording): Promise<RecordingSourceRecord>;
 }
 

@@ -10,5 +10,7 @@ export const recordingService: RecordingService = {
   pause: () => nativeRecordingBridge.pause(),
   resume: () => nativeRecordingBridge.resume(),
   stop: () => nativeRecordingBridge.stop(),
+  playRange: (recordingId, startMs, endMs) =>
+    nativeRecordingBridge.playRange(recordingId, startMs, endMs),
   saveSource: recording => saveRecordingSource(recording),
 };

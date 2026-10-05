@@ -12,8 +12,16 @@ Audio remains on the device and is not uploaded to the Orot server.
 
 When a recording ends, its UUID, start time, and completion time are linked to
 the local record repository as an `audio_recording` source. The source is marked
-`user_reported` and `unreviewed`; this feature does not create a transcript,
-interpret the recording, or add it to RAG. If writing source metadata fails
+`user_reported` and `unreviewed`. Saving a recording does not automatically
+create a transcript, interpret the recording, or add it to RAG. The user can
+request a separate Apple on-device transcription from the saved recording. Its
+transcript segments are stored locally as derived, unreviewed evidence linked
+to the recording and to millisecond audio ranges; selecting a segment seeks to
+that range. Engine and operating-system runtime versions remain attached as
+provenance. Corrections append user-reported revisions that retain the earlier
+revision, audio range, and engine provenance, and derived records based on an
+earlier revision are marked stale instead of being silently rewritten. If
+writing source metadata fails
 after file protection was verified, the audio remains on the device and the
 screen offers a retry. If the native module cannot verify file protection at
 completion, it withholds the source link and does not offer that retry.

@@ -59,6 +59,13 @@ export function createService() {
       consentAcknowledged: true,
     })),
     stop: jest.fn(async () => completed),
+    playRange: jest.fn(
+      async (_recordingId: string, startMs: number, endMs: number) => ({
+        startMs,
+        endMs,
+        actualStartMs: startMs,
+      }),
+    ),
     saveSource: jest.fn(async () => savedSource),
   };
   return {

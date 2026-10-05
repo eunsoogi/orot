@@ -53,6 +53,13 @@ const service: RecordingService = {
   pause: jest.fn(async () => completed),
   resume: jest.fn(async () => completed),
   stop: jest.fn(async (): Promise<CompletedRecording> => completedRecording),
+  playRange: jest.fn(
+    async (_recordingId: string, startMs: number, endMs: number) => ({
+      startMs,
+      endMs,
+      actualStartMs: startMs,
+    }),
+  ),
   saveSource: jest.fn(async (): Promise<RecordingSourceRecord> => savedSource),
 };
 
