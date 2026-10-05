@@ -25,6 +25,7 @@ export type HealthKitAvailability =
   | { readonly status: 'unavailable' }
   | { readonly status: 'unsupportedPlatform' };
 
+// HealthKit keeps read grants opaque, so the public result cannot claim one.
 export type HealthKitAuthorizationResult =
   | {
       readonly availability: 'available';
@@ -32,7 +33,8 @@ export type HealthKitAuthorizationResult =
       readonly readAuthorization: 'notObservable';
     }
   | {
-      readonly availability: 'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
+      readonly availability:
+        'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
       readonly requestStatus: 'notRequested';
       readonly readAuthorization: 'notObservable';
     };
@@ -63,7 +65,8 @@ export type HealthKitSampleQueryResult =
       readonly samples: readonly HealthKitSampleSnapshot[];
     }
   | {
-      readonly availability: 'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
+      readonly availability:
+        'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
       readonly status: 'notRun';
       readonly readAuthorization: 'notObservable';
     };
@@ -85,7 +88,8 @@ export type HealthKitMedicationQueryResult =
       readonly medications: readonly HealthKitMedicationDefinitionSnapshot[];
     }
   | {
-      readonly availability: 'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
+      readonly availability:
+        'unavailable' | 'unsupportedFeature' | 'unsupportedPlatform';
       readonly status: 'notRun';
       readonly readAuthorization: 'notObservable';
     };
@@ -100,7 +104,13 @@ export interface HealthKitSampleQuery {
 
 export interface HealthKitNativeModule {
   getAvailability(): Promise<{ readonly status: 'available' | 'unavailable' }>;
-  requestReadAuthorization(feature: HealthKitFeature): Promise<HealthKitAuthorizationResult>;
-  querySamples(query: HealthKitSampleQuery): Promise<HealthKitSampleQueryResult>;
-  queryMedicationDefinitions(limit: number): Promise<HealthKitMedicationQueryResult>;
+  requestReadAuthorization(
+    feature: HealthKitFeature,
+  ): Promise<HealthKitAuthorizationResult>;
+  querySamples(
+    query: HealthKitSampleQuery,
+  ): Promise<HealthKitSampleQueryResult>;
+  queryMedicationDefinitions(
+    limit: number,
+  ): Promise<HealthKitMedicationQueryResult>;
 }

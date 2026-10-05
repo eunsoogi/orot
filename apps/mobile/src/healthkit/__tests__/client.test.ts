@@ -30,7 +30,9 @@ describe('HealthKit client boundary', () => {
     const healthKit = createHealthKitClient(native, 'ios');
 
     expect(native.requestReadAuthorization).not.toHaveBeenCalled();
-    await expect(healthKit.getAvailability()).resolves.toEqual({ status: 'available' });
+    await expect(healthKit.getAvailability()).resolves.toEqual({
+      status: 'available',
+    });
     expect(native.requestReadAuthorization).not.toHaveBeenCalled();
   });
 
@@ -57,7 +59,9 @@ describe('HealthKit client boundary', () => {
     native.requestReadAuthorization.mockRejectedValueOnce(failure);
     const healthKit = createHealthKitClient(native, 'ios');
 
-    await expect(healthKit.requestReadAuthorization('steps')).rejects.toBe(failure);
+    await expect(healthKit.requestReadAuthorization('steps')).rejects.toBe(
+      failure,
+    );
     const sleepQuery = {
       feature: 'sleep' as const,
       sampleKind: 'sleep' as const,
@@ -65,7 +69,9 @@ describe('HealthKit client boundary', () => {
       endDate: '2026-10-02T00:00:00.000Z',
       limit: 10,
     };
-    await expect(healthKit.querySamples(sleepQuery)).resolves.toMatchObject({ status: 'completed' });
+    await expect(healthKit.querySamples(sleepQuery)).resolves.toMatchObject({
+      status: 'completed',
+    });
     expect(native.querySamples).toHaveBeenCalledWith(sleepQuery);
   });
 
@@ -75,11 +81,14 @@ describe('HealthKit client boundary', () => {
       availability: 'available',
       requestStatus: 'completed',
       readAuthorization: 'denied',
-    } as unknown as Awaited<ReturnType<HealthKitNativeModule['requestReadAuthorization']>>);
+    } as unknown as Awaited<
+      ReturnType<HealthKitNativeModule['requestReadAuthorization']>
+    >);
     const healthKit = createHealthKitClient(native, 'ios');
 
-    await expect(healthKit.requestReadAuthorization('steps'))
-      .rejects.toMatchObject({ code: 'INVALID_NATIVE_RESPONSE' });
+    await expect(
+      healthKit.requestReadAuthorization('steps'),
+    ).rejects.toMatchObject({ code: 'INVALID_NATIVE_RESPONSE' });
   });
 
   it('rejects a native cancellation label that HealthKit does not provide', async () => {
@@ -88,11 +97,14 @@ describe('HealthKit client boundary', () => {
       availability: 'available',
       requestStatus: 'cancelled',
       readAuthorization: 'notObservable',
-    } as unknown as Awaited<ReturnType<HealthKitNativeModule['requestReadAuthorization']>>);
+    } as unknown as Awaited<
+      ReturnType<HealthKitNativeModule['requestReadAuthorization']>
+    >);
     const healthKit = createHealthKitClient(native, 'ios');
 
-    await expect(healthKit.requestReadAuthorization('steps'))
-      .rejects.toMatchObject({ code: 'INVALID_NATIVE_RESPONSE' });
+    await expect(
+      healthKit.requestReadAuthorization('steps'),
+    ).rejects.toMatchObject({ code: 'INVALID_NATIVE_RESPONSE' });
   });
 
   it('keeps native request failures as errors instead of mapping them to a permission result', async () => {
@@ -101,7 +113,9 @@ describe('HealthKit client boundary', () => {
     native.requestReadAuthorization.mockRejectedValue(failure);
     const healthKit = createHealthKitClient(native, 'ios');
 
-    await expect(healthKit.requestReadAuthorization('steps')).rejects.toBe(failure);
+    await expect(healthKit.requestReadAuthorization('steps')).rejects.toBe(
+      failure,
+    );
   });
 
   it('keeps an empty query as a completed query with unobservable read access', async () => {
@@ -129,13 +143,15 @@ describe('HealthKit client boundary', () => {
     const native = nativeModule();
     const healthKit = createHealthKitClient(native, 'ios');
 
-    await expect(healthKit.querySamples({
-      feature: 'sleep',
-      sampleKind: 'steps',
-      startDate: '2026-10-01T00:00:00.000Z',
-      endDate: '2026-10-02T00:00:00.000Z',
-      limit: 100,
-    })).rejects.toMatchObject({ code: 'FEATURE_SAMPLE_MISMATCH' });
+    await expect(
+      healthKit.querySamples({
+        feature: 'sleep',
+        sampleKind: 'steps',
+        startDate: '2026-10-01T00:00:00.000Z',
+        endDate: '2026-10-02T00:00:00.000Z',
+        limit: 100,
+      }),
+    ).rejects.toMatchObject({ code: 'FEATURE_SAMPLE_MISMATCH' });
     expect(native.querySamples).not.toHaveBeenCalled();
   });
 
@@ -150,28 +166,41 @@ describe('HealthKit client boundary', () => {
       limit: 501,
     };
 
-    await expect(healthKit.querySamples(request)).rejects.toMatchObject({ code: 'INVALID_DATE_RANGE' });
-    await expect(healthKit.querySamples({ ...request, endDate: '2026-10-04T00:00:00.000Z' }))
-      .rejects.toMatchObject({ code: 'INVALID_LIMIT' });
+    await expect(healthKit.querySamples(request)).rejects.toMatchObject({
+      code: 'INVALID_DATE_RANGE',
+    });
+    await expect(
+      healthKit.querySamples({
+        ...request,
+        endDate: '2026-10-04T00:00:00.000Z',
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_LIMIT' });
     expect(native.querySamples).not.toHaveBeenCalled();
   });
 
   it('reports unsupported platforms without touching an absent HealthKit module', async () => {
     const healthKit = createHealthKitClient(undefined, 'android');
 
-    await expect(healthKit.getAvailability()).resolves.toEqual({ status: 'unsupportedPlatform' });
+    await expect(healthKit.getAvailability()).resolves.toEqual({
+      status: 'unsupportedPlatform',
+    });
     await expect(healthKit.requestReadAuthorization('sleep')).resolves.toEqual({
       availability: 'unsupportedPlatform',
       requestStatus: 'notRequested',
       readAuthorization: 'notObservable',
     });
-    await expect(healthKit.querySamples({
-      feature: 'sleep',
-      sampleKind: 'sleep',
-      startDate: '2026-10-01T00:00:00.000Z',
-      endDate: '2026-10-02T00:00:00.000Z',
-      limit: 10,
-    })).resolves.toMatchObject({ status: 'notRun', availability: 'unsupportedPlatform' });
+    await expect(
+      healthKit.querySamples({
+        feature: 'sleep',
+        sampleKind: 'sleep',
+        startDate: '2026-10-01T00:00:00.000Z',
+        endDate: '2026-10-02T00:00:00.000Z',
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({
+      status: 'notRun',
+      availability: 'unsupportedPlatform',
+    });
   });
 
   it('exposes medication-definition queries through the medications feature only', async () => {

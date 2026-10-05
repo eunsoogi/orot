@@ -4,12 +4,17 @@ const { expect: jestExpect } = require('@jest/globals');
 
 describe('HealthKit boundary on iOS Simulator', () => {
   it('keeps feature authorization scoped and reports synthetic data honestly', async () => {
-    await device.launchApp();
+    const metroPort = process.env.RCT_METRO_PORT || '8216';
+    // Keep the Debug app on this probe's isolated Metro port instead of default 8081.
+    await device.launchApp({
+      launchArgs: { RCT_jsLocation: `localhost:${metroPort}` },
+    });
     const result = element(by.id('healthkit-probe-result'));
     await waitFor(result).toBeVisible().withTimeout(240000);
     const attributes = await result.getAttributes();
     const summary = attributes.label || attributes.text;
-    if (summary.startsWith('HealthKit Simulator probe failed')) throw new Error(summary);
+    if (summary.startsWith('HealthKit Simulator probe failed'))
+      throw new Error(summary);
     jestExpect(summary).toContain('authorizationPlan=feature-scoped');
     jestExpect(summary).toContain('writeTypes=0');
     jestExpect(summary).toContain('sampleTypes=passed');

@@ -1,9 +1,12 @@
 /** @type {Detox.DetoxConfig} */
-const derivedDataPath = process.env.OROT_HEALTHKIT_DERIVED_DATA_PATH || 'ios/build-healthkit-probe';
+const derivedDataPath =
+  process.env.OROT_HEALTHKIT_DERIVED_DATA_PATH || 'ios/build-healthkit-probe';
 const simulatorId = process.env.OROT_HEALTHKIT_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
-  throw new Error('The HealthKit DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.');
+  throw new Error(
+    'The HealthKit DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.',
+  );
 }
 
 module.exports = {
@@ -14,8 +17,12 @@ module.exports = {
   apps: {
     'ios.healthkit-probe': {
       type: 'ios.app',
-      binaryPath: derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
-      build: 'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' + derivedDataPath + ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/healthkitProbeEntry.tsx',
+      binaryPath:
+        derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
+      build:
+        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' +
+        derivedDataPath +
+        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/healthkitProbeEntry.tsx',
     },
   },
   devices: {
@@ -25,6 +32,9 @@ module.exports = {
     },
   },
   configurations: {
-    'ios.sim.debug.healthkit-probe': { device: 'simulator', app: 'ios.healthkit-probe' },
+    'ios.sim.debug.healthkit-probe': {
+      device: 'simulator',
+      app: 'ios.healthkit-probe',
+    },
   },
 };
