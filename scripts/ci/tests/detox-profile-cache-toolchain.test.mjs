@@ -33,7 +33,10 @@ test('defers Ruby and CocoaPods setup until the validated cache requires a nativ
   const needsNativeBuild = /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/;
 
   assert.ok(baseToolchainIndex >= 0 && baseToolchainIndex < cachePreparation);
-  assert.match(baseToolchain, /run: scripts\/ci\/verify-toolchain\.sh(?:\r?\n|$)/);
+  assert.match(
+    baseToolchain,
+    /run: scripts\/ci\/verify-toolchain\.sh --skip-simulator-availability(?:\r?\n|$)/,
+  );
   assert.doesNotMatch(baseToolchain, /--cocoapods/);
   assert.ok(cachePreparation >= 0 && cachePreparation < rubyIndex);
   assert.ok(rubyIndex < cocoapodsIndex && cocoapodsIndex < nativePodsIndex);
