@@ -8,6 +8,7 @@ import {
   MedicationAssertionSchema,
   SourceRecordSchema,
   SymptomEntrySchema,
+  TranscriptEvidenceSegmentSchema,
   VisitBriefSchema,
   VisitQuestionSchema,
 } from '@orot/domain';
@@ -23,6 +24,7 @@ import type {
   PrescriptionAssertion,
   SourceRecord,
   SymptomEntry,
+  TranscriptEvidenceSegment,
   VisitBrief,
   VisitQuestion,
 } from '@orot/domain';
@@ -47,6 +49,10 @@ export const STORAGE_TABLES = {
   appointment: { table: 'appointments', schema: AppointmentSchema },
   visit_question: { table: 'visit_questions', schema: VisitQuestionSchema },
   visit_brief: { table: 'visit_briefs', schema: VisitBriefSchema },
+  transcript_segment: {
+    table: 'transcript_segments',
+    schema: TranscriptEvidenceSegmentSchema,
+  },
 } as const;
 
 export type RecordKind = keyof typeof STORAGE_TABLES;
@@ -63,6 +69,7 @@ export interface RecordMap {
   appointment: Appointment;
   visit_question: VisitQuestion;
   visit_brief: VisitBrief;
+  transcript_segment: TranscriptEvidenceSegment;
 }
 
 export function isRecordKind(value: string): value is RecordKind {

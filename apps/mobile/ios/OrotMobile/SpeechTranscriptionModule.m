@@ -6,4 +6,6 @@ RCT_EXTERN_METHOD(getAvailability : (NSString *)language resolver : (RCTPromiseR
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(transcribeAudio : (NSDictionary *)request resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(transcribeRecording : (NSDictionary *)request resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
