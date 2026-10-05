@@ -29,7 +29,6 @@ const expectedReadTypes: Record<
   readonly string[]
 > = {
   bloodPressure: [
-    'HKCorrelationTypeIdentifierBloodPressure',
     'HKQuantityTypeIdentifierBloodPressureDiastolic',
     'HKQuantityTypeIdentifierBloodPressureSystolic',
   ],

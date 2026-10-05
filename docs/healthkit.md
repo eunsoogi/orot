@@ -5,7 +5,7 @@
 - **Requested behavior:** Report whether HealthKit is available, request read access for one named Orot feature only when its caller explicitly asks, and expose a reusable native query boundary. Never request write access or claim that a read request was granted or denied.
 - **Preserved behavior:** Other Orot features remain usable when HealthKit is unavailable, a request cannot be completed, or a query returns no visible samples. Import callers retain source identifiers and timestamps from query results.
 - **Non-goals:** Import or synchronize medication, blood-pressure, sleep, heart-rate, step-count, or body-mass records; map them to Orot domain records; write HealthKit data; add a backend; or infer a healthy/normal value from an empty result.
-- **Material risks:** HealthKit intentionally hides whether read permission was denied. An empty query can mean no samples are visible to this app and cannot establish whether data is absent. Medication HealthKit APIs require iOS 26 or later. Simulator HealthKit availability is a separate runtime fact from the synthetic test adapter.
+- **Material risks:** HealthKit intentionally hides whether read permission was denied. An empty query can mean no samples are visible to this app and cannot establish whether data is absent. Medication HealthKit APIs require iOS 26 or later. The iOS 27 Simulator throws when a blood-pressure correlation type is included in the read-authorization set; the boundary excludes it from that set while retaining correlation query selection. Real-device authorization behavior and correlation sample visibility remain unverified. Simulator HealthKit availability is a separate runtime fact from the synthetic test adapter.
 - **Evidence needed:** Requirement-linked TypeScript tests; a native bridge probe using only synthetic fixtures; an actual iOS Simulator availability readback with unsupported capabilities reported honestly; the repository's required checks on the final head; and an independent strict review.
 
 ## Authorization model
@@ -14,7 +14,7 @@ The public API accepts a feature key, not an arbitrary list of HealthKit types. 
 
 The authorization request reports `completed` only when HealthKit reports success with no error. A failed request remains an error; it is not labeled as a user cancellation. Request completion still does not establish whether read access was granted, so read authorization is always reported as `notObservable`.
 
-The native allowlist requests the medication definition and dose-event types for medications; the blood-pressure correlation and its systolic and diastolic component types for blood pressure; the sleep-analysis category for sleep; and one quantity type for heart rate, steps, or body mass. The authorization plan used by the request has an empty write set.
+The native allowlist requests the medication definition and dose-event types for medications; the systolic and diastolic component types for blood pressure; the sleep-analysis category for sleep; and one quantity type for heart rate, steps, or body mass. The authorization plan used by the request has an empty write set. The blood-pressure query still selects the correlation type, but its visibility is not established by the Simulator authorization test.
 
 ## Query model
 

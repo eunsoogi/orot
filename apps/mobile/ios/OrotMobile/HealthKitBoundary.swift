@@ -57,10 +57,10 @@ enum HealthKitBoundary {
             }
             return nil
         case "bloodPressure":
-            guard let correlation = HKObjectType.correlationType(forIdentifier: .bloodPressure),
-                  let systolic = HKObjectType.quantityType(forIdentifier: .bloodPressureSystolic),
+            guard let systolic = HKObjectType.quantityType(forIdentifier: .bloodPressureSystolic),
                   let diastolic = HKObjectType.quantityType(forIdentifier: .bloodPressureDiastolic) else { return nil }
-            return [correlation, systolic, diastolic]
+            // iOS 27 Simulator throws if a blood-pressure correlation is in this read-authorization set.
+            return [systolic, diastolic]
         case "sleep":
             return HKObjectType.categoryType(forIdentifier: .sleepAnalysis).map { Set<HKObjectType>([$0]) }
         case "heartRate":
