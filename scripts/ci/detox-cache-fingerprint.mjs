@@ -6,9 +6,8 @@ import { join, resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
 
+// The app-output fingerprint tracks source, configuration, and the real builder; CI/cache tooling only affects reuse policy.
 const BUILD_INPUT_PATHS = [
-  '.github/workflows/ci.yml',
-  '.github/workflows/detox-e2e-profile.yml',
   '.npmrc',
   'package.json',
   'pnpm-lock.yaml',
@@ -16,9 +15,6 @@ const BUILD_INPUT_PATHS = [
   'apps/mobile',
   'packages',
   'scripts/ci/build-detox-apps.sh',
-  'scripts/ci/detox-cache-fingerprint.mjs',
-  'scripts/ci/detox-cache-fingerprint-cli.mjs',
-  'scripts/ci/detox-derived-data-cache.mjs',
 ];
 
 const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock'];

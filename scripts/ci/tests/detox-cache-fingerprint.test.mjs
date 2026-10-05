@@ -179,16 +179,6 @@ test('keeps the cache fingerprint stable for tracked build inputs and ignores ge
 
     writeFixtureFile(
       root,
-      '.github/workflows/detox-e2e-profile.yml',
-      'changed workflow-only build orchestration',
-    );
-    git(root, 'add', '--all');
-    const afterWorkflowChange = computeDetoxCacheFingerprints(root);
-    assert.notEqual(afterWorkflowChange.buildInputs, initial.buildInputs);
-    assert.equal(afterWorkflowChange.nativeDependencies, initial.nativeDependencies);
-
-    writeFixtureFile(
-      root,
       'apps/mobile/.detoxrc.js',
       `// formatting-only change\n${readFileSync(join(root, 'apps/mobile/.detoxrc.js'), 'utf8')}`,
     );
