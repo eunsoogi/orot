@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
-import AppointmentsScreen from './src/appointments/AppointmentsScreen';
+import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
+import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
+import type { CalendarBridge } from './src/calendar/types';
 import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
@@ -13,6 +15,7 @@ declare const require: (path: string) => {
 
 interface AppProps {
   loadAppointments?: () => Promise<AppointmentRepository>;
+  calendarBridge?: CalendarBridge;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
@@ -21,11 +24,13 @@ function defaultAppointmentLoader(): Promise<AppointmentRepository> {
 
 export default function App({
   loadAppointments = defaultAppointmentLoader,
+  calendarBridge = eventKitCalendarBridge,
 }: AppProps) {
   const [hasStarted, setHasStarted] = useState(false);
-  const [showAppointments, setShowAppointments] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
+  // Keep only the selected display label in route state; selection identifiers stay in the provider store.
   const [selectedRecommendationProvider, setSelectedRecommendationProvider] =
     useState('');
   const [appointmentRepository, setAppointmentRepository] =
@@ -33,10 +38,11 @@ export default function App({
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [appointmentError, setAppointmentError] = useState('');
 
-  async function openAppointments() {
-    setShowAppointments(true);
+  async function openCalendar() {
+    setShowCalendar(true);
     setAppointmentError('');
     if (appointmentRepository) return;
+
     setLoadingAppointments(true);
     try {
       setAppointmentRepository(await loadAppointments());
@@ -62,37 +68,41 @@ export default function App({
     );
   }
 
-  if (showAppointments) {
+  if (showCalendar) {
     if (appointmentRepository) {
       return (
-        <AppointmentsScreen
-          onBack={() => setShowAppointments(false)}
+        <CalendarLinkingScreen
           repository={appointmentRepository}
+          bridge={calendarBridge}
+          onBack={() => setShowCalendar(false)}
+          onOpenRecording={() => setShowRecording(true)}
         />
       );
     }
+
     return (
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.title}>
-          {t('appointments.title')}
+          {t('calendar.title')}
         </Text>
         <Text
-          testID="appointments-opening"
           accessibilityRole={appointmentError ? 'alert' : undefined}
+          testID="calendar-app-opening"
         >
-          {loadingAppointments ? t('appointments.opening') : appointmentError}
+          {appointmentError ||
+            (loadingAppointments ? t('appointments.opening') : '')}
         </Text>
-        {!loadingAppointments ? (
+        {appointmentError ? (
           <Button
-            onPress={openAppointments}
-            testID="appointments-retry-open"
+            onPress={openCalendar}
+            testID="calendar-app-retry"
             title={t('appointments.retry')}
           />
         ) : null}
         <Button
-          onPress={() => setShowAppointments(false)}
-          testID="appointments-back"
-          title={t('appointments.back')}
+          onPress={() => setShowCalendar(false)}
+          testID="calendar-app-back"
+          title={t('calendar.back')}
         />
       </View>
     );
@@ -127,7 +137,7 @@ export default function App({
         title={t('app.actions.getStarted')}
       />
       <Button
-        onPress={openAppointments}
+        onPress={openCalendar}
         testID="open-appointments"
         title={t('app.actions.appointments')}
       />

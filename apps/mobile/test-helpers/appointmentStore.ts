@@ -2,6 +2,7 @@ import type {
   Appointment,
   AppointmentChanges,
   AppointmentRepository,
+  CalendarAppointmentInput,
   ManualAppointmentInput,
 } from '@orot/storage';
 
@@ -25,6 +26,42 @@ export function createAppointmentStore(
     appointments = [...appointments, appointment];
     return appointment;
   });
+  const confirmCalendarEvent = jest.fn(
+    async (input: CalendarAppointmentInput) => {
+      const appointment = {
+        id: 'calendar-' + ++nextId,
+        ...input,
+        status: 'scheduled',
+        recordedAt,
+        ingestedAt: recordedAt,
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+      } as Appointment;
+      appointments = [...appointments, appointment];
+      return appointment;
+    },
+  );
+  const reconfirmCalendarEvent = jest.fn(
+    async (id: string, input: CalendarAppointmentInput) => {
+      const current = appointments.find(item => item.id === id);
+      if (!current) throw new Error('Appointment not found.');
+      const changed: Appointment = {
+        ...current,
+        ...input,
+        status:
+          input.effectiveAt !== current.effectiveAt ||
+          input.endsAt !== current.endsAt
+            ? 'rescheduled'
+            : current.status,
+        recordedAt,
+        ingestedAt: recordedAt,
+      };
+      appointments = appointments.map(item =>
+        item.id === id ? changed : item,
+      );
+      return changed;
+    },
+  );
   const update = jest.fn(async (id: string, changes: AppointmentChanges) => {
     const current = appointments.find(item => item.id === id);
     if (!current) throw new Error('Appointment not found.');
@@ -40,6 +77,15 @@ export function createAppointmentStore(
         changes.endsAt === null
           ? undefined
           : (changes.endsAt ?? current.endsAt),
+      calendarEventIdentifier:
+        changes.calendarEventIdentifier === null
+          ? undefined
+          : (changes.calendarEventIdentifier ??
+            current.calendarEventIdentifier),
+      calendarEventSnapshot:
+        changes.calendarEventSnapshot === null
+          ? undefined
+          : (changes.calendarEventSnapshot ?? current.calendarEventSnapshot),
       recordedAt,
       ingestedAt: recordedAt,
     };
@@ -61,9 +107,18 @@ export function createAppointmentStore(
     return cancelled;
   });
   return {
-    repository: { list, create, update, cancel } as AppointmentRepository,
+    repository: {
+      list,
+      create,
+      confirmCalendarEvent,
+      reconfirmCalendarEvent,
+      update,
+      cancel,
+    } satisfies AppointmentRepository,
     list,
     create,
+    confirmCalendarEvent,
+    reconfirmCalendarEvent,
     update,
     cancel,
     getAppointments: () => [...appointments],
