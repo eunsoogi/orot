@@ -131,6 +131,21 @@ async function runProbe(): Promise<string> {
         'The anchored sleep sample change did not cross the native boundary.',
       );
     }
+    const anchoredSample = changes.addedSamples[0] as HealthKitSampleSnapshot;
+    const anchoredObservation = mapHealthKitSleepSample(
+      toSleepSampleSnapshot(anchoredSample),
+    );
+    if (
+      anchoredObservation.id !== anchoredSample.id ||
+      anchoredObservation.stage !== 'asleepUnspecified' ||
+      anchoredObservation.source.identifier !==
+        anchoredSample.sourceIdentifier ||
+      anchoredObservation.startEpochMs >= anchoredObservation.endEpochMs
+    ) {
+      throw new Error(
+        'The anchored sleep addition did not normalize as a valid interval.',
+      );
+    }
     const resumedChanges = await healthKit.querySampleChanges({
       feature: 'sleep',
       sampleKind: 'sleep',
@@ -148,25 +163,7 @@ async function runProbe(): Promise<string> {
       );
     }
 
-    const bridge = raw as HealthKitSampleSnapshot & SleepBridgeMetadata;
-    const input: HealthKitSleepSampleSnapshot = {
-      id: raw.id,
-      typeIdentifier: raw.typeIdentifier,
-      startDate: raw.startDate,
-      endDate: raw.endDate,
-      categoryValue: raw.categoryValue,
-      sourceIdentifier: raw.sourceIdentifier,
-      sourceName: raw.sourceName,
-      ...(bridge.sourceVersion === undefined
-        ? {}
-        : { sourceVersion: bridge.sourceVersion }),
-      ...(bridge.sourceProductType === undefined
-        ? {}
-        : { sourceProductType: bridge.sourceProductType }),
-      ...(bridge.device === undefined ? {} : { device: bridge.device }),
-      ...(bridge.timeZone === undefined ? {} : { timeZone: bridge.timeZone }),
-    };
-    const observation = mapHealthKitSleepSample(input);
+    const observation = mapHealthKitSleepSample(toSleepSampleSnapshot(raw));
     if (
       observation.id !== raw.id ||
       observation.stage !== 'asleepUnspecified' ||
@@ -206,13 +203,39 @@ async function runProbe(): Promise<string> {
       availability.status +
       '; sleepAuthorization=' +
       authorization.requestStatus +
-      '; readAuthorization=notObservable; stage=asleepUnspecified; midnightSplit=passed; noData=preserved; anchorResume=passed; device=' +
+      '; readAuthorization=notObservable; stage=asleepUnspecified; midnightSplit=passed; noData=preserved; anchorResume=passed; anchoredNormalization=passed; device=' +
       deviceState +
       '; source=synthetic; realSamples=unverified'
     );
   } finally {
     if (fixtureInstalled) await native.removeSyntheticFixture();
   }
+}
+
+function toSleepSampleSnapshot(
+  sample: HealthKitSampleSnapshot,
+): HealthKitSleepSampleSnapshot {
+  if (typeof sample.categoryValue !== 'number') {
+    throw new Error('The native sleep sample has no category value.');
+  }
+  const bridge = sample as HealthKitSampleSnapshot & SleepBridgeMetadata;
+  return {
+    id: sample.id,
+    typeIdentifier: sample.typeIdentifier,
+    startDate: sample.startDate,
+    endDate: sample.endDate,
+    categoryValue: sample.categoryValue,
+    sourceIdentifier: sample.sourceIdentifier,
+    sourceName: sample.sourceName,
+    ...(bridge.sourceVersion === undefined
+      ? {}
+      : { sourceVersion: bridge.sourceVersion }),
+    ...(bridge.sourceProductType === undefined
+      ? {}
+      : { sourceProductType: bridge.sourceProductType }),
+    ...(bridge.device === undefined ? {} : { device: bridge.device }),
+    ...(bridge.timeZone === undefined ? {} : { timeZone: bridge.timeZone }),
+  };
 }
 
 const styles = StyleSheet.create({
