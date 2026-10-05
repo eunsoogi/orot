@@ -7,6 +7,7 @@ export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
 export type { RecordRepository, RecordWriter } from './repository';
+export type { StaleTranscriptArtifact, TranscriptEvidenceRepository } from './transcriptEvidence';
 export { createAppointmentRepository } from './appointments';
 export type { Appointment } from '@orot/domain';
 export { createLangGraphCheckpointStorage } from './checkpointStorage';

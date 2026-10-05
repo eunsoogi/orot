@@ -18,6 +18,7 @@ public extension RecordingModule {
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         workQueue.async {
+            self.stopPlayback()
             guard acknowledged else {
                 reject("RECORDING_CONSENT_REQUIRED", "Recording consent must be acknowledged first.", nil)
                 return

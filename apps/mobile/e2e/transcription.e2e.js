@@ -1,6 +1,13 @@
 /* global by, device, element, waitFor, describe, it */
 
 const { expect: jestExpect } = require('@jest/globals');
+const {
+  accessibilityText,
+  cleanupTranscriptEvidenceIfPresent,
+  failureDescription,
+  scrollProbeTo,
+  scrollToTranscriptControl,
+} = require('./transcription/transcriptEvidenceDetoxHelpers');
 const EXPLICIT_AVAILABILITY_STATES = [
   'unsupported_language',
   'unsupported_device',
@@ -64,8 +71,177 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         jestExpect(segment.endSeconds).toBeGreaterThan(segment.startSeconds);
       }
     }
-    console.log(
-      'SPEECH_TRANSCRIPTION_SIMULATOR_RESULT ' + JSON.stringify(report),
-    );
+
+    let assertionFailure;
+    let assertionStage = 'open evidence setup';
+    try {
+      await element(by.id('transcript-evidence-open')).tap();
+      const setupStatus = element(by.id('transcript-evidence-setup-status'));
+      assertionStage = 'wait for recording setup';
+      await waitFor(setupStatus).toHaveText('ready').withTimeout(30000);
+      assertionStage = 'reveal transcript panel';
+      await waitFor(element(by.id('transcript-panel')))
+        .toBeVisible()
+        .whileElement(by.id('transcription-probe-scroll'))
+        .scroll(120, 'down');
+      assertionStage = 'create transcript';
+      await element(by.id('transcript-create')).tap();
+
+      assertionStage = 'read transcript metadata';
+      const transcript = element(by.id('transcript-text-0'));
+      await waitFor(transcript).toBeVisible().withTimeout(240000);
+      await scrollToTranscriptControl(transcript);
+      const originalText = accessibilityText(await transcript.getAttributes());
+      jestExpect(originalText.length).toBeGreaterThan(0);
+      const reviewState = element(by.id('transcript-review-0'));
+      await scrollToTranscriptControl(reviewState);
+      const originalReviewState = accessibilityText(
+        await reviewState.getAttributes(),
+      );
+      jestExpect(originalReviewState).toBe('검토 전 초안');
+      const transcriptScreen = await device.takeScreenshot(
+        'transcript-evidence-before-playback',
+      );
+      console.log('TRANSCRIPT_EVIDENCE_SCREENSHOT ' + transcriptScreen);
+      const engineAttributes = await element(
+        by.id('transcript-engine-0'),
+      ).getAttributes();
+      const runtimeAttributes = await element(
+        by.id('transcript-runtime-0'),
+      ).getAttributes();
+      const rangeAttributes = await element(
+        by.id('transcript-range-0'),
+      ).getAttributes();
+      const engine = accessibilityText(engineAttributes);
+      const runtime = accessibilityText(runtimeAttributes);
+      const rangeLabel = rangeAttributes.label || rangeAttributes.text;
+      jestExpect(engine).toMatch(
+        /Apple Speech|dictation_transcriber|speech_transcriber|on_device_speech_recognizer/,
+      );
+      jestExpect(runtime).toMatch(/시스템 버전: .+/);
+      jestExpect(typeof rangeLabel).toBe('string');
+      const range = /^(\d{2}):(\d{2})\.(\d{3})–(\d{2}):(\d{2})\.(\d{3})$/.exec(
+        rangeLabel,
+      );
+      jestExpect(range).not.toBeNull();
+      const startMs =
+        Number(range[1]) * 60_000 + Number(range[2]) * 1000 + Number(range[3]);
+      const endMs =
+        Number(range[4]) * 60_000 + Number(range[5]) * 1000 + Number(range[6]);
+
+      assertionStage = 'play selected audio range';
+      // Scroll the evidence row's bounded list so its action remains hittable on compact Simulator screens.
+      const playButton = element(by.id('transcript-play-0'));
+      await scrollToTranscriptControl(playButton);
+      await playButton.tap();
+      const playbackResult = element(
+        by.id('transcript-evidence-playback-result'),
+      );
+      assertionStage = 'wait for playback completion';
+      await waitFor(playbackResult).toExist().withTimeout(30000);
+      await scrollProbeTo(playbackResult);
+      await waitFor(playbackResult).toBeVisible().withTimeout(30000);
+      const playbackAttributes = await playbackResult.getAttributes();
+      const playback = JSON.parse(
+        playbackAttributes.label || playbackAttributes.text,
+      );
+      jestExpect(playback.startMs).toBe(startMs);
+      jestExpect(playback.endMs).toBe(endMs);
+      jestExpect(
+        Math.abs(playback.actualStartMs - startMs),
+      ).toBeLessThanOrEqual(50);
+
+      const correction = '사용자가 확인한 전사 수정';
+      assertionStage = 'edit transcript';
+      const editButton = element(by.id('transcript-edit-0'));
+      await scrollToTranscriptControl(editButton);
+      await editButton.tap();
+      const transcriptInput = element(by.id('transcript-input-0'));
+      await scrollToTranscriptControl(transcriptInput);
+      await transcriptInput.replaceText(correction);
+      assertionStage = 'save transcript correction';
+      const saveButton = element(by.id('transcript-save-0'));
+      await scrollToTranscriptControl(saveButton, 'up');
+      await saveButton.tap();
+      assertionStage = 'verify transcript history and stale artifact';
+      const correctedTranscript = element(by.id('transcript-text-0'));
+      await waitFor(correctedTranscript).toBeVisible().withTimeout(30000);
+      await scrollToTranscriptControl(correctedTranscript);
+      const correctedText = accessibilityText(
+        await correctedTranscript.getAttributes(),
+      );
+      jestExpect(correctedText).toBe(correction);
+      const history = element(by.id('transcript-history-0-1'));
+      await waitFor(history).toExist().withTimeout(30000);
+      await scrollToTranscriptControl(history, 'up');
+      await waitFor(history).toBeVisible().withTimeout(30000);
+      const historyText = accessibilityText(await history.getAttributes());
+      jestExpect(historyText).toContain('이전 버전 1:');
+      jestExpect(historyText).toContain(originalText);
+      await scrollToTranscriptControl(reviewState, 'up');
+      const correctedReviewState = accessibilityText(
+        await reviewState.getAttributes(),
+      );
+      jestExpect(correctedReviewState).toBe('수정됨 · 다시 확인 필요');
+      const staleArtifacts = element(by.id('transcript-stale-artifacts'));
+      await waitFor(staleArtifacts).toExist().withTimeout(30000);
+      await scrollProbeTo(staleArtifacts);
+      await waitFor(staleArtifacts).toBeVisible().withTimeout(30000);
+      const staleArtifactText = accessibilityText(
+        await staleArtifacts.getAttributes(),
+      );
+      jestExpect(staleArtifactText).toContain('1개');
+
+      console.log(
+        'SPEECH_TRANSCRIPTION_SIMULATOR_RESULT ' +
+          JSON.stringify({
+            report,
+            transcript: {
+              originalText,
+              engine,
+              runtime,
+              range: rangeLabel,
+              originalReviewState,
+              correctedText,
+              historyText,
+              correctedReviewState,
+              staleArtifactText,
+            },
+            playback,
+          }),
+      );
+    } catch (failure) {
+      assertionFailure = new Error(
+        `${assertionStage}: ${failureDescription(failure)}`,
+      );
+    }
+
+    let cleanupFailure;
+    let cleanupEvidence;
+    try {
+      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent();
+    } catch (failure) {
+      cleanupFailure = failure;
+    }
+
+    // Keep the original behavior failure visible even when the cleanup control also fails.
+    const failures = [];
+    if (assertionFailure) {
+      const description = failureDescription(assertionFailure);
+      console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);
+      failures.push(`Transcript assertion failed: ${description}`);
+    }
+    if (cleanupFailure) {
+      const description = failureDescription(cleanupFailure);
+      console.error('TRANSCRIPT_EVIDENCE_CLEANUP_FAILURE ' + description);
+      failures.push(`Transcript cleanup failed: ${description}`);
+    } else {
+      console.log(
+        'TRANSCRIPT_EVIDENCE_CLEANUP_RESULT ' + JSON.stringify(cleanupEvidence),
+      );
+    }
+    if (failures.length > 0) {
+      throw new Error(failures.join('\n'));
+    }
   });
 });

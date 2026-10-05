@@ -35,4 +35,22 @@ public final class SpeechTranscriptionModule: NSObject {
             }
         }
     }
+
+    @objc(transcribeRecording:resolver:rejecter:)
+    public func transcribeRecording(
+        _ request: NSDictionary,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        // Only the UUID crosses the bridge; the protected recording path stays native.
+        Task {
+            do {
+                try await resolve(SpeechTranscriptionEngine.transcribeRecording(request as? [String: Any] ?? [:]))
+            } catch let failure as SpeechTranscriptionFailure {
+                reject(failure.code, failure.message, nil)
+            } catch {
+                reject("SPEECH_RECOGNITION_FAILED", error.localizedDescription, error as NSError)
+            }
+        }
+    }
 }

@@ -32,6 +32,7 @@
     "@orot/provider-apple": "workspace:*",
     "@op-engineering/op-sqlite": "18.2.5",
     "@orot/agent-runtime": "workspace:*",
+    "@orot/domain": "workspace:*",
     "@orot/storage": "workspace:*",
     "fast-text-encoding": "1.0.6",
     "react": "19.2.3",

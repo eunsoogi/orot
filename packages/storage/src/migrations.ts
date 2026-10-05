@@ -1,8 +1,9 @@
 import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
+import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigrations';
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -164,7 +165,8 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await makeRecordedAtNullable(transaction, 'health_observations');
     await makeRecordedAtNullable(transaction, 'dose_events');
     await createSourceEvidenceIntegrity(transaction);
+    await createTranscriptEvidenceIntegrity(transaction);
     await createSyncCheckpoints(transaction);
-    await transaction.execute('PRAGMA user_version = 5');
+    await transaction.execute('PRAGMA user_version = 6');
   });
 }

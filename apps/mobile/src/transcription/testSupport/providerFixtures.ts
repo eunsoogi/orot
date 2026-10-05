@@ -15,6 +15,8 @@ export const transcript: NativeSpeechTranscriptionResponse = {
     { startSeconds: 1.4, endSeconds: 2.8, text: '복용하지 않았어요.' },
   ],
   engine: 'speech_transcriber',
+  runtimeVersion: 'Version 26.2 (Build 23C54)',
+  recordingDurationMs: 5000,
 };
 
 // Deterministic native boundary used only by provider contract tests.
@@ -25,6 +27,11 @@ export class FakeNativeSpeechBridge implements NativeSpeechTranscriptionBridge {
   error?: Error & { code?: string };
   availabilityCalls: string[] = [];
   requests: NativeSpeechTranscriptionRequest[] = [];
+  recordingRequests: Array<{
+    recordingId: string;
+    language: string;
+    syntheticFixture?: boolean;
+  }> = [];
 
   async getAvailability(language: string): Promise<SpeechAvailability> {
     this.availabilityCalls.push(language);
@@ -40,6 +47,16 @@ export class FakeNativeSpeechBridge implements NativeSpeechTranscriptionBridge {
     nativeRequest: NativeSpeechTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse> {
     this.requests.push(nativeRequest);
+    if (this.error) throw this.error;
+    return this.response;
+  }
+
+  async transcribeRecording(request: {
+    recordingId: string;
+    language: string;
+    syntheticFixture?: boolean;
+  }): Promise<NativeSpeechTranscriptionResponse> {
+    this.recordingRequests.push(request);
     if (this.error) throw this.error;
     return this.response;
   }
