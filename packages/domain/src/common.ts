@@ -53,13 +53,24 @@ export const ProvenanceSourceSchema = z.strictObject({
     .optional(),
 });
 
-export const ProvenanceSchema = z.strictObject({
-  origin: ProvenanceOriginSchema,
-  sourceRecordIds: z
-    .array(RecordIdSchema)
-    .refine((ids) => new Set(ids).size === ids.length, 'Source record IDs must be unique.'),
-  source: ProvenanceSourceSchema.optional(),
-});
+export const ProvenanceSchema = z
+  .strictObject({
+    origin: ProvenanceOriginSchema,
+    sourceRecordIds: z
+      .array(RecordIdSchema)
+      .refine((ids) => new Set(ids).size === ids.length, 'Source record IDs must be unique.'),
+    source: ProvenanceSourceSchema.optional(),
+  })
+  // Keep this invariant on provenance itself so optional source-time records retain it too.
+  .superRefine((provenance, context) => {
+    if (provenance.origin === 'derived' && provenance.sourceRecordIds.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['sourceRecordIds'],
+        message: 'Derived records must identify at least one source record.',
+      });
+    }
+  });
 
 export const ReviewStateSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('unreviewed') }),
@@ -89,14 +100,6 @@ export const RecordMetadataSchema = z
         code: 'custom',
         path: ['ingestedAt'],
         message: 'ingestedAt must not precede recordedAt.',
-      });
-    }
-
-    if (record.provenance.origin === 'derived' && record.provenance.sourceRecordIds.length === 0) {
-      context.addIssue({
-        code: 'custom',
-        path: ['provenance', 'sourceRecordIds'],
-        message: 'Derived records must identify at least one source record.',
       });
     }
 
