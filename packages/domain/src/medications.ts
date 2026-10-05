@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { RecordIdSchema, RecordMetadataSchema, TimestampSchema, compareTimestamps } from './common';
+import {
+  ImportedRecordMetadataSchema,
+  ObservationIntervalSchema,
+  RecordIdSchema,
+  RecordMetadataSchema,
+  TimestampSchema,
+  compareTimestamps,
+} from './common';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 
@@ -41,7 +48,17 @@ export const MedicationAssertionSchema = z.discriminatedUnion('assertionKind', [
   CurrentMedicationConfirmationSchema,
 ]);
 
-export const DoseEventSchema = RecordMetadataSchema.safeExtend({
+/** HealthKit's medication catalog omits source creation and record timestamps. */
+export const MedicationDefinitionSchema = ImportedRecordMetadataSchema.safeExtend({
+  medicationConceptIdentifier: RecordIdSchema,
+  displayText: NonEmptyTextSchema,
+  generalForm: NonEmptyTextSchema,
+  nickname: NonEmptyTextSchema.optional(),
+  isArchived: z.boolean(),
+  hasSchedule: z.boolean(),
+});
+
+const AssertedDoseEventSchema = RecordMetadataSchema.safeExtend({
   eventKind: z.enum(['taken', 'missed', 'administered']),
   medicationAssertionId: RecordIdSchema,
   dose: z
@@ -49,7 +66,51 @@ export const DoseEventSchema = RecordMetadataSchema.safeExtend({
     .optional(),
 });
 
+// Preserve explicit HealthKit statuses; an absent dose event is not a missed-dose status.
+export const DoseObservationStatusSchema = z.enum([
+  'not_interacted',
+  'notification_not_sent',
+  'snoozed',
+  'taken',
+  'skipped',
+  'not_logged',
+  'unknown',
+]);
+
+const ImportedDoseEventSchema = ImportedRecordMetadataSchema.safeExtend({
+  effectiveAt: TimestampSchema,
+  ...ObservationIntervalSchema.shape,
+  eventKind: z.literal('observed'),
+  medicationDefinitionId: RecordIdSchema,
+  scheduledAt: TimestampSchema.optional(),
+  observationStatus: DoseObservationStatusSchema,
+  sourceStatusCode: z.number().int().optional(),
+  sourceScheduleTypeCode: z.number().int().optional(),
+  scheduleType: z.enum(['as_needed', 'scheduled']).optional(),
+  dose: z
+    .strictObject({
+      amount: z.number().nonnegative().finite().optional(),
+      unit: NonEmptyTextSchema,
+    })
+    .optional(),
+}).superRefine((event, context) => {
+  if (event.endedAt && compareTimestamps(event.endedAt, event.effectiveAt) < 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['endedAt'],
+      message: 'endedAt must not precede effectiveAt.',
+    });
+  }
+});
+
+export const DoseEventSchema = z.discriminatedUnion('eventKind', [
+  AssertedDoseEventSchema,
+  ImportedDoseEventSchema,
+]);
+
 export type PrescriptionAssertion = z.infer<typeof PrescriptionAssertionSchema>;
 export type CurrentMedicationConfirmation = z.infer<typeof CurrentMedicationConfirmationSchema>;
 export type MedicationAssertion = z.infer<typeof MedicationAssertionSchema>;
+export type MedicationDefinition = z.infer<typeof MedicationDefinitionSchema>;
+export type DoseObservationStatus = z.infer<typeof DoseObservationStatusSchema>;
 export type DoseEvent = z.infer<typeof DoseEventSchema>;
