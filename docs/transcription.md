@@ -27,12 +27,17 @@ does not establish readiness for a particular configuration. Supported or
 downloading assets remain available for the explicit transcription action,
 which reaches the analyzer's existing installation request. An unsupported
 configuration returns `unsupported_device`; installed assets with no compatible
-format return `model_unavailable`. Availability checks do not initiate downloads.
+format are unavailable to that transcriber. Availability checks do not initiate
+downloads.
 If Korean model assets are supported but not installed, Apple `AssetInventory`
 downloads and installs the model before transcription. The speech model runs on
 device; fetching model assets is a separate network operation. If the model has
-no compatible audio format on the current runtime, the provider returns an
-explicit `model_unavailable` state before reporting any transcription. Apple's
+no compatible audio format after asset preparation, the provider may attempt
+`SFSpeechRecognizer` only when that recognizer supports on-device processing.
+Permission denial or restriction stays explicit, and a missing usable local
+recognizer preserves the model-unavailable error. Recognition-time errors from
+the fallback are reported as recognition errors. The provider never falls back
+to network recognition. Apple's
 [SpeechAnalyzer session](https://developer.apple.com/videos/play/wwdc2025/277/)
 explains file transcription, model selection, and conversion to a compatible
 audio format.
