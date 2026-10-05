@@ -7,7 +7,7 @@ describe('Orot mobile app', () => {
     });
   });
 
-  it('renders the Korean welcome screen and opens Calendar linking', async () => {
+  it('launches in English and opens Calendar from the Korean welcome screen', async () => {
     await expect(element(by.id('welcome-title'))).toHaveText(
       'Orot에 오신 걸 환영해요',
     );
