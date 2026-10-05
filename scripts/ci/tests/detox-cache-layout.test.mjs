@@ -66,7 +66,11 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
   assert.match(cachePaths, /apps\/mobile\/ios\/build-detox-release/);
   assert.match(cachePaths, /apps\/mobile\/ios\/build-detox-openai-provider/);
   assert.match(cachePaths, /apps\/mobile\/ios\/build-production/);
-  assert.match(ciWorkflow, /path: apps\/mobile\/ios\/build-production/);
+  // The warm production app still needs Pods for signing and build-settings checks.
+  assert.match(
+    ciWorkflow,
+    /path:\s+\|\n\s+apps\/mobile\/ios\/build-production\n\s+apps\/mobile\/ios\/Pods/,
+  );
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-release\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-openai-provider\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-production\//);

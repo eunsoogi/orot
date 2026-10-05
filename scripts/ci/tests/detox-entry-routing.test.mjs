@@ -114,7 +114,7 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
   assert.equal((storageTest.match(/await installFreshApp\(\);/g) ?? []).length, 2);
-  assert.equal((storageTest.match(/^  it\(/gm) ?? []).length, 3);
+  assert.equal((storageTest.match(/^ {2}it\(/gm) ?? []).length, 3);
   assert.match(storageTest, /await launchProbe\('restart', true\);/);
   assert.match(
     storageTest,
@@ -131,7 +131,7 @@ test('the shared Release app config bundles the router and explicitly selects ev
     /it\('migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await launchProbe\('legacy', false\);/,
   );
   const restartCase = storageTest.match(
-    /it\('reopens a source and its evidence span after an app process restart'[\s\S]*?^  \}\);/m,
+    /it\('reopens a source and its evidence span after an app process restart'[\s\S]*?^ {2}\}\);/m,
   );
   assert.ok(restartCase, 'the process-restart scenario remains a separate Release case');
   assert.doesNotMatch(restartCase[0], /installFreshApp/);
