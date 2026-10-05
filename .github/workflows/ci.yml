@@ -185,8 +185,8 @@ jobs:
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs write production 2>&1 | tee -a artifacts/ios-build/native-cache.log
 
-      - name: Test the standalone ChatGPT OAuth package
-        run: scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
+      - name: Verify Simulator defaults and test OAuth package
+        run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
 
       - name: Build the standalone ChatGPT OAuth Simulator harness
         run: |

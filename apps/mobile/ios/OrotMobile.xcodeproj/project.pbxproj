@@ -399,8 +399,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				/* Keep the simulator Keychain group stable; device signing remains user-controlled. */
+				"DEVELOPMENT_TEAM[sdk=iphonesimulator*]" = OROTSIM000;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = OrotMobile/OrotMobile.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "$(OROT_SIMULATOR_ENTITLEMENTS)";
+				"OROT_SIMULATOR_ENTITLEMENTS[sdk=iphonesimulator*]" = OrotMobile/OrotMobile.simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = OrotMobile/Info.plist;
@@ -431,8 +434,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				/* Keep the simulator Keychain group stable; device signing remains user-controlled. */
+				"DEVELOPMENT_TEAM[sdk=iphonesimulator*]" = OROTSIM000;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = OrotMobile/OrotMobile.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "$(OROT_SIMULATOR_ENTITLEMENTS)";
+				"OROT_SIMULATOR_ENTITLEMENTS[sdk=iphonesimulator*]" = OrotMobile/OrotMobile.simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = OrotMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

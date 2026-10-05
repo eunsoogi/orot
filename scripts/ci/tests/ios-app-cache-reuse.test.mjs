@@ -121,7 +121,10 @@ test('reuses only the exact production app while OAuth package and harness check
   const pods = workflowStep(ciWorkflow, 'Install app CocoaPods dependencies');
   const build = workflowStep(ciWorkflow, 'Build the iOS Simulator app');
   const writeManifest = workflowStep(ciWorkflow, 'Write production app DerivedData manifest');
-  const oauthTests = workflowStep(ciWorkflow, 'Test the standalone ChatGPT OAuth package');
+  const signingAndOAuth = workflowStep(
+    ciWorkflow,
+    'Verify Simulator defaults and test OAuth package',
+  );
   const oauthBuild = workflowStep(
     ciWorkflow,
     'Build the standalone ChatGPT OAuth Simulator harness',
@@ -149,7 +152,10 @@ test('reuses only the exact production app while OAuth package and harness check
   }
   assert.match(pods, /app_reusable != 'true'/);
   assert.match(build, /app_reusable != 'true'/);
-  assert.doesNotMatch(oauthTests, /if:/);
+  // This must remain unconditional because production cache hits skip native builds.
+  assert.doesNotMatch(signingAndOAuth, /if:/);
+  assert.match(signingAndOAuth, /node scripts\/ci\/verify-simulator-keychain-defaults\.mjs &&/);
+  assert.match(signingAndOAuth, /run-command\.sh openai-oauth-tests/);
   assert.doesNotMatch(oauthBuild, /if:/);
   assert.match(mobilePackage, /"ios:build"[\s\S]*?ios\/build/);
 });

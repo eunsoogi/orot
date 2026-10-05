@@ -163,6 +163,11 @@ test('Release probes share one app build while OpenAI keeps its separate Debug-o
 
   for (const buildCommand of buildCommands) {
     assert.match(buildCommand, /-destination 'generic\/platform=iOS Simulator'/);
+    assert.doesNotMatch(
+      buildCommand,
+      /\b(?:CODE_SIGN_ENTITLEMENTS|DEVELOPMENT_TEAM|OROT_SIMULATOR_ENTITLEMENTS)=/,
+      'Detox builds must exercise project-level Simulator signing defaults',
+    );
     assert.doesNotMatch(buildCommand, /\s-arch(?:\s|=)/);
     assert.match(buildCommand, /ARCHS="\$\(uname -m\)"/);
     assert.match(buildCommand, /ONLY_ACTIVE_ARCH=YES/);
