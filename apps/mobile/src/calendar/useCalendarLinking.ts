@@ -75,6 +75,8 @@ export function useCalendarLinking(
   const [saving, setSaving] = useState(false);
   const [access, setAccess] = useState<CalendarAccessState | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  // Linked-event verification can grant full access without loading candidates.
+  const [hasLoadedCandidates, setHasLoadedCandidates] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
@@ -177,6 +179,7 @@ export function useCalendarLinking(
 
   async function loadUpcomingEvents() {
     setLoadingEvents(true);
+    setHasLoadedCandidates(false);
     setError('');
     setNotice('');
     setSelectedEvent(null);
@@ -184,6 +187,7 @@ export function useCalendarLinking(
       const result = await bridge.requestAccessAndListUpcomingEvents();
       setAccess(result.access);
       setEvents(result.access === 'fullAccess' ? result.events : []);
+      setHasLoadedCandidates(result.access === 'fullAccess');
     } catch {
       setError(t('calendar.loadError'));
     } finally {
@@ -207,6 +211,7 @@ export function useCalendarLinking(
       await reloadAppointments();
       setSelectedEvent(null);
       setEvents([]);
+      setHasLoadedCandidates(false);
       setPendingChange(null);
       setNotice(t('calendar.confirmed'));
     } catch {
@@ -221,6 +226,7 @@ export function useCalendarLinking(
     confirmSelectedEvent,
     error,
     events,
+    hasLoadedCandidates,
     linkedAppointment,
     nextVisitAppointment,
     loadUpcomingEvents,

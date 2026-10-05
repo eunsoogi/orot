@@ -103,6 +103,41 @@ describe('Calendar linking screen', () => {
     ).toBeTruthy();
   });
 
+  it('does not show the empty candidate state when a saved next visit is reloaded', async () => {
+    const current = appointmentFor(event('saved-event'));
+    const appointments = repository(async () => [current]);
+    const calendar = bridge({
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: event('saved-event'),
+      })),
+    });
+
+    await render(
+      <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+    );
+
+    expect(await screen.findByTestId('calendar-next-visit')).toBeTruthy();
+    expect(screen.queryByTestId('calendar-empty')).toBeNull();
+  });
+
+  it('shows the empty state after a completed candidate lookup returns no events', async () => {
+    const calendar = bridge({
+      requestAccessAndListUpcomingEvents: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        events: [],
+      })),
+    });
+    const appointments = repository(async () => []);
+
+    await render(
+      <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+    );
+    await fireEvent.press(screen.getByTestId('calendar-connect'));
+
+    expect(await screen.findByTestId('calendar-empty')).toBeTruthy();
+  });
+
   it('shows a denied permission state without saving or guessing from events', async () => {
     const calendar = bridge({
       requestAccessAndListUpcomingEvents: jest.fn(async () => ({

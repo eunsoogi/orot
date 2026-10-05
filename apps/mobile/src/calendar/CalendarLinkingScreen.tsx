@@ -210,6 +210,7 @@ export default function CalendarLinkingScreen({
         <Text testID="calendar-loading-events">{t('calendar.loading')}</Text>
       ) : null}
       {!calendar.loadingEvents &&
+      calendar.hasLoadedCandidates &&
       calendar.access === 'fullAccess' &&
       calendar.events.length === 0 &&
       !calendar.selectedEvent ? (
