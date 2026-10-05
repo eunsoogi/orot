@@ -128,6 +128,8 @@ function removeManagedDirectory(directoryPath, expectedRoot) {
 }
 
 function clearAppOutputs(profile, dataRoot) {
+  // With toolchain/native inputs compatible, only app outputs are stale; keep
+  // Pods/Codegen and validate both deletion paths before clearing either.
   const configuration = getProfile(profile).configuration;
   const appOutputs = [
     join(dataRoot, 'Build/Intermediates.noindex/OrotMobile.build', configuration),
@@ -205,6 +207,8 @@ function prepareCache(repositoryRoot, profile) {
   const result = inspectCacheManifest(readCacheManifest(dataRoot), expected);
   if (result.classification === 'invalidated') {
     requireGitHubActions();
+    // A noncompatible manifest invalidates this isolated profile root; shared
+    // CocoaPods Codegen remains under ios/build/generated/ios outside this path.
     removeManagedDirectory(dataRoot, resolve(repositoryRoot, 'apps/mobile/ios'));
   }
   if (result.classification === 'dependency-compatible') {

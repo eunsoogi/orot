@@ -160,6 +160,8 @@ function describeDetoxBuildConfig(repositoryRoot, descriptor) {
 }
 
 function normalizeDetoxBuildCommand(command) {
+  // Bundle routing and forced JS bundling change app outputs, not reusable Pods.
+  // The full build fingerprint still tracks these values and rebuilds the app.
   return command
     .replace(/(?:^|\s)(?:ENTRY_FILE|FORCE_BUNDLING)=[^\s]+/g, ' ')
     .replace(/\s+/g, ' ')

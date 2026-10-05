@@ -41,6 +41,7 @@ simulator_name="Orot Detox CI ${run_name}"
 simulator_udid=''
 
 cleanup_on_failure() {
+  # Keep the setup or boot failure as the exit status if cleanup also fails.
   result=$?
   trap - EXIT
   if [[ "$result" -ne 0 && -z "$simulator_udid" && -s "$identity_path" ]]; then
@@ -75,6 +76,7 @@ if [[ ! "$simulator_udid" =~ ^[A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}
   exit 1
 fi
 
+# Publish the dedicated UDID before boot so later failure cleanup can find this device.
 printf '%s\n' "$simulator_udid" >"$identity_path"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'udid=%s\n' "$simulator_udid" >>"$GITHUB_OUTPUT"
