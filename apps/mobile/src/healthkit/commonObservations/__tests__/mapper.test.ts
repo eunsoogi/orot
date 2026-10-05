@@ -1,6 +1,7 @@
 import {
   commonObservationRecordId,
   mapCommonObservationSample,
+  toCommonObservationRecord,
 } from '../mapper';
 import type { CommonObservationMapperInput } from '../types';
 
@@ -72,6 +73,52 @@ describe('common HealthKit observation mapping', () => {
         recordId: 'healthkit:steps:sample-1',
       },
     });
+  });
+
+  it('stores normalized quantities with provenance and no invented source time', () => {
+    const result = mapCommonObservationSample(
+      'bodyMass',
+      sample('HKQuantityTypeIdentifierBodyMass', 'kg', {
+        value: 68.4,
+        sourceVersion: '4.2',
+        sourceProductType: 'Watch7,2',
+        device: { manufacturer: 'Apple', model: 'Watch' },
+      }),
+    );
+    if (result.status !== 'mapped')
+      throw new Error('Expected a mapped HealthKit sample.');
+
+    const record = toCommonObservationRecord(
+      result.observation,
+      '2026-10-05T10:00:00.000Z',
+    );
+    expect(record).toMatchObject({
+      id: 'healthkit:bodyMass:sample-1',
+      effectiveAt: '2026-10-04T10:00:00.000Z',
+      endedAt: '2026-10-04T10:00:00.000Z',
+      observationKind: 'measurement',
+      concept: 'body_mass',
+      value: {
+        kind: 'quantity',
+        amount: 68.4,
+        unit: 'kg',
+        sourceRepresentation: { status: 'unavailable' },
+      },
+      provenance: {
+        origin: 'imported',
+        sourceRecordIds: ['sample-1'],
+        source: {
+          system: 'healthkit',
+          sourceIdentifier: 'com.example.watch',
+          sourceName: 'Synthetic Watch',
+          sourceVersion: '4.2',
+          productType: 'Watch7,2',
+          device: { manufacturer: 'Apple', model: 'Watch' },
+        },
+      },
+      reviewState: { status: 'unreviewed' },
+    });
+    expect(record.recordedAt).toBeUndefined();
   });
 
   it('rebuilds the same record id from a deletion sample ID', () => {

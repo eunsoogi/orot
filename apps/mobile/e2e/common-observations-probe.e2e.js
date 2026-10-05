@@ -3,9 +3,13 @@
 const { expect: jestExpect } = require('@jest/globals');
 
 describe('common HealthKit observations on iOS Simulator', () => {
-  it('queries and maps feature-scoped synthetic observations without saving', async () => {
+  it('imports synthetic observations into encrypted storage and replays idempotently', async () => {
     const metroPort = process.env.RCT_METRO_PORT || '8220';
+    await device.uninstallApp();
+    await device.clearKeychain();
+    await device.installApp();
     await device.launchApp({
+      newInstance: false,
       launchArgs: { RCT_jsLocation: `localhost:${metroPort}` },
     });
     await element(by.id('common-observations-toggle-heartRate')).tap();
@@ -18,25 +22,24 @@ describe('common HealthKit observations on iOS Simulator', () => {
     const statusAttributes = await status.getAttributes();
     const statusText = statusAttributes.label || statusAttributes.text;
     jestExpect(statusText).toContain(
-      '조회와 변환을 마쳤어요. 2개 관측값을 확인했어요.',
+      '조회와 변환을 마쳤어요. 2개 확인, 0개 삭제, 0개 미지원',
     );
     const attributes = await element(
       by.id('common-observations-probe-summary'),
     ).getAttributes();
     const summary = attributes.label || attributes.text;
-    jestExpect(summary).toContain(
-      'heartRate=mapped:1:count/min:com.orot.healthkit.synthetic:synthetic-heart-rate:2026-10-01T00:00:00.000Z/2026-10-06T00:00:00.000Z',
-    );
-    jestExpect(summary).toContain(
-      'steps=mapped:1:count:com.orot.healthkit.synthetic:synthetic-steps:2026-10-01T00:00:00.000Z/2026-10-06T00:00:00.000Z',
-    );
-    jestExpect(summary).toContain(
-      'bodyMass=empty:authorization=completed:notObservable',
-    );
-    jestExpect(summary).toContain('stepAggregation=safe:1200');
+    jestExpect(summary).toContain('initial=complete:2:0:0:cursor=true');
+    jestExpect(summary).toContain('heartRate=72 count/min');
+    jestExpect(summary).toContain('steps=1200 count');
+    jestExpect(summary).toContain('bodyMass=empty');
+    jestExpect(summary).toContain('stepAggregation=invalid:no-total');
+    jestExpect(summary).toContain('readAuthorization=notObservable');
+    jestExpect(summary).toContain('replay=empty:0:0:cursor=false');
+    jestExpect(summary).toContain('records=2');
     jestExpect(summary).toContain('availability=available');
     jestExpect(summary).toContain('writeTypes=0');
-    jestExpect(summary).toContain('storage=not-performed');
+    jestExpect(summary).toContain('storage=encrypted-local');
+    jestExpect(summary).toContain('replayIdempotent=true');
     console.log('COMMON_OBSERVATIONS_SIMULATOR ' + summary);
   });
 });

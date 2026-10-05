@@ -1,3 +1,4 @@
+import type { RecordMap } from '@orot/storage';
 import type { MappedCommonObservation } from './types';
 import { compareHealthKitTimestamps, isValidHealthKitTimestamp } from './time';
 
@@ -109,6 +110,60 @@ export function evaluateStepAggregation(
   };
 }
 
+/** Evaluates persisted HealthKit step observations so old sources remain in overlap checks. */
+export function evaluateStoredStepAggregation(
+  observations: readonly RecordMap['health_observation'][],
+): StepAggregationResult {
+  const steps = observations.filter(
+    observation =>
+      observation.concept === 'step_count' &&
+      observation.provenance.source?.system === 'healthkit',
+  );
+  if (steps.length === 0) return evaluateStepAggregation([]);
+
+  if (
+    steps.some(
+      observation =>
+        observation.observationKind !== 'measurement' ||
+        observation.value.kind !== 'quantity' ||
+        observation.value.unit !== 'count',
+    )
+  ) {
+    return {
+      status: 'invalid',
+      total: null,
+      sampleIds: steps.flatMap(record => record.provenance.sourceRecordIds),
+      sourceIdentifiers: sourceIdentifiersFromRecords(steps),
+    };
+  }
+
+  return evaluateStepAggregation(
+    steps.map(observation => {
+      if (observation.value.kind !== 'quantity') {
+        throw new Error(
+          'A validated step observation lost its quantity value.',
+        );
+      }
+      return {
+        feature: 'steps',
+        recordId: observation.id,
+        observationKind: 'measurement',
+        concept: 'step_count',
+        value: observation.value,
+        sourceSampleId:
+          observation.provenance.sourceRecordIds[0] ?? observation.id,
+        typeIdentifier: 'HKQuantityTypeIdentifierStepCount',
+        startDate: observation.effectiveAt,
+        endDate: observation.endedAt ?? '',
+        sourceIdentifier:
+          observation.provenance.source?.sourceIdentifier ?? 'unknown-source',
+        sourceName:
+          observation.provenance.source?.sourceName ?? 'unknown-source',
+      };
+    }),
+  );
+}
+
 function result(
   status: 'overlap' | 'conflictingDuplicate' | 'invalid',
   samples: readonly MappedCommonObservation[],
@@ -127,6 +182,19 @@ function sourceIdentifiers(
   samples: readonly MappedCommonObservation[],
 ): string[] {
   return [...new Set(samples.map(sample => sample.sourceIdentifier))].sort();
+}
+
+function sourceIdentifiersFromRecords(
+  records: readonly RecordMap['health_observation'][],
+): string[] {
+  return [
+    ...new Set(
+      records.map(
+        record =>
+          record.provenance.source?.sourceIdentifier ?? 'unknown-source',
+      ),
+    ),
+  ].sort();
 }
 
 function sameSample(

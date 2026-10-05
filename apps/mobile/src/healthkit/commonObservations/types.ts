@@ -31,6 +31,9 @@ export interface MappedCommonObservation {
   readonly endDate: string;
   readonly sourceIdentifier: string;
   readonly sourceName: string;
+  readonly sourceVersion?: string;
+  readonly sourceProductType?: string;
+  readonly device?: HealthKitSampleSnapshot['device'];
 }
 
 export type CommonObservationMappingReason =

@@ -14,6 +14,8 @@ export const commonObservationImportStatuses = [
   'unavailable',
   'unsupportedFeature',
   'unsupportedPlatform',
+  'unsupportedData',
+  'partial',
   'failed',
 ] as const;
 
@@ -27,7 +29,11 @@ export interface CommonObservationsImportCopy {
   readonly importButton: string;
   readonly featureNames: Readonly<Record<CommonObservationFeature, string>>;
   readonly statuses: Readonly<Record<CommonObservationImportStatus, string>>;
-  readonly importedCount: (count: number) => string;
+  readonly changeSummary: (
+    importedCount: number,
+    deletedCount: number,
+    unsupportedCount: number,
+  ) => string;
 }
 
 export interface CommonObservationsImportResult {
@@ -36,6 +42,8 @@ export interface CommonObservationsImportResult {
     'idle' | 'importing' | 'failed'
   >;
   readonly importedCount: number;
+  readonly deletedCount: number;
+  readonly unsupportedCount: number;
 }
 
 interface CommonObservationsImportScreenProps {
@@ -55,6 +63,8 @@ export function CommonObservationsImportScreen({
   >(new Set());
   const [status, setStatus] = useState<CommonObservationImportStatus>('idle');
   const [importedCount, setImportedCount] = useState<number | null>(null);
+  const [deletedCount, setDeletedCount] = useState<number | null>(null);
+  const [unsupportedCount, setUnsupportedCount] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
   function toggleFeature(feature: CommonObservationFeature) {
@@ -66,6 +76,8 @@ export function CommonObservationsImportScreen({
     });
     setStatus('idle');
     setImportedCount(null);
+    setDeletedCount(null);
+    setUnsupportedCount(null);
   }
 
   async function startImport() {
@@ -76,11 +88,15 @@ export function CommonObservationsImportScreen({
 
     setStatus('importing');
     setImportedCount(null);
+    setDeletedCount(null);
+    setUnsupportedCount(null);
     setIsImporting(true);
     try {
       const result = await onImport(features);
       setStatus(result.status);
       setImportedCount(result.importedCount);
+      setDeletedCount(result.deletedCount);
+      setUnsupportedCount(result.unsupportedCount);
     } catch {
       setStatus('failed');
     } finally {
@@ -126,7 +142,11 @@ export function CommonObservationsImportScreen({
         testID="common-observations-status"
       >
         {copy.statuses[status]}
-        {importedCount === null ? '' : ` ${copy.importedCount(importedCount)}`}
+        {importedCount === null ||
+        deletedCount === null ||
+        unsupportedCount === null
+          ? ''
+          : ` ${copy.changeSummary(importedCount, deletedCount, unsupportedCount)}`}
       </Text>
     </View>
   );

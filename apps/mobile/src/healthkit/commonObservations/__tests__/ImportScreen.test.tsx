@@ -18,14 +18,17 @@ const copy: CommonObservationsImportCopy = {
     idle: '가져올 기록을 선택해 주세요.',
     importing: '가져오는 중이에요.',
     complete: '가져오기를 마쳤어요.',
-    empty: '표시 가능한 자료가 없어요. 읽기 권한 상태는 확인할 수 없어요.',
+    empty: '새로운 변경이 없어요. 읽기 권한 상태는 확인할 수 없어요.',
     overlap: '겹치는 걸음 기록이 있어 합계를 표시하지 않았어요.',
     unavailable: 'HealthKit을 사용할 수 없어요.',
     unsupportedFeature: '선택한 건강 기록 유형은 지원하지 않아요.',
     unsupportedPlatform: '이 기기에서는 HealthKit을 지원하지 않아요.',
+    unsupportedData: '지원할 수 없는 건강 기록이 있어 가져오기를 멈췄어요.',
+    partial: '일부 기록만 가져왔어요. 다시 시도해 주세요.',
     failed: '기록을 가져오지 못했어요. 다시 시도해 주세요.',
   },
-  importedCount: count => `${count}개를 저장했어요.`,
+  changeSummary: (imported, deleted, unsupported) =>
+    `${imported}개 저장, ${deleted}개 삭제, ${unsupported}개 미지원`,
 };
 
 describe('common observations import screen', () => {
@@ -33,6 +36,8 @@ describe('common observations import screen', () => {
     const onImport = jest.fn().mockResolvedValue({
       status: 'complete',
       importedCount: 2,
+      deletedCount: 1,
+      unsupportedCount: 0,
     });
     await render(
       <CommonObservationsImportScreen copy={copy} onImport={onImport} />,
@@ -53,7 +58,9 @@ describe('common observations import screen', () => {
 
     expect(onImport).toHaveBeenCalledWith(['heartRate', 'steps']);
     expect(
-      await screen.findByText('가져오기를 마쳤어요. 2개를 저장했어요.'),
+      await screen.findByText(
+        '가져오기를 마쳤어요. 2개 저장, 1개 삭제, 0개 미지원',
+      ),
     ).toBeTruthy();
   });
 
@@ -61,6 +68,8 @@ describe('common observations import screen', () => {
     const onImport = jest.fn().mockResolvedValue({
       status: 'empty',
       importedCount: 0,
+      deletedCount: 0,
+      unsupportedCount: 0,
     });
     await render(
       <CommonObservationsImportScreen copy={copy} onImport={onImport} />,
@@ -73,7 +82,7 @@ describe('common observations import screen', () => {
 
     expect(
       await screen.findByText(
-        /표시 가능한 자료가 없어요\..*읽기 권한 상태는 확인할 수 없어요\./,
+        /새로운 변경이 없어요\..*읽기 권한 상태는 확인할 수 없어요\./,
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/거부/)).toBeNull();
@@ -83,6 +92,8 @@ describe('common observations import screen', () => {
     ['unavailable', 'HealthKit을 사용할 수 없어요.'],
     ['unsupportedFeature', '선택한 건강 기록 유형은 지원하지 않아요.'],
     ['unsupportedPlatform', '이 기기에서는 HealthKit을 지원하지 않아요.'],
+    ['unsupportedData', '지원할 수 없는 건강 기록이 있어 가져오기를 멈췄어요.'],
+    ['partial', '일부 기록만 가져왔어요. 다시 시도해 주세요.'],
     ['overlap', '겹치는 걸음 기록이 있어 합계를 표시하지 않았어요.'],
   ] as const)(
     'shows %s separately from an empty result',
@@ -90,6 +101,8 @@ describe('common observations import screen', () => {
       const onImport = jest.fn().mockResolvedValue({
         status,
         importedCount: 0,
+        deletedCount: 0,
+        unsupportedCount: 0,
       });
       await render(
         <CommonObservationsImportScreen copy={copy} onImport={onImport} />,
@@ -101,7 +114,7 @@ describe('common observations import screen', () => {
       await fireEvent.press(screen.getByTestId('common-observations-import'));
 
       expect(
-        await screen.findByText(`${message} 0개를 저장했어요.`),
+        await screen.findByText(`${message} 0개 저장, 0개 삭제, 0개 미지원`),
       ).toBeTruthy();
       expect(screen.queryByText(copy.statuses.empty)).toBeNull();
     },
