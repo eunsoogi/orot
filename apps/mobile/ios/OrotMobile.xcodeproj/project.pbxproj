@@ -32,6 +32,11 @@
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
+		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
+		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
+		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
+		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
+		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		E14B00000000000000000001 /* SpeechTranscriptionAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000001 /* SpeechTranscriptionAnalyzer.swift */; };
 		E14B00000000000000000002 /* SpeechTranscriptionAudioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000002 /* SpeechTranscriptionAudioStore.swift */; };
@@ -73,6 +78,11 @@
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
+		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
+		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
+		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
+		B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarDetoxModule.swift; path = OrotMobile/SyntheticCalendarDetoxModule.swift; sourceTree = "<group>"; };
+		B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarDetoxModule.m; path = OrotMobile/SyntheticCalendarDetoxModule.m; sourceTree = "<group>"; };
 		E14A00000000000000000001 /* SpeechTranscriptionAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechTranscriptionAnalyzer.swift; path = OrotMobile/SpeechTranscriptionAnalyzer.swift; sourceTree = "<group>"; };
 		E14A00000000000000000002 /* SpeechTranscriptionAudioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechTranscriptionAudioStore.swift; path = OrotMobile/SpeechTranscriptionAudioStore.swift; sourceTree = "<group>"; };
 		E14A00000000000000000003 /* SpeechTranscriptionAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechTranscriptionAvailability.swift; path = OrotMobile/SpeechTranscriptionAvailability.swift; sourceTree = "<group>"; };
@@ -122,6 +132,11 @@
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
+				B65F00000000000000000001 /* EventKitCalendarModule.swift */,
+				B65F00000000000000000002 /* EventKitCalendarModule.m */,
+				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
+				B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */,
+				B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */,
 				E14A00000000000000000001 /* SpeechTranscriptionAnalyzer.swift */,
 				E14A00000000000000000002 /* SpeechTranscriptionAudioStore.swift */,
 				E14A00000000000000000003 /* SpeechTranscriptionAvailability.swift */,
@@ -359,6 +374,11 @@
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,
+				A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */,
+				A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */,
+				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
+				A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */,
+				A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */,
 				E14B00000000000000000001 /* SpeechTranscriptionAnalyzer.swift in Sources */,
 				E14B00000000000000000002 /* SpeechTranscriptionAudioStore.swift in Sources */,
 				E14B00000000000000000003 /* SpeechTranscriptionAvailability.swift in Sources */,
