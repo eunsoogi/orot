@@ -20,6 +20,8 @@ const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.
 // CocoaPods aggregates this tracked plist and adds generated pod integration to the project during install.
 const PRIVACY_MANIFEST_INPUT = 'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy';
 const COCOAPODS_PROJECT_INPUT = 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj';
+// Detox/Jest runs these files in Node; Metro bundles ENTRY_FILE and app imports, not host tests.
+const HOST_ONLY_DETOX_TEST = /^apps\/mobile\/e2e\/.+\.(?:test|e2e)\.js$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 const NATIVE_DEPENDENCY_INPUT_PATHS = [
@@ -61,6 +63,10 @@ function readInputPaths(output) {
 
 function filterInputPaths(paths) {
   return [...new Set(paths)].filter((path) => !isGeneratedPath(path)).sort();
+}
+
+function filterDetoxBuildInputPaths(paths) {
+  return filterInputPaths(paths).filter((path) => !HOST_ONLY_DETOX_TEST.test(path));
 }
 
 function listCurrentInputs(repositoryRoot, pathspecs) {
@@ -113,11 +119,14 @@ export function listChangedDetoxBuildInputs(repositoryRoot = process.cwd()) {
     ],
     { encoding: 'buffer' },
   );
-  return filterInputPaths([...readInputPaths(output), ...readInputPaths(untracked)]);
+  return filterDetoxBuildInputPaths([...readInputPaths(output), ...readInputPaths(untracked)]);
 }
 
-function hashCurrentInputs(repositoryRoot, pathspecs, inputHashes = {}) {
-  const paths = listCurrentInputs(repositoryRoot, pathspecs);
+function hashCurrentInputs(repositoryRoot, pathspecs, inputHashes = {}, skipHostTests = false) {
+  const listedPaths = listCurrentInputs(repositoryRoot, pathspecs);
+  const paths = skipHostTests
+    ? listedPaths.filter((path) => !HOST_ONLY_DETOX_TEST.test(path))
+    : listedPaths;
   if (paths.length === 0)
     throw new Error(`No tracked Detox cache inputs matched: ${pathspecs.join(', ')}`);
 
@@ -183,7 +192,7 @@ function hashNativeDependencyInputs(repositoryRoot, inputHashes = {}) {
 
 export function computeDetoxCacheFingerprints(repositoryRoot = process.cwd(), options = {}) {
   const root = resolve(repositoryRoot);
-  const buildInputs = hashCurrentInputs(root, BUILD_INPUT_PATHS, options);
+  const buildInputs = hashCurrentInputs(root, BUILD_INPUT_PATHS, options, true);
   const reactNativeArtifacts = hashCurrentInputs(root, REACT_NATIVE_ARTIFACT_PATHS);
   const nativeDependencies = hashNativeDependencyInputs(root, options);
   return makeFingerprintOutput({
@@ -202,7 +211,7 @@ export function computeDetoxReactNativeArtifactFingerprint(repositoryRoot = proc
 
 export function computeDetoxDerivedDataFingerprints(repositoryRoot = process.cwd(), options = {}) {
   const root = resolve(repositoryRoot);
-  const buildInputs = hashCurrentInputs(root, BUILD_INPUT_PATHS, options);
+  const buildInputs = hashCurrentInputs(root, BUILD_INPUT_PATHS, options, true);
   const nativeDependencies = hashNativeDependencyInputs(root, options);
   return makeFingerprintOutput({
     buildInputs,
