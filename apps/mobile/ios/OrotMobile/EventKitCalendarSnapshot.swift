@@ -4,6 +4,8 @@ import Foundation
 enum EventKitCalendarSnapshot {
     static func serialize(_ event: EKEvent) -> [String: Any]? {
         guard let identifier = event.eventIdentifier, !identifier.isEmpty else { return nil }
+        // EventKit returns floating dates in the system zone; keep their civil times
+        // separately so a device zone change does not move the selected wall time.
         let isFloating = event.timeZone == nil
         let occurrenceDate: Any
         let floatingOccurrenceAt: Any
