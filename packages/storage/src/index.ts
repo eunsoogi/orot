@@ -20,6 +20,7 @@ export type {
   AppointmentChanges,
   AppointmentRepository,
   AppointmentRepositoryOptions,
+  CalendarAppointmentInput,
   ManualAppointmentInput,
 } from './appointments';
 export type {
