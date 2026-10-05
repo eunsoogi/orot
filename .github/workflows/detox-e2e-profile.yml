@@ -65,20 +65,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - name: Prepare dedicated Detox Simulator # Start boot during toolchain and dependency setup.
+      - name: Prepare dedicated Detox Simulator # A validated cache hit skips Ruby, CocoaPods, and the native build.
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
-      - name: Install CocoaPods
-        run: |
-          scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Verify runner toolchain
-        run: scripts/ci/verify-toolchain.sh --cocoapods
+        run: scripts/ci/verify-toolchain.sh
       - name: Install frozen workspace dependencies
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
@@ -132,7 +124,15 @@ jobs:
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ inputs.profile }}"
-
+      - name: Set up Ruby
+        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
+        with:
+          ruby-version: '4.0.7'
+          bundler-cache: false
+      - name: Install CocoaPods
+        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
+        run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Record Detox cache state
         timeout-minutes: 1
         env:
@@ -177,15 +177,15 @@ jobs:
             printf 'macos=%s\n' "${MACOS_VERSION}"
             printf 'node=%s\n' "${NODE_VERSION}"
             printf 'pnpm=%s\n' "${PNPM_VERSION}"
-            printf 'ruby=%s\n' "${RUBY_VERSION}"
-            printf 'cocoapods=%s\n' "${COCOAPODS_VERSION}"
+            printf 'expected_ruby=%s\n' "${RUBY_VERSION}"
+            printf 'expected_cocoapods=%s\n' "${COCOAPODS_VERSION}"
             printf 'architecture=%s\n' "$(uname -m)"
           } > artifacts/detox/native-cache.log
 
       - name: Install Detox CocoaPods dependencies
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         timeout-minutes: 20
-        run: scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+        run: scripts/ci/verify-toolchain.sh --cocoapods && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
 
       - name: Install Detox Simulator utilities
         timeout-minutes: 10
