@@ -2,6 +2,8 @@
 
 const { createStorageResetGuard } = require('./storageProbeResetGuard.e2e.js');
 const resetGuard = createStorageResetGuard();
+// A hosted uninstall, Keychain clear, and install took 173s; give only reset cases a four-minute limit.
+const freshResetTimeoutMs = 240000;
 
 beforeEach(() => resetGuard.assertResetMayContinue());
 afterEach(() => resetGuard.afterTest());
@@ -35,11 +37,15 @@ async function launchProbe(mode, newInstance) {
 }
 
 describe('encrypted local storage', () => {
-  it('creates encrypted source and evidence records on fresh install', async () => {
-    await installFreshApp();
-    await launchProbe('fresh', false);
-    await expectProbeSuccess('fresh');
-  });
+  it(
+    'creates encrypted source and evidence records on fresh install',
+    async () => {
+      await installFreshApp();
+      await launchProbe('fresh', false);
+      await expectProbeSuccess('fresh');
+    },
+    freshResetTimeoutMs,
+  );
 
   it('reopens a source and its evidence span after an app process restart', async () => {
     // Reuse the first case's records so process-restart coverage needs no second fresh install.
@@ -48,9 +54,13 @@ describe('encrypted local storage', () => {
     await expectProbeSuccess('restart');
   });
 
-  it('migrates the earlier test schema on fresh install', async () => {
-    await installFreshApp();
-    await launchProbe('legacy', false);
-    await expectProbeSuccess('legacy');
-  });
+  it(
+    'migrates the earlier test schema on fresh install',
+    async () => {
+      await installFreshApp();
+      await launchProbe('legacy', false);
+      await expectProbeSuccess('legacy');
+    },
+    freshResetTimeoutMs,
+  );
 });

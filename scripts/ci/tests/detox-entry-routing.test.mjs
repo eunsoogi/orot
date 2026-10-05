@@ -124,11 +124,11 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.match(storageTest, /afterEach\(\(\) => resetGuard\.afterTest\(\)\)/);
   assert.match(
     storageTest,
-    /it\('creates encrypted source and evidence records on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await expectProbeSuccess\('fresh'\);/,
+    /it\(\s*'creates encrypted source and evidence records on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await expectProbeSuccess\('fresh'\);/,
   );
   assert.match(
     storageTest,
-    /it\('migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await launchProbe\('legacy', false\);/,
+    /it\(\s*'migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await launchProbe\('legacy', false\);/,
   );
   const restartCase = storageTest.match(
     /it\('reopens a source and its evidence span after an app process restart'[\s\S]*?^ {2}\}\);/m,
