@@ -38,6 +38,38 @@ export const ko = {
     '녹음 파일 보호 상태를 확인하지 못해 기록 연결을 보류했어요. 파일은 이 기기에 남아 있습니다.',
   'recording.errors.generic':
     '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
+  'recording.transcript.title': '전사 검토',
+  'recording.transcript.localOnly':
+    '전사는 Apple 기기 내 음성 인식으로 처리하고 서버로 보내지 않습니다.',
+  'recording.transcript.description':
+    '자동 전사는 검토 전 초안이에요. 오디오 구간을 듣고 필요한 내용을 수정해 주세요.',
+  'recording.transcript.correctionNotice':
+    '전사문은 검토 전 초안이에요. 오디오와 대조하고 필요한 내용을 수정해 주세요.',
+  'recording.transcript.loading': '전사 기록을 불러오는 중…',
+  'recording.transcript.noRecording': '전사할 수 있는 녹음이 없어요.',
+  'recording.transcript.empty': '이 녹음에는 저장된 전사 내용이 없어요.',
+  'recording.transcript.create': '이 녹음 전사하기',
+  'recording.transcript.creating': '기기에서 전사 중…',
+  'recording.transcript.error.load': '전사 기록을 불러오지 못했어요.',
+  'recording.transcript.error.create':
+    '녹음을 전사하지 못했어요. 기기 지원 상태를 확인해 주세요.',
+  'recording.transcript.error.correct': '수정 내용을 저장하지 못했어요.',
+  'recording.transcript.error.play': '오디오 구간을 재생하지 못했어요.',
+  'recording.transcript.engine': '엔진: {engine}',
+  'recording.transcript.runtime': '시스템 버전: {version}',
+  'recording.transcript.range': '{start}–{end}',
+  'recording.transcript.play': '이 구간 듣기',
+  'recording.transcript.playing': '구간 재생 중…',
+  'recording.transcript.review.unreviewed': '검토 전 초안',
+  'recording.transcript.review.needsReview': '수정됨 · 다시 확인 필요',
+  'recording.transcript.review.reviewed': '검토됨',
+  'recording.transcript.edit': '수정',
+  'recording.transcript.input.label': '전사 내용',
+  'recording.transcript.save': '수정 저장',
+  'recording.transcript.cancel': '취소',
+  'recording.transcript.history': '이전 버전 {revision}: {text}',
+  'recording.transcript.staleArtifacts':
+    '수정으로 관련 파생 자료 {count}개가 다시 확인 대기 상태예요.',
   'recording.probe.synthetic': '시뮬레이터용 합성 녹음 준비',
   'recording.probe.failBeforeFile': '파일 준비 전 실패 시뮬레이션',
   'recording.probe.failAfterFile': '임시 파일 생성 후 실패 시뮬레이션',

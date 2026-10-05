@@ -136,6 +136,9 @@ importers:
       '@orot/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@orot/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@orot/model-runtime':
         specifier: workspace:*
         version: link:../../packages/model-runtime

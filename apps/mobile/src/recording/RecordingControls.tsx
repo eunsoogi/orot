@@ -4,6 +4,7 @@ import type { CompletedRecording, RecordingStatus } from './recordingTypes';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
+import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -193,6 +194,11 @@ export default function RecordingControls({
             </Text>
           ) : null}
         </View>
+      ) : null}
+      {status === 'idle' || status === 'completed' ? (
+        !lastRecording || sourceSaved ? (
+          <TranscriptEvidencePanel recordingSourceId={lastRecording?.id} />
+        ) : null
       ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={recordingControlStyles.error}>

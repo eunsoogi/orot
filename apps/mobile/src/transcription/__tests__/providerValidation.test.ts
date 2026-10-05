@@ -86,6 +86,47 @@ describe('AppleOnDeviceSpeechProvider validation and errors', () => {
     });
   });
 
+  it('requires engine, OS version, and audio duration for reviewable provenance', async () => {
+    const native = new FakeNativeSpeechBridge();
+    native.response = {
+      ...transcript,
+      runtimeVersion: '',
+    };
+    const provider = new AppleOnDeviceSpeechProvider(native);
+
+    await expect(
+      provider.transcribe(transcriptionRequest()),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'internal_error',
+        message: expect.stringContaining('runtime version'),
+      },
+    });
+  });
+
+  it.each([
+    [{ ...transcript, engine: 'none' as const }, 'selected engine'],
+    [{ ...transcript, recordingDurationMs: 0 }, 'audio duration'],
+  ])(
+    'rejects missing or invalid native provenance: %s',
+    async (response, message) => {
+      const native = new FakeNativeSpeechBridge();
+      native.response = response as NativeSpeechTranscriptionResponse;
+      const provider = new AppleOnDeviceSpeechProvider(native);
+
+      await expect(
+        provider.transcribe(transcriptionRequest()),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: {
+          code: 'internal_error',
+          message: expect.stringContaining(message as string),
+        },
+      });
+    },
+  );
+
   it.each([
     ['PERMISSION_DENIED', 'unsupported_capability', 'PERMISSION_DENIED:'],
     [

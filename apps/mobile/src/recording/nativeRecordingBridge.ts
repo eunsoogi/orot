@@ -1,5 +1,18 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
-import type { CompletedRecording, RecordingSnapshot } from './recordingTypes';
+import type {
+  CompletedRecording,
+  RecordingPlaybackRange,
+  RecordingSnapshot,
+} from './recordingTypes';
+
+interface SyntheticTranscriptionRecording {
+  readonly id: string;
+  readonly durationMs: number;
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly fileProtection: 'complete' | 'unverified' | 'unknown';
+  readonly excludedFromBackup: boolean;
+}
 
 interface NativeRecordingModule {
   addListener(eventType: string): void;
@@ -9,6 +22,18 @@ interface NativeRecordingModule {
   pauseRecording(): Promise<RecordingSnapshot>;
   resumeRecording(): Promise<RecordingSnapshot>;
   stopRecording(): Promise<CompletedRecording>;
+  playRecordingRange?(
+    recordingId: string,
+    startMs: number,
+    endMs: number,
+    syntheticFixture: boolean,
+  ): Promise<RecordingPlaybackRange>;
+  installSyntheticTranscriptionFixture?: (
+    audioBase64: string,
+  ) => Promise<SyntheticTranscriptionRecording>;
+  removeSyntheticTranscriptionFixture?: (
+    recordingId: string,
+  ) => Promise<boolean>;
   prepareSyntheticCapture?: () => Promise<boolean>;
   prepareSyntheticStartFailure?: (
     point: 'beforeFileURL' | 'afterFileCreated',
@@ -23,6 +48,11 @@ export interface RecordingBridge {
   pause(): Promise<RecordingSnapshot>;
   resume(): Promise<RecordingSnapshot>;
   stop(): Promise<CompletedRecording>;
+  playRange(
+    recordingId: string,
+    startMs: number,
+    endMs: number,
+  ): Promise<RecordingPlaybackRange>;
 }
 
 function requireNativeModule(): NativeRecordingModule {
@@ -64,7 +94,50 @@ export const nativeRecordingBridge: RecordingBridge = {
   stop() {
     return requireNativeModule().stopRecording();
   },
+  playRange(recordingId, startMs, endMs) {
+    const module = requireNativeModule();
+    if (!module.playRecordingRange) {
+      throw new Error('The native recording playback method is unavailable.');
+    }
+    return module.playRecordingRange(recordingId, startMs, endMs, false);
+  },
 };
+
+export async function installSyntheticTranscriptionRecording(
+  audioBase64: string,
+): Promise<SyntheticTranscriptionRecording> {
+  const module = requireNativeModule();
+  if (!module.installSyntheticTranscriptionFixture) {
+    throw new Error(
+      'Synthetic transcription fixtures require the dedicated Simulator build.',
+    );
+  }
+  return module.installSyntheticTranscriptionFixture(audioBase64);
+}
+
+export async function removeSyntheticTranscriptionRecording(
+  recordingId: string,
+): Promise<void> {
+  const remove = requireNativeModule().removeSyntheticTranscriptionFixture;
+  if (!remove) {
+    throw new Error(
+      'Synthetic transcription fixture cleanup requires the dedicated Simulator build.',
+    );
+  }
+  await remove(recordingId);
+}
+
+export async function playSyntheticTranscriptionRange(
+  recordingId: string,
+  startMs: number,
+  endMs: number,
+): Promise<RecordingPlaybackRange> {
+  const module = requireNativeModule();
+  if (!module.playRecordingRange) {
+    throw new Error('The native recording playback method is unavailable.');
+  }
+  return module.playRecordingRange(recordingId, startMs, endMs, true);
+}
 
 export function isSyntheticRecordingProbeAvailable(): boolean {
   const module = NativeModules.RecordingModule as
