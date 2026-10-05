@@ -98,6 +98,19 @@ if [[ "$skip_pods" != true ]]; then
   run_timed_stage pods pnpm --filter @orot/mobile ios:pods
 fi
 
+if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+  # Preserve Pods' effective project and privacy inputs before the native build consumes them.
+  case "$profile" in
+    release | openai-provider)
+      node scripts/ci/detox-derived-data-cache.mjs verify-build-inputs "$profile"
+      ;;
+    *)
+      printf 'GitHub Actions Detox builds require one prepared cache profile, got %s.\n' "$profile" >&2
+      exit 1
+      ;;
+  esac
+fi
+
 if [[ "$profile" == all || "$profile" == release ]]; then
   run_timed_stage release pnpm --filter @orot/mobile exec -- detox build --configuration ios.sim.release
   verify_app_architecture "$(resolve_mobile_path "$release_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"

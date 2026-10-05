@@ -19,7 +19,27 @@ function writeGitHubOutputs(outputPath, fingerprints) {
   if (fingerprints.privacyManifestInputHash) {
     outputLines.push(`privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash}`);
   }
+  if (fingerprints.cocoapodsProjectInputHash) {
+    outputLines.push(`cocoapods_project_input_sha256=${fingerprints.cocoapodsProjectInputHash}`);
+  }
   appendFileSync(outputPath, `${outputLines.join('\n')}\n`);
+}
+
+function writeGitHubEnvironment(outputPath, fingerprints) {
+  if (!outputPath || !fingerprints.buildInputs || !fingerprints.nativeDependencies) return;
+  // Later Actions steps use these source hashes after CocoaPods has rewritten its tracked outputs.
+  const inputHashes = JSON.stringify({
+    privacyManifest: fingerprints.privacyManifestInputHash,
+    projectFile: fingerprints.cocoapodsProjectInputHash,
+  });
+  appendFileSync(
+    outputPath,
+    [
+      `EXPECTED_COCOAPODS_INPUT_HASHES_JSON=${inputHashes}`,
+      `EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT=${fingerprints.buildInputs}`,
+      `EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT=${fingerprints.nativeDependencies}`,
+    ].join('\n') + '\n',
+  );
 }
 
 function computeFingerprints(mode) {
@@ -46,6 +66,7 @@ function main() {
 
   const fingerprints = computeFingerprints(mode);
   writeGitHubOutputs(outputPath, fingerprints);
+  writeGitHubEnvironment(process.env.GITHUB_ENV, fingerprints);
   console.log(
     [
       'DETOX_CACHE_FINGERPRINT',
@@ -56,6 +77,7 @@ function main() {
       `native_dependencies=${fingerprints.nativeDependencies ?? 'not_requested'}`,
       `native_inputs=${fingerprints.nativeDependencyInputCount ?? 'not_requested'}`,
       `privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash ?? 'not_requested'}`,
+      `cocoapods_project_input_sha256=${fingerprints.cocoapodsProjectInputHash ?? 'not_requested'}`,
     ].join(' '),
   );
 }

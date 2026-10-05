@@ -10,6 +10,17 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isCocoapodsInputHashPair(value) {
+  return (
+    isRecord(value) &&
+    Object.keys(value).sort().join(',') === 'privacyManifest,projectFile' &&
+    typeof value.privacyManifest === 'string' &&
+    FINGERPRINT_PATTERN.test(value.privacyManifest) &&
+    typeof value.projectFile === 'string' &&
+    FINGERPRINT_PATTERN.test(value.projectFile)
+  );
+}
+
 function valueDigest(value) {
   if (value === undefined) return 'none';
   const serialized = JSON.stringify(value);
@@ -100,6 +111,28 @@ export function inspectCacheManifest(readResult, expected) {
   }
   if (!FINGERPRINT_PATTERN.test(previous.buildInputs ?? '')) {
     mismatchFields.push('build_inputs_format');
+  }
+  const previousProvenance = previous.cocoapodsInputProvenance;
+  const expectedSourceHashes = expected.cocoapodsInputProvenance?.prePods;
+  // Reuse is keyed by original source bytes; validate the archived generated state without expecting Pods to run again.
+  if (!isRecord(previousProvenance)) {
+    mismatchFields.push('cocoapods_input_provenance');
+  } else {
+    if (Object.keys(previousProvenance).sort().join(',') !== 'postPods,prePods') {
+      mismatchFields.push('cocoapods_input_provenance.unknown_fields');
+    }
+    if (!isCocoapodsInputHashPair(previousProvenance.prePods)) {
+      mismatchFields.push('cocoapods_input_provenance.pre_pods_format');
+    } else if (
+      !isCocoapodsInputHashPair(expectedSourceHashes) ||
+      previousProvenance.prePods.privacyManifest !== expectedSourceHashes.privacyManifest ||
+      previousProvenance.prePods.projectFile !== expectedSourceHashes.projectFile
+    ) {
+      mismatchFields.push('cocoapods_input_provenance.pre_pods');
+    }
+    if (!isCocoapodsInputHashPair(previousProvenance.postPods)) {
+      mismatchFields.push('cocoapods_input_provenance.post_pods_format');
+    }
   }
 
   const invalid = mismatchFields.length > 0;

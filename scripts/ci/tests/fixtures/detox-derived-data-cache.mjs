@@ -25,6 +25,28 @@ export function writeFixtureFile(root, path, content) {
   writeFileSync(absolutePath, content);
 }
 
+export function writeDetoxBuildConfigs(root) {
+  writeFixtureFile(root, 'apps/mobile/package.json', '{"name":"@orot/mobile","type":"commonjs"}');
+  writeFixtureFile(
+    root,
+    'apps/mobile/.detoxrc.js',
+    `module.exports = {
+      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build-detox-release/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-release ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
+      configurations: { 'ios.sim.release': { device: 'simulator', app: 'ios.release' } },
+      devices: { simulator: { type: 'iPhone 18 Pro' } },
+    };`,
+  );
+  writeFixtureFile(
+    root,
+    'apps/mobile/e2e/openai-provider.detox.config.js',
+    `module.exports = {
+      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-detox-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-openai-provider' } },
+      configurations: { 'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' } },
+      devices: { simulator: { type: 'iPhone 18 Pro' } },
+    };`,
+  );
+}
+
 export function git(root, ...args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
@@ -41,6 +63,7 @@ export function runCacheCommand(root, command, profile = 'release', environment 
       ...process.env,
       ...baseEnvironment,
       GITHUB_ACTIONS: 'true',
+      GITHUB_ENV: '',
       PATH: join(root, 'bin') + ':' + (environment.PATH ?? process.env.PATH),
       ...environment,
     },
@@ -124,6 +147,7 @@ export function createFixtureRepository() {
     'apps/mobile/ios/Podfile',
     'apps/mobile/ios/Podfile.lock',
     'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
+    'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
     'apps/mobile/e2e/release-e2e.test.js',
     'packages/storage/src/index.ts',
     'scripts/ci/build-detox-apps.sh',

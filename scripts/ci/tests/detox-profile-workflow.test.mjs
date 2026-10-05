@@ -196,7 +196,7 @@ test('keys pre-Pods app outputs and reuses only a validated exact DerivedData ca
 
   for (const cache of [releaseCache, debugCache]) {
     assert.match(cache, /uses: actions\/cache@[0-9a-f]{40}/);
-    assert.match(cache, /key: orot-detox-deriveddata-v4-/);
+    assert.match(cache, /key: orot-detox-deriveddata-v5-/);
     assert.match(cache, /runner\.os/);
     assert.match(cache, /runner\.arch/);
     assert.match(cache, /EXPECTED_MACOS_VERSION/);

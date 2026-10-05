@@ -154,7 +154,7 @@ test('reuses only the exact production app while OAuth package and harness check
   assert.match(mobilePackage, /"ios:build"[\s\S]*?ios\/build/);
 });
 
-test('production build uses its separate DerivedData path', () => {
+test('production build uses isolated DerivedData and the cache-compatible host architecture', () => {
   const root = createFixtureRepository();
   const capturePath = join(root, 'xcodebuild-args.txt');
   const xcodebuild = join(root, 'bin/xcodebuild');
@@ -175,8 +175,11 @@ test('production build uses its separate DerivedData path', () => {
       },
     });
     const args = readFileSync(capturePath, 'utf8');
+    const hostArchitecture = execFileSync('uname', ['-m'], { encoding: 'utf8' }).trim();
     assert.ok(args.includes('-derivedDataPath\napps/mobile/ios/build-production'));
     assert.ok(args.includes('-workspace\napps/mobile/ios/OrotMobile.xcworkspace'));
+    assert.ok(args.includes(`ARCHS=${hostArchitecture}`));
+    assert.ok(args.includes('ONLY_ACTIVE_ARCH=YES'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

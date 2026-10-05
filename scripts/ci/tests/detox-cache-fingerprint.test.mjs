@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
+import { writeDetoxBuildConfigs } from './fixtures/detox-derived-data-cache.mjs';
 
 const fingerprintScriptPath = fileURLToPath(
   new URL('../detox-cache-fingerprint-cli.mjs', import.meta.url),
@@ -15,28 +16,6 @@ function writeFixtureFile(root, path, content) {
   const absolutePath = join(root, path);
   mkdirSync(dirname(absolutePath), { recursive: true });
   writeFileSync(absolutePath, content);
-}
-
-function writeDetoxBuildConfigs(root) {
-  writeFixtureFile(root, 'apps/mobile/package.json', '{"name":"@orot/mobile","type":"commonjs"}');
-  writeFixtureFile(
-    root,
-    'apps/mobile/.detoxrc.js',
-    `module.exports = {
-      apps: { 'ios.release': { type: 'ios.app', binaryPath: 'ios/build-detox-release/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-release ENTRY_FILE=e2e/e2eRouterEntry.tsx' } },
-      configurations: { 'ios.sim.release': { device: 'simulator', app: 'ios.release' } },
-      devices: { simulator: { type: 'iPhone 18 Pro' } },
-    };`,
-  );
-  writeFixtureFile(
-    root,
-    'apps/mobile/e2e/openai-provider.detox.config.js',
-    `module.exports = {
-      apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-detox-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-openai-provider' } },
-      configurations: { 'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' } },
-      devices: { simulator: { type: 'iPhone 18 Pro' } },
-    };`,
-  );
 }
 
 function git(root, ...args) {
@@ -57,6 +36,7 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
       'apps/mobile/App.tsx',
       'apps/mobile/ios/Podfile.lock',
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
+      'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
       'packages/storage/src/index.ts',
       'scripts/ci/build-detox-apps.sh',
       'scripts/ci/build-ios-simulator-app.sh',
@@ -86,12 +66,27 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
     const initial = computeDetoxCacheFingerprints(root);
 
     const privacyManifestInputHash = initial.privacyManifestInputHash;
+    const cocoapodsProjectInputHash = initial.cocoapodsProjectInputHash;
     writeFixtureFile(
       root,
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
       'CocoaPods aggregated privacy reasons',
     );
     assert.deepEqual(computeDetoxCacheFingerprints(root, { privacyManifestInputHash }), initial);
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
+      'CocoaPods generated project integration',
+    );
+    const postPodsProjectFingerprint = computeDetoxCacheFingerprints(root, {
+      privacyManifestInputHash,
+      cocoapodsProjectInputHash,
+    });
+    assert.deepEqual(postPodsProjectFingerprint, initial);
+    assert.notEqual(
+      computeDetoxCacheFingerprints(root, { privacyManifestInputHash }).buildInputs,
+      initial.buildInputs,
+    );
     writeFixtureFile(
       root,
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
@@ -105,16 +100,26 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
       'initial:apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
     );
+    writeFixtureFile(
+      root,
+      'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
+      'initial:apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
+    );
 
     const outputPath = join(root, 'github-output.txt');
+    const environmentPath = join(root, 'github-environment.txt');
     execFileSync('node', [fingerprintScriptPath], {
       cwd: root,
-      env: { ...process.env, GITHUB_OUTPUT: outputPath },
+      env: { ...process.env, GITHUB_ENV: environmentPath, GITHUB_OUTPUT: outputPath },
       encoding: 'utf8',
     });
     assert.equal(
       readFileSync(outputPath, 'utf8'),
-      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\n`,
+      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
+    );
+    assert.equal(
+      readFileSync(environmentPath, 'utf8'),
+      `EXPECTED_COCOAPODS_INPUT_HASHES_JSON={"privacyManifest":"${initial.privacyManifestInputHash}","projectFile":"${initial.cocoapodsProjectInputHash}"}\nEXPECTED_DETOX_BUILD_INPUT_FINGERPRINT=${initial.buildInputs}\nEXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT=${initial.nativeDependencies}\n`,
     );
 
     for (const [mode, output, expected] of [
@@ -126,7 +131,7 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
       [
         '--derived-data-only',
         join(root, 'derived-data-output.txt'),
-        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\n`,
+        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
       ],
     ]) {
       execFileSync('node', [fingerprintScriptPath, mode], {

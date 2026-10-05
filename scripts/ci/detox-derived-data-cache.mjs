@@ -12,6 +12,14 @@ import {
   listChangedDetoxBuildInputs,
 } from './detox-cache-fingerprint.mjs';
 import {
+  readCocoapodsInputHashes,
+  readExpectedCocoapodsInputHashes,
+  recordPreparedDetoxBuildInputs,
+  validateDetoxInputsBeforeCacheLookup,
+  verifyDetoxBuildInputs,
+  verifyDetoxBuildInputsBeforeManifest,
+} from './detox-cocoapods-input-provenance.mjs';
+import {
   clearAppOutputs,
   getDerivedDataRoot,
   getProfile,
@@ -46,16 +54,23 @@ function getToolchain() {
 }
 
 function makeManifest(repositoryRoot, profile) {
+  // Cache lookup uses the original tracked source bytes; the writer adds verified post-Pods bytes.
+  const capturedInputs = readExpectedCocoapodsInputHashes();
+  const sourceInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
+  if (!capturedInputs && process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256) {
+    sourceInputs.privacyManifest = process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256;
+  }
   const fingerprints = computeDetoxCacheFingerprints(repositoryRoot, {
-    privacyManifestInputHash: process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256,
+    privacyManifestInputHash: sourceInputs.privacyManifest,
+    cocoapodsProjectInputHash: sourceInputs.projectFile,
   });
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile,
     toolchain: getToolchain(),
     nativeDependencies: fingerprints.nativeDependencies,
     buildInputs: fingerprints.buildInputs,
-    privacyManifestInputHash: fingerprints.privacyManifestInputHash,
+    cocoapodsInputProvenance: { prePods: sourceInputs },
   };
 }
 
@@ -88,7 +103,7 @@ function writeManifest(repositoryRoot, profile) {
       ? ' build_input_changes=' + JSON.stringify(listChangedDetoxBuildInputs(repositoryRoot))
       : '';
   console.log(
-    `DETOX_DERIVEDDATA_CACHE manifest_write=${fingerprintCheck.match === 'false' ? 'refused' : 'written'} profile=${profile} ${fingerprintCheck.diagnostic}${changedInputsDiagnostic}`,
+    `DETOX_DERIVEDDATA_CACHE manifest_fingerprint_check=${fingerprintCheck.match} profile=${profile} ${fingerprintCheck.diagnostic}${changedInputsDiagnostic}`,
   );
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
@@ -104,9 +119,24 @@ function writeManifest(repositoryRoot, profile) {
     );
   }
   if (fingerprintCheck.match === 'false') {
+    console.log(
+      `DETOX_DERIVEDDATA_CACHE manifest_write=refused profile=${profile} reason=fingerprint_mismatch`,
+    );
     throw new Error(
       `Refusing to write Detox cache manifest after prebuild_fingerprint_mismatch: ${fingerprintCheck.mismatchFields.join(',')}`,
     );
+  }
+  try {
+    manifest.cocoapodsInputProvenance = verifyDetoxBuildInputsBeforeManifest(
+      repositoryRoot,
+      profile,
+      manifest,
+    );
+  } catch (error) {
+    console.log(
+      `DETOX_DERIVEDDATA_CACHE manifest_write=refused profile=${profile} reason=input_provenance`,
+    );
+    throw error;
   }
 
   const path = join(dataRoot, MANIFEST_FILENAME);
@@ -119,48 +149,60 @@ function writeManifest(repositoryRoot, profile) {
     mode: 0o600,
   });
   renameSync(temporaryPath, path);
+  console.log(
+    `DETOX_DERIVEDDATA_CACHE manifest_write=written profile=${profile} ${fingerprintCheck.diagnostic}`,
+  );
   console.log(`DETOX_DERIVEDDATA_CACHE manifest=written profile=${profile}`);
 }
 
 function prepareCache(repositoryRoot, profile) {
-  const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
   const expected = makeManifest(repositoryRoot, profile);
+  validateDetoxInputsBeforeCacheLookup(repositoryRoot, expected);
+  const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
+  let result;
   if (!existsSync(dataRoot)) {
-    return {
+    result = {
       ...inspectCacheManifest({ manifest: null, reason: 'derived_data_absent' }, expected),
       appReusable: false,
       appReuseReason: 'derived_data_absent',
     };
-  }
-  if (lstatSync(dataRoot).isSymbolicLink() || !lstatSync(dataRoot).isDirectory()) {
-    throw new Error(`Refusing to inspect an unsafe Detox DerivedData cache path: ${dataRoot}`);
-  }
+  } else {
+    if (lstatSync(dataRoot).isSymbolicLink() || !lstatSync(dataRoot).isDirectory()) {
+      throw new Error(`Refusing to inspect an unsafe Detox DerivedData cache path: ${dataRoot}`);
+    }
 
-  const manifestResult = readCacheManifest(dataRoot);
-  const result = inspectCacheManifest(manifestResult, expected);
-  let appReusable = false;
-  let appReuseReason = 'cache_not_exact';
-  if (result.classification === 'exact') {
-    const app = inspectCachedApp(profile, dataRoot, manifestResult.manifest?.appArtifacts ?? null);
-    appReuseReason = app.reason ?? 'validated';
-    if (app.reason) {
+    const manifestResult = readCacheManifest(dataRoot);
+    const inspected = inspectCacheManifest(manifestResult, expected);
+    let appReusable = false;
+    let appReuseReason = 'cache_not_exact';
+    if (inspected.classification === 'exact') {
+      const app = inspectCachedApp(
+        profile,
+        dataRoot,
+        manifestResult.manifest?.appArtifacts ?? null,
+      );
+      appReuseReason = app.reason ?? 'validated';
+      if (app.reason) {
+        requireGitHubActions();
+        clearAppOutputs(profile, dataRoot);
+      } else {
+        appReusable = true;
+      }
+    }
+    if (inspected.classification === 'invalidated') {
+      requireGitHubActions();
+      removeDerivedDataRoot(profile, dataRoot);
+      appReuseReason = 'cache_invalidated';
+    }
+    if (inspected.classification === 'dependency-compatible') {
       requireGitHubActions();
       clearAppOutputs(profile, dataRoot);
-    } else {
-      appReusable = true;
+      appReuseReason = 'build_inputs_changed';
     }
+    result = { ...inspected, appReusable, appReuseReason };
   }
-  if (result.classification === 'invalidated') {
-    requireGitHubActions();
-    removeDerivedDataRoot(profile, dataRoot);
-    appReuseReason = 'cache_invalidated';
-  }
-  if (result.classification === 'dependency-compatible') {
-    requireGitHubActions();
-    clearAppOutputs(profile, dataRoot);
-    appReuseReason = 'build_inputs_changed';
-  }
-  return { ...result, appReusable, appReuseReason };
+  recordPreparedDetoxBuildInputs(repositoryRoot, profile, expected, !result.appReusable);
+  return result;
 }
 
 function writeGitHubOutput(result) {
@@ -186,14 +228,23 @@ function writeGitHubOutput(result) {
 
 function main() {
   const [command, profile, ...extra] = process.argv.slice(2);
-  if (extra.length > 0 || !['prepare', 'write'].includes(command) || !profile) {
+  if (
+    extra.length > 0 ||
+    !['prepare', 'verify-build-inputs', 'write'].includes(command) ||
+    !profile
+  ) {
     throw new Error(
-      'Usage: detox-derived-data-cache.mjs <prepare|write> <release|openai-provider|production>',
+      'Usage: detox-derived-data-cache.mjs <prepare|verify-build-inputs|write> <release|openai-provider|production>',
     );
   }
   getProfile(profile);
   if (command === 'write') writeManifest(process.cwd(), profile);
-  else writeGitHubOutput(prepareCache(process.cwd(), profile));
+  else if (command === 'verify-build-inputs') {
+    verifyDetoxBuildInputs(process.cwd(), profile);
+    console.log(
+      `DETOX_DERIVEDDATA_CACHE build_inputs_verified profile=${profile} stage=post-pods-verified`,
+    );
+  } else writeGitHubOutput(prepareCache(process.cwd(), profile));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
