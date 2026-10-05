@@ -1,7 +1,9 @@
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button, Pressable, Text, View } from 'react-native';
 import { t } from '../i18n';
 import type { CompletedRecording, RecordingStatus } from './recordingTypes';
 import { formatRecordingDuration } from './recordingTypes';
+import { recordingControlStyles } from './RecordingControls.styles';
+import RecordingControlsProbe from './RecordingControlsProbe';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -22,7 +24,9 @@ interface RecordingControlsProps {
   syntheticProbeAvailable: boolean;
   syntheticProbeReady: boolean;
   onPrepareSyntheticProbe: () => void;
-  onPrepareSyntheticStartFailure: (point: 'beforeFileURL' | 'afterFileCreated') => void;
+  onPrepareSyntheticStartFailure: (
+    point: 'beforeFileURL' | 'afterFileCreated',
+  ) => void;
   onSendInterruption: (phase: 'began' | 'ended') => void;
   probeError: string;
 }
@@ -76,9 +80,9 @@ export default function RecordingControls({
     !busy &&
     !sourceRetryPending;
   return (
-    <View style={styles.container}>
+    <View style={recordingControlStyles.container}>
       {canLeave ? (
-        <View style={styles.back}>
+        <View style={recordingControlStyles.back}>
           <Button
             onPress={onBack}
             testID="recording-back"
@@ -86,27 +90,46 @@ export default function RecordingControls({
           />
         </View>
       ) : null}
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text accessibilityRole="header" style={recordingControlStyles.title}>
         {t('recording.title')}
       </Text>
-      <Text style={styles.copy}>{t('recording.consent.description')}</Text>
-      <Text style={styles.copy}>{t('recording.localOnly')}</Text>
+      <Text style={recordingControlStyles.copy}>
+        {t('recording.consent.description')}
+      </Text>
+      <Text style={recordingControlStyles.copy}>
+        {t('recording.localOnly')}
+      </Text>
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: consentAcknowledged }}
-        disabled={busy || status === 'recording' || status === 'paused' || status === 'interrupted'}
+        disabled={
+          busy ||
+          status === 'recording' ||
+          status === 'paused' ||
+          status === 'interrupted'
+        }
         onPress={onToggleConsent}
-        style={styles.consentRow}
+        style={recordingControlStyles.consentRow}
         testID="recording-consent"
       >
-        <Text style={styles.checkbox}>{consentAcknowledged ? '☑' : '☐'}</Text>
-        <Text style={styles.copy}>{t('recording.consent.acknowledgement')}</Text>
+        <Text style={recordingControlStyles.checkbox}>
+          {consentAcknowledged ? '☑' : '☐'}
+        </Text>
+        <Text style={recordingControlStyles.copy}>
+          {t('recording.consent.acknowledgement')}
+        </Text>
       </Pressable>
-      <Text accessibilityLiveRegion="polite" style={styles.status} testID="recording-status">
+      <Text
+        accessibilityLiveRegion="polite"
+        style={recordingControlStyles.status}
+        testID="recording-status"
+      >
         {statusLabel(status)}
       </Text>
-      <Text style={styles.duration} testID="recording-duration">
-        {t('recording.duration', { duration: formatRecordingDuration(durationMs) })}
+      <Text style={recordingControlStyles.duration} testID="recording-duration">
+        {t('recording.duration', {
+          duration: formatRecordingDuration(durationMs),
+        })}
       </Text>
       {status === 'idle' || status === 'completed' ? (
         <Button
@@ -132,7 +155,9 @@ export default function RecordingControls({
           title={t('recording.resume')}
         />
       ) : null}
-      {status === 'recording' || status === 'paused' || status === 'interrupted' ? (
+      {status === 'recording' ||
+      status === 'paused' ||
+      status === 'interrupted' ? (
         <Button
           disabled={busy}
           onPress={onStop}
@@ -141,8 +166,8 @@ export default function RecordingControls({
         />
       ) : null}
       {lastRecording ? (
-        <View style={styles.result} testID="recording-result">
-          <Text accessibilityRole="alert" style={styles.status}>
+        <View style={recordingControlStyles.result} testID="recording-result">
+          <Text accessibilityRole="alert" style={recordingControlStyles.status}>
             {sourceSaved ? t('recording.saved') : t('recording.sourcePending')}
           </Text>
           <Text testID="recording-source-id">
@@ -163,75 +188,28 @@ export default function RecordingControls({
           ) : null}
           {__DEV__ ? (
             <Text testID="recording-file-protection">
-              {lastRecording.fileProtection}:{String(lastRecording.excludedFromBackup)}
+              {lastRecording.fileProtection}:
+              {String(lastRecording.excludedFromBackup)}
             </Text>
           ) : null}
         </View>
       ) : null}
-      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={recordingControlStyles.error}>
+          {error}
+        </Text>
+      ) : null}
       {syntheticProbeAvailable ? (
-        <View style={styles.probe} testID="recording-synthetic-probe">
-          <Button
-            disabled={busy || status === 'recording' || status === 'paused' || status === 'interrupted'}
-            onPress={onPrepareSyntheticProbe}
-            testID="recording-probe-synthetic"
-            title={t('recording.probe.synthetic')}
-          />
-          {status === 'completed' ? (
-            <>
-              <Button
-                onPress={() => onPrepareSyntheticStartFailure('beforeFileURL')}
-                testID="recording-probe-fail-before-file-url"
-                title={t('recording.probe.failBeforeFile')}
-              />
-              <Button
-                onPress={() => onPrepareSyntheticStartFailure('afterFileCreated')}
-                testID="recording-probe-fail-after-file-created"
-                title={t('recording.probe.failAfterFile')}
-              />
-            </>
-          ) : null}
-          {syntheticProbeReady && (status === 'recording' || status === 'interrupted') ? (
-            <>
-              {status === 'recording' ? (
-                <Button
-                  onPress={() => onSendInterruption('began')}
-                  testID="recording-probe-interruption-began"
-                  title={t('recording.probe.interruptionBegan')}
-                />
-              ) : null}
-              {status === 'interrupted' ? (
-                <Button
-                  onPress={() => onSendInterruption('ended')}
-                  testID="recording-probe-interruption-ended"
-                  title={t('recording.probe.interruptionEnded')}
-                />
-              ) : null}
-            </>
-          ) : null}
-          {probeError ? <Text accessibilityRole="alert">{probeError}</Text> : null}
-        </View>
+        <RecordingControlsProbe
+          busy={busy}
+          status={status}
+          syntheticProbeReady={syntheticProbeReady}
+          onPrepareSyntheticProbe={onPrepareSyntheticProbe}
+          onPrepareSyntheticStartFailure={onPrepareSyntheticStartFailure}
+          onSendInterruption={onSendInterruption}
+          probeError={probeError}
+        />
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  back: { alignSelf: 'flex-start' },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  copy: { color: '#45515f', fontSize: 16, lineHeight: 22 },
-  consentRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  checkbox: { color: '#17212b', fontSize: 22 },
-  status: { color: '#17212b', fontSize: 18, fontWeight: '700' },
-  duration: { color: '#45515f', fontSize: 16 },
-  result: { gap: 8 },
-  error: { color: '#9f1d1d', fontSize: 15 },
-  probe: { gap: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
-});

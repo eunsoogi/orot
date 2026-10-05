@@ -1,0 +1,6 @@
+AllCops:
+  NewCops: disable
+  TargetRubyVersion: 4.0
+
+Layout/LineLength:
+  Max: 120

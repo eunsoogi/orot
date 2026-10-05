@@ -4,28 +4,72 @@ public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
     case user(String)
     case assistant(String)
+    case functionCall(callID: String, name: String, argumentsJSON: String)
+    case functionCallOutput(callID: String, output: String)
+    case continuationItem(json: String)
+}
+
+public struct ChatGPTResponsesToolDefinition: Equatable, Sendable {
+    public let name: String
+    public let description: String?
+    public let parametersJSON: String
+    public let strict: Bool
+
+    public init(name: String, description: String? = nil, parametersJSON: String, strict: Bool = false) {
+        self.name = name
+        self.description = description
+        self.parametersJSON = parametersJSON
+        self.strict = strict
+    }
+}
+
+public struct ChatGPTResponsesFunctionCall: Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let argumentsJSON: String
+
+    public init(id: String, name: String, argumentsJSON: String) {
+        self.id = id
+        self.name = name
+        self.argumentsJSON = argumentsJSON
+    }
 }
 
 public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let model: String
     public let messages: [ChatGPTResponsesMessage]
+    public let tools: [ChatGPTResponsesToolDefinition]
 
-    public init(model: String, messages: [ChatGPTResponsesMessage]) {
+    public init(
+        model: String,
+        messages: [ChatGPTResponsesMessage],
+        tools: [ChatGPTResponsesToolDefinition] = [],
+    ) {
         self.model = model
         self.messages = messages
+        self.tools = tools
     }
 }
 
 public struct ChatGPTResponsesResult: Equatable, Sendable {
     public let text: String
+    public let toolCalls: [ChatGPTResponsesFunctionCall]
+    public let continuationItems: [String]
 
-    public init(text: String) {
+    public init(
+        text: String,
+        toolCalls: [ChatGPTResponsesFunctionCall] = [],
+        continuationItems: [String] = [],
+    ) {
         self.text = text
+        self.toolCalls = toolCalls
+        self.continuationItems = continuationItems
     }
 }
 
 public enum ChatGPTResponsesEvent: Equatable, Sendable {
     case textDelta(String)
+    case toolCall(ChatGPTResponsesFunctionCall)
     case completed(ChatGPTResponsesResult)
 }
 
@@ -45,7 +89,7 @@ public struct ChatGPTResponsesDiagnostics: Equatable, Sendable {
         code: String? = nil,
         parameter: String? = nil,
         requestID: String? = nil,
-        reason: String? = nil
+        reason: String? = nil,
     ) {
         self.httpStatusCode = httpStatusCode
         self.bodyShape = bodyShape
@@ -73,14 +117,14 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .invalidRequest: "The ChatGPT Responses request is invalid."
-        case .unsupportedCapability(let capability): "The ChatGPT plan route does not support \(capability)."
-        case .unsupportedInput(let input): "The ChatGPT plan route does not support \(input) input."
+        case let .unsupportedCapability(capability): "The ChatGPT plan route does not support \(capability)."
+        case let .unsupportedInput(input): "The ChatGPT plan route does not support \(input) input."
         case .transportUnavailable: "ChatGPT inference could not connect to the Responses API."
         case .invalidHTTPResponse: "ChatGPT returned an invalid HTTP response."
         case .invalidContentType: "ChatGPT returned a non-event-stream Responses body."
-        case .httpFailure(let diagnostics): Self.message(for: diagnostics)
-        case .responseFailure(let diagnostics): Self.message(for: diagnostics)
-        case .incomplete(let diagnostics): Self.message(for: diagnostics)
+        case let .httpFailure(diagnostics): Self.message(for: diagnostics)
+        case let .responseFailure(diagnostics): Self.message(for: diagnostics)
+        case let .incomplete(diagnostics): Self.message(for: diagnostics)
         case .interrupted: "ChatGPT inference ended before a completed response."
         case .malformedEvent: "ChatGPT returned an invalid Responses stream event."
         }
@@ -97,8 +141,12 @@ public enum ChatGPTResponsesError: Error, Equatable, LocalizedError, Sendable {
              "chatpass_v2_invalid_authorization_context":
             return "The selected ChatGPT account did not authorize this request."
         default:
-            if diagnostics.httpStatusCode == 401 { return "The selected ChatGPT account must be authorized again." }
-            if diagnostics.httpStatusCode == 429 { return "The ChatGPT plan usage limit was reached." }
+            if diagnostics.httpStatusCode == 401 {
+                return "The selected ChatGPT account must be authorized again."
+            }
+            if diagnostics.httpStatusCode == 429 {
+                return "The ChatGPT plan usage limit was reached."
+            }
             return "ChatGPT could not complete the Responses request."
         }
     }

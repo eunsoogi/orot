@@ -22,7 +22,7 @@ export async function resolveDatabaseKey(
 
   const bytes = new Uint8Array(KEY_BYTES);
   randomBytes(bytes);
-  const generated = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  const generated = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
   bytes.fill(0);
   await keyStore.setSecret(generated);
   if ((await keyStore.getSecret()) !== generated) {

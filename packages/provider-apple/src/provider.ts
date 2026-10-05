@@ -171,9 +171,11 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     let cancelListener: (() => void) | undefined;
     let cancelled = false;
     let rejectAbort: ((error: Error) => void) | undefined;
-    const aborted = signal ? new Promise<never>((_, reject) => {
-      rejectAbort = reject;
-    }) : undefined;
+    const aborted = signal
+      ? new Promise<never>((_, reject) => {
+          rejectAbort = reject;
+        })
+      : undefined;
     cancelListener = () => {
       if (cancelled) return;
       cancelled = true;
@@ -200,9 +202,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     }
   }
 
-  private streamPacket(
-    packet: AppleNativeStreamPacket,
-  ): {
+  private streamPacket(packet: AppleNativeStreamPacket): {
     readonly text?: string;
     readonly response?: LanguageModelResponse;
     readonly failure?: ProviderError;

@@ -14,7 +14,7 @@ on:
       version:
         description: Release version; this workflow currently admits v0.1.0 only.
         type: string
-        default: "0.1.0"
+        default: '0.1.0'
         required: true
       source_sha:
         description: Full commit SHA on main that passed the required CI run.

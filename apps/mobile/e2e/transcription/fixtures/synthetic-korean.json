@@ -24,12 +24,7 @@
       "id": "number",
       "expectedText": "복용량은 오백 밀리그램입니다.",
       "durationSeconds": 2.22907,
-      "numberForms": [
-        "오백 밀리그램",
-        "500 밀리그램",
-        "오백 mg",
-        "500 mg"
-      ],
+      "numberForms": ["오백 밀리그램", "500 밀리그램", "오백 mg", "500 mg"],
       "audio": {
         "mediaType": "audio/mp4",
         "durationSeconds": 2.22907,
@@ -41,10 +36,7 @@
       "id": "negation",
       "expectedText": "오늘은 약을 복용하지 않았습니다.",
       "durationSeconds": 2.226939,
-      "negationForms": [
-        "복용하지 않았",
-        "복용 안 했"
-      ],
+      "negationForms": ["복용하지 않았", "복용 안 했"],
       "audio": {
         "mediaType": "audio/mp4",
         "durationSeconds": 2.226939,

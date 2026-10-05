@@ -5,6 +5,9 @@ export type {
   ChatGPTPlanNativeBridge,
   ChatGPTPlanNativeError,
   ChatGPTPlanNativeEvent,
+  ChatGPTPlanNativeToolCall,
   ChatGPTPlanMessage,
+  ChatGPTPlanInputMessage,
+  ChatGPTPlanToolDefinition,
   ChatGPTPlanRequest,
 } from './native-contract';

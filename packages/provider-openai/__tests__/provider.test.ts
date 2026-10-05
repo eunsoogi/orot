@@ -1,19 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import type { LanguageModelRequest } from '@orot/model-runtime';
-import {
-  createChatGPTPlanProvider,
-  listChatGPTPlanModels,
-  type ChatGPTPlanNativeBridge,
-  type ChatGPTPlanNativeEvent,
-  type ChatGPTPlanRequest,
-} from '../src';
-
-const baseRequest: LanguageModelRequest = {
-  messages: [
-    { role: 'system', content: 'Be concise.' },
-    { role: 'user', content: [{ type: 'text', text: 'Say hello.' }] },
-  ],
-};
+import { createChatGPTPlanProvider, listChatGPTPlanModels } from '../src';
+import { baseRequest, FakeBridge } from './providerTestSupport';
 
 describe('ChatGPT plan model adapter', () => {
   it('normalizes account-specific model descriptors without losing display order', async () => {
@@ -23,11 +11,19 @@ describe('ChatGPT plan model adapter', () => {
       { slug: 'gpt-second', displayName: 'Second model' },
     ];
 
-    await expect(listChatGPTPlanModels(bridge, 'issued-client')) .resolves.toEqual({
+    await expect(listChatGPTPlanModels(bridge, 'issued-client')).resolves.toEqual({
       ok: true,
       value: [
-        { id: 'chatgpt-plan:issued-client:gpt-first', slug: 'gpt-first', displayName: 'First model' },
-        { id: 'chatgpt-plan:issued-client:gpt-second', slug: 'gpt-second', displayName: 'Second model' },
+        {
+          id: 'chatgpt-plan:issued-client:gpt-first',
+          slug: 'gpt-first',
+          displayName: 'First model',
+        },
+        {
+          id: 'chatgpt-plan:issued-client:gpt-second',
+          slug: 'gpt-second',
+          displayName: 'Second model',
+        },
       ],
     });
     expect(bridge.listedAccount).toBe('issued-client');
@@ -46,7 +42,11 @@ describe('ChatGPT plan model adapter', () => {
 
     await expect(listChatGPTPlanModels(bridge, 'issued-client')).resolves.toEqual({
       ok: false,
-      error: { code: 'rate_limited', message: 'The ChatGPT plan usage limit was reached.', retryable: false },
+      error: {
+        code: 'rate_limited',
+        message: 'The ChatGPT plan usage limit was reached.',
+        retryable: false,
+      },
     });
   });
 
@@ -66,7 +66,7 @@ describe('ChatGPT plan model adapter', () => {
       inputTypes: ['text'],
       streaming: true,
       structuredOutput: false,
-      toolCalling: false,
+      toolCalling: true,
     });
     await expect(provider.generate(baseRequest)).resolves.toEqual({
       ok: true,
@@ -102,7 +102,14 @@ describe('ChatGPT plan model adapter', () => {
     for await (const result of provider.stream!(baseRequest)) results.push(result);
     expect(results).toEqual([
       { ok: true, value: { type: 'text_delta', text: 'Partial' } },
-      { ok: false, error: { code: 'rate_limited', message: 'The ChatGPT plan usage limit was reached.', retryable: false } },
+      {
+        ok: false,
+        error: {
+          code: 'rate_limited',
+          message: 'The ChatGPT plan usage limit was reached.',
+          retryable: false,
+        },
+      },
     ]);
   });
 
@@ -118,14 +125,21 @@ describe('ChatGPT plan model adapter', () => {
       { ...baseRequest, temperature: 0.2 },
       { ...baseRequest, maxOutputTokens: 20 },
       { ...baseRequest, responseFormat: { name: 'json', schema: {} } },
-      { ...baseRequest, tools: [{ name: 'lookup', inputSchema: {} }] },
-      { messages: [{ role: 'user', content: [{ type: 'image', data: new Uint8Array(), mediaType: 'image/png' }] }] },
+      {
+        messages: [
+          {
+            role: 'user',
+            content: [{ type: 'image', data: new Uint8Array(), mediaType: 'image/png' }],
+          },
+        ],
+      },
     ];
 
     for (const request of requests) {
       const result = await provider.generate(request);
       expect(result).toMatchObject({ ok: false });
-      if (!result.ok) expect(['unsupported_capability', 'unsupported_input']).toContain(result.error.code);
+      if (!result.ok)
+        expect(['unsupported_capability', 'unsupported_input']).toContain(result.error.code);
     }
     expect(bridge.started).toHaveLength(0);
   });
@@ -133,10 +147,14 @@ describe('ChatGPT plan model adapter', () => {
   it('cancels native work when the consumer returns while waiting for an event', async () => {
     let releaseStart!: () => void;
     let signalStarted!: () => void;
-    const started = new Promise<void>((resolve) => { signalStarted = resolve; });
+    const started = new Promise<void>((resolve) => {
+      signalStarted = resolve;
+    });
     const bridge = new FakeBridge(async () => {
       signalStarted();
-      await new Promise<void>((resolve) => { releaseStart = resolve; });
+      await new Promise<void>((resolve) => {
+        releaseStart = resolve;
+      });
     });
     const provider = createChatGPTPlanProvider({
       bridge,
@@ -160,10 +178,20 @@ describe('ChatGPT plan model adapter', () => {
     const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
     try {
       const releases: (() => void)[] = [];
-      const bridge = new FakeBridge(async () => new Promise<void>((resolve) => { releases.push(resolve); }));
-      const options = { bridge, issuedClientID: 'issued-client', model: { slug: 'gpt-test', displayName: 'Test model' } };
+      const bridge = new FakeBridge(
+        async () =>
+          new Promise<void>((resolve) => {
+            releases.push(resolve);
+          }),
+      );
+      const options = {
+        bridge,
+        issuedClientID: 'issued-client',
+        model: { slug: 'gpt-test', displayName: 'Test model' },
+      };
       const first = createChatGPTPlanProvider(options).stream!(baseRequest)[Symbol.asyncIterator]();
-      const second = createChatGPTPlanProvider(options).stream!(baseRequest)[Symbol.asyncIterator]();
+      const second =
+        createChatGPTPlanProvider(options).stream!(baseRequest)[Symbol.asyncIterator]();
       const firstPending = first.next();
       const secondPending = second.next();
       const [firstID, secondID] = bridge.started.map((request) => request.requestID);
@@ -177,8 +205,14 @@ describe('ChatGPT plan model adapter', () => {
       bridge.emit({ requestId: secondID!, type: 'text_delta', text: 'Second only' });
       bridge.emit({ requestId: secondID!, type: 'completed', text: 'Second only' });
       releases[1]?.();
-      await expect(secondPending).resolves.toMatchObject({ done: false, value: { ok: true, value: { type: 'text_delta', text: 'Second only' } } });
-      await expect(second.next()).resolves.toMatchObject({ done: false, value: { ok: true, value: { type: 'completed' } } });
+      await expect(secondPending).resolves.toMatchObject({
+        done: false,
+        value: { ok: true, value: { type: 'text_delta', text: 'Second only' } },
+      });
+      await expect(second.next()).resolves.toMatchObject({
+        done: false,
+        value: { ok: true, value: { type: 'completed' } },
+      });
       expect(bridge.cancelled).toEqual([firstID]);
       releases[0]?.();
     } finally {
@@ -186,40 +220,3 @@ describe('ChatGPT plan model adapter', () => {
     }
   });
 });
-
-class FakeBridge implements ChatGPTPlanNativeBridge {
-  models = [{ slug: 'gpt-test', displayName: 'Test model' }];
-  listFailure: unknown;
-  listedAccount: string | undefined;
-  readonly started: { requestID: string; request: ChatGPTPlanRequest }[] = [];
-  readonly cancelled: string[] = [];
-  private readonly listeners = new Set<(event: ChatGPTPlanNativeEvent) => void>();
-
-  constructor(
-    private readonly onStart: (requestID: string, bridge: FakeBridge) => Promise<void> = async () => {},
-  ) {}
-
-  async listModels(issuedClientID: string) {
-    this.listedAccount = issuedClientID;
-    if (this.listFailure) throw this.listFailure;
-    return this.models;
-  }
-
-  subscribe(listener: (event: ChatGPTPlanNativeEvent) => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
-  }
-
-  async startResponse(requestID: string, _issuedClientID: string, request: ChatGPTPlanRequest): Promise<void> {
-    this.started.push({ requestID, request });
-    await this.onStart(requestID, this);
-  }
-
-  cancelResponse(requestID: string): void {
-    this.cancelled.push(requestID);
-  }
-
-  emit(event: ChatGPTPlanNativeEvent): void {
-    for (const listener of this.listeners) listener(event);
-  }
-}

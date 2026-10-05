@@ -7,7 +7,10 @@ import { createWorkflowCheckpointConfig } from '../src/agent/checkpointIdentity'
 import { openLocalWorkflowCheckpointSaver } from '../src/agent/localCheckpointSaver';
 
 const checkpointNote = '환자 기록: café 🌱🩺';
-const config = createWorkflowCheckpointConfig('visit-question', 'detox-thread-42');
+const config = createWorkflowCheckpointConfig(
+  'visit-question',
+  'detox-thread-42',
+);
 type ProbeStatus = 'ready' | 'running' | 'saved' | 'complete' | 'failure';
 
 function CheckpointProbeEntry() {
@@ -25,7 +28,10 @@ function CheckpointProbeEntry() {
       });
       const state = await graph.invoke({ value: 3 }, config);
       const tuple = await saver.getTuple(config);
-      if (!tuple) throw new Error('The SQLCipher saver did not return the saved checkpoint.');
+      if (!tuple)
+        throw new Error(
+          'The SQLCipher saver did not return the saved checkpoint.',
+        );
       // Seed text in the persisted metadata to exercise UTF-8 serialization on device.
       const metadata = {
         ...(tuple.metadata ?? {}),
@@ -39,7 +45,8 @@ function CheckpointProbeEntry() {
       );
       const savedTuple = await saver.getTuple(config);
       const savedNote = savedTuple?.metadata
-        ? (savedTuple.metadata as unknown as Record<string, unknown>).checkpointNote
+        ? (savedTuple.metadata as unknown as Record<string, unknown>)
+            .checkpointNote
         : undefined;
       if (
         state.value !== 4 ||
@@ -62,13 +69,17 @@ function CheckpointProbeEntry() {
       const saver = await openLocalWorkflowCheckpointSaver();
       const restoredTuple = await saver.getTuple(config);
       const restoredNote = restoredTuple?.metadata
-        ? (restoredTuple.metadata as unknown as Record<string, unknown>).checkpointNote
+        ? (restoredTuple.metadata as unknown as Record<string, unknown>)
+            .checkpointNote
         : undefined;
       if (restoredNote !== checkpointNote) {
-        throw new Error(`The saved UTF-8 metadata did not restore: note=${String(restoredNote)}`);
+        throw new Error(
+          `The saved UTF-8 metadata did not restore: note=${String(restoredNote)}`,
+        );
       }
-      const state = await createStatefulTwoNodeGraph({ checkpointer: saver })
-        .invoke(null, config);
+      const state = await createStatefulTwoNodeGraph({
+        checkpointer: saver,
+      }).invoke(null, config);
       if (
         state.value !== 8 ||
         state.nodeRuns.join(',') !== 'increment,double'
@@ -89,9 +100,23 @@ function CheckpointProbeEntry() {
       <Text testID={'checkpoint-' + status} accessibilityRole="header">
         LangGraph checkpoint: {status}
       </Text>
-      {status !== 'running' && <Button testID="checkpoint-start" title="Save checkpoint" onPress={startCheckpoint} />}
-      {status !== 'running' && <Button testID="checkpoint-resume" title="Resume checkpoint" onPress={resumeCheckpoint} />}
-      {status === 'complete' && <Text testID="checkpoint-result">{detail}</Text>}
+      {status !== 'running' && (
+        <Button
+          testID="checkpoint-start"
+          title="Save checkpoint"
+          onPress={startCheckpoint}
+        />
+      )}
+      {status !== 'running' && (
+        <Button
+          testID="checkpoint-resume"
+          title="Resume checkpoint"
+          onPress={resumeCheckpoint}
+        />
+      )}
+      {status === 'complete' && (
+        <Text testID="checkpoint-result">{detail}</Text>
+      )}
       {status === 'failure' && <Text testID="checkpoint-result">{detail}</Text>}
     </View>
   );

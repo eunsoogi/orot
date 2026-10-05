@@ -20,10 +20,14 @@ describe('Apple Foundation Models iOS simulator probe', () => {
     if (summary.includes('availability=available')) {
       jestExpect(summary).toContain('generation=passed');
       jestExpect(summary).toContain('sourceIdPreserved=passed');
-      jestExpect(summary).toMatch(/cancellation=(cancelled|completed-before-cancel)/);
+      jestExpect(summary).toMatch(
+        /cancellation=(cancelled|completed-before-cancel)/,
+      );
       jestExpect(question).toBeTruthy();
       jestExpect(question).not.toBe('not-run');
-      const { validateVisitQuestionText } = require('./appleFoundationModelsProbeValidation');
+      const {
+        validateVisitQuestionText,
+      } = require('./appleFoundationModelsProbeValidation');
       jestExpect(validateVisitQuestionText(question)).toBe(question);
     } else {
       jestExpect(summary).toContain('generation=not-run');

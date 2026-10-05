@@ -27,11 +27,7 @@ export interface CheckpointBundle extends StoredCheckpoint {
 
 export interface LangGraphCheckpointStorage {
   ensureSchema(): Promise<void>;
-  saveCheckpoint(
-    threadId: string,
-    namespace: string,
-    checkpoint: StoredCheckpoint,
-  ): Promise<void>;
+  saveCheckpoint(threadId: string, namespace: string, checkpoint: StoredCheckpoint): Promise<void>;
   saveWrites(
     threadId: string,
     namespace: string,
@@ -59,7 +55,7 @@ export function createLangGraphCheckpointStorage(
 
   async function ensureSchema(): Promise<void> {
     if (!schema) {
-      schema = createSchema(database).catch(error => {
+      schema = createSchema(database).catch((error) => {
         schema = undefined;
         throw error;
       });
@@ -94,7 +90,7 @@ export function createLangGraphCheckpointStorage(
 
     async saveCheckpoint(threadId, namespace, checkpoint) {
       await ensureSchema();
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         await transaction.execute(
           `INSERT INTO langgraph_checkpoints
              (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
@@ -123,7 +119,7 @@ export function createLangGraphCheckpointStorage(
     async saveWrites(threadId, namespace, checkpointId, writes) {
       if (writes.length === 0) return;
       await ensureSchema();
-      await database.transaction(async transaction => {
+      await database.transaction(async (transaction) => {
         for (const write of writes) {
           const conflict = write.replaceExisting
             ? `DO UPDATE SET channel = excluded.channel,
@@ -193,12 +189,7 @@ export function createLangGraphCheckpointStorage(
       const bundles: CheckpointBundle[] = [];
       for (const value of result.rows) {
         bundles.push(
-          await readBundle(
-            database,
-            threadId,
-            readText(value, 'checkpoint_ns') ?? '',
-            value,
-          ),
+          await readBundle(database, threadId, readText(value, 'checkpoint_ns') ?? '', value),
         );
       }
       return bundles;
@@ -206,15 +197,13 @@ export function createLangGraphCheckpointStorage(
 
     async deleteThread(threadId) {
       await ensureSchema();
-      await database.transaction(async transaction => {
-        await transaction.execute(
-          'DELETE FROM langgraph_checkpoint_writes WHERE thread_id = ?',
-          [threadId],
-        );
-        await transaction.execute(
-          'DELETE FROM langgraph_checkpoints WHERE thread_id = ?',
-          [threadId],
-        );
+      await database.transaction(async (transaction) => {
+        await transaction.execute('DELETE FROM langgraph_checkpoint_writes WHERE thread_id = ?', [
+          threadId,
+        ]);
+        await transaction.execute('DELETE FROM langgraph_checkpoints WHERE thread_id = ?', [
+          threadId,
+        ]);
       });
     },
   };

@@ -36,5 +36,7 @@ export interface NativeSpeechTranscriptionResponse extends TranscriptionResponse
 
 export interface NativeSpeechTranscriptionBridge {
   getAvailability(language: string): Promise<SpeechAvailability>;
-  transcribe(request: NativeSpeechTranscriptionRequest): Promise<NativeSpeechTranscriptionResponse>;
+  transcribe(
+    request: NativeSpeechTranscriptionRequest,
+  ): Promise<NativeSpeechTranscriptionResponse>;
 }

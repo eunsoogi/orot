@@ -1,15 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
-import type {
-  LanguageModelRequest,
-  LanguageModelResponse,
-} from '@orot/model-runtime';
-import {
-  APPLE_PROVIDER_CAPABILITIES,
-  AppleFoundationModelsProvider,
-  type AppleAvailabilityStatus,
-  type AppleFoundationModelsNativeBridge,
-  type AppleNativeStreamPacket,
-} from '../src';
+import type { LanguageModelRequest, LanguageModelResponse } from '@orot/model-runtime';
+import { APPLE_PROVIDER_CAPABILITIES, AppleFoundationModelsProvider } from '../src';
+import { deferred, FakeNativeBridge, response } from './providerTestSupport';
 
 const request: LanguageModelRequest = {
   messages: [{ role: 'user', content: '질문을 만들 때 source-42를 유지해 주세요.' }],
@@ -22,58 +14,6 @@ const request: LanguageModelRequest = {
     },
   },
 };
-
-const response: LanguageModelResponse = {
-  text: '{"sourceIds":["source-42"]}',
-  structuredOutput: { sourceIds: ['source-42'] },
-  toolCalls: [],
-  finishReason: 'complete',
-};
-
-class FakeNativeBridge implements AppleFoundationModelsNativeBridge {
-  availability: AppleAvailabilityStatus = 'available';
-  generateCount = 0;
-  readonly cancelled: string[] = [];
-  readonly generatedRequestIds: string[] = [];
-  generated: LanguageModelResponse = response;
-  generateWait?: Promise<LanguageModelResponse>;
-  onGenerate?: (requestId: string) => void;
-  packets: AppleNativeStreamPacket[] = [
-    { type: 'snapshot', text: '안' },
-    { type: 'snapshot', text: '안녕' },
-    {
-      type: 'completed',
-      response: { text: '안녕', toolCalls: [], finishReason: 'complete' },
-    },
-  ];
-
-  async getAvailability() {
-    return { status: this.availability } as const;
-  }
-
-  async generate(_request: Parameters<AppleFoundationModelsNativeBridge['generate']>[0], requestId: string) {
-    this.generateCount += 1;
-    this.generatedRequestIds.push(requestId);
-    this.onGenerate?.(requestId);
-    return this.generateWait ?? this.generated;
-  }
-
-  async *stream() {
-    for (const packet of this.packets) yield packet;
-  }
-
-  cancel(requestId: string) {
-    this.cancelled.push(requestId);
-  }
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}
 
 describe('AppleFoundationModelsProvider', () => {
   it('advertises only capabilities implemented by its native boundary', () => {
@@ -99,31 +39,41 @@ describe('AppleFoundationModelsProvider', () => {
     const native = new FakeNativeBridge();
     const toolResponse: LanguageModelResponse = {
       text: '',
-      toolCalls: [{ id: 'request-tool-0', name: 'lookup_source', arguments: { sourceId: 'source-42' } }],
+      toolCalls: [
+        { id: 'request-tool-0', name: 'lookup_source', arguments: { sourceId: 'source-42' } },
+      ],
       finishReason: 'tool_calls',
     };
     native.generated = toolResponse;
     const provider = new AppleFoundationModelsProvider(native);
     const toolRequest: LanguageModelRequest = {
       messages: [{ role: 'user', content: 'Use source-42 to answer.' }],
-      tools: [{
-        name: 'lookup_source',
-        inputSchema: {
-          type: 'object',
-          properties: { sourceId: { type: 'string' } },
-          required: ['sourceId'],
-          additionalProperties: false,
+      tools: [
+        {
+          name: 'lookup_source',
+          inputSchema: {
+            type: 'object',
+            properties: { sourceId: { type: 'string' } },
+            required: ['sourceId'],
+            additionalProperties: false,
+          },
         },
-      }],
+      ],
     };
 
-    await expect(provider.generate(toolRequest)).resolves.toEqual({ ok: true, value: toolResponse });
+    await expect(provider.generate(toolRequest)).resolves.toEqual({
+      ok: true,
+      value: toolResponse,
+    });
     expect(native.generateCount).toBe(1);
   });
 
   it('reports unavailable states without invoking generation or falling back', async () => {
     const unavailable: AppleAvailabilityStatus[] = [
-      'disabled', 'modelNotReady', 'unsupportedDevice', 'unsupportedLanguage',
+      'disabled',
+      'modelNotReady',
+      'unsupportedDevice',
+      'unsupportedLanguage',
     ];
     for (const status of unavailable) {
       const native = new FakeNativeBridge();
@@ -143,10 +93,12 @@ describe('AppleFoundationModelsProvider', () => {
     const native = new FakeNativeBridge();
     const provider = new AppleFoundationModelsProvider(native);
     const imageRequest = {
-      messages: [{
-        role: 'user' as const,
-        content: [{ type: 'image' as const, data: new Uint8Array(), mediaType: 'image/png' }],
-      }],
+      messages: [
+        {
+          role: 'user' as const,
+          content: [{ type: 'image' as const, data: new Uint8Array(), mediaType: 'image/png' }],
+        },
+      ],
     };
 
     await expect(provider.generate(imageRequest)).resolves.toMatchObject({
@@ -194,7 +146,9 @@ describe('AppleFoundationModelsProvider', () => {
     const provider = new AppleFoundationModelsProvider(new FakeNativeBridge());
     const events = [];
 
-    for await (const event of provider.stream({ messages: [{ role: 'user', content: '인사해 주세요.' }] })) {
+    for await (const event of provider.stream({
+      messages: [{ role: 'user', content: '인사해 주세요.' }],
+    })) {
       events.push(event);
     }
 
@@ -214,7 +168,9 @@ describe('AppleFoundationModelsProvider', () => {
     const provider = new AppleFoundationModelsProvider(native);
     const events = [];
 
-    for await (const event of provider.stream({ messages: [{ role: 'user', content: '인사해 주세요.' }] })) {
+    for await (const event of provider.stream({
+      messages: [{ role: 'user', content: '인사해 주세요.' }],
+    })) {
       events.push(event);
     }
 

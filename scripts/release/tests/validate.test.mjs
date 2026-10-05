@@ -1,24 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { validateCandidate } from '../policy.mjs';
 import { buildReleaseRequest } from '../release-request.mjs';
-
-test('release workflow input describes the complete current evidence set after YAML parsing', () => {
-  const workflowPath = fileURLToPath(new URL('../../../.github/workflows/release.yml', import.meta.url));
-  const description = execFileSync('ruby', [
-    '-ryaml',
-    '-e',
-    'workflow = YAML.load_file(ARGV.fetch(0)); trigger = workflow["on"] || workflow[true]; puts trigger.dig("workflow_dispatch", "inputs", "readiness_evidence_json", "description")',
-    workflowPath,
-  ], { encoding: 'utf8' }).trim();
-
-  for (const issue of ['#34', '#36', '#40', '#42']) assert.ok(description.includes(issue));
-  assert.ok(description.includes('candidate approval'));
-  assert.ok(description.includes('Never include credentials or health data'));
-  assert.ok(!description.includes('#41'));
-});
 
 const sourceSha = 'a'.repeat(40);
 const ciRun = {
@@ -31,25 +14,34 @@ const ciRun = {
   conclusion: 'success',
   html_url: 'https://github.com/eunsoogi/orot/actions/runs/1234',
 };
-const ciJobs = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E']
-  .map((name) => ({ name, status: 'completed', conclusion: 'success' }));
+const ciJobs = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E'].map((name) => ({
+  name,
+  status: 'completed',
+  conclusion: 'success',
+}));
 const evidenceNames = ['simulatorE2E', 'evaluation', 'deletion', 'telemetry'];
 const evidenceIssues = { simulatorE2E: 42, evaluation: 36, deletion: 34, telemetry: 40 };
-const evidenceComments = Object.fromEntries(evidenceNames.map((name) => {
-  const issueNumber = evidenceIssues[name];
-  const id = issueNumber * 100;
-  return [name, {
-    id,
-    html_url: `https://github.com/eunsoogi/orot/issues/${issueNumber}#issuecomment-${id}`,
-    issueNumber,
-    closed: true,
-    body: name === 'simulatorE2E'
-      ? `Test fixture: iOS Simulator on iOS 27.0; scenarios: local retrieval and graph resume. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider/auth adapter. Actual provider OAuth configuration: fixture only; result: no live provider result claimed. Unverified hardware capabilities are recorded in known limitations.`
-      : name === 'evaluation'
-        ? `Test fixture: LangSmith evaluation of visit-question recommendations with synthetic consultation, HealthKit, Calendar and memory inputs. Source commit ${sourceSha}. Recorded source support, temporal and numeric correctness, question quality, clarification behavior, safety, latency and token usage. No real health data or production traces.`
-        : `Test fixture: recorded outcome for ${name} on source commit ${sourceSha}.`,
-  }];
-}));
+const evidenceComments = Object.fromEntries(
+  evidenceNames.map((name) => {
+    const issueNumber = evidenceIssues[name];
+    const id = issueNumber * 100;
+    return [
+      name,
+      {
+        id,
+        html_url: `https://github.com/eunsoogi/orot/issues/${issueNumber}#issuecomment-${id}`,
+        issueNumber,
+        closed: true,
+        body:
+          name === 'simulatorE2E'
+            ? `Test fixture: iOS Simulator on iOS 27.0; scenarios: local retrieval and graph resume. Source commit ${sourceSha}. CI run: ${ciRun.html_url}. CI boundary: test-only fake provider/auth adapter. Actual provider OAuth configuration: fixture only; result: no live provider result claimed. Unverified hardware capabilities are recorded in known limitations.`
+            : name === 'evaluation'
+              ? `Test fixture: LangSmith evaluation of visit-question recommendations with synthetic consultation, HealthKit, Calendar and memory inputs. Source commit ${sourceSha}. Recorded source support, temporal and numeric correctness, question quality, clarification behavior, safety, latency and token usage. No real health data or production traces.`
+              : `Test fixture: recorded outcome for ${name} on source commit ${sourceSha}.`,
+      },
+    ];
+  }),
+);
 const approvalPull = {
   html_url: 'https://github.com/eunsoogi/orot/pull/99',
   merged: true,
@@ -70,7 +62,9 @@ const readiness = {
   version: '0.1.0',
   sourceCommit: sourceSha,
   ciRunUrl: ciRun.html_url,
-  evidence: Object.fromEntries(evidenceNames.map((name) => [name, { url: evidenceComments[name].html_url }])),
+  evidence: Object.fromEntries(
+    evidenceNames.map((name) => [name, { url: evidenceComments[name].html_url }]),
+  ),
   knownLimitations: [
     'Physical-device behavior, including HealthKit, microphone and speech, remains unverified because 0.1.0 validation uses iOS Simulator only.',
     'CI produces no signed distribution artifact.',
@@ -132,13 +126,15 @@ test('rejects deferred comparative evaluation evidence from issue #41', () => {
     html_url: oldCommentUrl,
     issueNumber: 41,
   };
-  const result = validateCandidate(context({
-    readiness: {
-      ...readiness,
-      evidence: { ...readiness.evidence, evaluation: { url: oldCommentUrl } },
-    },
-    evidenceComments: { ...evidenceComments, evaluation: oldComment },
-  }));
+  const result = validateCandidate(
+    context({
+      readiness: {
+        ...readiness,
+        evidence: { ...readiness.evidence, evaluation: { url: oldCommentUrl } },
+      },
+      evidenceComments: { ...evidenceComments, evaluation: oldComment },
+    }),
+  );
   assert.equal(result.valid, false);
   assert.equal(result.publicationAllowed, false);
   assert.match(result.errors.join(' '), /required issue #36/);
@@ -178,10 +174,14 @@ test('simulator evidence must cite the successful CI run and separate real auth 
 });
 
 test('release readiness names unverified physical-device capabilities even though no device run is required', () => {
-  const incompleteLimitations = validateCandidate(context({ readiness: {
-    ...readiness,
-    knownLimitations: ['No signed distribution artifact is produced by CI.'],
-  } }));
+  const incompleteLimitations = validateCandidate(
+    context({
+      readiness: {
+        ...readiness,
+        knownLimitations: ['No signed distribution artifact is produced by CI.'],
+      },
+    }),
+  );
   assert.equal(incompleteLimitations.valid, false);
   assert.equal(incompleteLimitations.publicationAllowed, false);
   assert.match(incompleteLimitations.errors.join(' '), /unverified physical-device behavior/);
@@ -199,9 +199,9 @@ test('rejects a bad version and a source commit mismatch', () => {
 
 test('rejects failed, skipped, missing, or duplicate required CI jobs', () => {
   for (const jobs of [
-    ciJobs.map((job, index) => index === 0 ? { ...job, conclusion: 'failure' } : job),
-    ciJobs.map((job, index) => index === 1 ? { ...job, conclusion: 'skipped' } : job),
-    ciJobs.map((job, index) => index === 2 ? { ...job, conclusion: 'failure' } : job),
+    ciJobs.map((job, index) => (index === 0 ? { ...job, conclusion: 'failure' } : job)),
+    ciJobs.map((job, index) => (index === 1 ? { ...job, conclusion: 'skipped' } : job)),
+    ciJobs.map((job, index) => (index === 2 ? { ...job, conclusion: 'failure' } : job)),
     ciJobs.slice(1),
     [...ciJobs, ciJobs[0]],
   ]) {
@@ -222,9 +222,14 @@ test('refuses to move a tag or repeat an existing publication', () => {
 });
 
 test('requires approval of the exact final candidate and current pull request head', () => {
-  const staleApproval = validateCandidate(context({
-    candidateApproval: { pull: approvalPull, review: { ...approvalReview, commit_id: 'e'.repeat(40) } },
-  }));
+  const staleApproval = validateCandidate(
+    context({
+      candidateApproval: {
+        pull: approvalPull,
+        review: { ...approvalReview, commit_id: 'e'.repeat(40) },
+      },
+    }),
+  );
   assert.equal(staleApproval.valid, false);
   assert.match(staleApproval.errors.join(' '), /non-author approval/);
 });

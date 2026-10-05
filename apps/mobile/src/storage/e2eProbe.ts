@@ -53,7 +53,9 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
       title: 'Duplicate content must keep the first source record.',
     });
     if (duplicate.id !== stored.id) {
-      throw new Error('Duplicate source content was not resolved deterministically.');
+      throw new Error(
+        'Duplicate source content was not resolved deterministically.',
+      );
     }
     await repository.evidenceSpans.create(sampleEvidenceSpan);
     return;
@@ -66,7 +68,9 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
     throw new Error('The synthetic storage record was not preserved.');
   }
   if (mode === 'restart') {
-    const spans = await repository.evidenceSpans.listForSourceRecord(sampleRecord.id);
+    const spans = await repository.evidenceSpans.listForSourceRecord(
+      sampleRecord.id,
+    );
     if (
       spans.length !== 1 ||
       spans[0]?.id !== sampleEvidenceSpan.id ||

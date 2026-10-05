@@ -1,7 +1,7 @@
 import Foundation
 import JWTKit
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class IDTokenVerifierTests: XCTestCase {
     private var fixture: IdentityFixture!
@@ -17,25 +17,25 @@ final class IDTokenVerifierTests: XCTestCase {
 
     func testPublishedRS256KeyVerifiesIDTokenAndRequiredClaims() async throws {
         let identity = try await IDTokenVerifier().verify(
-            fixture.tokens["valid"]!,
+            XCTUnwrap(fixture.tokens["valid"]),
             jwksData: jwksData,
             clientID: "oaiapp_fixture-client",
             nonce: "fixture-nonce",
-            now: Date()
+            now: Date(),
         )
 
         XCTAssertEqual(identity.subject, "fixture-subject")
     }
 
-    func testWrongIssuerAudienceExpiryNonceAndFutureIssuedAtAreRejected() async {
+    func testWrongIssuerAudienceExpiryNonceAndFutureIssuedAtAreRejected() async throws {
         let claims = ["wrongIssuer", "wrongAudience", "expired", "wrongNonce", "futureIssuedAt"]
         for name in claims {
-            await assertIdentityError(fixture.tokens[name]!, error: .invalidIdentity)
+            try await assertIdentityError(XCTUnwrap(fixture.tokens[name]), error: .invalidIdentity)
         }
     }
 
-    func testSignatureFailureAndNonRS256HeadersAreRejected() async {
-        let valid = fixture.tokens["valid"]!
+    func testSignatureFailureAndNonRS256HeadersAreRejected() async throws {
+        let valid = try XCTUnwrap(fixture.tokens["valid"])
         let parts = valid.split(separator: ".", omittingEmptySubsequences: false)
         let tamperedSignature = String(parts[2].first == "A" ? "B" : "A") + String(parts[2].dropFirst())
         await assertIdentityError("\(parts[0]).\(parts[1]).\(tamperedSignature)", error: .invalidIdentity)
@@ -49,7 +49,7 @@ final class IDTokenVerifierTests: XCTestCase {
         _ token: String,
         error expected: ChatGPTOAuthError,
         file: StaticString = #filePath,
-        line: UInt = #line
+        line: UInt = #line,
     ) async {
         do {
             _ = try await IDTokenVerifier().verify(
@@ -57,7 +57,7 @@ final class IDTokenVerifierTests: XCTestCase {
                 jwksData: jwksData,
                 clientID: "oaiapp_fixture-client",
                 nonce: "fixture-nonce",
-                now: Date()
+                now: Date(),
             )
             XCTFail("Expected ID-token verification to fail.", file: file, line: line)
         } catch let error as ChatGPTOAuthError {
@@ -70,7 +70,9 @@ final class IDTokenVerifierTests: XCTestCase {
     private func reheader(_ token: String, algorithm: String, keyID: String? = "unit-test-key") -> String {
         let parts = token.split(separator: ".", omittingEmptySubsequences: false)
         var header = ["alg": algorithm, "typ": "JWT"]
-        if let keyID { header["kid"] = keyID }
+        if let keyID {
+            header["kid"] = keyID
+        }
         let data = try! JSONSerialization.data(withJSONObject: header, options: [.sortedKeys])
         return "\(data.base64URLEncodedString()).\(parts[1]).\(parts[2])"
     }

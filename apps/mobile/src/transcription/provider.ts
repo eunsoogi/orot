@@ -35,20 +35,26 @@ const SUPPORTED_MEDIA_TYPES = new Set([
 ]);
 
 // These states stay distinct so callers can explain why Apple speech cannot run without any remote fallback.
-const AVAILABILITY_ERRORS: Record<Exclude<SpeechAvailabilityStatus, 'available' | 'permission_not_determined'>, ProviderError> = {
+const AVAILABILITY_ERRORS: Record<
+  Exclude<SpeechAvailabilityStatus, 'available' | 'permission_not_determined'>,
+  ProviderError
+> = {
   unsupported_language: {
     code: 'unsupported_capability',
-    message: 'UNSUPPORTED_LANGUAGE: Apple on-device speech does not support this language.',
+    message:
+      'UNSUPPORTED_LANGUAGE: Apple on-device speech does not support this language.',
     retryable: false,
   },
   unsupported_device: {
     code: 'unsupported_capability',
-    message: 'UNSUPPORTED_DEVICE: Apple on-device speech is unavailable on this device.',
+    message:
+      'UNSUPPORTED_DEVICE: Apple on-device speech is unavailable on this device.',
     retryable: false,
   },
   model_unavailable: {
     code: 'provider_unavailable',
-    message: 'MODEL_UNAVAILABLE: The required on-device speech model is unavailable.',
+    message:
+      'MODEL_UNAVAILABLE: The required on-device speech model is unavailable.',
     retryable: true,
   },
   permission_denied: {
@@ -58,12 +64,14 @@ const AVAILABILITY_ERRORS: Record<Exclude<SpeechAvailabilityStatus, 'available' 
   },
   permission_restricted: {
     code: 'unsupported_capability',
-    message: 'PERMISSION_RESTRICTED: Speech recognition is restricted on this device.',
+    message:
+      'PERMISSION_RESTRICTED: Speech recognition is restricted on this device.',
     retryable: false,
   },
   recognizer_unavailable: {
     code: 'provider_unavailable',
-    message: 'RECOGNIZER_UNAVAILABLE: Apple on-device speech is temporarily unavailable.',
+    message:
+      'RECOGNIZER_UNAVAILABLE: Apple on-device speech is temporarily unavailable.',
     retryable: true,
   },
 };
@@ -79,7 +87,11 @@ export class AppleOnDeviceSpeechProvider implements TranscriptionProvider {
   async getAvailability(language = 'ko-KR'): Promise<SpeechAvailability> {
     const normalizedLanguage = normalizeLanguage(language);
     if (!normalizedLanguage) {
-      return { status: 'unsupported_language', engine: 'none', locale: language };
+      return {
+        status: 'unsupported_language',
+        engine: 'none',
+        locale: language,
+      };
     }
     return this.native.getAvailability(normalizedLanguage);
   }
@@ -102,7 +114,10 @@ export class AppleOnDeviceSpeechProvider implements TranscriptionProvider {
       return providerFailure(nativeError(error));
     }
 
-    if (availability.status !== 'available' && availability.status !== 'permission_not_determined') {
+    if (
+      availability.status !== 'available' &&
+      availability.status !== 'permission_not_determined'
+    ) {
       return providerFailure(AVAILABILITY_ERRORS[availability.status]);
     }
 
@@ -128,7 +143,9 @@ export class AppleOnDeviceSpeechProvider implements TranscriptionProvider {
   }
 }
 
-function validateAudioRequest(request: TranscriptionRequest): ProviderError | undefined {
+function validateAudioRequest(
+  request: TranscriptionRequest,
+): ProviderError | undefined {
   const audio = request?.audio;
   if (!(audio?.data instanceof Uint8Array) || audio.data.length === 0) {
     return {
@@ -138,10 +155,14 @@ function validateAudioRequest(request: TranscriptionRequest): ProviderError | un
     };
   }
 
-  if (typeof audio.mediaType !== 'string' || !SUPPORTED_MEDIA_TYPES.has(normalizeMediaType(audio.mediaType))) {
+  if (
+    typeof audio.mediaType !== 'string' ||
+    !SUPPORTED_MEDIA_TYPES.has(normalizeMediaType(audio.mediaType))
+  ) {
     return {
       code: 'unsupported_input',
-      message: 'UNSUPPORTED_MEDIA_TYPE: Apple on-device speech cannot read this audio format.',
+      message:
+        'UNSUPPORTED_MEDIA_TYPE: Apple on-device speech cannot read this audio format.',
       retryable: false,
     };
   }
@@ -159,38 +180,66 @@ function normalizeMediaType(mediaType: string): string {
 
 function nativeError(error: unknown): ProviderError {
   const native = error as { code?: unknown; message?: unknown } | null;
-  const code = typeof native?.code === 'string' ? native.code : 'SPEECH_RECOGNITION_FAILED';
-  const detail = typeof native?.message === 'string' ? native.message : 'Apple on-device speech failed.';
-  if (code === 'UNSUPPORTED_LANGUAGE') return AVAILABILITY_ERRORS.unsupported_language;
-  if (code === 'UNSUPPORTED_DEVICE') return AVAILABILITY_ERRORS.unsupported_device;
+  const code =
+    typeof native?.code === 'string'
+      ? native.code
+      : 'SPEECH_RECOGNITION_FAILED';
+  const detail =
+    typeof native?.message === 'string'
+      ? native.message
+      : 'Apple on-device speech failed.';
+  if (code === 'UNSUPPORTED_LANGUAGE')
+    return AVAILABILITY_ERRORS.unsupported_language;
+  if (code === 'UNSUPPORTED_DEVICE')
+    return AVAILABILITY_ERRORS.unsupported_device;
   if (code === 'MODEL_UNAVAILABLE' || code === 'MODEL_INSTALL_FAILED') {
-    return { ...AVAILABILITY_ERRORS.model_unavailable, message: 'MODEL_UNAVAILABLE: ' + detail };
+    return {
+      ...AVAILABILITY_ERRORS.model_unavailable,
+      message: 'MODEL_UNAVAILABLE: ' + detail,
+    };
   }
-  if (code === 'PERMISSION_DENIED') return AVAILABILITY_ERRORS.permission_denied;
-  if (code === 'PERMISSION_RESTRICTED') return AVAILABILITY_ERRORS.permission_restricted;
+  if (code === 'PERMISSION_DENIED')
+    return AVAILABILITY_ERRORS.permission_denied;
+  if (code === 'PERMISSION_RESTRICTED')
+    return AVAILABILITY_ERRORS.permission_restricted;
   if (code === 'PERMISSION_NOT_DETERMINED') {
     return {
       code: 'unsupported_capability',
-      message: 'PERMISSION_NOT_DETERMINED: Speech recognition permission was not granted.',
+      message:
+        'PERMISSION_NOT_DETERMINED: Speech recognition permission was not granted.',
       retryable: false,
     };
   }
-  if (code === 'RECOGNIZER_UNAVAILABLE') return AVAILABILITY_ERRORS.recognizer_unavailable;
+  if (code === 'RECOGNIZER_UNAVAILABLE')
+    return AVAILABILITY_ERRORS.recognizer_unavailable;
   if (code === 'NATIVE_MODULE_UNAVAILABLE') {
     return {
       code: 'provider_unavailable',
-      message: 'NATIVE_MODULE_UNAVAILABLE: The Apple speech module is not registered in this app build.',
+      message:
+        'NATIVE_MODULE_UNAVAILABLE: The Apple speech module is not registered in this app build.',
       retryable: false,
     };
   }
   if (code === 'INVALID_AUDIO') {
-    return { code: 'invalid_request', message: 'INVALID_AUDIO: ' + detail, retryable: false };
+    return {
+      code: 'invalid_request',
+      message: 'INVALID_AUDIO: ' + detail,
+      retryable: false,
+    };
   }
   if (code === 'UNSUPPORTED_MEDIA_TYPE') {
-    return { code: 'unsupported_input', message: 'UNSUPPORTED_MEDIA_TYPE: ' + detail, retryable: false };
+    return {
+      code: 'unsupported_input',
+      message: 'UNSUPPORTED_MEDIA_TYPE: ' + detail,
+      retryable: false,
+    };
   }
   if (code === 'INVALID_TIMESTAMP' || code === 'INVALID_TRANSCRIPTION_RESULT') {
-    return { code: 'internal_error', message: code + ': ' + detail, retryable: false };
+    return {
+      code: 'internal_error',
+      message: code + ': ' + detail,
+      retryable: false,
+    };
   }
   return {
     code: 'provider_unavailable',

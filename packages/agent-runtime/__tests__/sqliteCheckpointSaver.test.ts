@@ -19,9 +19,7 @@ describe('SqliteCheckpointSaver', () => {
     let opened = openSqliteTestDatabase(path);
     try {
       const firstGraph = createStatefulTwoNodeGraph({
-        checkpointer: new SqliteCheckpointSaver(
-          createLangGraphCheckpointStorage(opened.database),
-        ),
+        checkpointer: new SqliteCheckpointSaver(createLangGraphCheckpointStorage(opened.database)),
         interruptAfter: ['increment'],
       });
       await expect(firstGraph.invoke({ value: 3 }, config)).resolves.toMatchObject({
@@ -32,9 +30,7 @@ describe('SqliteCheckpointSaver', () => {
 
       opened = openSqliteTestDatabase(path);
       const resumedGraph = createStatefulTwoNodeGraph({
-        checkpointer: new SqliteCheckpointSaver(
-          createLangGraphCheckpointStorage(opened.database),
-        ),
+        checkpointer: new SqliteCheckpointSaver(createLangGraphCheckpointStorage(opened.database)),
       });
       await expect(resumedGraph.invoke(null, config)).resolves.toMatchObject({
         value: 8,
@@ -58,26 +54,35 @@ describe('SqliteCheckpointSaver', () => {
       await activeDatabase.execute(
         'CREATE TABLE checkpoint_effects (operation_key TEXT PRIMARY KEY)',
       );
-      const saver = new SqliteCheckpointSaver(
-        createLangGraphCheckpointStorage(activeDatabase),
-      );
+      const saver = new SqliteCheckpointSaver(createLangGraphCheckpointStorage(activeDatabase));
       const State = Annotation.Root({ confirmed: Annotation<boolean>() });
       const retriedGraph = new StateGraph(State)
-        .addNode('confirm', async () => {
-          const attempts = await recordNodeAttempt(activeDatabase, 'visit-question:thread-43:confirm');
-          await activeDatabase.execute(
-            'INSERT OR IGNORE INTO checkpoint_effects (operation_key) VALUES (?)',
-            ['visit-question:thread-43:confirm'],
-          );
-          if (attempts === 1) throw new Error('simulated failure after the durable effect');
-          return { confirmed: true };
-        }, { retryPolicy: { maxAttempts: 2, initialInterval: 0 } })
+        .addNode(
+          'confirm',
+          async () => {
+            const attempts = await recordNodeAttempt(
+              activeDatabase,
+              'visit-question:thread-43:confirm',
+            );
+            await activeDatabase.execute(
+              'INSERT OR IGNORE INTO checkpoint_effects (operation_key) VALUES (?)',
+              ['visit-question:thread-43:confirm'],
+            );
+            if (attempts === 1) throw new Error('simulated failure after the durable effect');
+            return { confirmed: true };
+          },
+          { retryPolicy: { maxAttempts: 2, initialInterval: 0 } },
+        )
         .addEdge(START, 'confirm')
         .addEdge('confirm', END)
         .compile({ checkpointer: saver });
 
-      await expect(retriedGraph.invoke({ confirmed: false }, createCheckpointConfig('visit-questions:thread-43')))
-        .resolves.toMatchObject({ confirmed: true });
+      await expect(
+        retriedGraph.invoke(
+          { confirmed: false },
+          createCheckpointConfig('visit-questions:thread-43'),
+        ),
+      ).resolves.toMatchObject({ confirmed: true });
       expect(await countRows(activeDatabase, 'checkpoint_node_attempts')).toBe(2);
       expect(await countRows(activeDatabase, 'checkpoint_effects')).toBe(1);
     } finally {
@@ -101,30 +106,38 @@ describe('SqliteCheckpointSaver', () => {
     const saver = new SqliteCheckpointSaver(storage);
     const config = { configurable: { thread_id: 'workflow:thread', checkpoint_id: 'cp-1' } };
 
-    await saver.putWrites(config, [
-      ['__interrupt__', 'first'],
-      ['result', 'first'],
-    ], 'task-1');
-    await saver.putWrites(config, [
-      ['__interrupt__', 'second'],
-      ['result', 'second'],
-    ], 'task-1');
+    await saver.putWrites(
+      config,
+      [
+        ['__interrupt__', 'first'],
+        ['result', 'first'],
+      ],
+      'task-1',
+    );
+    await saver.putWrites(
+      config,
+      [
+        ['__interrupt__', 'second'],
+        ['result', 'second'],
+      ],
+      'task-1',
+    );
 
-    expect(saved.map(({ channel, index, replaceExisting }) => [channel, index, replaceExisting]))
-      .toEqual([
-        ['__interrupt__', -3, true],
-        ['result', 1, false],
-        ['__interrupt__', -3, true],
-        ['result', 1, false],
-      ]);
+    expect(
+      saved.map(({ channel, index, replaceExisting }) => [channel, index, replaceExisting]),
+    ).toEqual([
+      ['__interrupt__', -3, true],
+      ['result', 1, false],
+      ['__interrupt__', -3, true],
+      ['result', 1, false],
+    ]);
   });
 });
 
 async function recordNodeAttempt(database: SqlDatabase, operationKey: string): Promise<number> {
-  await database.execute(
-    'INSERT INTO checkpoint_node_attempts (operation_key) VALUES (?)',
-    [operationKey],
-  );
+  await database.execute('INSERT INTO checkpoint_node_attempts (operation_key) VALUES (?)', [
+    operationKey,
+  ]);
   const result = await database.execute(
     'SELECT count(*) AS count FROM checkpoint_node_attempts WHERE operation_key = ?',
     [operationKey],

@@ -16,12 +16,14 @@ struct URLSessionChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
                     for try await byte in bytes {
                         try Task.checkCancellation()
                         buffer.append(byte)
-                        if byte == 0x0A || byte == 0x0D || buffer.count == 4_096 {
+                        if byte == 0x0A || byte == 0x0D || buffer.count == 4096 {
                             continuation.yield(buffer)
                             buffer.removeAll(keepingCapacity: true)
                         }
                     }
-                    if !buffer.isEmpty { continuation.yield(buffer) }
+                    if !buffer.isEmpty {
+                        continuation.yield(buffer)
+                    }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

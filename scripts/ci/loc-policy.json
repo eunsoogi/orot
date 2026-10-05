@@ -41,14 +41,18 @@
     ".zsh"
   ],
   "includedFilenames": [
+    ".clang-format",
+    ".editorconfig",
     ".env",
     ".gitattributes",
     ".gitignore",
     ".nvmrc",
     ".npmrc",
+    ".swiftformat",
     ".watchmanconfig",
     ".xcode.env",
     "Dockerfile",
+    "Gemfile",
     "Makefile",
     "Podfile",
     "gradlew"

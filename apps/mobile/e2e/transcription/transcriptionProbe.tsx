@@ -51,7 +51,8 @@ interface TranscriptionCaseObservation {
 }
 
 interface TranscriptionProbeReport {
-  readonly outcome: 'running' | 'measured' | 'explicitly_unsupported' | 'failed';
+  readonly outcome:
+    'running' | 'measured' | 'explicitly_unsupported' | 'failed';
   readonly providerId: string;
   readonly fixture: SyntheticTranscriptionFixture['provenance'];
   readonly initialAvailability?: SpeechAvailability;
@@ -65,11 +66,16 @@ const fixtureNativeBridge: NativeSpeechTranscriptionBridge = {
     return appleSpeechTranscriptionNativeBridge.getAvailability(language);
   },
   transcribe(request) {
-    const markedRequest = { ...request, syntheticFixture: fixture.provenance.synthetic };
+    const markedRequest = {
+      ...request,
+      syntheticFixture: fixture.provenance.synthetic,
+    };
     return appleSpeechTranscriptionNativeBridge.transcribe(markedRequest);
   },
 };
-const fixtureSpeechProvider = new AppleOnDeviceSpeechProvider(fixtureNativeBridge);
+const fixtureSpeechProvider = new AppleOnDeviceSpeechProvider(
+  fixtureNativeBridge,
+);
 const EXPLICITLY_UNSUPPORTED = new Set([
   'unsupported_language',
   'unsupported_device',
@@ -100,23 +106,30 @@ export function TranscriptionProbe() {
   useEffect(() => {
     let mounted = true;
     runNativeProbe().then(
-      next => { if (mounted) setReport(next); },
+      next => {
+        if (mounted) setReport(next);
+      },
       error => {
-        if (mounted) setReport({
-          outcome: 'failed',
-          providerId: ON_DEVICE_SPEECH_PROVIDER_ID,
-          fixture: fixture.provenance,
-          cases: [],
-          reason: normalizeError(error),
-        });
+        if (mounted)
+          setReport({
+            outcome: 'failed',
+            providerId: ON_DEVICE_SPEECH_PROVIDER_ID,
+            fixture: fixture.provenance,
+            cases: [],
+            reason: normalizeError(error),
+          });
       },
     );
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text testID="transcription-probe-complete">{report.outcome === 'running' ? 'running' : 'complete'}</Text>
+      <Text testID="transcription-probe-complete">
+        {report.outcome === 'running' ? 'running' : 'complete'}
+      </Text>
       <Text testID="transcription-probe-report">{JSON.stringify(report)}</Text>
     </View>
   );
@@ -124,10 +137,13 @@ export function TranscriptionProbe() {
 
 async function runNativeProbe(): Promise<TranscriptionProbeReport> {
   if (!fixture.provenance.synthetic) {
-    throw new Error('The Simulator storage exception requires a fixture marked synthetic.');
+    throw new Error(
+      'The Simulator storage exception requires a fixture marked synthetic.',
+    );
   }
 
-  const initialAvailability = await fixtureSpeechProvider.getAvailability('ko-KR');
+  const initialAvailability =
+    await fixtureSpeechProvider.getAvailability('ko-KR');
   if (EXPLICITLY_UNSUPPORTED.has(initialAvailability.status)) {
     return {
       outcome: 'explicitly_unsupported',
@@ -135,17 +151,27 @@ async function runNativeProbe(): Promise<TranscriptionProbeReport> {
       fixture: fixture.provenance,
       initialAvailability,
       cases: [],
-      reason: { code: initialAvailability.status, message: 'The native Apple API reported this Korean transcription capability as unavailable.' },
+      reason: {
+        code: initialAvailability.status,
+        message:
+          'The native Apple API reported this Korean transcription capability as unavailable.',
+      },
     };
   }
-  if (initialAvailability.status !== 'available' && initialAvailability.status !== 'permission_not_determined') {
+  if (
+    initialAvailability.status !== 'available' &&
+    initialAvailability.status !== 'permission_not_determined'
+  ) {
     return {
       outcome: 'failed',
       providerId: ON_DEVICE_SPEECH_PROVIDER_ID,
       fixture: fixture.provenance,
       initialAvailability,
       cases: [],
-      reason: { code: 'INVALID_AVAILABILITY_STATUS', message: 'The native module returned an unknown availability status.' },
+      reason: {
+        code: 'INVALID_AVAILABILITY_STATUS',
+        message: 'The native module returned an unknown availability status.',
+      },
     };
   }
 
@@ -153,12 +179,17 @@ async function runNativeProbe(): Promise<TranscriptionProbeReport> {
   for (const speechCase of fixture.cases) {
     const result = await fixtureSpeechProvider.transcribe({
       language: 'ko-KR',
-      audio: { data: decodeAudioBase64(speechCase.audio.base64), mediaType: speechCase.audio.mediaType },
+      audio: {
+        data: decodeAudioBase64(speechCase.audio.base64),
+        mediaType: speechCase.audio.mediaType,
+      },
     });
     if (!result.ok) {
       const reason = { code: result.error.code, message: result.error.message };
       return {
-        outcome: hasExplicitUnsupportedPrefix(reason.message) ? 'explicitly_unsupported' : 'failed',
+        outcome: hasExplicitUnsupportedPrefix(reason.message)
+          ? 'explicitly_unsupported'
+          : 'failed',
         providerId: ON_DEVICE_SPEECH_PROVIDER_ID,
         fixture: fixture.provenance,
         initialAvailability,
@@ -192,17 +223,28 @@ async function runNativeProbe(): Promise<TranscriptionProbeReport> {
 }
 
 function hasExplicitUnsupportedPrefix(message: string): boolean {
-  return EXPLICIT_UNSUPPORTED_PREFIXES.some(prefix => message.startsWith(prefix));
+  return EXPLICIT_UNSUPPORTED_PREFIXES.some(prefix =>
+    message.startsWith(prefix),
+  );
 }
 
 function normalizeError(error: unknown): { code: string; message: string } {
   const value = error as { code?: unknown; message?: unknown } | null;
   return {
-    code: typeof value?.code === 'string' ? value.code : 'TRANSCRIPTION_PROBE_FAILED',
+    code:
+      typeof value?.code === 'string'
+        ? value.code
+        : 'TRANSCRIPTION_PROBE_FAILED',
     message: typeof value?.message === 'string' ? value.message : String(error),
   };
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#f7f8fa' },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#f7f8fa',
+  },
 });

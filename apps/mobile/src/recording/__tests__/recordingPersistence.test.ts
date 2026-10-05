@@ -42,15 +42,12 @@ test('persists one unreviewed audio source with the native recording identity an
 test.each(['unknown', 'unverified'] as const)(
   'does not link audio when native file protection is %s',
   async fileProtection => {
-  const loadRepository = jest.fn(async () => repository());
+    const loadRepository = jest.fn(async () => repository());
 
-  await expect(
-    saveRecordingSource(
-      { ...recording, fileProtection },
-      loadRepository,
-    ),
-  ).rejects.toMatchObject({ code: 'RECORDING_FILE_PROTECTION_FAILED' });
-  expect(loadRepository).not.toHaveBeenCalled();
+    await expect(
+      saveRecordingSource({ ...recording, fileProtection }, loadRepository),
+    ).rejects.toMatchObject({ code: 'RECORDING_FILE_PROTECTION_FAILED' });
+    expect(loadRepository).not.toHaveBeenCalled();
   },
 );
 
@@ -62,9 +59,9 @@ test('allows an exact metadata retry and rejects an identity collision', async (
     recordedAt: recording.completedAt,
   };
   const retryStore = repository(existing);
-  await expect(saveRecordingSource(recording, async () => retryStore)).resolves.toBe(
-    existing,
-  );
+  await expect(
+    saveRecordingSource(recording, async () => retryStore),
+  ).resolves.toBe(existing);
   expect(retryStore.put).not.toHaveBeenCalled();
 
   const collisionStore = repository({ ...existing, sourceKind: 'document' });
@@ -75,9 +72,11 @@ test('allows an exact metadata retry and rejects an identity collision', async (
 
 test('propagates repository failures so the screen can retry metadata linking', async () => {
   const store = repository();
-  store.put = jest.fn().mockRejectedValue(new Error('local database unavailable'));
+  store.put = jest
+    .fn()
+    .mockRejectedValue(new Error('local database unavailable'));
 
-  await expect(saveRecordingSource(recording, async () => store)).rejects.toThrow(
-    'local database unavailable',
-  );
+  await expect(
+    saveRecordingSource(recording, async () => store),
+  ).rejects.toThrow('local database unavailable');
 });

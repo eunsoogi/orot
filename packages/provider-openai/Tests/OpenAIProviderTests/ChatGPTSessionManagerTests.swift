@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import OpenAIProvider
+import XCTest
 
 final class ChatGPTSessionManagerTests: XCTestCase {
     private static let clientID = "oaiapp_fixture_client"
@@ -11,7 +11,9 @@ final class ChatGPTSessionManagerTests: XCTestCase {
     func testConcurrentRefreshUsesOneRotatingTokenRequestAndSavesReplacement() async throws {
         let gate = RequestGate()
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
             if request.url?.path == Self.tokenPath {
                 await gate.wait()
                 return refreshedTokenResponse()
@@ -24,17 +26,19 @@ final class ChatGPTSessionManagerTests: XCTestCase {
         let manager = ChatGPTSessionManager(
             transport: transport,
             credentialStore: store,
-            now: { Self.fixedNow }
+            now: { Self.fixedNow },
         )
 
         let clientID = Self.clientID
-        let callers = (0..<12).map { _ in
+        let callers = (0 ..< 12).map { _ in
             Task { try await manager.accountWithFreshAccessToken(issuedClientID: clientID) }
         }
         await transport.waitForRequest(path: Self.tokenPath)
         await gate.open()
         var results: [ChatGPTStoredAccount] = []
-        for caller in callers { results.append(try await caller.value) }
+        for caller in callers {
+            try await results.append(caller.value)
+        }
 
         let requests = await transport.recordedRequests(path: Self.tokenPath)
         XCTAssertEqual(results.count, 12)
@@ -54,8 +58,12 @@ final class ChatGPTSessionManagerTests: XCTestCase {
 
     func testRefreshNowRotatesCredentialsEvenBeforeExpiry() async throws {
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
-            if request.url?.path == Self.tokenPath { return refreshedTokenResponse() }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
+            if request.url?.path == Self.tokenPath {
+                return refreshedTokenResponse()
+            }
             return StubOAuthResponse(statusCode: 404, body: Data())
         }
         let store = InMemoryChatGPTCredentialStore()
@@ -63,7 +71,7 @@ final class ChatGPTSessionManagerTests: XCTestCase {
         let manager = ChatGPTSessionManager(
             transport: transport,
             credentialStore: store,
-            now: { Self.fixedNow }
+            now: { Self.fixedNow },
         )
 
         let refreshed = try await manager.refreshNow(issuedClientID: Self.clientID)
@@ -75,7 +83,9 @@ final class ChatGPTSessionManagerTests: XCTestCase {
 
     func testTransientRefreshFailurePreservesStoredCredentials() async throws {
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
             return StubOAuthResponse(statusCode: 503, body: Data(#"{"error":"temporarily_unavailable"}"#.utf8))
         }
         let store = InMemoryChatGPTCredentialStore()
@@ -97,7 +107,9 @@ final class ChatGPTSessionManagerTests: XCTestCase {
 
     func testInvalidGrantClearsTokensButKeepsIssuedRegistrationAndIdentity() async throws {
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
             return StubOAuthResponse(statusCode: 400, body: Data(#"{"error":"invalid_grant"}"#.utf8))
         }
         let store = InMemoryChatGPTCredentialStore()
@@ -121,8 +133,12 @@ final class ChatGPTSessionManagerTests: XCTestCase {
 
     func testSignOutRevokesRefreshTokenThenClearsOnlyCredentials() async throws {
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
-            if request.url?.path == Self.revokePath { return StubOAuthResponse(statusCode: 200, body: Data()) }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
+            if request.url?.path == Self.revokePath {
+                return StubOAuthResponse(statusCode: 200, body: Data())
+            }
             return StubOAuthResponse(statusCode: 404, body: Data())
         }
         let store = InMemoryChatGPTCredentialStore()
@@ -146,7 +162,9 @@ final class ChatGPTSessionManagerTests: XCTestCase {
 
     func testSignOutClearsLocalCredentialsWhenRemoteRevocationCannotBeConfirmed() async throws {
         let transport = StubOAuthHTTPTransport { request in
-            if request.url?.path == "/.well-known/openid-configuration" { return discoveryResponse() }
+            if request.url?.path == "/.well-known/openid-configuration" {
+                return discoveryResponse()
+            }
             return StubOAuthResponse(statusCode: 503, body: Data())
         }
         let store = InMemoryChatGPTCredentialStore()

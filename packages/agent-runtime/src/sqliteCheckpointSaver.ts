@@ -1,6 +1,13 @@
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { BaseCheckpointSaver, copyCheckpoint } from '@langchain/langgraph/web';
 import type { Checkpoint, CheckpointTuple } from '@langchain/langgraph/web';
+import {
+  matchesFilter,
+  readNamespace,
+  readOptionalCheckpointId,
+  readOptionalNamespace,
+  readThreadId,
+} from './checkpointConfig';
 
 type CheckpointListOptions = NonNullable<Parameters<BaseCheckpointSaver<number>['list']>[1]>;
 type CheckpointMetadata = Parameters<BaseCheckpointSaver<number>['put']>[2];
@@ -39,8 +46,17 @@ interface StoredWrite {
 interface CheckpointStorage {
   ensureSchema(): Promise<void>;
   saveCheckpoint(threadId: string, namespace: string, checkpoint: CheckpointRecord): Promise<void>;
-  saveWrites(threadId: string, namespace: string, checkpointId: string, writes: StoredWrite[]): Promise<void>;
-  loadCheckpoint(threadId: string, namespace: string, checkpointId?: string): Promise<CheckpointBundle | undefined>;
+  saveWrites(
+    threadId: string,
+    namespace: string,
+    checkpointId: string,
+    writes: StoredWrite[],
+  ): Promise<void>;
+  loadCheckpoint(
+    threadId: string,
+    namespace: string,
+    checkpointId?: string,
+  ): Promise<CheckpointBundle | undefined>;
   listCheckpoints(
     threadId: string,
     namespace?: string,
@@ -124,7 +140,12 @@ export class SqliteCheckpointSaver extends BaseCheckpointSaver<number> {
     });
     return {
       ...config,
-      configurable: { ...config.configurable, thread_id: threadId, checkpoint_ns: namespace, checkpoint_id: checkpoint.id },
+      configurable: {
+        ...config.configurable,
+        thread_id: threadId,
+        checkpoint_ns: namespace,
+        checkpoint_id: checkpoint.id,
+      },
     };
   }
 
@@ -134,17 +155,19 @@ export class SqliteCheckpointSaver extends BaseCheckpointSaver<number> {
     const checkpointId = readOptionalCheckpointId(config);
     if (!checkpointId) throw new Error('Missing checkpoint_id in checkpoint write config.');
 
-    const stored = await Promise.all(writes.map(async ([channel, value], index) => {
-      const [type, serialized] = await this.serde.dumpsTyped(value);
-      return {
-        taskId,
-        index: SPECIAL_WRITE_INDEX.get(channel) ?? index,
-        channel,
-        type,
-        value: serialized,
-        replaceExisting: SPECIAL_WRITE_INDEX.has(channel),
-      };
-    }));
+    const stored = await Promise.all(
+      writes.map(async ([channel, value], index) => {
+        const [type, serialized] = await this.serde.dumpsTyped(value);
+        return {
+          taskId,
+          index: SPECIAL_WRITE_INDEX.get(channel) ?? index,
+          channel,
+          type,
+          value: serialized,
+          replaceExisting: SPECIAL_WRITE_INDEX.has(channel),
+        };
+      }),
+    );
     await this.storage.saveWrites(threadId, namespace, checkpointId, stored);
   }
 
@@ -163,11 +186,16 @@ export class SqliteCheckpointSaver extends BaseCheckpointSaver<number> {
       checkpoint_ns: bundle.namespace,
       checkpoint_id: bundle.checkpointId,
     };
-    const pendingWrites = await Promise.all(bundle.pendingWrites.map(async write => [
-      write.taskId,
-      write.channel,
-      await this.serde.loadsTyped(write.type, write.value),
-    ] as [string, string, unknown]));
+    const pendingWrites = await Promise.all(
+      bundle.pendingWrites.map(
+        async (write) =>
+          [write.taskId, write.channel, await this.serde.loadsTyped(write.type, write.value)] as [
+            string,
+            string,
+            unknown,
+          ],
+      ),
+    );
     return {
       config: { configurable },
       checkpoint: checkpoint as Checkpoint,
@@ -178,47 +206,4 @@ export class SqliteCheckpointSaver extends BaseCheckpointSaver<number> {
       pendingWrites,
     };
   }
-}
-
-function readThreadId(config: RunnableConfig): string {
-  const value = config.configurable?.thread_id;
-  if ((typeof value !== 'string' && typeof value !== 'number') || String(value).length === 0) {
-    throw new Error('Missing thread_id in checkpoint config.');
-  }
-  return String(value);
-}
-
-function readNamespace(config: RunnableConfig): string {
-  const value = config.configurable?.checkpoint_ns;
-  if (value === undefined || value === null) return '';
-  if (typeof value !== 'string') throw new Error('Invalid checkpoint_ns in checkpoint config.');
-  return value;
-}
-
-function readOptionalNamespace(config: RunnableConfig): string | undefined {
-  const value = config.configurable?.checkpoint_ns;
-  if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'string') throw new Error('Invalid checkpoint_ns in checkpoint config.');
-  return value;
-}
-
-function readOptionalCheckpointId(config: RunnableConfig): string | undefined {
-  const value = config.configurable?.checkpoint_id;
-  if (value === undefined || value === null) return undefined;
-  if (typeof value !== 'string') throw new Error('Invalid checkpoint_id in checkpoint config.');
-  return value;
-}
-
-function matchesFilter(metadata: CheckpointTuple['metadata'], filter: Record<string, unknown>): boolean {
-  if (!metadata) return Object.keys(filter).length === 0;
-  const values = metadata as Record<string, unknown>;
-  return Object.entries(filter).every(([key, expected]) => valuesEqual(values[key], expected));
-}
-
-function valuesEqual(actual: unknown, expected: unknown): boolean {
-  if (Object.is(actual, expected)) return true;
-  if (actual === null || expected === null || typeof actual !== 'object' || typeof expected !== 'object') {
-    return false;
-  }
-  return JSON.stringify(actual) === JSON.stringify(expected);
 }
