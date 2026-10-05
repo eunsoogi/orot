@@ -82,6 +82,13 @@ export function toProviderError(value: unknown): ProviderError {
       retryable: false,
     };
   }
+  if (details.kind === 'malformed_response') {
+    return {
+      code: 'internal_error',
+      message: 'ChatGPT returned a malformed response.',
+      retryable: false,
+    };
+  }
   if (
     details.kind === 'transport' ||
     details.kind === 'usage_unavailable' ||

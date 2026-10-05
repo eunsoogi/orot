@@ -4,28 +4,72 @@ public enum ChatGPTResponsesMessage: Equatable, Sendable {
     case system(String)
     case user(String)
     case assistant(String)
+    case functionCall(callID: String, name: String, argumentsJSON: String)
+    case functionCallOutput(callID: String, output: String)
+    case continuationItem(json: String)
+}
+
+public struct ChatGPTResponsesToolDefinition: Equatable, Sendable {
+    public let name: String
+    public let description: String?
+    public let parametersJSON: String
+    public let strict: Bool
+
+    public init(name: String, description: String? = nil, parametersJSON: String, strict: Bool = false) {
+        self.name = name
+        self.description = description
+        self.parametersJSON = parametersJSON
+        self.strict = strict
+    }
+}
+
+public struct ChatGPTResponsesFunctionCall: Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let argumentsJSON: String
+
+    public init(id: String, name: String, argumentsJSON: String) {
+        self.id = id
+        self.name = name
+        self.argumentsJSON = argumentsJSON
+    }
 }
 
 public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let model: String
     public let messages: [ChatGPTResponsesMessage]
+    public let tools: [ChatGPTResponsesToolDefinition]
 
-    public init(model: String, messages: [ChatGPTResponsesMessage]) {
+    public init(
+        model: String,
+        messages: [ChatGPTResponsesMessage],
+        tools: [ChatGPTResponsesToolDefinition] = [],
+    ) {
         self.model = model
         self.messages = messages
+        self.tools = tools
     }
 }
 
 public struct ChatGPTResponsesResult: Equatable, Sendable {
     public let text: String
+    public let toolCalls: [ChatGPTResponsesFunctionCall]
+    public let continuationItems: [String]
 
-    public init(text: String) {
+    public init(
+        text: String,
+        toolCalls: [ChatGPTResponsesFunctionCall] = [],
+        continuationItems: [String] = [],
+    ) {
         self.text = text
+        self.toolCalls = toolCalls
+        self.continuationItems = continuationItems
     }
 }
 
 public enum ChatGPTResponsesEvent: Equatable, Sendable {
     case textDelta(String)
+    case toolCall(ChatGPTResponsesFunctionCall)
     case completed(ChatGPTResponsesResult)
 }
 

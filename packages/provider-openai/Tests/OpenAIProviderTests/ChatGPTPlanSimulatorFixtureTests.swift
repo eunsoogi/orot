@@ -47,6 +47,63 @@
 
             XCTAssertEqual(firstEvent, .textDelta("취소 대기"))
         }
+
+        func testFixtureCompletesAFullLocalToolRoundTrip() async throws {
+            let fixture = try ChatGPTPlanSimulatorFixture(scenario: .toolRoundTrip)
+            defer { try? fixture.remove() }
+            let definition = ChatGPTResponsesToolDefinition(
+                name: "lookup_source",
+                description: "Look up a synthetic source.",
+                parametersJSON: #"{"type":"object","properties":{"sourceId":{"type":"string"}},"required":["sourceId"],"additionalProperties":false}"#,
+            )
+            let firstRequest = ChatGPTResponsesRequest(
+                model: "gpt-synthetic",
+                messages: [.user("Look up source-42.")],
+                tools: [definition],
+            )
+            let firstStream = try await fixture.client.streamResponse(firstRequest, forIssuedClientID: fixture.issuedClientID)
+            var firstEvents = [ChatGPTResponsesEvent]()
+            for try await event in firstStream {
+                firstEvents.append(event)
+            }
+            let toolCall = ChatGPTResponsesFunctionCall(
+                id: "call_synthetic_source",
+                name: "lookup_source",
+                argumentsJSON: #"{"sourceId":"source-42"}"#,
+            )
+            XCTAssertEqual(firstEvents, [
+                .toolCall(toolCall),
+                .completed(ChatGPTResponsesResult(
+                    text: "",
+                    toolCalls: [toolCall],
+                    continuationItems: [
+                        #"{"encrypted_content":"synthetic-only","id":"rs_synthetic_source","type":"reasoning"}"#,
+                        #"{"arguments":"{\"sourceId\":\"source-42\"}","call_id":"call_synthetic_source","id":"fc_synthetic_source","name":"lookup_source","type":"function_call"}"#,
+                    ],
+                )),
+            ])
+
+            let secondRequest = ChatGPTResponsesRequest(
+                model: "gpt-synthetic",
+                messages: [
+                    .user("Look up source-42."),
+                    .continuationItem(json: firstEventsContinuation(firstEvents, at: 0)),
+                    .continuationItem(json: firstEventsContinuation(firstEvents, at: 1)),
+                    .functionCallOutput(callID: toolCall.id, output: #"{"found":true,"sourceId":"source-42"}"#),
+                ],
+                tools: [definition],
+            )
+            let final = try await fixture.client.generateResponse(secondRequest, forIssuedClientID: fixture.issuedClientID)
+            XCTAssertEqual(final, ChatGPTResponsesResult(
+                text: "Source found.",
+                continuationItems: [#"{"content":[{"text":"Source found.","type":"output_text"}],"type":"message"}"#],
+            ))
+        }
+
+        private func firstEventsContinuation(_ events: [ChatGPTResponsesEvent], at index: Int) -> String {
+            guard case let .some(.completed(response)) = events.last else { return "" }
+            return response.continuationItems[index]
+        }
     }
 
     private enum FixtureStreamTimedOut: Error {

@@ -66,7 +66,7 @@ describe('ChatGPT plan model adapter', () => {
       inputTypes: ['text'],
       streaming: true,
       structuredOutput: false,
-      toolCalling: false,
+      toolCalling: true,
     });
     await expect(provider.generate(baseRequest)).resolves.toEqual({
       ok: true,
@@ -125,7 +125,6 @@ describe('ChatGPT plan model adapter', () => {
       { ...baseRequest, temperature: 0.2 },
       { ...baseRequest, maxOutputTokens: 20 },
       { ...baseRequest, responseFormat: { name: 'json', schema: {} } },
-      { ...baseRequest, tools: [{ name: 'lookup', inputSchema: {} }] },
       {
         messages: [
           {
