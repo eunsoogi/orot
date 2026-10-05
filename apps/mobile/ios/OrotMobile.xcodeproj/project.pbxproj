@@ -19,11 +19,6 @@
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
-		E16A00000000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000016 /* HealthKit.framework */; };
-		E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000011 /* HealthKitBoundary.swift */; };
-		E16A00000000000000000003 /* HealthKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000012 /* HealthKitModule.swift */; };
-		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
-		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */; };
 		A64F00000000000000000001 /* RecordingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000001 /* RecordingModule.swift */; };
 		A64F00000000000000000002 /* RecordingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000002 /* RecordingModule.m */; };
@@ -46,6 +41,13 @@
 		E14B00000000000000000006 /* SpeechTranscriptionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000006 /* SpeechTranscriptionModule.swift */; };
 		E14B00000000000000000007 /* SpeechTranscriptionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000007 /* SpeechTranscriptionModule.m */; };
 		E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000008 /* SpeechTranscriptionTypes.swift */; };
+		E16A00000000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000016 /* HealthKit.framework */; };
+		E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000011 /* HealthKitBoundary.swift */; };
+		E16A00000000000000000003 /* HealthKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000012 /* HealthKitModule.swift */; };
+		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
+		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
+		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
+		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,11 +67,6 @@
 		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
-		E16A00000000000000000011 /* HealthKitBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitBoundary.swift; path = OrotMobile/HealthKitBoundary.swift; sourceTree = "<group>"; };
-		E16A00000000000000000012 /* HealthKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitModule.swift; path = OrotMobile/HealthKitModule.swift; sourceTree = "<group>"; };
-		E16A00000000000000000013 /* HealthKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HealthKitModule.m; path = OrotMobile/HealthKitModule.m; sourceTree = "<group>"; };
-		E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSimulatorFixture.swift; path = OrotMobile/HealthKitSimulatorFixture.swift; sourceTree = "<group>"; };
-		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderErrorDetails.swift; path = OrotMobile/OpenAIProviderErrorDetails.swift; sourceTree = "<group>"; };
 		B64F00000000000000000001 /* RecordingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingModule.swift; path = OrotMobile/RecordingModule.swift; sourceTree = "<group>"; };
 		B64F00000000000000000002 /* RecordingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingModule.m; path = OrotMobile/RecordingModule.m; sourceTree = "<group>"; };
@@ -78,6 +75,13 @@
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
+		E16A00000000000000000011 /* HealthKitBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitBoundary.swift; path = OrotMobile/HealthKitBoundary.swift; sourceTree = "<group>"; };
+		E16A00000000000000000012 /* HealthKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitModule.swift; path = OrotMobile/HealthKitModule.swift; sourceTree = "<group>"; };
+		E16A00000000000000000013 /* HealthKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HealthKitModule.m; path = OrotMobile/HealthKitModule.m; sourceTree = "<group>"; };
+		E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSimulatorFixture.swift; path = OrotMobile/HealthKitSimulatorFixture.swift; sourceTree = "<group>"; };
+		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
+		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
@@ -124,6 +128,8 @@
 				E16A00000000000000000012 /* HealthKitModule.swift */,
 				E16A00000000000000000013 /* HealthKitModule.m */,
 				E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */,
+				E17A00000000000000000011 /* HealthKitMedicationQueries.swift */,
+				E17A00000000000000000012 /* HealthKitSampleChanges.swift */,
 				B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */,
 				B64F00000000000000000001 /* RecordingModule.swift */,
 				B64F00000000000000000002 /* RecordingModule.m */,
@@ -366,6 +372,8 @@
 				E16A00000000000000000003 /* HealthKitModule.swift in Sources */,
 				E16A00000000000000000004 /* HealthKitModule.m in Sources */,
 				E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */,
+				E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */,
+				E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */,
 				A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */,
 				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
 				A64F00000000000000000002 /* RecordingModule.m in Sources */,

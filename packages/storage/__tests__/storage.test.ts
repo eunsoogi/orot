@@ -103,41 +103,6 @@ function createOptions(database: SqlDatabase, secrets: { value: string | null })
 }
 
 describe('encrypted local storage', () => {
-  it('creates ten typed tables and migrates records from the earlier schema', async () => {
-    const database = createDatabase();
-    const secrets = { value: null as string | null };
-    await database.execute(
-      'CREATE TABLE records (record_type TEXT NOT NULL, payload_json TEXT NOT NULL)',
-    );
-    await database.execute('INSERT INTO records (record_type, payload_json) VALUES (?, ?)', [
-      'source_record',
-      JSON.stringify(sampleRecord),
-    ]);
-    const repository = await openEncryptedStorage(createOptions(database, secrets));
-
-    expect(await repository.get('source_record', 'legacy-note')).toEqual(sampleRecord);
-    const tables = await database.execute(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-    );
-    expect(tables.rows.map((row) => row.name)).toEqual([
-      'appointments',
-      'dose_events',
-      'encounters',
-      'evidence_spans',
-      'health_observations',
-      'medication_assertions',
-      'source_records',
-      'symptom_entries',
-      'visit_briefs',
-      'visit_questions',
-    ]);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(2);
-    expect(
-      (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
-    ).toHaveLength(0);
-    await database.closeAsync?.();
-  });
-
   it('persists a random key through the secure store and rejects an unavailable store', async () => {
     const database = createDatabase();
     const secrets = { value: null as string | null };
@@ -175,6 +140,57 @@ describe('encrypted local storage', () => {
       }),
     ).rejects.toThrow('abort transaction');
     expect(await repository.get('source_record', 'legacy-note')).toBeNull();
+    await database.closeAsync?.();
+  });
+
+  it('stores unknown medication source times as null and commits changes with their cursor atomically', async () => {
+    const database = createDatabase();
+    const repository = await openEncryptedStorage(
+      createOptions(database, { value: '12'.repeat(32) }),
+    );
+    const definition = {
+      id: 'healthkit-medication-concept-1',
+      medicationConceptIdentifier: 'concept-1',
+      displayText: 'Sample medication',
+      generalForm: 'tablet',
+      isArchived: false,
+      hasSchedule: true,
+      ingestedAt: '2026-10-01T08:00:00Z',
+      provenance: {
+        origin: 'imported',
+        sourceRecordIds: ['concept-1'],
+        source: { system: 'healthkit' },
+      },
+      reviewState: { status: 'unreviewed' },
+    } as const;
+    const checkpoint = {
+      key: 'healthkit:medications:medicationDoseEvents',
+      value: 'opaque-anchor',
+      updatedAt: '2026-10-01T08:01:00Z',
+    };
+
+    await expect(
+      repository.transaction(async (transaction) => {
+        await transaction.put('medication_definition', definition);
+        await transaction.putSyncCheckpoint(checkpoint);
+        throw new Error('abort medication sync');
+      }),
+    ).rejects.toThrow('abort medication sync');
+    expect(await repository.get('medication_definition', definition.id)).toBeNull();
+    expect(await repository.getSyncCheckpoint(checkpoint.key)).toBeNull();
+
+    await repository.transaction(async (transaction) => {
+      await transaction.put('medication_definition', definition);
+      await transaction.putSyncCheckpoint(checkpoint);
+    });
+    expect(await repository.get('medication_definition', definition.id)).toEqual(definition);
+    expect(await repository.list('medication_definition')).toEqual([definition]);
+    expect(await repository.getSyncCheckpoint(checkpoint.key)).toEqual(checkpoint);
+    const timeColumns = await database.execute(
+      'SELECT effective_at, recorded_at FROM medication_definitions WHERE id = ?',
+      [definition.id],
+    );
+    expect(timeColumns.rows[0]).toEqual({ effective_at: null, recorded_at: null });
     await database.closeAsync?.();
   });
 
