@@ -21,6 +21,8 @@ function workflowStep(name) {
 test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanup and upload in order', () => {
   const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const simulatorUtilities = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
+  const nodeSetup = profileWorkflow.indexOf('- name: Set up Node.js');
+  const rubySetup = profileWorkflow.indexOf('- name: Set up Ruby');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
   const boot = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
@@ -36,10 +38,14 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
   const teardownStep = workflowStep('Delete dedicated Detox Simulator');
 
+  // Start boot after pinned Node, then overlap it with remaining toolchain and dependency setup.
   assert.ok(
-    pods >= 0 &&
-      simulatorUtilities > pods &&
-      prepare > simulatorUtilities &&
+    nodeSetup >= 0 &&
+      nodeSetup < prepare &&
+      prepare < rubySetup &&
+      rubySetup < pods &&
+      pods < simulatorUtilities &&
+      simulatorUtilities < build &&
       build > prepare &&
       boot > build &&
       tests > boot,
