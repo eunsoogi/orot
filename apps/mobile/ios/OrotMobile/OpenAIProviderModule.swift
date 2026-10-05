@@ -18,6 +18,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
     private let lock = NSLock()
     private var requests: [String: RequestSlot] = [:]
     private let defaultClient = ChatGPTOAuthClient()
+    // Synthetic fixtures are compiled only for Debug Simulators, never production builds.
     #if DEBUG && targetEnvironment(simulator)
         private var simulatorFixture: ChatGPTPlanSimulatorFixture?
     #endif
@@ -67,15 +68,27 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         let task = Task { [weak self] in
             guard let self, isActive(slot) else { return }
             do {
-                let request = try Self.decodeRequest(payload)
+                let request = try ChatGPTResponsesRequestDecoder.decode(payload)
                 let stream = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
+                var emittedToolCallIDs = Set<String>()
                 for try await packet in stream {
                     guard isActive(slot) else { return }
                     switch packet {
                     case let .textDelta(text): slot.event(["type": "text_delta", "text": text] as NSDictionary)
+                    case let .toolCall(toolCall):
+                        emittedToolCallIDs.insert(toolCall.id)
+                        slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
                     case let .completed(response):
+                        for toolCall in response.toolCalls where !emittedToolCallIDs.contains(toolCall.id) {
+                            slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
+                        }
                         if finish(slot) {
-                            slot.event(["type": "completed", "text": response.text] as NSDictionary)
+                            slot.event([
+                                "type": "completed",
+                                "text": response.text,
+                                "toolCalls": response.toolCalls.map(Self.nativeToolCall),
+                                "continuationItems": response.continuationItems,
+                            ] as NSDictionary)
                         }
                         return
                     }
@@ -156,23 +169,8 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         return defaultClient
     }
 
-    private static func decodeRequest(_ payload: NSDictionary) throws -> ChatGPTResponsesRequest {
-        guard let value = payload as? [String: Any],
-              let model = value["model"] as? String,
-              let rawMessages = value["messages"] as? [[String: Any]],
-              !rawMessages.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
-        let messages = try rawMessages.map { message -> ChatGPTResponsesMessage in
-            guard let role = message["role"] as? String, let content = message["content"] as? String else {
-                throw ChatGPTResponsesError.invalidRequest
-            }
-            switch role {
-            case "system": return .system(content)
-            case "user": return .user(content)
-            case "assistant": return .assistant(content)
-            default: throw ChatGPTResponsesError.invalidRequest
-            }
-        }
-        return ChatGPTResponsesRequest(model: model, messages: messages)
+    private static func nativeToolCall(_ toolCall: ChatGPTResponsesFunctionCall) -> [String: String] {
+        ["id": toolCall.id, "name": toolCall.name, "arguments": toolCall.argumentsJSON]
     }
 
     private func register(_ id: String, _ event: @escaping (NSDictionary) -> Void) -> RequestSlot? {
