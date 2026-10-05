@@ -1,7 +1,11 @@
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { createHealthKitClient } from '../client';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
-import type { HealthKitFeature, HealthKitNativeModule } from '../types';
+import type {
+  HealthKitFeature,
+  HealthKitNativeModule,
+  HealthKitSampleSnapshot,
+} from '../types';
 import { importCommonObservations } from './importer';
 import type { CommonObservationsImportResult } from './importer';
 import { commonObservationRecordId } from './mapper';
@@ -39,6 +43,7 @@ export async function runCommonObservationsStorageProbe(
   // Open the same encrypted local repository used by the app before importing fixtures.
   const repository = await openLocalStorage();
   let activeFixture: HealthKitFeature | null = null;
+  const observedSamples = new Map<string, HealthKitSampleSnapshot>();
   const clearFixture = async () => {
     if (activeFixture === null) return;
     activeFixture = null;
@@ -73,7 +78,13 @@ export async function runCommonObservationsStorageProbe(
     querySampleChanges: async query => {
       if (activeFixture !== query.feature) await installFixture(query.feature);
       try {
-        return await client.querySampleChanges(query);
+        const page = await client.querySampleChanges(query);
+        if (page.status === 'completed') {
+          for (const sample of page.addedSamples) {
+            observedSamples.set(sample.id, sample);
+          }
+        }
+        return page;
       } finally {
         // The native debug fixture supports one feature at a time and never writes HealthKit data.
         await clearFixture();
@@ -121,6 +132,13 @@ export async function runCommonObservationsStorageProbe(
     const firstRecords = await repository.list('health_observation');
     const heartRate = findCommonObservationRecord(firstRecords, 'heartRate');
     const steps = findCommonObservationRecord(firstRecords, 'steps');
+    const heartRateSample = observedSamples.get(sourceSamples.heartRate);
+    const stepSample = observedSamples.get(sourceSamples.steps);
+    assert(
+      heartRateSample,
+      'The HealthKit query omitted the heart-rate sample.',
+    );
+    assert(stepSample, 'The HealthKit query omitted the step-count sample.');
     assert(
       !firstRecords.some(
         record =>
@@ -135,6 +153,7 @@ export async function runCommonObservationsStorageProbe(
       72,
       'count/min',
       'heartRate',
+      heartRateSample,
     );
     assertCommonObservationQuantity(
       steps,
@@ -142,6 +161,7 @@ export async function runCommonObservationsStorageProbe(
       1200,
       'count',
       'steps',
+      stepSample,
     );
 
     for (const feature of features) {

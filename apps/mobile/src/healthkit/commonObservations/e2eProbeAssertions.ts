@@ -2,6 +2,7 @@ import type { RecordMap } from '@orot/storage';
 import type {
   HealthKitFeature,
   HealthKitNativeModule,
+  HealthKitSampleSnapshot,
   HealthKitSampleKind,
 } from '../types';
 import { commonObservationRecordId } from './mapper';
@@ -31,8 +32,6 @@ export const commonObservationProbeSampleIds = {
   steps: 'synthetic-steps',
   bodyMass: 'synthetic-body-mass',
 };
-
-export const commonObservationProbeSampleDate = '2026-10-01T08:00:00.000Z';
 
 const sampleTypes: Readonly<Record<CommonObservationFeature, string>> = {
   heartRate: 'HKQuantityTypeIdentifierHeartRate',
@@ -88,7 +87,13 @@ export function assertCommonObservationQuantity(
   amount: number,
   unit: string,
   feature: Exclude<CommonObservationFeature, 'bodyMass'>,
+  sourceSample: HealthKitSampleSnapshot,
 ): void {
+  assertProbe(
+    sourceSample.value === amount,
+    `${feature} fixture amount changed.`,
+  );
+  assertProbe(sourceSample.unit === unit, `${feature} fixture unit changed.`);
   assertProbe(
     record.observationKind === 'measurement',
     'Wrong observation kind.',
@@ -108,11 +113,11 @@ export function assertCommonObservationQuantity(
     `${feature} original display unit was not marked unavailable.`,
   );
   assertProbe(
-    record.effectiveAt === commonObservationProbeSampleDate,
+    record.effectiveAt === sourceSample.startDate,
     `${feature} start time changed.`,
   );
   assertProbe(
-    record.endedAt === commonObservationProbeSampleDate,
+    record.endedAt === sourceSample.endDate,
     `${feature} end time changed.`,
   );
   assertProbe(
@@ -125,13 +130,15 @@ export function assertCommonObservationQuantity(
   );
   assertProbe(
     record.provenance.source?.sourceIdentifier ===
-      'com.orot.healthkit.synthetic',
+      sourceSample.sourceIdentifier,
     `${feature} source identifier changed.`,
   );
   assertProbe(
-    record.provenance.sourceRecordIds.includes(
-      commonObservationProbeSampleIds[feature],
-    ),
+    record.provenance.source?.sourceName === sourceSample.sourceName,
+    `${feature} source name changed.`,
+  );
+  assertProbe(
+    record.provenance.sourceRecordIds.includes(sourceSample.id),
     `${feature} sample identifier was not preserved.`,
   );
   assertProbe(
