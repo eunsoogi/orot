@@ -36,6 +36,9 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
         text: transcript.text,
         language: 'ko-KR',
         segments: transcript.segments,
+        engine: transcript.engine,
+        runtimeVersion: transcript.runtimeVersion,
+        recordingDurationMs: transcript.recordingDurationMs,
       },
     });
     expect(native.availabilityCalls).toEqual(['ko-KR']);
@@ -56,6 +59,23 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
 
     expect(native.availabilityCalls).toEqual(['ko-KR']);
     expect(native.requests[0].language).toBe('ko-KR');
+  });
+
+  it('transcribes a saved recording through the native file boundary and preserves runtime provenance', async () => {
+    const native = new FakeNativeSpeechBridge();
+    const provider = new AppleOnDeviceSpeechProvider(native);
+
+    await expect(
+      provider.transcribeRecording({
+        recordingId: 'recording-1',
+        language: 'ko',
+      }),
+    ).resolves.toMatchObject({ ok: true, value: transcript });
+    expect(native.availabilityCalls).toEqual(['ko-KR']);
+    expect(native.recordingRequests).toEqual([
+      { recordingId: 'recording-1', language: 'ko-KR' },
+    ]);
+    expect(native.requests).toHaveLength(0);
   });
 
   it('reports unsupported languages without calling Apple speech', async () => {

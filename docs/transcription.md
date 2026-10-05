@@ -80,6 +80,30 @@ SpeechTranscriber results use the time range associated with the source audio;
 the legacy recognizer uses its segment timestamp and duration. [Apple defines
 the result range as the audio input range it applies to](https://developer.apple.com/documentation/speech/speechmoduleresult/range).
 
+## Persisted transcript evidence
+
+The recording screen requests transcription by saved recording UUID. The
+native module resolves that UUID to the protected `.m4a` or `.caf` file inside
+Application Support; the audio bytes and filesystem path do not cross into
+JavaScript. On success, the app stores timestamped transcript segments in the
+local record repository. It floors the start and ceils the end when converting
+the engine's seconds to integer milliseconds, then checks the range against the
+recording duration. Each segment keeps its recording source ID, language,
+engine identifier, operating-system runtime version, and unreviewed state.
+The runtime version is the iOS version string reported by `ProcessInfo`; Apple
+does not expose a separate Speech model build identifier here.
+
+Editing a segment appends a new revision with a link to the prior revision.
+The original text, audio range, and engine provenance remain available in the
+revision history. A correction is marked `user_reported` and `needs_review`;
+the machine result remains derived evidence and is not promoted to a medical
+fact. Derived records whose provenance names an earlier transcript revision
+are retained and marked stale. The app does not silently rewrite or regenerate
+those records. The transcript panel shows revision history, review state,
+engine/runtime provenance, stale-artifact count, and the segment's audio range.
+Playback uses the recording UUID and requested range through the native player,
+which seeks in the local recording and stops at the range end.
+
 ## Simulator probe
 
 The isolated Detox entry point calls the real TypeScript provider and native
@@ -108,6 +132,18 @@ language, unsupported-device, unavailable-model, denied or restricted
 permission, or unavailable-recognizer result uses
 `SPEECH_TRANSCRIPTION_SIMULATOR_UNSUPPORTED`. A module-registration or
 recognition error without an explicit unsupported state fails the probe.
+
+When the native run reports a measured result, the same Detox flow installs the
+first bundled synthetic clip as a test recording through a module compiled
+only with `OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST` for an iOS Simulator. It
+transcribes that recording through its saved UUID, checks persisted engine and
+range metadata, verifies that the native player reports a seek within 50 ms of
+the requested start, then corrects the text and checks both revision history
+and a stale derived artifact. Teardown removes the synthetic question, source
+record, transcript revisions, and audio file, including after a failed test
+assertion. The fixture and the narrowly scoped unverified-protection exception
+are test-only; this run does not exercise a live microphone recording or prove
+physical-device behavior.
 
 The initial iPhone 17e / iOS 27 Simulator probe at revision `a4295b9` returned `model_unavailable` for
 `dictation_transcriber` (`ko_KR`, `modelInstalled=true`): Korean Dictation was
