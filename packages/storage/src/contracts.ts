@@ -43,7 +43,7 @@ export const STORAGE_TABLES = {
     nullableSourceTimes: true,
   },
   medication_assertion: { table: 'medication_assertions', schema: MedicationAssertionSchema },
-  dose_event: { table: 'dose_events', schema: DoseEventSchema },
+  dose_event: { table: 'dose_events', schema: DoseEventSchema, nullableRecordedAt: true },
   appointment: { table: 'appointments', schema: AppointmentSchema },
   visit_question: { table: 'visit_questions', schema: VisitQuestionSchema },
   visit_brief: { table: 'visit_briefs', schema: VisitBriefSchema },
