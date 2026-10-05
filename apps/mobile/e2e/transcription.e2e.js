@@ -20,7 +20,13 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
     await device.disableSynchronization();
     const reportElement = element(by.id('transcription-probe-report'));
-    await verifyNativeSpeechProbe(reportElement);
+    let nativeProbeFailure;
+    try {
+      await verifyNativeSpeechProbe(reportElement);
+    } catch (failure) {
+      // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
+      nativeProbeFailure = failure;
+    }
 
     let assertionFailure;
     let assertionStage = 'open evidence setup';
@@ -201,6 +207,11 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
 
     // Keep the original behavior failure visible even when the cleanup control also fails.
     const failures = [];
+    if (nativeProbeFailure) {
+      const description = failureDescription(nativeProbeFailure);
+      console.error('SPEECH_TRANSCRIPTION_SIMULATOR_FAILURE ' + description);
+      failures.push(`Native speech probe failed: ${description}`);
+    }
     if (assertionFailure) {
       const description = failureDescription(assertionFailure);
       console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);

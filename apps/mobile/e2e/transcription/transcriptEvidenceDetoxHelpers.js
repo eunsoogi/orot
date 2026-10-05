@@ -50,6 +50,9 @@ async function verifyNativeSpeechProbe(reportElement) {
         ? 'SPEECH_TRANSCRIPTION_SIMULATOR_PROVIDER_UNAVAILABLE '
         : 'SPEECH_TRANSCRIPTION_SIMULATOR_PROBE_FAILED ';
     console.log(label + JSON.stringify(report));
+    throw new Error(
+      'The native speech probe failed: ' + JSON.stringify(report.reason),
+    );
   } else if (report.outcome === 'measured') {
     jestExpect(report.cases).toHaveLength(3);
     for (const speechCase of report.cases) {
