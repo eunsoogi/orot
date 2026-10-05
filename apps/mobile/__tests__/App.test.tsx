@@ -1,8 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import type { CalendarBridge } from '../src/calendar/types';
+import type { CommonObservationsImportResult } from '../src/healthkit/commonObservations/CommonObservationsImportScreen';
+import type { CommonObservationFeature } from '../src/healthkit/commonObservations/types';
+import { importLocalCommonObservations } from '../src/healthkit/commonObservations/importLocal';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
+
+jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
+  importLocalCommonObservations: jest.fn(),
+}));
 
 // Unit tests omit native window insets; Detox verifies the actual simulator layout.
 jest.mock(
@@ -23,6 +30,10 @@ function createCalendarBridge(): CalendarBridge {
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
   };
 }
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 test('restores the welcome entry and opens Calendar linking from appointments', async () => {
   const store = createAppointmentStore();
@@ -98,4 +109,103 @@ test('keeps Calendar linking available when local appointment storage needs a re
 
   expect(await screen.findByTestId('calendar-connect')).toBeTruthy();
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
+});
+
+test('requires selection and an explicit import before reading common HealthKit types', async () => {
+  const importHealthObservations = jest.fn().mockResolvedValue({
+    status: 'complete',
+    importedCount: 1,
+    deletedCount: 0,
+    unsupportedCount: 0,
+  });
+  await render(<App importHealthObservations={importHealthObservations} />);
+
+  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  expect(
+    screen.getByRole('header', { name: '건강 기록 가져오기' }),
+  ).toBeTruthy();
+  expect(screen.getByTestId('common-observations-import')).toBeDisabled();
+  expect(importHealthObservations).not.toHaveBeenCalled();
+
+  await fireEvent.press(screen.getByTestId('common-observations-toggle-steps'));
+  expect(importHealthObservations).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('common-observations-import'));
+
+  expect(importHealthObservations).toHaveBeenCalledWith(['steps']);
+  expect(
+    await screen.findByText(
+      '선택한 기록의 변경을 가져왔어요. 1개 저장, 0개 삭제, 0개 미지원',
+    ),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('common-observations-back'));
+  expect(screen.getByTestId('welcome-title')).toBeTruthy();
+});
+
+test('calls the production importer only after explicit selection', async () => {
+  jest.mocked(importLocalCommonObservations).mockResolvedValue({
+    status: 'complete',
+    readAuthorization: 'notObservable',
+    importedCount: 1,
+    deletedCount: 0,
+    unsupportedCount: 0,
+    cursorAdvanced: true,
+  });
+  await render(<App />);
+
+  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await fireEvent.press(
+    screen.getByTestId('common-observations-toggle-bodyMass'),
+  );
+  expect(importLocalCommonObservations).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('common-observations-import'));
+
+  expect(await screen.findByText(/1개 저장/u)).toBeTruthy();
+  expect(importLocalCommonObservations).toHaveBeenCalledWith(['bodyMass']);
+});
+
+test('allows Back and reopening while the first import is still pending', async () => {
+  let finishFirst!: (result: CommonObservationsImportResult) => void;
+  let finishSecond!: (result: CommonObservationsImportResult) => void;
+  const firstImport = new Promise<CommonObservationsImportResult>(resolve => {
+    finishFirst = resolve;
+  });
+  const secondImport = new Promise<CommonObservationsImportResult>(resolve => {
+    finishSecond = resolve;
+  });
+  const importHealthObservations = jest
+    .fn<
+      Promise<CommonObservationsImportResult>,
+      [readonly CommonObservationFeature[]]
+    >()
+    .mockReturnValueOnce(firstImport)
+    .mockReturnValueOnce(secondImport);
+  await render(<App importHealthObservations={importHealthObservations} />);
+
+  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await fireEvent.press(
+    screen.getByTestId('common-observations-toggle-heartRate'),
+  );
+  await fireEvent.press(screen.getByTestId('common-observations-import'));
+  expect(importHealthObservations).toHaveBeenCalledTimes(1);
+
+  await fireEvent.press(screen.getByTestId('common-observations-back'));
+  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await fireEvent.press(
+    screen.getByTestId('common-observations-toggle-heartRate'),
+  );
+  await fireEvent.press(screen.getByTestId('common-observations-import'));
+  expect(importHealthObservations).toHaveBeenCalledTimes(2);
+
+  const result: CommonObservationsImportResult = {
+    status: 'complete',
+    importedCount: 1,
+    deletedCount: 1,
+    unsupportedCount: 0,
+  };
+  await act(async () => {
+    finishFirst(result);
+    finishSecond(result);
+    await Promise.resolve();
+  });
+  expect(await screen.findByText(/1개 저장, 1개 삭제/u)).toBeTruthy();
 });
