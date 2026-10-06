@@ -2,8 +2,9 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigrations';
+import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -76,6 +77,48 @@ async function createSyncCheckpoints(transaction: SqlExecutor): Promise<void> {
   await transaction.execute(
     'CREATE TABLE IF NOT EXISTS healthkit_sync_checkpoints (' +
       'checkpoint_key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL)',
+  );
+}
+
+/** Indexes the exact JSON fields and instant ordering used by bounded local lookups. */
+async function createLocalQueryIndexes(transaction: SqlExecutor): Promise<void> {
+  // Replace version-seven Julian-day indexes so bounded reads sort source instants exactly.
+  for (const index of [
+    'health_observations_local_query_idx',
+    'medication_definitions_local_query_idx',
+    'dose_events_local_query_idx',
+    'appointments_local_query_idx',
+    'transcript_segments_local_query_idx',
+  ]) {
+    await transaction.execute('DROP INDEX IF EXISTS ' + index);
+  }
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS health_observations_local_query_idx ON health_observations (json_extract(payload_json, '$.provenance.origin'), json_extract(payload_json, '$.provenance.source.system'), json_extract(payload_json, '$.concept'), " +
+      localQueryTimestampKeyExpression('effective_at') +
+      ', id)',
+  );
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS medication_definitions_local_query_idx ON medication_definitions (json_extract(payload_json, '$.provenance.origin'), json_extract(payload_json, '$.provenance.source.system'), " +
+      localQueryTimestampKeyExpression('ingested_at') +
+      ', id)',
+  );
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS dose_events_local_query_idx ON dose_events (json_extract(payload_json, '$.eventKind'), json_extract(payload_json, '$.provenance.origin'), json_extract(payload_json, '$.provenance.source.system'), " +
+      localQueryTimestampKeyExpression('effective_at') +
+      ', id)',
+  );
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS appointments_local_query_idx ON appointments (json_extract(payload_json, '$.status'), json_extract(payload_json, '$.provenance.origin'), " +
+      localQueryTimestampKeyExpression('effective_at') +
+      ', id)',
+  );
+  await transaction.execute(
+    "CREATE INDEX IF NOT EXISTS transcript_segments_local_query_idx ON transcript_segments (json_extract(payload_json, '$.recordingSourceId'), " +
+      localQueryTimestampKeyExpression('effective_at') +
+      ", json_extract(payload_json, '$.transcriptId'), json_extract(payload_json, '$.segmentOrdinal'), json_extract(payload_json, '$.revision'))",
+  );
+  await transaction.execute(
+    'CREATE INDEX IF NOT EXISTS transcript_artifact_staleness_transcript_idx ON transcript_artifact_staleness (transcript_id, artifact_kind, artifact_id)',
   );
 }
 
@@ -167,6 +210,7 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await createSourceEvidenceIntegrity(transaction);
     await createTranscriptEvidenceIntegrity(transaction);
     await createSyncCheckpoints(transaction);
-    await transaction.execute('PRAGMA user_version = 6');
+    await createLocalQueryIndexes(transaction);
+    await transaction.execute('PRAGMA user_version = 8');
   });
 }
