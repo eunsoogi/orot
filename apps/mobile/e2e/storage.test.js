@@ -1,6 +1,9 @@
 /* global by, device, element, waitFor */
 
-const { createStorageResetGuard } = require('./storageProbeResetGuard.e2e.js');
+const {
+  createStorageResetGuard,
+  installFreshApp,
+} = require('./storageProbeResetGuard.e2e.js');
 const resetGuard = createStorageResetGuard();
 // A hosted uninstall, Keychain clear, and install took 173s; give only reset cases a four-minute limit.
 const freshResetTimeoutMs = 240000;
@@ -14,21 +17,6 @@ async function expectProbeSuccess(mode) {
     .withTimeout(30000);
 }
 
-async function installFreshApp() {
-  // Detox reinstalls once per worker; storage cases reset the app sandbox and Keychain independently.
-  resetGuard.beginReset();
-  try {
-    await device.uninstallApp();
-    resetGuard.assertResetMayContinue();
-    await device.clearKeychain();
-    resetGuard.assertResetMayContinue();
-    await device.installApp();
-    resetGuard.assertResetMayContinue();
-  } finally {
-    resetGuard.finishReset();
-  }
-}
-
 async function launchProbe(mode, newInstance) {
   await device.launchApp({
     newInstance,
@@ -40,7 +28,7 @@ describe('encrypted local storage', () => {
   it(
     'creates encrypted source and evidence records on fresh install',
     async () => {
-      await installFreshApp();
+      await installFreshApp(device, resetGuard);
       await launchProbe('fresh', false);
       await expectProbeSuccess('fresh');
     },
@@ -48,7 +36,9 @@ describe('encrypted local storage', () => {
   );
 
   it('reopens a source and its evidence span after an app process restart', async () => {
-    // Reuse the first case's records so process-restart coverage needs no second fresh install.
+    // Recreate records without another Simulator reset so this case stays independent of earlier test results.
+    await launchProbe('fresh', false);
+    await expectProbeSuccess('fresh');
     await device.terminateApp();
     await launchProbe('restart', true);
     await expectProbeSuccess('restart');
@@ -57,7 +47,7 @@ describe('encrypted local storage', () => {
   it(
     'migrates the earlier test schema on fresh install',
     async () => {
-      await installFreshApp();
+      await installFreshApp(device, resetGuard);
       await launchProbe('legacy', false);
       await expectProbeSuccess('legacy');
     },

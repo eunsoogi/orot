@@ -1,7 +1,7 @@
 const failureMessage =
   'A storage reset is still running after the previous case failed; later probes must not share the Simulator.';
 
-// Jest reports a timed-out Detox call without cancelling its Simulator command.
+// Jest can time out while a Detox Simulator command is still running.
 function createStorageResetGuard() {
   let resetInFlight = false;
   let resetTimedOut = false;
@@ -26,4 +26,18 @@ function createStorageResetGuard() {
   });
 }
 
-module.exports = { createStorageResetGuard, failureMessage };
+async function installFreshApp(device, resetGuard) {
+  resetGuard.beginReset();
+  try {
+    await device.uninstallApp();
+    resetGuard.assertResetMayContinue();
+    await device.clearKeychain();
+    resetGuard.assertResetMayContinue();
+    await device.installApp();
+    resetGuard.assertResetMayContinue();
+  } finally {
+    resetGuard.finishReset();
+  }
+}
+
+module.exports = { createStorageResetGuard, failureMessage, installFreshApp };
