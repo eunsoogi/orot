@@ -78,11 +78,11 @@ describe('calendar month date model', () => {
     expect(formatCalendarMonth(2036, 0)).toBe('2036년 1월');
   });
 
-  it('keeps query coverage bounded to one local calendar year', () => {
+  it('bounds the upcoming-event lookup to one local calendar year', () => {
     const start = new Date(2036, 1, 29, 12, 30);
 
     expect(calendarQueryWindow(start)).toEqual({
-      startDay: '2036-03-01',
+      startDay: '2036-02-29',
       endDay: '2037-02-28',
     });
   });

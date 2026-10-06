@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { appointmentFor, event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
+import { calendarEventDayRange } from '../calendarMonth';
 
 function queryWindow(start: string, end: string) {
   return { startDay: start, endDay: end };
@@ -56,6 +57,17 @@ describe('calendar month view', () => {
     expect(calendar.getByTestId('calendar-next-visit-title')).toHaveTextContent(
       'clinic',
     );
+    expect(calendar.getByTestId('calendar-candidate-clinic')).toBeTruthy();
+    expect(
+      calendar.getByTestId(
+        'calendar-event-row-candidate:clinic:2035-06-02T00:00:00.000Z',
+      ),
+    ).toBeTruthy();
+    expect(
+      calendar.queryByTestId(
+        'calendar-event-row-confirmed:clinic:2035-06-02T00:00:00.000Z',
+      ),
+    ).toBeNull();
     expect(
       calendar.getByTestId('calendar-selected-date').props.allowFontScaling,
     ).not.toBe(false);
@@ -75,25 +87,55 @@ describe('calendar month view', () => {
     expect(calendar.getByTestId('calendar-candidate-all-day')).toBeTruthy();
   });
 
-  it('shows an empty state only for a date inside the completed query window', async () => {
+  it('describes an empty result as missing returned candidates', async () => {
+    const now = new Date('2035-06-02T00:00:00.000Z');
+    const seoulEvent = event('seoul-clinic', '2035-06-01T16:00:00.000Z');
+    const newYorkAllDayEvent = {
+      ...event('new-york-holiday', '2035-05-31T04:00:00.000Z'),
+      endsAt: '2035-06-04T04:00:00.000Z',
+      calendarEventSnapshot: {
+        ...event('new-york-holiday', '2035-05-31T04:00:00.000Z')
+          .calendarEventSnapshot,
+        timeZoneIdentifier: 'America/New_York',
+        isAllDay: true,
+      },
+    };
+    const dateKey = '2035-06-02';
+    const occupiesDate = (candidate: typeof seoulEvent) => {
+      const range = calendarEventDayRange(candidate);
+      return (
+        range !== null && range.startDay <= dateKey && dateKey <= range.endDay
+      );
+    };
+
+    expect(occupiesDate(seoulEvent)).toBe(true);
+    expect(occupiesDate(newYorkAllDayEvent)).toBe(true);
+    // EventKit's upcoming query drops events whose start predates the read instant.
+    const returnedEvents = [seoulEvent, newYorkAllDayEvent].filter(
+      candidate => new Date(candidate.effectiveAt).getTime() >= now.getTime(),
+    );
+    expect(returnedEvents).toEqual([]);
+
     const calendar = await render(
       <CalendarMonthView
         appointmentsLoading={false}
         candidatesLoaded
-        events={[]}
-        initialDate={new Date(2035, 5, 1)}
+        events={returnedEvents}
+        initialDate={new Date(2035, 5, 2, 12)}
         linkedAppointment={null}
         onSelectEvent={jest.fn()}
-        queryWindow={queryWindow('2035-06-02', '2035-06-10')}
+        queryWindow={queryWindow('2035-06-01', '2036-06-01')}
         resultsMayBeIncomplete={false}
       />,
     );
 
-    expect(calendar.getByTestId('calendar-outside-query')).toBeTruthy();
-    expect(calendar.queryByTestId('calendar-empty')).toBeNull();
-    await fireEvent.press(calendar.getByTestId('calendar-day-2035-06-02'));
-    expect(calendar.getByTestId('calendar-empty')).toBeTruthy();
-    await fireEvent.press(calendar.getByTestId('calendar-day-2035-06-12'));
+    expect(calendar.getByTestId('calendar-empty')).toHaveTextContent(
+      '조회된 일정이 없어요.',
+    );
+    expect(calendar.getByTestId('calendar-empty-query-note')).toHaveTextContent(
+      '이미 시작했지만 이 날짜까지 이어지는 일정은 조회되지 않을 수 있어요.',
+    );
+    await fireEvent.press(calendar.getByTestId('calendar-day-2035-05-31'));
     expect(calendar.getByTestId('calendar-outside-query')).toBeTruthy();
     expect(calendar.queryByTestId('calendar-empty')).toBeNull();
   });

@@ -179,13 +179,11 @@ export function shiftCalendarMonth(
 }
 
 /**
- * Mirror EventKit's one-year lookahead as local civil days. The end day stays
- * exclusive because the native query stops at the same local time next year.
+ * Bound calendar navigation to EventKit's upcoming-event query in local days.
+ * These bounds do not prove every event occupying a date was returned: the
+ * native query excludes events whose start instant is already past.
  */
 export function calendarQueryWindow(start: Date): CalendarQueryWindow {
-  // The native query begins now; only the following local day has full coverage.
-  const firstFullyQueriedDay = new Date(start);
-  firstFullyQueriedDay.setDate(firstFullyQueriedDay.getDate() + 1);
   const year = start.getFullYear() + 1;
   const month = start.getMonth();
   const day = start.getDate();
@@ -195,9 +193,9 @@ export function calendarQueryWindow(start: Date): CalendarQueryWindow {
   end.setDate(Math.min(day, new Date(year, month + 1, 0).getDate()));
   return {
     startDay: calendarDateKey(
-      firstFullyQueriedDay.getFullYear(),
-      firstFullyQueriedDay.getMonth(),
-      firstFullyQueriedDay.getDate(),
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
     ),
     endDay: calendarDateKey(end.getFullYear(), end.getMonth(), end.getDate()),
   };

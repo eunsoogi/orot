@@ -130,7 +130,9 @@ export const ko = {
   'calendar.chooseAnother': '다른 일정 선택',
   'calendar.back': '뒤로',
   'calendar.loading': '캘린더 일정을 확인하고 있어요…',
-  'calendar.empty': '다가오는 일정이 없어요.',
+  'calendar.empty': '조회된 일정이 없어요.',
+  'calendar.emptyQueryNote':
+    '이미 시작했지만 이 날짜까지 이어지는 일정은 조회되지 않을 수 있어요.',
   'calendar.outsideQueryRange':
     '이 날짜는 캘린더 조회 기간 밖이라 일정이 모두 표시되지 않을 수 있어요.',
   'calendar.resultsMayBeIncomplete':

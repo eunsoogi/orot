@@ -1,3 +1,4 @@
+import type { Appointment } from '@orot/storage';
 import type { CalendarEvent } from './types';
 
 function canonicalJson(value: unknown): string {
@@ -22,6 +23,38 @@ export function calendarSnapshotsEqual(
   return (
     canonicalJson(comparableSnapshot(left)) ===
     canonicalJson(comparableSnapshot(right))
+  );
+}
+
+/**
+ * Match a live candidate to the exact saved snapshot before showing its
+ * confirmed-visit marker; occurrence identity alone may point to changed data.
+ */
+export function calendarEventMatchesAppointment(
+  event: CalendarEvent,
+  appointment: Appointment,
+): boolean {
+  const eventSnapshot = event.calendarEventSnapshot;
+  const appointmentSnapshot = appointment.calendarEventSnapshot;
+  if (
+    !eventSnapshot ||
+    !appointmentSnapshot ||
+    event.calendarEventIdentifier !== appointment.calendarEventIdentifier
+  ) {
+    return false;
+  }
+  const hasFloatingCivilTimes =
+    eventSnapshot.timeZoneIdentifier === null &&
+    appointmentSnapshot.timeZoneIdentifier === null &&
+    typeof eventSnapshot.floatingStartAt === 'string' &&
+    typeof eventSnapshot.floatingEndAt === 'string' &&
+    eventSnapshot.floatingStartAt === appointmentSnapshot.floatingStartAt &&
+    eventSnapshot.floatingEndAt === appointmentSnapshot.floatingEndAt;
+  return (
+    (hasFloatingCivilTimes ||
+      (event.effectiveAt === appointment.effectiveAt &&
+        event.endsAt === appointment.endsAt)) &&
+    calendarSnapshotsEqual(eventSnapshot, appointmentSnapshot)
   );
 }
 

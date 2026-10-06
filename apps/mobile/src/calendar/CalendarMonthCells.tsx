@@ -4,13 +4,8 @@ import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarGridDay } from './calendarMonth';
 import { formatCalendarDate } from './calendarMonth';
+import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
 import type { CalendarEvent } from './types';
-
-export interface CalendarMonthDisplayEvent {
-  event: CalendarEvent;
-  isNextVisit: boolean;
-  canSelect: boolean;
-}
 
 export function calendarDayAccessibilityLabel(
   dateKey: string,
@@ -101,7 +96,10 @@ export function CalendarMonthEventRow({
       ]}
       testID={item.isNextVisit ? 'calendar-next-visit' : undefined}
     >
-      <View style={styles.calendarEventHeading}>
+      <View
+        style={styles.calendarEventHeading}
+        testID={`calendar-event-row-${item.rowKey}`}
+      >
         <Text
           style={styles.eventTitle}
           testID={item.isNextVisit ? 'calendar-next-visit-title' : undefined}

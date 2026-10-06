@@ -10,12 +10,16 @@ import {
   shiftCalendarMonth,
 } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
+import {
+  eventFromAppointment,
+  projectCalendarMonthEvents,
+} from './calendarMonthEvents';
+import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
 import { CalendarMonthHeader } from './CalendarMonthHeader';
 import {
   CalendarDayCell,
   CalendarMonthEventRow,
   calendarDayAccessibilityLabel,
-  type CalendarMonthDisplayEvent,
 } from './CalendarMonthCells';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarEvent } from './types';
@@ -33,28 +37,6 @@ interface CalendarMonthViewProps {
 
 function localDateKey(date: Date): string {
   return calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function eventFromAppointment(
-  appointment: Appointment | null,
-): CalendarEvent | null {
-  if (
-    !appointment?.calendarEventIdentifier ||
-    !appointment.calendarEventSnapshot
-  ) {
-    return null;
-  }
-  return {
-    calendarEventIdentifier: appointment.calendarEventIdentifier,
-    effectiveAt: appointment.effectiveAt,
-    endsAt: appointment.endsAt ?? appointment.effectiveAt,
-    calendarEventSnapshot: appointment.calendarEventSnapshot,
-  };
-}
-
-function occurrenceKey(event: CalendarEvent): string {
-  const snapshot = event.calendarEventSnapshot;
-  return `${event.calendarEventIdentifier}:${snapshot.floatingOccurrenceAt ?? snapshot.occurrenceDate ?? event.effectiveAt}`;
 }
 
 function dateNumber(dateKey: string): number {
@@ -83,28 +65,9 @@ export function CalendarMonthView({
     () => eventFromAppointment(linkedAppointment),
     [linkedAppointment],
   );
-  // Project the saved appointment for display; candidate access and confirmation stay in the existing hook.
   const displayEvents = useMemo<CalendarMonthDisplayEvent[]>(() => {
-    const candidates = events.map(event => ({
-      event,
-      isNextVisit:
-        linkedEvent !== null &&
-        occurrenceKey(event) === occurrenceKey(linkedEvent),
-      canSelect: true,
-    }));
-    if (linkedEvent && !candidates.some(candidate => candidate.isNextVisit)) {
-      candidates.push({
-        event: linkedEvent,
-        isNextVisit: true,
-        canSelect: false,
-      });
-    }
-    return candidates.sort(
-      (left, right) =>
-        new Date(left.event.effectiveAt).getTime() -
-        new Date(right.event.effectiveAt).getTime(),
-    );
-  }, [events, linkedEvent]);
+    return projectCalendarMonthEvents(events, linkedAppointment);
+  }, [events, linkedAppointment]);
   const rangedEvents = useMemo(
     () =>
       displayEvents.flatMap(item => {
@@ -169,7 +132,7 @@ export function CalendarMonthView({
     candidatesLoaded &&
     queryWindow !== null &&
     (selectedDate < queryWindow.startDay || selectedDate >= queryWindow.endDay);
-  const showEmptyDate =
+  const showNoReturnedEvents =
     candidatesLoaded &&
     !selectedDateOutsideQuery &&
     !resultsMayBeIncomplete &&
@@ -215,8 +178,16 @@ export function CalendarMonthView({
             {t('calendar.resultsMayBeIncomplete')}
           </Text>
         ) : null}
-        {showEmptyDate ? (
-          <Text testID="calendar-empty">{t('calendar.empty')}</Text>
+        {showNoReturnedEvents ? (
+          <>
+            <Text testID="calendar-empty">{t('calendar.empty')}</Text>
+            <Text
+              style={styles.calendarNotice}
+              testID="calendar-empty-query-note"
+            >
+              {t('calendar.emptyQueryNote')}
+            </Text>
+          </>
         ) : null}
         {candidatesLoaded &&
         eventsOnSelectedDate.some(item => item.canSelect) ? (
@@ -226,7 +197,7 @@ export function CalendarMonthView({
           {eventsOnSelectedDate.map(item => (
             <CalendarMonthEventRow
               item={item}
-              key={occurrenceKey(item.event)}
+              key={item.rowKey}
               onSelectEvent={onSelectEvent}
             />
           ))}
