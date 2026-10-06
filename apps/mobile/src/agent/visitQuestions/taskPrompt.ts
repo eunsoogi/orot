@@ -55,6 +55,8 @@ export const visitQuestionSystemPrompt = [
   '기록 사이에 중요한 충돌이 있거나 근거가 부족하면 질문을 만들지 말고 확인이 필요한 내용을 요청하세요.',
   '근거가 충분하면 한국어 질문 3~5개를 우선순위와 짧은 이유와 함께 작성하세요.',
   '각 질문에는 제공된 evidenceId 중 실제로 뒷받침하는 ID를 1~3개 연결하세요.',
+  '초기 근거로 답을 뒷받침할 수 없지만 허용된 로컬 조사가 도움이 되면 request_evidence 형식으로 추가 검색을 요청하세요.',
+  '기록에 중요한 충돌이 이미 보이면 추가 검색으로 임의 선택하지 말고 needs_clarification 형식으로 확인을 요청하세요.',
   '최종 답변은 type=result, value, citations 필드를 가진 응답 형식으로 작성하세요.',
   'citations에는 아래 허용된 근거 참조 객체 중 질문의 evidenceId가 가리키는 항목을 정확히 포함하세요.',
   '추가 검색이 필요하면 type=request_evidence와 need=missing_coverage 응답 형식을 사용하세요.',

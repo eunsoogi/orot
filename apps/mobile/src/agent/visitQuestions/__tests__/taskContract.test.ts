@@ -17,6 +17,22 @@ const source: VisitQuestionEvidenceItem = {
   content: '건강 관찰 기록: 혈압 측정 120/80 mmHg',
 };
 
+const aliases = createVisitQuestionEvidenceAliases({
+  items: [source],
+  coverage: [
+    {
+      sourceKind: 'personal_record',
+      searchedSourceIds: ['source-1'],
+      gaps: [],
+      truncated: false,
+      resultLimit: 1,
+      returnedCount: 1,
+    },
+  ],
+  conflicts: [],
+});
+const aliasSource = aliases.batch.items[0]!;
+
 const input = {
   request: '다음 진료를 준비하세요.',
   context: {
@@ -24,20 +40,7 @@ const input = {
     timeZoneIdentifier: 'Asia/Seoul',
     title: 'Synthetic outpatient visit',
   },
-  evidence: {
-    items: [source],
-    coverage: [
-      {
-        sourceKind: 'personal_record',
-        searchedSourceIds: ['source-1'],
-        gaps: [],
-        truncated: false,
-        resultLimit: 1,
-        returnedCount: 1,
-      },
-    ],
-    conflicts: [],
-  },
+  evidence: aliases.batch,
 } satisfies VisitQuestionResponderInput;
 
 function response(overrides: Record<string, unknown> = {}) {
@@ -79,7 +82,7 @@ describe('visit question task responder', () => {
       validation.value.status === 'suggestions'
     ) {
       expect(validation.value.questions).toHaveLength(3);
-      expect(validation.value.questions[0]?.citations).toEqual([source]);
+      expect(validation.value.questions[0]?.citations).toEqual([aliasSource]);
     }
   });
 
@@ -105,7 +108,7 @@ describe('visit question task responder', () => {
       evidenceRevision: 'db-evidence-revision-42',
       locator: { kind: 'structured_record', recordId: 'db-record-42' },
     };
-    const aliases = createVisitQuestionEvidenceAliases({
+    const privateAliases = createVisitQuestionEvidenceAliases({
       items: [privateItem],
       coverage: [
         {
@@ -119,16 +122,18 @@ describe('visit question task responder', () => {
       ],
       conflicts: ['A stale item refers to db-record-42.'],
     });
-    const alias = aliases.batch.items[0]!;
+    const alias = privateAliases.batch.items[0]!;
 
-    expect(JSON.stringify(aliases.batch)).not.toContain('db-source-99');
-    expect(JSON.stringify(aliases.batch)).not.toContain('db-evidence-42');
-    expect(JSON.stringify(aliases.batch)).not.toContain('db-record-42');
+    expect(JSON.stringify(privateAliases.batch)).not.toContain('db-source-99');
+    expect(JSON.stringify(privateAliases.batch)).not.toContain(
+      'db-evidence-42',
+    );
+    expect(JSON.stringify(privateAliases.batch)).not.toContain('db-record-42');
     expect(alias.sourceId).toBe('source-1');
     expect(alias.evidenceId).toBe('evidence-1');
     expect(alias.content).toBe(privateItem.content);
-    expect(aliases.originalOf(alias)).toEqual(privateItem);
-    expect(aliases.aliasOf(privateItem)).toEqual(alias);
+    expect(privateAliases.originalOf(alias)).toEqual(privateItem);
+    expect(privateAliases.aliasOf(privateItem)).toEqual(alias);
   });
 
   it.each([

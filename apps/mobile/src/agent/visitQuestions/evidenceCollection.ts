@@ -56,6 +56,7 @@ export async function createVisitQuestionEvidenceCollection(input: {
   readonly recordHits: readonly HybridEvidenceSearchHit[];
   readonly transcriptHits: readonly HybridEvidenceSearchHit[];
   readonly memoryHits?: readonly LocalMemoryHit[];
+  readonly memorySearchQuery?: string;
   readonly memoryUnavailable?: boolean;
   readonly recordResultLimit: number;
   readonly transcriptResultLimit: number;
@@ -109,7 +110,9 @@ export async function createVisitQuestionEvidenceCollection(input: {
   const metadataByCitation = new Map(
     selected.map(value => [
       visitQuestionCitationKey(value.item),
-      value.metadata,
+      value.item.sourceKind === 'reviewed_memory' && input.memorySearchQuery
+        ? { ...value.metadata, memorySearchQuery: input.memorySearchQuery }
+        : value.metadata,
     ]),
   );
   const recordItems = items.filter(
@@ -138,10 +141,8 @@ export async function createVisitQuestionEvidenceCollection(input: {
           searchedSourceIds: [
             ...new Set(recordItems.map(item => item.sourceId)),
           ],
-          gaps:
-            recordItems.length > 0
-              ? []
-              : ['No current RAG evidence matched the visit context.'],
+          // A completed empty search is known absence, not an unsearched coverage gap.
+          gaps: [],
           truncated:
             input.recordHits.length >= input.recordResultLimit ||
             input.transcriptHits.length >= input.transcriptResultLimit ||

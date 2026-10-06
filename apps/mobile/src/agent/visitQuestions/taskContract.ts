@@ -85,8 +85,8 @@ export function createVisitQuestionTaskResponder() {
       input: VisitQuestionResponderInput,
     ): readonly LanguageModelMessage[] {
       // Ephemeral aliases preserve exact citation matching without exposing local record IDs.
-      const evidence = input.evidence.items.map((item, index) => ({
-        evidenceId: `evidence-${index + 1}`,
+      const evidence = input.evidence.items.map(item => ({
+        evidenceId: item.evidenceId,
         sourceKind: item.sourceKind,
         effectiveTime: item.effectiveTime,
         reviewState: item.reviewState,

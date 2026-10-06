@@ -103,7 +103,7 @@ export function validateVisitQuestionTaskResult(
   }
 
   const evidenceById = new Map(
-    input.evidence.items.map((item, index) => [`evidence-${index + 1}`, item]),
+    input.evidence.items.map(item => [item.evidenceId, item]),
   );
   const questions: VisitQuestionCandidate[] = [];
   for (const rawQuestion of result.questions) {

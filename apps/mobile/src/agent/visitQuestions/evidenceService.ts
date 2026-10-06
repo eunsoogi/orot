@@ -1,7 +1,5 @@
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
-import type { LocalMemoryHit } from '@orot/agent-runtime';
-import type { HybridSearchOptions } from '@orot/rag';
 import { buildPersistedEvidenceChunks } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
@@ -11,9 +9,12 @@ import {
   type VisitQuestionQueryPort,
 } from './evidenceRevalidation';
 import { localEvidenceFingerprint } from './evidence';
-import { createVisitQuestionEvidenceCollection } from './evidenceCollection';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import {
+  searchVisitQuestionEvidence,
+  type VisitQuestionSearchSource,
+} from './evidenceSearch';
 
 type VisitQuestionRagPort = Pick<LocalE5RagService, 'index' | 'search'>;
 
@@ -33,42 +34,16 @@ export type VisitQuestionContextResult =
       };
       readonly query: string;
       readonly evidence: VisitQuestionEvidenceCollection;
+      readonly searchEvidence: (
+        query: string,
+        maxEvidenceItems: number,
+        sourceKind: VisitQuestionSearchSource,
+        signal?: AbortSignal,
+      ) => Promise<VisitQuestionEvidenceCollection>;
       readonly revalidateEvidence: (
         citations: readonly VisitQuestionEvidenceItem[],
       ) => Promise<boolean>;
     };
-
-const PERSONAL_RECORD_TYPES = [
-  'encounter',
-  'health_observation',
-  'medication_assertion',
-  'medication_definition',
-  'dose_event',
-  'symptom_entry',
-  'evidence_span',
-] as const;
-
-function resultLimits(maxEvidenceItems: number) {
-  if (!Number.isInteger(maxEvidenceItems) || maxEvidenceItems < 3) {
-    throw new Error(
-      'Visit-question evidence budget must allow at least one result per source.',
-    );
-  }
-  const transcriptResultLimit = Math.min(
-    2,
-    Math.max(1, Math.floor(maxEvidenceItems / 4)),
-  );
-  const memoryResultLimit = Math.min(
-    2,
-    Math.max(1, Math.floor(maxEvidenceItems / 4)),
-  );
-  return {
-    recordResultLimit:
-      maxEvidenceItems - transcriptResultLimit - memoryResultLimit,
-    transcriptResultLimit,
-    memoryResultLimit,
-  };
-}
 
 function buildVisitContext(appointment: Appointment) {
   const context = {
@@ -131,53 +106,44 @@ export async function prepareVisitQuestionContext(input: {
     return { status: 'no_confirmed_upcoming_appointment' };
   }
 
-  const limits = resultLimits(input.maxEvidenceItems);
   const { context, query } = buildVisitContext(appointment);
   const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
-  const chunks = await buildChunks(input.repository);
-  await input.rag.index(chunks);
-
-  let memoryHits: readonly LocalMemoryHit[] = [];
-  let memoryUnavailable = false;
-  try {
-    const memory = await input.queryService.searchMemory(
-      query,
-      limits.memoryResultLimit,
-    );
-    memoryHits = memory.hits;
-    memoryUnavailable = memory.status === 'local_memory_unavailable';
-  } catch {
-    memoryUnavailable = true;
-  }
-
-  const recordFilters: HybridSearchOptions = {
-    filters: { recordTypes: PERSONAL_RECORD_TYPES },
-  };
-  const transcriptFilters: HybridSearchOptions = {
-    filters: { recordTypes: ['transcript_segment'] },
-  };
-  const [recordHits, transcriptHits] = await Promise.all([
-    input.rag.search(query, chunks, limits.recordResultLimit, recordFilters),
-    input.rag.search(
-      query,
-      chunks,
-      limits.transcriptResultLimit,
-      transcriptFilters,
-    ),
-  ]);
-  const evidence = await createVisitQuestionEvidenceCollection({
-    repository: input.repository,
-    recordHits,
-    transcriptHits,
-    memoryHits,
-    memoryUnavailable,
-    ...limits,
+  const initialEvidence = await searchVisitQuestionEvidence({
+    query,
     maxEvidenceItems: input.maxEvidenceItems,
+    queryService: input.queryService,
+    repository: input.repository,
+    rag: input.rag,
+    buildChunks,
   });
+  // This same map is extended by later read-only research results before revalidation or save.
+  const metadataByCitation = new Map(initialEvidence.metadataByCitation);
+  const evidence = { ...initialEvidence, metadataByCitation };
+  const searchEvidence = async (
+    searchQuery: string,
+    maxEvidenceItems: number,
+    sourceKind: VisitQuestionSearchSource,
+    signal?: AbortSignal,
+  ) => {
+    const searched = await searchVisitQuestionEvidence({
+      query: searchQuery,
+      maxEvidenceItems,
+      sourceKind,
+      queryService: input.queryService,
+      repository: input.repository,
+      rag: input.rag,
+      buildChunks,
+      signal,
+    });
+    for (const [key, metadata] of searched.metadataByCitation) {
+      metadataByCitation.set(key, metadata);
+    }
+    return searched;
+  };
   const revalidateEvidence = createVisitQuestionEvidenceRevalidator({
     appointment,
     query,
-    evidence,
+    metadataByCitation,
     queryService: input.queryService,
     repository: input.repository,
     buildChunks,
@@ -191,6 +157,7 @@ export async function prepareVisitQuestionContext(input: {
     appointmentContext: context,
     query,
     evidence,
+    searchEvidence,
     revalidateEvidence,
   };
 }

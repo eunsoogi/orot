@@ -1,5 +1,6 @@
 import { AppointmentSchema, compareTimestamps } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
+import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
 import type { LocalRecordQueryService } from '@orot/agent-runtime';
 import type { EvidenceChunk } from '@orot/rag';
 import type { PersistedEvidenceReader } from '@orot/rag';
@@ -30,7 +31,7 @@ export type VisitQuestionChunkBuilder = (
 export function createVisitQuestionEvidenceRevalidator(input: {
   readonly appointment: Appointment;
   readonly query: string;
-  readonly evidence: VisitQuestionEvidenceCollection;
+  readonly metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'];
   readonly queryService: VisitQuestionQueryPort;
   readonly repository: VisitQuestionEvidenceRepository;
   readonly buildChunks: VisitQuestionChunkBuilder;
@@ -72,11 +73,7 @@ export function createVisitQuestionEvidenceRevalidator(input: {
       }
 
       for (const citation of citations) {
-        if (
-          !input.evidence.metadataByCitation.has(
-            visitQuestionCitationKey(citation),
-          )
-        )
+        if (!input.metadataByCitation.has(visitQuestionCitationKey(citation)))
           return false;
       }
       const personalCitations = citations.filter(
@@ -85,7 +82,7 @@ export function createVisitQuestionEvidenceRevalidator(input: {
       if (personalCitations.length > 0) {
         const currentChunks = await input.buildChunks(input.repository);
         for (const citation of personalCitations) {
-          const metadata = input.evidence.metadataByCitation.get(
+          const metadata = input.metadataByCitation.get(
             visitQuestionCitationKey(citation),
           );
           if (!metadata?.recordKind || !metadata.evidenceRecordId) return false;
@@ -118,10 +115,19 @@ export function createVisitQuestionEvidenceRevalidator(input: {
       const memoryCitations = citations.filter(
         citation => citation.sourceKind === 'reviewed_memory',
       );
-      if (memoryCitations.length > 0) {
+      const memoryGroups = new Map<string, typeof memoryCitations>();
+      for (const citation of memoryCitations) {
+        const query =
+          input.metadataByCitation.get(visitQuestionCitationKey(citation))
+            ?.memorySearchQuery ?? input.query;
+        const group = memoryGroups.get(query) ?? [];
+        group.push(citation);
+        memoryGroups.set(query, group);
+      }
+      for (const [query, group] of memoryGroups) {
         const currentMemory = await input.queryService.searchMemory(
-          input.query,
-          5,
+          query,
+          LOCAL_MEMORY_MAX_RESULTS,
         );
         if (currentMemory.status !== 'available') return false;
         const currentKeys = new Set(
@@ -133,7 +139,7 @@ export function createVisitQuestionEvidenceRevalidator(input: {
             .map(value => visitQuestionCitationKey(value.item)),
         );
         if (
-          memoryCitations.some(
+          group.some(
             citation => !currentKeys.has(visitQuestionCitationKey(citation)),
           )
         ) {

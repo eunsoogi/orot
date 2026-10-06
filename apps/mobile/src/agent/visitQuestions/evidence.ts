@@ -17,6 +17,8 @@ export interface VisitQuestionEvidenceMetadata {
   readonly recordKind?: RecordKind;
   readonly evidenceRecordId?: string;
   readonly evidenceSpanId?: string;
+  /** Keeps each reviewed-memory citation tied to the bounded local query that found it. */
+  readonly memorySearchQuery?: string;
   readonly healthObservationConflict?: {
     readonly conceptKey: string;
     readonly effectiveAt: string;

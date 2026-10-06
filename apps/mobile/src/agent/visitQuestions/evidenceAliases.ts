@@ -12,7 +12,20 @@ type EvidenceIdentity = Pick<
   | 'evidenceRevision'
 >;
 
-function identityKey(value: EvidenceIdentity): string {
+export interface VisitQuestionEvidenceAliases {
+  readonly batch: VisitQuestionEvidenceBatch;
+  aliasBatch(batch: VisitQuestionEvidenceBatch): VisitQuestionEvidenceBatch;
+  aliasOf(
+    item: VisitQuestionEvidenceItem,
+  ): VisitQuestionEvidenceItem | undefined;
+  originalOf(
+    reference: EvidenceIdentity,
+  ): VisitQuestionEvidenceItem | undefined;
+}
+
+export function visitQuestionEvidenceIdentityKey(
+  value: EvidenceIdentity,
+): string {
   return [
     value.sourceKind,
     value.sourceId,
@@ -25,11 +38,12 @@ function identityKey(value: EvidenceIdentity): string {
 /** Replaces storage identifiers and locators before a shared runtime builds provider messages. */
 export function createVisitQuestionEvidenceAliases(
   original: VisitQuestionEvidenceBatch,
-) {
+): VisitQuestionEvidenceAliases {
   const sourceAliases = new Map<string, string>();
   const sourceRevisionAliases = new Map<string, string>();
   const aliasToOriginal = new Map<string, VisitQuestionEvidenceItem>();
   const originalToAlias = new Map<string, VisitQuestionEvidenceItem>();
+  let nextEvidenceIndex = 0;
 
   const aliasSource = (sourceKind: string, sourceId: string): string => {
     const key = `${sourceKind}\u0000${sourceId}`;
@@ -53,49 +67,62 @@ export function createVisitQuestionEvidenceAliases(
     return alias;
   };
 
-  const items = original.items.map((item, index) => {
-    const evidenceAlias = `evidence-${index + 1}`;
-    const alias: VisitQuestionEvidenceItem = {
+  const aliasBatch = (
+    batch: VisitQuestionEvidenceBatch,
+  ): VisitQuestionEvidenceBatch => {
+    const items = batch.items.map(item => {
+      const originalKey = visitQuestionEvidenceIdentityKey(item);
+      const existing = originalToAlias.get(originalKey);
+      if (existing) return existing;
+      nextEvidenceIndex += 1;
+      const evidenceAlias = `evidence-${nextEvidenceIndex}`;
+      const alias: VisitQuestionEvidenceItem = {
+        ...item,
+        sourceId: aliasSource(item.sourceKind, item.sourceId),
+        sourceRevision: aliasSourceRevision(
+          item.sourceKind,
+          item.sourceId,
+          item.sourceRevision,
+        ),
+        evidenceId: evidenceAlias,
+        evidenceRevision: `evidence-revision-${nextEvidenceIndex}`,
+        locator: { kind: 'opaque_evidence_reference', id: evidenceAlias },
+      };
+      aliasToOriginal.set(visitQuestionEvidenceIdentityKey(alias), item);
+      originalToAlias.set(originalKey, alias);
+      return alias;
+    });
+    const coverage = batch.coverage.map(item => ({
       ...item,
-      sourceId: aliasSource(item.sourceKind, item.sourceId),
-      sourceRevision: aliasSourceRevision(
-        item.sourceKind,
-        item.sourceId,
-        item.sourceRevision,
+      searchedSourceIds: item.searchedSourceIds.map(sourceId =>
+        aliasSource(item.sourceKind, sourceId),
       ),
-      evidenceId: evidenceAlias,
-      evidenceRevision: `evidence-revision-${index + 1}`,
-      locator: { kind: 'opaque_evidence_reference', id: evidenceAlias },
-    };
-    aliasToOriginal.set(identityKey(alias), item);
-    originalToAlias.set(identityKey(item), alias);
-    return alias;
-  });
-  const coverage = original.coverage.map(item => ({
-    ...item,
-    searchedSourceIds: item.searchedSourceIds.map(sourceId =>
-      aliasSource(item.sourceKind, sourceId),
-    ),
-  }));
+    }));
 
-  return {
-    batch: {
+    return {
       items,
       coverage,
-      // Conflict contents can include storage identifiers; the role only needs to know one exists.
-      conflicts: original.conflicts.map(
+      // Conflict messages can contain source identifiers; roles only need a generic notice.
+      conflicts: batch.conflicts.map(
         () => 'The evidence contains a material conflict.',
       ),
-    } satisfies VisitQuestionEvidenceBatch,
+    };
+  };
+
+  const batch = aliasBatch(original);
+
+  return {
+    batch,
+    aliasBatch,
     aliasOf(
       item: VisitQuestionEvidenceItem,
     ): VisitQuestionEvidenceItem | undefined {
-      return originalToAlias.get(identityKey(item));
+      return originalToAlias.get(visitQuestionEvidenceIdentityKey(item));
     },
     originalOf(
       reference: EvidenceIdentity,
     ): VisitQuestionEvidenceItem | undefined {
-      return aliasToOriginal.get(identityKey(reference));
+      return aliasToOriginal.get(visitQuestionEvidenceIdentityKey(reference));
     },
   };
 }
