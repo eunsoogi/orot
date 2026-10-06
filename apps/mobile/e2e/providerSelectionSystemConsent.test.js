@@ -15,7 +15,7 @@ describe('provider selection system consent helper', () => {
 
     await tapLoopbackConsentContinue({ by, system });
 
-    expect(typeMatcher).toHaveBeenCalledWith('Button');
+    expect(typeMatcher).toHaveBeenCalledWith('button');
     expect(system.element).toHaveBeenCalledWith('system-button-matcher');
     expect(atIndex).toHaveBeenCalledWith(1);
     expect(tap).toHaveBeenCalledTimes(1);
