@@ -1,4 +1,5 @@
 import { commonObservationsKo } from './healthkitCommonObservations';
+import { bloodPressureKo } from './healthkitBloodPressure';
 
 export const ko = {
   'app.welcome.title': 'Orot에 오신 걸 환영해요',
@@ -161,6 +162,7 @@ export const ko = {
   'calendar.eventMissing':
     '연결한 일정을 찾을 수 없어요. 삭제되었거나 일정 정보가 바뀌었을 수 있어요. 다른 일정을 선택해 확인해 주세요.',
   ...commonObservationsKo,
+  ...bloodPressureKo,
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
