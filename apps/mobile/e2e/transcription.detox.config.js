@@ -1,8 +1,9 @@
 /** @type {Detox.DetoxConfig} */
 // Isolate this alternate bundle so another probe's cached app cannot run in its place.
+// Share the CI build/cache root unless a local probe explicitly overrides it.
 const derivedDataPath =
   process.env.OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH ||
-  'ios/build-speech-transcription';
+  'ios/build-detox-transcription';
 const simulatorId = process.env.OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {

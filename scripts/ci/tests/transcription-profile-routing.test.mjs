@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { getProfile } from '../ios-derived-data-cache-paths.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
@@ -19,6 +21,26 @@ function requireWithProfile(modulePath) {
     if (previous === undefined) delete process.env.OROT_DETOX_TEST_PROFILE;
     else process.env.OROT_DETOX_TEST_PROFILE = previous;
   }
+}
+
+function loadTranscriptionConfigWithCleanPathEnvironment() {
+  const environment = { ...process.env };
+  delete environment.OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH;
+  const configPath = join(repositoryRoot, 'apps/mobile/e2e/transcription.detox.config.js');
+  const script = [
+    `const config = require(${JSON.stringify(configPath)});`,
+    "const app = config.apps['ios.speech-transcription'];",
+    'process.stdout.write(JSON.stringify({ binaryPath: app.binaryPath, build: app.build }));',
+  ].join('\n');
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: join(repositoryRoot, 'apps/mobile'),
+    encoding: 'utf8',
+    env: environment,
+  });
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || 'Unable to load transcription Detox config.');
+  }
+  return JSON.parse(result.stdout);
 }
 
 test('routes only the dedicated transcription test and native configuration', () => {
@@ -44,6 +66,21 @@ test('routes only the dedicated transcription test and native configuration', ()
     transcription.apps['ios.speech-transcription'].binaryPath,
     requireFromRepository('./apps/mobile/.detoxrc.js').apps['ios.release'].binaryPath,
   );
+});
+
+test('aligns clean-environment transcription build, cache, and Detox app paths', () => {
+  const transcription = loadTranscriptionConfigWithCleanPathEnvironment();
+  const profile = getProfile('transcription');
+  const mobileRelativeCacheRoot = profile.derivedDataPath.replace(/^apps\/mobile\//, '');
+  const builder = readFileSync(join(repositoryRoot, 'scripts/ci/build-detox-apps.sh'), 'utf8');
+  const builderDefault = builder.match(
+    /transcription_derived_data_path="\$\{OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH:-([^}]+)\}"/,
+  );
+
+  assert.ok(builderDefault, 'the transcription builder must declare its default DerivedData root');
+  assert.equal(builderDefault[1], mobileRelativeCacheRoot);
+  assert.equal(transcription.binaryPath, `${mobileRelativeCacheRoot}/${profile.productPath}`);
+  assert.ok(transcription.build.includes(`-derivedDataPath ${mobileRelativeCacheRoot}`));
 });
 
 test('connects a dedicated Simulator, native app cache, and required aggregate for the isolated profile', () => {

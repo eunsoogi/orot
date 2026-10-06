@@ -72,7 +72,7 @@ jobs:
       # Check device availability before the profile requests an asynchronous boot.
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
-      - name: Prepare dedicated Detox Simulator # A validated cache hit skips Ruby, CocoaPods, and the native build.
+      - name: Prepare dedicated Detox Simulator # Cache hits skip only the app build; toolchain, Pods, and Simulator setup still run.
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
