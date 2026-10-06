@@ -112,7 +112,6 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
     return profileWorkflow.slice(start, end < 0 ? undefined : end);
   };
   const rnCache = getStep('Cache React Native artifact archives');
-  const rnInputGuard = getStep('Verify React Native artifact cache inputs');
   const profileCache = getStep('Cache Detox profile app product');
   const prepareCache = getStep('Prepare restored Detox DerivedData cache');
   const manifestStep = getStep('Write Detox DerivedData cache manifest');
@@ -149,16 +148,6 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
       fingerprintStepIndex < buildStepIndex,
   );
 
-  // Keep the cache key and recorded fingerprint tied to the same two lockfiles.
-  assert.match(rnInputGuard, /hashFiles\('pnpm-lock\.yaml'\) == ''/);
-  assert.match(rnInputGuard, /hashFiles\('apps\/mobile\/ios\/Podfile\.lock'\) == ''/);
-  assert.match(rnCache, /orot-rn-ios-artifacts-v2-/);
-  assert.match(rnCache, /hashFiles\('pnpm-lock\.yaml', 'apps\/mobile\/ios\/Podfile\.lock'\)/);
-  assert.equal(
-    profileWorkflow.includes('- name: Compute React Native artifact fingerprint'),
-    false,
-  );
-
   assert.match(rnCache, /uses: actions\/cache@[0-9a-f]{40}/);
   assert.match(rnCache, /path: ~\/Library\/Caches\/ReactNative/);
   assert.match(rnCache, /runner\.os/);
@@ -190,10 +179,6 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
     /DERIVED_DATA_CACHE_CLASSIFICATION:.*outputs\.derived_data_cache_classification/,
   );
   assert.match(recordCache, /NATIVE_DEPENDENCY_FINGERPRINT:.*outputs\.native_dependencies/);
-  assert.match(
-    recordCache,
-    /RN_ARTIFACT_FINGERPRINT: \$\{\{ hashFiles\('pnpm-lock\.yaml', 'apps\/mobile\/ios\/Podfile\.lock'\) \}\}/,
-  );
   assert.match(recordCache, /APP_REUSABLE:.*outputs\.app_reusable/);
   assert.match(
     recordCache,

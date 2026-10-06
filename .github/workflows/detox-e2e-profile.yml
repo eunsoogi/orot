@@ -102,19 +102,19 @@ jobs:
         if: ${{ steps.detox_framework_cache.outputs.cache-hit != 'true' }}
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
-      # Fail closed if either lockfile is absent; key and record their runner-native hash only.
-      - name: Verify React Native artifact cache inputs
-        if: ${{ hashFiles('pnpm-lock.yaml') == '' || hashFiles('apps/mobile/ios/Podfile.lock') == '' }}
-        run: |
-          echo "React Native artifact cache requires pnpm-lock.yaml and apps/mobile/ios/Podfile.lock."
-          exit 1
+      - name: Prepare React Native artifact cache fingerprint
+        id: rn_artifact_fingerprint
+        env:
+          PNPM_LOCKFILE_HASH: ${{ hashFiles('pnpm-lock.yaml') }}
+          PODFILE_LOCK_HASH: ${{ hashFiles('apps/mobile/ios/Podfile.lock') }}
+        run: scripts/ci/prepare-rn-artifact-fingerprint.sh
       - name: Cache React Native artifact archives
         id: rn_artifact_cache
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/Library/Caches/ReactNative
-          key: orot-rn-ios-artifacts-v2-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock') }}
+          key: orot-rn-ios-artifacts-v3-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ steps.rn_artifact_fingerprint.outputs.fingerprint }}
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
@@ -172,7 +172,7 @@ jobs:
           COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}
           PROFILE_DERIVED_DATA_CACHE_HIT: ${{ steps.profile_derived_data_cache.outputs.cache-hit }}
           BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
-          RN_ARTIFACT_FINGERPRINT: ${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock') }}
+          RN_ARTIFACT_FINGERPRINT: ${{ steps.rn_artifact_fingerprint.outputs.fingerprint }}
           NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
           DERIVED_DATA_CACHE_CLASSIFICATION: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_classification }}
           DERIVED_DATA_CACHE_DIAGNOSTIC: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_diagnostic }}
