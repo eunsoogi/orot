@@ -2,7 +2,7 @@ import Foundation
 import React
 import Security
 
-private enum RecordingBackupEligibility {
+enum RecordingBackupEligibility {
     /// Only stable UUID-named files in the permanent recording directory belong in device backup.
     static func prepareDirectoryAndFiles(_ directory: URL) throws {
         try markEligible(directory)
@@ -105,8 +105,8 @@ public final class BackupMigrationModule: NSObject {
         }
     }
 
-    @objc(hasDatabaseFile:location:resolver:rejecter:)
-    public func hasDatabaseFile(
+    @objc(databaseFileState:location:resolver:rejecter:)
+    public func databaseFileState(
         _ name: String,
         location: String,
         resolver resolve: @escaping RCTPromiseResolveBlock,
@@ -118,10 +118,12 @@ public final class BackupMigrationModule: NSObject {
             }
             let folder = URL(fileURLWithPath: location, isDirectory: true).standardizedFileURL
             let database = folder.appendingPathComponent(name)
-            // WAL and journal files can contain committed database state before SQLite checkpoints it.
-            return ["", "-wal", "-shm", "-journal"].contains { suffix in
-                FileManager.default.fileExists(atPath: database.path + suffix)
+            let databaseExists = FileManager.default.fileExists(atPath: database.path)
+            // Orphaned WAL/journal files can retain committed data and must not become a first-run database.
+            let hasSidecars = !databaseExists && ["-wal", "-shm", "-journal"].contains {
+                FileManager.default.fileExists(atPath: database.path + $0)
             }
+            return databaseExists ? "present" : hasSidecars ? "partial" : "missing"
         }
     }
 

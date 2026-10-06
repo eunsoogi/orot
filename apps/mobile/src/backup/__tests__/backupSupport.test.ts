@@ -53,6 +53,22 @@ test('keeps a partial restore with a missing database file in recovery', async (
   ).resolves.toBe('recoveryRequired');
 });
 
+test('keeps orphaned SQLite sidecars in recovery without opening a replacement database', async () => {
+  await expect(
+    runBackupPreparation({
+      prepareRecordings: async () => 0,
+      async prepareDatabase() {
+        throw Object.assign(
+          new Error(
+            'SQLite sidecar files exist without the main database file.',
+          ),
+          { code: 'PARTIAL_DATABASE_FILE_SET' },
+        );
+      },
+    }),
+  ).resolves.toBe('recoveryRequired');
+});
+
 test('does not report readiness when database-key eligibility migration fails', async () => {
   const prepareDatabase = jest.fn(async () => {
     throw Object.assign(new Error('The database key could not be updated.'), {

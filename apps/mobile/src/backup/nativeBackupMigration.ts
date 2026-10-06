@@ -1,4 +1,5 @@
 import { NativeModules } from 'react-native';
+import type { DatabaseFileState } from '@orot/storage';
 
 export type DatabaseKeyMigrationResult =
   'migrated' | 'alreadyEligible' | 'missing';
@@ -6,7 +7,7 @@ export type DatabaseKeyMigrationResult =
 interface BackupMigrationNativeModule {
   migrateDatabaseKeyForBackup(): Promise<DatabaseKeyMigrationResult>;
   isDatabaseKeyBackupEligible(): Promise<boolean>;
-  hasDatabaseFile(name: string, location: string): Promise<boolean>;
+  databaseFileState(name: string, location: string): Promise<DatabaseFileState>;
   prepareRecordingsForBackup(): Promise<number>;
 }
 
@@ -39,13 +40,13 @@ export async function isDatabaseKeyBackupEligible(): Promise<boolean> {
   return result;
 }
 
-export async function hasDatabaseFile(
+export async function getDatabaseFileState(
   name: string,
   location: string,
-): Promise<boolean> {
-  const result = await nativeModule().hasDatabaseFile(name, location);
-  if (typeof result !== 'boolean') {
-    throw new Error('The database file status is unavailable.');
+): Promise<DatabaseFileState> {
+  const result = await nativeModule().databaseFileState(name, location);
+  if (result !== 'present' && result !== 'missing' && result !== 'partial') {
+    throw new Error('The database file state is unavailable.');
   }
   return result;
 }

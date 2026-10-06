@@ -16,7 +16,7 @@ import type {
 } from '@orot/storage';
 import type { DB } from '@op-engineering/op-sqlite';
 import {
-  hasDatabaseFile,
+  getDatabaseFileState,
   isDatabaseKeyBackupEligible,
   migrateDatabaseKeyForBackup,
 } from '../backup/nativeBackupMigration';
@@ -24,6 +24,8 @@ import {
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
 const KEYCHAIN_ACCOUNT = 'database';
+const INITIALIZATION_SERVICE = 'com.orot.mobile.database-initialization.v1';
+const INITIALIZATION_ACCOUNT = 'state';
 
 const keyStore = {
   async getSecret() {
@@ -37,6 +39,27 @@ const keyStore = {
     });
     if (result === false) {
       throw new Error('The database key could not be saved to Keychain.');
+    }
+  },
+  async getDatabaseInitializationState() {
+    const state = await getGenericPassword({ service: INITIALIZATION_SERVICE });
+    if (state === false) return null;
+    if (state.username !== INITIALIZATION_ACCOUNT) {
+      throw new Error('The database initialization state is invalid.');
+    }
+    if (state.password !== 'pending' && state.password !== 'ready') {
+      throw new Error('The database initialization state is invalid.');
+    }
+    return state.password;
+  },
+  async setDatabaseInitializationState(state: 'pending' | 'ready') {
+    // Device-only state prevents a restored key from inheriting permission to create a missing database.
+    const result = await setGenericPassword(INITIALIZATION_ACCOUNT, state, {
+      service: INITIALIZATION_SERVICE,
+      accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    if (result === false) {
+      throw new Error('The database initialization state could not be saved.');
     }
   },
 };
@@ -74,12 +97,14 @@ export function openLocalStorage(): Promise<RecordRepository> {
         name: DATABASE_NAME,
         keyStore,
         randomBytes: fillSecureRandomBytes,
-        databaseExists: () => hasDatabaseFile(DATABASE_NAME, IOS_LIBRARY_PATH),
-        openDatabase(name, encryptionKey) {
+        databaseFileState: () =>
+          getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
+        openDatabase(name, encryptionKey, allowCreate = true) {
           database = open({
             name,
             location: IOS_LIBRARY_PATH,
             encryptionKey,
+            failOnCreate: !allowCreate,
           });
           return database;
         },
@@ -166,7 +191,7 @@ export async function prepareLegacyStorageForE2e(
   if (!isSQLCipher())
     throw new Error('The native SQLite build does not include SQLCipher.');
   const key = await resolveDatabaseKey(keyStore, fillSecureRandomBytes, () =>
-    hasDatabaseFile(DATABASE_NAME, IOS_LIBRARY_PATH),
+    getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
   );
   const legacyDatabase = open({
     name: DATABASE_NAME,

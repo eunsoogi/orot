@@ -26,8 +26,8 @@ describe('encrypted database key recovery', () => {
       keyStore,
       randomBytes,
       openDatabase,
-      async databaseExists() {
-        return true;
+      async databaseFileState() {
+        return 'present';
       },
     };
 
@@ -50,14 +50,25 @@ describe('encrypted database key recovery', () => {
         secret = value;
       },
     };
+    let initialization: 'pending' | 'ready' | null = null;
+    const trackedKeyStore: SecureKeyStore = {
+      ...keyStore,
+      async getDatabaseInitializationState() {
+        return initialization;
+      },
+      async setDatabaseInitializationState(value) {
+        initialization = value;
+      },
+    };
     const key = await resolveDatabaseKey(
-      keyStore,
+      trackedKeyStore,
       (target) => target.fill(0x2a),
-      async () => false,
+      async () => 'missing',
     );
 
     expect(key).toBe('2a'.repeat(32));
     expect(secret).toBe(key);
+    expect(initialization).toBe('pending');
   });
 
   it('does not create an empty database when a restored key exists without its database file', async () => {
@@ -81,11 +92,46 @@ describe('encrypted database key recovery', () => {
         keyStore,
         randomBytes,
         openDatabase,
-        async databaseExists() {
-          return false;
+        async databaseFileState() {
+          return 'missing';
         },
       }),
     ).rejects.toBeInstanceOf(ExistingDatabaseFileMissingError);
+    expect(randomBytes).not.toHaveBeenCalled();
+    expect(openDatabase).not.toHaveBeenCalled();
+  });
+
+  it('does not create a key when the device-only marker says storage was already initialized', async () => {
+    const keyStore: SecureKeyStore = {
+      async getSecret() {
+        return null;
+      },
+      async setSecret() {
+        throw new Error('A replacement key must not be stored.');
+      },
+      async getDatabaseInitializationState() {
+        return 'ready';
+      },
+      async setDatabaseInitializationState() {
+        throw new Error('The existing initialization state must not change.');
+      },
+    };
+    const randomBytes = jest.fn((target: Uint8Array) => target.fill(1));
+    const openDatabase = jest.fn(() => {
+      throw new Error('A missing initialized database must not be opened.');
+    });
+
+    await expect(
+      openEncryptedStorage({
+        name: 'orot-secure.db',
+        keyStore,
+        randomBytes,
+        openDatabase,
+        async databaseFileState() {
+          return 'missing';
+        },
+      }),
+    ).rejects.toBeInstanceOf(ExistingDatabaseKeyMissingError);
     expect(randomBytes).not.toHaveBeenCalled();
     expect(openDatabase).not.toHaveBeenCalled();
   });

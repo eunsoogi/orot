@@ -25,7 +25,8 @@ export async function runBackupPreparation(
     const code = errorCode(error);
     if (
       code === 'EXISTING_DATABASE_KEY_MISSING' ||
-      code === 'EXISTING_DATABASE_FILE_MISSING'
+      code === 'EXISTING_DATABASE_FILE_MISSING' ||
+      code === 'PARTIAL_DATABASE_FILE_SET'
     ) {
       return 'recoveryRequired';
     }

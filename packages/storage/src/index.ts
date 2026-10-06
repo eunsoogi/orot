@@ -4,9 +4,10 @@ export { CURRENT_SCHEMA_VERSION, runMigrations } from './migrations';
 export {
   ExistingDatabaseFileMissingError,
   ExistingDatabaseKeyMissingError,
+  PartialDatabaseFileSetError,
   resolveDatabaseKey,
 } from './key';
-export type { RandomByteSource, SecureKeyStore } from './key';
+export type { DatabaseFileState, RandomByteSource, SecureKeyStore } from './key';
 export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
