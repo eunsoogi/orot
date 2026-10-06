@@ -32,11 +32,7 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       checkpoint: checkpointFromState(initialState(options)),
     };
   }
-  if (
-    options.checkpointer &&
-    !invocation.resumeFrom &&
-    !invocation.config?.configurable?.thread_id
-  ) {
+  if (options.checkpointer && !invocation.config?.configurable?.thread_id) {
     return {
       status: 'invalid_output',
       reason: 'A checkpoint thread identifier is required.',
@@ -106,23 +102,23 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
     }
     if (controller.signal.aborted) canceled(context);
     else {
-      const graph = makeGraph(context, invocation.resumeFrom ? undefined : options.checkpointer);
-      if (options.checkpointer && !invocation.resumeFrom) {
+      const graph = makeGraph(context, options.checkpointer);
+      if (options.checkpointer) {
         const saved = await graph.getState(invocation.config!);
         if (
           saved.values &&
           typeof saved.values === 'object' &&
-          typeof saved.values.operationRunId === 'string'
+          Object.keys(saved.values).length > 0
         ) {
           stop(
             context,
-            'A checkpoint already exists for this operation; use a fresh run identifier.',
+            'A checkpoint already exists for this thread; use a fresh thread identifier.',
             'stale_evidence',
           );
-          return failureResult(context.outcome!, checkpointFromState(start));
+          return failureResult(context.outcome!, nonResumableCheckpoint(start));
         }
       }
-      // Synchronous durability writes a pending operation before the next node dispatches external work.
+      // Each persisted thread is one-use; sync durability records pending work before dispatch.
       const finalState = await graph.invoke(start, { ...invocation.config, durability: 'sync' });
       if (!context.outcome)
         stop(context, 'The workflow ended without a validated result.', 'invalid_output');

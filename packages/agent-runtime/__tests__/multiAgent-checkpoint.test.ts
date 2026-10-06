@@ -158,7 +158,10 @@ describe('multi-agent checkpoint boundaries', () => {
 
     const result = await runMultiAgentWorkflow(options, invocation);
     const firstRunEvents = [...events];
-    const replay = await runMultiAgentWorkflow(options, { resumeFrom: result.checkpoint });
+    const replay = await runMultiAgentWorkflow(options, {
+      ...invocation,
+      resumeFrom: result.checkpoint,
+    });
 
     expect(rejectedPendingWrite).toBe(true);
     expect(firstRunEvents).toEqual(['pending-checkpoint']);
