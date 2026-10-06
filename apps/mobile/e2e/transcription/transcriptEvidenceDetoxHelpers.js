@@ -112,6 +112,50 @@ async function cleanupTranscriptEvidenceIfPresent() {
   return { status, recordingAvailable };
 }
 
+async function verifyRecordingExportLifecycle(device) {
+  const transcriptExport = element(by.id('recording-export-transcript'));
+  await scrollToTranscriptControl(transcriptExport);
+  await waitFor(element(by.id('recording-export-arm-cancel')))
+    .toBeVisible()
+    .withTimeout(30000);
+  await element(by.id('recording-export-arm-cancel')).tap();
+  await transcriptExport.tap();
+  const exportStatus = element(by.id('recording-export-status'));
+  await waitFor(exportStatus)
+    .toHaveText('내보내기를 취소했어요.')
+    .withTimeout(30000);
+  await element(by.id('recording-export-read-residue')).tap();
+  const residue = element(by.id('recording-export-residue-count'));
+  await waitFor(residue).toHaveText('0').withTimeout(30000);
+
+  await cleanupTranscriptEvidenceIfPresent();
+  await element(by.id('recording-export-prepare-residue')).tap();
+  await waitFor(residue).toHaveText('1').withTimeout(30000);
+  await device.terminateApp();
+  await device.launchApp({
+    newInstance: true,
+    permissions: { speech: 'YES' },
+  });
+  await device.disableSynchronization();
+  await element(by.id('recording-export-read-residue')).tap();
+  await waitFor(residue).toHaveText('1').withTimeout(30000);
+
+  await element(by.id('transcript-evidence-open')).tap();
+  await waitFor(element(by.id('transcript-evidence-setup-status')))
+    .toHaveText('ready')
+    .withTimeout(30000);
+  const audioExport = element(by.id('recording-export-audio'));
+  await waitFor(audioExport).toExist().withTimeout(30000);
+  await element(by.id('recording-export-arm-cancel')).tap();
+  await scrollToTranscriptControl(audioExport);
+  await audioExport.tap();
+  await waitFor(element(by.id('recording-export-status')))
+    .toHaveText('내보내기를 취소했어요.')
+    .withTimeout(30000);
+  await element(by.id('recording-export-read-residue')).tap();
+  await waitFor(residue).toHaveText('0').withTimeout(30000);
+}
+
 function failureDescription(failure) {
   return failure instanceof Error
     ? `${failure.name}: ${failure.message}${failure.stack ? `\n${failure.stack}` : ''}`
@@ -136,5 +180,6 @@ module.exports = {
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
+  verifyRecordingExportLifecycle,
   waitForProbeControl,
 };

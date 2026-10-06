@@ -39,7 +39,14 @@ interface NativeRecordingModule {
     point: 'beforeFileURL' | 'afterFileCreated',
   ) => Promise<void>;
   simulateInterruption?: (phase: 'began' | 'ended') => Promise<void>;
+  shareRecordingAudio?: (recordingId: string) => Promise<RecordingExportResult>;
+  shareRecordingTranscript?: (text: string) => Promise<RecordingExportResult>;
+  prepareSyntheticExportResidue?: () => Promise<number>;
+  getSyntheticExportResidueCount?: () => Promise<number>;
+  armSyntheticExportCancellation?: () => Promise<boolean>;
 }
+
+export type RecordingExportResult = 'completed' | 'cancelled';
 
 export interface RecordingBridge {
   getState(): Promise<RecordingSnapshot>;
@@ -182,4 +189,49 @@ export async function simulateRecordingInterruption(
     throw new Error('Interruption simulation is unavailable in this build.');
   }
   await module.simulateInterruption(phase);
+}
+
+export async function shareRecordingAudio(
+  recordingId: string,
+): Promise<RecordingExportResult> {
+  const share = requireNativeModule().shareRecordingAudio;
+  if (!share) {
+    throw new Error('Recording audio export is unavailable on this platform.');
+  }
+  return share(recordingId);
+}
+
+export async function shareRecordingTranscript(
+  text: string,
+): Promise<RecordingExportResult> {
+  const share = requireNativeModule().shareRecordingTranscript;
+  if (!share) {
+    throw new Error(
+      'Recording transcript export is unavailable on this platform.',
+    );
+  }
+  return share(text);
+}
+
+export async function prepareSyntheticExportResidue(): Promise<number> {
+  const prepare = requireNativeModule().prepareSyntheticExportResidue;
+  if (!prepare) {
+    throw new Error('Synthetic export residue is unavailable in this build.');
+  }
+  return prepare();
+}
+
+export async function getSyntheticExportResidueCount(): Promise<number> {
+  const getCount = requireNativeModule().getSyntheticExportResidueCount;
+  if (!getCount) {
+    throw new Error('Synthetic export residue is unavailable in this build.');
+  }
+  return getCount();
+}
+
+export async function armSyntheticExportCancellation(): Promise<void> {
+  const arm = requireNativeModule().armSyntheticExportCancellation;
+  if (!arm || !(await arm())) {
+    throw new Error('The export cancellation probe could not be armed.');
+  }
 }

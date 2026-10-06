@@ -22,6 +22,10 @@ RCT_EXTERN_METHOD(installSyntheticTranscriptionFixture : (NSString *)base64 reso
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeSyntheticTranscriptionFixture : (NSString *)recordingID resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(shareRecordingAudio : (NSString *)recordingID resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(shareRecordingTranscript : (NSString *)text resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 
 #if DEBUG && TARGET_OS_SIMULATOR
 RCT_EXTERN_METHOD(prepareSyntheticCapture : (RCTPromiseResolveBlock)
@@ -29,6 +33,15 @@ RCT_EXTERN_METHOD(prepareSyntheticCapture : (RCTPromiseResolveBlock)
 RCT_EXTERN_METHOD(prepareSyntheticStartFailure : (NSString *)point resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(simulateInterruption : (NSString *)phase resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+#endif
+
+#if TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getSyntheticExportResidueCount : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(armSyntheticExportCancellation : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif
 

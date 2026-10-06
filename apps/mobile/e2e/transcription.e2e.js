@@ -8,6 +8,7 @@ const {
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
+  verifyRecordingExportLifecycle,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
 
@@ -170,6 +171,9 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       await element(by.id('transcript-evidence-verify-memory')).tap();
       const memoryStatus = element(by.id('transcript-evidence-memory-status'));
       await waitFor(memoryStatus).toHaveText('passed').withTimeout(30000);
+
+      assertionStage = 'verify recording export and temporary-file lifecycle';
+      await verifyRecordingExportLifecycle(device);
 
       console.log(
         'TRANSCRIPT_EVIDENCE_SIMULATOR_RESULT ' +

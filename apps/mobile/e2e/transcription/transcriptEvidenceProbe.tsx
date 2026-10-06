@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
-import RecordingScreen from '../../src/recording/RecordingScreen';
+import RecordingControls from '../../src/recording/RecordingControls';
+import type { CompletedRecording } from '../../src/recording/recordingTypes';
+import {
+  armSyntheticExportCancellation,
+  getSyntheticExportResidueCount,
+  prepareSyntheticExportResidue,
+} from '../../src/recording/nativeRecordingBridge';
 import {
   cleanupSyntheticTranscriptRecording,
   createTranscriptEvidenceProbeService,
@@ -23,6 +29,7 @@ export function TranscriptEvidenceProbe() {
     actualStartMs: number;
   } | null>(null);
   const [memoryStatus, setMemoryStatus] = useState('not-checked');
+  const [exportResidueCount, setExportResidueCount] = useState('unknown');
   const [correctionStatus, setCorrectionStatus] =
     useState<CorrectionStatus>('idle');
   const [error, setError] = useState('');
@@ -31,6 +38,17 @@ export function TranscriptEvidenceProbe() {
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
     [setCorrectionStatus, setPlayback],
   );
+  const syntheticCompletedRecording: CompletedRecording | null =
+    recordingSourceId === null
+      ? null
+      : {
+          id: recordingSourceId,
+          durationMs: 5_000,
+          startedAt: '2026-10-07T00:00:00.000Z',
+          completedAt: '2026-10-07T00:00:05.000Z',
+          fileProtection: 'complete',
+          excludedFromBackup: true,
+        };
 
   async function prepare(): Promise<void> {
     setStatus('preparing');
@@ -69,6 +87,30 @@ export function TranscriptEvidenceProbe() {
     }
   }
 
+  async function prepareExportResidue(): Promise<void> {
+    try {
+      setExportResidueCount(String(await prepareSyntheticExportResidue()));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  async function refreshExportResidue(): Promise<void> {
+    try {
+      setExportResidueCount(String(await getSyntheticExportResidueCount()));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
+  async function armExportCancellation(): Promise<void> {
+    try {
+      await armSyntheticExportCancellation();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    }
+  }
+
   return (
     <View style={recordingSourceId ? styles.recordingScreen : undefined}>
       <Button
@@ -90,6 +132,23 @@ export function TranscriptEvidenceProbe() {
         {recordingSourceId ? 'yes' : 'no'}
       </Text>
       <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
+      {/* Simulator-only controls verify cleanup of temporary export files across a fresh app process. */}
+      <Button
+        onPress={prepareExportResidue}
+        testID="recording-export-prepare-residue"
+        title="Prepare interrupted export cleanup"
+      />
+      <Button
+        onPress={refreshExportResidue}
+        testID="recording-export-read-residue"
+        title="Read export temp files"
+      />
+      <Button
+        onPress={armExportCancellation}
+        testID="recording-export-arm-cancel"
+        title="Cancel next export in UIKit"
+      />
+      <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
       <Text testID="transcript-evidence-correction-status">
         {correctionStatus}
       </Text>
@@ -114,14 +173,40 @@ export function TranscriptEvidenceProbe() {
           title="Clean up test recording"
         />
       ) : null}
-      {recordingSourceId && status === 'ready' ? (
-        <RecordingScreen onBack={() => {}} transcriptService={service} />
+      {recordingSourceId &&
+      status === 'ready' &&
+      syntheticCompletedRecording ? (
+        // A completed synthetic recording drives the same controls branch as a saved user recording.
+        <RecordingControls
+          onBack={() => {}}
+          stateReady
+          status="completed"
+          durationMs={syntheticCompletedRecording.durationMs}
+          consentAcknowledged
+          onToggleConsent={() => {}}
+          busy={false}
+          onStart={() => {}}
+          onPause={() => {}}
+          onResume={() => {}}
+          onStop={() => {}}
+          lastRecording={syntheticCompletedRecording}
+          sourceSaved
+          onRetrySourceSave={() => {}}
+          error=""
+          syntheticProbeAvailable={false}
+          syntheticProbeReady={false}
+          onPrepareSyntheticProbe={() => {}}
+          onPrepareSyntheticStartFailure={() => {}}
+          onSendInterruption={() => {}}
+          probeError=""
+          transcriptService={service}
+        />
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Give the production screen a bounded parent so its own recording-controls scroll can reach the transcript.
+  // Keep production recording controls in a bounded parent so Detox can reach export actions on short screens.
   recordingScreen: { flex: 1, width: '100%' },
 });

@@ -6,6 +6,7 @@ import { formatRecordingDuration } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
+import RecordingExportPanel from './RecordingExportPanel';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -212,6 +213,15 @@ export default function RecordingControls({
             service={transcriptService}
           />
         ) : null
+      ) : null}
+      {/* Export needs the stable ID of a completed recording; transcript availability is handled inside the panel. */}
+      {lastRecording &&
+      sourceSaved &&
+      (status === 'idle' || status === 'completed') ? (
+        <RecordingExportPanel
+          recordingSourceId={lastRecording.id}
+          transcriptService={transcriptService}
+        />
       ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={recordingControlStyles.error}>
