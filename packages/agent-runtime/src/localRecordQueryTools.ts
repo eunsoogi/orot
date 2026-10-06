@@ -25,6 +25,38 @@ function readObject(input: unknown, allowedKeys: readonly string[]): Record<stri
   return value;
 }
 
+function submillisecondDigits(timestamp: string): string {
+  return timestamp.match(/\.(\d+)(?=(?:Z|[+-]\d{2}:\d{2})$)/i)?.[1].slice(3) ?? '';
+}
+
+function compareQueryTimestamps(left: string, right: string): number {
+  const leftMilliseconds = Date.parse(left);
+  const rightMilliseconds = Date.parse(right);
+  if (leftMilliseconds !== rightMilliseconds) {
+    return leftMilliseconds < rightMilliseconds ? -1 : 1;
+  }
+
+  // Date.parse keeps milliseconds only; the ISO suffix retains the HealthKit nanoseconds.
+  const precision = Math.max(submillisecondDigits(left).length, submillisecondDigits(right).length);
+  const normalizedLeft = submillisecondDigits(left).padEnd(precision, '0');
+  const normalizedRight = submillisecondDigits(right).padEnd(precision, '0');
+  if (normalizedLeft === normalizedRight) return 0;
+  return normalizedLeft < normalizedRight ? -1 : 1;
+}
+
+function exceedsLocalQueryRange(from: string, to: string): boolean {
+  const fromMilliseconds = Date.parse(from);
+  const elapsedMilliseconds = Date.parse(to) - fromMilliseconds;
+  if (elapsedMilliseconds > LOCAL_QUERY_MAX_RANGE_MS) return true;
+  if (elapsedMilliseconds < LOCAL_QUERY_MAX_RANGE_MS) return false;
+
+  // Keep the range cap exact when millisecond timestamps land on its boundary.
+  const maximumEnd = new Date(fromMilliseconds + LOCAL_QUERY_MAX_RANGE_MS)
+    .toISOString()
+    .replace(/Z$/, `${submillisecondDigits(from)}Z`);
+  return compareQueryTimestamps(to, maximumEnd) > 0;
+}
+
 function readTimestamp(value: unknown): string {
   if (
     typeof value !== 'string' ||
@@ -56,9 +88,10 @@ function readRangeInput(
   const value = readObject(input, ['fromInclusive', 'toExclusive', 'limit', ...extraKeys]);
   const fromInclusive = readTimestamp(value.fromInclusive);
   const toExclusive = readTimestamp(value.toExclusive);
-  const elapsed = Date.parse(toExclusive) - Date.parse(fromInclusive);
-  if (elapsed <= 0) throw new Error('The query end must be after its start.');
-  if (elapsed > LOCAL_QUERY_MAX_RANGE_MS) {
+  if (compareQueryTimestamps(toExclusive, fromInclusive) <= 0) {
+    throw new Error('The query end must be after its start.');
+  }
+  if (exceedsLocalQueryRange(fromInclusive, toExclusive)) {
     throw new Error('A local query range cannot exceed 366 days.');
   }
   return {

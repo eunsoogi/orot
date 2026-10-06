@@ -74,6 +74,28 @@ describe('local record query tools', () => {
       type: 'heart_rate',
       limit: 2,
     });
+    const submillisecondStart = '2026-10-01T00:00:00.123400000Z';
+    const submillisecondEnd = '2026-10-01T00:00:00.123400001Z';
+    await expect(
+      health.invoke({
+        fromInclusive: submillisecondStart,
+        toExclusive: submillisecondEnd,
+        type: 'heart_rate',
+      }),
+    ).resolves.toContain('available');
+    expect(storage.queryHealthObservations).toHaveBeenLastCalledWith({
+      fromInclusive: submillisecondStart,
+      toExclusive: submillisecondEnd,
+      type: 'heart_rate',
+      limit: 25,
+    });
+    await expect(
+      health.invoke({
+        fromInclusive: '2025-10-01T00:00:00.123400000Z',
+        toExclusive: '2026-10-02T00:00:00.123400001Z',
+        type: 'heart_rate',
+      }),
+    ).rejects.toThrow('cannot exceed 366 days');
     expect(healthResult.records[0]).toMatchObject({
       value: { amount: 72, unit: 'count/min' },
       provenance: { sourceRecordIds: ['healthkit-sample-1'] },

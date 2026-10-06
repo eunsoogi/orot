@@ -10,6 +10,7 @@ import type { SqlValue } from './sql';
 import type { StaleTranscriptArtifact } from './transcriptEvidence';
 import type { RecordKind } from './contracts';
 import { decodeStoredRecord } from './recordPersistence';
+import { localQueryTimestampKey } from './localQueryTimestamp';
 
 export const LOCAL_OBSERVATION_QUERY_TYPES = [
   'blood_pressure',
@@ -75,7 +76,23 @@ export type { StaleTranscriptArtifact } from './transcriptEvidence';
 export interface ParsedLocalQueryWindow {
   readonly from: string;
   readonly to: string;
+  readonly fromKey: string;
+  readonly toKey: string;
   readonly limit: number;
+}
+
+function exceedsLocalQueryRange(from: string, to: string): boolean {
+  // Date.parse drops digits below milliseconds, so compare the preserved tail at the cap.
+  const fromMilliseconds = Date.parse(from);
+  const elapsedMilliseconds = Date.parse(to) - fromMilliseconds;
+  if (elapsedMilliseconds > MAX_LOCAL_QUERY_RANGE_MS) return true;
+  if (elapsedMilliseconds < MAX_LOCAL_QUERY_RANGE_MS) return false;
+
+  const extraFraction = from.match(/\.(\d+)(?=(?:Z|[+-]\d{2}:\d{2})$)/i)?.[1].slice(3) ?? '';
+  const maximumEnd = new Date(fromMilliseconds + MAX_LOCAL_QUERY_RANGE_MS)
+    .toISOString()
+    .replace(/Z$/, `${extraFraction}Z`);
+  return compareTimestamps(to, maximumEnd) > 0;
 }
 
 export function parseLocalQueryWindow(filter: LocalQueryWindow): ParsedLocalQueryWindow {
@@ -87,14 +104,20 @@ export function parseLocalQueryWindow(filter: LocalQueryWindow): ParsedLocalQuer
   if (compareTimestamps(from.data, to.data) >= 0) {
     throw new Error('The query end must be after its start.');
   }
-  if (Date.parse(to.data) - Date.parse(from.data) > MAX_LOCAL_QUERY_RANGE_MS) {
+  if (exceedsLocalQueryRange(from.data, to.data)) {
     throw new Error('A local query range cannot exceed 366 days.');
   }
   const limit = filter.limit ?? DEFAULT_LOCAL_QUERY_ROWS;
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LOCAL_QUERY_ROWS) {
     throw new Error(`A local query limit must be between 1 and ${MAX_LOCAL_QUERY_ROWS}.`);
   }
-  return { from: from.data, to: to.data, limit };
+  return {
+    from: from.data,
+    to: to.data,
+    fromKey: localQueryTimestampKey(from.data),
+    toKey: localQueryTimestampKey(to.data),
+    limit,
+  };
 }
 
 export function parseLocalQueryTimestamp(value: string): string {

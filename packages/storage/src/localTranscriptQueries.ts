@@ -4,6 +4,10 @@ import { decodeLocalQueryRows, parseLocalQueryWindow } from './localQueryContrac
 import type { LocalQueryWindow, TranscriptQueryResult } from './localQueryContracts';
 import type { StaleTranscriptArtifact } from './transcriptEvidence';
 import type { SqlDatabase, SqlValue } from './sql';
+import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
+
+const candidateEffectiveAtKey = localQueryTimestampKeyExpression('candidate.effective_at');
+const staleEffectiveAtKey = localQueryTimestampKeyExpression('effective_at');
 
 /** Returns current transcript revisions and the invalidation links for derived artifacts. */
 export async function queryTranscriptEvidence(
@@ -17,18 +21,18 @@ export async function queryTranscriptEvidence(
   const result = await database.execute(
     `SELECT candidate.payload_json FROM transcript_segments AS candidate
      WHERE json_extract(candidate.payload_json, '$.recordingSourceId') = ?
-       AND julianday(candidate.effective_at) >= julianday(?)
-       AND julianday(candidate.effective_at) < julianday(?)
+       AND ${candidateEffectiveAtKey} >= ?
+       AND ${candidateEffectiveAtKey} < ?
        AND NOT EXISTS (
          SELECT 1 FROM transcript_segments AS newer
          WHERE json_extract(newer.payload_json, '$.transcriptId') = json_extract(candidate.payload_json, '$.transcriptId')
            AND json_extract(newer.payload_json, '$.segmentOrdinal') = json_extract(candidate.payload_json, '$.segmentOrdinal')
            AND json_extract(newer.payload_json, '$.revision') > json_extract(candidate.payload_json, '$.revision')
        )
-     ORDER BY julianday(candidate.effective_at) ASC,
+     ORDER BY ${candidateEffectiveAtKey} ASC,
        CAST(json_extract(candidate.payload_json, '$.segmentOrdinal') AS INTEGER) ASC,
        candidate.id ASC LIMIT ?`,
-    [recordingSourceId, window.from, window.to, window.limit + 1],
+    [recordingSourceId, window.fromKey, window.toKey, window.limit + 1],
   );
   const staleRows = await database.execute(
     `SELECT transcript_id, artifact_kind, artifact_id, superseded_segment_id, current_segment_id, invalidated_at
@@ -36,10 +40,10 @@ export async function queryTranscriptEvidence(
      WHERE transcript_id IN (
        SELECT DISTINCT json_extract(payload_json, '$.transcriptId') FROM transcript_segments
        WHERE json_extract(payload_json, '$.recordingSourceId') = ?
-         AND julianday(effective_at) >= julianday(?) AND julianday(effective_at) < julianday(?)
+         AND ${staleEffectiveAtKey} >= ? AND ${staleEffectiveAtKey} < ?
      )
      ORDER BY transcript_id, artifact_kind, artifact_id LIMIT ?`,
-    [recordingSourceId, window.from, window.to, window.limit + 1],
+    [recordingSourceId, window.fromKey, window.toKey, window.limit + 1],
   );
 
   return {

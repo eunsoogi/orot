@@ -92,10 +92,10 @@ describe('bounded local record queries', () => {
     expect(statements[0]?.parameters).toEqual([
       'blood pressure systolic',
       'blood pressure diastolic',
-      range.toExclusive,
-      range.fromInclusive,
-      range.fromInclusive,
-      range.toExclusive,
+      '101790838000.!',
+      '101790834400.!',
+      '101790834400.!',
+      '101790838000.!',
       3,
     ]);
   });

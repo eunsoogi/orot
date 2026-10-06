@@ -13,7 +13,12 @@ import type {
   NextCalendarAppointmentResult,
 } from './localQueryContracts';
 import { queryTranscriptEvidence } from './localTranscriptQueries';
+import { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import type { SqlDatabase } from './sql';
+
+const effectiveAtKey = localQueryTimestampKeyExpression('effective_at');
+const endedAtKey = localQueryTimestampKeyExpression("json_extract(payload_json, '$.endedAt')");
+const ingestedAtKey = localQueryTimestampKeyExpression('ingested_at');
 
 const conceptsByType: Record<LocalObservationQueryType, readonly string[]> = {
   blood_pressure: ['blood pressure systolic', 'blood pressure diastolic'],
@@ -41,12 +46,12 @@ export function createLocalRecordQueryRepository(
            AND json_extract(payload_json, '$.provenance.source.system') = 'healthkit'
            AND json_extract(payload_json, '$.concept') IN (${placeholders})
            AND ((json_extract(payload_json, '$.endedAt') IS NOT NULL
-                 AND julianday(effective_at) < julianday(?)
-                 AND julianday(json_extract(payload_json, '$.endedAt')) > julianday(?))
-             OR (julianday(effective_at) >= julianday(?)
-                 AND julianday(effective_at) < julianday(?)))
-         ORDER BY julianday(effective_at) ASC, id ASC LIMIT ?`,
-        [...concepts, window.to, window.from, window.from, window.to, window.limit + 1],
+                 AND ${effectiveAtKey} < ?
+                 AND ${endedAtKey} > ?)
+             OR (${effectiveAtKey} >= ?
+                 AND ${effectiveAtKey} < ?))
+         ORDER BY ${effectiveAtKey} ASC, id ASC LIMIT ?`,
+        [...concepts, window.toKey, window.fromKey, window.fromKey, window.toKey, window.limit + 1],
       );
       return decodeLocalQueryRows<HealthObservation>(
         result.rows,
@@ -61,10 +66,10 @@ export function createLocalRecordQueryRepository(
         `SELECT payload_json FROM medication_definitions
          WHERE json_extract(payload_json, '$.provenance.origin') = 'imported'
            AND json_extract(payload_json, '$.provenance.source.system') = 'healthkit'
-           AND julianday(ingested_at) >= julianday(?)
-           AND julianday(ingested_at) < julianday(?)
-         ORDER BY julianday(ingested_at) ASC, id ASC LIMIT ?`,
-        [window.from, window.to, window.limit + 1],
+           AND ${ingestedAtKey} >= ?
+           AND ${ingestedAtKey} < ?
+         ORDER BY ${ingestedAtKey} ASC, id ASC LIMIT ?`,
+        [window.fromKey, window.toKey, window.limit + 1],
       );
       return {
         ...decodeLocalQueryRows<MedicationDefinition>(
@@ -84,12 +89,12 @@ export function createLocalRecordQueryRepository(
            AND json_extract(payload_json, '$.provenance.origin') = 'imported'
            AND json_extract(payload_json, '$.provenance.source.system') = 'healthkit'
            AND ((json_extract(payload_json, '$.endedAt') IS NOT NULL
-                 AND julianday(effective_at) < julianday(?)
-                 AND julianday(json_extract(payload_json, '$.endedAt')) > julianday(?))
-             OR (julianday(effective_at) >= julianday(?)
-                 AND julianday(effective_at) < julianday(?)))
-         ORDER BY julianday(effective_at) ASC, id ASC LIMIT ?`,
-        [window.to, window.from, window.from, window.to, window.limit + 1],
+                 AND ${effectiveAtKey} < ?
+                 AND ${endedAtKey} > ?)
+             OR (${effectiveAtKey} >= ?
+                 AND ${effectiveAtKey} < ?))
+         ORDER BY ${effectiveAtKey} ASC, id ASC LIMIT ?`,
+        [window.toKey, window.fromKey, window.fromKey, window.toKey, window.limit + 1],
       );
       const resultSet = decodeLocalQueryRows<Extract<DoseEvent, { eventKind: 'observed' }>>(
         result.rows,
@@ -110,9 +115,9 @@ export function createLocalRecordQueryRepository(
            AND json_extract(payload_json, '$.provenance.origin') = 'user_reported'
            AND json_extract(payload_json, '$.calendarEventIdentifier') IS NOT NULL
            AND json_extract(payload_json, '$.calendarEventSnapshot') IS NOT NULL
-           AND julianday(effective_at) >= julianday(?)
-         ORDER BY julianday(effective_at) ASC, id ASC LIMIT 1`,
-        [after],
+           AND ${effectiveAtKey} >= ?
+         ORDER BY ${effectiveAtKey} ASC, id ASC LIMIT 1`,
+        [localQueryTimestampKey(after)],
       );
       const row = result.rows[0];
       const appointment: Appointment | null = row
