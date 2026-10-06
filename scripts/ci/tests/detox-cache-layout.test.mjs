@@ -10,7 +10,7 @@ const profileWorkflow = readFileSync(
   'utf8',
 );
 
-test('restores React Native artifacts before one Pods install and app cache lookup', () => {
+test('validates exact app caches before restoring optional native build inputs', () => {
   const framework = profileWorkflow.indexOf('- name: Build Detox iOS framework cache');
   const rnFingerprint = profileWorkflow.indexOf(
     '- name: Prepare React Native artifact cache fingerprint',
@@ -25,12 +25,13 @@ test('restores React Native artifacts before one Pods install and app cache look
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const buildEnd = profileWorkflow.indexOf('\n      - name:', build + 1);
 
-  assert.ok(framework >= 0 && framework < rnFingerprint && rnFingerprint < rnCache);
+  assert.ok(derivedFingerprint >= 0 && derivedFingerprint < derivedCache);
   assert.ok(
-    rnCache < pods &&
-      pods < derivedFingerprint &&
-      derivedFingerprint < derivedCache &&
-      derivedCache < prepareCache &&
+    derivedCache < prepareCache &&
+      prepareCache < framework &&
+      framework < rnFingerprint &&
+      rnFingerprint < rnCache &&
+      rnCache < pods &&
       pods < build,
   );
   assert.equal(
@@ -42,7 +43,7 @@ test('restores React Native artifacts before one Pods install and app cache look
   assert.match(rnCacheStep, /orot-rn-ios-artifacts-v3-/);
   assert.match(rnCacheStep, /steps\.rn_artifact_fingerprint\.outputs\.fingerprint/);
   assert.doesNotMatch(rnCacheStep, /hashFiles\(/);
-  assert.match(profileWorkflow.slice(pods, derivedFingerprint), /build-detox-apps\.sh pods/);
+  assert.match(profileWorkflow.slice(pods, build), /build-detox-apps\.sh pods/);
   assert.match(
     profileWorkflow.slice(build, buildEnd),
     /build-detox-apps\.sh "\$\{\{ inputs\.profile \}\}" --skip-pods/,
@@ -89,5 +90,5 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-openai-provider\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-transcription\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-production\//);
-  assert.match(profileWorkflow, /orot-detox-deriveddata-v7-/);
+  assert.match(profileWorkflow, /orot-detox-deriveddata-v8-/);
 });

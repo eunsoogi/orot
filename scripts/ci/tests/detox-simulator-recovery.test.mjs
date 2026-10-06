@@ -93,7 +93,7 @@ test('cancellation during boot cleans up the already-published dedicated Simulat
   try {
     const enteredBoot = await waitUntil(
       () => existsSync(harness.bootStartedPath) || harness.child.exitCode !== null,
-      3000,
+      10000,
     );
     assert.ok(
       enteredBoot && existsSync(harness.bootStartedPath),

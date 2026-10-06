@@ -50,7 +50,7 @@ test('captures one validated lockfile fingerprint for both cache key and later r
   assert.match(fingerprint, /PNPM_LOCKFILE_HASH:.*hashFiles\('pnpm-lock\.yaml'\)/);
   assert.match(fingerprint, /PODFILE_LOCK_HASH:.*hashFiles\('apps\/mobile\/ios\/Podfile\.lock'\)/);
   assert.match(fingerprint, /run: scripts\/ci\/prepare-rn-artifact-fingerprint\.sh/);
-  assert.doesNotMatch(fingerprint, /^\s+if:/m);
+  assert.match(fingerprint, /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/);
   assert.ok(
     fingerprintIndex < cacheIndex &&
       cacheIndex < podsInstallIndex &&

@@ -45,17 +45,19 @@ function prepareEnvironment(root, initial) {
   };
 }
 
-test('records post-Pods fingerprints and accepts the exact cached app on the next run', () => {
+test('keys app caches from pre-Pods inputs and preserves the post-install integration digest', () => {
   const root = createFixtureRepository();
+  const sourceProject = readFileSync(join(root, projectPath), 'utf8');
+  const sourcePrivacy = readFileSync(join(root, privacyPath), 'utf8');
   const generatedProject = 'CocoaPods project integration';
   const generatedPrivacy = 'CocoaPods aggregated privacy reasons';
 
   try {
-    writeFixtureFile(root, projectPath, generatedProject);
-    writeFixtureFile(root, privacyPath, generatedPrivacy);
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
+    writeFixtureFile(root, projectPath, generatedProject);
+    writeFixtureFile(root, privacyPath, generatedPrivacy);
     assert.match(runCacheCommand(root, 'verify-build-inputs', environment), /post-pods-verified/);
     runCacheCommand(root, 'write', environment);
 
@@ -63,8 +65,8 @@ test('records post-Pods fingerprints and accepts the exact cached app on the nex
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     assert.deepEqual(manifest.cocoapodsInputProvenance, {
       baseline: {
-        privacyManifest: sha256(generatedPrivacy),
-        projectFile: sha256(generatedProject),
+        privacyManifest: sha256(sourcePrivacy),
+        projectFile: sha256(sourceProject),
       },
       afterInstall: {
         privacyManifest: sha256(generatedPrivacy),
@@ -72,6 +74,9 @@ test('records post-Pods fingerprints and accepts the exact cached app on the nex
       },
     });
 
+    // A later workflow starts from the checked-out source while reusing the installed build output.
+    writeFixtureFile(root, projectPath, sourceProject);
+    writeFixtureFile(root, privacyPath, sourcePrivacy);
     const cacheResult = runCacheCommand(root, 'prepare', environment);
     assert.match(cacheResult, /classification=exact/);
     assert.match(cacheResult, /app_reusable=true/);
@@ -80,7 +85,54 @@ test('records post-Pods fingerprints and accepts the exact cached app on the nex
   }
 });
 
-test('invalidates cached provenance when either post-Pods digest is corrupted', () => {
+test('falls back to the build path when an exact app cache is missing a Detox framework artifact', () => {
+  const root = createFixtureRepository();
+  const frameworkBinary = join(root, 'detox-framework/framework/Detox.framework/Detox');
+
+  try {
+    const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
+    const appProduct = join(derivedData, 'Build/Products/Release-iphonesimulator/Orot.app');
+    mkdirSync(derivedData, { recursive: true });
+    runCacheCommand(root, 'write');
+    writeFileSync(frameworkBinary, 'corrupted-framework');
+
+    const output = runCacheCommand(root, 'prepare');
+    assert.match(output, /classification=exact/);
+    assert.match(output, /app_reusable=false/);
+    assert.match(output, /app_reuse_reason=detox_artifact_digest_mismatch/);
+    assert.equal(existsSync(appProduct), false);
+    assert.equal(existsSync(join(root, 'detox-framework/framework')), false);
+    assert.equal(existsSync(join(root, 'detox-framework/xcuitest-runner')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('does not reuse legacy app manifests without a Detox artifact fingerprint', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
+  const appProduct = join(derivedData, 'Build/Products/Release-iphonesimulator/Orot.app');
+  const manifestPath = join(derivedData, '.orot-detox-cache.json');
+
+  try {
+    mkdirSync(derivedData, { recursive: true });
+    runCacheCommand(root, 'write');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    delete manifest.detoxArtifacts;
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const output = runCacheCommand(root, 'prepare');
+    assert.match(output, /app_reusable=false/);
+    assert.match(output, /app_reuse_reason=detox_artifact_manifest_missing/);
+    assert.equal(existsSync(appProduct), false);
+    assert.equal(existsSync(join(root, 'detox-framework/framework')), false);
+    assert.equal(existsSync(join(root, 'detox-framework/xcuitest-runner')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('invalidates cached provenance when a recorded post-Pods digest is malformed', () => {
   const root = createFixtureRepository();
 
   try {
@@ -95,12 +147,12 @@ test('invalidates cached provenance when either post-Pods digest is corrupted', 
     const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
     const manifestPath = join(derivedData, '.orot-detox-cache.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    manifest.cocoapodsInputProvenance.afterInstall.projectFile = '0'.repeat(64);
+    manifest.cocoapodsInputProvenance.afterInstall.projectFile = 'not-a-sha256-digest';
     writeFileSync(manifestPath, JSON.stringify(manifest));
 
     const result = runCacheCommand(root, 'prepare', environment);
     assert.match(result, /classification=invalidated/);
-    assert.match(result, /cocoapods_input_provenance\.after_install/);
+    assert.match(result, /cocoapods_input_provenance\.after_install_format/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -191,9 +243,8 @@ test('rejects changes to CocoaPods outputs after pre-build verification', () => 
 test('calls build-input verification before both production and Detox native builds', () => {
   const production = readFileSync(productionBuildPath, 'utf8');
   const detox = readFileSync(detoxBuildPath, 'utf8');
-  const workflow = readFileSync(workflowPath, 'utf8');
 
   assert.match(production, /detox-derived-data-cache\.mjs verify-build-inputs production/);
   assert.match(detox, /detox-derived-data-cache\.mjs verify-build-inputs "\$profile"/);
-  assert.match(workflow, /EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT/);
+  assert.match(readFileSync(workflowPath, 'utf8'), /EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT/);
 });

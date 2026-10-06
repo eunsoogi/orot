@@ -4,9 +4,15 @@ import { fileURLToPath } from 'node:url';
 import {
   inspectCacheManifest,
   inspectManifestFingerprints,
+  getDetoxCacheToolchain,
   MANIFEST_FILENAME,
   readCacheManifest,
 } from './detox-cache-manifest.mjs';
+import {
+  clearDetoxFrameworkCacheArtifacts,
+  getDetoxFrameworkCacheRoot,
+  inspectDetoxFrameworkCacheArtifacts,
+} from './detox-framework-cache-artifacts.mjs';
 import {
   computeDetoxCacheFingerprints,
   listChangedDetoxBuildInputs,
@@ -33,28 +39,8 @@ function requireGitHubActions() {
   }
 }
 
-function getToolchain() {
-  const toolchain = {
-    runnerOs: process.env.DETOX_CACHE_RUNNER_OS,
-    runnerArch: process.env.DETOX_CACHE_RUNNER_ARCH,
-    macosVersion: process.env.MACOS_VERSION || process.env.EXPECTED_MACOS_VERSION,
-    nodeVersion: process.env.EXPECTED_NODE_VERSION,
-    pnpmVersion: process.env.EXPECTED_PNPM_VERSION,
-    rubyVersion: process.env.EXPECTED_RUBY_VERSION,
-    cocoaPodsVersion: process.env.EXPECTED_COCOAPODS_VERSION,
-    xcodeVersion: process.env.EXPECTED_XCODE_VERSION,
-    iosSimulatorSdk: process.env.EXPECTED_IOS_SIMULATOR_SDK,
-  };
-  const missing = Object.entries(toolchain)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-  if (missing.length > 0)
-    throw new Error(`Missing Detox cache toolchain values: ${missing.join(', ')}`);
-  return toolchain;
-}
-
 function makeManifest(repositoryRoot, profile) {
-  // Detox fingerprints run after Pods; production captures its baseline before its conditional install.
+  // Hash source inputs before Pods so an exact app hit can skip native dependency installation.
   const capturedInputs = readExpectedCocoapodsInputHashes();
   const baselineInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
   if (!capturedInputs && process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256) {
@@ -65,9 +51,9 @@ function makeManifest(repositoryRoot, profile) {
     cocoapodsProjectInputHash: baselineInputs.projectFile,
   });
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     profile,
-    toolchain: getToolchain(),
+    toolchain: getDetoxCacheToolchain(),
     nativeDependencies: fingerprints.nativeDependencies,
     buildInputs: fingerprints.buildInputs,
     cocoapodsInputProvenance: { baseline: baselineInputs },
@@ -93,6 +79,11 @@ function writeManifest(repositoryRoot, profile) {
     throw new Error(`Refusing to cache an invalid iOS app artifact: ${app.reason}`);
   }
   manifest.appArtifacts = app.artifacts;
+  const detoxArtifacts = inspectDetoxFrameworkCacheArtifacts(getDetoxFrameworkCacheRoot());
+  if (detoxArtifacts.reason) {
+    throw new Error(`Refusing to cache missing Detox framework outputs: ${detoxArtifacts.reason}`);
+  }
+  manifest.detoxArtifacts = detoxArtifacts.artifacts;
   const fingerprintCheck = inspectManifestFingerprints(
     manifest,
     process.env.EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT,
@@ -173,6 +164,10 @@ function prepareCache(repositoryRoot, profile) {
 
     const manifestResult = readCacheManifest(dataRoot);
     const inspected = inspectCacheManifest(manifestResult, expected);
+    const detoxArtifacts = inspectDetoxFrameworkCacheArtifacts(
+      getDetoxFrameworkCacheRoot(),
+      manifestResult.manifest?.detoxArtifacts ?? null,
+    );
     let appReusable = false;
     let appReuseReason = 'cache_not_exact';
     if (inspected.classification === 'exact') {
@@ -181,10 +176,11 @@ function prepareCache(repositoryRoot, profile) {
         dataRoot,
         manifestResult.manifest?.appArtifacts ?? null,
       );
-      appReuseReason = app.reason ?? 'validated';
-      if (app.reason) {
+      appReuseReason = app.reason ?? detoxArtifacts.reason ?? 'validated';
+      if (app.reason || detoxArtifacts.reason) {
         requireGitHubActions();
         clearAppOutputs(profile, dataRoot);
+        if (detoxArtifacts.reason) clearDetoxFrameworkCacheArtifacts();
       } else {
         appReusable = true;
       }
@@ -192,11 +188,13 @@ function prepareCache(repositoryRoot, profile) {
     if (inspected.classification === 'invalidated') {
       requireGitHubActions();
       removeDerivedDataRoot(profile, dataRoot);
+      clearDetoxFrameworkCacheArtifacts();
       appReuseReason = 'cache_invalidated';
     }
     if (inspected.classification === 'dependency-compatible') {
       requireGitHubActions();
       clearAppOutputs(profile, dataRoot);
+      if (detoxArtifacts.reason) clearDetoxFrameworkCacheArtifacts();
       appReuseReason = 'build_inputs_changed';
     }
     result = { ...inspected, appReusable, appReuseReason };
@@ -217,6 +215,7 @@ function writeGitHubOutput(result) {
         `derived_data_cache_diagnostic=${result.diagnostic}`,
         `app_reusable=${result.appReusable}`,
         `app_reuse_reason=${result.appReuseReason}`,
+        `detox_artifacts_reusable=${result.appReusable}`,
       ].join('\n') + '\n',
       { flag: 'a' },
     );

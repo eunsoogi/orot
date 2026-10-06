@@ -41,7 +41,7 @@ test('keys CocoaPods intermediates by pinned toolchain and dependency metadata',
   assert.equal(podsCache.includes('inputs.profile'), false);
 });
 
-test('restores only intermediate files and still runs CocoaPods before app fingerprinting', () => {
+test('prepares the app cache before optional CocoaPods restores and installation', () => {
   const cacheStep = profileWorkflow.indexOf('- name: Cache Detox CocoaPods intermediates');
   const podsStep = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const fingerprintStep = profileWorkflow.indexOf(
@@ -53,8 +53,8 @@ test('restores only intermediate files and still runs CocoaPods before app finge
     profileWorkflow.indexOf('\n      - name:', podsStep + 1),
   );
 
-  assert.ok(cacheStep >= 0 && cacheStep < podsStep);
-  assert.ok(podsStep < fingerprintStep && fingerprintStep < derivedDataCache);
+  assert.ok(fingerprintStep >= 0 && fingerprintStep < derivedDataCache);
+  assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);
   assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));
   // The extracted logger must retain the cache hit passed by this workflow step.
   assert.ok(
@@ -74,7 +74,7 @@ test('restores only intermediate files and still runs CocoaPods before app finge
   ]) {
     assert.ok(profileWorkflow.includes(toolchainValue));
   }
-  assert.doesNotMatch(podsBlock, /if:/);
+  assert.match(podsBlock, /app_reusable != 'true'/);
 });
 
 test('pre-Pods mode reports dependency inputs without setting post-install expectations', () => {

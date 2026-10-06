@@ -22,7 +22,7 @@ function git(root, ...args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
 
-test('includes CocoaPods generated tracked inputs in the post-install app fingerprint', () => {
+test('keeps CocoaPods source inputs fingerprinted across generated integration changes', () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-detox-cache-fingerprint-'));
   try {
     git(root, 'init', '-q');
@@ -78,12 +78,12 @@ test('includes CocoaPods generated tracked inputs in the post-install app finger
       'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
       'CocoaPods generated project integration',
     );
-    const postPodsFingerprint = computeDetoxCacheFingerprints(root);
-    assert.notEqual(postPodsFingerprint.buildInputs, initial.buildInputs);
-    assert.notEqual(postPodsFingerprint.nativeDependencies, initial.nativeDependencies);
-    assert.notEqual(postPodsFingerprint.privacyManifestInputHash, privacyManifestInputHash);
-    assert.notEqual(postPodsFingerprint.cocoapodsProjectInputHash, cocoapodsProjectInputHash);
-    // Production still captures its source baseline before its conditional Pods install.
+    const postInstallFingerprint = computeDetoxCacheFingerprints(root);
+    assert.notEqual(postInstallFingerprint.buildInputs, initial.buildInputs);
+    assert.notEqual(postInstallFingerprint.nativeDependencies, initial.nativeDependencies);
+    assert.notEqual(postInstallFingerprint.privacyManifestInputHash, privacyManifestInputHash);
+    assert.notEqual(postInstallFingerprint.cocoapodsProjectInputHash, cocoapodsProjectInputHash);
+    // Cache inputs keep the checked-out source baseline separate from generated integration files.
     const sourceBaselineFingerprint = computeDetoxCacheFingerprints(root, {
       privacyManifestInputHash,
       cocoapodsProjectInputHash,

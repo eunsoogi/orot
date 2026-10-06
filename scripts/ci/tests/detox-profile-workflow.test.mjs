@@ -101,7 +101,7 @@ test('leaves heavy resource sampling off unless a manual run requests it and cap
   assert.match(runner, /sample_index < resource_sample_limit/);
 });
 
-test('keys post-Pods app outputs and reuses only a validated exact DerivedData cache', () => {
+test('keys pre-Pods app outputs and reuses only a validated exact DerivedData cache', () => {
   const fingerprintSource = readFileSync(
     join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
     'utf8',
@@ -143,8 +143,9 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
         'run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only',
       ) &&
       fingerprintStepIndex >= 0 &&
-      fingerprintStepIndex > rnCacheStepIndex &&
-      fingerprintStepIndex > podsInstallIndex &&
+      fingerprintStepIndex < rnCacheStepIndex &&
+      fingerprintStepIndex < prepareCacheIndex &&
+      prepareCacheIndex < podsInstallIndex &&
       fingerprintStepIndex < buildStepIndex,
   );
 
@@ -158,10 +159,9 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
   assert.doesNotMatch(rnCache, /restore-keys:/);
 
   assert.ok(
-    prepareCacheIndex > rnCacheStepIndex &&
+    prepareCacheIndex > fingerprintStepIndex &&
       prepareCacheIndex < recordCacheIndex &&
-      podsInstallIndex < fingerprintStepIndex &&
-      fingerprintStepIndex < prepareCacheIndex &&
+      prepareCacheIndex < podsInstallIndex &&
       recordCacheIndex > prepareCacheIndex &&
       podsInstallIndex < buildStepIndex &&
       recordCacheIndex < buildStepIndex &&
@@ -190,11 +190,11 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
   assert.match(cacheStateRecorder, /privacy_manifest_input_sha256=/);
   assert.match(manifestStep, /detox-derived-data-cache\.mjs write/);
   assert.match(manifestStep, /EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256/);
-  assert.doesNotMatch(pods, /if:/);
+  assert.match(pods, /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/);
   assert.match(buildStep, /app_reusable != 'true'/);
 
   assert.match(profileCache, /uses: actions\/cache@[0-9a-f]{40}/);
-  assert.equal(profileCache.match(/orot-detox-deriveddata-v7-/g)?.length, 2);
+  assert.equal(profileCache.match(/orot-detox-deriveddata-v8-/g)?.length, 2);
   assert.match(profileCache, /inputs\.profile == 'release'.*inputs\.profile == 'transcription'/s);
   assert.match(
     profileCache,
@@ -204,6 +204,8 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
     profileCache,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/,
   );
+  assert.match(profileCache, /~\/Library\/Detox\/ios\/framework/);
+  assert.match(profileCache, /~\/Library\/Detox\/ios\/xcuitest-runner/);
   assert.match(
     profileCache,
     /native-\$\{\{ steps\.detox_cache_fingerprint\.outputs\.native_dependencies \}\}-build-/,

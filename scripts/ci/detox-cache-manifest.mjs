@@ -6,6 +6,27 @@ export const MANIFEST_FILENAME = '.orot-detox-cache.json';
 
 const FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
 
+// Pin every tool that can change a restored Simulator app or Detox runner output.
+export function getDetoxCacheToolchain() {
+  const toolchain = {
+    runnerOs: process.env.DETOX_CACHE_RUNNER_OS,
+    runnerArch: process.env.DETOX_CACHE_RUNNER_ARCH,
+    macosVersion: process.env.MACOS_VERSION || process.env.EXPECTED_MACOS_VERSION,
+    nodeVersion: process.env.EXPECTED_NODE_VERSION,
+    pnpmVersion: process.env.EXPECTED_PNPM_VERSION,
+    rubyVersion: process.env.EXPECTED_RUBY_VERSION,
+    cocoaPodsVersion: process.env.EXPECTED_COCOAPODS_VERSION,
+    xcodeVersion: process.env.EXPECTED_XCODE_VERSION,
+    iosSimulatorSdk: process.env.EXPECTED_IOS_SIMULATOR_SDK,
+  };
+  const missing = Object.entries(toolchain)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missing.length > 0)
+    throw new Error(`Missing Detox cache toolchain values: ${missing.join(', ')}`);
+  return toolchain;
+}
+
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -114,7 +135,7 @@ export function inspectCacheManifest(readResult, expected) {
   }
   const previousProvenance = previous.cocoapodsInputProvenance;
   const expectedBaselineHashes = expected.cocoapodsInputProvenance?.baseline;
-  // Compare the cache's fingerprint-stage inputs while validating the recorded install outputs.
+  // The pre-install baseline defines compatibility; afterInstall records generated integration state.
   if (!isRecord(previousProvenance)) {
     mismatchFields.push('cocoapods_input_provenance');
   } else {
@@ -132,13 +153,6 @@ export function inspectCacheManifest(readResult, expected) {
     }
     if (!isCocoapodsInputHashPair(previousProvenance.afterInstall)) {
       mismatchFields.push('cocoapods_input_provenance.after_install_format');
-    } else if (
-      previous.profile !== 'production' &&
-      isCocoapodsInputHashPair(expectedBaselineHashes) &&
-      (previousProvenance.afterInstall.privacyManifest !== expectedBaselineHashes.privacyManifest ||
-        previousProvenance.afterInstall.projectFile !== expectedBaselineHashes.projectFile)
-    ) {
-      mismatchFields.push('cocoapods_input_provenance.after_install');
     }
   }
 

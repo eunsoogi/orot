@@ -93,8 +93,13 @@ test('reuses exact caches and clears only app outputs for dependency-compatible 
 
     assert.match(runCacheCommand(root, 'prepare'), /classification=invalidated/);
     assert.equal(existsSync(derivedData), false);
+    assert.equal(existsSync(join(root, 'detox-framework/framework')), false);
+    assert.equal(existsSync(join(root, 'detox-framework/xcuitest-runner')), false);
     assertPodsCodegenPreserved(podsCodegenOutput);
 
+    // The workflow restores or rebuilds these outputs before writing a new profile cache.
+    writeFixtureFile(root, 'detox-framework/framework/Detox.framework/Detox', 'framework-binary');
+    writeFixtureFile(root, 'detox-framework/xcuitest-runner/Runner.app/Runner', 'runner-binary');
     const debugData = join(root, 'apps/mobile/ios/build-detox-openai-provider');
     const debugTarget = join(
       debugData,

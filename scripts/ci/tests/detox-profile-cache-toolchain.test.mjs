@@ -20,7 +20,7 @@ function workflowStep(name) {
   return start < 0 ? '' : profileWorkflow.slice(start, end < 0 ? undefined : end);
 }
 
-test('installs CocoaPods once before fingerprinting the app cache', () => {
+test('installs CocoaPods only when the validated app cache cannot be reused', () => {
   const cachePreparation = profileWorkflow.indexOf(
     '- name: Prepare restored Detox DerivedData cache',
   );
@@ -45,10 +45,11 @@ test('installs CocoaPods once before fingerprinting the app cache', () => {
   const fingerprintIndex = profileWorkflow.indexOf(
     '- name: Compute stable Detox cache fingerprints',
   );
-  assert.ok(rubyIndex >= 0 && cocoapodsIndex > rubyIndex && nativePodsIndex > cocoapodsIndex);
-  assert.ok(nativePodsIndex < fingerprintIndex && fingerprintIndex < cachePreparation);
-  assert.doesNotMatch(rubySetup, needsNativeBuild);
-  assert.doesNotMatch(cocoapodsSetup, needsNativeBuild);
+  assert.ok(fingerprintIndex < cachePreparation && cachePreparation < rubyIndex);
+  assert.ok(rubyIndex < cocoapodsIndex && cocoapodsIndex < nativePodsIndex);
+  assert.match(rubySetup, needsNativeBuild);
+  assert.match(cocoapodsSetup, needsNativeBuild);
+  assert.match(nativePods, needsNativeBuild);
   assert.match(cacheRecord, /RUBY_VERSION: \$\{\{ env\.EXPECTED_RUBY_VERSION \}\}/);
   assert.match(cacheRecord, /COCOAPODS_VERSION: \$\{\{ env\.EXPECTED_COCOAPODS_VERSION \}\}/);
   assert.match(cacheStateRecorder, /expected_ruby=/);

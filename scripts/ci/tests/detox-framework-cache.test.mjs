@@ -46,7 +46,7 @@ test('records the Detox framework cache decision with other CI cache evidence', 
 
   assert.match(
     record,
-    /DETOX_FRAMEWORK_CACHE_HIT: \$\{\{ steps\.detox_framework_cache\.outputs\.cache-hit \}\}/,
+    /DETOX_FRAMEWORK_CACHE_HIT: \$\{\{ steps\.prepare_derived_data_cache\.outputs\.detox_artifacts_reusable == 'true' \|\| steps\.detox_framework_cache\.outputs\.cache-hit == 'true' \}\}/,
   );
   assert.match(
     record,

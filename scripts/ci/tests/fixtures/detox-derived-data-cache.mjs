@@ -74,6 +74,7 @@ export function runCacheCommand(root, command, profile = 'release', environment 
       GITHUB_ACTIONS: 'true',
       GITHUB_ENV: '',
       PATH: join(root, 'bin') + ':' + (environment.PATH ?? process.env.PATH),
+      OROT_DETOX_FRAMEWORK_CACHE_ROOT: join(root, 'detox-framework'),
       ...environment,
     },
     encoding: 'utf8',
@@ -209,6 +210,8 @@ export function createFixtureRepository() {
     };`,
   );
   installIosAppTools(root);
+  writeFixtureFile(root, 'detox-framework/framework/Detox.framework/Detox', 'framework-binary');
+  writeFixtureFile(root, 'detox-framework/xcuitest-runner/Runner.app/Runner', 'runner-binary');
   git(root, 'add', '--all');
   git(
     root,

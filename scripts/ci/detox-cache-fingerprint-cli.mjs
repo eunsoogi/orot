@@ -78,7 +78,7 @@ function main() {
 
   const fingerprints = computeFingerprints(mode);
   writeGitHubOutputs(outputPath, fingerprints);
-  // Only post-Pods fingerprints may set expectations for generated project inputs.
+  // Capture source input hashes before Pods can rewrite its tracked integration files.
   if (mode !== '--cocoapods-cache-inputs-only') {
     writeGitHubEnvironment(process.env.GITHUB_ENV, fingerprints);
   }

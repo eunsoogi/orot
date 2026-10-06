@@ -97,8 +97,8 @@ test('keeps cache misses on the existing build path and preserves every Detox or
   const cacheIndex = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const prepareIndex = profileWorkflow.indexOf('- name: Prepare restored Detox DerivedData cache');
   const podsIndex = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  assert.ok(podsIndex >= 0 && fingerprintIndex > podsIndex && cacheIndex > fingerprintIndex);
-  assert.ok(prepareIndex > cacheIndex);
+  assert.ok(podsIndex >= 0 && fingerprintIndex < cacheIndex && cacheIndex < prepareIndex);
+  assert.ok(prepareIndex < podsIndex);
   assert.match(
     cache,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/\.orot-detox-cache\.json/,
@@ -107,8 +107,10 @@ test('keeps cache misses on the existing build path and preserves every Detox or
     cache,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/,
   );
+  assert.match(cache, /~\/Library\/Detox\/ios\/framework/);
+  assert.match(cache, /~\/Library\/Detox\/ios\/xcuitest-runner/);
   assert.doesNotMatch(cache, /Build\/Intermediates|Index\.noIndex|Logs/);
-  assert.doesNotMatch(pods, /if:/);
+  assert.match(pods, /app_reusable != 'true'/);
   assert.match(build, /app_reusable != 'true'/);
   assert.match(testRun, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
   for (const name of [

@@ -130,6 +130,7 @@ export function recordPreparedDetoxBuildInputs(
     return;
   }
   const fingerprints = readExpectedFingerprints();
+  // Snapshot the pre-install source hashes before the optional Pods step can generate integration files.
   assertCocoapodsInputHashesEqual(
     readCocoapodsInputHashes(repositoryRoot),
     baseline,
@@ -176,7 +177,8 @@ export function verifyDetoxBuildInputs(repositoryRoot, profile) {
   assertCocoapodsInputHashesEqual(snapshot.baseline, baseline, 'after cache preparation');
   assertFingerprintsEqual(snapshot.fingerprints, fingerprints, 'after cache preparation');
 
-  // The diff may contain only the two tracked files CocoaPods integrates.
+  // Pods may rewrite only these integration files; fingerprint the pre-install source baseline and
+  // retain their post-install hashes separately so an exact app hit can skip Pods next time.
   rejectUnexpectedBuildInputChanges(repositoryRoot, 'after CocoaPods install');
   const current = computeFingerprints(repositoryRoot, baseline);
   assertFingerprintsEqual(current, fingerprints, 'after CocoaPods install');
