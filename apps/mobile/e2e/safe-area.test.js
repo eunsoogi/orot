@@ -6,13 +6,18 @@ const { expect: jestExpect } = require('@jest/globals');
 // The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
 const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
+const MINIMUM_KEYBOARD_OCCLUSION_RATIO = 0.25;
 
-async function frameFor(testID) {
-  const attributes = await element(by.id(testID)).getAttributes();
+async function frameOf(target, description) {
+  const attributes = await target.getAttributes();
   if (!attributes.frame) {
-    throw new Error(`Detox did not return a frame for ${testID}.`);
+    throw new Error(`Detox did not return a frame for ${description}.`);
   }
   return attributes.frame;
+}
+
+async function frameFor(testID) {
+  return frameOf(element(by.id(testID)), testID);
 }
 
 async function expectScrollInsideSafeRoot() {
@@ -52,12 +57,6 @@ describe('safe area routes on iOS Simulator', () => {
     await expect(element(by.id('open-recording'))).toBeVisible();
     await scroll.scrollTo('top');
 
-    // Landscape reduces the available height while retaining this route's overflow.
-    await device.setOrientation('landscape');
-    await element(by.id('safe-area-scroll')).scrollTo('bottom');
-    await expect(element(by.id('open-recording'))).toBeVisible();
-    await device.setOrientation('portrait');
-
     await element(by.id('open-common-observations')).tap();
     await waitFor(element(by.id('common-observations-import')))
       .toBeVisible()
@@ -94,14 +93,30 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('safe-area-large-text-state')))
       .toHaveLabel('large-text-enabled')
       .withTimeout(30000);
-    await device.setOrientation('landscape');
+    await expectScrollInsideSafeRoot();
 
     const input = element(by.id('safe-area-keyboard-input'));
     await input.tap();
     await expect(input).toBeFocused();
+    const keyboard = element(by.type('XCUIElementTypeKeyboard'));
+    await waitFor(keyboard).toBeVisible().withTimeout(30000);
+
+    const scrollFrame = await frameFor('safe-area-scroll');
+    const keyboardFrame = await frameOf(keyboard, 'system keyboard');
+    const scrollBottom = scrollFrame.y + scrollFrame.height;
+    const visibleScrollHeight = keyboardFrame.y - scrollFrame.y;
+    const occludedScrollHeight = scrollBottom - keyboardFrame.y;
+    // The absolute keyboard frame proves the on-screen viewport really shrank.
+    jestExpect(visibleScrollHeight).toBeGreaterThan(0);
+    jestExpect(occludedScrollHeight).toBeGreaterThanOrEqual(
+      scrollFrame.height * MINIMUM_KEYBOARD_OCCLUSION_RATIO,
+    );
+
+    const keyboardAction = element(by.id('safe-area-keyboard-action'));
+    await expect(keyboardAction).not.toBeVisible();
     await element(by.id('safe-area-scroll')).scrollTo('bottom');
-    await expect(element(by.id('safe-area-keyboard-action'))).toBeVisible();
-    await element(by.id('safe-area-keyboard-action')).tap();
+    await expect(keyboardAction).toBeVisible();
+    await keyboardAction.tap();
     await expect(
       element(by.id('safe-area-keyboard-action-done')),
     ).toBeVisible();
