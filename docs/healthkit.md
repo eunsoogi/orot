@@ -34,7 +34,7 @@ Medication concept identifiers are exposed as opaque Base64 secure-coded HealthK
 
 Each observed component becomes a separate `HealthObservation` with its exact HealthKit start/end timestamp strings, source/device provenance, and an unreviewed state. HealthKit's shared snapshot reports the value in a canonical query unit; blood pressure is stored in mmHg. The source's original display unit is not available through HealthKit, so `value.sourceRepresentation` explicitly records that limitation rather than relabeling the normalized value as original. The query boundary does not expose a source creation timestamp, so imported records omit `recordedAt` instead of filling it with local ingestion time.
 
-The importer reports `readAuthorization=notObservable` through the query result contract. Callers remain responsible for requesting feature-scoped authorization before import. The importer does not write HealthKit data.
+Before querying, the importer requests feature-scoped HealthKit read authorization. HealthKit does not expose whether a read grant was made, so request completion remains `readAuthorization=notObservable`. The importer does not write HealthKit data.
 
 ## Simulator probe
 
@@ -78,7 +78,9 @@ pnpm exec detox test --config-path e2e/blood-pressure-probe.detox.config.js \
   --artifacts-location "$OROT_BLOOD_PRESSURE_ARTIFACTS_DIR"
 ```
 
-This probe runs the production blood-pressure importer against the native synthetic anchored-change fixture and the app's SQLCipher repository. The first launch verifies both component rows, commits the HealthKit cursor, and replays the fixture without duplicate writes. Detox then terminates and relaunches the app; the second launch reads the observations and cursor back from encrypted storage. This proves the synthetic persistence and process-restart path on the Simulator. It does not query real HealthKit samples: `productionQuery=notRun`, `productionSamples=unverified`, and personal values are withheld. Read authorization remains `notObservable`, and the probe performs no HealthKit writes. The imported canonical pressure values are in mmHg; preserve a source-provided original pair when authoritative, and otherwise store and display the unavailable state.
+The current probe starts from a fresh install, imports one synthetic correlation through the visible blood-pressure screen, and reads the resulting observations through the app's local observation loader. It checks the displayed systolic/diastolic values, time, source, unavailable original pair, and `readAuthorization=notObservable`; its log reports `sqlCipher=available`. This flow does not replay changes, inspect the stored cursor, or restart the app to verify persistence across process restarts. Focused blood-pressure tests cover replay, deletion, and cursor transactions.
+
+Attempt 16 separately verified encrypted row and cursor readback after a process restart on its earlier source revision. The blood-pressure authorization code and native storage build inputs changed afterward, so that run is historical evidence and does not establish process-restart persistence for the current revision. The current probe does not query real HealthKit samples: `productionQuery=notRun`, `productionSamples=unverified`, and personal values are withheld. It performs no HealthKit writes. The imported canonical pressure values are in mmHg; preserve an original pair only when the source explicitly provides an authoritative pair, and otherwise store and display the unavailable state.
 
 ### Sleep probe
 

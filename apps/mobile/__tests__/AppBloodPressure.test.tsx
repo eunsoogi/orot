@@ -15,7 +15,7 @@ jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
 }));
 
-// Native window insets and the real HealthKit account are covered by Simulator proof.
+// Detox covers this route with a synthetic HealthKit fixture; no real account is read.
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
