@@ -113,12 +113,13 @@ async function cleanupTranscriptEvidenceIfPresent() {
 }
 
 async function verifyRecordingExportLifecycle(device) {
+  // The simulator hook closes UIKit's real share sheet programmatically and supplies a synthetic cancel result; it does not tap the user's cancel control.
   const transcriptExport = element(by.id('recording-export-transcript'));
   await scrollToTranscriptControl(transcriptExport);
-  await waitFor(element(by.id('recording-export-arm-cancel')))
+  await waitFor(element(by.id('recording-export-arm-simulated-cancel')))
     .toBeVisible()
     .withTimeout(30000);
-  await element(by.id('recording-export-arm-cancel')).tap();
+  await element(by.id('recording-export-arm-simulated-cancel')).tap();
   await transcriptExport.tap();
   const exportStatus = element(by.id('recording-export-status'));
   await waitFor(exportStatus)
@@ -146,7 +147,7 @@ async function verifyRecordingExportLifecycle(device) {
     .withTimeout(30000);
   const audioExport = element(by.id('recording-export-audio'));
   await waitFor(audioExport).toExist().withTimeout(30000);
-  await element(by.id('recording-export-arm-cancel')).tap();
+  await element(by.id('recording-export-arm-simulated-cancel')).tap();
   await scrollToTranscriptControl(audioExport);
   await audioExport.tap();
   await waitFor(element(by.id('recording-export-status')))

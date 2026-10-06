@@ -145,8 +145,8 @@ export function TranscriptEvidenceProbe() {
       />
       <Button
         onPress={armExportCancellation}
-        testID="recording-export-arm-cancel"
-        title="Cancel next export in UIKit"
+        testID="recording-export-arm-simulated-cancel"
+        title="Simulate export cancellation"
       />
       <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
       <Text testID="transcript-evidence-correction-status">

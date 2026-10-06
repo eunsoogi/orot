@@ -18,7 +18,7 @@ public extension RecordingModule {
                 let operation = try RecordingExportFiles.audioCopy(recordingID: recordingID)
                 self.presentExport(
                     operation,
-                    cancelAfterPresentation: RecordingExportFiles.consumeSimulatorCancellation(),
+                    simulateCancellationAfterPresentation: RecordingExportFiles.consumeSimulatorCancellation(),
                     resolve: resolve,
                     reject: reject,
                 )
@@ -47,7 +47,7 @@ public extension RecordingModule {
                 let operation = try RecordingExportFiles.transcriptFile(text: text)
                 self.presentExport(
                     operation,
-                    cancelAfterPresentation: RecordingExportFiles.consumeSimulatorCancellation(),
+                    simulateCancellationAfterPresentation: RecordingExportFiles.consumeSimulatorCancellation(),
                     resolve: resolve,
                     reject: reject,
                 )
@@ -63,7 +63,7 @@ public extension RecordingModule {
 
     private func presentExport(
         _ operation: RecordingExportOperation,
-        cancelAfterPresentation: Bool,
+        simulateCancellationAfterPresentation: Bool,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock,
     ) {
@@ -78,7 +78,7 @@ public extension RecordingModule {
                 applicationActivities: nil,
             )
             // UIKit distinguishes a user cancel from an activity failure; always remove the temporary copy after dismissal.
-            activity.completionWithItemsHandler = { _, completed, _, error in
+            let completeExport: (Bool, Error?) -> Void = { completed, error in
                 RecordingExportFiles.finish(operation.directory)
                 if let error {
                     reject("RECORDING_EXPORT_FAILED", "The selected export activity failed.", error as NSError)
@@ -86,6 +86,9 @@ public extension RecordingModule {
                 }
                 // React Native forwards this promise value as-is; the JavaScript bridge expects a status string.
                 resolve(completed ? "completed" : "cancelled")
+            }
+            activity.completionWithItemsHandler = { _, completed, _, error in
+                completeExport(completed, error)
             }
             if let popover = activity.popoverPresentationController {
                 popover.sourceView = presenter.view
@@ -102,10 +105,13 @@ public extension RecordingModule {
                     reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
                     return
                 }
-                if cancelAfterPresentation {
-                    // The Simulator probe dismisses the real activity controller to exercise its cancel callback.
+                if simulateCancellationAfterPresentation {
                     DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)) {
-                        activity.dismiss(animated: true)
+                        // Programmatic dismissal is synthetic, so pass its cancelled result through the app's cleanup and bridge path explicitly.
+                        activity.completionWithItemsHandler = nil
+                        activity.dismiss(animated: true) {
+                            completeExport(false, nil)
+                        }
                     }
                 }
             }
