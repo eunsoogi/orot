@@ -25,7 +25,7 @@ function dateFacts(text: string): DateFact[] {
   return facts;
 }
 
-function normalizeNumericFact(value: string): string {
+function normalizeNumericValue(value: string): string {
   const normalized = value.includes(',')
     ? /^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/u.test(value)
       ? value.replaceAll(',', '')
@@ -35,10 +35,35 @@ function normalizeNumericFact(value: string): string {
   return Number.isFinite(numeric) ? numeric.toString() : normalized;
 }
 
+const NUMERIC_FACT_PATTERN =
+  /(?<![\d.,])([+\-−]?\d+(?:[.,]\d+)?(?:\s*\/\s*[+\-−]?\d+(?:[.,]\d+)?)?)(?:\s*(mmol\s*\/\s*l|mg\s*\/\s*(?:dl|kg|day|d)|ml\s*\/\s*day|mmhg|mcg|μg|µg|mg|kg|g|ml|l|cm|mm|°c|°f|℃|%|개월|시간|분|초|회|정|알|개|번|주|일|년|월))?(?![\d.,])/giu;
+
 function numericFacts(text: string): Set<string> {
+  // Dates and clock values are separate facts; their components cannot authorize measurements.
+  const withoutDates = text
+    .replace(
+      /(?<!\d)(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})/giu,
+      ' ',
+    )
+    .replace(/(?<![\d.,])\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?![\d.,])/gu, ' ')
+    .replace(
+      /(?<!\d)((?:19|20)\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.](0?[1-9]|[12]\d|3[01]))?(?!\d)/gu,
+      ' ',
+    )
+    .replace(
+      /(?<!\d)((?:19|20)\d{2})\s*년\s*(0?[1-9]|1[0-2])\s*월(?:\s*(0?[1-9]|[12]\d|3[01])\s*일)?/gu,
+      ' ',
+    );
   return new Set(
-    [...text.matchAll(/(?<![\d.,])\d+(?:[.,]\d+)?/gu)].map(match =>
-      normalizeNumericFact(match[0]),
+    [...withoutDates.matchAll(NUMERIC_FACT_PATTERN)].map(
+      ([, expression, unit]) => {
+        const normalizedExpression = expression!
+          .replaceAll('−', '-')
+          .split('/')
+          .map(value => normalizeNumericValue(value.trim()))
+          .join('/');
+        return `${normalizedExpression}\u0000${(unit ?? '').replaceAll(/\s+/gu, '').toLowerCase()}`;
+      },
     ),
   );
 }

@@ -35,6 +35,43 @@ export function visitQuestionEvidenceIdentityKey(
   ].join('\u0000');
 }
 
+// Local aliases cannot protect IDs that remain inside JSON record content.
+function removeIdentifierFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(removeIdentifierFields);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(
+        ([key]) =>
+          !/^(?:id|ids|identifier|identifiers|key|keys)$/iu.test(key) &&
+          !/(?:Id|Ids|ID|IDs|Identifier|Identifiers|Key|Keys)$/u.test(key),
+      )
+      .map(([key, entry]) => [key, removeIdentifierFields(entry)]),
+  );
+}
+
+function providerEvidenceContent(content: string): string {
+  const separator = content.indexOf(': ');
+  const trimmedContent = content.trimStart();
+  const rawJson =
+    separator < 0 &&
+    (trimmedContent.startsWith('{') || trimmedContent.startsWith('['));
+  if (separator < 0 && !rawJson) return content;
+  const kind = rawJson ? '' : content.slice(0, separator);
+  const body = rawJson ? content : content.slice(separator + 2);
+  if (!body.trimStart().startsWith('{') && !body.trimStart().startsWith('['))
+    return content;
+  try {
+    // Structured chunks are JSON; malformed structured content fails closed instead of leaking raw fields.
+    const sanitized = JSON.stringify(removeIdentifierFields(JSON.parse(body)));
+    return kind ? `${kind}: ${sanitized}` : sanitized;
+  } catch {
+    return kind
+      ? `${kind}: [structured evidence unavailable]`
+      : '[structured evidence unavailable]';
+  }
+}
+
 /** Replaces storage identifiers and locators before a shared runtime builds provider messages. */
 export function createVisitQuestionEvidenceAliases(
   original: VisitQuestionEvidenceBatch,
@@ -87,6 +124,7 @@ export function createVisitQuestionEvidenceAliases(
         evidenceId: evidenceAlias,
         evidenceRevision: `evidence-revision-${nextEvidenceIndex}`,
         locator: { kind: 'opaque_evidence_reference', id: evidenceAlias },
+        content: providerEvidenceContent(item.content),
       };
       aliasToOriginal.set(visitQuestionEvidenceIdentityKey(alias), item);
       originalToAlias.set(originalKey, alias);

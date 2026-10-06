@@ -20,7 +20,7 @@ export interface VisitQuestionEvidenceCollection {
     'available' | 'no_matching_current_memory' | 'local_memory_unavailable';
 }
 
-function hasConflictingHealthObservations(
+export function hasConflictingHealthObservations(
   values: readonly {
     readonly metadata: VisitQuestionEvidenceMetadata;
   }[],
@@ -61,6 +61,10 @@ export async function createVisitQuestionEvidenceCollection(input: {
   readonly recordResultLimit: number;
   readonly transcriptResultLimit: number;
   readonly memoryResultLimit: number;
+  // These flags are set only when a bounded lookahead confirms more results.
+  readonly recordSearchTruncated?: boolean;
+  readonly transcriptSearchTruncated?: boolean;
+  readonly memorySearchTruncated?: boolean;
   readonly maxEvidenceItems: number;
 }): Promise<VisitQuestionEvidenceCollection> {
   if (
@@ -144,8 +148,8 @@ export async function createVisitQuestionEvidenceCollection(input: {
           // A completed empty search is known absence, not an unsearched coverage gap.
           gaps: [],
           truncated:
-            input.recordHits.length >= input.recordResultLimit ||
-            input.transcriptHits.length >= input.transcriptResultLimit ||
+            input.recordSearchTruncated === true ||
+            input.transcriptSearchTruncated === true ||
             input.recordHits.length + input.transcriptHits.length >
               recordItems.length,
           resultLimit: input.recordResultLimit + input.transcriptResultLimit,
@@ -162,7 +166,8 @@ export async function createVisitQuestionEvidenceCollection(input: {
                 // A completed search with no matching memory is a known empty result, not a gap.
                 gaps: [],
                 truncated:
-                  (input.memoryHits?.length ?? 0) >= input.memoryResultLimit,
+                  input.memorySearchTruncated === true ||
+                  (input.memoryHits?.length ?? 0) > input.memoryResultLimit,
                 resultLimit: input.memoryResultLimit,
                 returnedCount: memoryItems.length,
               },

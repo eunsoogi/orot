@@ -77,18 +77,33 @@ export async function searchVisitQuestionEvidence(input: {
   const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
   let recordHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let transcriptHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
+  let recordSearchTruncated = false;
+  let transcriptSearchTruncated = false;
   const readReviewedMemory = async () => {
     try {
+      // One extra local result distinguishes a full page from an exact-size result.
+      const probeLimit = Math.min(
+        limits.memoryResultLimit + 1,
+        LOCAL_MEMORY_MAX_RESULTS,
+      );
       const memory = await input.queryService.searchMemory(
         input.query,
-        limits.memoryResultLimit,
+        probeLimit,
       );
       return {
-        hits: memory.hits,
+        hits: memory.hits.slice(0, limits.memoryResultLimit),
+        truncated:
+          memory.hits.length > limits.memoryResultLimit ||
+          (limits.memoryResultLimit === LOCAL_MEMORY_MAX_RESULTS &&
+            memory.hits.length >= LOCAL_MEMORY_MAX_RESULTS),
         unavailable: memory.status === 'local_memory_unavailable',
       };
     } catch {
-      return { hits: [] as readonly LocalMemoryHit[], unavailable: true };
+      return {
+        hits: [] as readonly LocalMemoryHit[],
+        truncated: false,
+        unavailable: true,
+      };
     }
   };
   let memoryPromise: ReturnType<typeof readReviewedMemory> | undefined;
@@ -108,20 +123,25 @@ export async function searchVisitQuestionEvidence(input: {
     const transcriptFilters: HybridSearchOptions = {
       filters: { recordTypes: ['transcript_segment'] },
     };
-    [recordHits, transcriptHits] = await Promise.all([
+    const [recordProbe, transcriptProbe] = await Promise.all([
       input.rag.search(
         input.query,
         chunks,
-        limits.recordResultLimit,
+        limits.recordResultLimit + 1,
         recordFilters,
       ),
       input.rag.search(
         input.query,
         chunks,
-        limits.transcriptResultLimit,
+        limits.transcriptResultLimit + 1,
         transcriptFilters,
       ),
     ]);
+    recordSearchTruncated = recordProbe.length > limits.recordResultLimit;
+    transcriptSearchTruncated =
+      transcriptProbe.length > limits.transcriptResultLimit;
+    recordHits = recordProbe.slice(0, limits.recordResultLimit);
+    transcriptHits = transcriptProbe.slice(0, limits.transcriptResultLimit);
   } else {
     memoryPromise = readReviewedMemory();
   }
@@ -129,7 +149,11 @@ export async function searchVisitQuestionEvidence(input: {
 
   const memoryResult = memoryPromise
     ? await memoryPromise
-    : { hits: [] as readonly LocalMemoryHit[], unavailable: true };
+    : {
+        hits: [] as readonly LocalMemoryHit[],
+        truncated: false,
+        unavailable: true,
+      };
   const memoryHits = memoryResult.hits;
   const memoryUnavailable = memoryResult.unavailable;
   const memoryWasQueried = sourceKind !== 'personal_record';
@@ -140,6 +164,9 @@ export async function searchVisitQuestionEvidence(input: {
     recordHits,
     transcriptHits,
     memoryHits,
+    recordSearchTruncated,
+    transcriptSearchTruncated,
+    memorySearchTruncated: memoryResult.truncated,
     memoryUnavailable,
     ...(memoryWasQueried && !memoryUnavailable
       ? { memorySearchQuery: input.query }

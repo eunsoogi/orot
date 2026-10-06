@@ -1,5 +1,7 @@
 import type { VisitQuestionEvidenceItem } from '../taskContract';
 import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
+import { DoseEventSchema } from '@orot/domain';
+import { chunkStructuredRecord } from '@orot/rag';
 
 function evidence(
   sourceId: string,
@@ -68,5 +70,56 @@ describe('visit-question evidence aliases', () => {
         conflicts: [],
       }).items,
     ).toEqual([...aliases.batch.items, ...laterBatch.items]);
+  });
+
+  it('removes structured record IDs from provider content and keeps the local citation', () => {
+    const doseEvent = DoseEventSchema.parse({
+      id: 'private-dose-event-id',
+      effectiveAt: '2026-09-01T12:00:00.000Z',
+      recordedAt: '2026-09-01T12:00:00.000Z',
+      ingestedAt: '2026-09-01T12:00:00.000Z',
+      provenance: {
+        origin: 'user_reported',
+        sourceRecordIds: ['private-source-record-id'],
+      },
+      reviewState: { status: 'unreviewed' },
+      eventKind: 'taken',
+      medicationAssertionId: 'private-medication-assertion-id',
+      dose: { amount: 5, unit: 'mg' },
+    });
+    const chunk = chunkStructuredRecord('dose_event', doseEvent);
+    const original = {
+      ...evidence('private-source-record-id', doseEvent.id),
+      content: chunk.text,
+    };
+    const aliases = createVisitQuestionEvidenceAliases({
+      items: [original],
+      coverage: [],
+      conflicts: [],
+    });
+    const providerItem = aliases.batch.items[0]!;
+
+    expect(providerItem.content).toContain('"dose":{"amount":5,"unit":"mg"}');
+    expect(providerItem.content).not.toContain('medicationAssertionId');
+    expect(providerItem.content).not.toContain(
+      'private-medication-assertion-id',
+    );
+    expect(aliases.originalOf(providerItem)).toEqual(original);
+
+    const rawJsonAliases = createVisitQuestionEvidenceAliases({
+      items: [
+        {
+          ...original,
+          content: JSON.stringify({
+            medicationAssertionId: 'private-medication-assertion-id',
+          }),
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    });
+    expect(rawJsonAliases.batch.items[0]?.content).not.toContain(
+      'private-medication-assertion-id',
+    );
   });
 });

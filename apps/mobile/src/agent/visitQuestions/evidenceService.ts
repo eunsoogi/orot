@@ -10,6 +10,7 @@ import {
 } from './evidenceRevalidation';
 import { localEvidenceFingerprint } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
+import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
 import {
   searchVisitQuestionEvidence,
@@ -119,6 +120,8 @@ export async function prepareVisitQuestionContext(input: {
   // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
   const evidence = { ...initialEvidence, metadataByCitation };
+  // A later search can reveal a conflict that was split across batches.
+  let hasMaterialConflict = initialEvidence.batch.conflicts.length > 0;
   const searchEvidence = async (
     searchQuery: string,
     maxEvidenceItems: number,
@@ -138,7 +141,23 @@ export async function prepareVisitQuestionContext(input: {
     for (const [key, metadata] of searched.metadataByCitation) {
       metadataByCitation.set(key, metadata);
     }
-    return searched;
+    hasMaterialConflict ||=
+      searched.batch.conflicts.length > 0 ||
+      hasConflictingHealthObservations(
+        [...metadataByCitation.values()].map(metadata => ({ metadata })),
+      );
+    return {
+      ...searched,
+      batch: {
+        ...searched.batch,
+        // Keep private record details out of the shared workflow's conflict notice.
+        conflicts: hasMaterialConflict
+          ? [
+              'Conflicting health observation values exist for the same concept and time.',
+            ]
+          : [],
+      },
+    };
   };
   const revalidateEvidence = createVisitQuestionEvidenceRevalidator({
     appointment,

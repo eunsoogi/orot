@@ -146,7 +146,7 @@ describe('preparing the next visit-question context', () => {
     ]);
     expect(dependencies.queryService.searchMemory).toHaveBeenCalledWith(
       expect.any(String),
-      2,
+      3,
     );
     expect(dependencies.order).toEqual([
       'index',
@@ -158,7 +158,7 @@ describe('preparing the next visit-question context', () => {
       1,
       expect.any(String),
       [chunk],
-      4,
+      5,
       {
         filters: {
           recordTypes: [
@@ -189,7 +189,7 @@ describe('preparing the next visit-question context', () => {
       2,
       expect.any(String),
       [chunk],
-      2,
+      3,
       { filters: { recordTypes: ['transcript_segment'] } },
     );
   });

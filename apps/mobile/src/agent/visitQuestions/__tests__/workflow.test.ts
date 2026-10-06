@@ -61,6 +61,40 @@ describe('visit-question shared workflow', () => {
     expect(JSON.stringify(requests)).not.toContain('private-span-');
   });
 
+  it('asks for clarification when supplemental evidence reveals a conflict', async () => {
+    const prepared = preparedContext();
+    const preparedWithConflict = {
+      ...prepared,
+      searchEvidence: async (
+        ...args: Parameters<typeof prepared.searchEvidence>
+      ) => {
+        const supplemental = await prepared.searchEvidence(...args);
+        return {
+          ...supplemental,
+          batch: {
+            ...supplemental.batch,
+            conflicts: ['Conflicting health observation values exist.'],
+          },
+        };
+      },
+    };
+    const { provider } = makeProvider(
+      successfulOutputs(
+        prepared.initialEvidence,
+        prepared.supplementalEvidence,
+      ),
+    );
+    const { selection, option } = selectedOption(provider, 'on-device');
+
+    const result = await runVisitQuestionWorkflow({
+      prepared: preparedWithConflict,
+      selection,
+      providerOptions: [option],
+    });
+
+    expect(result.status).toBe('needs_clarification');
+  });
+
   it('does not call the selected provider when remote payload consent is declined', async () => {
     const prepared = preparedContext();
     const { provider, requests } = makeProvider([
