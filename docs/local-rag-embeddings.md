@@ -14,7 +14,7 @@ The issue-specific SQLCipher/FTS probe uses synthetic chunks and a dedicated app
 
 ```sh
 pnpm exec detox build --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid
-pnpm exec detox test --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid --no-start
+pnpm exec detox test --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid --no-start --headless
 ```
 
 The probe checks SQLCipher and FTS5 on the native connection, removes one synthetic vector to prove lexical-only retrieval, checks a vector-only E5 result, verifies the requested filters and evidence locators, and confirms that the temporary FTS table is gone after each search. It then relaunches the app and repeats both searches without re-indexing, so the vector result comes from the persisted SQLCipher row.
