@@ -21,6 +21,7 @@ import {
   isDatabaseKeyBackupEligible,
   migrateDatabaseKeyForBackup,
 } from '../backup/nativeBackupMigration';
+import { formatStorageOpenDiagnostic } from './storageDiagnostics';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
@@ -127,11 +128,10 @@ export function openLocalStorage(): Promise<RecordRepository> {
     })().catch(error => {
       // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.
       if (shouldLogStorageDiagnostics()) {
-        const detail =
-          error instanceof Error
-            ? `${error.name}: ${error.message}`
-            : 'Unknown error';
-        console.error('Encrypted storage open failed:', detail);
+        console.error(
+          'Encrypted storage open failed:',
+          formatStorageOpenDiagnostic(error),
+        );
       }
       opening = null;
       database = null;
