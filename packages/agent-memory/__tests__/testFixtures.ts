@@ -7,6 +7,7 @@ import type {
 export class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
   private readonly records = new Map<string, PersistedMemoryRecord>();
   private removedSourceIds = new Set<string>();
+  readonly invalidatedSourceIds = new Set<string>();
   private pending: {
     readonly writes: Map<string, PersistedMemoryRecord | null>;
     readonly removedSourceIds: Set<string>;
@@ -19,12 +20,18 @@ export class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
 
   async listRecords(): Promise<PersistedMemoryRecord[]> {
     return [...this.records.values()].filter(
-      (record) => !referencesRemovedSource(record, this.removedSourceIds),
+      (record) =>
+        !referencesRemovedSource(record, this.removedSourceIds) &&
+        !referencesRemovedSource(record, this.invalidatedSourceIds),
     );
   }
 
   async listRemovedSourceIds(): Promise<string[]> {
     return [...this.removedSourceIds];
+  }
+
+  async listInvalidatedSourceIds(): Promise<string[]> {
+    return [...this.invalidatedSourceIds];
   }
 
   async append(record: PersistedMemoryRecord): Promise<void> {
@@ -48,8 +55,11 @@ export class PersistentMemoryStorage implements AgentMemoryStorageAdapter {
   async compact(records: PersistedMemoryRecord[]): Promise<void> {
     if (this.pending) throw new Error('Cannot compact during a write batch.');
     for (const record of records) assertNoRemovedSourceReference(record, this.removedSourceIds);
+    const currentRecords = records.filter(
+      (record) => !referencesRemovedSource(record, this.invalidatedSourceIds),
+    );
     this.records.clear();
-    for (const record of records) this.records.set(record.id, record);
+    for (const record of currentRecords) this.records.set(record.id, record);
   }
 
   beginBatch(): void {

@@ -65,6 +65,10 @@ export const ko = {
   'recording.transcript.review.unreviewed': '검토 전 초안',
   'recording.transcript.review.needsReview': '수정됨 · 다시 확인 필요',
   'recording.transcript.review.reviewed': '검토됨',
+  'recording.transcript.origin.machine': '기계 전사',
+  'recording.transcript.origin.userCorrection': '사용자 수정',
+  'recording.transcript.verification.clinicianNotRecorded':
+    '의료진 확인 기록 없음',
   'recording.transcript.edit': '수정',
   'recording.transcript.input.label': '전사 내용',
   'recording.transcript.save': '수정 저장',
