@@ -428,6 +428,8 @@ Run [37503657957](https://github.com/eunsoogi/orot/actions/runs/37503657957) pas
 
 All three profiles hit the Detox framework and CocoaPods-intermediate caches. React Native artifact archives missed, and each DerivedData cache was classified `miss` with `reason=derived_data_absent` and `app_reusable=false`; each successful native build then wrote a matching manifest.
 
+After main was merged at `fc1fd84`, a local `--derived-data-only` fingerprint read on the integrated tree reported build-input SHA `c423a14e` and native-dependency SHA `100f5744` across 590 tracked inputs. Run 37503657957 recorded `1fda1a10` and `a1a48c87` respectively. The old run's app cache therefore does not establish reuse for the integrated sources; this local comparison predicts input drift, while the integrated hosted cache classification remains to be observed.
+
 | Profile | Native app build | E2E step | Result |
 | ------- | ---------------: | -------: | ------ |
 | Release | 435s | 284s | 8/8 passed |
