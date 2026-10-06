@@ -7,6 +7,22 @@ export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';
 export type { RecordRepository, RecordWriter } from './repository';
+export { createLocalRecordQueryRepository } from './localQueries';
+export {
+  DEFAULT_LOCAL_QUERY_ROWS,
+  LOCAL_OBSERVATION_QUERY_TYPES,
+  MAX_LOCAL_QUERY_RANGE_MS,
+  MAX_LOCAL_QUERY_ROWS,
+} from './localQueryContracts';
+export type {
+  LocalMedicationDefinitionQueryResult,
+  LocalObservationQueryType,
+  LocalQueryResult,
+  LocalQueryWindow,
+  LocalRecordQueryRepository,
+  NextCalendarAppointmentResult,
+  TranscriptQueryResult,
+} from './localQueryContracts';
 export type { StaleTranscriptArtifact, TranscriptEvidenceRepository } from './transcriptEvidence';
 export { createAppointmentRepository } from './appointments';
 export type { Appointment } from '@orot/domain';

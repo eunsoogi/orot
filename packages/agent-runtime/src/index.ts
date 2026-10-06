@@ -1,5 +1,13 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph/web';
 export { createLanguageModelProviderGraph } from './modelProviderGraph';
+export {
+  createLocalRecordQueryService,
+  LOCAL_MEMORY_MAX_RESULTS,
+  LOCAL_OBSERVATION_QUERY_TYPES,
+  LOCAL_QUERY_MAX_RANGE_MS,
+  LOCAL_QUERY_MAX_ROWS,
+} from './localRecordQueryService';
+export { createLocalRecordQueryTools } from './localRecordQueryTools';
 export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
 export { runMultiAgentWorkflow } from './multiAgent/workflow';
 export type {
@@ -27,6 +35,21 @@ export type {
   TaskResultValidation,
 } from './multiAgent/contracts';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './multiAgent/contracts';
+
+export type {
+  LocalAppointmentQueryResult,
+  LocalMemoryHit,
+  LocalMemoryQueryResult,
+  LocalMemoryReader,
+  LocalMedicationQueryResult,
+  LocalObservationQueryType,
+  LocalQueryResult,
+  LocalQueryWindow,
+  LocalRecordQueryService,
+  LocalRecordQueryStorage,
+  LocalStaleTranscriptArtifact,
+  LocalTranscriptQueryResult,
+} from './localRecordQueryService';
 
 export type AgentGraphNode = 'increment' | 'double';
 
