@@ -1,4 +1,4 @@
-import type { LanguageModelRequest } from '@orot/model-runtime';
+import type { JsonObject, LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import { isSourceAllowed } from './evidence';
 import { callModel } from './modelCall';
@@ -7,7 +7,7 @@ import { decodeResearchPlan, consumeResponderResponse } from './responses';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
-import { utf8ByteLength } from './protocol';
+import { canonicalJson, utf8ByteLength } from './protocol';
 import { createSearchNodes } from './searchNodes';
 
 // These nodes implement the role handoff; search remains a selected deterministic tool call.
@@ -99,7 +99,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       options.request,
       state.evidenceNeed,
       options.execution.allowedScope,
-      options.tools.map(({ id, sourceKind }) => ({ id, sourceKind })),
+      options.tools,
       state.budget,
     );
     const outcome = await callModel(
@@ -110,23 +110,33 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       context.signal,
     );
     if (outcome.status !== 'response') return finishModelFailure(outcome);
-    const plan = decodeResearchPlan(outcome.response);
+    const plan = decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
     const tool = plan && options.tools.find((candidate) => candidate.id === plan.toolId);
+    let input: JsonObject | undefined;
+    try {
+      input = tool && plan ? tool.parseInput(plan.input) : undefined;
+    } catch {
+      input = undefined;
+    }
     if (
       !plan ||
       !tool ||
       plan.sourceKind !== tool.sourceKind ||
       !isSourceAllowed(options.execution.allowedScope, tool.sourceKind) ||
-      !plan.query.trim()
+      !input
     ) {
-      stop(context, 'The researcher selected an invalid or out-of-scope search.', 'invalid_output');
+      stop(
+        context,
+        'The researcher selected an invalid or out-of-scope tool input.',
+        'invalid_output',
+      );
       return completeState();
     }
-    if (utf8ByteLength(plan.query) > state.budget.maxPayloadBytes) {
-      stop(context, 'The researcher query exceeded the payload limit.', 'budget_exceeded');
+    if (utf8ByteLength(canonicalJson(input)) > state.budget.maxPayloadBytes) {
+      stop(context, 'The researcher tool input exceeded the payload limit.', 'budget_exceeded');
       return completeState();
     }
-    context.researchQuery = plan.query;
+    context.researchInput = input;
     return {
       phase: 'evidence_search' as const,
       selectedToolId: plan.toolId,

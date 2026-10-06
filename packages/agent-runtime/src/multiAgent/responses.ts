@@ -1,10 +1,12 @@
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
 import type { TaskResponderContract, TaskResponderInput } from './contracts';
 import {
+  canonicalJson,
   citationReferences,
   parseJsonOutput,
   parseResearchPlan,
   parseTaskOutput,
+  utf8ByteLength,
 } from './protocol';
 import type { ResearchPlan } from './protocol';
 import { completeState, stop } from './runtimeContext';
@@ -30,6 +32,10 @@ export function consumeResponderResponse<TResult>(
       'The selected model returned an incomplete or unsupported response.',
       'invalid_output',
     );
+    return completeState();
+  }
+  if (outputExceedsLimit(response, state.budget.maxPayloadBytes)) {
+    stop(context, 'The task responder output exceeded the payload limit.', 'budget_exceeded');
     return completeState();
   }
   let decoded;
@@ -89,12 +95,25 @@ export function consumeResponderResponse<TResult>(
   };
 }
 
-export function decodeResearchPlan(response: LanguageModelResponse): ResearchPlan | undefined {
+export function decodeResearchPlan(
+  response: LanguageModelResponse,
+  maxPayloadBytes: number,
+): ResearchPlan | undefined {
   if (response.finishReason !== 'complete' || response.toolCalls.length > 0) return undefined;
+  if (outputExceedsLimit(response, maxPayloadBytes)) return undefined;
   try {
     return parseResearchPlan(parseJsonOutput(response));
   } catch {
     return undefined;
+  }
+}
+
+function outputExceedsLimit(response: LanguageModelResponse, maxPayloadBytes: number): boolean {
+  if (utf8ByteLength(response.text) > maxPayloadBytes) return true;
+  try {
+    return utf8ByteLength(canonicalJson(parseJsonOutput(response))) > maxPayloadBytes;
+  } catch {
+    return false;
   }
 }
 

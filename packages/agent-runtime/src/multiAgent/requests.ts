@@ -1,6 +1,7 @@
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
 import type {
   AllowedEvidenceScope,
+  EvidenceSearchTool,
   EvidenceNeed,
   MultiAgentBudget,
   TaskResponderContract,
@@ -57,10 +58,9 @@ export function buildResearchRequest(
   request: string,
   need: EvidenceNeed,
   allowedScope: AllowedEvidenceScope,
-  tools: readonly { readonly id: string; readonly sourceKind: string }[],
+  tools: readonly EvidenceSearchTool[],
   budget: MultiAgentBudget,
 ): LanguageModelRequest {
-  const allowedKinds = [...new Set(tools.map((tool) => tool.sourceKind))];
   const body = researcherPrompt(request, need, tools, allowedScope, budget);
   const result: LanguageModelRequest = {
     messages: [
@@ -80,10 +80,7 @@ export function buildResearchRequest(
         ...result,
         responseFormat: {
           name: 'evidence_research_plan',
-          schema: researcherSchema(
-            tools.map((tool) => tool.id),
-            allowedKinds,
-          ),
+          schema: researcherSchema(tools),
         },
       }
     : result;

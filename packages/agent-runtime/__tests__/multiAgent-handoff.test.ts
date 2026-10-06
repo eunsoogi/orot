@@ -1,6 +1,7 @@
 import {
   providerFailure,
   providerSuccess,
+  type JsonObject,
   type LanguageModelProvider,
   type LanguageModelRequest,
 } from '@orot/model-runtime';
@@ -141,7 +142,20 @@ function makeOptions(
         id: 'local-record-search',
         sourceKind: 'personal_record',
         execution: 'local_read_only',
-        async search() {
+        description: 'Search selected local records for one bounded evidence need.',
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string', minLength: 1 } },
+          required: ['query'],
+          additionalProperties: false,
+        },
+        parseInput(value: unknown): JsonObject | undefined {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+          const query = (value as Record<string, unknown>).query;
+          return typeof query === 'string' && query.trim() ? { query: query.trim() } : undefined;
+        },
+        async search(request) {
+          expect(request.input.query).toBe('blood pressure from the latest visit');
           return completeEvidence;
         },
       },
@@ -165,7 +179,7 @@ describe('multi-agent handoff', () => {
       JSON.stringify({
         toolId: 'local-record-search',
         sourceKind: 'personal_record',
-        query: 'blood pressure from the latest visit',
+        input: { query: 'blood pressure from the latest visit' },
       }),
       JSON.stringify({
         type: 'result',
@@ -186,7 +200,7 @@ describe('multi-agent handoff', () => {
     expect(search.mock.calls[0][0]).toMatchObject({
       operationRunId: 'run-117-1',
       operationKey: 'tool-1',
-      query: 'blood pressure from the latest visit',
+      input: { query: 'blood pressure from the latest visit' },
     });
     expect(generate).toHaveBeenCalledTimes(3);
     expect(requests[0]?.responseFormat).toBeUndefined();

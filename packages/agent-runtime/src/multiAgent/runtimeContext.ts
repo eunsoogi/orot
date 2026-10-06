@@ -1,4 +1,4 @@
-import type { ProviderErrorCode } from '@orot/model-runtime';
+import type { JsonObject, ProviderErrorCode } from '@orot/model-runtime';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -29,7 +29,7 @@ export interface RuntimeContext<TResult> {
   readonly signal: AbortSignal;
   readonly timedOut: () => boolean;
   currentEvidence: EvidenceBatch;
-  researchQuery?: string;
+  researchInput?: JsonObject;
   outcome?: PrivateOutcome<TResult>;
 }
 

@@ -66,6 +66,16 @@ function cancellationOptions(
         id: 'local-record-search',
         sourceKind: 'personal_record',
         execution: 'local_read_only',
+        description: 'Search selected local records for a bounded evidence need.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+        parseInput(value: unknown) {
+          return value &&
+            typeof value === 'object' &&
+            !Array.isArray(value) &&
+            Object.keys(value).length === 0
+            ? {}
+            : undefined;
+        },
         async search() {
           return noEvidence;
         },

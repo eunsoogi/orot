@@ -10,6 +10,10 @@ export {
 export { createLocalRecordQueryTools } from './localRecordQueryTools';
 export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
 export { runMultiAgentWorkflow } from './multiAgent/workflow';
+export {
+  createLocalObservationEvidenceTool,
+  createLocalTranscriptEvidenceTool,
+} from './multiAgent/localQueryEvidence';
 export type {
   AllowedEvidenceScope,
   ConsentDecision,

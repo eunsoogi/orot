@@ -1,5 +1,6 @@
 import {
   providerSuccess,
+  type JsonObject,
   type LanguageModelProvider,
   type LanguageModelRequest,
 } from '@orot/model-runtime';
@@ -7,6 +8,7 @@ import {
   runMultiAgentWorkflow,
   type EvidenceBatch,
   type EvidenceReference,
+  type EvidenceSearchTool,
   type MultiAgentWorkflowOptions,
   type TaskResponderContract,
 } from '../src';
@@ -86,6 +88,27 @@ function providerFor(outputs: string[], structuredOutput = false) {
   return { provider, requests, generate };
 }
 
+function localRecordSearch(search: EvidenceSearchTool['search']): EvidenceSearchTool {
+  return {
+    id: 'local-record-search',
+    sourceKind: 'personal_record',
+    execution: 'local_read_only',
+    description: 'Search selected local records for one bounded evidence need.',
+    inputSchema: {
+      type: 'object',
+      properties: { query: { type: 'string', minLength: 1 } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    parseInput(value: unknown): JsonObject | undefined {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+      const query = (value as Record<string, unknown>).query;
+      return typeof query === 'string' && query.trim() ? { query: query.trim() } : undefined;
+    },
+    search,
+  };
+}
+
 function optionsFor(
   provider: LanguageModelProvider,
   overrides: Partial<MultiAgentWorkflowOptions> = {},
@@ -112,16 +135,7 @@ function optionsFor(
     request: 'Prepare synthetic visit questions.',
     task: responder(),
     initialEvidence: currentEvidence,
-    tools: [
-      {
-        id: 'local-record-search',
-        sourceKind: 'personal_record',
-        execution: 'local_read_only',
-        async search() {
-          return currentEvidence;
-        },
-      },
-    ],
+    tools: [localRecordSearch(async () => currentEvidence)],
     consent: { authorize: jest.fn(async () => 'authorized' as const) },
     revalidateEvidence: jest.fn(async () => true),
     ...overrides,
@@ -141,7 +155,7 @@ describe('multi-agent safety boundaries', () => {
       JSON.stringify({
         toolId: 'local-record-search',
         sourceKind: 'personal_record',
-        query: 'latest blood pressure',
+        input: { query: 'latest blood pressure' },
       }),
       validResult,
     ]);
@@ -190,7 +204,7 @@ describe('multi-agent safety boundaries', () => {
       JSON.stringify({
         toolId: 'local-record-search',
         sourceKind: 'personal_record',
-        query: 'latest blood pressure',
+        input: { query: 'latest blood pressure' },
       }),
       validResult,
     ]);
@@ -207,14 +221,7 @@ describe('multi-agent safety boundaries', () => {
     const search = jest.fn(async () => incomplete);
     const options = optionsFor(provider, {
       initialEvidence: { items: [], coverage: [], conflicts: [] },
-      tools: [
-        {
-          id: 'local-record-search',
-          sourceKind: 'personal_record',
-          execution: 'local_read_only',
-          search,
-        },
-      ],
+      tools: [localRecordSearch(search)],
     });
 
     const result = await runMultiAgentWorkflow(options);

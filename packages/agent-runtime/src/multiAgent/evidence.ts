@@ -47,18 +47,18 @@ function parseTime(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function validTimeRange(start: string, end: string): boolean {
-  const from = parseTime(start);
-  const through = parseTime(end);
-  return from !== null && through !== null && from <= through;
+function validTimeRange(fromInclusive: string, toExclusive: string): boolean {
+  const from = parseTime(fromInclusive);
+  const to = parseTime(toExclusive);
+  return from !== null && to !== null && from < to;
 }
 
 function isWithinRange(value: string | null, scope: AllowedEvidenceScope): boolean {
   if (!scope.timeRange) return true;
   const instant = parseTime(value ?? undefined);
-  const start = parseTime(scope.timeRange.start);
-  const end = parseTime(scope.timeRange.end);
-  return instant !== null && start !== null && end !== null && instant >= start && instant <= end;
+  const from = parseTime(scope.timeRange.fromInclusive);
+  const to = parseTime(scope.timeRange.toExclusive);
+  return instant !== null && from !== null && to !== null && instant >= from && instant < to;
 }
 
 export function validateEvidenceBatch(
@@ -110,7 +110,10 @@ export function validateEvidenceBatch(
     }
     if (
       coverage.requestedTimeRange &&
-      !validTimeRange(coverage.requestedTimeRange.start, coverage.requestedTimeRange.end)
+      !validTimeRange(
+        coverage.requestedTimeRange.fromInclusive,
+        coverage.requestedTimeRange.toExclusive,
+      )
     ) {
       return 'Evidence coverage contained an invalid requested time range.';
     }
@@ -121,13 +124,20 @@ export function validateEvidenceBatch(
       return 'Evidence coverage did not preserve the requested time range.';
     }
     if (coverage.coveredTimeRange) {
-      if (!validTimeRange(coverage.coveredTimeRange.start, coverage.coveredTimeRange.end)) {
+      if (
+        !validTimeRange(
+          coverage.coveredTimeRange.fromInclusive,
+          coverage.coveredTimeRange.toExclusive,
+        )
+      ) {
         return 'Evidence coverage contained an invalid covered time range.';
       }
       if (
         scope.timeRange &&
-        (Date.parse(coverage.coveredTimeRange.start) < Date.parse(scope.timeRange.start) ||
-          Date.parse(coverage.coveredTimeRange.end) > Date.parse(scope.timeRange.end))
+        (Date.parse(coverage.coveredTimeRange.fromInclusive) <
+          Date.parse(scope.timeRange.fromInclusive) ||
+          Date.parse(coverage.coveredTimeRange.toExclusive) >
+            Date.parse(scope.timeRange.toExclusive))
       ) {
         return 'Evidence coverage extended beyond the requested time range.';
       }

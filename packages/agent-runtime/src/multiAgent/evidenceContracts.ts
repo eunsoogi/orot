@@ -1,11 +1,12 @@
-import type { JsonValue, LanguageModelRequest } from '@orot/model-runtime';
+import type { JsonObject, JsonValue, LanguageModelRequest } from '@orot/model-runtime';
 
 export type EvidenceSourceKind = 'personal_record' | 'reviewed_memory' | 'external_medical';
 export type EvidenceNeed = 'missing_coverage' | 'verify_conflict' | 'confirm_value' | 'other';
 
+// Half-open bounds match LocalRecordQueryService so adapters pass time filters without widening.
 export interface EvidenceTimeRange {
-  readonly start: string;
-  readonly end: string;
+  readonly fromInclusive: string;
+  readonly toExclusive: string;
 }
 
 export interface AllowedEvidenceScope {
@@ -108,7 +109,7 @@ export interface ExecutionConsentPort {
 export interface EvidenceSearchRequest {
   readonly operationRunId: string;
   readonly operationKey: string;
-  readonly query: string;
+  readonly input: JsonObject;
   readonly allowedScope: AllowedEvidenceScope;
   readonly resultLimit: number;
   readonly maxPayloadBytes: number;
@@ -119,5 +120,8 @@ export interface EvidenceSearchTool {
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
   readonly execution: 'local_read_only';
+  readonly description: string;
+  readonly inputSchema: JsonObject;
+  parseInput(value: unknown): JsonObject | undefined;
   search(request: EvidenceSearchRequest): Promise<EvidenceBatch>;
 }

@@ -9,8 +9,9 @@ import { observeUntilAbort } from './modelCall';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
+import { canonicalJson, utf8ByteLength } from './protocol';
 
-// Search is a deterministic local read; the model only selects its allowlisted ID and query.
+// Search is a deterministic local read; the model only selects its allowlisted ID and typed input.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const { options } = context;
 
@@ -21,7 +22,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     }
     if (
       !state.selectedToolId ||
-      !context.researchQuery ||
+      !context.researchInput ||
       state.toolCalls >= state.budget.maxToolCalls
     ) {
       stop(context, 'The read-only evidence search could not be started.', 'budget_exceeded');
@@ -43,7 +44,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       return completeState();
     }
     const tool = options.tools.find((candidate) => candidate.id === state.selectedToolId);
-    if (!tool || !context.researchQuery || state.pendingOperation?.kind !== 'tool') {
+    if (!tool || !context.researchInput || state.pendingOperation?.kind !== 'tool') {
       stop(
         context,
         'The checkpoint did not contain a safe evidence-search handoff.',
@@ -57,7 +58,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         tool.search({
           operationRunId: options.execution.operationRunId,
           operationKey: state.pendingOperation.operationKey,
-          query: context.researchQuery,
+          input: context.researchInput,
           allowedScope: options.execution.allowedScope,
           resultLimit: state.budget.maxEvidenceItems,
           maxPayloadBytes: state.budget.maxPayloadBytes,
@@ -83,7 +84,12 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       canceled(context);
       return completeState();
     }
+    context.researchInput = undefined;
     const invalid = validateEvidenceBatch(batch, options.execution.allowedScope, state.budget);
+    if (utf8ByteLength(canonicalJson(batch)) > state.budget.maxPayloadBytes) {
+      stop(context, 'The evidence result exceeded the payload limit.', 'budget_exceeded');
+      return completeState();
+    }
     const prior = referencesFromBatch(context.currentEvidence);
     const next = referencesFromBatch(batch);
     if (

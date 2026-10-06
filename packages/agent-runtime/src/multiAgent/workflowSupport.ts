@@ -57,10 +57,10 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
         isSourceAllowed(execution.allowedScope, tool.sourceKind),
     ) &&
     (!execution.allowedScope.timeRange ||
-      (Number.isFinite(Date.parse(execution.allowedScope.timeRange.start)) &&
-        Number.isFinite(Date.parse(execution.allowedScope.timeRange.end)) &&
-        Date.parse(execution.allowedScope.timeRange.start) <=
-          Date.parse(execution.allowedScope.timeRange.end)))
+      (Number.isFinite(Date.parse(execution.allowedScope.timeRange.fromInclusive)) &&
+        Number.isFinite(Date.parse(execution.allowedScope.timeRange.toExclusive)) &&
+        Date.parse(execution.allowedScope.timeRange.fromInclusive) <
+          Date.parse(execution.allowedScope.timeRange.toExclusive)))
   );
 }
 

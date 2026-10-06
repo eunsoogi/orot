@@ -1,6 +1,7 @@
 import type {
   AllowedEvidenceScope,
   EvidenceBatch,
+  EvidenceSearchTool,
   EvidenceNeed,
   EvidenceReference,
   MultiAgentBudget,
@@ -17,7 +18,7 @@ export type TaskRoleOutput<TResult> =
 export interface ResearchPlan {
   readonly toolId: string;
   readonly sourceKind: string;
-  readonly query: string;
+  readonly input: JsonObject;
 }
 
 const EVIDENCE_NEEDS: readonly EvidenceNeed[] = [
@@ -66,19 +67,18 @@ export function taskResponseSchema<TResult>(contract: TaskResponderContract<TRes
   } as JsonObject;
 }
 
-export function researcherSchema(
-  toolIds: readonly string[],
-  sourceKinds: readonly string[],
-): JsonObject {
+export function researcherSchema(tools: readonly EvidenceSearchTool[]): JsonObject {
   return {
-    type: 'object',
-    additionalProperties: false,
-    required: ['toolId', 'sourceKind', 'query'],
-    properties: {
-      toolId: { enum: toolIds },
-      sourceKind: { enum: sourceKinds },
-      query: { type: 'string', minLength: 1 },
-    },
+    oneOf: tools.map((tool) => ({
+      type: 'object',
+      additionalProperties: false,
+      required: ['toolId', 'sourceKind', 'input'],
+      properties: {
+        toolId: { const: tool.id },
+        sourceKind: { const: tool.sourceKind },
+        input: tool.inputSchema,
+      },
+    })),
   } as JsonObject;
 }
 
@@ -107,14 +107,22 @@ export function parseResearchPlan(value: unknown): ResearchPlan | undefined {
   if (
     typeof plan.toolId !== 'string' ||
     typeof plan.sourceKind !== 'string' ||
-    typeof plan.query !== 'string' ||
-    !plan.query.trim()
+    !isJsonObject(plan.input)
   ) {
     return undefined;
   }
-  if (Object.keys(plan).some((key) => !['toolId', 'sourceKind', 'query'].includes(key)))
+  if (Object.keys(plan).some((key) => !['toolId', 'sourceKind', 'input'].includes(key)))
     return undefined;
-  return { toolId: plan.toolId, sourceKind: plan.sourceKind, query: plan.query.trim() };
+  return { toolId: plan.toolId, sourceKind: plan.sourceKind, input: plan.input };
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  try {
+    return JSON.stringify(value) !== undefined;
+  } catch {
+    return false;
+  }
 }
 
 export function citationReferences(
@@ -153,13 +161,13 @@ export function buildTaskMessages<TResult>(
 export function researcherPrompt(
   request: string,
   need: EvidenceNeed,
-  tools: readonly { readonly id: string; readonly sourceKind: string }[],
+  tools: readonly EvidenceSearchTool[],
   allowedScope: AllowedEvidenceScope,
   budget: MultiAgentBudget,
 ): string {
   return [
-    'Role: EvidenceResearcher. Choose one bounded, read-only evidence search for the TaskResponder.',
-    'Return JSON with toolId, sourceKind, and a short query. Do not answer the user task.',
+    'Role: EvidenceResearcher. Choose one bounded, read-only evidence tool and its schema-limited input.',
+    'Return JSON with toolId, sourceKind, and input. Do not answer the user task or invent fields.',
     `Need: ${need}`,
     `Task: ${request}`,
     `Allowed source scope: ${JSON.stringify(allowedScope)}`,
