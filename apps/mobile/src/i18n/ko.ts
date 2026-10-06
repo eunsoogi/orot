@@ -212,6 +212,7 @@ export const ko = {
   'provider.selection.chatGPTNoAccounts':
     'ChatGPT 계정을 연결하면 모델 목록을 확인할 수 있어요.',
   'provider.selection.chatGPTAccountSignedIn': '저장된 ChatGPT 계정이에요.',
+  'provider.selection.chatGPTAccountName': 'ChatGPT 계정 {accountNumber}',
   'provider.selection.chatGPTAccountSignedOut':
     '다시 로그인해야 사용할 수 있어요.',
   'provider.selection.chatGPTAccountMissingScope':
@@ -225,6 +226,16 @@ export const ko = {
   'provider.selection.chatGPTChecking': 'ChatGPT 계정 상태를 확인하고 있어요.',
   'provider.selection.chatGPTLoginSuccess':
     '로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.',
+  'provider.selection.chatGPTSignOutAccount':
+    'ChatGPT 계정 {accountNumber} 로그아웃',
+  'provider.selection.chatGPTSigningOut':
+    'ChatGPT 계정 {accountNumber} 로그아웃 중…',
+  'provider.selection.chatGPTSignOutRemoteConfirmed':
+    'ChatGPT 계정 {accountNumber}의 앱 저장 인증 정보를 삭제했고 갱신 토큰 폐기를 확인했어요. 브라우저 세션 상태는 확인되지 않아요.',
+  'provider.selection.chatGPTSignOutLocalOnly':
+    'ChatGPT 계정 {accountNumber}의 앱 저장 인증 정보를 삭제했어요. 원격 토큰 폐기는 확인되지 않아 서비스 로그인 상태는 알 수 없어요.',
+  'provider.selection.chatGPTSignOutFailed':
+    'ChatGPT 계정 {accountNumber} 로그아웃을 완료하지 못했어요. 앱 저장 인증 정보가 남아 있을 수 있어요. 다시 시도해 주세요.',
   'provider.selection.chatGPTModelsLoaded': 'ChatGPT 모델 목록을 확인했어요.',
   'provider.selection.chatGPTModelsUnavailable':
     'ChatGPT 모델 목록을 확인하지 못했어요. 로그인 상태와 권한을 확인해 주세요.',
