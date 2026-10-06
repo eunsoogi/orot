@@ -1,5 +1,6 @@
 #if DEBUG && targetEnvironment(simulator)
     import Foundation
+    import React
 
     /// Supplies in-memory records without writing samples into the HealthKit store.
     enum HealthKitSimulatorFixture {
@@ -132,6 +133,105 @@
                 result["doseUnit"] = doseUnit
             }
             return result
+        }
+    }
+
+    public extension HealthKitModule {
+        @objc(prepareSyntheticFixture:resolver:rejecter:)
+        func prepareSyntheticFixture(_ feature: String,
+                                     resolver resolve: @escaping RCTPromiseResolveBlock,
+                                     rejecter reject: @escaping RCTPromiseRejectBlock)
+        {
+            guard HealthKitBoundary.isSupported(feature) else {
+                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic HealthKit fixture feature is unsupported.", nil)
+                return
+            }
+            fixtureLock.lock()
+            syntheticFixtureFeatures = [feature]
+            fixtureLock.unlock()
+            resolve(["mode": "synthetic"] as NSDictionary)
+        }
+
+        @objc(prepareSyntheticFixtures:resolver:rejecter:)
+        func prepareSyntheticFixtures(_ features: [String],
+                                      resolver resolve: @escaping RCTPromiseResolveBlock,
+                                      rejecter reject: @escaping RCTPromiseRejectBlock)
+        {
+            guard let plan = HealthKitBatchAuthorization.plan(for: features),
+                  plan.unsupportedFeatures.isEmpty
+            else {
+                reject("UNSUPPORTED_FIXTURE_FEATURE", "Synthetic HealthKit fixture selection is unsupported.", nil)
+                return
+            }
+            fixtureLock.lock()
+            syntheticFixtureFeatures = Set(features)
+            fixtureLock.unlock()
+            resolve(["mode": "synthetic"] as NSDictionary)
+        }
+
+        @objc(removeSyntheticFixture:rejecter:)
+        func removeSyntheticFixture(_ resolve: @escaping RCTPromiseResolveBlock,
+                                    rejecter _: @escaping RCTPromiseRejectBlock)
+        {
+            fixtureLock.lock()
+            syntheticFixtureFeatures.removeAll()
+            fixtureLock.unlock()
+            resolve(nil)
+        }
+
+        @objc(inspectReadAuthorizationPlan:resolver:rejecter:)
+        func inspectReadAuthorizationPlan(_ feature: String,
+                                          resolver resolve: @escaping RCTPromiseResolveBlock,
+                                          rejecter _: @escaping RCTPromiseRejectBlock)
+        {
+            guard HealthKitBoundary.isSupported(feature),
+                  let plan = HealthKitBoundary.authorizationPlan(for: feature)
+            else {
+                resolve(["availability": "unsupportedFeature", "readTypeIdentifiers": [],
+                         "writeTypeIdentifiers": []] as NSDictionary)
+                return
+            }
+            resolve([
+                "availability": "available",
+                "readTypeIdentifiers": plan.readTypes.map(\.identifier).sorted(),
+                "writeTypeIdentifiers": plan.shareTypes.map(\.identifier).sorted(),
+            ] as NSDictionary)
+        }
+
+        @objc(inspectBatchAuthorizationPlan:resolver:rejecter:)
+        func inspectBatchAuthorizationPlan(_ features: [String],
+                                           resolver resolve: @escaping RCTPromiseResolveBlock,
+                                           rejecter reject: @escaping RCTPromiseRejectBlock)
+        {
+            guard let plan = HealthKitBatchAuthorization.plan(for: features) else {
+                reject("INVALID_REQUEST", "HealthKit batch authorization selection is invalid.", nil)
+                return
+            }
+            resolve([
+                "availability": plan.requestedFeatures.isEmpty ? "unsupportedFeature" : "available",
+                "requestedFeatures": plan.requestedFeatures,
+                "unsupportedFeatures": plan.unsupportedFeatures,
+                "readTypeIdentifiers": plan.readTypes.map(\.identifier).sorted(),
+                "writeTypeIdentifiers": plan.shareTypes.map(\.identifier).sorted(),
+            ] as NSDictionary)
+        }
+
+        internal var hasSyntheticFixture: Bool {
+            fixtureLock.lock()
+            defer { fixtureLock.unlock() }
+            return !syntheticFixtureFeatures.isEmpty
+        }
+
+        internal func hasSyntheticFixture(for feature: String) -> Bool {
+            fixtureLock.lock()
+            defer { fixtureLock.unlock() }
+            return syntheticFixtureFeatures.contains(feature)
+        }
+
+        internal func hasSyntheticFixtures(for features: [String]) -> Bool {
+            fixtureLock.lock()
+            defer { fixtureLock.unlock() }
+            return !features.isEmpty && features.allSatisfy(syntheticFixtureFeatures.contains)
         }
     }
 #endif

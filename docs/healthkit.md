@@ -2,7 +2,7 @@
 
 ## Change contract
 
-- **Requested behavior:** Report whether HealthKit is available, request read access for one named Orot feature only when its caller explicitly asks, expose a reusable native query boundary, and locally import medication, blood-pressure, sleep, and supported quantity observations through their owning feature flows. Never request write access or claim that a read request was granted or denied.
+- **Requested behavior:** Report whether HealthKit is available, request read access for one named Orot feature or an explicit selected feature batch only when its caller asks, expose a reusable native query boundary, and locally import medication, blood-pressure, sleep, and supported quantity observations through their owning feature flows. Never request write access or claim that a read request was granted or denied.
 - **Preserved behavior:** Other Orot features remain usable when HealthKit is unavailable, a request cannot be completed, or a query returns no visible samples. Import callers retain source identifiers, available device metadata, and sample timestamps.
 - **Non-goals:** Write HealthKit data; add a backend; infer a healthy/normal value from an empty result; merge overlapping sleep samples; or calculate a winning sleep stage or total sleep duration.
 - **Material risks:** HealthKit intentionally hides whether read permission was denied. An empty query means no samples are visible to this app for that query and cannot establish whether data is absent from HealthKit. Medication HealthKit APIs require iOS 26 or later. Blood-pressure values use the supported HealthKit query unit in mmHg. Preserve an original amount/unit pair only when a source explicitly supplies an authoritative pair; otherwise store the typed unavailable state and do not infer it from preferred display units or converted values. The iOS 27 Simulator throws when a blood-pressure correlation type is included in the read-authorization set; the boundary excludes it from that set while retaining correlation query selection. Real-device authorization behavior and sample visibility remain unverified. Simulator HealthKit availability is separate from synthetic adapter behavior.
@@ -10,11 +10,13 @@
 
 ## Authorization model
 
-The public API accepts a feature key, not an arbitrary list of HealthKit types. The native allowlist maps each key to only the types needed by that feature. It passes an empty write set to `requestAuthorization` and never calls `authorizationStatus(for:)`, which reports sharing authorization rather than read authorization.
+The public API accepts feature keys, not arbitrary HealthKit types. The native allowlist maps each key to only the types needed by that feature; a batch unions only the selected features' read sets and makes one `requestAuthorization` call. It passes an empty write set and never calls `authorizationStatus(for:)`, which reports sharing authorization rather than read authorization.
 
 The authorization request reports `completed` only when HealthKit reports success with no error. A failed request remains an error; it is not labeled as a user cancellation. Request completion still does not establish whether read access was granted, so read authorization is always reported as `notObservable`.
 
 The native allowlist requests the medication definition and dose-event types for medications; the systolic and diastolic component types for blood pressure; the sleep-analysis category for sleep; and one quantity type for heart rate, steps, or body mass. The authorization plan used by the request has an empty write set. The blood-pressure query still selects the correlation type, but its visibility is not established by the Simulator authorization test.
+
+The common-observation importer requests the selected heart-rate, step-count, and body-mass features together before starting any anchored query or local transaction. Unsupported selected features remain separate outcomes, while a native request failure stops the import before query or storage work. Concurrent identical imports for one repository share the in-flight operation; a completed or failed operation is removed so an explicit retry can run. Standalone feature flows retain the single-feature request method.
 
 ## Query model
 
@@ -39,6 +41,30 @@ Before querying, the importer requests feature-scoped HealthKit read authorizati
 ## Simulator probe
 
 The dedicated probe can be built and run with `pnpm exec detox test --config-path e2e/healthkit-probe.detox.config.js --configuration ios.sim.debug.healthkit-probe` from `apps/mobile`. Its debug-only adapter reports the real `HKHealthStore.isHealthDataAvailable()` result separately, checks every feature's selected native sample type and read plan, and supplies synthetic authorization-completion, sample, empty-query, and medication-definition responses. It does not request real HealthKit access, save HealthKit samples, or prove that real samples are readable. The adapter is compiled only for Debug Simulator builds and is absent from Release and device builds.
+
+The common-observation flow has a separate probe configured with `e2e/common-observations-probe.detox.config.js` and `e2e/common-observations-probe.e2e.js`. It prepares a multi-feature synthetic fixture, verifies that the native batch plan equals the union of the supported selected plans for all six HealthKit features, then checks the visible common-observation import, encrypted local transactions, and cursor replay. The summary includes only request/query/transaction counts and aggregate durations for the first import and replay. Because authorization completion comes from the synthetic adapter, `authorization_ms` is only the local bridge round trip; it does not measure a real OS permission sheet or the user's iPhone delay. This HealthKit-only probe has no following EventKit prompt to time, and the two systems' consent screens remain independent.
+
+After installing dependencies and syncing iOS Pods from the repository root, set a dedicated Simulator UDID, DerivedData path, and unused Metro port. For example, from `apps/mobile`:
+
+```sh
+export OROT_COMMON_OBSERVATIONS_SIMULATOR_UDID="replace-with-dedicated-simulator-uuid"
+export OROT_COMMON_OBSERVATIONS_DERIVED_DATA_PATH="/tmp/orot-common-observations-unique-run"
+export OROT_COMMON_OBSERVATIONS_METRO_PORT=8220
+pnpm exec react-native start \
+  --config e2e/common-observations-probe.metro.config.js \
+  --port "$OROT_COMMON_OBSERVATIONS_METRO_PORT"
+```
+
+In a second terminal from `apps/mobile`, run the probe on that same Simulator:
+
+```sh
+pnpm exec detox build --config-path e2e/common-observations-probe.detox.config.js \
+  --configuration ios.sim.debug.common-observations
+pnpm exec detox test --config-path e2e/common-observations-probe.detox.config.js \
+  --configuration ios.sim.debug.common-observations --headless --no-start --cleanup
+```
+
+The result reports `source=synthetic`; its phase durations contain no feature names, source identifiers, sample IDs, or values. The simulator and synthetic timings do not verify the reported real-device delay, real read access, user cancellation UX, or Calendar/EventKit prompting.
 
 The iOS Simulator cannot establish real device data availability, a user's read grant, or the contents of the user's HealthKit store. The probe logs real HealthKit availability and labels all record responses as synthetic; it does not claim physical-device or real-sample verification.
 

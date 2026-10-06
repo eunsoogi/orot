@@ -10,6 +10,13 @@ function nativeModule(): jest.Mocked<HealthKitNativeModule> {
       requestStatus: 'completed',
       readAuthorization: 'notObservable',
     }),
+    requestReadAuthorizations: jest.fn().mockImplementation(async features => ({
+      availability: 'available',
+      requestStatus: 'completed',
+      readAuthorization: 'notObservable',
+      requestedFeatures: features,
+      unsupportedFeatures: [],
+    })),
     querySamples: jest.fn().mockResolvedValue({
       availability: 'available',
       status: 'completed',
