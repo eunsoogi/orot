@@ -46,9 +46,14 @@ describe('unified HealthKit and Calendar import on iOS Simulator', () => {
         by.id('unified-import-probe-measurements'),
       ).getAttributes();
       const liveText = liveSummary.label || liveSummary.text;
-      expect(liveText).toMatch(
-        /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitRequestCalls=1;eventKitRequestOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;/u,
-      );
+      // Detox replaces global expect with native matcher dispatch for UI elements.
+      if (
+        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitRequestCalls=1;eventKitRequestOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;/u.test(
+          liveText,
+        )
+      ) {
+        throw new Error('Live import authorization measurements are missing.');
+      }
       console.log(`UNIFIED_IMPORT_LIVE_MEASUREMENTS ${liveText}`);
       return;
     }
