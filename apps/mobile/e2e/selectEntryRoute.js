@@ -9,7 +9,8 @@ function selectEntryRoute(settings) {
     if (
       probe !== 'appointments' &&
       probe !== 'graph' &&
-      probe !== 'checkpoint'
+      probe !== 'checkpoint' &&
+      probe !== 'safe-area'
     ) {
       throw new Error('Unsupported OROT_E2E_PROBE value');
     }
