@@ -19,8 +19,17 @@ const pageRequest = {
 export async function syncHealthKitBloodPressure(
   options: BloodPressureSyncOptions,
 ): Promise<BloodPressureSyncResult> {
-  const authorization =
-    await options.healthKit.requestReadAuthorization('bloodPressure');
+  let authorization: import('../types').HealthKitAuthorizationResult;
+  if (options.authorization) {
+    authorization = options.authorization;
+  } else if ('requestReadAuthorization' in options.healthKit) {
+    authorization =
+      await options.healthKit.requestReadAuthorization('bloodPressure');
+  } else {
+    throw new Error(
+      'A batch authorization result is required before blood-pressure sync.',
+    );
+  }
   // HealthKit keeps read grants opaque; request completion is not a grant result.
   if (
     authorization.availability !== 'available' ||

@@ -112,6 +112,35 @@ The current process-restart evidence is Detox attempt 20 on a dedicated iOS 27 S
 
 Issue #19 has a dedicated sleep probe. From `apps/mobile`, build it with `pnpm exec detox build --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe`, then run `pnpm exec detox test --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe --headless --no-start --cleanup`. Set `OROT_SLEEP_IMPORT_DERIVED_DATA_PATH` and `OROT_SLEEP_IMPORT_SIMULATOR_UDID` to isolate the build and simulator. `--no-start` keeps Metro from replacing the embedded probe entry, and omitting `--reuse` ensures Detox installs the configured app rather than launching another probe left on the simulator. The Debug-only adapter returns synthetic sleep samples; the probe checks the native category, interval, and source fields, normalizes the anchored addition, and verifies cursor resumption. It reports `source=synthetic` and `realSamples=unverified`; it does not establish real sample access or exercise persistence/deletion through the simulator database. Focused importer tests cover atomic page writes, retry, raw upsert, deletion, and retention of overlapping samples with distinct IDs. Issue #19 does not require a physical-device run for 0.1.0.
 
+## Unified HealthKit and Calendar import
+
+`UnifiedHealthCalendarImportScreen` accepts an explicit selection across medications, blood pressure, sleep, heart rate, steps, body mass, and Calendar. One coordinator action sends one HealthKit batch request, then one EventKit access request when Calendar is selected. These native consent requests stay sequential because iOS owns separate HealthKit and EventKit screens. Querying Calendar and opening local storage wait until the selected consent calls complete. HealthKit read access remains `notObservable`; its successful request callback is not a grant result, and an empty query remains an empty visible result.
+
+The EventKit bridge exposes `requestAccessIfNeeded()` and `listUpcomingEvents()` separately for this flow. The query-only method reads current access and never opens another consent screen. The existing combined Calendar screen API remains available for its current caller. The unified flow currently reads upcoming event count and does not attach or save an event without the app's existing explicit selection and confirmation flow.
+
+Each run emits provider, phase, transition, monotonic offset from the app action, phase duration, and a finite outcome. The offsets support measuring gaps from HealthKit API completion to EventKit request invocation and from consent completion to query or storage work without recording wall-clock timestamps, health values, source identifiers, event titles, or raw errors. `permissionRequestInvocation` means the app called the EventKit bridge; it does not prove an iOS sheet became visible. Authorization API duration can include a consent wait but is not an OS-sheet visibility duration. Record visible-sheet start/end separately when observing the `live` probe.
+
+`UnifiedImportRun.cancel()` stops after an active HealthKit page and before the next feature. It cannot dismiss an active iOS consent sheet or interrupt an in-flight native page. The screen reports app-flow cancellation separately; the HealthKit API does not identify a read-permission denial from empty results. Identical in-flight selections share one run, while different selections are queued so provider prompts and anchored writes do not race. A completed or failed run can be explicitly retried.
+
+### Unified import Simulator probe
+
+Run the deterministic synthetic path from `apps/mobile` on a dedicated, task-assigned iOS Simulator:
+
+```sh
+export OROT_UNIFIED_IMPORT_SIMULATOR_UDID="ASSIGNED_SIMULATOR_UDID"
+export OROT_UNIFIED_IMPORT_DERIVED_DATA_PATH=ios/build-unified-import-probe
+pnpm exec detox build --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe
+pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --headless --no-start --cleanup
+```
+
+The automated run selects all six HealthKit features and Calendar, uses the existing synthetic HealthKit fixture adapter and a Calendar stub, and writes only synthetic HealthKit observations into the simulator's encrypted local store. It checks the one-batch and one-access-call counts, request-before-query ordering, visible per-feature terminal states, Calendar outcome, and privacy-safe relative offsets and durations. It does not trigger or observe either OS consent screen and does not use personal HealthKit or Calendar data. The Detox setup uninstalls the app and clears the simulator keychain; use only the assigned Simulator.
+
+To inspect the production HealthKit and EventKit bridge sequence interactively, run the same Detox test with `OROT_UNIFIED_IMPORT_PROBE_MODE=live` and without `--headless` on the assigned Simulator. It selects heart rate, steps, and Calendar, then waits for the system requests and terminal import state. This mode does not prepare a HealthKit fixture, alter permissions, or reset device settings; an already-decided permission may suppress a system sheet. Observe and time actual system sheets separately from the bridge measurements shown by the screen. Simulator evidence does not establish behavior on the user's physical iPhone; no real-device timing should be inferred from the synthetic Detox run.
+
+```sh
+OROT_UNIFIED_IMPORT_PROBE_MODE=live pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --no-start --cleanup
+```
+
 ## Apple API references
 
 - [Authorizing access to health data](https://developer.apple.com/documentation/HealthKit/authorizing-access-to-health-data)

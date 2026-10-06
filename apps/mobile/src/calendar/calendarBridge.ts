@@ -1,7 +1,9 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
 import type {
+  CalendarAccessState,
   CalendarBridge,
+  CalendarImportBridge,
   CalendarEventLookup,
   UpcomingCalendarEvents,
 } from './types';
@@ -15,6 +17,11 @@ interface NativeCalendarModule {
   ): Promise<CalendarEventLookup>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
+}
+
+interface NativeCalendarImportModule {
+  requestAccessIfNeeded(): Promise<CalendarAccessState>;
+  listUpcomingEvents(): Promise<UpcomingCalendarEvents>;
 }
 
 function unavailable<T>(): Promise<T> {
@@ -51,3 +58,19 @@ export function createCalendarBridge(
 }
 
 export const eventKitCalendarBridge = createCalendarBridge();
+
+/** Keeps the existing combined Calendar screen contract intact. */
+export function createCalendarImportBridge(
+  nativeModule:
+    | NativeCalendarImportModule
+    | undefined = NativeModules.EventKitCalendarModule,
+): CalendarImportBridge {
+  return {
+    requestAccessIfNeeded: () =>
+      nativeModule ? nativeModule.requestAccessIfNeeded() : unavailable(),
+    listUpcomingEvents: () =>
+      nativeModule ? nativeModule.listUpcomingEvents() : unavailable(),
+  };
+}
+
+export const eventKitCalendarImportBridge = createCalendarImportBridge();
