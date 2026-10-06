@@ -5,6 +5,7 @@ import type {
   HealthKitSampleSnapshot,
   HealthKitSampleKind,
 } from '../types';
+import { healthKitFeatures } from '../types';
 import { commonObservationRecordId } from './mapper';
 import type { CommonObservationFeature } from './types';
 
@@ -13,8 +14,20 @@ export interface CommonObservationsProbeModule extends HealthKitNativeModule {
     feature: HealthKitFeature,
   ): Promise<{ readonly mode: 'synthetic' }>;
   removeSyntheticFixture(): Promise<void>;
+  prepareSyntheticFixtures(
+    features: readonly HealthKitFeature[],
+  ): Promise<{ readonly mode: 'synthetic' }>;
   inspectReadAuthorizationPlan(feature: HealthKitFeature): Promise<{
     readonly availability: 'available' | 'unsupportedFeature';
+    readonly readTypeIdentifiers: readonly string[];
+    readonly writeTypeIdentifiers: readonly string[];
+  }>;
+  inspectBatchAuthorizationPlan(
+    features: readonly HealthKitFeature[],
+  ): Promise<{
+    readonly availability: 'available' | 'unsupportedFeature';
+    readonly requestedFeatures: readonly HealthKitFeature[];
+    readonly unsupportedFeatures: readonly HealthKitFeature[];
     readonly readTypeIdentifiers: readonly string[];
     readonly writeTypeIdentifiers: readonly string[];
   }>;
@@ -63,6 +76,60 @@ export async function verifyCommonObservationReadPlans(
       `${feature} query selected an unexpected sample type.`,
     );
   }
+
+  const plans = new Map<
+    HealthKitFeature,
+    Awaited<
+      ReturnType<CommonObservationsProbeModule['inspectReadAuthorizationPlan']>
+    >
+  >();
+  for (const feature of healthKitFeatures) {
+    plans.set(feature, await native.inspectReadAuthorizationPlan(feature));
+  }
+  const batch = await native.inspectBatchAuthorizationPlan(healthKitFeatures);
+  const requestedFeatures = healthKitFeatures.filter(
+    feature => plans.get(feature)?.availability === 'available',
+  );
+  const unsupportedFeatures = healthKitFeatures.filter(
+    feature => plans.get(feature)?.availability === 'unsupportedFeature',
+  );
+  assertProbe(
+    batch.availability ===
+      (requestedFeatures.length > 0 ? 'available' : 'unsupportedFeature'),
+    'The batch authorization plan reports an inconsistent availability.',
+  );
+  const readTypes = new Set(
+    requestedFeatures.flatMap(
+      feature => plans.get(feature)?.readTypeIdentifiers ?? [],
+    ),
+  );
+  assertProbe(
+    JSON.stringify(batch.requestedFeatures) ===
+      JSON.stringify(requestedFeatures),
+    'The batch authorization plan requested a different feature set.',
+  );
+  assertProbe(
+    JSON.stringify(batch.unsupportedFeatures) ===
+      JSON.stringify(unsupportedFeatures),
+    'The batch authorization plan lost unsupported selected features.',
+  );
+  assertProbe(
+    JSON.stringify([...batch.readTypeIdentifiers].sort()) ===
+      JSON.stringify([...readTypes].sort()),
+    'The batch authorization plan omitted or added HealthKit read types.',
+  );
+  assertProbe(
+    batch.writeTypeIdentifiers.length === 0,
+    'The batch authorization plan requested HealthKit write access.',
+  );
+  assertProbe(
+    !plans
+      .get('bloodPressure')
+      ?.readTypeIdentifiers.includes(
+        'HKCorrelationTypeIdentifierBloodPressure',
+      ),
+    'The blood-pressure authorization plan included a correlation type.',
+  );
 }
 
 export function findCommonObservationRecord(
