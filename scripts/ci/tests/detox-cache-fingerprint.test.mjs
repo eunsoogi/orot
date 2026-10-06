@@ -230,15 +230,13 @@ test('includes CocoaPods generated tracked inputs in the post-install app finger
     writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed CocoaPods lock');
     git(root, 'add', '--all');
     const afterLockChange = computeDetoxCacheFingerprints(root);
-    assert.notEqual(afterLockChange.buildInputs, afterAppSourceChange.buildInputs);
-    assert.notEqual(
-      afterLockChange.reactNativeArtifacts,
-      afterAppSourceChange.reactNativeArtifacts,
-    );
-    assert.notEqual(
-      afterLockChange.nativeDependencies,
-      afterBuildConfigurationChange.nativeDependencies,
-    );
+    for (const [actual, previous] of [
+      [afterLockChange.buildInputs, afterAppSourceChange.buildInputs],
+      [afterLockChange.reactNativeArtifacts, afterAppSourceChange.reactNativeArtifacts],
+      [afterLockChange.nativeDependencies, afterBuildConfigurationChange.nativeDependencies],
+    ]) {
+      assert.notEqual(actual, previous);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

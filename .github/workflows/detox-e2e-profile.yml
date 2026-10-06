@@ -30,20 +30,26 @@ permissions:
 env:
   CI: 'true'
   TZ: UTC
-  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  DEVELOPER_DIR: ${{ inputs.profile == 'transcription' && '/Applications/Xcode_26.2.app/Contents/Developer' || '/Applications/Xcode.app/Contents/Developer' }}
   EXPECTED_NODE_VERSION: '22.23.2'
   EXPECTED_PNPM_VERSION: '12.3.4'
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  EXPECTED_MACOS_VERSION: '27.0'
-  EXPECTED_XCODE_VERSION: '27.0'
-  EXPECTED_IOS_SIMULATOR_SDK: '27.0'
+  EXPECTED_MACOS_VERSION: ${{ inputs.profile == 'transcription' && '26.6.1' || '27.0' }}
+  EXPECTED_XCODE_VERSION: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
+  EXPECTED_IOS_SIMULATOR_SDK: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
+  EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: ${{ inputs.profile == 'transcription' && 'iOS 26.2' || 'iOS 27.0' }}
+  EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-device-iphone17pro' || '' }}
 
 jobs:
   detox_profile:
     name: Detox ${{ inputs.profile }} iOS E2E
-    runs-on: xcode-27
+    # Only the speech probe selects the installed image containing its measured model-compatible runtime.
+    runs-on: ${{ inputs.profile == 'transcription' && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 75
     outputs:
       profile: ${{ steps.run_detox_tests.outputs.e2e_profile }}
@@ -104,13 +110,12 @@ jobs:
         uses: ./.github/actions/detox-cocoapods-cache
         with:
           cache-context: >-
-            ${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+            ${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}
       - name: Install CocoaPods
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Install Detox CocoaPods dependencies
         timeout-minutes: 20
         run: scripts/ci/verify-toolchain.sh --cocoapods && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
-
       # Fingerprint CocoaPods' tracked integration after its one install so the key matches the built app.
       - name: Compute stable Detox cache fingerprints
         id: detox_cache_fingerprint
@@ -127,10 +132,9 @@ jobs:
           path: |
             apps/mobile/ios/build-detox-${{ inputs.profile }}/.orot-detox-cache.json
             apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products
-          key: orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          key: orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           restore-keys: |
-            orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
-
+            orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
         timeout-minutes: 1
@@ -175,8 +179,7 @@ jobs:
             printf 'build_input_fingerprint=%s\n' "${BUILD_INPUT_FINGERPRINT}"
             printf 'react_native_artifact_fingerprint=%s\n' "${RN_ARTIFACT_FINGERPRINT}"
             printf 'native_dependency_fingerprint=%s\n' "${NATIVE_DEPENDENCY_FINGERPRINT}"
-            printf 'xcode=%s\n' "${EXPECTED_XCODE_VERSION}"
-            printf 'ios_simulator_sdk=%s\n' "${EXPECTED_IOS_SIMULATOR_SDK}"
+            printf 'xcode=%s ios_simulator_sdk=%s ios_simulator_runtime=%s ios_simulator_device_type=%s\n' "${EXPECTED_XCODE_VERSION}" "${EXPECTED_IOS_SIMULATOR_SDK}" "${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME}" "${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID}"
             printf 'macos=%s\n' "${MACOS_VERSION}"
             printf 'node=%s\n' "${NODE_VERSION}"
             printf 'pnpm=%s\n' "${PNPM_VERSION}"

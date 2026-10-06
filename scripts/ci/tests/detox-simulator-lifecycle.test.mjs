@@ -112,13 +112,15 @@ test('exports only the selected OpenAI Debug Simulator identity', () => {
   assert.equal(result.githubEnv, `OROT_OPENAI_PROVIDER_SIMULATOR_UDID=${simulatorId}\n`);
 });
 
-test('exports only the selected speech transcription Simulator identity', () => {
+test('creates transcription on the configured iOS 26.2 iPhone 17 Pro runtime', () => {
   const result = runFakeXcrun(
     prepareScript,
     [
       'if [[ "$*" == "simctl list runtimes --json" ]]; then',
-      '  printf \'{"runtimes":[{"name":"iOS 27.0","identifier":"com.apple.CoreSimulator.SimRuntime.iOS-27-0","isAvailable":true}]}\\n\'',
+      '  printf \'{"runtimes":[{"name":"iOS 27.0","identifier":"com.apple.CoreSimulator.SimRuntime.iOS-27-0","isAvailable":true},{"name":"iOS 26.2","identifier":"com.apple.CoreSimulator.SimRuntime.iOS-26-2","isAvailable":true}]}\\n\'',
       'elif [[ "$1 $2" == "simctl create" ]]; then',
+      '  [[ "$4" == com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro ]] || exit 82',
+      '  [[ "$5" == com.apple.CoreSimulator.SimRuntime.iOS-26-2 ]] || exit 83',
       `  printf '%s\\n' "$TEST_DETOX_SIMULATOR_UDID"`,
       `elif [[ "$*" == "simctl boot ${simulatorId}" ]]; then`,
       '  exit 0',
@@ -127,9 +129,22 @@ test('exports only the selected speech transcription Simulator identity', () => 
       'fi',
     ].join('\n'),
     (logPath, identityPath) => [logPath, identityPath, 'transcription'],
+    {
+      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
+      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:
+        'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro',
+    },
   );
   assert.equal(result.result.status, 0, result.result.stderr + result.log);
   assert.equal(result.githubEnv, `OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID=${simulatorId}\n`);
+  assert.match(
+    result.calls[1],
+    /com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-17-Pro com\.apple\.CoreSimulator\.SimRuntime\.iOS-26-2/,
+  );
+  assert.match(
+    result.log,
+    /iOS 26\.2 \(com\.apple\.CoreSimulator\.SimRuntime\.iOS-26-2\), device type com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-17-Pro/,
+  );
 });
 
 test('fails closed when the required iOS runtime is unavailable before creating a device', () => {

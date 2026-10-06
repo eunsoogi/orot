@@ -6,6 +6,10 @@ expected_pnpm="${EXPECTED_PNPM_VERSION:-12.3.4}"
 expected_macos="${EXPECTED_MACOS_VERSION:-27.0}"
 expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
 expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
+expected_simulator_runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
+expected_simulator_runtime_id="${EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:-com.apple.CoreSimulator.SimRuntime.iOS-27-0}"
+expected_simulator_device_name="${EXPECTED_DETOX_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
+expected_simulator_device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
 expected_ruby="${EXPECTED_RUBY_VERSION:-4.0.7}"
 expected_cocoapods="${EXPECTED_COCOAPODS_VERSION:-1.17.0}"
 
@@ -24,13 +28,44 @@ actual_macos="$(sw_vers -productVersion)"
 [[ "$actual_macos" == "$expected_macos" ]] || fail_version macOS "$expected_macos" "$actual_macos"
 
 actual_developer_dir="${DEVELOPER_DIR:-}"
-[[ "$actual_developer_dir" == "/Applications/Xcode.app/Contents/Developer" ]] || fail_version DEVELOPER_DIR /Applications/Xcode.app/Contents/Developer "$actual_developer_dir"
+expected_developer_dir="/Applications/Xcode.app/Contents/Developer"
+# The macOS 26 runner exposes Xcode 26.2 through its versioned app bundle.
+if [[ "$expected_xcode" == "26.2" ]]; then
+  expected_developer_dir="/Applications/Xcode_26.2.app/Contents/Developer"
+fi
+[[ "$actual_developer_dir" == "$expected_developer_dir" ]] || fail_version DEVELOPER_DIR "$expected_developer_dir" "$actual_developer_dir"
 actual_xcode="$(xcodebuild -version | sed -n '1s/^Xcode //p')"
 [[ "$actual_xcode" == "$expected_xcode" ]] || fail_version Xcode "$expected_xcode" "$actual_xcode"
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 [[ "$actual_simulator_sdk" == "$expected_simulator_sdk" ]] || fail_version iOS-Simulator-SDK "$expected_simulator_sdk" "$actual_simulator_sdk"
-xcrun simctl list devices available | grep -Fq 'iPhone 18 Pro' || fail_version iPhone-Simulator iPhone-18-Pro unavailable
+# Check the installed runtime and device type before profile setup creates its dedicated Simulator.
+actual_simulator_runtime="$(xcrun simctl list runtimes --json | node -e '
+const fs = require("node:fs");
+const data = JSON.parse(fs.readFileSync(0, "utf8"));
+const runtime = data.runtimes.find((entry) =>
+  entry.name === process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_NAME &&
+  entry.identifier === process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER &&
+  entry.isAvailable
+);
+process.stdout.write(runtime?.identifier ?? "");
+')"
+[[ "$actual_simulator_runtime" == "$expected_simulator_runtime_id" ]] || fail_version iOS-Simulator-runtime "$expected_simulator_runtime_name ($expected_simulator_runtime_id)" unavailable
+actual_simulator_device="$(xcrun simctl list devices available --json | node -e '
+const fs = require("node:fs");
+const data = JSON.parse(fs.readFileSync(0, "utf8"));
+const devices = data.devices[process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER] ?? [];
+const device = devices.find((entry) =>
+  entry.name === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_NAME &&
+  entry.deviceTypeIdentifier === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID &&
+  entry.isAvailable
+);
+process.stdout.write(
+  device ? device.name + " (" + device.deviceTypeIdentifier + ")" : ""
+);
+')"
+expected_simulator_device="$expected_simulator_device_name ($expected_simulator_device_type_id)"
+[[ "$actual_simulator_device" == "$expected_simulator_device" ]] || fail_version iOS-Simulator-device "$expected_simulator_device on $expected_simulator_runtime_name" unavailable
 
 if [[ "${1:-}" == "--cocoapods" ]]; then
   actual_ruby="$(ruby -e 'print RUBY_VERSION')"
@@ -39,8 +74,8 @@ if [[ "${1:-}" == "--cocoapods" ]]; then
   [[ "$actual_cocoapods" == "$expected_cocoapods" ]] || fail_version CocoaPods "$expected_cocoapods" "$actual_cocoapods"
 fi
 
-printf 'Verified macOS %s, Xcode %s, iOS Simulator SDK %s, Node %s, pnpm %s\n' \
-  "$actual_macos" "$actual_xcode" "$actual_simulator_sdk" "$actual_node" "$actual_pnpm"
+printf 'Verified macOS %s, Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
+  "$actual_macos" "$actual_xcode" "$actual_developer_dir" "$actual_simulator_sdk" "$expected_simulator_runtime_name ($actual_simulator_runtime)" "$actual_simulator_device" "$actual_node" "$actual_pnpm"
 if [[ "${1:-}" == "--cocoapods" ]]; then
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
 fi

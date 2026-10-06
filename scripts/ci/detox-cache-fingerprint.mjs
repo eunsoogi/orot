@@ -20,8 +20,9 @@ const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.
 // CocoaPods aggregates this tracked plist and adds generated pod integration to the project during install.
 const PRIVACY_MANIFEST_INPUT = 'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy';
 const COCOAPODS_PROJECT_INPUT = 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj';
-// Detox/Jest runs these files in Node; Metro bundles ENTRY_FILE and app imports, not host tests.
-const HOST_ONLY_DETOX_TEST = /^apps\/mobile\/e2e\/.+\.(?:test|e2e)\.js$/;
+// Detox/Jest control files run in Node; Metro bundles ENTRY_FILE and imported app modules instead.
+const HOST_ONLY_DETOX_INPUT =
+  /^(?:apps\/mobile\/e2e\/.+\.(?:test|e2e)\.js|apps\/mobile\/e2e\/transcription\/transcriptEvidenceDetoxHelpers\.js|apps\/mobile\/src\/transcription\/__tests__\/TranscriptEvidenceDetoxHelpers\.spec\.js)$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 const NATIVE_DEPENDENCY_INPUT_PATHS = [
@@ -66,7 +67,7 @@ function filterInputPaths(paths) {
 }
 
 function filterDetoxBuildInputPaths(paths) {
-  return filterInputPaths(paths).filter((path) => !HOST_ONLY_DETOX_TEST.test(path));
+  return filterInputPaths(paths).filter((path) => !HOST_ONLY_DETOX_INPUT.test(path));
 }
 
 function listCurrentInputs(repositoryRoot, pathspecs) {
@@ -125,7 +126,7 @@ export function listChangedDetoxBuildInputs(repositoryRoot = process.cwd()) {
 function hashCurrentInputs(repositoryRoot, pathspecs, inputHashes = {}, skipHostTests = false) {
   const listedPaths = listCurrentInputs(repositoryRoot, pathspecs);
   const paths = skipHostTests
-    ? listedPaths.filter((path) => !HOST_ONLY_DETOX_TEST.test(path))
+    ? listedPaths.filter((path) => !HOST_ONLY_DETOX_INPUT.test(path))
     : listedPaths;
   if (paths.length === 0)
     throw new Error(`No tracked Detox cache inputs matched: ${pathspecs.join(', ')}`);

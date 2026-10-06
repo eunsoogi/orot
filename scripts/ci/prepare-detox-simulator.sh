@@ -28,14 +28,20 @@ run_simctl() {
   bash "$script_dir/run-detox-simctl.sh" "$simctl_timeout_ms" "$@"
 }
 
-runtime_id="$(run_simctl list runtimes --json 2>>"$log_path" | node -e '
+runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
+device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
+
+# The speech probe uses the runner image's installed model-compatible runtime; it never downloads Simulator assets.
+runtime_id="$(run_simctl list runtimes --json 2>>"$log_path" | EXPECTED_IOS_SIMULATOR_RUNTIME_NAME="$runtime_name" node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
-const runtime = data.runtimes.find((entry) => entry.name === "iOS 27.0" && entry.isAvailable);
+const runtime = data.runtimes.find((entry) =>
+  entry.name === process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_NAME &&
+  entry.isAvailable
+);
 if (!runtime) process.exit(1);
 process.stdout.write(runtime.identifier);
 ')"
-device_type_id='com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro'
 run_name="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$$"
 simulator_name="Orot Detox CI ${run_name}"
 simulator_udid=''
@@ -93,7 +99,8 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   fi
 fi
 
-printf 'Created %s with runtime %s and UDID %s.\n' "$simulator_name" "$runtime_id" "$simulator_udid" >>"$log_path"
+printf 'Created %s with runtime %s (%s), device type %s, and UDID %s.\n' \
+  "$simulator_name" "$runtime_name" "$runtime_id" "$device_type_id" "$simulator_udid" >>"$log_path"
 if ! run_simctl boot "$simulator_udid" >>"$log_path" 2>&1; then
   printf 'Simulator boot request failed for %s.\n' "$simulator_udid" >>"$log_path"
   exit 1
