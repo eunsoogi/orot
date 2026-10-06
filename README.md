@@ -49,7 +49,7 @@ flowchart TB
     contract["제공자 중립 모델 계약"]
     apple["Apple Foundation Models<br/>기기 안에서 실행"]
     chatgpt["ChatGPT OAuth / Responses<br/>선택한 맥락을 원격 처리"]
-    graph["LangChain / LangGraph<br/>현재는 단일 generate 단계"]
+    orchestration["LangChain / LangGraph<br/>현재는 단일 generate 단계"]
   end
 
   subgraph planned["추가 구현 또는 제품 흐름 연결이 필요한 요구사항"]
@@ -81,18 +81,18 @@ flowchart TB
   db --> rag
   db --> memory
   selection --> contract
-  graph --> contract
+  orchestration --> contract
   contract --> apple
   contract --> chatgpt
   db -. "조회 기능 연결 필요" .-> query
   query -.-> questions
   rag -. "대화 기능 연결 필요" .-> ragChat
   memory -. "질문 흐름 연결 필요" .-> questions
-  questions -.-> graph
-  hypotheses -.-> graph
-  ragChat -.-> graph
-  external -.-> graph
-  graph -. "합성 평가 대상" .-> langsmith
+  questions -.-> orchestration
+  hypotheses -.-> orchestration
+  ragChat -.-> orchestration
+  external -.-> orchestration
+  orchestration -. "합성 평가 대상" .-> langsmith
   synthetic -. "실행 결과는 별도 검증" .-> langsmith
 ```
 
