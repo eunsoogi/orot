@@ -4,6 +4,21 @@ The iOS app uses `intfloat/multilingual-e5-small` for on-device document and que
 
 The native path uses ONNX Runtime 1.24.2 on its CPU execution provider and SentencePiece at commit `48f1241971c19dc79c314e5a9c5b9c38cbf25a53`. It does not claim Core ML or Neural Engine execution. The provider-neutral RAG service stores model identity, revision, dimension, and float32 vectors in the existing SQLCipher database. Embedding batches accept up to eight texts and report progress for model preparation; cancelling rejects the caller's request and prevents later batches, while a synchronous ONNX call already in progress runs to completion.
 
+## Hybrid retrieval
+
+Search filters the supplied evidence chunks before asking either local candidate store for results. `timeRange.start` and `timeRange.end` are inclusive ISO timestamps with explicit offsets and compare against `effectiveTime`; a chunk without an effective time is excluded when a time bound is set. Record-type and review-state filters require exact matches. Encounter filtering uses only an explicit encounter ID on the chunk, including an encounter record's own ID or an appointment's `encounterId`; it does not infer an encounter from provenance IDs.
+
+The mobile full-text store builds an FTS5 index from the current chunk snapshot inside the existing SQLCipher connection, with `temp_store` set to memory. It drops the temporary table after each query and does not keep a second persistent copy of source text. Query text is normalized into quoted Unicode prefix terms, and FTS5 BM25 order supplies the lexical rank. The shared RAG package combines that list with the locally stored E5 vector ranking using reciprocal-rank fusion. Defaults are `lexicalWeight: 0.5`, `vectorWeight: 0.5`, `rrfConstant: 60`, and `candidateLimit: 20`; callers may override them, and invalid weights or limits are rejected. Results include the original evidence chunk and locator plus nullable lexical and vector ranks.
+
+The issue-specific SQLCipher/FTS probe uses synthetic chunks and a dedicated app entry so its native result remains separate from the general smoke probe. From `apps/mobile`, set `OROT_ISSUE25_SIMULATOR_UDID` to a dedicated Simulator UUID, then run:
+
+```sh
+pnpm exec detox build --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid
+pnpm exec detox test --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid --no-start
+```
+
+The probe checks SQLCipher and FTS5 on the native connection, removes one synthetic vector to prove lexical-only retrieval, checks a vector-only E5 result, verifies the requested filters and evidence locators, and confirms that the temporary FTS table is gone after each search. It then relaunches the app and repeats both searches without re-indexing, so the vector result comes from the persisted SQLCipher row.
+
 ## Simulator measurement
 
 The recorded run used a Release build on an iPhone 17 Pro simulator running iOS 27.0, with the pinned model, six synthetic Korean records, and five Korean retrieval queries. The fixture covers medication, a stomach symptom, sleep, walking, and a lab appointment. It contains no personal records.

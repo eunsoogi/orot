@@ -44,7 +44,8 @@
     "web-streams-polyfill": "4.3.0"
   },
   "op-sqlite": {
-    "sqlcipher": true
+    "sqlcipher": true,
+    "fts5": true
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
