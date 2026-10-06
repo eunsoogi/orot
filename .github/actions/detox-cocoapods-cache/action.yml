@@ -1,12 +1,12 @@
 name: Cache Detox CocoaPods intermediates
-description: Reuse native dependency files while preserving post-install generated-input checks.
+description: Cache CocoaPods intermediates by dependency and build inputs while preserving post-install checks.
 inputs:
   cache-context:
     description: Exact runner and pinned toolchain identity for this cache.
     required: true
 outputs:
   cache-hit:
-    description: Whether this source and toolchain produced an exact cache key hit.
+    description: Whether dependency/build inputs and the pinned toolchain matched an exact cache key.
     value: ${{ steps.cocoapods_cache.outputs.cache-hit }}
 runs:
   using: composite
@@ -25,4 +25,4 @@ runs:
           apps/mobile/ios/Pods
           apps/mobile/ios/build/generated
           ~/Library/Caches/CocoaPods
-        key: orot-detox-cocoapods-v1-${{ inputs.cache-context }}-${{ steps.cocoapods_fingerprint.outputs.native_dependencies }}-${{ steps.cocoapods_fingerprint.outputs.build_inputs }}
+        key: orot-detox-cocoapods-v2-${{ inputs.cache-context }}-${{ steps.cocoapods_fingerprint.outputs.cocoapods_inputs }}

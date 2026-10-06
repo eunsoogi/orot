@@ -246,3 +246,5 @@ function makeFingerprintOutput({
   if (cocoapodsProjectInputHash) fingerprints.cocoapodsProjectInputHash = cocoapodsProjectInputHash;
   return fingerprints;
 }
+
+export { hashCurrentInputs };

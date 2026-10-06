@@ -6,6 +6,7 @@ import {
   computeDetoxDerivedDataFingerprints,
   computeDetoxReactNativeArtifactFingerprint,
 } from './detox-cache-fingerprint.mjs';
+import { computeDetoxCocoapodsCacheFingerprint } from './detox-cocoapods-cache-fingerprint.mjs';
 
 function writeGitHubOutputs(outputPath, fingerprints) {
   const outputLines = [];
@@ -15,6 +16,9 @@ function writeGitHubOutputs(outputPath, fingerprints) {
   }
   if (fingerprints.nativeDependencies) {
     outputLines.push(`native_dependencies=${fingerprints.nativeDependencies}`);
+  }
+  if (fingerprints.cocoapodsInputs) {
+    outputLines.push(`cocoapods_inputs=${fingerprints.cocoapodsInputs}`);
   }
   if (fingerprints.privacyManifestInputHash) {
     outputLines.push(`privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash}`);
@@ -47,8 +51,7 @@ function computeFingerprints(mode) {
     return computeDetoxReactNativeArtifactFingerprint();
   }
   if (mode === '--cocoapods-cache-inputs-only') {
-    const { buildInputs, nativeDependencies } = computeDetoxCacheFingerprints();
-    return { buildInputs, nativeDependencies };
+    return { cocoapodsInputs: computeDetoxCocoapodsCacheFingerprint() };
   }
   if (mode === '--derived-data-only') return computeDetoxDerivedDataFingerprints();
   return computeDetoxCacheFingerprints();
@@ -87,6 +90,7 @@ function main() {
       `react_native_artifacts=${fingerprints.reactNativeArtifacts ?? 'not_requested'}`,
       `lockfiles=${fingerprints.reactNativeArtifactInputCount ?? 'not_requested'}`,
       `native_dependencies=${fingerprints.nativeDependencies ?? 'not_requested'}`,
+      `cocoapods_inputs=${fingerprints.cocoapodsInputs ?? 'not_requested'}`,
       `native_inputs=${fingerprints.nativeDependencyInputCount ?? 'not_requested'}`,
       `privacy_manifest_input_sha256=${fingerprints.privacyManifestInputHash ?? 'not_requested'}`,
       `cocoapods_project_input_sha256=${fingerprints.cocoapodsProjectInputHash ?? 'not_requested'}`,

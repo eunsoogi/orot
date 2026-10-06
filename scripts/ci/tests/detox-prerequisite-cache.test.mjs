@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
+import { computeDetoxCocoapodsCacheFingerprint } from '../detox-cocoapods-cache-fingerprint.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const cacheAction = readFileSync(
@@ -22,7 +22,7 @@ const profileWorkflow = readFileSync(
   'utf8',
 );
 
-test('keys CocoaPods intermediates by pinned toolchain and native source fingerprints', () => {
+test('keys CocoaPods intermediates by pinned toolchain and dependency metadata', () => {
   const podsCache = cacheAction.slice(cacheAction.indexOf('id: cocoapods_cache'));
 
   for (const path of [
@@ -32,13 +32,11 @@ test('keys CocoaPods intermediates by pinned toolchain and native source fingerp
   ]) {
     assert.ok(podsCache.includes(path));
   }
-  for (const input of [
-    'inputs.cache-context',
-    'outputs.native_dependencies',
-    'outputs.build_inputs',
-  ]) {
+  for (const input of ['inputs.cache-context', 'outputs.cocoapods_inputs']) {
     assert.ok(podsCache.includes(input), 'cache key is missing ' + input);
   }
+  assert.ok(podsCache.includes('orot-detox-cocoapods-v2'));
+  assert.doesNotMatch(podsCache, /outputs\.(?:native_dependencies|build_inputs)/);
   assert.doesNotMatch(podsCache, /restore-keys:/);
   assert.equal(podsCache.includes('inputs.profile'), false);
 });
@@ -79,7 +77,7 @@ test('restores only intermediate files and still runs CocoaPods before app finge
   assert.doesNotMatch(podsBlock, /if:/);
 });
 
-test('pre-Pods fingerprint mode reports build inputs without setting post-install expectations', () => {
+test('pre-Pods mode reports dependency inputs without setting post-install expectations', () => {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), 'orot-pods-cache-fingerprint-'));
   const outputPath = join(temporaryDirectory, 'github-output');
   const environmentPath = join(temporaryDirectory, 'github-environment');
@@ -91,10 +89,9 @@ test('pre-Pods fingerprint mode reports build inputs without setting post-instal
       stdio: 'pipe',
     });
     const output = readFileSync(outputPath, 'utf8');
-    const fingerprints = computeDetoxCacheFingerprints();
+    const cocoapodsInputs = computeDetoxCocoapodsCacheFingerprint();
 
-    assert.ok(output.includes('build_inputs=' + fingerprints.buildInputs));
-    assert.ok(output.includes('native_dependencies=' + fingerprints.nativeDependencies));
+    assert.equal(output, `cocoapods_inputs=${cocoapodsInputs}\n`);
     assert.equal(existsSync(environmentPath), false);
   } finally {
     rmSync(temporaryDirectory, { recursive: true, force: true });
