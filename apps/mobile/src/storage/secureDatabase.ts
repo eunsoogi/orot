@@ -4,6 +4,7 @@ import {
   getGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
+import { NativeModules } from 'react-native';
 import {
   createAppointmentRepository,
   openEncryptedStorage,
@@ -26,6 +27,20 @@ const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
 const KEYCHAIN_ACCOUNT = 'database';
 const INITIALIZATION_SERVICE = 'com.orot.mobile.database-initialization.v1';
 const INITIALIZATION_ACCOUNT = 'state';
+
+function shouldLogStorageDiagnostics(): boolean {
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
+  const settings =
+    settingsManager?.settings ?? settingsManager?.getConstants?.().settings;
+  return settings?.OROT_STORAGE_DIAGNOSTICS === 'enabled';
+}
 
 const keyStore = {
   async getSecret() {
@@ -110,6 +125,14 @@ export function openLocalStorage(): Promise<RecordRepository> {
         },
       });
     })().catch(error => {
+      // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.
+      if (shouldLogStorageDiagnostics()) {
+        const detail =
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : 'Unknown error';
+        console.error('Encrypted storage open failed:', detail);
+      }
       opening = null;
       database = null;
       throw error;

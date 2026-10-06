@@ -4,6 +4,8 @@ describe('Orot mobile app', () => {
   beforeAll(async () => {
     await device.launchApp({
       languageAndLocale: { language: 'en', locale: 'en_US' },
+      // The normal app route opts into sanitized logs so repository-open CI failures retain their cause.
+      launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
     });
   });
 
