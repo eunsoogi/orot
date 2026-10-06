@@ -1,4 +1,5 @@
 import type {
+  HealthKitFeature,
   HealthKitNativeModule,
   HealthKitSampleChangesResult,
 } from '../../types';
@@ -26,7 +27,9 @@ function healthKit(
   pages: HealthKitSampleChangesResult[],
 ): Pick<
   HealthKitNativeModule,
-  'requestReadAuthorization' | 'querySampleChanges'
+  | 'requestReadAuthorization'
+  | 'requestReadAuthorizations'
+  | 'querySampleChanges'
 > {
   return {
     requestReadAuthorization: jest.fn().mockImplementation(async feature =>
@@ -42,6 +45,32 @@ function healthKit(
             readAuthorization: 'notObservable',
           },
     ),
+    requestReadAuthorizations: jest
+      .fn()
+      .mockImplementation(async (features: readonly HealthKitFeature[]) => {
+        const unsupportedFeatures = features.filter(
+          feature => feature === 'bodyMass',
+        );
+        const requestedFeatures = features.filter(
+          feature => feature !== 'bodyMass',
+        );
+        if (requestedFeatures.length === 0) {
+          return {
+            availability: 'unsupportedFeature',
+            requestStatus: 'notRequested',
+            readAuthorization: 'notObservable',
+            requestedFeatures: [],
+            unsupportedFeatures,
+          };
+        }
+        return {
+          availability: 'available',
+          requestStatus: 'completed',
+          readAuthorization: 'notObservable',
+          requestedFeatures,
+          unsupportedFeatures,
+        };
+      }),
     querySampleChanges: jest.fn().mockImplementation(async () => {
       const next = pages.shift();
       if (!next) throw new Error('Unexpected HealthKit page request.');
@@ -51,7 +80,7 @@ function healthKit(
 }
 
 describe('common observation import selection and status', () => {
-  it('imports only selected types and reports a mixed unsupported result as partial', async () => {
+  it('imports selected types and reports mixed unsupported results as partial', async () => {
     const repository = new MemoryObservationRepository();
     const health = healthKit([
       page({
@@ -67,14 +96,7 @@ describe('common observation import selection and status', () => {
       now: () => '2026-10-05T10:00:00.000Z',
     });
 
-    expect(health.requestReadAuthorization).toHaveBeenNthCalledWith(
-      1,
-      'heartRate',
-    );
-    expect(health.requestReadAuthorization).toHaveBeenNthCalledWith(
-      2,
-      'bodyMass',
-    );
+    expect(health.requestReadAuthorization).not.toHaveBeenCalled();
     expect(health.querySampleChanges).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       status: 'partial',
@@ -155,10 +177,12 @@ describe('common observation import selection and status', () => {
       features: ['bodyMass'],
       healthKit: {
         ...health,
-        requestReadAuthorization: jest.fn().mockResolvedValue({
+        requestReadAuthorizations: jest.fn().mockResolvedValue({
           availability: 'available',
           requestStatus: 'completed',
           readAuthorization: 'notObservable',
+          requestedFeatures: ['bodyMass'],
+          unsupportedFeatures: [],
         }),
       },
       repository,

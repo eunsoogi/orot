@@ -62,6 +62,30 @@ export type HealthKitAuthorizationResult =
       readonly readAuthorization: 'notObservable';
     };
 
+/** Reports the batch requested in one OS call without exposing individual read grants. */
+export type HealthKitBatchAuthorizationResult =
+  | {
+      readonly availability: 'available';
+      readonly requestStatus: 'completed';
+      readonly readAuthorization: 'notObservable';
+      readonly requestedFeatures: readonly HealthKitFeature[];
+      readonly unsupportedFeatures: readonly HealthKitFeature[];
+    }
+  | {
+      readonly availability: 'unsupportedFeature';
+      readonly requestStatus: 'notRequested';
+      readonly readAuthorization: 'notObservable';
+      readonly requestedFeatures: readonly [];
+      readonly unsupportedFeatures: readonly HealthKitFeature[];
+    }
+  | {
+      readonly availability: 'unavailable' | 'unsupportedPlatform';
+      readonly requestStatus: 'notRequested';
+      readonly readAuthorization: 'notObservable';
+      readonly requestedFeatures: readonly [];
+      readonly unsupportedFeatures: readonly [];
+    };
+
 export interface HealthKitSampleSnapshot {
   readonly id: string;
   readonly typeIdentifier: string;
@@ -165,6 +189,9 @@ export interface HealthKitNativeModule {
   requestReadAuthorization(
     feature: HealthKitFeature,
   ): Promise<HealthKitAuthorizationResult>;
+  requestReadAuthorizations(
+    features: readonly HealthKitFeature[],
+  ): Promise<HealthKitBatchAuthorizationResult>;
   querySamples(
     query: HealthKitSampleQuery,
   ): Promise<HealthKitSampleQueryResult>;
