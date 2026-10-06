@@ -87,7 +87,19 @@ jobs:
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
+      # Exact inputs match Detox's own package/Xcode-derived output directories; a miss still runs its builder.
+      - name: Cache Detox framework outputs
+        id: detox_framework_cache
+        timeout-minutes: 10
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/Library/Detox/ios/framework
+            ~/Library/Detox/ios/xcuitest-runner
+          key: >-
+            orot-detox-framework-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-xcode-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-lock-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Build Detox iOS framework cache
+        if: ${{ steps.detox_framework_cache.outputs.cache-hit != 'true' }}
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
       - name: Compute React Native artifact fingerprint
@@ -153,6 +165,7 @@ jobs:
         timeout-minutes: 1
         env:
           DETOX_PROFILE: ${{ inputs.profile }}
+          DETOX_FRAMEWORK_CACHE_HIT: ${{ steps.detox_framework_cache.outputs.cache-hit }}
           RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
           COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}
           PROFILE_DERIVED_DATA_CACHE_HIT: ${{ steps.profile_derived_data_cache.outputs.cache-hit }}
@@ -164,6 +177,7 @@ jobs:
           APP_REUSABLE: ${{ steps.prepare_derived_data_cache.outputs.app_reusable }}
           APP_REUSE_REASON: ${{ steps.prepare_derived_data_cache.outputs.app_reuse_reason }}
           PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          XCODEBUILD_FINGERPRINT: ${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}
           MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           NODE_VERSION: ${{ env.EXPECTED_NODE_VERSION }}
           PNPM_VERSION: ${{ env.EXPECTED_PNPM_VERSION }}

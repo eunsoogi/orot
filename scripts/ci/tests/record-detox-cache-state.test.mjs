@@ -19,6 +19,7 @@ test('records cache decisions and toolchain provenance in one CI artifact', () =
       env: {
         ...process.env,
         DETOX_PROFILE: 'transcription',
+        DETOX_FRAMEWORK_CACHE_HIT: 'true',
         DERIVED_DATA_CACHE_CLASSIFICATION: 'dependency-compatible',
         APP_REUSABLE: 'false',
         APP_REUSE_REASON: 'native build inputs changed',
@@ -27,6 +28,7 @@ test('records cache decisions and toolchain provenance in one CI artifact', () =
         BUILD_INPUT_FINGERPRINT: 'build-hash',
         RN_ARTIFACT_FINGERPRINT: 'react-native-hash',
         NATIVE_DEPENDENCY_FINGERPRINT: 'native-hash',
+        XCODEBUILD_FINGERPRINT: 'xcode-build-hash',
         EXPECTED_XCODE_VERSION: '26.2',
         EXPECTED_IOS_SIMULATOR_SDK: '26.2',
         EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
@@ -45,6 +47,7 @@ test('records cache decisions and toolchain provenance in one CI artifact', () =
       readFileSync(outputPath, 'utf8'),
       [
         'profile=transcription',
+        'detox_framework_cache_hit=true',
         'react_native_artifacts_cache_hit=false',
         'cocoapods_intermediates_cache_hit=false',
         'derived_data_cache_hit=false',
@@ -56,6 +59,7 @@ test('records cache decisions and toolchain provenance in one CI artifact', () =
         'build_input_fingerprint=build-hash',
         'react_native_artifact_fingerprint=react-native-hash',
         'native_dependency_fingerprint=native-hash',
+        'xcodebuild_fingerprint=xcode-build-hash',
         'xcode=26.2 ios_simulator_sdk=26.2 ios_simulator_runtime=iOS 26.2 ios_simulator_device_type=com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro',
         'macos=26.6.2',
         'node=22.23.2',

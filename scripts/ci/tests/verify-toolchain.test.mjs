@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,7 +43,7 @@ function runToolchainCheck(profile, { availableRuntimes, availableDevices }) {
     );
     writeCommand(
       'xcodebuild',
-      'printf \'Xcode %s\\nBuild version test\\n\' "$EXPECTED_XCODE_VERSION"',
+      'printf \'Xcode %s\\nBuild version %s\\n\' "$EXPECTED_XCODE_VERSION" "${SIMULATED_XCODE_BUILD_VERSION:-test}"',
     );
     writeCommand(
       'xcrun',
@@ -95,6 +96,10 @@ const runtime26 = {
   isAvailable: true,
 };
 
+function expectedXcodeBuildFingerprint(version, build = 'test') {
+  return createHash('sha256').update(`Xcode ${version}\nBuild version ${build}\n`).digest('hex');
+}
+
 test('verifies the transcription profile runtime and device against their pinned Xcode', () => {
   const result = runToolchainCheck(
     {
@@ -118,7 +123,10 @@ test('verifies the transcription profile runtime and device against their pinned
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Verified macOS 26\.6\.2/);
-  assert.equal(result.githubOutput, 'macos_version=26.6.2\n');
+  assert.equal(
+    result.githubOutput,
+    `macos_version=26.6.2\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('26.2')}\n`,
+  );
   assert.match(
     result.stdout,
     /runtime iOS 26\.2 \(com\.apple\.CoreSimulator\.SimRuntime\.iOS-26-2\)/,
@@ -193,4 +201,28 @@ test('keeps the existing default Release toolchain and Simulator expectation', (
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /macOS 27\.0, Xcode 27\.0/);
   assert.match(result.stdout, /device iPhone 18 Pro/);
+  assert.equal(
+    result.githubOutput,
+    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0')}\n`,
+  );
+});
+
+test('includes the complete Xcode build string in its cache fingerprint', () => {
+  const profile = {
+    DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+    EXPECTED_MACOS_VERSION: '27.0',
+    EXPECTED_XCODE_VERSION: '27.0',
+    EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    SIMULATED_XCODE_BUILD_VERSION: 'different-build',
+  };
+  const result = runToolchainCheck(profile, {
+    availableRuntimes: [runtime27],
+    availableDevices: { [runtime27.identifier]: [currentSimulator] },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.githubOutput,
+    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
+  );
 });

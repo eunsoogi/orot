@@ -46,8 +46,11 @@ if [[ "$expected_xcode" == "26.2" ]]; then
   expected_developer_dir="/Applications/Xcode_26.2.app/Contents/Developer"
 fi
 [[ "$actual_developer_dir" == "$expected_developer_dir" ]] || fail_version DEVELOPER_DIR "$expected_developer_dir" "$actual_developer_dir"
-actual_xcode="$(xcodebuild -version | sed -n '1s/^Xcode //p')"
+actual_xcode_details="$(xcodebuild -version)"
+actual_xcode="$(printf '%s\n' "$actual_xcode_details" | sed -n '1s/^Xcode //p')"
 [[ "$actual_xcode" == "$expected_xcode" ]] || fail_version Xcode "$expected_xcode" "$actual_xcode"
+# Detox derives its extracted-framework directory from the complete Xcode version output.
+actual_xcodebuild_fingerprint="$(printf '%s\n' "$actual_xcode_details" | shasum -a 256 | awk '{print $1}')"
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 [[ "$actual_simulator_sdk" == "$expected_simulator_sdk" ]] || fail_version iOS-Simulator-SDK "$expected_simulator_sdk" "$actual_simulator_sdk"
@@ -89,6 +92,7 @@ fi
 # Preserve the actual macOS patch for cache keys after validating the expected family.
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'macos_version=%s\n' "$actual_macos" >>"$GITHUB_OUTPUT"
+  printf 'xcodebuild_fingerprint=%s\n' "$actual_xcodebuild_fingerprint" >>"$GITHUB_OUTPUT"
 fi
 
 printf 'Verified macOS %s, Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
