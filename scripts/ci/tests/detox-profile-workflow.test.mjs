@@ -194,7 +194,7 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
   assert.match(buildStep, /app_reusable != 'true'/);
 
   assert.match(profileCache, /uses: actions\/cache@[0-9a-f]{40}/);
-  assert.match(profileCache, /key: orot-detox-deriveddata-v7-/);
+  assert.equal(profileCache.match(/orot-detox-deriveddata-v7-/g)?.length, 2);
   assert.match(profileCache, /inputs\.profile == 'release'.*inputs\.profile == 'transcription'/s);
   assert.match(
     profileCache,

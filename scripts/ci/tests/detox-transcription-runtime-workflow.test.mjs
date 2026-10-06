@@ -24,6 +24,8 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
   const podsCache = workflowStep('Cache Detox CocoaPods intermediates');
   const appCache = workflowStep('Cache Detox profile app product');
   const cacheRecord = workflowStep('Record Detox cache state');
+  const cachePrepare = workflowStep('Prepare restored Detox DerivedData cache');
+  const manifestWrite = workflowStep('Write Detox DerivedData cache manifest');
   const simulatorPreparation = workflowStep('Prepare dedicated Detox Simulator');
   const toolchainVerification = workflowStep('Verify runner toolchain');
 
@@ -74,5 +76,11 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
     cacheRecord,
     /MACOS_VERSION: \$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
   );
+  for (const manifestStep of [cachePrepare, manifestWrite]) {
+    assert.match(
+      manifestStep,
+      /MACOS_VERSION: \$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+    );
+  }
   assert.match(simulatorPreparation, /prepare-detox-simulator\.sh[\s\S]*?inputs\.profile/);
 });

@@ -144,6 +144,7 @@ jobs:
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
           DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ inputs.profile }}"
@@ -188,6 +189,7 @@ jobs:
           EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
           EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         shell: bash
