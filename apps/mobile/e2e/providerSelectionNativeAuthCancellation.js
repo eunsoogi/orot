@@ -1,3 +1,7 @@
+const {
+  tapLoopbackConsentContinue,
+} = require('./providerSelectionSystemConsent');
+
 async function verifyNativeAuthSessionCancellation({
   by,
   device,
@@ -10,16 +14,9 @@ async function verifyNativeAuthSessionCancellation({
   await device.disableSynchronization();
   try {
     await element(by.id('provider-selection-native-auth-cancel')).tap();
-    // Give the local website consent prompt time to appear before treating it as optional.
+    // Let ASWebAuthenticationSession present its local-loopback consent sheet before tapping it.
     await new Promise(resolve => setTimeout(resolve, 250));
-    for (const label of ['Continue', '계속']) {
-      try {
-        await system.element(by.system.label(label)).tap();
-        break;
-      } catch {
-        // A reused Simulator may remember the website consent already.
-      }
-    }
+    await tapLoopbackConsentContinue({ by, system });
     await waitFor(summary)
       .toHaveText(
         'nativeAuthSessionCancellation=verified; realAccount=unverified',

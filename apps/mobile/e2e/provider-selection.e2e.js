@@ -4,6 +4,9 @@ const { expect: jestExpect } = require('@jest/globals');
 const {
   verifyNativeAuthSessionCancellation,
 } = require('./providerSelectionNativeAuthCancellation');
+const {
+  tapLoopbackConsentContinue,
+} = require('./providerSelectionSystemConsent');
 
 describe('provider selection on iOS Simulator', () => {
   it('returns from auth, refreshes synthetic account state, and restores explicit selection', async () => {
@@ -67,17 +70,9 @@ describe('provider selection on iOS Simulator', () => {
       .toBeVisible()
       .withTimeout(120000);
     await element(by.id('chatgpt-account-action')).tap();
-    // Fresh CI Simulators default to English, while the local app surface is Korean.
     await device.disableSynchronization();
     try {
-      for (const label of ['Continue', '계속']) {
-        try {
-          await system.element(by.system.label(label)).tap();
-          break;
-        } catch {
-          // A reused Simulator may remember the website consent already.
-        }
-      }
+      await tapLoopbackConsentContinue({ by, system });
       await waitFor(
         element(
           by.text(
