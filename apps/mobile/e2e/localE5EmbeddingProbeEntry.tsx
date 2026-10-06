@@ -59,24 +59,24 @@ function LocalE5EmbeddingProbeEntry() {
     );
   }, [mode]);
 
+  // The E2E-only entry exposes the full measurement record to Detox for capture.
   const label =
     state.status === 'complete'
-      ? `Local E5 ${mode} complete; top1=${state.result.top1}/${5}; recallAt3=${state.result.recallAt3}/${5}; persisted=${state.result.persistedVectorCount}`
+      ? `Local E5 ${mode} complete; result=${JSON.stringify(state.result)}`
       : state.status === 'failure'
         ? 'Local E5 probe failed: ' + state.message
         : 'Local E5 probe running';
 
+  // Keep one terminal selector so Detox can surface probe failures immediately.
   return (
     <View style={styles.container}>
       <Text
         accessible
         accessibilityLabel={label}
         testID={
-          state.status === 'complete'
-            ? 'local-e5-probe-success'
-            : state.status === 'failure'
-              ? 'local-e5-probe-failure'
-              : 'local-e5-probe-running'
+          state.status === 'running'
+            ? 'local-e5-probe-running'
+            : 'local-e5-probe-terminal'
         }
       >
         {label}

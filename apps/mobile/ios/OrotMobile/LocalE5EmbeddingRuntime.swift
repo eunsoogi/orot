@@ -51,17 +51,17 @@ actor LocalE5EmbeddingRuntime {
             return
         }
 
-        // Concurrent callers share one download and session build instead of loading the 470 MB graph per batch.
+        // This actor-inheriting task lets concurrent callers share one download, session build, and metrics update.
         let loading: Task<LocalE5PreparedModel, Error>
         if let preparationTask {
             loading = preparationTask
         } else {
-            loading = Task { [assetStore] in
+            loading = Task { [self, assetStore] in
                 let downloadStart = ProcessInfo.processInfo.systemUptime
                 let files = try await assetStore.prepare { [weak self] completed, total in
                     Task { await self?.reportProgress(completed, total) }
                 }
-                await self.recordDownloadTime((ProcessInfo.processInfo.systemUptime - downloadStart) * 1000)
+                recordDownloadTime((ProcessInfo.processInfo.systemUptime - downloadStart) * 1000)
                 try Task.checkCancellation()
 
                 let footprintBefore = LocalE5ProcessMetrics.physicalFootprintBytes()
@@ -77,7 +77,7 @@ actor LocalE5EmbeddingRuntime {
                 let loadTime = (ProcessInfo.processInfo.systemUptime - loadStart) * 1000
                 let footprintAfter = LocalE5ProcessMetrics.physicalFootprintBytes()
                 let loadPeak = sampler.stop()
-                await self.recordLoadMetrics(loadTime, before: footprintBefore, after: footprintAfter, peak: loadPeak)
+                recordLoadMetrics(loadTime, before: footprintBefore, after: footprintAfter, peak: loadPeak)
                 return LocalE5PreparedModel(session: session, tokenizer: tokenizer)
             }
             preparationTask = loading

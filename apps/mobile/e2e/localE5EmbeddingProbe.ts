@@ -153,17 +153,26 @@ export async function runLocalE5EmbeddingProbe(
       index === 0 || item.completed >= progressSteps[index - 1].completed,
   );
   const runtime = await getLocalE5NativeRuntimeMetrics();
-  if (
-    progressSteps.length === 0 ||
-    !runtime.modelLoaded ||
-    runtime.downloadMilliseconds === null ||
-    runtime.sessionLoadMilliseconds === null ||
-    runtime.footprintAfterLoadBytes === null ||
-    runtime.inferenceMilliseconds === null ||
+  // The restart pass reads persisted vectors and does not emit document-index progress.
+  const missingMeasurements = [
+    mode === 'fresh' && progressSteps.length === 0
+      ? 'model download progress'
+      : null,
+    !runtime.modelLoaded ? 'loaded model state' : null,
+    runtime.downloadMilliseconds === null ? 'download latency' : null,
+    runtime.sessionLoadMilliseconds === null ? 'session load latency' : null,
+    runtime.footprintAfterLoadBytes === null
+      ? 'post-load memory footprint'
+      : null,
+    runtime.inferenceMilliseconds === null ? 'inference latency' : null,
     runtime.inferencePeakFootprintBytes === null
-  ) {
+      ? 'inference peak memory footprint'
+      : null,
+  ].filter((measurement): measurement is string => measurement !== null);
+  if (missingMeasurements.length > 0) {
+    // Keep raw values in the visible error so Simulator-only gaps can be diagnosed from Detox.
     throw new Error(
-      'The Simulator did not produce complete progress, memory, and latency measurements.',
+      `The Simulator is missing ${missingMeasurements.join(', ')}; progressEvents=${progressSteps.length}; runtime=${JSON.stringify(runtime)}.`,
     );
   }
   const result: LocalE5ProbeResult = {
