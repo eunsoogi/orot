@@ -1,10 +1,12 @@
-import { NativeModules } from 'react-native';
+import { useCallback, useState } from 'react';
+import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import App from '../App';
 import { createHealthKitClient } from '../src/healthkit/client';
 import type {
   HealthKitFeature,
   HealthKitNativeModule,
 } from '../src/healthkit/types';
+import { BLOOD_PRESSURE_CHECKPOINT_KEY } from '../src/healthkit/bloodPressure/importChanges';
 import { syncHealthKitBloodPressure } from '../src/healthkit/bloodPressure';
 import type { BloodPressureSyncResult } from '../src/healthkit/bloodPressure/types';
 import { listLocalBloodPressureObservations } from '../src/healthkit/bloodPressure/importLocal';
@@ -22,14 +24,53 @@ interface BloodPressureProbeModule extends HealthKitNativeModule {
 
 const native = NativeModules.HealthKitModule as BloodPressureProbeModule;
 const healthKit = createHealthKitClient(native, 'ios');
+const syntheticCursor = 'bloodPressure:bloodPressure:anchor-v1';
 
 // Detox routes through App so the probe covers the same explicit user action and results screen.
 export function BloodPressureProbe() {
+  const [storageEvidence, setStorageEvidence] = useState('storage=notRead');
+  const [syncEvidence, setSyncEvidence] = useState('sync=notRun');
+
+  const loadObservations = useCallback(async () => {
+    const repository = await openLocalStorage();
+    const [observations, checkpoint, cipherVersion] = await Promise.all([
+      listLocalBloodPressureObservations(),
+      repository.getSyncCheckpoint(BLOOD_PRESSURE_CHECKPOINT_KEY),
+      getCipherVersion(),
+    ]);
+    // Expose only whether the fixture cursor returned, never a raw HealthKit anchor.
+    setStorageEvidence(
+      `sqlCipher=${cipherVersion ? 'available' : 'unavailable'}; ` +
+        `rows=${observations.length}; ` +
+        `cursor=${checkpoint?.value === syntheticCursor ? 'fixture-anchor' : 'missing-or-mismatch'}`,
+    );
+    return observations;
+  }, []);
+
+  const importBloodPressure = useCallback(async () => {
+    const result = await importSyntheticBloodPressure();
+    setSyncEvidence(
+      `status=${result.status}; upserted=${result.upserted}; ` +
+        `deleted=${result.deleted}; cursorAdvanced=${result.cursorAdvanced}`,
+    );
+    return result;
+  }, []);
+
   return (
-    <App
-      importBloodPressure={importSyntheticBloodPressure}
-      loadBloodPressureObservations={listLocalBloodPressureObservations}
-    />
+    <View style={styles.root}>
+      <App
+        importBloodPressure={importBloodPressure}
+        loadBloodPressureObservations={loadObservations}
+      />
+      <View pointerEvents="none" style={styles.evidence}>
+        <Text style={styles.evidenceText} testID="blood-pressure-probe-storage">
+          {storageEvidence}
+        </Text>
+        <Text style={styles.evidenceText} testID="blood-pressure-probe-sync">
+          {syncEvidence}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -58,3 +99,15 @@ async function importSyntheticBloodPressure(): Promise<BloodPressureSyncResult> 
     if (fixtureInstalled) await native.removeSyntheticFixture();
   }
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  evidence: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    bottom: 1,
+    left: 2,
+    position: 'absolute',
+    right: 2,
+  },
+  evidenceText: { color: '#555', fontSize: 8 },
+});
