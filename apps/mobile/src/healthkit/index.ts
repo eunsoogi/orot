@@ -4,6 +4,7 @@ export { healthKitSampleChangesCheckpointKey } from './sampleChangesCheckpoint';
 export { syncHealthKitMedications } from './medications/importer';
 export type {
   HealthKitAuthorizationResult,
+  HealthKitBatchAuthorizationResult,
   HealthKitAvailability,
   HealthKitFeature,
   HealthKitMedicationDefinitionSnapshot,
