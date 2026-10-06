@@ -2,6 +2,7 @@ import { AppState } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
+import { calendarDateKey } from '../calendarMonth';
 import type { CalendarBridge, CalendarEvent } from '../types';
 
 function event(
@@ -121,7 +122,7 @@ describe('Calendar linking screen', () => {
     expect(screen.queryByTestId('calendar-empty')).toBeNull();
   });
 
-  it('shows the empty state after a completed candidate lookup returns no events', async () => {
+  it('shows empty state only after a fully covered day returns no events', async () => {
     const calendar = bridge({
       requestAccessAndListUpcomingEvents: jest.fn(async () => ({
         access: 'fullAccess' as const,
@@ -135,6 +136,16 @@ describe('Calendar linking screen', () => {
     );
     await fireEvent.press(screen.getByTestId('calendar-connect'));
 
+    expect(await screen.findByTestId('calendar-outside-query')).toBeTruthy();
+    expect(screen.queryByTestId('calendar-empty')).toBeNull();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowKey = calendarDateKey(
+      tomorrow.getFullYear(),
+      tomorrow.getMonth(),
+      tomorrow.getDate(),
+    );
+    await fireEvent.press(screen.getByTestId(`calendar-day-${tomorrowKey}`));
     expect(await screen.findByTestId('calendar-empty')).toBeTruthy();
   });
 

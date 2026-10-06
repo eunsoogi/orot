@@ -76,8 +76,9 @@ function localTimeZone(): string {
 function validTimeZone(candidate: string | null): string {
   if (candidate) {
     try {
-      new Intl.DateTimeFormat('en-US', { timeZone: candidate });
-      return candidate;
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: candidate,
+      }).resolvedOptions().timeZone;
     } catch {
       // Invalid stored zone identifiers fall back to the device's local zone.
     }
@@ -182,6 +183,9 @@ export function shiftCalendarMonth(
  * exclusive because the native query stops at the same local time next year.
  */
 export function calendarQueryWindow(start: Date): CalendarQueryWindow {
+  // The native query begins now; only the following local day has full coverage.
+  const firstFullyQueriedDay = new Date(start);
+  firstFullyQueriedDay.setDate(firstFullyQueriedDay.getDate() + 1);
   const year = start.getFullYear() + 1;
   const month = start.getMonth();
   const day = start.getDate();
@@ -191,9 +195,9 @@ export function calendarQueryWindow(start: Date): CalendarQueryWindow {
   end.setDate(Math.min(day, new Date(year, month + 1, 0).getDate()));
   return {
     startDay: calendarDateKey(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
+      firstFullyQueriedDay.getFullYear(),
+      firstFullyQueriedDay.getMonth(),
+      firstFullyQueriedDay.getDate(),
     ),
     endDay: calendarDateKey(end.getFullYear(), end.getMonth(), end.getDate()),
   };

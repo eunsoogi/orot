@@ -81,14 +81,17 @@ describe('calendar month view', () => {
         appointmentsLoading={false}
         candidatesLoaded
         events={[]}
-        initialDate={new Date(2035, 5, 2)}
+        initialDate={new Date(2035, 5, 1)}
         linkedAppointment={null}
         onSelectEvent={jest.fn()}
-        queryWindow={queryWindow('2035-06-01', '2035-06-10')}
+        queryWindow={queryWindow('2035-06-02', '2035-06-10')}
         resultsMayBeIncomplete={false}
       />,
     );
 
+    expect(calendar.getByTestId('calendar-outside-query')).toBeTruthy();
+    expect(calendar.queryByTestId('calendar-empty')).toBeNull();
+    await fireEvent.press(calendar.getByTestId('calendar-day-2035-06-02'));
     expect(calendar.getByTestId('calendar-empty')).toBeTruthy();
     await fireEvent.press(calendar.getByTestId('calendar-day-2035-06-12'));
     expect(calendar.getByTestId('calendar-outside-query')).toBeTruthy();
