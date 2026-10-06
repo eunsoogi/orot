@@ -1,4 +1,4 @@
-/* global by, device, element, waitFor */
+/* global by, device, element, waitFor, describe, it */
 
 async function waitForProbeResult(mode, timeoutMs) {
   const result = element(by.id('local-e5-probe-terminal'));

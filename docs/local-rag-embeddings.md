@@ -10,16 +10,16 @@ The recorded run used a Release build on an iPhone 17 Pro simulator running iOS 
 
 | Measurement | First indexing run | App relaunch run |
 | --- | ---: | ---: |
-| Model asset preparation | 16.14 s, including cold download and integrity checks | 192 ms from the cached files and integrity checks |
-| ONNX session load | 379 ms | 397 ms |
-| Search latency for five queries | 3, 4, 4, 5, 5 ms (4.2 ms mean) | 609, 3, 3, 3, 3 ms |
+| Model asset preparation | 18.20 s, including cold download and integrity checks | 202 ms from the cached files and integrity checks |
+| ONNX session load | 414 ms | 370 ms |
+| Search latency for five queries | 5, 4, 3, 5, 4 ms (4.2 ms mean) | 588, 2, 3, 3, 2 ms |
 | Top-1 / recall@3 / MRR | 5/5 / 5/5 / 1.00 | 5/5 / 5/5 / 1.00 |
 | Persisted vectors read | 6 | 6 |
-| Model preparation progress callbacks | 1,321, monotonic | Not applicable; this pass reads the saved index without re-indexing |
+| Model preparation progress callbacks | 1,382, monotonic | Not applicable; this pass reads the saved index without re-indexing |
 
-The first run's app-process physical footprint was 39,979,792 bytes (38.1 MiB) before model load and 520,342,744 bytes (496.2 MiB) after load. The peak sampled across embedding inference was 908,643,904 bytes (866.6 MiB); that probe includes a separate cancellation batch of eight long inputs, so it is not the peak for an ordinary short query alone. Footprint values are absolute process measurements, not memory deltas attributable solely to the model.
+The first run's app-process physical footprint was 39,914,280 bytes (38.1 MiB) before model load and 520,162,520 bytes (496.2 MiB) after load. The peak sampled across embedding inference was 908,250,688 bytes (866.2 MiB); that probe includes a separate cancellation batch of eight long inputs, so it is not the peak for an ordinary short query alone. Footprint values are absolute process measurements, not memory deltas attributable solely to the model. After relaunch, the fresh process measured 506,350,688 bytes (482.7 MiB) before the new session load and 988,646,952 bytes (942.8 MiB) after load; the inference peak was 512,429,320 bytes (488.7 MiB).
 
-The eight-item cancellation probe returned the cancellation result in 15 ms. A queued actor call completed after 644 ms, showing how long the synchronous ONNX inference took to drain after the caller had been cancelled. `inferenceMilliseconds` records the most recent native inference call; per-query search times above measure the full `service.search` call, including query embedding and ranking against the six-record fixture.
+The eight-item cancellation probe returned the cancellation result in 13 ms. A queued actor call completed after 651 ms, showing how long the synchronous ONNX inference took to drain after the caller had been cancelled. `inferenceMilliseconds` records the most recent native inference call; per-query search times above measure the full `service.search` call, including query embedding and ranking against the six-record fixture. The first search after relaunch includes lazy session setup, so it should not be averaged with the later warm searches.
 
 These figures are one Simulator run, not a device-wide performance guarantee. The small synthetic fixture verifies Korean semantic retrieval for these five queries only. Physical-device measurements and Core ML/Neural Engine performance were not collected.
 
