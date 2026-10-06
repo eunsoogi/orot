@@ -1,5 +1,5 @@
 {
-  "originHash" : "031b58bd01d471bbabf2254d29a8401a537994334c189aa53ccb8a78fcd78b25",
+  "originHash" : "25649533de1033d44bb721321241cff9681e4937398f7beba3a4840638414e84",
   "pins" : [
     {
       "identity" : "jwt-kit",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "7abc497b0f907191933c87166e9b6a41b9d028d6",
         "version" : "5.6.0"
+      }
+    },
+    {
+      "identity" : "onnxruntime-swift-package-manager",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/microsoft/onnxruntime-swift-package-manager.git",
+      "state" : {
+        "revision" : "b7fb7f7dea8a2469e6335d95a61b8f36d0dc83b2",
+        "version" : "1.24.2"
       }
     },
     {
@@ -44,6 +53,14 @@
       "state" : {
         "revision" : "9c6fb14227f55d8f711ce3847dc2f419fb0ecacb",
         "version" : "1.15.1"
+      }
+    },
+    {
+      "identity" : "swift-package-support-sentencepiece",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/liuliu/swift-package-support-sentencepiece.git",
+      "state" : {
+        "revision" : "48f1241971c19dc79c314e5a9c5b9c38cbf25a53"
       }
     }
   ],

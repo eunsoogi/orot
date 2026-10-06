@@ -49,6 +49,16 @@
 		E14B00000000000000000006 /* SpeechTranscriptionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000006 /* SpeechTranscriptionModule.swift */; };
 		E14B00000000000000000007 /* SpeechTranscriptionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000007 /* SpeechTranscriptionModule.m */; };
 		E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14A00000000000000000008 /* SpeechTranscriptionTypes.swift */; };
+		F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */; };
+		F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000012 /* LocalE5EmbeddingModule.m */; };
+		F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */; };
+		F24E00000000000000000004 /* LocalE5EmbeddingRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000014 /* LocalE5EmbeddingRuntime.swift */; };
+		F24E00000000000000000005 /* LocalE5ModelAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000015 /* LocalE5ModelAssetStore.swift */; };
+		F24E00000000000000000006 /* LocalE5URLSessionDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000016 /* LocalE5URLSessionDownloader.swift */; };
+		F24E00000000000000000007 /* LocalE5ProcessMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000017 /* LocalE5ProcessMetrics.swift */; };
+		F24E00000000000000000008 /* LocalE5SentencePieceTokenizer.mm in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */; settings = {COMPILER_FLAGS = "-fcxx-modules"; }; };
+		F24E00000000000000000009 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = F24E00000000000000000021 /* onnxruntime */; };
+		F24E0000000000000000000A /* swift-package-support-sentencepiece in Frameworks */ = {isa = PBXBuildFile; productRef = F24E00000000000000000022 /* swift-package-support-sentencepiece */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +108,16 @@
 		E14A00000000000000000007 /* SpeechTranscriptionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SpeechTranscriptionModule.m; path = OrotMobile/SpeechTranscriptionModule.m; sourceTree = "<group>"; };
 		E14A00000000000000000008 /* SpeechTranscriptionTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpeechTranscriptionTypes.swift; path = OrotMobile/SpeechTranscriptionTypes.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingModule.swift; path = OrotMobile/LocalE5EmbeddingModule.swift; sourceTree = "<group>"; };
+		F24E00000000000000000012 /* LocalE5EmbeddingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocalE5EmbeddingModule.m; path = OrotMobile/LocalE5EmbeddingModule.m; sourceTree = "<group>"; };
+		F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingRequestSlot.swift; path = OrotMobile/LocalE5EmbeddingRequestSlot.swift; sourceTree = "<group>"; };
+		F24E00000000000000000014 /* LocalE5EmbeddingRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingRuntime.swift; path = OrotMobile/LocalE5EmbeddingRuntime.swift; sourceTree = "<group>"; };
+		F24E00000000000000000015 /* LocalE5ModelAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5ModelAssetStore.swift; path = OrotMobile/LocalE5ModelAssetStore.swift; sourceTree = "<group>"; };
+		F24E00000000000000000016 /* LocalE5URLSessionDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5URLSessionDownloader.swift; path = OrotMobile/LocalE5URLSessionDownloader.swift; sourceTree = "<group>"; };
+		F24E00000000000000000017 /* LocalE5ProcessMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5ProcessMetrics.swift; path = OrotMobile/LocalE5ProcessMetrics.swift; sourceTree = "<group>"; };
+		F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = LocalE5SentencePieceTokenizer.mm; path = OrotMobile/LocalE5SentencePieceTokenizer.mm; sourceTree = "<group>"; };
+		F24E00000000000000000019 /* LocalE5SentencePieceTokenizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LocalE5SentencePieceTokenizer.h; path = OrotMobile/LocalE5SentencePieceTokenizer.h; sourceTree = "<group>"; };
+		F24E0000000000000000001A /* OrotMobile-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "OrotMobile-Bridging-Header.h"; path = "OrotMobile/OrotMobile-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +128,8 @@
 				0C80B921A6F3F58F76C31292 /* libPods-OrotMobile.a in Frameworks */,
 				A63F00000000000000000003 /* OpenAIProvider in Frameworks */,
 				E16A00000000000000000001 /* HealthKit.framework in Frameworks */,
+				F24E00000000000000000009 /* onnxruntime in Frameworks */,
+				F24E0000000000000000000A /* swift-package-support-sentencepiece in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +168,16 @@
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
 				B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */,
+				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
+				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
+				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
+				F24E00000000000000000014 /* LocalE5EmbeddingRuntime.swift */,
+				F24E00000000000000000015 /* LocalE5ModelAssetStore.swift */,
+				F24E00000000000000000016 /* LocalE5URLSessionDownloader.swift */,
+				F24E00000000000000000017 /* LocalE5ProcessMetrics.swift */,
+				F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */,
+				F24E00000000000000000019 /* LocalE5SentencePieceTokenizer.h */,
+				F24E0000000000000000001A /* OrotMobile-Bridging-Header.h */,
 				E14A00000000000000000001 /* SpeechTranscriptionAnalyzer.swift */,
 				E14A00000000000000000002 /* SpeechTranscriptionAudioStore.swift */,
 				E14A00000000000000000003 /* SpeechTranscriptionAvailability.swift */,
@@ -231,6 +263,8 @@
 			name = OrotMobile;
 			packageProductDependencies = (
 				D63F00000000000000000001 /* OpenAIProvider */,
+				F24E00000000000000000021 /* onnxruntime */,
+				F24E00000000000000000022 /* swift-package-support-sentencepiece */,
 			);
 			productName = Orot;
 			productReference = 13B07F961A680F5B00A75B9A /* Orot.app */;
@@ -260,6 +294,8 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			packageReferences = (
 				C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */,
+				F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+				F24E00000000000000000032 /* XCRemoteSwiftPackageReference "swift-package-support-sentencepiece" */,
 			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
@@ -391,6 +427,14 @@
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
 				A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */,
+				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
+				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
+				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,
+				F24E00000000000000000004 /* LocalE5EmbeddingRuntime.swift in Sources */,
+				F24E00000000000000000005 /* LocalE5ModelAssetStore.swift in Sources */,
+				F24E00000000000000000006 /* LocalE5URLSessionDownloader.swift in Sources */,
+				F24E00000000000000000007 /* LocalE5ProcessMetrics.swift in Sources */,
+				F24E00000000000000000008 /* LocalE5SentencePieceTokenizer.mm in Sources */,
 				E14B00000000000000000001 /* SpeechTranscriptionAnalyzer.swift in Sources */,
 				E14B00000000000000000002 /* SpeechTranscriptionAudioStore.swift in Sources */,
 				E14B00000000000000000003 /* SpeechTranscriptionAvailability.swift in Sources */,
@@ -433,6 +477,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile;
 				PRODUCT_NAME = Orot;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "OrotMobile/OrotMobile-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -467,6 +512,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile;
 				PRODUCT_NAME = Orot;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "OrotMobile/OrotMobile-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -659,11 +705,40 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.24.2;
+			};
+		};
+		F24E00000000000000000032 /* XCRemoteSwiftPackageReference "swift-package-support-sentencepiece" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/liuliu/swift-package-support-sentencepiece.git";
+			requirement = {
+				kind = revision;
+				revision = 48f1241971c19dc79c314e5a9c5b9c38cbf25a53;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		D63F00000000000000000001 /* OpenAIProvider */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */;
 			productName = OpenAIProvider;
+		};
+		F24E00000000000000000021 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
+		};
+		F24E00000000000000000022 /* swift-package-support-sentencepiece */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F24E00000000000000000032 /* XCRemoteSwiftPackageReference "swift-package-support-sentencepiece" */;
+			productName = "swift-package-support-sentencepiece";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
