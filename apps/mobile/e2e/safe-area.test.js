@@ -36,7 +36,7 @@ function keyboardFrameFrom(attributes) {
 
 async function expectKeyboardOccludesScroll(scrollFrame) {
   const attributes = await element(
-    by.id('safe-area-keyboard-state'),
+    by.id('safe-area-keyboard-visible'),
   ).getAttributes();
   const { screenY, height } = keyboardFrameFrom(attributes);
   const scrollBottom = scrollFrame.y + scrollFrame.height;
@@ -137,7 +137,7 @@ describe('safe area routes on iOS Simulator', () => {
     const input = element(by.id('safe-area-keyboard-input'));
     await input.tap();
     await expect(input).toBeFocused();
-    await waitFor(element(by.label(/^keyboard-visible:/u)))
+    await waitFor(element(by.id('safe-area-keyboard-visible')))
       .toExist()
       .withTimeout(30000);
 

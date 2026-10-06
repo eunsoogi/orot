@@ -61,6 +61,7 @@ function SafeAreaProbeEntry() {
         >
           Font scale: {PixelRatio.getFontScale()}
         </Text>
+        {/* Detox waits on an ID because the dynamic label matcher timed out on iOS. */}
         <Text
           accessible
           accessibilityLabel={
@@ -68,7 +69,11 @@ function SafeAreaProbeEntry() {
               ? `keyboard-visible:${keyboardFrame.screenY}:${keyboardFrame.height}`
               : 'keyboard-hidden'
           }
-          testID="safe-area-keyboard-state"
+          testID={
+            keyboardFrame
+              ? 'safe-area-keyboard-visible'
+              : 'safe-area-keyboard-hidden'
+          }
         >
           Keyboard {keyboardFrame ? 'visible' : 'hidden'}
         </Text>
