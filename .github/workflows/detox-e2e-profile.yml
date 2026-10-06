@@ -130,9 +130,8 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}
       - name: Install CocoaPods
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-      - name: Install Detox CocoaPods dependencies
+      - name: Install Detox CocoaPods dependencies # Runner validation already ran before Simulator startup.
         timeout-minutes: 20
-        # The full check ran before Simulator startup; only Ruby and CocoaPods need rechecking here.
         run: scripts/ci/verify-toolchain.sh --cocoapods-only && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
 
       # Fingerprint CocoaPods' tracked integration after its one install so the key matches the built app.
