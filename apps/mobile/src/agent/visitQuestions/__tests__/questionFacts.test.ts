@@ -3,6 +3,8 @@ import type {
   VisitQuestionEvidenceItem,
   VisitQuestionResponderInput,
 } from '../taskContract';
+import { DoseEventSchema } from '@orot/domain';
+import { chunkStructuredRecord } from '@orot/rag';
 
 const responder = createVisitQuestionTaskResponder();
 const source: VisitQuestionEvidenceItem = {
@@ -51,6 +53,28 @@ function validation(questionText: string, evidenceText: string) {
 }
 
 describe('visit-question numeric fact validation', () => {
+  it('preserves an amount and unit stored as separate structured fields', () => {
+    const doseEvent = DoseEventSchema.parse({
+      id: 'dose-event-1',
+      effectiveAt: '2026-09-01T12:00:00.000Z',
+      recordedAt: '2026-09-01T12:00:00.000Z',
+      ingestedAt: '2026-09-01T12:00:00.000Z',
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      eventKind: 'taken',
+      medicationAssertionId: 'medication-assertion-1',
+      dose: { amount: 5, unit: 'mg' },
+    });
+    const structuredDose = chunkStructuredRecord('dose_event', doseEvent).text;
+
+    expect(
+      validation('복용량 5 mg을 진료에서 확인할까요?', structuredDose).status,
+    ).toBe('valid');
+    expect(
+      validation('복용량 5 g을 진료에서 확인할까요?', structuredDose).status,
+    ).toBe('needs_clarification');
+  });
+
   it('preserves units, signs, and ordered ratios while accepting source-matched values', () => {
     expect(
       validation(

@@ -1,10 +1,13 @@
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { DoseEventSchema } from '@orot/domain';
+import { chunkStructuredRecord } from '@orot/rag';
 import {
   makeProvider,
   preparedContext,
   selectedOption,
   successfulOutputs,
 } from '../testing/workflowFixtures';
+import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
 import { runVisitQuestionWorkflow } from '../workflow';
 
 describe('visit-question shared workflow', () => {
@@ -93,6 +96,88 @@ describe('visit-question shared workflow', () => {
     });
 
     expect(result.status).toBe('needs_clarification');
+  });
+
+  it('accepts the structured dose unit and rejects a substituted unit', async () => {
+    const prepared = preparedContext();
+    const doseEvent = DoseEventSchema.parse({
+      id: 'dose-event-1',
+      effectiveAt: '2026-09-01T12:00:00.000Z',
+      recordedAt: '2026-09-01T12:00:00.000Z',
+      ingestedAt: '2026-09-01T12:00:00.000Z',
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+      eventKind: 'taken',
+      medicationAssertionId: 'medication-assertion-1',
+      dose: { amount: 5, unit: 'mg' },
+    });
+    const initialEvidence = {
+      ...prepared.initialEvidence,
+      content: chunkStructuredRecord('dose_event', doseEvent).text,
+    };
+    const batch = {
+      ...prepared.evidence.batch,
+      items: [initialEvidence],
+    };
+    const preparedWithDose = {
+      ...prepared,
+      initialEvidence,
+      evidence: { ...prepared.evidence, batch },
+    };
+    const alias = createVisitQuestionEvidenceAliases(batch).batch.items[0]!;
+    const citation = {
+      sourceKind: alias.sourceKind,
+      sourceId: alias.sourceId,
+      sourceRevision: alias.sourceRevision,
+      evidenceId: alias.evidenceId,
+      evidenceRevision: alias.evidenceRevision,
+      locator: alias.locator,
+      effectiveTime: alias.effectiveTime,
+      reviewState: alias.reviewState,
+    };
+
+    const runWithQuestion = async (questionText: string) => {
+      const questions = [
+        {
+          questionText,
+          rationale: '복용량 기록을 의료진과 확인할 수 있어요.',
+          priority: 'routine',
+          evidenceIds: [alias.evidenceId],
+        },
+        {
+          questionText: '현재 투약 기록에서 무엇을 확인할까요?',
+          rationale: '기록된 투약 내용을 질문할 수 있어요.',
+          priority: 'routine',
+          evidenceIds: [alias.evidenceId],
+        },
+        {
+          questionText: '복용 후 기록할 내용이 있을까요?',
+          rationale: '진료 전 기록 방법을 확인할 수 있어요.',
+          priority: 'important',
+          evidenceIds: [alias.evidenceId],
+        },
+      ];
+      const { provider } = makeProvider([
+        JSON.stringify({
+          type: 'result',
+          value: { status: 'suggestions', questions },
+          citations: [citation],
+        }),
+      ]);
+      const { selection, option } = selectedOption(provider, 'on-device');
+      return runVisitQuestionWorkflow({
+        prepared: preparedWithDose,
+        selection,
+        providerOptions: [option],
+      });
+    };
+
+    expect(
+      (await runWithQuestion('복용량 5 mg을 진료에서 확인할까요?')).status,
+    ).toBe('ready');
+    expect(
+      (await runWithQuestion('복용량 5 g을 진료에서 확인할까요?')).status,
+    ).toBe('needs_clarification');
   });
 
   it('does not call the selected provider when remote payload consent is declined', async () => {
