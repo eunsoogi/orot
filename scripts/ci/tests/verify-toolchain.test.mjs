@@ -134,4 +134,8 @@ test('includes the complete Xcode build string in its cache fingerprint', () => 
     result.githubOutput,
     `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
   );
+  assert.equal(
+    result.githubEnvironment,
+    `XCODEBUILD_FINGERPRINT=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
+  );
 });

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const MANIFEST_FILENAME = '.orot-detox-cache.json';
@@ -17,6 +17,8 @@ export function getDetoxCacheToolchain() {
     rubyVersion: process.env.EXPECTED_RUBY_VERSION,
     cocoaPodsVersion: process.env.EXPECTED_COCOAPODS_VERSION,
     xcodeVersion: process.env.EXPECTED_XCODE_VERSION,
+    // Detox's extracted framework path depends on the complete xcodebuild version output.
+    xcodebuildFingerprint: process.env.XCODEBUILD_FINGERPRINT,
     iosSimulatorSdk: process.env.EXPECTED_IOS_SIMULATOR_SDK,
   };
   const missing = Object.entries(toolchain)
@@ -24,6 +26,9 @@ export function getDetoxCacheToolchain() {
     .map(([key]) => key);
   if (missing.length > 0)
     throw new Error(`Missing Detox cache toolchain values: ${missing.join(', ')}`);
+  if (!FINGERPRINT_PATTERN.test(toolchain.xcodebuildFingerprint)) {
+    throw new Error('Invalid Detox cache Xcode build fingerprint.');
+  }
   return toolchain;
 }
 
@@ -214,4 +219,26 @@ export function inspectManifestFingerprints(
     `manifest_native_dependencies_sha256=${fingerprintDigest(manifest.nativeDependencies)}`,
   ].join(' ');
   return { match, mismatchFields, diagnostic };
+}
+
+export function writeCachePreparationOutput(result, outputPath) {
+  // Keep output keys fixed; restored manifest content can supply only validated labels and digests.
+  if (outputPath) {
+    writeFileSync(
+      outputPath,
+      [
+        `derived_data_cache_classification=${result.classification}`,
+        `derived_data_cache_reason=${result.reason}`,
+        `derived_data_cache_mismatch_fields=${result.mismatchFields.join(',') || 'none'}`,
+        `derived_data_cache_diagnostic=${result.diagnostic}`,
+        `app_reusable=${result.appReusable}`,
+        `app_reuse_reason=${result.appReuseReason}`,
+        `detox_artifacts_reusable=${result.appReusable}`,
+      ].join('\n') + '\n',
+      { flag: 'a' },
+    );
+  }
+  console.log(
+    `DETOX_DERIVEDDATA_CACHE ${result.diagnostic} app_reusable=${result.appReusable} app_reuse_reason=${result.appReuseReason}`,
+  );
 }

@@ -90,5 +90,5 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-openai-provider\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-transcription\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-production\//);
-  assert.match(profileWorkflow, /orot-detox-deriveddata-v8-/);
+  assert.match(profileWorkflow, /orot-detox-deriveddata-v9-/);
 });

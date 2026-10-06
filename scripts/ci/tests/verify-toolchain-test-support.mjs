@@ -24,7 +24,9 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
   const directory = mkdtempSync(join(tmpdir(), 'orot-toolchain-'));
   try {
     const githubOutputPath = join(directory, 'github-output');
+    const githubEnvironmentPath = join(directory, 'github-environment');
     writeFileSync(githubOutputPath, '');
+    writeFileSync(githubEnvironmentPath, '');
     const binDirectory = join(directory, 'bin');
     mkdirSync(binDirectory, { recursive: true });
     const writeCommand = (name, content) => {
@@ -75,6 +77,7 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
         PATH: [binDirectory, process.env.PATH].join(':'),
         REAL_NODE_EXECUTABLE: process.execPath,
         GITHUB_OUTPUT: githubOutputPath,
+        GITHUB_ENV: githubEnvironmentPath,
         SIMULATOR_RUNTIMES_JSON: runtimesPath,
         SIMULATOR_DEVICES_JSON: devicesPath,
         EXPECTED_RUBY_VERSION: '4.0.7',
@@ -86,7 +89,11 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
         ...profile,
       },
     });
-    return { ...result, githubOutput: readFileSync(githubOutputPath, 'utf8') };
+    return {
+      ...result,
+      githubOutput: readFileSync(githubOutputPath, 'utf8'),
+      githubEnvironment: readFileSync(githubEnvironmentPath, 'utf8'),
+    };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

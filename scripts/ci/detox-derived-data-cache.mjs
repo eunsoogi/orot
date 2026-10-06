@@ -7,6 +7,7 @@ import {
   getDetoxCacheToolchain,
   MANIFEST_FILENAME,
   readCacheManifest,
+  writeCachePreparationOutput,
 } from './detox-cache-manifest.mjs';
 import {
   clearDetoxFrameworkCacheArtifacts,
@@ -51,13 +52,18 @@ function makeManifest(repositoryRoot, profile) {
     cocoapodsProjectInputHash: baselineInputs.projectFile,
   });
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     profile,
     toolchain: getDetoxCacheToolchain(),
     nativeDependencies: fingerprints.nativeDependencies,
     buildInputs: fingerprints.buildInputs,
     cocoapodsInputProvenance: { baseline: baselineInputs },
   };
+}
+
+function requiresDetoxRuntimeArtifacts(profile) {
+  // Production CI caches only its app and Pods; its fallback never builds Detox's separate runner.
+  return profile !== 'production';
 }
 
 function writeManifest(repositoryRoot, profile) {
@@ -79,11 +85,15 @@ function writeManifest(repositoryRoot, profile) {
     throw new Error(`Refusing to cache an invalid iOS app artifact: ${app.reason}`);
   }
   manifest.appArtifacts = app.artifacts;
-  const detoxArtifacts = inspectDetoxFrameworkCacheArtifacts(getDetoxFrameworkCacheRoot());
-  if (detoxArtifacts.reason) {
-    throw new Error(`Refusing to cache missing Detox framework outputs: ${detoxArtifacts.reason}`);
+  if (requiresDetoxRuntimeArtifacts(profile)) {
+    const detoxArtifacts = inspectDetoxFrameworkCacheArtifacts(getDetoxFrameworkCacheRoot());
+    if (detoxArtifacts.reason) {
+      throw new Error(
+        `Refusing to cache missing Detox framework outputs: ${detoxArtifacts.reason}`,
+      );
+    }
+    manifest.detoxArtifacts = detoxArtifacts.artifacts;
   }
-  manifest.detoxArtifacts = detoxArtifacts.artifacts;
   const fingerprintCheck = inspectManifestFingerprints(
     manifest,
     process.env.EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT,
@@ -164,10 +174,12 @@ function prepareCache(repositoryRoot, profile) {
 
     const manifestResult = readCacheManifest(dataRoot);
     const inspected = inspectCacheManifest(manifestResult, expected);
-    const detoxArtifacts = inspectDetoxFrameworkCacheArtifacts(
-      getDetoxFrameworkCacheRoot(),
-      manifestResult.manifest?.detoxArtifacts ?? null,
-    );
+    const detoxArtifacts = requiresDetoxRuntimeArtifacts(profile)
+      ? inspectDetoxFrameworkCacheArtifacts(
+          getDetoxFrameworkCacheRoot(),
+          manifestResult.manifest?.detoxArtifacts ?? null,
+        )
+      : { reason: null };
     let appReusable = false;
     let appReuseReason = 'cache_not_exact';
     if (inspected.classification === 'exact') {
@@ -188,7 +200,7 @@ function prepareCache(repositoryRoot, profile) {
     if (inspected.classification === 'invalidated') {
       requireGitHubActions();
       removeDerivedDataRoot(profile, dataRoot);
-      clearDetoxFrameworkCacheArtifacts();
+      if (requiresDetoxRuntimeArtifacts(profile)) clearDetoxFrameworkCacheArtifacts();
       appReuseReason = 'cache_invalidated';
     }
     if (inspected.classification === 'dependency-compatible') {
@@ -201,28 +213,6 @@ function prepareCache(repositoryRoot, profile) {
   }
   recordPreparedDetoxBuildInputs(repositoryRoot, profile, expected, !result.appReusable);
   return result;
-}
-
-function writeGitHubOutput(result) {
-  const outputPath = process.env.GITHUB_OUTPUT;
-  if (outputPath) {
-    writeFileSync(
-      outputPath,
-      [
-        `derived_data_cache_classification=${result.classification}`,
-        `derived_data_cache_reason=${result.reason}`,
-        `derived_data_cache_mismatch_fields=${result.mismatchFields.join(',') || 'none'}`,
-        `derived_data_cache_diagnostic=${result.diagnostic}`,
-        `app_reusable=${result.appReusable}`,
-        `app_reuse_reason=${result.appReuseReason}`,
-        `detox_artifacts_reusable=${result.appReusable}`,
-      ].join('\n') + '\n',
-      { flag: 'a' },
-    );
-  }
-  console.log(
-    `DETOX_DERIVEDDATA_CACHE ${result.diagnostic} app_reusable=${result.appReusable} app_reuse_reason=${result.appReuseReason}`,
-  );
 }
 
 function main() {
@@ -243,7 +233,8 @@ function main() {
     console.log(
       `DETOX_DERIVEDDATA_CACHE build_inputs_verified profile=${profile} stage=post-pods-verified`,
     );
-  } else writeGitHubOutput(prepareCache(process.cwd(), profile));
+  } else
+    writeCachePreparationOutput(prepareCache(process.cwd(), profile), process.env.GITHUB_OUTPUT);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

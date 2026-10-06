@@ -105,6 +105,10 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'macos_version=%s\n' "$actual_macos" >>"$GITHUB_OUTPUT"
   printf 'xcodebuild_fingerprint=%s\n' "$actual_xcodebuild_fingerprint" >>"$GITHUB_OUTPUT"
 fi
+# Keep the verified build identity available to later manifest steps without repeated workflow wiring.
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+  printf 'XCODEBUILD_FINGERPRINT=%s\n' "$actual_xcodebuild_fingerprint" >>"$GITHUB_ENV"
+fi
 
 printf 'Verified macOS %s, Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
   "$actual_macos" "$actual_xcode" "$actual_developer_dir" "$actual_simulator_sdk" "$expected_simulator_runtime_name ($actual_simulator_runtime)" "$actual_simulator_device" "$actual_node" "$actual_pnpm"

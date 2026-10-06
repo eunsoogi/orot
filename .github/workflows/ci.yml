@@ -147,6 +147,7 @@ jobs:
         run: |
           scripts/ci/run-command.sh cocoapods-install artifacts/ios-build/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Verify runner toolchain
+        id: verify_toolchain
         run: scripts/ci/verify-toolchain.sh --cocoapods
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/ios-build/install.log -- pnpm install --frozen-lockfile
@@ -161,8 +162,8 @@ jobs:
           path: |
             apps/mobile/ios/build-production
             apps/mobile/ios/Pods
-          key: orot-ios-app-deriveddata-v4-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          restore-keys: orot-ios-app-deriveddata-v4-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
+          key: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          restore-keys: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
       - name: Prepare production app DerivedData cache
         id: prepare_production_app_cache
         env:

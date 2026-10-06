@@ -42,16 +42,19 @@ test('restores only an exact Detox framework cache and keeps a cold build path',
 });
 
 test('records the Detox framework cache decision with other CI cache evidence', () => {
+  const verifyToolchain = workflowStep('Verify runner toolchain');
   const record = workflowStep('Record Detox cache state');
 
   assert.match(
     record,
     /DETOX_FRAMEWORK_CACHE_HIT: \$\{\{ steps\.prepare_derived_data_cache\.outputs\.detox_artifacts_reusable == 'true' \|\| steps\.detox_framework_cache\.outputs\.cache-hit == 'true' \}\}/,
   );
-  assert.match(
-    record,
-    /XCODEBUILD_FINGERPRINT: \$\{\{ steps\.verify_toolchain\.outputs\.xcodebuild_fingerprint \}\}/,
+  assert.ok(
+    profileWorkflow.indexOf('- name: Verify runner toolchain') <
+      profileWorkflow.indexOf('- name: Record Detox cache state'),
   );
+  assert.match(verifyToolchain, /id: verify_toolchain/);
+  assert.doesNotMatch(record, /XCODEBUILD_FINGERPRINT:/);
   assert.match(recorder, /detox_framework_cache_hit=%s/);
   assert.match(recorder, /xcodebuild_fingerprint=%s/);
 });
