@@ -62,6 +62,12 @@ test('routes only the dedicated transcription test and native configuration', ()
     transcription.apps['ios.speech-transcription'].build,
     /ENTRY_FILE=e2e\/transcriptionProbeEntry\.tsx/,
   );
+  assert.ok(
+    transcription.apps['ios.speech-transcription'].build.includes(
+      'ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES',
+    ),
+    'the transcription build must target the host architecture checked by the CI builder',
+  );
   assert.notEqual(
     transcription.apps['ios.speech-transcription'].binaryPath,
     requireFromRepository('./apps/mobile/.detoxrc.js').apps['ios.release'].binaryPath,
