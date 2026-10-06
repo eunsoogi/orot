@@ -46,6 +46,7 @@ flowchart TB
     retrieval["의미·키워드 순위 결합<br/>근거 위치 유지"]
     memory["사용자가 확인한 선호와 맥락<br/>Rememori 메모리"]
     memoryTools["LangChain 메모리 도구<br/>저장 · 찾기 · 고치기 · 지우기"]
+    queryTools["LangChain 기록 조회 도구<br/>기간 · 결과 수 제한"]
   end
 
   subgraph model["모델 제공자와 요청 실행 구성요소"]
@@ -78,6 +79,7 @@ flowchart TB
   fts --> retrieval
   db --> memory
   memory --> memoryTools
+  db --> queryTools
   modelRunner -->|공통 제공자 계약| apple
   modelRunner -->|공통 제공자 계약| chatgpt
 ```
@@ -93,6 +95,8 @@ flowchart TB
 오롯은 상담 기록의 전사 구간과 구조화된 건강 기록을 출처 ID와 원문 위치가 연결된 작은 검색 단위로 나눕니다. 아이폰에서 `multilingual-e5-small`로 문서와 질문을 임베딩해 의미가 가까운 단위를 찾고, 문서 벡터는 SQLCipher 데이터베이스에 저장합니다. FTS5는 임시 키워드 인덱스에서 BM25 순위를 매깁니다. 오롯은 E5 벡터의 코사인 유사도 순위와 BM25 순위를 역순위 융합(RRF)으로 합쳐 관련 근거를 돌려주며, 검색 결과에는 원본 기록과 출처 위치가 함께 남습니다. 이 근거 검색이 오롯의 로컬 RAG를 이룹니다.
 
 Rememori는 이 기록 검색과 구분되는 별도 메모리입니다. 사용자가 확인한 선호, 사람이 검토한 대화 요약, 작업 맥락을 기억하고, LangChain 도구가 기억을 저장·검색·수정·삭제하는 동작을 감쌉니다. 의료 기록 전체를 복사해 두는 기능은 아닙니다.
+
+기록 조회 도구도 별도로 마련되어 있습니다. LangChain 도구는 같은 암호화 저장소에서 건강 관찰, 복약 기록, 사용자가 확인한 다음 진료 일정, 선택한 상담의 전사 근거를 제한된 기간과 개수만큼 읽고 원본 출처를 반환합니다. 현재 LangGraph는 모델을 한 번 호출하는 구성요소이며, 도구를 골라 호출하고 답변의 근거를 검증하는 진료 준비 협업 흐름은 0.1.0에 추가할 계획입니다.
 
 Apple과 ChatGPT 제공자는 공통 `LanguageModelProvider` 계약에 맞춰 요청과 응답을 정규화합니다. LangGraph 그래프는 이 제공자에게 한 번의 모델 요청을 전달하고 응답을 받으며, 그래프 상태를 SQLCipher에 저장할 수 있는 체크포인트 저장기도 있습니다. Apple Foundation Models를 선택하면 질문과 기록을 아이폰 안에서 처리합니다. ChatGPT를 쓰려면 계정에 로그인해 모델을 고르고, 앱의 외부 전송 안내에 동의해야 합니다. 요청을 보내면 질문과 사용자가 선택한 기록이 OpenAI로 전송됩니다.
 
