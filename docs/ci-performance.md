@@ -418,6 +418,20 @@ Run [37493123171](https://github.com/eunsoogi/orot/actions/runs/37493123171) on 
 
 The follow-up candidate uses profile-cache namespace `v9` and manifest schema `6`. Its cache key and manifest include a SHA-256 of the complete validated `xcodebuild -version` output, because Detox's extracted framework path uses that identity. Production app manifests do not require Detox framework or XCUITest-runner outputs, and production cache validation/invalidation no longer inspects or clears those separate artifacts. The fingerprint, prepare, and manifest-write steps have five-minute limits after the one-minute hosted timeouts; its next hosted run must show their actual duration and whether the larger bound resolves the failure.
 
-The new production-without-Detox-artifacts and Xcode-build-change regressions passed with the affected cache/workflow suite (30/30). This remains local proof; the corrected cache identity, production fallback, OAuth checks, and hosted timings have not yet been verified at the current PR head. No speedup is claimed, and the two consecutive successful comparable paths under ten minutes remain outstanding.
+The new production-without-Detox-artifacts and Xcode-build-change regressions passed with the affected cache/workflow suite (30/30). The first hosted run on this corrected head is recorded below. No speedup is claimed, and the two consecutive successful comparable paths under ten minutes remain outstanding.
 
 The CI already fans out Quality, the production/OAuth Simulator build, and three independent Detox profile jobs; profile-summary and required Detox aggregation run after all three profiles. In run 37493123171, OpenAI Debug and transcription started at 16:07:06Z and 16:07:08Z, while Release started at 16:10:46Z. Release and OpenAI Debug failed in cache fingerprinting before their test steps; transcription missed its app cache, spent 11m06s in the native build, and then ran its 1/1 probe. This failed run does not show that serial scenario execution is the remaining bottleneck. If the corrected exact-cache path still exceeds ten minutes in the E2E step, scenario-level sharding can be measured while retaining all nine oracles, fail-closed aggregation, and the full first-prerequisite-to-cleanup interval.
+
+## 2026-10-07 corrected-cache cold run
+
+Run [37503657957](https://github.com/eunsoogi/orot/actions/runs/37503657957) passed Quality, the production/OAuth Simulator build, Release (8/8 original cases), OpenAI Debug (1/1 original case), Speech Transcription (1/1 separate case), profile-summary validation, and the required Detox aggregate on PR head `5672f1d`. Each dedicated profile Simulator was deleted. This run verifies the production fallback and complete Xcode identity correction on that pre-integration head; it does not verify the later merge of main at `fc1fd84`.
+
+All three profiles hit the Detox framework and CocoaPods-intermediate caches. React Native artifact archives missed, and each DerivedData cache was classified `miss` with `reason=derived_data_absent` and `app_reusable=false`; each successful native build then wrote a matching manifest.
+
+| Profile | Native app build | E2E step | Result |
+| ------- | ---------------: | -------: | ------ |
+| Release | 435s | 284s | 8/8 passed |
+| OpenAI Debug | 701s | 63s | 1/1 passed |
+| Speech Transcription | 591s | 217s | 1/1 passed |
+
+The original nine-case path began with the OpenAI Debug profile at 17:27:24Z and ended after Release deleted its Simulator at 18:01:17Z, an elapsed 33m53s. The full required-workflow interval ran from the first Quality job at 17:27:25Z through the final required aggregate at 18:02:06Z, an elapsed 34m41s. The 14m32s from the first original E2E step to the last original-profile cleanup excludes native builds and setup, so it is not the acceptance interval. Neither measured full interval meets ten minutes; this cold-cache run is not a timing pass and establishes no speedup. Two consecutive successful warm runs on the same integrated implementation remain required.
