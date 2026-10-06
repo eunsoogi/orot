@@ -12,9 +12,6 @@ const profileWorkflow = readFileSync(
 
 test('restores React Native artifacts before one Pods install and app cache lookup', () => {
   const framework = profileWorkflow.indexOf('- name: Build Detox iOS framework cache');
-  const rnFingerprint = profileWorkflow.indexOf(
-    '- name: Compute React Native artifact fingerprint',
-  );
   const rnCache = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
   const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const derivedFingerprint = profileWorkflow.indexOf(
@@ -25,18 +22,22 @@ test('restores React Native artifacts before one Pods install and app cache look
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const buildEnd = profileWorkflow.indexOf('\n      - name:', build + 1);
 
-  assert.ok(framework >= 0 && framework < rnFingerprint);
+  assert.ok(framework >= 0 && framework < rnCache);
   assert.ok(
-    rnFingerprint < rnCache &&
-      rnCache < pods &&
+    rnCache < pods &&
       pods < derivedFingerprint &&
       derivedFingerprint < derivedCache &&
       derivedCache < prepareCache &&
       pods < build,
   );
+  assert.equal(
+    profileWorkflow.includes('- name: Compute React Native artifact fingerprint'),
+    false,
+  );
+  const rnCacheEnd = profileWorkflow.indexOf('\n      - name:', rnCache + 1);
   assert.match(
-    profileWorkflow.slice(rnFingerprint, rnCache),
-    /detox-cache-fingerprint-cli\.mjs --react-native-artifacts-only/,
+    profileWorkflow.slice(rnCache, rnCacheEnd < 0 ? undefined : rnCacheEnd),
+    /hashFiles\('pnpm-lock\.yaml', 'apps\/mobile\/ios\/Podfile\.lock'\)/,
   );
   assert.match(profileWorkflow.slice(pods, derivedFingerprint), /build-detox-apps\.sh pods/);
   assert.match(
