@@ -18,10 +18,13 @@ import type {
   RecordingService,
   RecordingSnapshot,
 } from './recordingTypes';
+import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 
 interface RecordingScreenProps {
   onBack: () => void;
   service?: RecordingService;
+  /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
+  transcriptService?: TranscriptEvidenceService;
 }
 
 const initialSnapshot: RecordingSnapshot = {
@@ -54,6 +57,7 @@ function sourceSaveErrorMessage(error: unknown): string {
 export default function RecordingScreen({
   onBack,
   service = recordingService,
+  transcriptService,
 }: RecordingScreenProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [stateReady, setStateReady] = useState(false);
@@ -237,6 +241,7 @@ export default function RecordingScreen({
       onPrepareSyntheticStartFailure={prepareSyntheticStartFailure}
       onSendInterruption={sendInterruption}
       probeError={probeError}
+      transcriptService={transcriptService}
     />
   );
 }

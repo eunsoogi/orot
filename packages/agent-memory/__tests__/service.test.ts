@@ -39,6 +39,55 @@ describe('on-device agent memory lifecycle', () => {
     await memory.close();
   });
 
+  it('fills limited recall results after excluding a superseded transcript revision', async () => {
+    const storage = new PersistentMemoryStorage();
+    const memory = await createAgentMemory({ embedder, storage });
+    const transcriptRevision = 'recording-1:segment:0:r1';
+    const query = '환자는 최근 잠을 잘 잤다.';
+    const transcriptMemory = {
+      ...preference,
+      memoryKey: 'transcript:recording-1:segment:0',
+      text: query,
+      provenance: {
+        ...preference.provenance,
+        sourceIds: [transcriptRevision],
+        sourceDates: [
+          {
+            sourceId: transcriptRevision,
+            date: '2026-10-05T10:00:06.000Z',
+          },
+        ],
+      },
+    };
+    await memory.remember(transcriptMemory);
+    const currentMemory = {
+      ...preference,
+      memoryKey: 'reviewed:current-sleep',
+      text: `${query} 이후에는 호전됐다.`,
+    };
+    const currentMemoryId = await memory.remember(currentMemory);
+
+    storage.invalidatedSourceIds.add(transcriptRevision);
+
+    // The higher-ranked stale hit must not consume the caller's one-result limit.
+    await expect(memory.recall(query, { limit: 1, minSimilarity: 0 })).resolves.toMatchObject([
+      { id: currentMemoryId, text: currentMemory.text },
+    ]);
+    await expect(memory.remember(transcriptMemory)).rejects.toThrow(
+      'superseded transcript revision',
+    );
+    await memory.close();
+
+    const reopened = await createAgentMemory({ embedder, storage });
+    await expect(reopened.recall(query, { limit: 1, minSimilarity: 0 })).resolves.toMatchObject([
+      { id: currentMemoryId, text: currentMemory.text },
+    ]);
+    await expect(reopened.remember(transcriptMemory)).rejects.toThrow(
+      'superseded transcript revision',
+    );
+    await reopened.close();
+  });
+
   it('serializes concurrent corrections and keeps one durable record for the key', async () => {
     const storage = new PersistentMemoryStorage();
     const memory = await createAgentMemory({ embedder, storage });

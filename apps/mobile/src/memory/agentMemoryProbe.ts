@@ -33,7 +33,7 @@ const memoryInput = {
   },
 };
 
-const deterministicProvider: EmbeddingProvider = {
+export const deterministicProvider: EmbeddingProvider = {
   kind: 'embedding',
   id: 'agent-memory-e2e-fixture',
   displayName: 'Synthetic test embedding',

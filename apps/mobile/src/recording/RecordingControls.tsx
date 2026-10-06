@@ -1,5 +1,6 @@
-import { Button, Pressable, Text, View } from 'react-native';
+import { Button, Pressable, ScrollView, Text, View } from 'react-native';
 import { t } from '../i18n';
+import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { CompletedRecording, RecordingStatus } from './recordingTypes';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
@@ -30,6 +31,7 @@ interface RecordingControlsProps {
   ) => void;
   onSendInterruption: (phase: 'began' | 'ended') => void;
   probeError: string;
+  transcriptService?: TranscriptEvidenceService;
 }
 
 function statusLabel(status: RecordingStatus): string {
@@ -69,6 +71,7 @@ export default function RecordingControls({
   onPrepareSyntheticStartFailure,
   onSendInterruption,
   probeError,
+  transcriptService,
 }: RecordingControlsProps) {
   const sourceRetryPending =
     lastRecording !== null &&
@@ -81,7 +84,14 @@ export default function RecordingControls({
     !busy &&
     !sourceRetryPending;
   return (
-    <View style={recordingControlStyles.container}>
+    // The transcript panel follows the recording controls and must remain reachable on shorter screens.
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={recordingControlStyles.container}
+      keyboardShouldPersistTaps="handled"
+      style={recordingControlStyles.scroll}
+      testID="recording-controls-scroll"
+    >
       {canLeave ? (
         <View style={recordingControlStyles.back}>
           <Button
@@ -197,7 +207,10 @@ export default function RecordingControls({
       ) : null}
       {status === 'idle' || status === 'completed' ? (
         !lastRecording || sourceSaved ? (
-          <TranscriptEvidencePanel recordingSourceId={lastRecording?.id} />
+          <TranscriptEvidencePanel
+            recordingSourceId={lastRecording?.id}
+            service={transcriptService}
+          />
         ) : null
       ) : null}
       {error ? (
@@ -216,6 +229,6 @@ export default function RecordingControls({
           probeError={probeError}
         />
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
