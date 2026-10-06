@@ -53,5 +53,5 @@ test('installs CocoaPods once before fingerprinting the app cache', () => {
   assert.match(cacheRecord, /COCOAPODS_VERSION: \$\{\{ env\.EXPECTED_COCOAPODS_VERSION \}\}/);
   assert.match(cacheStateRecorder, /expected_ruby=/);
   assert.match(cacheStateRecorder, /expected_cocoapods=/);
-  assert.match(nativePods, /verify-toolchain\.sh --cocoapods/);
+  assert.match(nativePods, /verify-toolchain\.sh --cocoapods-only/);
 });

@@ -132,7 +132,8 @@ jobs:
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Install Detox CocoaPods dependencies
         timeout-minutes: 20
-        run: scripts/ci/verify-toolchain.sh --cocoapods && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+        # The full check ran before Simulator startup; only Ruby and CocoaPods need rechecking here.
+        run: scripts/ci/verify-toolchain.sh --cocoapods-only && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
 
       # Fingerprint CocoaPods' tracked integration after its one install so the key matches the built app.
       - name: Compute stable Detox cache fingerprints

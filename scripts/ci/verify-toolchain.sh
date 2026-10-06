@@ -24,6 +24,20 @@ fail_version() {
   exit 1
 }
 
+verify_cocoapods() {
+  actual_ruby="$(ruby -e 'print RUBY_VERSION')"
+  [[ "$actual_ruby" == "$expected_ruby" ]] || fail_version Ruby "$expected_ruby" "$actual_ruby"
+  actual_cocoapods="$(pod --version)"
+  [[ "$actual_cocoapods" == "$expected_cocoapods" ]] || fail_version CocoaPods "$expected_cocoapods" "$actual_cocoapods"
+}
+
+if [[ "${1:-}" == "--cocoapods-only" ]]; then
+  # Detox already checks the full runner before requesting Simulator startup; avoid simctl enumeration during that boot.
+  verify_cocoapods
+  printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
+  exit 0
+fi
+
 actual_node="$(node -p 'process.versions.node')"
 [[ "$actual_node" == "$expected_node" ]] || fail_version Node "$expected_node" "$actual_node"
 
@@ -83,10 +97,7 @@ expected_simulator_device="$expected_simulator_device_name ($expected_simulator_
 [[ "$actual_simulator_device" == "$expected_simulator_device" ]] || fail_version iOS-Simulator-device "$expected_simulator_device on $expected_simulator_runtime_name" unavailable
 
 if [[ "${1:-}" == "--cocoapods" ]]; then
-  actual_ruby="$(ruby -e 'print RUBY_VERSION')"
-  [[ "$actual_ruby" == "$expected_ruby" ]] || fail_version Ruby "$expected_ruby" "$actual_ruby"
-  actual_cocoapods="$(pod --version)"
-  [[ "$actual_cocoapods" == "$expected_cocoapods" ]] || fail_version CocoaPods "$expected_cocoapods" "$actual_cocoapods"
+  verify_cocoapods
 fi
 
 # Preserve the actual macOS patch for cache keys after validating the expected family.
