@@ -75,17 +75,18 @@ jobs:
         uses: ./.github/actions/pnpm-lockfile-verification
         with:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
-      # Check device availability before the profile requests an asynchronous boot.
+      # Verify the runtime before the profile requests an asynchronous boot.
       - name: Verify runner toolchain
         id: verify_toolchain
         run: scripts/ci/verify-toolchain.sh
+      - name: Install frozen workspace dependencies
+        timeout-minutes: 15
+        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
+      # Let Simulator boot overlap native/cache preparation instead of pnpm materialization.
       - name: Prepare dedicated Detox Simulator # Cache hits skip only the app build; toolchain, Pods, and Simulator setup still run.
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-      - name: Install frozen workspace dependencies
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
       - name: Build Detox iOS framework cache
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache

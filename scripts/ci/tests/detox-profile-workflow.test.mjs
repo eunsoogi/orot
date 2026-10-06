@@ -30,6 +30,9 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const simulatorUtilities = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
   const nodeSetup = profileWorkflow.indexOf('- name: Set up Node.js');
+  const toolchain = profileWorkflow.indexOf('- name: Verify runner toolchain');
+  const installIndex = profileWorkflow.indexOf('- name: Install frozen workspace dependencies');
+  const install = workflowStep('Install frozen workspace dependencies');
   const rubySetup = profileWorkflow.indexOf('- name: Set up Ruby');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
@@ -46,10 +49,12 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
   const teardownStep = workflowStep('Delete dedicated Detox Simulator');
 
-  // Start boot after pinned Node, then overlap it with remaining toolchain and dependency setup.
+  // Finish dependency materialization before boot, then overlap boot with native and cache preparation.
   assert.ok(
     nodeSetup >= 0 &&
-      nodeSetup < prepare &&
+      nodeSetup < toolchain &&
+      toolchain < installIndex &&
+      installIndex < prepare &&
       prepare < rubySetup &&
       rubySetup < pods &&
       pods < simulatorUtilities &&
@@ -58,6 +63,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
       boot > build &&
       tests > boot,
   );
+  assert.match(install, /pnpm install --frozen-lockfile/);
   assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
