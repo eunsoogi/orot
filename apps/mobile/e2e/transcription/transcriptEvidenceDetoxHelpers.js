@@ -156,6 +156,15 @@ async function verifyRecordingExportLifecycle(device) {
   await waitFor(residue).toHaveText('0').withTimeout(30000);
 }
 
+async function captureRecordingExportFailure(device) {
+  // Return the lifecycle error so the outer scenario can still clean its synthetic recording.
+  try {
+    await verifyRecordingExportLifecycle(device);
+  } catch (failure) {
+    return failure;
+  }
+}
+
 function failureDescription(failure) {
   return failure instanceof Error
     ? `${failure.name}: ${failure.message}${failure.stack ? `\n${failure.stack}` : ''}`
@@ -175,6 +184,7 @@ async function scrollToTranscriptControl(control, direction = 'down') {
 
 module.exports = {
   accessibilityText,
+  captureRecordingExportFailure,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,

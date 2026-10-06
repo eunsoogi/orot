@@ -3,12 +3,12 @@
 const { expect: jestExpect } = require('@jest/globals');
 const {
   accessibilityText,
+  captureRecordingExportFailure,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
-  verifyRecordingExportLifecycle,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
 
@@ -172,9 +172,6 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       const memoryStatus = element(by.id('transcript-evidence-memory-status'));
       await waitFor(memoryStatus).toHaveText('passed').withTimeout(30000);
 
-      assertionStage = 'verify recording export and temporary-file lifecycle';
-      await verifyRecordingExportLifecycle(device);
-
       console.log(
         'TRANSCRIPT_EVIDENCE_SIMULATOR_RESULT ' +
           JSON.stringify({
@@ -209,6 +206,9 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       nativeProbeFailure ??= failure;
     }
 
+    // This lifecycle check restarts the app, so collect the original process's final evidence first.
+    const exportLifecycleFailure = await captureRecordingExportFailure(device);
+
     let cleanupFailure;
     let cleanupEvidence;
     try {
@@ -228,6 +228,11 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       const description = failureDescription(assertionFailure);
       console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);
       failures.push(`Transcript assertion failed: ${description}`);
+    }
+    if (exportLifecycleFailure) {
+      const description = failureDescription(exportLifecycleFailure);
+      console.error('RECORDING_EXPORT_LIFECYCLE_FAILURE ' + description);
+      failures.push(`Recording export lifecycle failed: ${description}`);
     }
     if (cleanupFailure) {
       const description = failureDescription(cleanupFailure);
