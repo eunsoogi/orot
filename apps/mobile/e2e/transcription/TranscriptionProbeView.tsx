@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { TranscriptionProbeReport } from './transcriptionProbe';
 import { TranscriptEvidenceProbe } from './transcriptEvidenceProbe';
 
@@ -15,14 +15,8 @@ export default function TranscriptionProbeView({
         : `Speech transcription probe ${report.outcome}`;
 
   return (
-    // Keep transcript actions reachable when the probe and evidence card exceed a compact Simulator viewport.
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      style={styles.scroll}
-      testID="transcription-probe-scroll"
-    >
+    // Bound the production screen directly so its own recording controls provide the only scroll viewport.
+    <View style={styles.container}>
       <Text testID="transcription-probe-complete">
         {report.outcome === 'running' ? 'running' : 'complete'}
       </Text>
@@ -33,15 +27,15 @@ export default function TranscriptionProbeView({
       >
         {summary}
       </Text>
-      {report.outcome === 'measured' ? <TranscriptEvidenceProbe /> : null}
-    </ScrollView>
+      {/* Keep deterministic transcript review independent from a pending native capability probe. */}
+      <TranscriptEvidenceProbe />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
   container: {
-    flexGrow: 1,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

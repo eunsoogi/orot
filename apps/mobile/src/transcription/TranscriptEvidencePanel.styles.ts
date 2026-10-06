@@ -2,7 +2,6 @@ import { StyleSheet } from 'react-native';
 
 export const transcriptEvidenceStyles = StyleSheet.create({
   container: {
-    maxHeight: 300,
     gap: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#b9c3ce',
@@ -10,8 +9,7 @@ export const transcriptEvidenceStyles = StyleSheet.create({
   },
   title: { color: '#17212b', fontSize: 18, fontWeight: '700' },
   copy: { color: '#45515f', fontSize: 14, lineHeight: 20 },
-  list: { flexGrow: 0, flexShrink: 1, maxHeight: 160 },
-  content: { gap: 12, paddingBottom: 4 },
+  segments: { gap: 12, paddingBottom: 4 },
   segment: {
     gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
