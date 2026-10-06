@@ -2,6 +2,7 @@ node_modules/
 **/node_modules/
 apps/mobile/ios/Pods/
 apps/mobile/ios/build/
+apps/mobile/ios/build-issue24/
 apps/mobile/android/.gradle/
 apps/mobile/android/app/build/
 apps/mobile/coverage/

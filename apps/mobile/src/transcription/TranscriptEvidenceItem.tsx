@@ -37,6 +37,17 @@ function reviewLabel(segment: TranscriptEvidenceSegment): string {
   }
 }
 
+function originLabel(segment: TranscriptEvidenceSegment): string {
+  switch (segment.provenance.origin) {
+    case 'derived':
+      return t('recording.transcript.origin.machine');
+    case 'user_reported':
+      return t('recording.transcript.origin.userCorrection');
+    default:
+      throw new Error('Unknown transcript provenance origin.');
+  }
+}
+
 export default function TranscriptEvidenceItem({
   segment,
   history,
@@ -56,12 +67,35 @@ export default function TranscriptEvidenceItem({
       style={styles.segment}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
+      {editing ? (
+        // Keep correction controls before long provenance details so the keyboard cannot push them below the viewport.
+        <View style={styles.actions}>
+          <Button
+            disabled={busy}
+            onPress={onSave}
+            testID={`transcript-save-${segment.segmentOrdinal}`}
+            title={t('recording.transcript.save')}
+          />
+          <Button
+            disabled={busy}
+            onPress={onCancel}
+            testID={`transcript-cancel-${segment.segmentOrdinal}`}
+            title={t('recording.transcript.cancel')}
+          />
+        </View>
+      ) : null}
       {/* Keep review state beside each segment so machine output stays visibly provisional. */}
       <Text
         style={styles.metadata}
         testID={`transcript-review-${segment.segmentOrdinal}`}
       >
         {reviewLabel(segment)}
+      </Text>
+      <Text
+        style={styles.metadata}
+        testID={`transcript-origin-${segment.segmentOrdinal}`}
+      >
+        {originLabel(segment)}
       </Text>
       <Text
         style={styles.metadata}
@@ -88,23 +122,12 @@ export default function TranscriptEvidenceItem({
           end: timeLabel(segment.audioRange.endMs),
         })}
       </Text>
-      {editing ? (
-        // Keep save and cancel above the editor so the keyboard cannot cover them on a short screen.
-        <View style={styles.actions}>
-          <Button
-            disabled={busy}
-            onPress={onSave}
-            testID={`transcript-save-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.save')}
-          />
-          <Button
-            disabled={busy}
-            onPress={onCancel}
-            testID={`transcript-cancel-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.cancel')}
-          />
-        </View>
-      ) : null}
+      <Text
+        style={styles.metadata}
+        testID={`transcript-clinician-verification-${segment.segmentOrdinal}`}
+      >
+        {t('recording.transcript.verification.clinicianNotRecorded')}
+      </Text>
       {editing ? (
         <TextInput
           accessibilityLabel={t('recording.transcript.input.label')}

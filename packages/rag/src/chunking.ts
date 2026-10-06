@@ -37,6 +37,8 @@ export interface EvidenceChunkMetadata {
   readonly effectiveTime: string | null;
   readonly recordType: ChunkRecordType;
   readonly reviewState: ReviewState;
+  // Store only explicit encounter links; provenance source IDs are not encounter relationships.
+  readonly encounterId?: string;
   readonly transcriptRevision?: TranscriptRevisionMetadata;
 }
 
@@ -143,6 +145,12 @@ export function chunkStructuredRecord<K extends StructuredRecordKind>(
   );
   const effectiveTime =
     'effectiveAt' in record && typeof record.effectiveAt === 'string' ? record.effectiveAt : null;
+  const encounterId =
+    recordType === 'encounter'
+      ? record.id
+      : 'encounterId' in record && typeof record.encounterId === 'string'
+        ? record.encounterId
+        : undefined;
 
   return {
     id: chunkId(recordType, sourceId, record.id),
@@ -155,6 +163,7 @@ export function chunkStructuredRecord<K extends StructuredRecordKind>(
       effectiveTime,
       recordType,
       reviewState: { ...record.reviewState },
+      ...(encounterId ? { encounterId } : {}),
     },
   };
 }

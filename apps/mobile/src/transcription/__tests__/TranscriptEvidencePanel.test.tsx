@@ -100,6 +100,12 @@ test('shows provenance and range, preserves correction history, and plays the se
   );
 
   expect(await screen.findByText('복용하지 않았어요.')).toBeTruthy();
+  expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
+    '기계 전사',
+  );
+  expect(
+    screen.getByTestId('transcript-clinician-verification-0'),
+  ).toHaveTextContent('의료진 확인 기록 없음');
   expect(screen.getByText('엔진: dictation_transcriber')).toBeTruthy();
   expect(screen.getByText('시스템 버전: iOS 26.2 (23C54)')).toBeTruthy();
   expect(screen.getByText('00:00.250–00:01.801')).toBeTruthy();
@@ -117,5 +123,8 @@ test('shows provenance and range, preserves correction history, and plays the se
   expect(screen.getByTestId('transcript-history-0-1')).toBeTruthy();
   expect(screen.getByTestId('transcript-stale-artifacts')).toBeTruthy();
   expect(screen.getByText('수정됨 · 다시 확인 필요')).toBeTruthy();
+  expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
+    '사용자 수정',
+  );
   expect(service.correct).toHaveBeenCalledWith(original.id, correction.text);
 });

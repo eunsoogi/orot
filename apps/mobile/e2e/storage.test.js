@@ -1,15 +1,18 @@
 /* global by, device, element, waitFor */
 
+const {
+  createStorageResetGuard,
+  installFreshApp,
+} = require('./storageProbeResetGuard.e2e.js');
+const resetGuard = createStorageResetGuard();
+
+beforeEach(() => resetGuard.assertResetMayContinue());
+afterEach(() => resetGuard.afterTest());
+
 async function expectProbeSuccess(mode) {
   await waitFor(element(by.id('storage-probe-' + mode + '-success')))
     .toBeVisible()
     .withTimeout(30000);
-}
-
-async function installFreshApp() {
-  await device.uninstallApp();
-  await device.clearKeychain();
-  await device.installApp();
 }
 
 async function launchProbe(mode, newInstance) {
@@ -21,13 +24,13 @@ async function launchProbe(mode, newInstance) {
 
 describe('encrypted local storage', () => {
   it('creates encrypted source and evidence records on fresh install', async () => {
-    await installFreshApp();
+    await installFreshApp(device, resetGuard);
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
-  });
+  }, 240000);
 
   it('reopens a source and its evidence span after an app process restart', async () => {
-    await installFreshApp();
+    // Reuse records created by the first case so restart coverage avoids another Simulator reset.
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
     await device.terminateApp();
@@ -36,8 +39,8 @@ describe('encrypted local storage', () => {
   });
 
   it('migrates the earlier test schema on fresh install', async () => {
-    await installFreshApp();
+    await installFreshApp(device, resetGuard);
     await launchProbe('legacy', false);
     await expectProbeSuccess('legacy');
-  });
+  }, 240000);
 });

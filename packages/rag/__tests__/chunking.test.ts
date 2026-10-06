@@ -1,3 +1,4 @@
+import type { Appointment, Encounter } from '@orot/domain';
 import { chunkEvidenceSpan, chunkStructuredRecord, chunkTranscriptSegment } from '../src/chunking';
 import { buildPersistedEvidenceChunks } from '../src/persistedRecords';
 import {
@@ -89,6 +90,35 @@ describe('evidence-aware chunks', () => {
       recordType: 'medication_assertion',
       reviewState: { status: 'unreviewed' },
     });
+  });
+
+  it('records explicit encounter relationships without inferring them from provenance', () => {
+    const metadata = {
+      effectiveAt: '2026-01-02T08:00:00.000Z',
+      recordedAt: '2026-01-02T08:00:00.000Z',
+      ingestedAt: '2026-01-02T08:00:00.000Z',
+      provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' as const },
+    };
+    const appointment: Appointment = {
+      ...metadata,
+      id: 'appointment-1',
+      status: 'scheduled',
+      encounterId: 'encounter-1',
+    };
+    const encounter: Encounter = {
+      ...metadata,
+      id: 'encounter-1',
+      encounterKind: 'outpatient',
+    };
+
+    expect(chunkStructuredRecord('appointment', appointment).metadata.encounterId).toBe(
+      'encounter-1',
+    );
+    expect(chunkStructuredRecord('encounter', encounter).metadata.encounterId).toBe('encounter-1');
+    expect(
+      chunkStructuredRecord('health_observation', currentObservation).metadata,
+    ).not.toHaveProperty('encounterId');
   });
 
   it('reads only the latest transcript revision and omits artifacts marked stale by storage', async () => {

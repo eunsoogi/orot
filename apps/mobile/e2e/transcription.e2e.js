@@ -5,71 +5,28 @@ const {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
-  scrollProbeTo,
   scrollToTranscriptControl,
+  verifyFinalNativeSpeechProbe,
+  verifyNativeSpeechProbe,
+  waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
-const EXPLICIT_AVAILABILITY_STATES = [
-  'unsupported_language',
-  'unsupported_device',
-  'model_unavailable',
-  'permission_denied',
-  'permission_restricted',
-  'recognizer_unavailable',
-];
-const EXPLICIT_UNSUPPORTED_MESSAGES =
-  /^(UNSUPPORTED_LANGUAGE|UNSUPPORTED_DEVICE|MODEL_UNAVAILABLE|PERMISSION_NOT_DETERMINED|PERMISSION_DENIED|PERMISSION_RESTRICTED|RECOGNIZER_UNAVAILABLE):/;
 
 describe('Apple Korean on-device transcription on iOS Simulator', () => {
-  it('records the native capability or measures bundled synthetic Korean audio', async () => {
+  it('records native provider status and exercises synthetic transcript review', async () => {
     // Grant only speech recognition on this dedicated Simulator so the legacy API never pauses for a system alert.
     await device.launchApp({
       newInstance: true,
       permissions: { speech: 'YES' },
     });
-    const completed = element(by.id('transcription-probe-complete'));
-    await waitFor(completed).toHaveText('complete').withTimeout(240000);
-
-    const attributes = await element(
-      by.id('transcription-probe-report'),
-    ).getAttributes();
-    const reportText = attributes.label || attributes.text;
-    if (typeof reportText !== 'string' || reportText.length === 0) {
-      throw new Error('The native speech probe returned no report.');
-    }
-    const report = JSON.parse(reportText);
-    jestExpect(report.providerId).toBe('apple-on-device-speech');
-    jestExpect(report.fixture.synthetic).toBe(true);
-
-    if (report.outcome === 'explicitly_unsupported') {
-      const explicitStatus = EXPLICIT_AVAILABILITY_STATES.includes(
-        report.reason.code,
-      );
-      jestExpect(
-        explicitStatus ||
-          EXPLICIT_UNSUPPORTED_MESSAGES.test(report.reason.message),
-      ).toBe(true);
-      console.log(
-        'SPEECH_TRANSCRIPTION_SIMULATOR_UNSUPPORTED ' + JSON.stringify(report),
-      );
-      return;
-    }
-    if (report.outcome !== 'measured') {
-      throw new Error(
-        'The native speech probe failed: ' + JSON.stringify(report.reason),
-      );
-    }
-
-    jestExpect(report.cases).toHaveLength(3);
-    for (const speechCase of report.cases) {
-      jestExpect(typeof speechCase.recognizedText).toBe('string');
-      jestExpect(Number.isFinite(speechCase.accuracy.characterErrorRate)).toBe(
-        true,
-      );
-      for (const segment of speechCase.segments) {
-        jestExpect(Number.isFinite(segment.startSeconds)).toBe(true);
-        jestExpect(segment.startSeconds).toBeGreaterThanOrEqual(0);
-        jestExpect(segment.endSeconds).toBeGreaterThan(segment.startSeconds);
-      }
+    // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
+    await device.disableSynchronization();
+    const reportElement = element(by.id('transcription-probe-report'));
+    let nativeProbeFailure;
+    try {
+      await verifyNativeSpeechProbe(reportElement);
+    } catch (failure) {
+      // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
+      nativeProbeFailure = failure;
     }
 
     let assertionFailure;
@@ -82,14 +39,15 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       assertionStage = 'reveal transcript panel';
       await waitFor(element(by.id('transcript-panel')))
         .toBeVisible()
-        .whileElement(by.id('transcription-probe-scroll'))
-        .scroll(120, 'down');
+        .whileElement(by.id('recording-controls-scroll'))
+        .scroll(120, 'down', 0.5, 0.35);
       assertionStage = 'create transcript';
       await element(by.id('transcript-create')).tap();
 
       assertionStage = 'read transcript metadata';
       const transcript = element(by.id('transcript-text-0'));
-      await waitFor(transcript).toBeVisible().withTimeout(240000);
+      // Wait for transcript, memory, and question evidence writes before querying the rendered row.
+      await waitFor(transcript).toExist().withTimeout(30000);
       await scrollToTranscriptControl(transcript);
       const originalText = accessibilityText(await transcript.getAttributes());
       jestExpect(originalText.length).toBeGreaterThan(0);
@@ -115,10 +73,8 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       const engine = accessibilityText(engineAttributes);
       const runtime = accessibilityText(runtimeAttributes);
       const rangeLabel = rangeAttributes.label || rangeAttributes.text;
-      jestExpect(engine).toMatch(
-        /Apple Speech|dictation_transcriber|speech_transcriber|on_device_speech_recognizer/,
-      );
-      jestExpect(runtime).toMatch(/시스템 버전: .+/);
+      jestExpect(engine).toBe('엔진: synthetic-fixture-adapter');
+      jestExpect(runtime).toBe('시스템 버전: fixture-v1');
       jestExpect(typeof rangeLabel).toBe('string');
       const range = /^(\d{2}):(\d{2})\.(\d{3})–(\d{2}):(\d{2})\.(\d{3})$/.exec(
         rangeLabel,
@@ -139,7 +95,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       );
       assertionStage = 'wait for playback completion';
       await waitFor(playbackResult).toExist().withTimeout(30000);
-      await scrollProbeTo(playbackResult);
+      await waitForProbeControl(playbackResult);
       await waitFor(playbackResult).toBeVisible().withTimeout(30000);
       const playbackAttributes = await playbackResult.getAttributes();
       const playback = JSON.parse(
@@ -162,10 +118,28 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       assertionStage = 'save transcript correction';
       const saveButton = element(by.id('transcript-save-0'));
       await scrollToTranscriptControl(saveButton, 'up');
+      console.log(
+        'TRANSCRIPT_EVIDENCE_SAVE_SCREENSHOT ' +
+          (await device.takeScreenshot('transcript-evidence-save-visible')),
+      );
       await saveButton.tap();
+      const correctionStatus = element(
+        by.id('transcript-evidence-correction-status'),
+      );
+      assertionStage = 'wait for transcript correction persistence';
+      try {
+        await waitFor(correctionStatus).toHaveText('saved').withTimeout(15000);
+      } catch (failure) {
+        const currentStatus = accessibilityText(
+          await correctionStatus.getAttributes(),
+        );
+        throw new Error(
+          `Correction service status was ${currentStatus}: ${failureDescription(failure)}`,
+        );
+      }
       assertionStage = 'verify transcript history and stale artifact';
       const correctedTranscript = element(by.id('transcript-text-0'));
-      await waitFor(correctedTranscript).toBeVisible().withTimeout(30000);
+      await waitFor(correctedTranscript).toExist().withTimeout(30000);
       await scrollToTranscriptControl(correctedTranscript);
       const correctedText = accessibilityText(
         await correctedTranscript.getAttributes(),
@@ -185,17 +159,21 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       jestExpect(correctedReviewState).toBe('수정됨 · 다시 확인 필요');
       const staleArtifacts = element(by.id('transcript-stale-artifacts'));
       await waitFor(staleArtifacts).toExist().withTimeout(30000);
-      await scrollProbeTo(staleArtifacts);
+      await scrollToTranscriptControl(staleArtifacts);
       await waitFor(staleArtifacts).toBeVisible().withTimeout(30000);
       const staleArtifactText = accessibilityText(
         await staleArtifacts.getAttributes(),
       );
       jestExpect(staleArtifactText).toContain('1개');
 
+      assertionStage = 'verify transcript memory invalidation and restart';
+      await element(by.id('transcript-evidence-verify-memory')).tap();
+      const memoryStatus = element(by.id('transcript-evidence-memory-status'));
+      await waitFor(memoryStatus).toHaveText('passed').withTimeout(30000);
+
       console.log(
-        'SPEECH_TRANSCRIPTION_SIMULATOR_RESULT ' +
+        'TRANSCRIPT_EVIDENCE_SIMULATOR_RESULT ' +
           JSON.stringify({
-            report,
             transcript: {
               originalText,
               engine,
@@ -206,14 +184,25 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
               historyText,
               correctedReviewState,
               staleArtifactText,
+              memoryInvalidation: accessibilityText(
+                await memoryStatus.getAttributes(),
+              ),
             },
             playback,
+            transcriptSource: 'synthetic-fixture-adapter',
           }),
       );
     } catch (failure) {
       assertionFailure = new Error(
         `${assertionStage}: ${failureDescription(failure)}`,
       );
+    }
+
+    try {
+      // The native probe runs asynchronously while the synthetic review flow is exercised.
+      await verifyFinalNativeSpeechProbe(reportElement);
+    } catch (failure) {
+      nativeProbeFailure ??= failure;
     }
 
     let cleanupFailure;
@@ -226,6 +215,11 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
 
     // Keep the original behavior failure visible even when the cleanup control also fails.
     const failures = [];
+    if (nativeProbeFailure) {
+      const description = failureDescription(nativeProbeFailure);
+      console.error('SPEECH_TRANSCRIPTION_SIMULATOR_FAILURE ' + description);
+      failures.push(`Native speech probe failed: ${description}`);
+    }
     if (assertionFailure) {
       const description = failureDescription(assertionFailure);
       console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);
