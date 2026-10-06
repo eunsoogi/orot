@@ -49,7 +49,7 @@ describe('persisted transcript evidence', () => {
     );
     await database.execute('PRAGMA user_version = 5');
     const repository = await openEncryptedStorage(options(database));
-    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(6);
+    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(7);
     const original = transcript(audio.id);
     await repository.transcripts.append([original]);
     await repository.put('visit_question', {

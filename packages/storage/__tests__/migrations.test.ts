@@ -113,7 +113,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(6);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(7);
     expect(
       (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
     ).toHaveLength(0);
@@ -140,7 +140,7 @@ describe('storage migrations', () => {
     const repository = await openEncryptedStorage(createOptions(database));
 
     expect(await repository.get('source_record', 'legacy-note')).toEqual(legacyRecord);
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(6);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(7);
     expect(
       (
         await database.execute(
@@ -206,5 +206,29 @@ describe('storage migrations', () => {
     ).toBe(0);
     await database.closeAsync?.();
     rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('adds indexed bounded-query paths when upgrading schema version six', async () => {
+    const database = createDatabase();
+    await database.execute('PRAGMA user_version = 6');
+
+    await openEncryptedStorage(createOptions(database));
+
+    const indexes = await database.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE '%_local_query_idx' ORDER BY name",
+    );
+    expect(indexes.rows.map((row) => row.name)).toEqual([
+      'appointments_local_query_idx',
+      'dose_events_local_query_idx',
+      'health_observations_local_query_idx',
+      'medication_definitions_local_query_idx',
+      'transcript_segments_local_query_idx',
+    ]);
+    const stalenessIndex = await database.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'transcript_artifact_staleness_transcript_idx'",
+    );
+    expect(stalenessIndex.rows).toHaveLength(1);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(7);
+    await database.closeAsync?.();
   });
 });
