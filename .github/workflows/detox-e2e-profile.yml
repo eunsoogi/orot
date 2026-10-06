@@ -65,13 +65,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      # Check device availability before the profile requests an asynchronous boot.
+      - name: Verify runner toolchain
+        run: scripts/ci/verify-toolchain.sh
       - name: Prepare dedicated Detox Simulator # A validated cache hit skips Ruby, CocoaPods, and the native build.
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-      # Device creation already validates the selected model/runtime; wait for boot after cache preparation.
-      - name: Verify runner toolchain
-        run: scripts/ci/verify-toolchain.sh --skip-simulator-availability
       - name: Install frozen workspace dependencies
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile

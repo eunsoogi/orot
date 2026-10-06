@@ -8,8 +8,6 @@ expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
 expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
 expected_ruby="${EXPECTED_RUBY_VERSION:-4.0.7}"
 expected_cocoapods="${EXPECTED_COCOAPODS_VERSION:-1.17.0}"
-verify_simulator_availability=true
-verify_cocoapods=false
 
 fail_version() {
   printf 'Toolchain mismatch for %s: expected %s, got %s\n' "$1" "$2" "$3" >&2
@@ -32,24 +30,9 @@ actual_xcode="$(xcodebuild -version | sed -n '1s/^Xcode //p')"
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 [[ "$actual_simulator_sdk" == "$expected_simulator_sdk" ]] || fail_version iOS-Simulator-SDK "$expected_simulator_sdk" "$actual_simulator_sdk"
+xcrun simctl list devices available | grep -Fq 'iPhone 18 Pro' || fail_version iPhone-Simulator iPhone-18-Pro unavailable
 
-for argument in "$@"; do
-  case "$argument" in
-    --cocoapods) verify_cocoapods=true ;;
-    --skip-simulator-availability) verify_simulator_availability=false ;;
-    *)
-      printf 'Usage: %s [--cocoapods] [--skip-simulator-availability]\n' "$0" >&2
-      exit 2
-      ;;
-  esac
-done
-
-# Profile setup creates the selected device before this check and waits for its boot later; skipping this listing lets cache preparation overlap asynchronous boot.
-if [[ "$verify_simulator_availability" == true ]]; then
-  xcrun simctl list devices available | grep -Fq 'iPhone 18 Pro' || fail_version iPhone-Simulator iPhone-18-Pro unavailable
-fi
-
-if [[ "$verify_cocoapods" == true ]]; then
+if [[ "${1:-}" == "--cocoapods" ]]; then
   actual_ruby="$(ruby -e 'print RUBY_VERSION')"
   [[ "$actual_ruby" == "$expected_ruby" ]] || fail_version Ruby "$expected_ruby" "$actual_ruby"
   actual_cocoapods="$(pod --version)"
@@ -58,6 +41,6 @@ fi
 
 printf 'Verified macOS %s, Xcode %s, iOS Simulator SDK %s, Node %s, pnpm %s\n' \
   "$actual_macos" "$actual_xcode" "$actual_simulator_sdk" "$actual_node" "$actual_pnpm"
-if [[ "$verify_cocoapods" == true ]]; then
+if [[ "${1:-}" == "--cocoapods" ]]; then
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
 fi

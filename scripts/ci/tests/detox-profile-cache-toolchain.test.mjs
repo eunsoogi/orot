@@ -21,6 +21,9 @@ test('defers Ruby and CocoaPods setup until the validated cache requires a nativ
   const cachePreparation = profileWorkflow.indexOf(
     '- name: Prepare restored Detox DerivedData cache',
   );
+  const simulatorPreparationIndex = profileWorkflow.indexOf(
+    '- name: Prepare dedicated Detox Simulator',
+  );
   const baseToolchain = workflowStep('Verify runner toolchain');
   const rubySetup = workflowStep('Set up Ruby');
   const cocoapodsSetup = workflowStep('Install CocoaPods');
@@ -32,11 +35,9 @@ test('defers Ruby and CocoaPods setup until the validated cache requires a nativ
   const nativePodsIndex = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   const needsNativeBuild = /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/;
 
-  assert.ok(baseToolchainIndex >= 0 && baseToolchainIndex < cachePreparation);
-  assert.match(
-    baseToolchain,
-    /run: scripts\/ci\/verify-toolchain\.sh --skip-simulator-availability(?:\r?\n|$)/,
-  );
+  assert.ok(baseToolchainIndex >= 0 && baseToolchainIndex < simulatorPreparationIndex);
+  // Device availability enumeration can wait on an in-flight boot, so run it before requesting one.
+  assert.match(baseToolchain, /run: scripts\/ci\/verify-toolchain\.sh(?:\r?\n|$)/);
   assert.doesNotMatch(baseToolchain, /--cocoapods/);
   assert.ok(cachePreparation >= 0 && cachePreparation < rubyIndex);
   assert.ok(rubyIndex < cocoapodsIndex && cocoapodsIndex < nativePodsIndex);
