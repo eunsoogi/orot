@@ -53,6 +53,7 @@ export function createUnifiedFeatureImporter(options: {
         authorization,
         healthKit: healthKitClient,
         repository: instrumentedRepository,
+        serializationIdentity: repository,
         now,
       });
       return commonOutcome(result);

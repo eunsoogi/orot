@@ -14,6 +14,8 @@ export type CommonObservationRepository = Pick<
 interface SyncCommonObservationChangesSharedOptions {
   readonly feature: CommonObservationFeature;
   readonly repository: CommonObservationRepository;
+  /** Keeps instrumented repository wrappers on the original per-feature lock. */
+  readonly serializationIdentity?: CommonObservationRepository;
   readonly now: () => string;
 }
 

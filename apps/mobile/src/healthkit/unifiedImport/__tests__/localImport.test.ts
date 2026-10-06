@@ -2,12 +2,20 @@ import type { RecordRepository } from '@orot/storage';
 import type {
   HealthKitAuthorizationResult,
   HealthKitNativeModule,
+  HealthKitSampleChangesResult,
 } from '../../types';
 import {
   createMemoryBloodPressureRepository,
   correlation,
 } from '../../bloodPressure/testSupport';
+import {
+  healthKitSample,
+  MemoryObservationRepository,
+} from '../../commonObservations/testSupport';
+import { page } from '../../commonObservations/testSyncSupport';
+import { healthKitSampleChangesCheckpointKey } from '../../sampleChangesCheckpoint';
 import { createUnifiedFeatureImporter } from '../featureImporter';
+import { deferred } from '../testSupport';
 
 const authorization: HealthKitAuthorizationResult = {
   availability: 'available',
@@ -74,4 +82,80 @@ test('routes preauthorized blood pressure through measured query and atomic pers
   expect(store.checkpoint('healthkit:bloodPressure:bloodPressure')?.value).toBe(
     'new-cursor',
   );
+});
+
+test('serializes overlapping adapter imports by the original repository identity', async () => {
+  const store = new MemoryObservationRepository();
+  const firstPage = deferred<HealthKitSampleChangesResult>();
+  const firstQueryStarted = deferred<void>();
+  let requestCount = 0;
+  const querySampleChanges = jest.fn(
+    async (
+      _query: Parameters<HealthKitNativeModule['querySampleChanges']>[0],
+    ) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        firstQueryStarted.resolve(undefined);
+        return firstPage.promise;
+      }
+      return page({ deletedSampleIds: ['sample-1'], cursor: 'a2' });
+    },
+  );
+  const importer = createUnifiedFeatureImporter({
+    healthKit: {
+      querySampleChanges,
+      queryMedicationDefinitions: jest.fn(),
+    },
+    now: () => '2026-10-07T00:00:00.000Z',
+  });
+  const repository = store as unknown as RecordRepository;
+  const instrumentation = {
+    async query<T>(operation: () => Promise<T>) {
+      return operation();
+    },
+    async persist<T>(operation: () => Promise<T>) {
+      return operation();
+    },
+  };
+
+  // Persistence timing uses a Proxy, but reopened imports must share the underlying lock.
+  const olderImport = importer(
+    'heartRate',
+    authorization,
+    repository,
+    instrumentation,
+  );
+  await firstQueryStarted.promise;
+  const reopenedImport = importer(
+    'heartRate',
+    authorization,
+    repository,
+    instrumentation,
+  );
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(querySampleChanges).toHaveBeenCalledTimes(1);
+
+  firstPage.resolve(
+    page({
+      addedSamples: [healthKitSample('heartRate')],
+      cursor: 'a1',
+    }),
+  );
+  await expect(olderImport).resolves.toMatchObject({
+    status: 'complete',
+    importedCount: 1,
+  });
+  await expect(reopenedImport).resolves.toMatchObject({
+    status: 'complete',
+    deletedCount: 1,
+  });
+
+  expect(querySampleChanges).toHaveBeenCalledTimes(2);
+  expect(querySampleChanges.mock.calls[1][0].cursor).toBe('a1');
+  expect(store.read('healthkit:heartRate:sample-1')).toBeNull();
+  await expect(
+    store.getSyncCheckpoint(
+      healthKitSampleChangesCheckpointKey('heartRate', 'heartRate'),
+    ),
+  ).resolves.toMatchObject({ value: 'a2' });
 });

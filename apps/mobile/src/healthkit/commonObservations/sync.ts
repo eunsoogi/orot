@@ -199,10 +199,11 @@ function serializeFeatureSync<T>(
   options: SyncCommonObservationChangesOptions,
   operation: () => Promise<T>,
 ): Promise<T> {
-  let featureTails = pendingSyncs.get(options.repository);
+  const lockIdentity = options.serializationIdentity ?? options.repository;
+  let featureTails = pendingSyncs.get(lockIdentity);
   if (!featureTails) {
     featureTails = new Map();
-    pendingSyncs.set(options.repository, featureTails);
+    pendingSyncs.set(lockIdentity, featureTails);
   }
 
   const previous = featureTails.get(options.feature) ?? Promise.resolve();
@@ -217,7 +218,7 @@ function serializeFeatureSync<T>(
     release();
     if (featureTails?.get(options.feature) === tail) {
       featureTails.delete(options.feature);
-      if (featureTails.size === 0) pendingSyncs.delete(options.repository);
+      if (featureTails.size === 0) pendingSyncs.delete(lockIdentity);
     }
   });
 }
