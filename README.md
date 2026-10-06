@@ -36,19 +36,35 @@ flowchart TB
     selection["AI 처리 방식 선택<br/>외부 전송 동의"]
   end
 
-  subgraph local["기기 안의 기록과 검색"]
-    audio[("보호된 녹음 파일<br/>백업 제외")]
+  subgraph local["기기 안의 저장소와 검색 구성요소"]
+    audio[("보호된 녹음 파일")]
     records["건강·상담·일정 기록<br/>출처와 시점"]
     db[("아이폰 안의 암호화 저장소<br/>SQLCipher · iOS Keychain")]
-    rag["아이폰 안의 기록 검색<br/>E5 임베딩 · FTS5 키워드"]
-    memory["확인·검토된 기억<br/>Rememori"]
+    chunks["출처·위치를 유지한 검색 단위"]
+    vectors[("E5 의미 검색 벡터<br/>SQLCipher에 저장")]
+    fts["FTS5 키워드 검색<br/>임시 인덱스"]
+    retrieval["의미·키워드 순위 결합<br/>근거 위치 유지"]
+    memory["사용자가 확인한 선호와 맥락<br/>Rememori 메모리"]
+    memoryTools["LangChain 메모리 도구<br/>저장 · 찾기 · 고치기 · 지우기"]
   end
 
-  subgraph model["모델과 요청 실행"]
-    contract["공통 모델 인터페이스"]
+  subgraph model["모델 제공자와 요청 실행 구성요소"]
+    modelRunner["LangGraph<br/>한 번의 generate 요청"]
     apple["Apple Foundation Models<br/>기기 안에서 처리"]
-    chatgpt["ChatGPT<br/>동의 뒤 OpenAI 요청"]
-    flow["LangChain · LangGraph<br/>모델 호출 흐름"]
+    chatgpt["ChatGPT<br/>계정 로그인 · 동의 뒤 OpenAI 요청"]
+  end
+
+  subgraph evaluation["별도 모델 평가 계획"]
+    synthetic["합성 건강 기록"]
+    langsmith["LangSmith<br/>추천 모델 평가"]
+    synthetic --> langsmith
+  end
+
+  subgraph future["지향하는 진료 준비 경험"]
+    request["사용자 요청"] -.-> coordination["역할 나누기와 실행 조정"]
+    coordination -.-> research["기록 검색과 외부 의학 자료 확인"]
+    research -.-> review["중간 결과와 출처 확인"]
+    review -.-> questions["출처가 연결된 진료 질문"]
   end
 
   recording --> audio
@@ -58,27 +74,36 @@ flowchart TB
   health --> records
   calendar --> records
   records --> db
-  db --> rag
+  db --> chunks
+  chunks --> vectors
+  chunks --> fts
+  vectors --> retrieval
+  fts --> retrieval
   db --> memory
-  selection --> contract
-  flow --> contract
-  contract --> apple
-  contract --> chatgpt
+  memory --> memoryTools
+  modelRunner -->|공통 제공자 계약| apple
+  modelRunner -->|공통 제공자 계약| chatgpt
+  retrieval -.-> research
+  memoryTools -.-> coordination
+  coordination -.-> modelRunner
+  modelRunner -.-> review
 ```
 
-### 기록을 기기 안에 정리합니다
+### 기록을 모으고 아이폰 안에 보관합니다
 
-상담 녹음은 참여자에게 안내하고 동의를 확인한 뒤 시작합니다. 오디오는 백업에서 제외한 보호된 파일로 저장하며, 녹음만으로 전사가 시작되지는 않습니다. 전사가 필요하면 사용자가 별도로 요청하고 Apple Speech가 기기 안에서 처리합니다. 건강 관찰은 HealthKit에서 선택해 가져오고, 진료 일정은 iOS 캘린더와 연결합니다.
+상담 녹음은 참여자에게 안내하고 동의를 확인한 뒤 시작합니다. 녹음만으로 전사가 시작되지는 않습니다. 전사가 필요하면 사용자가 별도로 요청하고 Apple Speech가 기기 안에서 처리합니다. 건강 관찰은 HealthKit에서 선택해 가져오고, 진료 일정은 iOS 캘린더와 연결합니다.
 
-녹음 파일은 보호된 파일로 저장하고 백업에서 제외합니다. 가져온 건강·일정 기록은 SQLCipher로 암호화한 데이터베이스에 보관하며, 암호화 키는 iOS Keychain에 둡니다. 기록을 보관하고 검색하는 기본 위치는 아이폰이며, Orot 자체 서버에는 건강 기록을 저장하지 않습니다.
+녹음 파일은 보호된 파일로 저장하고, 가져온 건강·일정 기록은 SQLCipher로 암호화한 데이터베이스에 보관합니다. 암호화 키는 iOS Keychain에 둡니다. 기본 보관 위치는 아이폰이며 Orot 자체 서버에는 건강 기록을 저장하지 않습니다. 0.1.0에는 녹음을 포함한 앱 데이터를 iCloud에 백업하는 기능을 추가할 계획입니다.
 
-### 기록 검색과 AI의 역할
+### 기록을 검색하고 모델에 연결합니다
 
-기록 검색은 자료를 작은 단위로 나누고, 내용의 의미와 키워드가 비슷한 대목을 아이폰 안에서 함께 찾습니다. 이 방식이 RAG(검색 증강 생성)입니다. 오픈 소스 [Rememori](https://github.com/GiorgioDotcom/rememori)는 사용자가 확인했거나 사람이 검토한 선호와 대화 맥락을 다루는 별도 메모리입니다. 메모리는 출처가 있는 상담·건강 기록을 찾는 검색과 역할이 다릅니다.
+오롯은 상담 기록의 전사 구간과 구조화된 건강 기록을 출처 ID와 원문 위치가 연결된 작은 검색 단위로 나눕니다. 아이폰에서 `multilingual-e5-small`로 문서와 질문을 임베딩해 의미가 가까운 단위를 찾고, 문서 벡터는 SQLCipher 데이터베이스에 저장합니다. FTS5는 임시 키워드 인덱스에서 BM25 순위를 매깁니다. 오롯은 E5 벡터의 코사인 유사도 순위와 BM25 순위를 역순위 융합(RRF)으로 합쳐 관련 근거를 돌려주며, 검색 결과에는 원본 기록과 출처 위치가 함께 남습니다. 이 근거 검색이 오롯의 로컬 RAG를 이룹니다.
 
-AI를 사용할 때는 앱에서 처리 방식을 고릅니다. Apple Foundation Models를 선택하면 질문과 기록이 아이폰 안에서 처리됩니다. ChatGPT를 선택하면 앱이 먼저 외부 전송 사실을 안내하고 동의를 받습니다. 동의한 뒤 ChatGPT로 요청을 보내면 질문과 사용자가 선택한 기록이 OpenAI로 전송됩니다. 여러 모델은 공통 인터페이스로 연결하고, LangChain과 LangGraph가 요청 흐름을 구성합니다.
+Rememori는 이 기록 검색과 구분되는 별도 메모리입니다. 사용자가 확인한 선호, 사람이 검토한 대화 요약, 작업 맥락을 기억하고, LangChain 도구가 기억을 저장·검색·수정·삭제하는 동작을 감쌉니다. 의료 기록 전체를 복사해 두는 기능은 아닙니다.
 
-오롯은 지금 상담·건강·일정 기록을 모으고 아이폰 안에서 정리하는 데 초점을 맞춥니다. 다음 진료 질문을 찾고, 기록 출처를 따라 내용을 살피며, 필요한 경우 외부 의학 자료까지 함께 확인하는 것은 오롯이 지향하는 진료 준비 경험입니다. 병명 가능성은 진료 때 의사와 함께 살펴볼 참고 정보이며, 의사의 진단을 대신하지 않습니다.
+Apple과 ChatGPT 제공자는 공통 `LanguageModelProvider` 계약에 맞춰 요청과 응답을 정규화합니다. LangGraph 그래프는 이 제공자에게 한 번의 모델 요청을 전달하고 응답을 받으며, 그래프 상태를 SQLCipher에 저장할 수 있는 체크포인트 저장기도 있습니다. Apple Foundation Models를 선택하면 질문과 기록을 아이폰 안에서 처리합니다. ChatGPT를 쓰려면 계정에 로그인해 모델을 고르고, 앱의 외부 전송 안내에 동의해야 합니다. 요청을 보내면 질문과 사용자가 선택한 기록이 OpenAI로 전송됩니다.
+
+오롯은 앞으로 사용자 요청을 바탕으로 에이전트가 역할을 나눠 기록과 외부 의학 자료를 살피고, 중간 결과와 출처를 확인해 진료 질문을 제안하는 경험을 지향합니다. 병명 가능성은 진료 때 의사와 함께 살펴볼 참고 정보이며, 의사의 진단이나 치료 결정을 대신하지 않습니다. 합성 건강 기록을 이용한 추천 모델의 LangSmith 평가는 앱의 실제 기록 흐름과 분리된 별도 계획입니다.
 
 ### 더 알아보기
 
