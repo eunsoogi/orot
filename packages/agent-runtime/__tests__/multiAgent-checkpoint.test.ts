@@ -1,4 +1,5 @@
 import { providerSuccess, type LanguageModelProvider } from '@orot/model-runtime';
+import { MemorySaver } from '@langchain/langgraph/web';
 import {
   runMultiAgentWorkflow,
   type MultiAgentCheckpointState,
@@ -116,6 +117,54 @@ describe('multi-agent checkpoint boundaries', () => {
     const result = await runMultiAgentWorkflow(malformed);
 
     expect(result.status).toBe('invalid_output');
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('waits for the pending-operation checkpoint and rejects replay after its write fails', async () => {
+    const events: string[] = [];
+    const generate = jest.fn(async () => {
+      events.push('provider');
+      return providerSuccess({ text: '{}', toolCalls: [], finishReason: 'complete' });
+    });
+    const provider: LanguageModelProvider = {
+      kind: 'language-model',
+      id: 'selected-model',
+      displayName: 'Selected model',
+      capabilities: {
+        inputTypes: ['text'],
+        streaming: false,
+        structuredOutput: false,
+        toolCalling: false,
+      },
+      generate,
+    };
+    const saver = new MemorySaver();
+    const persist = saver.put.bind(saver);
+    let rejectedPendingWrite = false;
+    jest.spyOn(saver, 'put').mockImplementation(async (...args) => {
+      const [config, checkpoint, metadata, newVersions] = args;
+      const channels = checkpoint.channel_values as Record<string, unknown>;
+      const pending = channels.pendingOperation as { kind?: string } | undefined;
+      if (channels.modelCalls === 1 && pending?.kind === 'model') {
+        rejectedPendingWrite = true;
+        events.push('pending-checkpoint');
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        throw new Error('synthetic checkpoint write failure');
+      }
+      return persist(config, checkpoint, metadata, newVersions);
+    });
+    const options = { ...checkpointOptions(provider), checkpointer: saver };
+    const invocation = { config: { configurable: { thread_id: 'checkpoint-failure-1' } } };
+
+    const result = await runMultiAgentWorkflow(options, invocation);
+    const firstRunEvents = [...events];
+    const replay = await runMultiAgentWorkflow(options, { resumeFrom: result.checkpoint });
+
+    expect(rejectedPendingWrite).toBe(true);
+    expect(firstRunEvents).toEqual(['pending-checkpoint']);
+    expect(events).toEqual(firstRunEvents);
+    expect(result.checkpoint).toMatchObject({ phase: 'complete', terminal: true });
+    expect(replay.status).toBe('stale_evidence');
     expect(generate).not.toHaveBeenCalled();
   });
 });

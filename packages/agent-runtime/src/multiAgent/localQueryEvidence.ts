@@ -13,6 +13,7 @@ import type {
   EvidenceSearchTool,
 } from './contracts';
 import { isSourceAllowed } from './evidence';
+import { exceedsTimestampDuration, isOrderedTimestampRange } from './timestamps';
 
 type ObservationQueryService<TRecord> = Pick<
   LocalRecordQueryService<TRecord, unknown, unknown, unknown, unknown>,
@@ -39,18 +40,14 @@ function boundedWindow(request: EvidenceSearchRequest) {
   const range = request.allowedScope.timeRange;
   if (!range) throw new Error('A bounded local query requires an explicit half-open time range.');
   const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/iu;
-  const from = Date.parse(range.fromInclusive);
-  const to = Date.parse(range.toExclusive);
   if (
     !timestampPattern.test(range.fromInclusive) ||
     !timestampPattern.test(range.toExclusive) ||
-    !Number.isFinite(from) ||
-    !Number.isFinite(to) ||
-    to <= from
+    !isOrderedTimestampRange(range.fromInclusive, range.toExclusive)
   ) {
     throw new Error('A local query needs ordered ISO instants with explicit timezones.');
   }
-  if (to - from > LOCAL_QUERY_MAX_RANGE_MS) {
+  if (exceedsTimestampDuration(range.fromInclusive, range.toExclusive, LOCAL_QUERY_MAX_RANGE_MS)) {
     throw new Error('A local query range cannot exceed 366 days.');
   }
   if (

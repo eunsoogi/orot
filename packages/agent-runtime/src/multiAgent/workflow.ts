@@ -8,7 +8,7 @@ import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
-import { checkpointFromState } from './state';
+import { checkpointFromState, nonResumableCheckpoint } from './state';
 import {
   failureResult,
   initialState,
@@ -48,7 +48,7 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
     return {
       status: 'stale_evidence',
       reason: 'The saved run cannot be safely resumed; start a fresh run.',
-      checkpoint: invocation.resumeFrom,
+      checkpoint: nonResumableCheckpoint(initialState(options)),
     };
   }
   const start = resumed ?? initialState(options);
@@ -122,7 +122,8 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
           return failureResult(context.outcome!, checkpointFromState(start));
         }
       }
-      const finalState = await graph.invoke(start, invocation.config);
+      // Synchronous durability writes a pending operation before the next node dispatches external work.
+      const finalState = await graph.invoke(start, { ...invocation.config, durability: 'sync' });
       if (!context.outcome)
         stop(context, 'The workflow ended without a validated result.', 'invalid_output');
       return publicResult(
@@ -131,11 +132,11 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
         checkpointFromState(finalState),
       );
     }
-    return failureResult(context.outcome!, checkpointFromState(start));
+    return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } catch {
     if (controller.signal.aborted) canceled(context, 'underlying_call_unconfirmed');
     else stop(context, 'The workflow could not complete safely.', 'unavailable');
-    return failureResult(context.outcome!, checkpointFromState(start));
+    return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } finally {
     clearTimeout(timer);
     invocation.signal?.removeEventListener('abort', abortFromCaller);

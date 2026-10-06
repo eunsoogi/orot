@@ -7,6 +7,7 @@ import type {
   MultiAgentCheckpointState,
   MultiAgentPhase,
 } from './contracts';
+import { projectEvidenceReference } from './evidence';
 
 export type WorkflowRoute = 'task_response' | 'research' | 'search' | 'revision' | 'stop';
 
@@ -65,12 +66,22 @@ export function checkpointFromState(state: WorkflowState): MultiAgentCheckpointS
     modelCalls: state.modelCalls,
     toolCalls: state.toolCalls,
     researchCycles: state.researchCycles,
-    evidenceReferences: state.evidenceReferences,
+    evidenceReferences: state.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: state.evidenceNeed,
     selectedToolId: state.selectedToolId,
     pendingOperation: state.pendingOperation,
     terminal: state.terminal,
   };
+}
+
+// A failed checkpoint write leaves completion uncertain, so the returned snapshot must never replay.
+export function nonResumableCheckpoint(state: WorkflowState): MultiAgentCheckpointState {
+  return checkpointFromState({
+    ...state,
+    phase: 'complete',
+    pendingOperation: undefined,
+    terminal: true,
+  });
 }
 
 export function checkpointMatchesRun(

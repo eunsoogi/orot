@@ -9,6 +9,8 @@ import type {
 import { MAX_MULTI_AGENT_BUDGET } from './contracts';
 import {
   isSourceAllowed,
+  isEvidenceReference,
+  projectEvidenceReference,
   referencesFromBatch,
   sameReference,
   validateEvidenceBatch,
@@ -19,6 +21,7 @@ import { requireTaskContract } from './responses';
 import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
 import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
 import type { WorkflowState } from './state';
+import { isOrderedTimestampRange } from './timestamps';
 
 export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
   // Require every limit so a malformed runtime config cannot disable one guardrail by omission.
@@ -57,10 +60,10 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
         isSourceAllowed(execution.allowedScope, tool.sourceKind),
     ) &&
     (!execution.allowedScope.timeRange ||
-      (Number.isFinite(Date.parse(execution.allowedScope.timeRange.fromInclusive)) &&
-        Number.isFinite(Date.parse(execution.allowedScope.timeRange.toExclusive)) &&
-        Date.parse(execution.allowedScope.timeRange.fromInclusive) <
-          Date.parse(execution.allowedScope.timeRange.toExclusive)))
+      isOrderedTimestampRange(
+        execution.allowedScope.timeRange.fromInclusive,
+        execution.allowedScope.timeRange.toExclusive,
+      ))
   );
 }
 
@@ -91,6 +94,8 @@ export function resumeState<TResult>(
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
   if (
     !checkpointMatchesRun(saved, options.execution) ||
+    !Array.isArray(saved.evidenceReferences) ||
+    saved.evidenceReferences.some((reference) => !isEvidenceReference(reference)) ||
     saved.terminal ||
     saved.phase === 'complete' ||
     saved.pendingOperation ||
@@ -110,7 +115,7 @@ export function resumeState<TResult>(
   }
   return {
     ...saved,
-    evidenceReferences: [...saved.evidenceReferences],
+    evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,
     pendingOperation: undefined,

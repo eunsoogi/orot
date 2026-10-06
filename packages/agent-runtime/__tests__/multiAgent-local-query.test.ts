@@ -76,6 +76,59 @@ describe('multi-agent local query adapters', () => {
     ]);
   });
 
+  it('preserves nanosecond bounds and enforces the exact 366-day cap', async () => {
+    const queryHealthObservations = jest.fn(async () => ({
+      status: 'no_local_records_in_range' as const,
+      records: [],
+      hasMore: false,
+      limit: 3,
+    }));
+    const service = {
+      queryHealthObservations,
+    } as unknown as LocalRecordQueryService<unknown, unknown, unknown, unknown, unknown>;
+    const tool = createLocalObservationEvidenceTool({
+      id: 'selected-blood-pressure',
+      description: 'Read selected imported blood pressure records.',
+      queryType: 'blood_pressure',
+      service,
+      mapEvidence: () => evidenceItem('record-1', 'unused', '2026-10-01T06:00:00Z'),
+    });
+    const oneNanosecond = {
+      fromInclusive: '2026-10-01T06:00:00.123400000Z',
+      toExclusive: '2026-10-01T06:00:00.123400001Z',
+    };
+    const exactLimit = {
+      fromInclusive: '2025-10-01T00:00:00.123400000Z',
+      toExclusive: '2026-10-02T00:00:00.123400000Z',
+    };
+
+    await expect(
+      tool.search({
+        ...searchRequest(),
+        allowedScope: { sourceKinds: ['personal_record'], timeRange: oneNanosecond },
+      }),
+    ).resolves.toMatchObject({ coverage: [{ requestedTimeRange: oneNanosecond }] });
+    await expect(
+      tool.search({
+        ...searchRequest(),
+        allowedScope: { sourceKinds: ['personal_record'], timeRange: exactLimit },
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      tool.search({
+        ...searchRequest(),
+        allowedScope: {
+          sourceKinds: ['personal_record'],
+          timeRange: {
+            ...exactLimit,
+            toExclusive: '2026-10-02T00:00:00.123400001Z',
+          },
+        },
+      }),
+    ).rejects.toThrow('cannot exceed 366 days');
+    expect(queryHealthObservations).toHaveBeenCalledTimes(2);
+  });
+
   it('fails closed when the HealthKit query cannot honor a selected-record scope or a range over 366 days', async () => {
     const queryHealthObservations = jest.fn();
     const service = {

@@ -4,10 +4,44 @@ import type {
   EvidenceReference,
   MultiAgentBudget,
 } from './contracts';
+import { comparePreciseTimestamps, isOrderedTimestampRange } from './timestamps';
 
 // Evidence stays in private invocation memory; checkpoints receive only these references.
 export function referencesFromBatch(batch: EvidenceBatch): EvidenceReference[] {
-  return batch.items.map(({ content: _content, ...reference }) => reference);
+  return batch.items.map(projectEvidenceReference);
+}
+
+// Structural types keep extra record payloads; project the explicitly public citation fields.
+export function projectEvidenceReference(item: EvidenceReference): EvidenceReference {
+  return {
+    sourceKind: item.sourceKind,
+    sourceId: item.sourceId,
+    sourceRevision: item.sourceRevision,
+    evidenceId: item.evidenceId,
+    evidenceRevision: item.evidenceRevision,
+    locator: item.locator,
+    effectiveTime: item.effectiveTime,
+    ...(item.unit === undefined ? {} : { unit: item.unit }),
+    reviewState: item.reviewState,
+  };
+}
+
+export function isEvidenceReference(value: unknown): value is EvidenceReference {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const reference = value as Partial<EvidenceReference>;
+  return (
+    ['personal_record', 'reviewed_memory', 'external_medical'].includes(
+      reference.sourceKind ?? '',
+    ) &&
+    typeof reference.sourceId === 'string' &&
+    typeof reference.sourceRevision === 'string' &&
+    typeof reference.evidenceId === 'string' &&
+    typeof reference.evidenceRevision === 'string' &&
+    'locator' in reference &&
+    (reference.effectiveTime === null || typeof reference.effectiveTime === 'string') &&
+    (reference.unit === undefined || typeof reference.unit === 'string') &&
+    ['reviewed', 'unreviewed', 'unknown'].includes(reference.reviewState ?? '')
+  );
 }
 
 export function referenceKey(reference: EvidenceReference): string {
@@ -41,24 +75,16 @@ export function isSourceAllowed(
   );
 }
 
-function parseTime(value: string | undefined): number | null {
-  if (value === undefined) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function validTimeRange(fromInclusive: string, toExclusive: string): boolean {
-  const from = parseTime(fromInclusive);
-  const to = parseTime(toExclusive);
-  return from !== null && to !== null && from < to;
+  return isOrderedTimestampRange(fromInclusive, toExclusive);
 }
 
 function isWithinRange(value: string | null, scope: AllowedEvidenceScope): boolean {
   if (!scope.timeRange) return true;
-  const instant = parseTime(value ?? undefined);
-  const from = parseTime(scope.timeRange.fromInclusive);
-  const to = parseTime(scope.timeRange.toExclusive);
-  return instant !== null && from !== null && to !== null && instant >= from && instant < to;
+  if (value === null) return false;
+  const from = comparePreciseTimestamps(value, scope.timeRange.fromInclusive);
+  const to = comparePreciseTimestamps(value, scope.timeRange.toExclusive);
+  return from !== undefined && to !== undefined && from >= 0 && to < 0;
 }
 
 export function validateEvidenceBatch(
@@ -132,14 +158,23 @@ export function validateEvidenceBatch(
       ) {
         return 'Evidence coverage contained an invalid covered time range.';
       }
-      if (
-        scope.timeRange &&
-        (Date.parse(coverage.coveredTimeRange.fromInclusive) <
-          Date.parse(scope.timeRange.fromInclusive) ||
-          Date.parse(coverage.coveredTimeRange.toExclusive) >
-            Date.parse(scope.timeRange.toExclusive))
-      ) {
-        return 'Evidence coverage extended beyond the requested time range.';
+      if (scope.timeRange) {
+        const coveredStart = comparePreciseTimestamps(
+          coverage.coveredTimeRange.fromInclusive,
+          scope.timeRange.fromInclusive,
+        );
+        const coveredEnd = comparePreciseTimestamps(
+          coverage.coveredTimeRange.toExclusive,
+          scope.timeRange.toExclusive,
+        );
+        if (
+          coveredStart === undefined ||
+          coveredEnd === undefined ||
+          coveredStart < 0 ||
+          coveredEnd > 0
+        ) {
+          return 'Evidence coverage extended beyond the requested time range.';
+        }
       }
     }
   }

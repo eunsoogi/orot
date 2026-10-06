@@ -1,5 +1,6 @@
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
 import type { TaskResponderContract, TaskResponderInput } from './contracts';
+import { hasIncompleteCoverage, referencesFromBatch } from './evidence';
 import {
   canonicalJson,
   citationReferences,
@@ -59,6 +60,14 @@ export function consumeResponderResponse<TResult>(
       pendingOperation: undefined,
     };
   }
+  if (hasIncompleteCoverage(input.evidence)) {
+    context.outcome = {
+      status: 'needs_clarification',
+      reason: 'The available evidence has gaps, conflicts, truncation, or no coverage.',
+      coverage: input.evidence.coverage,
+    };
+    return completeState();
+  }
   const citations = citationReferences(decoded.citations, input.evidence);
   if (!citations) {
     stop(
@@ -89,9 +98,7 @@ export function consumeResponderResponse<TResult>(
   context.outcome = { status: 'result', value: validation.value, citations };
   return {
     ...completeState(),
-    evidenceReferences: input.evidence.items.map(
-      ({ content: _content, ...reference }) => reference,
-    ),
+    evidenceReferences: referencesFromBatch(input.evidence),
   };
 }
 
