@@ -4,7 +4,7 @@ const { expect: jestExpect } = require('@jest/globals');
 
 describe('common HealthKit observations on iOS Simulator', () => {
   it('imports synthetic observations into encrypted storage and replays idempotently', async () => {
-    const metroPort = process.env.RCT_METRO_PORT || '8220';
+    const metroPort = process.env.OROT_COMMON_OBSERVATIONS_METRO_PORT || '8220';
     await device.uninstallApp();
     await device.clearKeychain();
     await device.installApp();
@@ -39,7 +39,14 @@ describe('common HealthKit observations on iOS Simulator', () => {
     jestExpect(summary).toContain('availability=available');
     jestExpect(summary).toContain('writeTypes=0');
     jestExpect(summary).toContain('storage=encrypted-local');
+    jestExpect(summary).toContain('source=synthetic');
     jestExpect(summary).toContain('replayIdempotent=true');
+    jestExpect(summary).toMatch(
+      /initialTiming=authorization_calls:1,authorization_ms:\d+,query_calls:3,query_ms:\d+,storage_transactions:3,storage_ms:\d+/u,
+    );
+    jestExpect(summary).toMatch(
+      /replayTiming=authorization_calls:1,authorization_ms:\d+,query_calls:3,query_ms:\d+,storage_transactions:0,storage_ms:0/u,
+    );
     console.log('COMMON_OBSERVATIONS_SIMULATOR ' + summary);
   });
 });
