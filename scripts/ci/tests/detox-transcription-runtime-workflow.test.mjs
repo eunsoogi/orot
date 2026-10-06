@@ -9,6 +9,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const cacheStateRecorder = readFileSync(
+  join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
+  'utf8',
+);
 
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
@@ -21,6 +25,7 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
   const appCache = workflowStep('Cache Detox profile app product');
   const cacheRecord = workflowStep('Record Detox cache state');
   const simulatorPreparation = workflowStep('Prepare dedicated Detox Simulator');
+  const toolchainVerification = workflowStep('Verify runner toolchain');
 
   assert.match(
     profileWorkflow,
@@ -32,8 +37,15 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
   );
   assert.match(
     profileWorkflow,
-    /EXPECTED_MACOS_VERSION: \$\{\{ inputs\.profile == 'transcription' && '26\.6\.1' \|\| '27\.0' \}\}/,
+    /EXPECTED_MACOS_VERSION: \$\{\{ inputs\.profile == 'transcription' && '26' \|\| '27\.0' \}\}/,
   );
+  assert.match(toolchainVerification, /id: verify_toolchain/);
+  for (const cacheStep of [podsCache, appCache]) {
+    assert.match(
+      cacheStep,
+      /macos-\$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+    );
+  }
   assert.match(
     profileWorkflow,
     /EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: \$\{\{ inputs\.profile == 'transcription' && 'iOS 26\.2' \|\| 'iOS 27\.0' \}\}/,
@@ -56,7 +68,11 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
     appCache,
     /inputs\.profile\s*\}\}\$\{\{\s*env\.DETOX_CACHE_RUNTIME_SUFFIX\s*\}\}-native-/,
   );
-  assert.match(cacheRecord, /ios_simulator_runtime=/);
-  assert.match(cacheRecord, /ios_simulator_device_type=/);
+  assert.match(cacheStateRecorder, /ios_simulator_runtime=/);
+  assert.match(cacheStateRecorder, /ios_simulator_device_type=/);
+  assert.match(
+    cacheRecord,
+    /MACOS_VERSION: \$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+  );
   assert.match(simulatorPreparation, /prepare-detox-simulator\.sh[\s\S]*?inputs\.profile/);
 });

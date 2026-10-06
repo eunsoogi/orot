@@ -15,6 +15,10 @@ const profilesWorkflow = readFileSync(
 );
 const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
 const runner = readFileSync(join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh'), 'utf8');
+const cacheStateRecorder = readFileSync(
+  join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
+  'utf8',
+);
 
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
@@ -166,10 +170,24 @@ test('keys post-Pods app outputs and reuses only a validated exact DerivedData c
   assert.match(prepareCache, /detox-derived-data-cache\.mjs prepare/);
   assert.match(prepareCache, /DETOX_CACHE_RUNNER_OS: \$\{\{ runner\.os \}\}/);
   assert.match(prepareCache, /EXPECTED_XCODE_VERSION/);
-  assert.match(recordCache, /derived_data_cache_classification=/);
-  assert.match(recordCache, /native_dependency_fingerprint=/);
-  assert.match(recordCache, /app_reusable=/);
-  assert.match(recordCache, /privacy_manifest_input_sha256=/);
+  assert.match(
+    recordCache,
+    /run: scripts\/ci\/record-detox-cache-state\.sh artifacts\/detox\/native-cache\.log/,
+  );
+  assert.match(
+    recordCache,
+    /DERIVED_DATA_CACHE_CLASSIFICATION:.*outputs\.derived_data_cache_classification/,
+  );
+  assert.match(recordCache, /NATIVE_DEPENDENCY_FINGERPRINT:.*outputs\.native_dependencies/);
+  assert.match(recordCache, /APP_REUSABLE:.*outputs\.app_reusable/);
+  assert.match(
+    recordCache,
+    /PRIVACY_MANIFEST_INPUT_SHA256:.*outputs\.privacy_manifest_input_sha256/,
+  );
+  assert.match(cacheStateRecorder, /derived_data_cache_classification=/);
+  assert.match(cacheStateRecorder, /native_dependency_fingerprint=/);
+  assert.match(cacheStateRecorder, /app_reusable=/);
+  assert.match(cacheStateRecorder, /privacy_manifest_input_sha256=/);
   assert.match(manifestStep, /detox-derived-data-cache\.mjs write/);
   assert.match(manifestStep, /EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256/);
   assert.doesNotMatch(pods, /if:/);

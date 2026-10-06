@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,8 @@ const transcriptionSimulator = {
 function runToolchainCheck(profile, { availableRuntimes, availableDevices }) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-toolchain-'));
   try {
+    const githubOutputPath = join(directory, 'github-output');
+    writeFileSync(githubOutputPath, '');
     const binDirectory = join(directory, 'bin');
     mkdirSync(binDirectory, { recursive: true });
     const writeCommand = (name, content) => {
@@ -34,7 +36,10 @@ function runToolchainCheck(profile, { availableRuntimes, availableDevices }) {
       'if [[ "$1" == "-p" ]]; then printf \'22.23.2\\n\'; else exec "$REAL_NODE_EXECUTABLE" "$@"; fi',
     );
     writeCommand('pnpm', "printf '12.3.4\\n'");
-    writeCommand('sw_vers', 'printf \'%s\\n\' "$EXPECTED_MACOS_VERSION"');
+    writeCommand(
+      'sw_vers',
+      'printf \'%s\\n\' "${SIMULATED_MACOS_VERSION:-$EXPECTED_MACOS_VERSION}"',
+    );
     writeCommand(
       'xcodebuild',
       'printf \'Xcode %s\\nBuild version test\\n\' "$EXPECTED_XCODE_VERSION"',
@@ -63,12 +68,17 @@ function runToolchainCheck(profile, { availableRuntimes, availableDevices }) {
         ...process.env,
         PATH: [binDirectory, process.env.PATH].join(':'),
         REAL_NODE_EXECUTABLE: process.execPath,
+        GITHUB_OUTPUT: githubOutputPath,
         SIMULATOR_RUNTIMES_JSON: runtimesPath,
         SIMULATOR_DEVICES_JSON: devicesPath,
+        EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: '',
+        EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: '',
+        EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: '',
+        EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: '',
         ...profile,
       },
     });
-    return result;
+    return { ...result, githubOutput: readFileSync(githubOutputPath, 'utf8') };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -89,7 +99,8 @@ test('verifies the transcription profile runtime and device against their pinned
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '26.6.1',
+      EXPECTED_MACOS_VERSION: '26',
+      SIMULATED_MACOS_VERSION: '26.6.2',
       EXPECTED_XCODE_VERSION: '26.2',
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
@@ -106,6 +117,8 @@ test('verifies the transcription profile runtime and device against their pinned
     },
   );
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Verified macOS 26\.6\.2/);
+  assert.equal(result.githubOutput, 'macos_version=26.6.2\n');
   assert.match(
     result.stdout,
     /runtime iOS 26\.2 \(com\.apple\.CoreSimulator\.SimRuntime\.iOS-26-2\)/,
@@ -120,7 +133,8 @@ test('rejects an unavailable expected runtime even when another iOS runtime is i
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '26.6.1',
+      EXPECTED_MACOS_VERSION: '26',
+      SIMULATED_MACOS_VERSION: '26.6.2',
       EXPECTED_XCODE_VERSION: '26.2',
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
@@ -137,17 +151,36 @@ test('rejects an unavailable expected runtime even when another iOS runtime is i
   assert.match(result.stderr, /Toolchain mismatch for iOS-Simulator-runtime/);
 });
 
+test('rejects a different macOS major even when the pinned Xcode and runtime exist', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
+      EXPECTED_MACOS_VERSION: '26',
+      SIMULATED_MACOS_VERSION: '27.0',
+      EXPECTED_XCODE_VERSION: '26.2',
+      EXPECTED_IOS_SIMULATOR_SDK: '26.2',
+      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
+      EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime26.identifier,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
+    },
+    {
+      availableRuntimes: [runtime26],
+      availableDevices: { [runtime26.identifier]: [transcriptionSimulator] },
+    },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for macOS: expected 26\.x, got 27\.0/);
+});
+
 test('keeps the existing default Release toolchain and Simulator expectation', () => {
+  // Omit runtime/device overrides to prove the shell defaults reach Node selectors.
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
       EXPECTED_MACOS_VERSION: '27.0',
       EXPECTED_XCODE_VERSION: '27.0',
       EXPECTED_IOS_SIMULATOR_SDK: '27.0',
-      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 27.0',
-      EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime27.identifier,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: currentSimulator.name,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: currentSimulator.deviceTypeIdentifier,
     },
     {
       availableRuntimes: [runtime27, runtime26],

@@ -69,6 +69,27 @@ test('hashes unstaged tracked and untracked inputs while excluding generated out
   }
 });
 
+test('invalidates app and native fingerprints when the mobile manifest changes', () => {
+  const root = createFixtureRepository();
+  try {
+    const initial = computeDetoxCacheFingerprints(root);
+
+    // Native feature flags in the app manifest can change both bundle and CocoaPods output.
+    writeFixtureFile(
+      root,
+      'apps/mobile/package.json',
+      '{"name":"@orot/mobile","type":"commonjs","op-sqlite":{"fts5":true}}',
+    );
+    const afterNativeFeatureChange = computeDetoxCacheFingerprints(root);
+
+    assert.notEqual(afterNativeFeatureChange.buildInputs, initial.buildInputs);
+    assert.notEqual(afterNativeFeatureChange.nativeDependencies, initial.nativeDependencies);
+    assert.equal(afterNativeFeatureChange.reactNativeArtifacts, initial.reactNativeArtifacts);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('ignores CI orchestration changes but tracks app build driver changes', () => {
   const root = createFixtureRepository();
   try {

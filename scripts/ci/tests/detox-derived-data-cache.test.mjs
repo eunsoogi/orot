@@ -159,6 +159,33 @@ test('isolates the speech transcription app and invalidates its cache when nativ
   }
 });
 
+test('keys the DerivedData manifest with the actual macOS patch version', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-transcription');
+  const host = {
+    EXPECTED_MACOS_VERSION: '26',
+    MACOS_VERSION: '26.6.2',
+    EXPECTED_XCODE_VERSION: '26.2',
+    EXPECTED_IOS_SIMULATOR_SDK: '26.2',
+  };
+
+  try {
+    mkdirSync(derivedData, { recursive: true });
+    runCacheCommand(root, 'write', 'transcription', host);
+    assert.match(runCacheCommand(root, 'prepare', 'transcription', host), /classification=exact/);
+    assert.match(
+      runCacheCommand(root, 'prepare', 'transcription', {
+        ...host,
+        MACOS_VERSION: '26.6.3',
+      }),
+      /classification=invalidated/,
+    );
+    assert.equal(existsSync(derivedData), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('refuses to follow symlinks restored inside a compatible cache', () => {
   const root = createFixtureRepository();
   const derivedData = join(root, 'apps/mobile/ios/build-detox-release');

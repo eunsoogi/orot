@@ -13,6 +13,10 @@ const cacheAction = readFileSync(
   'utf8',
 );
 const fingerprintCli = join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint-cli.mjs');
+const cacheStateRecorder = readFileSync(
+  join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
+  'utf8',
+);
 const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
@@ -54,7 +58,11 @@ test('restores only intermediate files and still runs CocoaPods before app finge
   assert.ok(cacheStep >= 0 && cacheStep < podsStep);
   assert.ok(podsStep < fingerprintStep && fingerprintStep < derivedDataCache);
   assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));
-  assert.ok(profileWorkflow.includes('cocoapods_intermediates_cache_hit'));
+  // The extracted logger must retain the cache hit passed by this workflow step.
+  assert.ok(
+    profileWorkflow.includes('COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}'),
+  );
+  assert.ok(cacheStateRecorder.includes('cocoapods_intermediates_cache_hit='));
   for (const toolchainValue of [
     'runner.os',
     'runner.arch',

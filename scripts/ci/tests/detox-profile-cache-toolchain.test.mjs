@@ -9,6 +9,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const cacheStateRecorder = readFileSync(
+  join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
+  'utf8',
+);
 
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
@@ -45,7 +49,9 @@ test('installs CocoaPods once before fingerprinting the app cache', () => {
   assert.ok(nativePodsIndex < fingerprintIndex && fingerprintIndex < cachePreparation);
   assert.doesNotMatch(rubySetup, needsNativeBuild);
   assert.doesNotMatch(cocoapodsSetup, needsNativeBuild);
-  assert.match(cacheRecord, /expected_ruby=/);
-  assert.match(cacheRecord, /expected_cocoapods=/);
+  assert.match(cacheRecord, /RUBY_VERSION: \$\{\{ env\.EXPECTED_RUBY_VERSION \}\}/);
+  assert.match(cacheRecord, /COCOAPODS_VERSION: \$\{\{ env\.EXPECTED_COCOAPODS_VERSION \}\}/);
+  assert.match(cacheStateRecorder, /expected_ruby=/);
+  assert.match(cacheStateRecorder, /expected_cocoapods=/);
   assert.match(nativePods, /verify-toolchain\.sh --cocoapods/);
 });

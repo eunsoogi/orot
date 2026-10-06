@@ -13,6 +13,12 @@ expected_simulator_device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-co
 expected_ruby="${EXPECTED_RUBY_VERSION:-4.0.7}"
 expected_cocoapods="${EXPECTED_COCOAPODS_VERSION:-1.17.0}"
 
+# Node reads the resolved Simulator targets through process.env when matching xcrun output.
+export EXPECTED_IOS_SIMULATOR_RUNTIME_NAME="$expected_simulator_runtime_name"
+export EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER="$expected_simulator_runtime_id"
+export EXPECTED_DETOX_SIMULATOR_DEVICE_NAME="$expected_simulator_device_name"
+export EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID="$expected_simulator_device_type_id"
+
 fail_version() {
   printf 'Toolchain mismatch for %s: expected %s, got %s\n' "$1" "$2" "$3" >&2
   exit 1
@@ -25,7 +31,13 @@ actual_pnpm="$(pnpm --version)"
 [[ "$actual_pnpm" == "$expected_pnpm" ]] || fail_version pnpm "$expected_pnpm" "$actual_pnpm"
 
 actual_macos="$(sw_vers -productVersion)"
-[[ "$actual_macos" == "$expected_macos" ]] || fail_version macOS "$expected_macos" "$actual_macos"
+# The macos-26 hosted label rolls patch releases; keep exact checks for pinned version labels.
+if [[ "$expected_macos" =~ ^[0-9]+$ ]]; then
+  actual_macos_major="${actual_macos%%.*}"
+  [[ "$actual_macos_major" == "$expected_macos" ]] || fail_version macOS "${expected_macos}.x" "$actual_macos"
+else
+  [[ "$actual_macos" == "$expected_macos" ]] || fail_version macOS "$expected_macos" "$actual_macos"
+fi
 
 actual_developer_dir="${DEVELOPER_DIR:-}"
 expected_developer_dir="/Applications/Xcode.app/Contents/Developer"
@@ -72,6 +84,11 @@ if [[ "${1:-}" == "--cocoapods" ]]; then
   [[ "$actual_ruby" == "$expected_ruby" ]] || fail_version Ruby "$expected_ruby" "$actual_ruby"
   actual_cocoapods="$(pod --version)"
   [[ "$actual_cocoapods" == "$expected_cocoapods" ]] || fail_version CocoaPods "$expected_cocoapods" "$actual_cocoapods"
+fi
+
+# Preserve the actual macOS patch for cache keys after validating the expected family.
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  printf 'macos_version=%s\n' "$actual_macos" >>"$GITHUB_OUTPUT"
 fi
 
 printf 'Verified macOS %s, Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
