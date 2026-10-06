@@ -73,11 +73,12 @@ async function expectScrollInsideSafeRoot() {
 
 describe('safe area routes on iOS Simulator', () => {
   beforeEach(async () => {
-    await device.setOrientation('portrait');
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
     });
+    // Detox applies orientation through the active app session, so launch first.
+    await device.setOrientation('portrait');
   });
 
   afterEach(async () => {
