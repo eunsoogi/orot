@@ -41,3 +41,12 @@ export type {
   LocalEmbeddingVectorStore,
   PersistedLocalEmbedding,
 } from './embeddingRetrieval';
+export { searchHybridEvidenceChunks, DEFAULT_HYBRID_SEARCH_RANKING } from './hybridRetrieval';
+export type {
+  HybridEvidenceSearchHit,
+  HybridSearchOptions,
+  HybridSearchRankingConfig,
+} from './hybridRetrieval';
+export type { LocalFullTextSearchMatch, LocalFullTextSearchStore } from './localTextSearch';
+export { filterEvidenceChunks } from './retrievalFilters';
+export type { EvidenceSearchFilters } from './retrievalFilters';
