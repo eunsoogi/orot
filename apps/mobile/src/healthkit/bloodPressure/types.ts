@@ -23,7 +23,7 @@ export type BloodPressureChangePage = Extract<
 
 export type BloodPressureHealthKitClient = Pick<
   HealthKitNativeModule,
-  'querySampleChanges'
+  'requestReadAuthorization' | 'querySampleChanges'
 >;
 
 export type BloodPressureRepository = Pick<
@@ -39,6 +39,7 @@ export interface BloodPressureSyncOptions {
 
 export interface BloodPressureSyncResult {
   readonly status: 'completed' | 'notRun' | 'partial';
+  readonly readAuthorization: 'notObservable';
   readonly upserted: number;
   readonly deleted: number;
   readonly cursorAdvanced: boolean;

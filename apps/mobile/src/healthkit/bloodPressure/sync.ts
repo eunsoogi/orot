@@ -19,6 +19,22 @@ const pageRequest = {
 export async function syncHealthKitBloodPressure(
   options: BloodPressureSyncOptions,
 ): Promise<BloodPressureSyncResult> {
+  const authorization =
+    await options.healthKit.requestReadAuthorization('bloodPressure');
+  // HealthKit keeps read grants opaque; request completion is not a grant result.
+  if (
+    authorization.availability !== 'available' ||
+    authorization.requestStatus !== 'completed'
+  ) {
+    return {
+      status: 'notRun',
+      readAuthorization: 'notObservable',
+      upserted: 0,
+      deleted: 0,
+      cursorAdvanced: false,
+    };
+  }
+
   const checkpoint = await options.repository.getSyncCheckpoint(
     BLOOD_PRESSURE_CHECKPOINT_KEY,
   );
@@ -36,6 +52,7 @@ export async function syncHealthKitBloodPressure(
     if (result.status !== 'completed' || result.availability !== 'available') {
       return {
         status: pageCount === 0 ? 'notRun' : 'partial',
+        readAuthorization: result.readAuthorization,
         upserted,
         deleted,
         cursorAdvanced,
@@ -59,7 +76,13 @@ export async function syncHealthKitBloodPressure(
     cursor = result.cursor ?? cursor;
     pageCount += 1;
     if (!result.hasMore) {
-      return { status: 'completed', upserted, deleted, cursorAdvanced };
+      return {
+        status: 'completed',
+        readAuthorization: result.readAuthorization,
+        upserted,
+        deleted,
+        cursorAdvanced,
+      };
     }
   }
 }

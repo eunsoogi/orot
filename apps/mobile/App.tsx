@@ -7,12 +7,19 @@ import type { CalendarBridge } from './src/calendar/types';
 import RecordingScreen from './src/recording/RecordingScreen';
 import { t } from './src/i18n';
 import { CommonObservationsImportScreen } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
-import type {
-  CommonObservationsImportCopy,
-  CommonObservationsImportResult as CommonObservationsScreenResult,
-} from './src/healthkit/commonObservations/CommonObservationsImportScreen';
+import { commonObservationsCopy } from './src/healthkit/commonObservations/copy';
+import type { CommonObservationsImportResult as CommonObservationsScreenResult } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
 import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
 import { importLocalCommonObservations } from './src/healthkit/commonObservations/importLocal';
+import { BloodPressureImportScreen } from './src/healthkit/bloodPressure/BloodPressureImportScreen';
+import {
+  importLocalBloodPressure,
+  listLocalBloodPressureObservations,
+} from './src/healthkit/bloodPressure/importLocal';
+import type {
+  BloodPressureObservation,
+  BloodPressureSyncResult,
+} from './src/healthkit/bloodPressure/types';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
 import { providerSelectionText } from './src/providers/selection/text';
 
@@ -26,54 +33,27 @@ interface AppProps {
   importHealthObservations?: (
     features: readonly CommonObservationFeature[],
   ) => Promise<CommonObservationsScreenResult>;
+  importBloodPressure?: () => Promise<BloodPressureSyncResult>;
+  loadBloodPressureObservations?: () => Promise<
+    readonly BloodPressureObservation[]
+  >;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
   return require('./src/appointments/localRepository').openLocalAppointmentRepository();
 }
 
-const commonObservationsCopy: CommonObservationsImportCopy = {
-  title: t('healthkit.commonObservations.title'),
-  description: t('healthkit.commonObservations.description'),
-  localOnly: t('healthkit.commonObservations.localOnly'),
-  importButton: t('healthkit.commonObservations.import'),
-  featureNames: {
-    heartRate: t('healthkit.commonObservations.heartRate'),
-    steps: t('healthkit.commonObservations.steps'),
-    bodyMass: t('healthkit.commonObservations.bodyMass'),
-  },
-  statuses: {
-    idle: t('healthkit.commonObservations.status.idle'),
-    importing: t('healthkit.commonObservations.status.importing'),
-    complete: t('healthkit.commonObservations.status.complete'),
-    empty: t('healthkit.commonObservations.status.empty'),
-    unavailable: t('healthkit.commonObservations.status.unavailable'),
-    unsupportedFeature: t(
-      'healthkit.commonObservations.status.unsupportedFeature',
-    ),
-    unsupportedPlatform: t(
-      'healthkit.commonObservations.status.unsupportedPlatform',
-    ),
-    unsupportedData: t('healthkit.commonObservations.status.unsupportedData'),
-    partial: t('healthkit.commonObservations.status.partial'),
-    failed: t('healthkit.commonObservations.status.failed'),
-  },
-  changeSummary: (importedCount, deletedCount, unsupportedCount) =>
-    t('healthkit.commonObservations.status.summary', {
-      imported: importedCount,
-      deleted: deletedCount,
-      unsupported: unsupportedCount,
-    }),
-};
-
 export default function App({
   loadAppointments = defaultAppointmentLoader,
   calendarBridge = eventKitCalendarBridge,
   importHealthObservations = importLocalCommonObservations,
+  importBloodPressure = importLocalBloodPressure,
+  loadBloodPressureObservations = listLocalBloodPressureObservations,
 }: AppProps) {
   const [hasStarted, setHasStarted] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCommonObservations, setShowCommonObservations] = useState(false);
+  const [showBloodPressure, setShowBloodPressure] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
   // Keep only the selected display label in route state; selection identifiers stay in the provider store.
@@ -118,6 +98,19 @@ export default function App({
         <CommonObservationsImportScreen
           copy={commonObservationsCopy}
           onImport={importHealthObservations}
+        />
+      </View>
+    );
+  }
+
+  if (showBloodPressure) {
+    // This dedicated path keeps paired readings and source-unit availability explicit.
+    return (
+      <View style={styles.commonObservationsContainer}>
+        <BloodPressureImportScreen
+          onBack={() => setShowBloodPressure(false)}
+          importBloodPressure={importBloodPressure}
+          loadObservations={loadBloodPressureObservations}
         />
       </View>
     );
@@ -211,6 +204,11 @@ export default function App({
         onPress={openCommonObservations}
         testID="open-common-observations"
         title={t('healthkit.commonObservations.open')}
+      />
+      <Button
+        onPress={() => setShowBloodPressure(true)}
+        testID="open-blood-pressure-import"
+        title={t('healthkit.bloodPressure.open')}
       />
       <Button
         onPress={() => setShowRecording(true)}

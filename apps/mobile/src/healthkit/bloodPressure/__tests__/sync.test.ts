@@ -35,6 +35,12 @@ function page(
   };
 }
 
+const availableReadAuthorization = {
+  availability: 'available',
+  requestStatus: 'completed',
+  readAuthorization: 'notObservable',
+} as const;
+
 describe('syncHealthKitBloodPressure', () => {
   it('commits each added/deleted page before querying the next cursor', async () => {
     const store = createMemoryBloodPressureRepository();
@@ -47,6 +53,9 @@ describe('syncHealthKitBloodPressure', () => {
     );
     const cursors: (string | null)[] = [];
     const healthKit: BloodPressureHealthKitClient = {
+      async requestReadAuthorization() {
+        return availableReadAuthorization;
+      },
       async querySampleChanges(query: HealthKitSampleChangesQuery) {
         cursors.push(query.cursor);
         if (cursors.length === 1) {
@@ -76,6 +85,7 @@ describe('syncHealthKitBloodPressure', () => {
     expect(cursors).toEqual([null, 'cursor-1']);
     expect(result).toEqual({
       status: 'completed',
+      readAuthorization: 'notObservable',
       upserted: 2,
       deleted: 2,
       cursorAdvanced: true,
@@ -90,6 +100,9 @@ describe('syncHealthKitBloodPressure', () => {
     const store = createMemoryBloodPressureRepository();
     const queriedCursors: (string | null)[] = [];
     const healthKit: BloodPressureHealthKitClient = {
+      async requestReadAuthorization() {
+        return availableReadAuthorization;
+      },
       async querySampleChanges(query) {
         queriedCursors.push(query.cursor);
         return page([correlation()], [], 'cursor-1');
@@ -120,6 +133,9 @@ describe('syncHealthKitBloodPressure', () => {
   it('reports unavailable access without advancing the stored cursor', async () => {
     const store = createMemoryBloodPressureRepository();
     const healthKit: BloodPressureHealthKitClient = {
+      async requestReadAuthorization() {
+        return availableReadAuthorization;
+      },
       async querySampleChanges() {
         return {
           availability: 'unsupportedPlatform',
@@ -137,6 +153,41 @@ describe('syncHealthKitBloodPressure', () => {
       }),
     ).resolves.toEqual({
       status: 'notRun',
+      readAuthorization: 'notObservable',
+      upserted: 0,
+      deleted: 0,
+      cursorAdvanced: false,
+    });
+    expect(store.observations()).toHaveLength(0);
+    expect(store.checkpoint(BLOOD_PRESSURE_CHECKPOINT_KEY)).toBeNull();
+  });
+
+  it('does not query or advance a cursor when HealthKit cannot run the request', async () => {
+    const store = createMemoryBloodPressureRepository();
+    const healthKit: BloodPressureHealthKitClient = {
+      async requestReadAuthorization() {
+        return {
+          availability: 'unavailable',
+          requestStatus: 'notRequested',
+          readAuthorization: 'notObservable',
+        };
+      },
+      async querySampleChanges() {
+        throw new Error(
+          'A query must not run when authorization is unavailable.',
+        );
+      },
+    };
+
+    await expect(
+      syncHealthKitBloodPressure({
+        healthKit,
+        repository: store.repository,
+        now: () => '2026-10-05T10:00:00.000Z',
+      }),
+    ).resolves.toEqual({
+      status: 'notRun',
+      readAuthorization: 'notObservable',
       upserted: 0,
       deleted: 0,
       cursorAdvanced: false,
@@ -148,6 +199,9 @@ describe('syncHealthKitBloodPressure', () => {
   it('stops a has-more response that repeats the same cursor', async () => {
     const store = createMemoryBloodPressureRepository();
     const healthKit: BloodPressureHealthKitClient = {
+      async requestReadAuthorization() {
+        return availableReadAuthorization;
+      },
       async querySampleChanges() {
         return page([], [], null, true);
       },
