@@ -98,6 +98,13 @@ jobs:
         with:
           ruby-version: '4.0.7'
           bundler-cache: false
+      # Restore native dependency outputs before the required Pods install; app fingerprints still follow that install.
+      - name: Cache Detox CocoaPods intermediates
+        id: cocoapods_cache
+        uses: ./.github/actions/detox-cocoapods-cache
+        with:
+          cache-context: >-
+            ${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
       - name: Install CocoaPods
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Install Detox CocoaPods dependencies
@@ -138,6 +145,7 @@ jobs:
         env:
           DETOX_PROFILE: ${{ inputs.profile }}
           RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
+          COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}
           PROFILE_DERIVED_DATA_CACHE_HIT: ${{ steps.profile_derived_data_cache.outputs.cache-hit }}
           BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           RN_ARTIFACT_FINGERPRINT: ${{ steps.rn_artifact_fingerprint.outputs.react_native_artifacts }}
@@ -157,6 +165,7 @@ jobs:
           {
             printf 'profile=%s\n' "${DETOX_PROFILE}"
             printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
+            printf 'cocoapods_intermediates_cache_hit=%s\n' "${COCOAPODS_CACHE_HIT:-false}"
             printf 'derived_data_cache_hit=%s\n' "${PROFILE_DERIVED_DATA_CACHE_HIT:-false}"
             printf 'derived_data_cache_classification=%s\n' "${DERIVED_DATA_CACHE_CLASSIFICATION}"
             printf 'app_reusable=%s\n' "${APP_REUSABLE}"

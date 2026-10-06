@@ -46,6 +46,10 @@ function computeFingerprints(mode) {
   if (mode === '--react-native-artifacts-only') {
     return computeDetoxReactNativeArtifactFingerprint();
   }
+  if (mode === '--cocoapods-cache-inputs-only') {
+    const { buildInputs, nativeDependencies } = computeDetoxCacheFingerprints();
+    return { buildInputs, nativeDependencies };
+  }
   if (mode === '--derived-data-only') return computeDetoxDerivedDataFingerprints();
   return computeDetoxCacheFingerprints();
 }
@@ -54,10 +58,15 @@ function main() {
   const [mode] = process.argv.slice(2);
   if (
     process.argv.length > 3 ||
-    ![undefined, '--react-native-artifacts-only', '--derived-data-only'].includes(mode)
+    ![
+      undefined,
+      '--react-native-artifacts-only',
+      '--cocoapods-cache-inputs-only',
+      '--derived-data-only',
+    ].includes(mode)
   ) {
     throw new Error(
-      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--derived-data-only]',
+      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--cocoapods-cache-inputs-only|--derived-data-only]',
     );
   }
   const outputPath = process.env.GITHUB_OUTPUT;
@@ -66,7 +75,10 @@ function main() {
 
   const fingerprints = computeFingerprints(mode);
   writeGitHubOutputs(outputPath, fingerprints);
-  writeGitHubEnvironment(process.env.GITHUB_ENV, fingerprints);
+  // Only post-Pods fingerprints may set expectations for generated project inputs.
+  if (mode !== '--cocoapods-cache-inputs-only') {
+    writeGitHubEnvironment(process.env.GITHUB_ENV, fingerprints);
+  }
   console.log(
     [
       'DETOX_CACHE_FINGERPRINT',
