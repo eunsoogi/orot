@@ -30,11 +30,11 @@ function validateSnapshot(profile, value) {
     !isRecord(value) ||
     value.schemaVersion !== 1 ||
     value.profile !== profile ||
-    !['prepared', 'post-pods-verified'].includes(value.stage)
+    !['prepared', 'verified'].includes(value.stage)
   ) {
     throw new Error(`Invalid Detox build-input snapshot for ${profile}.`);
   }
-  const prePods = validateInputHashes(value.prePods, 'snapshot pre-Pods');
+  const baseline = validateInputHashes(value.baseline, 'snapshot baseline');
   const fingerprints = value.fingerprints;
   if (
     !isRecord(fingerprints) ||
@@ -47,16 +47,16 @@ function validateSnapshot(profile, value) {
     schemaVersion: 1,
     profile,
     stage: value.stage,
-    prePods,
+    baseline,
     fingerprints: {
       buildInputs: fingerprints.buildInputs,
       nativeDependencies: fingerprints.nativeDependencies,
     },
   };
-  if (value.stage === 'post-pods-verified') {
-    snapshot.postPods = validateInputHashes(value.postPods, 'snapshot post-Pods');
-  } else if (value.postPods !== undefined) {
-    throw new Error(`Prepared ${profile} snapshot must not contain post-Pods hashes.`);
+  if (value.stage === 'verified') {
+    snapshot.afterInstall = validateInputHashes(value.afterInstall, 'snapshot after-install');
+  } else if (value.afterInstall !== undefined) {
+    throw new Error(`Prepared ${profile} snapshot must not contain after-install hashes.`);
   }
   return snapshot;
 }

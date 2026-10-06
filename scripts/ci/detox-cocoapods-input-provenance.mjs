@@ -10,7 +10,7 @@ import {
   writeDetoxBuildInputSnapshot,
 } from './detox-build-input-snapshot.mjs';
 
-// Track source bytes separately from the two tracked files CocoaPods rewrites during install.
+// Capture the tracked CocoaPods outputs so later native build stages cannot change them silently.
 export const EXPECTED_COCOAPODS_INPUT_HASHES_ENV = 'EXPECTED_COCOAPODS_INPUT_HASHES_JSON';
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
@@ -122,17 +122,17 @@ export function recordPreparedDetoxBuildInputs(
   manifest,
   shouldSnapshot = true,
 ) {
-  const prePods = readExpectedCocoapodsInputHashes();
-  if (!prePods) {
+  const baseline = readExpectedCocoapodsInputHashes();
+  if (!baseline) {
     if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_ENV) {
-      throw new Error('Expected pre-Pods CocoaPods input hashes are required in GitHub Actions.');
+      throw new Error('Expected CocoaPods input hashes are required in GitHub Actions.');
     }
     return;
   }
   const fingerprints = readExpectedFingerprints();
   assertCocoapodsInputHashesEqual(
     readCocoapodsInputHashes(repositoryRoot),
-    prePods,
+    baseline,
     'before cache lookup',
   );
   assertFingerprintsEqual(manifest, fingerprints, 'before cache lookup');
@@ -141,22 +141,22 @@ export function recordPreparedDetoxBuildInputs(
     schemaVersion: 1,
     profile,
     stage: 'prepared',
-    prePods,
+    baseline,
     fingerprints,
   });
 }
 
 export function validateDetoxInputsBeforeCacheLookup(repositoryRoot, manifest) {
-  const prePods = readExpectedCocoapodsInputHashes();
-  if (!prePods) {
+  const baseline = readExpectedCocoapodsInputHashes();
+  if (!baseline) {
     if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_ENV) {
-      throw new Error('Expected pre-Pods CocoaPods input hashes are required in GitHub Actions.');
+      throw new Error('Expected CocoaPods input hashes are required in GitHub Actions.');
     }
     return;
   }
   assertCocoapodsInputHashesEqual(
     readCocoapodsInputHashes(repositoryRoot),
-    prePods,
+    baseline,
     'before cache lookup',
   );
   assertFingerprintsEqual(manifest, readExpectedFingerprints(), 'before cache lookup');
@@ -166,46 +166,46 @@ export function verifyDetoxBuildInputs(repositoryRoot, profile) {
   if (process.env.GITHUB_ACTIONS !== 'true') {
     throw new Error('Detox build-input verification is limited to GitHub Actions runners.');
   }
-  const prePods = readExpectedCocoapodsInputHashes();
-  if (!prePods) throw new Error('Expected pre-Pods CocoaPods input hashes are required.');
+  const baseline = readExpectedCocoapodsInputHashes();
+  if (!baseline) throw new Error('Expected CocoaPods input hashes are required.');
   const fingerprints = readExpectedFingerprints();
   const snapshot = readDetoxBuildInputSnapshot(profile);
   if (snapshot.stage !== 'prepared') {
     throw new Error(`Detox build-input snapshot was not prepared for ${profile}.`);
   }
-  assertCocoapodsInputHashesEqual(snapshot.prePods, prePods, 'after cache preparation');
+  assertCocoapodsInputHashesEqual(snapshot.baseline, baseline, 'after cache preparation');
   assertFingerprintsEqual(snapshot.fingerprints, fingerprints, 'after cache preparation');
 
-  // The verified diff may contain only the two tracked files CocoaPods integrates.
+  // The diff may contain only the two tracked files CocoaPods integrates.
   rejectUnexpectedBuildInputChanges(repositoryRoot, 'after CocoaPods install');
-  const current = computeFingerprints(repositoryRoot, prePods);
+  const current = computeFingerprints(repositoryRoot, baseline);
   assertFingerprintsEqual(current, fingerprints, 'after CocoaPods install');
-  const postPods = readCocoapodsInputHashes(repositoryRoot);
+  const afterInstall = readCocoapodsInputHashes(repositoryRoot);
   writeDetoxBuildInputSnapshot(profile, {
     ...snapshot,
-    stage: 'post-pods-verified',
-    postPods,
+    stage: 'verified',
+    afterInstall,
   });
-  return { prePods, postPods, fingerprints };
+  return { baseline, afterInstall, fingerprints };
 }
 
 export function verifyDetoxBuildInputsBeforeManifest(repositoryRoot, profile, manifest) {
-  const prePods = readExpectedCocoapodsInputHashes();
-  if (!prePods) {
+  const baseline = readExpectedCocoapodsInputHashes();
+  if (!baseline) {
     const current = readCocoapodsInputHashes(repositoryRoot);
-    return { prePods: current, postPods: current };
+    return { baseline: current, afterInstall: current };
   }
   const snapshot = readDetoxBuildInputSnapshot(profile);
-  if (snapshot.stage !== 'post-pods-verified') {
+  if (snapshot.stage !== 'verified') {
     throw new Error(`Detox build-input snapshot is not verified for ${profile}.`);
   }
-  assertCocoapodsInputHashesEqual(snapshot.prePods, prePods, 'before manifest write');
+  assertCocoapodsInputHashesEqual(snapshot.baseline, baseline, 'before manifest write');
   assertCocoapodsInputHashesEqual(
     readCocoapodsInputHashes(repositoryRoot),
-    snapshot.postPods,
-    'after prebuild verification and before manifest write',
+    snapshot.afterInstall,
+    'after build-input verification and before manifest write',
   );
   assertFingerprintsEqual(manifest, snapshot.fingerprints, 'before manifest write');
   rejectUnexpectedBuildInputChanges(repositoryRoot, 'before manifest write');
-  return { prePods: snapshot.prePods, postPods: snapshot.postPods };
+  return { baseline: snapshot.baseline, afterInstall: snapshot.afterInstall };
 }

@@ -4,6 +4,7 @@ apps/mobile/ios/Pods/
 apps/mobile/ios/build/
 apps/mobile/ios/build-detox-release/
 apps/mobile/ios/build-detox-openai-provider/
+apps/mobile/ios/build-detox-transcription/
 apps/mobile/ios/build-production/
 apps/mobile/android/.gradle/
 apps/mobile/android/app/build/

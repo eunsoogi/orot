@@ -2,14 +2,14 @@
 set -euo pipefail
 
 if [[ $# -gt 1 ]]; then
-  printf 'Usage: %s [both|release|openai-provider]\n' "$0" >&2
+  printf 'Usage: %s [both|release|openai-provider|transcription]\n' "$0" >&2
   exit 2
 fi
 profile="${1:-both}"
 case "$profile" in
-  both | release | openai-provider) ;;
+  both | release | openai-provider | transcription) ;;
   *)
-    printf 'Unknown Detox test profile: %s\nUsage: %s [both|release|openai-provider]\n' "$profile" "$0" >&2
+    printf 'Unknown Detox test profile: %s\nUsage: %s [both|release|openai-provider|transcription]\n' "$profile" "$0" >&2
     exit 2
     ;;
 esac
@@ -21,6 +21,7 @@ fi
 
 release_simulator_id="${OROT_DETOX_SIMULATOR_UDID:-}"
 debug_simulator_id="${OROT_OPENAI_PROVIDER_SIMULATOR_UDID:-}"
+transcription_simulator_id="${OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID:-}"
 valid_udid_re='^[A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$'
 if [[ "$profile" == both || "$profile" == release ]]; then
   if [[ ! "$release_simulator_id" =~ $valid_udid_re ]]; then
@@ -33,6 +34,10 @@ if [[ "$profile" == both || "$profile" == openai-provider ]]; then
     printf 'A dedicated OpenAI Debug Detox Simulator UDID is required.\n' >&2
     exit 2
   fi
+fi
+if [[ "$profile" == transcription && ! "$transcription_simulator_id" =~ $valid_udid_re ]]; then
+  printf 'A dedicated speech transcription Detox Simulator UDID is required.\n' >&2
+  exit 2
 fi
 if [[ "$profile" == both && "$release_simulator_id" != "$debug_simulator_id" ]]; then
   printf 'Local combined E2E must use the same dedicated Simulator for both configurations.\n' >&2
@@ -156,6 +161,7 @@ run_profile_for_configuration() {
 
 release_status=0
 debug_status=0
+transcription_status=0
 
 if [[ "$profile" == both || "$profile" == release ]]; then
   run_profile_for_configuration release "$release_simulator_id" release \
@@ -167,7 +173,13 @@ if [[ "$profile" == both || "$profile" == openai-provider ]]; then
     --configuration ios.sim.debug.openai-provider || debug_status=$?
 fi
 
-if [[ "$release_status" -ne 0 || "$debug_status" -ne 0 ]]; then
-  printf 'Detox suite failure: Release exit %s; OpenAI Debug exit %s.\n' "$release_status" "$debug_status" >&2
+if [[ "$profile" == transcription ]]; then
+  run_profile_for_configuration transcription "$transcription_simulator_id" transcription \
+    --configuration ios.sim.release.transcription || transcription_status=$?
+fi
+
+if [[ "$release_status" -ne 0 || "$debug_status" -ne 0 || "$transcription_status" -ne 0 ]]; then
+  printf 'Detox suite failure: Release exit %s; OpenAI Debug exit %s; transcription exit %s.\n' \
+    "$release_status" "$debug_status" "$transcription_status" >&2
   exit 1
 fi

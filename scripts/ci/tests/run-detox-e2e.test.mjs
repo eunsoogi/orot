@@ -15,11 +15,13 @@ function runRunner({
   profile = 'both',
   releaseStatus = '0',
   debugStatus = '0',
+  transcriptionStatus = '0',
   ci = '',
   resourceLog = false,
   logLevel = 'info',
   simulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
   openaiSimulatorId = simulatorId,
+  transcriptionSimulatorId = simulatorId,
 } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-runs-'));
   const fakePnpm = join(directory, 'pnpm');
@@ -33,6 +35,7 @@ function runRunner({
       '#!/usr/bin/env bash',
       'printf \'profile=%s %s\\n\' "${OROT_DETOX_TEST_PROFILE:-}" "$*" >> "$DETOX_CALL_LOG"',
       "printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
+      'if [[ "$*" == *"ios.sim.release.transcription"* ]]; then exit "$TRANSCRIPTION_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
       'exit 97',
@@ -53,12 +56,14 @@ function runRunner({
       DETOX_SAMPLER_CALLS: samplerCallsPath,
       RELEASE_STATUS: releaseStatus,
       DEBUG_STATUS: debugStatus,
+      TRANSCRIPTION_STATUS: transcriptionStatus,
       CI: ci,
       OROT_DETOX_RESOURCE_LOG_PATH: resourceLog ? resourceLogPath : '',
       OROT_DETOX_RESOURCE_SAMPLING: resourceLog ? 'true' : 'false',
       OROT_DETOX_TEST_LOG_LEVEL: logLevel,
       OROT_DETOX_SIMULATOR_UDID: simulatorId,
       OROT_OPENAI_PROVIDER_SIMULATOR_UDID: openaiSimulatorId,
+      OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID: transcriptionSimulatorId,
     },
   });
   const calls = existsSync(callsPath)
@@ -125,6 +130,34 @@ test('runs only the Debug-only OpenAI probe on its dedicated Simulator', () => {
   );
   assert.match(calls[0], /ios\.sim\.debug\.openai-provider/);
   assert.match(calls[0], new RegExp(`${artifactsPath}/openai-provider`));
+});
+
+test('runs only the transcription probe with its separately prepared Simulator', () => {
+  const simulatorId = '';
+  const transcriptionSimulatorId = '22222222-3333-4444-8555-666666666666';
+  const { result, calls, artifactsPath } = runRunner({
+    profile: 'transcription',
+    simulatorId,
+    openaiSimulatorId: '',
+    transcriptionSimulatorId,
+  });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /^profile=transcription /);
+  assert.match(calls[0], /ios\.sim\.release\.transcription/);
+  assert.match(calls[0], new RegExp(`${artifactsPath}/transcription`));
+});
+
+test('fails closed when the transcription profile lacks its dedicated Simulator', () => {
+  const { result, calls } = runRunner({
+    profile: 'transcription',
+    simulatorId: '',
+    openaiSimulatorId: '',
+    transcriptionSimulatorId: '',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /dedicated speech transcription Detox Simulator UDID/);
+  assert.deepEqual(calls, []);
 });
 
 test('can record bounded process and memory samples when explicitly enabled', () => {

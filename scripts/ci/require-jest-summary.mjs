@@ -11,7 +11,7 @@ if (!logPath || !suiteName) {
 }
 
 const log = readFileSync(logPath, 'utf8').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
-const e2eSuites = ['e2e', 'e2e-release', 'e2e-openai-provider'];
+const e2eSuites = ['e2e', 'e2e-release', 'e2e-openai-provider', 'e2e-transcription'];
 if (suiteName.startsWith('e2e') && !e2eSuites.includes(suiteName)) {
   throw new Error(`Unknown E2E summary profile: ${suiteName}`);
 }
@@ -46,6 +46,9 @@ if (e2eSuites.includes(suiteName)) {
   const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
   const releaseConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
   const debugConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
+  const transcriptionConfig = requireFromRepository(
+    './apps/mobile/e2e/transcription.jest.config.js',
+  );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
@@ -75,14 +78,19 @@ if (e2eSuites.includes(suiteName)) {
   const profiles = [
     ['Release', releaseConfig.testMatch, 8],
     ['OpenAI Debug', debugConfig.testMatch, 1],
+    ['Speech Transcription', transcriptionConfig.testMatch, 1],
   ].map(([configuration, testMatch, tests]) => {
     if (!Array.isArray(testMatch) || testMatch.length === 0) {
       throw new Error(`e2e: ${configuration} Jest config must enumerate its suites explicitly`);
     }
     return { configuration, suites: testMatch.length, tests };
   });
-  expectedE2ESuites =
-    suiteName === 'e2e' ? profiles : [suiteName === 'e2e-release' ? profiles[0] : profiles[1]];
+  const expectedProfile = {
+    'e2e-release': profiles[0],
+    'e2e-openai-provider': profiles[1],
+    'e2e-transcription': profiles[2],
+  };
+  expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
   if (testSummaries.length !== expectedE2ESuites.length) {
     if (suiteName === 'e2e') {
       throw new Error(
@@ -151,7 +159,12 @@ console.log(
 );
 
 if (githubOutputPath) {
-  const profile = suiteName === 'e2e-release' ? 'release' : 'openai-provider';
+  const profile = {
+    'e2e-release': 'release',
+    'e2e-openai-provider': 'openai-provider',
+    'e2e-transcription': 'transcription',
+  }[suiteName];
+  if (!profile) throw new Error(`${suiteName}: no single-profile output mapping exists`);
   appendFileSync(
     githubOutputPath,
     `e2e_profile=${profile}\ne2e_test_cases=${totalTests}\ne2e_test_suites=${totalSuites}\n`,

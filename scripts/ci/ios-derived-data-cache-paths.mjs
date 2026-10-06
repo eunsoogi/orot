@@ -24,6 +24,13 @@ export const APP_PROFILES = {
     binaryPath: 'Build/Products/Debug-iphonesimulator/Orot.app/Orot',
     embeddedBundlePath: 'Build/Products/Debug-iphonesimulator/Orot.app/main.jsbundle',
   },
+  transcription: {
+    derivedDataPath: 'apps/mobile/ios/build-detox-transcription',
+    configuration: 'Release-iphonesimulator',
+    productPath: 'Build/Products/Release-iphonesimulator/Orot.app',
+    binaryPath: 'Build/Products/Release-iphonesimulator/Orot.app/Orot',
+    embeddedBundlePath: 'Build/Products/Release-iphonesimulator/Orot.app/main.jsbundle',
+  },
   production: {
     derivedDataPath: 'apps/mobile/ios/build-production',
     configuration: 'Debug-iphonesimulator',

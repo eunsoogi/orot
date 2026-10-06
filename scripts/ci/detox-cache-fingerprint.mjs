@@ -153,7 +153,7 @@ function hashCurrentInputs(repositoryRoot, pathspecs, inputHashes = {}, skipHost
           : inputHashes.cocoapodsProjectInputHash;
       const digest = suppliedHash ?? createHash('sha256').update(contents).digest('hex');
       if (!SHA256_PATTERN.test(digest)) {
-        throw new Error(`Invalid pre-Pods input fingerprint for ${path}.`);
+        throw new Error(`Invalid CocoaPods input fingerprint for ${path}.`);
       }
       if (path === PRIVACY_MANIFEST_INPUT) {
         observedPrivacyManifestHash = digest;

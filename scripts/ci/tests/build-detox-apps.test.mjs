@@ -17,6 +17,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
   const fakeXcrun = join(binDirectory, 'xcrun');
   const releaseDerivedData = join(directory, 'release-derived-data');
   const debugDerivedData = join(directory, 'debug-derived-data');
+  const transcriptionDerivedData = join(directory, 'transcription-derived-data');
   mkdirSync(binDirectory, { recursive: true });
   writeFileSync(
     fakePnpm,
@@ -24,7 +25,8 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
       '#!/usr/bin/env bash',
       'printf \'%s\\n\' "$*" >> "$BUILD_CALLS"',
       'if [[ "$*" == *"ios:pods"* ]]; then exit 0; fi',
-      'if [[ "$*" == *"ios.sim.release"* ]]; then output="$OROT_DETOX_RELEASE_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
+      'if [[ "$*" == *"ios.sim.release.transcription"* ]]; then output="$OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
+      'elif [[ "$*" == *"ios.sim.release"* ]]; then output="$OROT_DETOX_RELEASE_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
       'elif [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then output="$OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH"; suffix="Debug-iphonesimulator"',
       'else exit 97; fi',
       'mkdir -p "$output/Build/Products/$suffix/Orot.app"',
@@ -57,6 +59,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
         EXPECTED_HOST_ARCH: hostArch,
         OROT_DETOX_RELEASE_DERIVED_DATA_PATH: releaseDerivedData,
         OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH: debugDerivedData,
+        OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH: transcriptionDerivedData,
       },
       maxBuffer: 2_000_000,
     },
@@ -84,13 +87,30 @@ test('builds and verifies only the selected Release or OpenAI Debug app after on
   assert.doesNotMatch(debug.calls.join('\n'), /ios\.sim\.release/);
 });
 
-test('keeps the local all-profile helper and builds both variants only when requested', () => {
+test('keeps the local all-profile helper and builds all variants only when requested', () => {
   const all = runBuilder();
   assert.equal(all.result.status, 0, all.result.stderr + all.result.stdout);
-  assert.equal(all.calls.length, 3);
+  assert.equal(all.calls.length, 4);
   assert.match(all.calls[0], /ios:pods/);
   assert.match(all.calls[1], /ios\.sim\.release/);
   assert.match(all.calls[2], /ios\.sim\.debug\.openai-provider/);
+  assert.match(all.calls[3], /ios\.sim\.release\.transcription/);
+});
+
+test('builds the transcription probe with its own Release app output when selected', () => {
+  const transcription = runBuilder('transcription');
+  assert.equal(
+    transcription.result.status,
+    0,
+    transcription.result.stderr + transcription.result.stdout,
+  );
+  assert.equal(transcription.calls.length, 2);
+  assert.match(transcription.calls[0], /ios:pods/);
+  assert.match(transcription.calls[1], /ios\.sim\.release\.transcription/);
+  assert.doesNotMatch(
+    transcription.calls.join('\n'),
+    /ios\.sim\.debug\.openai-provider|ios\.sim\.release\s/,
+  );
 });
 
 test('can install Pods before cache preparation and skip only the duplicate install', () => {

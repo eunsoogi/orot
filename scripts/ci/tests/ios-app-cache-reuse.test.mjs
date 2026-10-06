@@ -87,20 +87,28 @@ test('uses isolated production DerivedData only for a validated exact cache', ()
 });
 
 test('keeps cache misses on the existing build path and preserves every Detox oracle', () => {
-  const cache = workflowStep(profileWorkflow, 'Cache Release Detox DerivedData');
+  const cache = workflowStep(profileWorkflow, 'Cache Detox profile app product');
   const pods = workflowStep(profileWorkflow, 'Install Detox CocoaPods dependencies');
   const build = workflowStep(profileWorkflow, 'Build Detox iOS Simulator app');
   const testRun = workflowStep(profileWorkflow, 'Run Detox iOS Simulator tests');
   const fingerprintIndex = profileWorkflow.indexOf(
     '- name: Compute stable Detox cache fingerprints',
   );
-  const cacheIndex = profileWorkflow.indexOf('- name: Cache Release Detox DerivedData');
+  const cacheIndex = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const prepareIndex = profileWorkflow.indexOf('- name: Prepare restored Detox DerivedData cache');
   const podsIndex = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  assert.ok(fingerprintIndex >= 0 && cacheIndex > fingerprintIndex && prepareIndex > cacheIndex);
-  assert.ok(podsIndex > prepareIndex);
-  assert.match(cache, /path: apps\/mobile\/ios\/build-detox-release/);
-  assert.match(pods, /app_reusable != 'true'/);
+  assert.ok(podsIndex >= 0 && fingerprintIndex > podsIndex && cacheIndex > fingerprintIndex);
+  assert.ok(prepareIndex > cacheIndex);
+  assert.match(
+    cache,
+    /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/\.orot-detox-cache\.json/,
+  );
+  assert.match(
+    cache,
+    /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/,
+  );
+  assert.doesNotMatch(cache, /Build\/Intermediates|Index\.noIndex|Logs/);
+  assert.doesNotMatch(pods, /if:/);
   assert.match(build, /app_reusable != 'true'/);
   assert.match(testRun, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);
   for (const name of [
@@ -146,8 +154,8 @@ test('reuses only the exact production app while OAuth package and harness check
     cache,
     /path:\s+\|\n\s+apps\/mobile\/ios\/build-production\n\s+apps\/mobile\/ios\/Pods/,
   );
-  assert.match(cache, /key: orot-ios-app-deriveddata-v3-/);
-  assert.match(cache, /restore-keys: orot-ios-app-deriveddata-v3-/);
+  assert.match(cache, /key: orot-ios-app-deriveddata-v4-/);
+  assert.match(cache, /restore-keys: orot-ios-app-deriveddata-v4-/);
   assert.match(prepare, /detox-derived-data-cache\.mjs prepare production/);
   for (const step of [prepare, writeManifest]) {
     assert.match(

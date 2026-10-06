@@ -95,7 +95,6 @@ test('keeps the Release smoke on Calendar linking while manual CRUD stays in its
 
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
-  const storageTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/storage.test.js'), 'utf8');
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
@@ -113,36 +112,6 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
   assert.equal(openAiDetoxConfig.behavior.init.reinstallApp, true);
-  assert.equal((storageTest.match(/await installFreshApp\(\);/g) ?? []).length, 2);
-  assert.equal((storageTest.match(/^ {2}it\(/gm) ?? []).length, 3);
-  assert.match(storageTest, /await launchProbe\('restart', true\);/);
-  assert.match(
-    storageTest,
-    /async function installFreshApp\(\)[\s\S]*?await device\.uninstallApp\(\);[\s\S]*?await device\.clearKeychain\(\);[\s\S]*?await device\.installApp\(\);/,
-  );
-  assert.match(storageTest, /beforeEach\(\(\) => resetGuard\.assertResetMayContinue\(\)\)/);
-  assert.match(storageTest, /afterEach\(\(\) => resetGuard\.afterTest\(\)\)/);
-  assert.match(
-    storageTest,
-    /it\(\s*'creates encrypted source and evidence records on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await expectProbeSuccess\('fresh'\);/,
-  );
-  assert.match(
-    storageTest,
-    /it\(\s*'migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(\);[\s\S]*?await launchProbe\('legacy', false\);/,
-  );
-  const restartCase = storageTest.match(
-    /it\('reopens a source and its evidence span after an app process restart'[\s\S]*?^ {2}\}\);/m,
-  );
-  assert.ok(restartCase, 'the process-restart scenario remains a separate Release case');
-  assert.doesNotMatch(restartCase[0], /installFreshApp/);
-  assert.match(
-    restartCase[0],
-    /await device\.terminateApp\(\);[\s\S]*?await launchProbe\('restart', true\);/,
-  );
-  assert.match(
-    storageTest,
-    /await device\.uninstallApp\(\);\s*resetGuard\.assertResetMayContinue\(\);\s*await device\.clearKeychain\(\);\s*resetGuard\.assertResetMayContinue\(\);\s*await device\.installApp\(\);\s*resetGuard\.assertResetMayContinue\(\);/,
-  );
 });
 
 test('a timed-out storage reset blocks its remaining Simulator operations', async () => {

@@ -63,6 +63,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
+
       - name: Enforce the 250-line policy
         env:
           LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -129,6 +134,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
@@ -152,8 +161,8 @@ jobs:
           path: |
             apps/mobile/ios/build-production
             apps/mobile/ios/Pods
-          key: orot-ios-app-deriveddata-v3-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          restore-keys: orot-ios-app-deriveddata-v3-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
+          key: orot-ios-app-deriveddata-v4-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          restore-keys: orot-ios-app-deriveddata-v4-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
       - name: Prepare production app DerivedData cache
         id: prepare_production_app_cache
         env:
@@ -207,19 +216,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  detox_release_e2e:
-    name: Detox Release iOS E2E
-    uses: ./.github/workflows/detox-e2e-profile.yml
+  detox_profiles:
+    name: Detox profile suite
+    uses: ./.github/workflows/detox-e2e-profiles.yml
     with:
-      profile: release
-      trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
-      resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
-
-  detox_openai_provider_e2e:
-    name: Detox OpenAI Debug iOS E2E
-    uses: ./.github/workflows/detox-e2e-profile.yml
-    with:
-      profile: openai-provider
       trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
       resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
 
@@ -227,24 +227,15 @@ jobs:
     name: Detox iOS E2E
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [detox_release_e2e, detox_openai_provider_e2e]
+    needs: [detox_profiles]
     if: ${{ always() }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Require both child jobs and full E2E coverage
+      - name: Require every Detox profile workflow
         env:
-          RELEASE_JOB_RESULT: ${{ needs.detox_release_e2e.result }}
-          RELEASE_PROFILE: ${{ needs.detox_release_e2e.outputs.profile }}
-          RELEASE_TEST_CASES: ${{ needs.detox_release_e2e.outputs.test_cases }}
-          RELEASE_TEST_SUITES: ${{ needs.detox_release_e2e.outputs.test_suites }}
-          OPENAI_JOB_RESULT: ${{ needs.detox_openai_provider_e2e.result }}
-          OPENAI_PROFILE: ${{ needs.detox_openai_provider_e2e.outputs.profile }}
-          OPENAI_TEST_CASES: ${{ needs.detox_openai_provider_e2e.outputs.test_cases }}
-          OPENAI_TEST_SUITES: ${{ needs.detox_openai_provider_e2e.outputs.test_suites }}
+          DETOX_PROFILES_RESULT: ${{ needs.detox_profiles.result }}
         run: |
-          node scripts/ci/require-detox-e2e-aggregate.mjs \
-            "$RELEASE_JOB_RESULT" "$RELEASE_PROFILE" "$RELEASE_TEST_CASES" "$RELEASE_TEST_SUITES" \
-            "$OPENAI_JOB_RESULT" "$OPENAI_PROFILE" "$OPENAI_TEST_CASES" "$OPENAI_TEST_SUITES"
+          if [[ "$DETOX_PROFILES_RESULT" != success ]]; then
+            printf 'The complete Detox profile workflow must succeed; received %s\n' "${DETOX_PROFILES_RESULT:-missing}" >&2
+            exit 1
+          fi
+          printf 'All Detox profiles and fail-closed summaries passed.\n'

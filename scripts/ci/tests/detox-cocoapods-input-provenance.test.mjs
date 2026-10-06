@@ -45,38 +45,33 @@ function prepareEnvironment(root, initial) {
   };
 }
 
-test('records source and post-Pods hashes and accepts the exact cached app on the next run', () => {
+test('records post-Pods fingerprints and accepts the exact cached app on the next run', () => {
   const root = createFixtureRepository();
-  const originalProject = `fixture:${projectPath}`;
-  const originalPrivacy = `fixture:${privacyPath}`;
   const generatedProject = 'CocoaPods project integration';
   const generatedPrivacy = 'CocoaPods aggregated privacy reasons';
 
   try {
+    writeFixtureFile(root, projectPath, generatedProject);
+    writeFixtureFile(root, privacyPath, generatedPrivacy);
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
-
-    writeFixtureFile(root, projectPath, generatedProject);
-    writeFixtureFile(root, privacyPath, generatedPrivacy);
     assert.match(runCacheCommand(root, 'verify-build-inputs', environment), /post-pods-verified/);
     runCacheCommand(root, 'write', environment);
 
     const manifestPath = join(root, 'apps/mobile/ios/build-detox-release/.orot-detox-cache.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     assert.deepEqual(manifest.cocoapodsInputProvenance, {
-      prePods: {
-        privacyManifest: initial.privacyManifestInputHash,
-        projectFile: initial.cocoapodsProjectInputHash,
+      baseline: {
+        privacyManifest: sha256(generatedPrivacy),
+        projectFile: sha256(generatedProject),
       },
-      postPods: {
+      afterInstall: {
         privacyManifest: sha256(generatedPrivacy),
         projectFile: sha256(generatedProject),
       },
     });
 
-    writeFixtureFile(root, projectPath, originalProject);
-    writeFixtureFile(root, privacyPath, originalPrivacy);
     const cacheResult = runCacheCommand(root, 'prepare', environment);
     assert.match(cacheResult, /classification=exact/);
     assert.match(cacheResult, /app_reusable=true/);
@@ -87,29 +82,25 @@ test('records source and post-Pods hashes and accepts the exact cached app on th
 
 test('invalidates cached provenance when either post-Pods digest is corrupted', () => {
   const root = createFixtureRepository();
-  const originalProject = `fixture:${projectPath}`;
-  const originalPrivacy = `fixture:${privacyPath}`;
 
   try {
+    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
+    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
-    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
-    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     runCacheCommand(root, 'verify-build-inputs', environment);
     runCacheCommand(root, 'write', environment);
 
     const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
     const manifestPath = join(derivedData, '.orot-detox-cache.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    manifest.cocoapodsInputProvenance.postPods.projectFile = 'corrupted';
+    manifest.cocoapodsInputProvenance.afterInstall.projectFile = '0'.repeat(64);
     writeFileSync(manifestPath, JSON.stringify(manifest));
-    writeFixtureFile(root, projectPath, originalProject);
-    writeFixtureFile(root, privacyPath, originalPrivacy);
 
     const result = runCacheCommand(root, 'prepare', environment);
     assert.match(result, /classification=invalidated/);
-    assert.match(result, /cocoapods_input_provenance\.post_pods_format/);
+    assert.match(result, /cocoapods_input_provenance\.after_install/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -119,6 +110,8 @@ test('fails closed when a PBX source edit occurs after fingerprinting but before
   const root = createFixtureRepository();
 
   try {
+    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
+    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
@@ -156,6 +149,8 @@ test('rejects unrelated lockfile drift after cache preparation', () => {
   const root = createFixtureRepository();
 
   try {
+    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
+    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
@@ -174,6 +169,8 @@ test('rejects changes to CocoaPods outputs after pre-build verification', () => 
   const root = createFixtureRepository();
 
   try {
+    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
+    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
@@ -184,7 +181,7 @@ test('rejects changes to CocoaPods outputs after pre-build verification', () => 
 
     assert.throws(
       () => runCacheCommand(root, 'write', environment),
-      /CocoaPods input hashes changed after prebuild verification and before manifest write: projectFile/,
+      /CocoaPods input hashes changed after build-input verification and before manifest write: projectFile/,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

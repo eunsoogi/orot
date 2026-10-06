@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -gt 2 ]]; then
-  printf 'Usage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$0" >&2
+  printf 'Usage: %s [all|release|openai-provider|transcription|pods] [--skip-pods]\n' "$0" >&2
   exit 2
 fi
 
@@ -15,9 +15,9 @@ elif [[ $# -eq 2 ]]; then
   exit 2
 fi
 case "$profile" in
-  all | release | openai-provider | pods) ;;
+  all | release | openai-provider | transcription | pods) ;;
   *)
-    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$profile" "$0" >&2
+    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider|transcription|pods] [--skip-pods]\n' "$profile" "$0" >&2
     exit 2
     ;;
 esac
@@ -29,6 +29,7 @@ fi
 host_arch="$(uname -m)"
 release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build-detox-release}"
 openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-detox-openai-provider}"
+transcription_derived_data_path="${OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH:-ios/build-detox-transcription}"
 case "$host_arch" in
   arm64 | x86_64) ;;
   *)
@@ -101,7 +102,7 @@ fi
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   # Preserve Pods' effective project and privacy inputs before the native build consumes them.
   case "$profile" in
-    release | openai-provider)
+    release | openai-provider | transcription)
       node scripts/ci/detox-derived-data-cache.mjs verify-build-inputs "$profile"
       ;;
     *)
@@ -121,4 +122,13 @@ if [[ "$profile" == all || "$profile" == openai-provider ]]; then
     --config-path ./e2e/openai-provider.detox.config.js \
     --configuration ios.sim.debug.openai-provider
   verify_app_architecture "$(resolve_mobile_path "$openai_derived_data_path")/Build/Products/Debug-iphonesimulator/Orot.app/Orot"
+fi
+
+if [[ "$profile" == all || "$profile" == transcription ]]; then
+  # The speech-test Swift flag changes native code, so this profile keeps its own app output.
+  OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH="$transcription_derived_data_path" \
+    run_timed_stage speech-transcription pnpm --filter @orot/mobile exec -- detox build \
+    --config-path ./e2e/transcription.detox.config.js \
+    --configuration ios.sim.release.transcription
+  verify_app_architecture "$(resolve_mobile_path "$transcription_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"
 fi

@@ -45,6 +45,15 @@ export function writeDetoxBuildConfigs(root) {
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
   );
+  writeFixtureFile(
+    root,
+    'apps/mobile/e2e/transcription.detox.config.js',
+    `module.exports = {
+      apps: { 'ios.speech-transcription': { type: 'ios.app', binaryPath: 'ios/build-detox-transcription/Orot.app', build: "xcodebuild -derivedDataPath ios/build-detox-transcription OTHER_SWIFT_FLAGS='$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST' ENTRY_FILE=e2e/transcriptionProbeEntry.tsx" } },
+      configurations: { 'ios.sim.release.transcription': { device: 'simulator', app: 'ios.speech-transcription' } },
+      devices: { simulator: { type: 'iPhone 18 Pro' } },
+    };`,
+  );
 }
 
 export function git(root, ...args) {
@@ -77,8 +86,13 @@ function writeAppFixture(root, profile) {
       ? 'build-production'
       : profile === 'release'
         ? 'build-detox-release'
-        : 'build-detox-openai-provider';
-  const configuration = profile === 'release' ? 'Release-iphonesimulator' : 'Debug-iphonesimulator';
+        : profile === 'openai-provider'
+          ? 'build-detox-openai-provider'
+          : 'build-detox-transcription';
+  const configuration =
+    profile === 'openai-provider' || profile === 'production'
+      ? 'Debug-iphonesimulator'
+      : 'Release-iphonesimulator';
   const product = join(
     root,
     'apps/mobile/ios',
@@ -182,6 +196,15 @@ export function createFixtureRepository() {
     `module.exports = {
       apps: { 'ios.openai-provider': { type: 'ios.app', binaryPath: 'ios/build-detox-openai-provider/Orot.app', build: 'xcodebuild -derivedDataPath ios/build-detox-openai-provider ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx' } },
       configurations: { 'ios.sim.debug.openai-provider': { device: 'simulator', app: 'ios.openai-provider' } },
+      devices: { simulator: { type: 'iPhone 18 Pro' } },
+    };`,
+  );
+  writeFixtureFile(
+    root,
+    'apps/mobile/e2e/transcription.detox.config.js',
+    `module.exports = {
+      apps: { 'ios.speech-transcription': { type: 'ios.app', binaryPath: 'ios/build-detox-transcription/Orot.app', build: "xcodebuild -derivedDataPath ios/build-detox-transcription OTHER_SWIFT_FLAGS='$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST' ENTRY_FILE=e2e/transcriptionProbeEntry.tsx" } },
+      configurations: { 'ios.sim.release.transcription': { device: 'simulator', app: 'ios.speech-transcription' } },
       devices: { simulator: { type: 'iPhone 18 Pro' } },
     };`,
   );

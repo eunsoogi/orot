@@ -110,12 +110,28 @@ test('validates a single CI profile and publishes only its proven counts', () =>
     'e2e_profile=openai-provider\ne2e_test_cases=1\ne2e_test_suites=1\n',
   );
 
+  const transcription = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
+    'e2e-transcription',
+    true,
+  );
+  assert.equal(transcription.status, 0, transcription.stderr);
+  assert.equal(
+    transcription.githubOutput,
+    'e2e_profile=transcription\ne2e_test_cases=1\ne2e_test_suites=1\n',
+  );
+
   assert.notEqual(
     runGuard('Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n', 'e2e-release').status,
     0,
   );
   assert.notEqual(
     runGuard('Test Suites: 1 passed, 1 total\nTests: 0 total\n', 'e2e-openai-provider').status,
+    0,
+  );
+  assert.notEqual(
+    runGuard('Test Suites: 1 passed, 1 total\nTests: 2 passed, 2 total\n', 'e2e-transcription')
+      .status,
     0,
   );
   assert.notEqual(

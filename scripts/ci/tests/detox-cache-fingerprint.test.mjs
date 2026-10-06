@@ -22,7 +22,7 @@ function git(root, ...args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
 
-test('normalizes the known CocoaPods privacy edit while tracking source changes', () => {
+test('includes CocoaPods generated tracked inputs in the post-install app fingerprint', () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-detox-cache-fingerprint-'));
   try {
     git(root, 'init', '-q');
@@ -48,6 +48,7 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
       'scripts/ci/detox-e2e-profile.jest.config.cjs',
       'apps/mobile/ios/build-detox-release/DerivedData.db',
       'apps/mobile/ios/build-detox-openai-provider/DerivedData.db',
+      'apps/mobile/ios/build-detox-transcription/DerivedData.db',
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
       'apps/mobile/ios/build/generated/ios/ReactCodegen/ReactCodegen.xcconfig',
       'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj',
@@ -72,17 +73,22 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
       'CocoaPods aggregated privacy reasons',
     );
-    assert.deepEqual(computeDetoxCacheFingerprints(root, { privacyManifestInputHash }), initial);
     writeFixtureFile(
       root,
       'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
       'CocoaPods generated project integration',
     );
-    const postPodsProjectFingerprint = computeDetoxCacheFingerprints(root, {
+    const postPodsFingerprint = computeDetoxCacheFingerprints(root);
+    assert.notEqual(postPodsFingerprint.buildInputs, initial.buildInputs);
+    assert.notEqual(postPodsFingerprint.nativeDependencies, initial.nativeDependencies);
+    assert.notEqual(postPodsFingerprint.privacyManifestInputHash, privacyManifestInputHash);
+    assert.notEqual(postPodsFingerprint.cocoapodsProjectInputHash, cocoapodsProjectInputHash);
+    // Production still captures its source baseline before its conditional Pods install.
+    const sourceBaselineFingerprint = computeDetoxCacheFingerprints(root, {
       privacyManifestInputHash,
       cocoapodsProjectInputHash,
     });
-    assert.deepEqual(postPodsProjectFingerprint, initial);
+    assert.deepEqual(sourceBaselineFingerprint, initial);
     assert.notEqual(
       computeDetoxCacheFingerprints(root, { privacyManifestInputHash }).buildInputs,
       initial.buildInputs,
@@ -145,6 +151,7 @@ test('normalizes the known CocoaPods privacy edit while tracking source changes'
     for (const path of [
       'apps/mobile/ios/build-detox-release/DerivedData.db',
       'apps/mobile/ios/build-detox-openai-provider/DerivedData.db',
+      'apps/mobile/ios/build-detox-transcription/DerivedData.db',
       'apps/mobile/ios/build-agent-memory/DerivedData.db',
       'apps/mobile/ios/build/generated/ios/ReactCodegen/ReactCodegen.xcconfig',
       'apps/mobile/ios/Pods/Pods.xcodeproj/project.pbxproj',

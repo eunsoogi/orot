@@ -54,23 +54,23 @@ function getToolchain() {
 }
 
 function makeManifest(repositoryRoot, profile) {
-  // Cache lookup uses the original tracked source bytes; the writer adds verified post-Pods bytes.
+  // Detox fingerprints run after Pods; production captures its baseline before its conditional install.
   const capturedInputs = readExpectedCocoapodsInputHashes();
-  const sourceInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
+  const baselineInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
   if (!capturedInputs && process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256) {
-    sourceInputs.privacyManifest = process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256;
+    baselineInputs.privacyManifest = process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256;
   }
   const fingerprints = computeDetoxCacheFingerprints(repositoryRoot, {
-    privacyManifestInputHash: sourceInputs.privacyManifest,
-    cocoapodsProjectInputHash: sourceInputs.projectFile,
+    privacyManifestInputHash: baselineInputs.privacyManifest,
+    cocoapodsProjectInputHash: baselineInputs.projectFile,
   });
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     profile,
     toolchain: getToolchain(),
     nativeDependencies: fingerprints.nativeDependencies,
     buildInputs: fingerprints.buildInputs,
-    cocoapodsInputProvenance: { prePods: sourceInputs },
+    cocoapodsInputProvenance: { baseline: baselineInputs },
   };
 }
 
@@ -234,7 +234,7 @@ function main() {
     !profile
   ) {
     throw new Error(
-      'Usage: detox-derived-data-cache.mjs <prepare|verify-build-inputs|write> <release|openai-provider|production>',
+      'Usage: detox-derived-data-cache.mjs <prepare|verify-build-inputs|write> <release|openai-provider|transcription|production>',
     );
   }
   getProfile(profile);

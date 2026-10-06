@@ -113,25 +113,32 @@ export function inspectCacheManifest(readResult, expected) {
     mismatchFields.push('build_inputs_format');
   }
   const previousProvenance = previous.cocoapodsInputProvenance;
-  const expectedSourceHashes = expected.cocoapodsInputProvenance?.prePods;
-  // Reuse is keyed by original source bytes; validate the archived generated state without expecting Pods to run again.
+  const expectedBaselineHashes = expected.cocoapodsInputProvenance?.baseline;
+  // Compare the cache's fingerprint-stage inputs while validating the recorded install outputs.
   if (!isRecord(previousProvenance)) {
     mismatchFields.push('cocoapods_input_provenance');
   } else {
-    if (Object.keys(previousProvenance).sort().join(',') !== 'postPods,prePods') {
+    if (Object.keys(previousProvenance).sort().join(',') !== 'afterInstall,baseline') {
       mismatchFields.push('cocoapods_input_provenance.unknown_fields');
     }
-    if (!isCocoapodsInputHashPair(previousProvenance.prePods)) {
-      mismatchFields.push('cocoapods_input_provenance.pre_pods_format');
+    if (!isCocoapodsInputHashPair(previousProvenance.baseline)) {
+      mismatchFields.push('cocoapods_input_provenance.baseline_format');
     } else if (
-      !isCocoapodsInputHashPair(expectedSourceHashes) ||
-      previousProvenance.prePods.privacyManifest !== expectedSourceHashes.privacyManifest ||
-      previousProvenance.prePods.projectFile !== expectedSourceHashes.projectFile
+      !isCocoapodsInputHashPair(expectedBaselineHashes) ||
+      previousProvenance.baseline.privacyManifest !== expectedBaselineHashes.privacyManifest ||
+      previousProvenance.baseline.projectFile !== expectedBaselineHashes.projectFile
     ) {
-      mismatchFields.push('cocoapods_input_provenance.pre_pods');
+      mismatchFields.push('cocoapods_input_provenance.baseline');
     }
-    if (!isCocoapodsInputHashPair(previousProvenance.postPods)) {
-      mismatchFields.push('cocoapods_input_provenance.post_pods_format');
+    if (!isCocoapodsInputHashPair(previousProvenance.afterInstall)) {
+      mismatchFields.push('cocoapods_input_provenance.after_install_format');
+    } else if (
+      previous.profile !== 'production' &&
+      isCocoapodsInputHashPair(expectedBaselineHashes) &&
+      (previousProvenance.afterInstall.privacyManifest !== expectedBaselineHashes.privacyManifest ||
+        previousProvenance.afterInstall.projectFile !== expectedBaselineHashes.projectFile)
+    ) {
+      mismatchFields.push('cocoapods_input_provenance.after_install');
     }
   }
 

@@ -65,6 +65,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       # Check device availability before the profile requests an asynchronous boot.
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
@@ -89,32 +93,36 @@ jobs:
         with:
           path: ~/Library/Caches/ReactNative
           key: orot-rn-ios-artifacts-v1-${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-${{ steps.rn_artifact_fingerprint.outputs.react_native_artifacts }}
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
+        with:
+          ruby-version: '4.0.7'
+          bundler-cache: false
+      - name: Install CocoaPods
+        run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
+      - name: Install Detox CocoaPods dependencies
+        timeout-minutes: 20
+        run: scripts/ci/verify-toolchain.sh --cocoapods && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+
+      # Fingerprint CocoaPods' tracked integration after its one install so the key matches the built app.
       - name: Compute stable Detox cache fingerprints
         id: detox_cache_fingerprint
         timeout-minutes: 1
         run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
 
-      - name: Cache Release Detox DerivedData
-        id: release_derived_data_cache
-        if: ${{ inputs.profile == 'release' }}
+      # Restrict profile-derived paths before using the profile name in a cache path or key.
+      - name: Cache Detox profile app product
+        id: profile_derived_data_cache
+        if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' }}
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: apps/mobile/ios/build-detox-release
-          key: orot-detox-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          path: |
+            apps/mobile/ios/build-detox-${{ inputs.profile }}/.orot-detox-cache.json
+            apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products
+          key: orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           restore-keys: |
-            orot-detox-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-release-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
-
-      - name: Cache OpenAI Debug Detox DerivedData
-        id: openai_derived_data_cache
-        if: ${{ inputs.profile == 'openai-provider' }}
-        timeout-minutes: 10
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: apps/mobile/ios/build-detox-openai-provider
-          key: orot-detox-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
-          restore-keys: |
-            orot-detox-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-openai-provider-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
+            orot-detox-deriveddata-v7-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
 
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
@@ -125,22 +133,12 @@ jobs:
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ inputs.profile }}"
-      - name: Set up Ruby
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
-      - name: Install CocoaPods
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
-        run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
       - name: Record Detox cache state
         timeout-minutes: 1
         env:
           DETOX_PROFILE: ${{ inputs.profile }}
           RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
-          RELEASE_DERIVED_DATA_CACHE_HIT: ${{ steps.release_derived_data_cache.outputs.cache-hit }}
-          OPENAI_DERIVED_DATA_CACHE_HIT: ${{ steps.openai_derived_data_cache.outputs.cache-hit }}
+          PROFILE_DERIVED_DATA_CACHE_HIT: ${{ steps.profile_derived_data_cache.outputs.cache-hit }}
           BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           RN_ARTIFACT_FINGERPRINT: ${{ steps.rn_artifact_fingerprint.outputs.react_native_artifacts }}
           NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
@@ -156,15 +154,10 @@ jobs:
           COCOAPODS_VERSION: ${{ env.EXPECTED_COCOAPODS_VERSION }}
         run: |
           mkdir -p artifacts/detox
-          if [[ "${DETOX_PROFILE}" == release ]]; then
-            derived_data_cache_hit="${RELEASE_DERIVED_DATA_CACHE_HIT:-false}"
-          else
-            derived_data_cache_hit="${OPENAI_DERIVED_DATA_CACHE_HIT:-false}"
-          fi
           {
             printf 'profile=%s\n' "${DETOX_PROFILE}"
             printf 'react_native_artifacts_cache_hit=%s\n' "${RN_ARTIFACT_CACHE_HIT:-false}"
-            printf 'derived_data_cache_hit=%s\n' "${derived_data_cache_hit}"
+            printf 'derived_data_cache_hit=%s\n' "${PROFILE_DERIVED_DATA_CACHE_HIT:-false}"
             printf 'derived_data_cache_classification=%s\n' "${DERIVED_DATA_CACHE_CLASSIFICATION}"
             printf 'app_reusable=%s\n' "${APP_REUSABLE}"
             printf 'app_reuse_reason=%s\n' "${APP_REUSE_REASON}"
@@ -182,11 +175,6 @@ jobs:
             printf 'expected_cocoapods=%s\n' "${COCOAPODS_VERSION}"
             printf 'architecture=%s\n' "$(uname -m)"
           } > artifacts/detox/native-cache.log
-
-      - name: Install Detox CocoaPods dependencies
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
-        timeout-minutes: 20
-        run: scripts/ci/verify-toolchain.sh --cocoapods && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
 
       - name: Install Detox Simulator utilities
         timeout-minutes: 10

@@ -3,6 +3,7 @@ const path = require('node:path');
 const profileConfigs = {
   release: '../../apps/mobile/.detoxrc.js',
   'openai-provider': '../../apps/mobile/e2e/openai-provider.detox.config.js',
+  transcription: '../../apps/mobile/e2e/transcription.detox.config.js',
 };
 const profile = process.env.OROT_DETOX_TEST_PROFILE;
 const profileConfig = profileConfigs[profile];

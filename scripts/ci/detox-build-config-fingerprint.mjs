@@ -20,6 +20,15 @@ const BUILD_CONFIGS = [
     simulatorEnv: 'OROT_OPENAI_PROVIDER_SIMULATOR_UDID',
     derivedDataPath: 'ios/build-detox-openai-provider',
   },
+  {
+    // This test-only native flag requires a separate app artifact from the shared Release suite.
+    path: 'apps/mobile/e2e/transcription.detox.config.js',
+    app: 'ios.speech-transcription',
+    configuration: 'ios.sim.release.transcription',
+    derivedDataEnv: 'OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH',
+    simulatorEnv: 'OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID',
+    derivedDataPath: 'ios/build-detox-transcription',
+  },
 ];
 
 function normalizeBuildCommand(command) {

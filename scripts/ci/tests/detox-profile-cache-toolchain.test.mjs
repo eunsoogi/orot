@@ -16,8 +16,7 @@ function workflowStep(name) {
   return start < 0 ? '' : profileWorkflow.slice(start, end < 0 ? undefined : end);
 }
 
-test('defers Ruby and CocoaPods setup until the validated cache requires a native build', () => {
-  // Only a cache miss needs CocoaPods to recreate native products.
+test('installs CocoaPods once before fingerprinting the app cache', () => {
   const cachePreparation = profileWorkflow.indexOf(
     '- name: Prepare restored Detox DerivedData cache',
   );
@@ -39,10 +38,13 @@ test('defers Ruby and CocoaPods setup until the validated cache requires a nativ
   // Device availability enumeration can wait on an in-flight boot, so run it before requesting one.
   assert.match(baseToolchain, /run: scripts\/ci\/verify-toolchain\.sh(?:\r?\n|$)/);
   assert.doesNotMatch(baseToolchain, /--cocoapods/);
-  assert.ok(cachePreparation >= 0 && cachePreparation < rubyIndex);
-  assert.ok(rubyIndex < cocoapodsIndex && cocoapodsIndex < nativePodsIndex);
-  assert.match(rubySetup, needsNativeBuild);
-  assert.match(cocoapodsSetup, needsNativeBuild);
+  const fingerprintIndex = profileWorkflow.indexOf(
+    '- name: Compute stable Detox cache fingerprints',
+  );
+  assert.ok(rubyIndex >= 0 && cocoapodsIndex > rubyIndex && nativePodsIndex > cocoapodsIndex);
+  assert.ok(nativePodsIndex < fingerprintIndex && fingerprintIndex < cachePreparation);
+  assert.doesNotMatch(rubySetup, needsNativeBuild);
+  assert.doesNotMatch(cocoapodsSetup, needsNativeBuild);
   assert.match(cacheRecord, /expected_ruby=/);
   assert.match(cacheRecord, /expected_cocoapods=/);
   assert.match(nativePods, /verify-toolchain\.sh --cocoapods/);

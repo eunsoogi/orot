@@ -133,6 +133,32 @@ test('reuses exact caches and clears only app outputs for dependency-compatible 
   }
 });
 
+test('isolates the speech transcription app and invalidates its cache when native flags change', () => {
+  const root = createFixtureRepository();
+  const derivedData = join(root, 'apps/mobile/ios/build-detox-transcription');
+  try {
+    mkdirSync(derivedData, { recursive: true });
+    runCacheCommand(root, 'write', 'transcription');
+    const exact = runCacheCommand(root, 'prepare', 'transcription');
+    assert.match(exact, /classification=exact/);
+    assert.match(exact, /app_reusable=true/);
+
+    const configPath = 'apps/mobile/e2e/transcription.detox.config.js';
+    writeFixtureFile(
+      root,
+      configPath,
+      readFileSync(join(root, configPath), 'utf8').replace(
+        'OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST',
+        'OROT_SPEECH_TRANSCRIPTION_FIXTURE_TEST',
+      ),
+    );
+    assert.match(runCacheCommand(root, 'prepare', 'transcription'), /classification=invalidated/);
+    assert.equal(existsSync(derivedData), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('refuses to follow symlinks restored inside a compatible cache', () => {
   const root = createFixtureRepository();
   const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
