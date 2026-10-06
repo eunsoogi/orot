@@ -14,12 +14,9 @@ export async function saveRecordingSource(
   loadRepository: RecordingRepositoryLoader = loadLocalRepository,
   now: () => Date = () => new Date(),
 ): Promise<SourceRecord> {
-  if (
-    recording.fileProtection !== 'complete' ||
-    !recording.excludedFromBackup
-  ) {
+  if (recording.fileProtection !== 'complete' || recording.excludedFromBackup) {
     const error = new Error(
-      'The recording file protection could not be verified.',
+      'The recording file protection or backup eligibility could not be verified.',
     ) as Error & {
       code?: string;
     };

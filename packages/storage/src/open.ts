@@ -10,12 +10,17 @@ export interface OpenEncryptedStorageOptions {
   keyStore: SecureKeyStore;
   randomBytes: RandomByteSource;
   openDatabase: (name: string, encryptionKey: string) => SqlDatabase;
+  databaseExists?: () => Promise<boolean>;
 }
 
 export async function openEncryptedStorage(
   options: OpenEncryptedStorageOptions,
 ): Promise<RecordRepository> {
-  const key = await resolveDatabaseKey(options.keyStore, options.randomBytes);
+  const key = await resolveDatabaseKey(
+    options.keyStore,
+    options.randomBytes,
+    options.databaseExists,
+  );
   const database = options.openDatabase(options.name, key);
   try {
     await database.execute('SELECT count(*) AS schema_count FROM sqlite_master');
