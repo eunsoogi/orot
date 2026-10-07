@@ -205,7 +205,15 @@ async function waitForProbeControl(target) {
 }
 
 // Scroll the controls panel so a visible but clipped target can receive a Detox tap.
-async function scrollToTranscriptControl(control, direction = 'down') {
+async function scrollToTranscriptControl(
+  control,
+  direction = 'down',
+  dismissKeyboard = false,
+) {
+  if (dismissKeyboard) {
+    // The visible probe report blurs multiline editing without changing product keyboard behavior.
+    await element(by.id('recording-export-authorization-probe')).tap();
+  }
   await waitFor(control)
     .toBeVisible()
     .whileElement(by.id('recording-controls-scroll'))

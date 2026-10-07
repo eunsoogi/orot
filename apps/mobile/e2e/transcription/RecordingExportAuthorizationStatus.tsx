@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Keyboard, Text } from 'react-native';
 import { verifySyntheticRecordingExportAuthorization } from '../../src/recording/syntheticRecordingExportProbeBridge';
 
 interface Props {
@@ -33,5 +33,14 @@ export function RecordingExportAuthorizationStatus({ recordingId }: Props) {
     };
   }, [recordingId]);
 
-  return <Text testID="recording-export-authorization-probe">{report}</Text>;
+  // This test-only report also gives Detox a visible target to dismiss multiline editing before scrolling.
+  return (
+    <Text
+      accessibilityRole="button"
+      onPress={Keyboard.dismiss}
+      testID="recording-export-authorization-probe"
+    >
+      {report}
+    </Text>
+  );
 }
