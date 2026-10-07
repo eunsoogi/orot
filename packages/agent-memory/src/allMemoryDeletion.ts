@@ -4,31 +4,32 @@ import { provenanceFrom } from './validation';
 
 export interface AllMemoryDeletionBatch {
   readonly memoriesDeleted: number;
-  readonly sourceIds: readonly string[];
+  readonly referenceIds: readonly string[];
 }
 
-/** Deletes through Rememori and fences every known source in the same adapter batch. */
+/** Deletes through Rememori and fences source plus memory-row IDs in one adapter batch. */
 export async function forgetAllPersistedRecords(
   storage: AgentMemoryStorageAdapter,
   engine: Memory,
-  sourceRecordIds: readonly string[],
+  localRecordIds: readonly string[],
 ): Promise<AllMemoryDeletionBatch> {
-  const normalizedSourceIds = sourceRecordIds.map((sourceId) => sourceId.trim());
-  if (normalizedSourceIds.some((sourceId) => !sourceId)) {
-    throw new Error('A source identifier is required.');
+  const normalizedRecordIds = localRecordIds.map((recordId) => recordId.trim());
+  if (normalizedRecordIds.some((recordId) => !recordId)) {
+    throw new Error('A local record identifier is required.');
   }
   const records = await storage.listRecords();
-  const sourcesToFence = new Set(normalizedSourceIds);
+  const referencesToFence = new Set(normalizedRecordIds);
   for (const record of records) {
     for (const sourceId of provenanceFrom(record.meta)?.sourceIds ?? []) {
-      sourcesToFence.add(sourceId);
+      referencesToFence.add(sourceId);
     }
+    referencesToFence.add(record.id);
   }
 
   let memoriesDeleted = 0;
   for (const record of records) {
     if (await engine.forget(record.id)) memoriesDeleted += 1;
   }
-  for (const sourceId of sourcesToFence) await storage.markSourceRemoved(sourceId);
-  return { memoriesDeleted, sourceIds: [...sourcesToFence] };
+  for (const referenceId of referencesToFence) await storage.markSourceRemoved(referenceId);
+  return { memoriesDeleted, referenceIds: [...referencesToFence] };
 }

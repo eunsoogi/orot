@@ -117,4 +117,42 @@ describe('hybrid evidence deletion', () => {
       undefined,
     );
   });
+
+  it('keeps a live manual structured record whose source ID falls back to its record ID', async () => {
+    const vectorStore = makeVectorStore();
+    const manualChunk: EvidenceChunk = {
+      ...removedChunk,
+      id: 'manual-encounter-chunk',
+      text: '합성 수기 방문 기록입니다.',
+      metadata: {
+        ...removedChunk.metadata,
+        sourceId: 'manual-encounter',
+        sourceRecordIds: [],
+        evidenceId: 'manual-encounter',
+        evidenceLocator: { kind: 'structured_record', recordId: 'manual-encounter' },
+        recordType: 'encounter',
+      },
+    };
+    const textStore: LocalFullTextSearchStore = {
+      search: jest.fn(async () => [{ chunkId: manualChunk.id }]),
+    };
+    const provider: DocumentQueryEmbeddingProvider = {
+      modelIdentity: LOCAL_EMBEDDING_IDENTITY,
+      embedDocuments: jest.fn(async () => ({ ok: true as const, value: { vectors: [] } })),
+      embedQueries: jest.fn(async () => ({
+        ok: true as const,
+        value: { vectors: [new Array(LOCAL_EMBEDDING_IDENTITY.dimension).fill(0)] },
+      })),
+    };
+
+    await expect(
+      searchHybridEvidenceChunks('수기 방문 기록', [manualChunk], provider, vectorStore, textStore),
+    ).resolves.toMatchObject([{ chunk: { id: manualChunk.id } }]);
+    expect(textStore.search).toHaveBeenCalledWith(
+      '수기 방문 기록',
+      [manualChunk],
+      expect.any(Number),
+      undefined,
+    );
+  });
 });

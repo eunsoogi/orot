@@ -12,6 +12,8 @@ import type { EvidenceSpanRepository, SourceRecordRepository } from './sourceEvi
 import { createTranscriptEvidenceRepository } from './transcriptEvidence';
 import type { TranscriptEvidenceRepository } from './transcriptEvidence';
 import {
+  hasStoredRecordId as readStoredRecordIdPresence,
+  listAllLocalDeletionReferences as readAllLocalDeletionReferences,
   listSourceDeletionReferences as readSourceDeletionReferences,
   SOURCE_DELETION_TOMBSTONES_TABLE,
 } from './sourceDeletionReferences';
@@ -40,8 +42,11 @@ export interface RecordRepository extends RecordWriter {
     withinDeletionTransaction?: (
       transaction: SqlExecutor,
       sourceRecordIds: readonly string[],
+      localRecordIds: readonly string[],
     ) => Promise<void>,
   ): Promise<DeletedLocalDataReferences>;
+  listAllLocalDeletionReferences(): Promise<readonly string[]>;
+  hasStoredRecordId(recordId: string): Promise<boolean>;
   listSourceDeletionReferences(sourceRecordId: string): Promise<readonly string[]>;
   listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
@@ -130,8 +135,15 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
       await database.transaction(async (transaction) => {
         const sources = await listStoredRecords(transaction, 'source_record');
         const sourceRecordIds = sources.map((source) => source.id);
-        // The injected vector cleanup shares this commit with every record and checkpoint deletion.
-        await withinDeletionTransaction?.(transaction, sourceRecordIds);
+        const localRecordIds = await readAllLocalDeletionReferences(transaction);
+        // RAG receives every local identity so even unlinked structured rows stay fenced.
+        await withinDeletionTransaction?.(transaction, sourceRecordIds, localRecordIds);
+        if (localRecordIds.length > 0) {
+          await transaction.execute(
+            `INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id) SELECT value FROM json_each(?)`,
+            [JSON.stringify(localRecordIds)],
+          );
+        }
         // Source cascades remove append-only transcripts only after their recording row is gone.
         await transaction.execute('DELETE FROM source_records');
         for (const kind of Object.keys(STORAGE_TABLES) as RecordKind[]) {
@@ -153,6 +165,17 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         deleted = { sourceRecordIds };
       });
       return deleted;
+    },
+    async listAllLocalDeletionReferences() {
+      // Snapshot IDs in one transaction; deletion callers fence memory before clearing this store.
+      let references: readonly string[] = [];
+      await database.transaction(async (transaction) => {
+        references = await readAllLocalDeletionReferences(transaction);
+      });
+      return references;
+    },
+    hasStoredRecordId(recordId) {
+      return readStoredRecordIdPresence(database, recordId);
     },
     async listSourceDeletionReferences(sourceRecordId) {
       // Read the cascade identities in one snapshot before memory is deleted.

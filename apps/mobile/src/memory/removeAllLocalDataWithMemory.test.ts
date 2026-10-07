@@ -18,6 +18,11 @@ jest.mock('../rag/localE5RagService', () => ({
 
 describe('removeAllLocalDataWithMemory', () => {
   const sourceRecordIds = ['synthetic-source-1', 'synthetic-source-2'];
+  const deletionReferenceIds = [
+    ...sourceRecordIds,
+    'synthetic-manual-encounter',
+    'synthetic-transcript-revision',
+  ];
   type DeletedLocalDataReferences = Awaited<
     ReturnType<RecordRepository['deleteAllLocalData']>
   >;
@@ -34,6 +39,7 @@ describe('removeAllLocalDataWithMemory', () => {
       (
         transaction: SqlExecutor,
         sourceRecordIds: readonly string[],
+        deletionReferenceIds: readonly string[],
       ) => Promise<void>,
     ]
   >();
@@ -50,12 +56,19 @@ describe('removeAllLocalDataWithMemory', () => {
       .mockReset()
       .mockImplementation(async clearRelatedData => {
         events.push('local-delete');
-        await clearRelatedData(transaction, sourceRecordIds);
+        await clearRelatedData(
+          transaction,
+          sourceRecordIds,
+          deletionReferenceIds,
+        );
         return deleted;
       });
     jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({} as never);
     jest.mocked(openLocalStorage).mockResolvedValue({
       list: jest.fn().mockResolvedValue(sourceRecordIds.map(id => ({ id }))),
+      listAllLocalDeletionReferences: jest
+        .fn()
+        .mockResolvedValue(deletionReferenceIds),
       deleteAllLocalData,
     } as never);
     jest
@@ -82,8 +95,8 @@ describe('removeAllLocalDataWithMemory', () => {
       'local-delete',
       'rag-clear',
     ]);
-    expect(memory.forgetAll).toHaveBeenCalledWith(sourceRecordIds);
-    expect(clear).toHaveBeenCalledWith(sourceRecordIds, transaction);
+    expect(memory.forgetAll).toHaveBeenCalledWith(deletionReferenceIds);
+    expect(clear).toHaveBeenCalledWith(deletionReferenceIds, transaction);
   });
 
   it('keeps source records when persistent memory removal fails', async () => {

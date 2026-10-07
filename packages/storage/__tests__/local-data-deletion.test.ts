@@ -30,6 +30,17 @@ describe('all-local-data deletion', () => {
         encounterKind: 'outpatient',
         summary: 'Synthetic encounter.',
       });
+      const standaloneEncounter = {
+        id: 'deleted-standalone-encounter',
+        effectiveAt: '2026-01-02T00:00:00Z',
+        recordedAt: '2026-01-02T00:00:00Z',
+        ingestedAt: '2026-01-02T00:00:00Z',
+        provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' as const },
+        encounterKind: 'outpatient' as const,
+        summary: 'Synthetic standalone encounter.',
+      };
+      await repository.put('encounter', standaloneEncounter);
       await repository.putSyncCheckpoint({
         key: 'healthkit:last-import',
         value: 'synthetic-cursor',
@@ -78,10 +89,16 @@ describe('all-local-data deletion', () => {
       );
       expect(vectors.rows[0]?.count).toBe(0);
       expect(tombstones.rows[0]?.count).toBe(1);
+      await expect(
+        repository.listDeletedSourceReferenceIds([standaloneEncounter.id]),
+      ).resolves.toEqual([standaloneEncounter.id]);
 
       await database.closeAsync?.();
       database = createDatabase(join(directory, 'database.sqlite'));
       const reopened = await openEncryptedStorage(options(database));
+      await expect(reopened.put('encounter', standaloneEncounter)).rejects.toThrow(
+        'Deleted evidence cannot be reinserted.',
+      );
       await expect(reopened.sourceRecords.create(sourceRecord(source.id, hashA))).rejects.toThrow(
         'A deleted source cannot be reimported.',
       );

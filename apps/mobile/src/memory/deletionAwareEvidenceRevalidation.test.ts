@@ -157,4 +157,42 @@ describe('deleted evidence checkpoint revalidation', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('accepts a live manual structured record when its ID is not a source row', async () => {
+    const database = createDatabase();
+    try {
+      const repository = await openEncryptedStorage(options(database));
+      const manualRecord = {
+        id: 'manual-resume-encounter',
+        effectiveAt: '2026-10-05T10:00:00.000Z',
+        recordedAt: '2026-10-05T10:00:00.000Z',
+        ingestedAt: '2026-10-05T10:01:00.000Z',
+        provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' as const },
+        encounterKind: 'outpatient' as const,
+        summary: 'Synthetic manual encounter.',
+      };
+      await repository.put('encounter', manualRecord);
+      jest.mocked(openLocalStorage).mockResolvedValue(repository);
+      const reference: EvidenceReference = {
+        sourceKind: 'personal_record',
+        sourceId: manualRecord.id,
+        sourceRevision: manualRecord.ingestedAt,
+        evidenceId: manualRecord.id,
+        evidenceRevision: manualRecord.ingestedAt,
+        locator: { kind: 'structured_record', recordId: manualRecord.id },
+        effectiveTime: manualRecord.effectiveAt,
+        reviewState: 'unreviewed',
+      };
+      const revalidate = jest.fn(async () => true);
+      const resume = createDeletionResume(reference, revalidate);
+
+      await expect(resume.run()).resolves.toMatchObject({ status: 'result' });
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect(resume.restoreEvidence).toHaveBeenCalledTimes(1);
+      expect(resume.provider.generate).toHaveBeenCalledTimes(1);
+    } finally {
+      await database.closeAsync?.();
+    }
+  });
 });

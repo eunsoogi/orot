@@ -21,8 +21,8 @@ export interface AgentMemoryService {
   ): Promise<AgentMemoryHit[]>;
   forget(memoryId: string): Promise<boolean>;
   forgetBySourceId(sourceId: string): Promise<number>;
-  /** Forgets every memory and fences known sources against graph-resume writes. */
-  forgetAll(sourceRecordIds?: readonly string[]): Promise<number>;
+  /** Forgets every memory and fences local-record plus memory-row IDs against stale references. */
+  forgetAll(localRecordIds?: readonly string[]): Promise<number>;
   /** Removes source-linked memories and dependent-reference memories before the source callback runs. */
   removeSource(
     sourceId: string,

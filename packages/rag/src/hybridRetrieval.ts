@@ -87,8 +87,14 @@ export async function searchHybridEvidenceChunks(
   if (!query.trim() || chunksById.size === 0) return [];
 
   // A resumed workflow can retain chunks from before deletion; fence them before either search path.
-  // Provenance IDs may be transcript revisions, so only metadata.sourceId is a source_records key.
-  const rootSourceRecordIds = [...new Set(eligibleChunks.map((chunk) => chunk.metadata.sourceId))];
+  // A structured chunk without provenance uses its record ID as sourceId, not a source_records key.
+  const rootSourceRecordIds = [
+    ...new Set(
+      eligibleChunks
+        .filter((chunk) => chunk.metadata.sourceRecordIds.includes(chunk.metadata.sourceId))
+        .map((chunk) => chunk.metadata.sourceId),
+    ),
+  ];
   const removed = await vectorStore.findRemovedEvidence(
     [
       ...new Set(

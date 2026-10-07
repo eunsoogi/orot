@@ -32,17 +32,27 @@ describe('agent memory source removal', () => {
       text: '합성 사용자 검토 선호 내용.',
       provenance: { sourceIds: [], reviewState: 'human_reviewed' as const },
     };
-    await memory.remember(unlinked);
+    const unlinkedId = await memory.remember(unlinked);
 
     await expect(memory.forgetAll(['synthetic-source-2'])).resolves.toBe(2);
     expect(await storage.listRecords()).toEqual([]);
     expect(new Set(await storage.listRemovedSourceIds())).toEqual(
-      new Set(['synthetic-source-1', 'synthetic-source-2']),
+      new Set(['synthetic-source-1', 'synthetic-source-2', linkedId, unlinkedId]),
     );
     await memory.close();
 
     const reopened = await createAgentMemory({ embedder, storage });
     await expect(reopened.recall(preference.text)).resolves.toEqual([]);
+    await expect(
+      reopened.remember({
+        ...unlinked,
+        memoryKey: 'preference:stale-memory-reference',
+        provenance: {
+          sourceIds: [unlinkedId],
+          reviewState: 'human_reviewed',
+        },
+      }),
+    ).rejects.toThrow('already removed');
     await expect(reopened.remember(preference)).rejects.toThrow('already removed');
     await expect(reopened.remember(unlinked)).resolves.not.toBe(linkedId);
     await reopened.close();

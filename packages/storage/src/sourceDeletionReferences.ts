@@ -5,7 +5,34 @@ import type { SqlExecutor } from './sql';
 
 export const SOURCE_DELETION_TOMBSTONES_TABLE = 'source_deletion_tombstones';
 
-/** Shares the source-cascade predicate with the pre-delete identity snapshot. */
+/** Reads record identities only so all-local deletion can fence without loading saved payloads. */
+export async function listAllLocalDeletionReferences(
+  executor: SqlExecutor,
+): Promise<readonly string[]> {
+  const references = new Set<string>();
+  for (const definition of Object.values(STORAGE_TABLES)) {
+    const result = await executor.execute(`SELECT id FROM ${definition.table}`);
+    for (const row of result.rows) {
+      if (typeof row.id !== 'string') throw new Error('A local record ID is invalid.');
+      references.add(RecordIdSchema.parse(row.id));
+    }
+  }
+  return [...references].sort();
+}
+
+/** Checks row identity across record kinds without loading their health or transcript payloads. */
+export async function hasStoredRecordId(executor: SqlExecutor, recordId: string): Promise<boolean> {
+  const id = RecordIdSchema.parse(recordId);
+  const tables = Object.values(STORAGE_TABLES).map(({ table }) => table);
+  const selects = tables.map((table) => `SELECT id FROM ${table} WHERE id = ?`);
+  const result = await executor.execute(
+    `SELECT id FROM (${selects.join(' UNION ALL ')}) AS local_records LIMIT 1`,
+    tables.map(() => id),
+  );
+  return result.rows.length > 0;
+}
+
+/** Shares the source, transcript, and citation cascade with the pre-delete identity snapshot. */
 export function sourceDeletionDependencyPredicate(
   kind: RecordKind,
   table: string,
@@ -13,6 +40,13 @@ export function sourceDeletionDependencyPredicate(
 ): string {
   const dependencies = [
     `EXISTS (SELECT 1 FROM json_each(${table}.payload_json, '$.provenance.sourceRecordIds') AS linked_source WHERE linked_source.value = ${sourceIdExpression})`,
+    `EXISTS (
+      SELECT 1 FROM json_each(${table}.payload_json, '$.provenance.sourceRecordIds') AS linked_transcript
+      JOIN transcript_segments AS source_transcript
+        ON source_transcript.id = linked_transcript.value
+        OR json_extract(source_transcript.payload_json, '$.transcriptId') = linked_transcript.value
+      WHERE json_extract(source_transcript.payload_json, '$.recordingSourceId') = ${sourceIdExpression}
+    )`,
   ];
   if (kind === 'visit_question' || kind === 'visit_brief') {
     dependencies.push(
@@ -61,7 +95,9 @@ export async function listSourceDeletionReferences(
     const predicate = sourceDeletionDependencyPredicate(kind, table, '?');
     const rows = await executor.execute(
       `SELECT ${table}.id FROM ${table} WHERE ${predicate}`,
-      kind === 'visit_question' || kind === 'visit_brief' ? [sourceId, sourceId] : [sourceId],
+      kind === 'visit_question' || kind === 'visit_brief'
+        ? [sourceId, sourceId, sourceId]
+        : [sourceId, sourceId],
     );
     for (const row of rows.rows) {
       if (typeof row.id !== 'string') throw new Error('A dependent record ID is invalid.');

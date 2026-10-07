@@ -108,8 +108,8 @@ describe('SQLCipher-backed agent-memory deletion', () => {
         embedder,
         storage: new SqlCipherAgentMemoryStorage(database),
       });
-      await memory.remember(linkedMemory);
-      await memory.remember(unlinkedMemory);
+      const linkedId = await memory.remember(linkedMemory);
+      const unlinkedId = await memory.remember(unlinkedMemory);
 
       await expect(memory.forgetAll(['synthetic-source-2'])).resolves.toBe(2);
       await expect(memory.recall(linkedMemory.text)).resolves.toEqual([]);
@@ -121,10 +121,15 @@ describe('SQLCipher-backed agent-memory deletion', () => {
       const storage = new SqlCipherAgentMemoryStorage(database);
       const reopened = await createAgentMemory({ embedder, storage });
       await expect(storage.listRecords()).resolves.toEqual([]);
-      await expect(storage.listRemovedSourceIds()).resolves.toEqual([
-        'synthetic-source-1',
-        'synthetic-source-2',
-      ]);
+      // Memory-row IDs remain fenced too, including the unlinked memory identity.
+      await expect(storage.listRemovedSourceIds()).resolves.toEqual(
+        [
+          linkedId,
+          unlinkedId,
+          'synthetic-source-1',
+          'synthetic-source-2',
+        ].sort(),
+      );
       await expect(reopened.remember(linkedMemory)).rejects.toThrow(
         'already removed',
       );

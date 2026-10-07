@@ -96,12 +96,12 @@ export class LocalAgentMemory implements AgentMemoryService {
     });
   }
 
-  forgetAll(sourceRecordIds: readonly string[] = []): Promise<number> {
+  forgetAll(localRecordIds: readonly string[] = []): Promise<number> {
     return this.enqueue(async () => {
       const result = await this.runBatch(async () =>
-        forgetAllPersistedRecords(this.storage, await this.getEngine(), sourceRecordIds),
+        forgetAllPersistedRecords(this.storage, await this.getEngine(), localRecordIds),
       );
-      for (const sourceId of result.sourceIds) this.removedSourceIds.add(sourceId);
+      for (const referenceId of result.referenceIds) this.removedSourceIds.add(referenceId);
       return result.memoriesDeleted;
     });
   }

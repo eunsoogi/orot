@@ -21,12 +21,12 @@ export async function removeAllLocalDataWithMemory(
   const rag = createLocalE5RagService(database);
   await rag.prepare();
 
-  const sourceRecordIds = (await repository.list('source_record')).map(
-    source => source.id,
-  );
-  const memoriesDeleted = await memory.forgetAll(sourceRecordIds);
+  // Fence every saved record before Rememori clears its rows, including manual records without sources.
+  const localRecordIds = await repository.listAllLocalDeletionReferences();
+  const memoriesDeleted = await memory.forgetAll(localRecordIds);
   const deleted = await repository.deleteAllLocalData(
-    (transaction, deletedSourceIds) => rag.clear(deletedSourceIds, transaction),
+    (transaction, _deletedSourceIds, deletedLocalRecordIds) =>
+      rag.clear(deletedLocalRecordIds, transaction),
   );
   return { ...deleted, memoriesDeleted };
 }
