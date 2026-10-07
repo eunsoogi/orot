@@ -23,8 +23,13 @@ test('the Linux inventory covers every maintained file exactly once', async () =
   for (const entry of maintained) {
     assert.equal(policy.surfaces[entry.surface].platform, 'linux');
   }
-  assert.match(formatInventory(inventory), /objective-c \(11; linux\)/);
-  assert.match(formatInventory(inventory), /javascript \(\d+; linux\)/);
+  const formattedInventory = formatInventory(inventory);
+  const objectiveCCount = linux.filter((entry) => entry.surface === 'objective-c').length;
+
+  // Keep the displayed count tied to discovered sources so new native modules do not stale it.
+  assert.ok(objectiveCCount > 0);
+  assert.ok(formattedInventory.includes(`objective-c (${objectiveCCount}; linux)`));
+  assert.match(formattedInventory, /javascript \(\d+; linux\)/);
 });
 
 test('platform selection requires a supported explicit value and preserves other options', () => {
