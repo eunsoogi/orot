@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import type { CalendarBridge } from '../src/calendar/types';
@@ -50,6 +56,8 @@ test('restores the welcome entry and opens Calendar linking from appointments', 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent(
     'Orot에 오신 걸 환영해요',
   );
+  expect(screen.getByTestId('safe-area-root')).toBeVisible();
+  expect(screen.getByTestId('safe-area-scroll')).toBeVisible();
   expect(screen.getByTestId('get-started')).toHaveTextContent('시작하기');
   expect(screen.getByTestId('open-appointments')).toHaveTextContent('예약');
   expect(loadAppointments).not.toHaveBeenCalled();
@@ -62,6 +70,8 @@ test('restores the welcome entry and opens Calendar linking from appointments', 
   expect(screen.getByTestId('calendar-connect')).toHaveTextContent(
     '캘린더 일정 불러오기',
   );
+  expect(screen.getByTestId('safe-area-root')).toBeVisible();
+  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
   expect(screen.getByText(/캘린더 전체 접근\(읽기 및 쓰기\)/u)).toBeTruthy();
   expect(screen.queryByTestId('appointment-add')).toBeNull();
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
@@ -75,6 +85,8 @@ test('opens provider selection from the welcome screen', async () => {
   expect(
     await screen.findByRole('header', { name: '추천에 사용할 AI 선택' }),
   ).toBeTruthy();
+  // Provider selection keeps its own inset container instead of nesting the App shell.
+  expect(screen.queryByTestId('safe-area-root')).toBeNull();
   expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('provider-selection-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
@@ -87,6 +99,8 @@ test('keeps consent-gated recording reachable from Calendar linking', async () =
   await fireEvent.press(screen.getByTestId('open-appointments'));
   await fireEvent.press(screen.getByTestId('open-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
+  expect(screen.getByTestId('safe-area-root')).toBeVisible();
+  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
   expect(screen.getByText(/녹음 전에/)).toBeTruthy();
   expect(screen.getByTestId('recording-start')).toBeDisabled();
 
@@ -128,6 +142,7 @@ test('requires selection and an explicit import before reading common HealthKit 
   expect(
     screen.getByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();
+  expect(screen.getByTestId('safe-area-scroll')).toBeVisible();
   expect(screen.getByTestId('common-observations-import')).toBeDisabled();
   expect(importHealthObservations).not.toHaveBeenCalled();
 
@@ -143,6 +158,25 @@ test('requires selection and an explicit import before reading common HealthKit 
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('common-observations-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
+});
+
+test('keeps blood pressure list scrolling inside the shared safe area', async () => {
+  const loadBloodPressureObservations = jest.fn(async () => []);
+  await render(
+    <App loadBloodPressureObservations={loadBloodPressureObservations} />,
+  );
+
+  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+
+  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+  // Keep the screen-owned scroller and its action under the shared inset root.
+  const safeAreaRoot = screen.getByTestId('safe-area-root');
+  const safeAreaContents = within(safeAreaRoot);
+  expect(safeAreaRoot).toBeVisible();
+  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
+  expect(safeAreaContents.getByTestId('blood-pressure-scroll')).toBeVisible();
+  expect(safeAreaContents.getByTestId('blood-pressure-import')).toBeVisible();
+  expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });
 
 test('calls the production importer only after explicit selection', async () => {

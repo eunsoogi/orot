@@ -34,15 +34,21 @@ env:
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  EXPECTED_MACOS_VERSION: '27.0'
+  # Validate pinned build tools while recording the actual runner release for cache identity.
   EXPECTED_XCODE_VERSION: '27.0'
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
 
 jobs:
+  quality_linux:
+    name: Quality Linux
+    uses: ./.github/workflows/quality-linux.yml
+
   quality:
     name: Quality
-    runs-on: xcode-27
-    timeout-minutes: 35
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [quality_linux]
+    if: ${{ always() }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -50,23 +56,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Cache pnpm lockfile verification
-        uses: ./.github/actions/pnpm-lockfile-verification
-        with:
-          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
       - name: Enforce the 250-line policy
         env:
@@ -78,41 +71,10 @@ jobs:
             node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
           fi
 
-      - name: Verify runner toolchain
-        run: scripts/ci/verify-toolchain.sh
-
-      - name: Install frozen workspace dependencies
-        run: scripts/ci/run-command.sh install artifacts/quality/install.log -- pnpm install --frozen-lockfile
-
-      - name: Install pinned quality tools
-        run: scripts/ci/run-command.sh quality-tools-install artifacts/quality/quality-tools-install.log -- pnpm quality:setup
-
-      - name: Record maintained code inventory
-        run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
-
-      - name: Test CI and release gate rules
-        run: scripts/ci/run-command.sh gate-tests artifacts/quality/gate-tests.log -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs
-
-      - name: Lint
-        run: scripts/ci/run-command.sh lint artifacts/quality/lint.log -- pnpm lint
-
-      - name: Check formatting
-        run: scripts/ci/run-command.sh format artifacts/quality/format.log -- pnpm format:check
-
-      - name: Type check
-        run: scripts/ci/run-command.sh typecheck artifacts/quality/typecheck.log -- pnpm typecheck
-
-      - name: Run unit and component tests
-        run: scripts/ci/run-test-suite.sh unit artifacts/quality
-
-      - name: Upload quality logs and test results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-quality-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/quality/
-          if-no-files-found: error
-          retention-days: 14
+      - name: Require Linux quality partition
+        env:
+          QUALITY_LINUX_RESULT: ${{ needs.quality_linux.result }}
+        run: node scripts/ci/require-quality-aggregate.mjs "$QUALITY_LINUX_RESULT"
 
   ios-simulator-build:
     name: iOS Simulator Build
@@ -162,13 +124,14 @@ jobs:
           path: |
             apps/mobile/ios/build-production
             apps/mobile/ios/Pods
-          key: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          restore-keys: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
+          key: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          restore-keys: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
       - name: Prepare production app DerivedData cache
         id: prepare_production_app_cache
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
           DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
           APP_CACHE_HIT: ${{ steps.production_app_cache.outputs.cache-hit }}
@@ -191,6 +154,7 @@ jobs:
           EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.build_inputs }}
           EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.native_dependencies }}
           EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.production_app_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
         run: set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs write production 2>&1 | tee -a artifacts/ios-build/native-cache.log

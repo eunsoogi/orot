@@ -10,7 +10,7 @@ const cacheScriptPath = fileURLToPath(
 const baseEnvironment = {
   DETOX_CACHE_RUNNER_OS: 'macOS',
   DETOX_CACHE_RUNNER_ARCH: 'ARM64',
-  EXPECTED_MACOS_VERSION: '27.0',
+  MACOS_VERSION: '27.0',
   EXPECTED_NODE_VERSION: '22.23.2',
   EXPECTED_PNPM_VERSION: '12.3.4',
   EXPECTED_RUBY_VERSION: '4.0.7',
@@ -138,10 +138,11 @@ function installIosAppTools(root) {
     'bin/xcrun',
     `#!/bin/sh\n[ "$1:$2" = "lipo:-archs" ] || exit 2\n[ "$(cat "$3")" = valid-architecture ] || exit 1\nprintf '%s\\n' '${architecture}'\n`,
   );
+  // Keep the fake Apple metadata reader POSIX so fixture-based cache tests also run on Linux.
   writeFixtureFile(
     root,
     'bin/plutil',
-    `#!/bin/sh\nplist=$(cat "$6")\ncase "$2" in\n  CFBundleIdentifier) [[ "$plist" == wrong-bundle-id ]] && echo com.invalid || [[ "$plist" == valid-plist ]] && echo com.orot.mobile ;;\n  CFBundleExecutable) [[ "$plist" == valid-plist ]] && echo Orot ;;\n  CFBundlePackageType) [[ "$plist" == valid-plist ]] && echo APPL ;;\n  CFBundleSupportedPlatforms) [[ "$plist" == valid-plist ]] && echo '["iPhoneSimulator"]' ;;\n  *) exit 2 ;;\nesac\n`,
+    `#!/bin/sh\nplist=$(cat "$6")\ncase "$2" in\n  CFBundleIdentifier)\n    case "$plist" in\n      wrong-bundle-id) echo com.invalid ;;\n      valid-plist) echo com.orot.mobile ;;\n      *) exit 1 ;;\n    esac\n    ;;\n  CFBundleExecutable) [ "$plist" = valid-plist ] && echo Orot ;;\n  CFBundlePackageType) [ "$plist" = valid-plist ] && echo APPL ;;\n  CFBundleSupportedPlatforms) [ "$plist" = valid-plist ] && printf '%s\\n' '["iPhoneSimulator"]' ;;\n  *) exit 2 ;;\nesac\n`,
   );
   chmodSync(xcrunPath, 0o755);
   chmodSync(plutilPath, 0o755);
