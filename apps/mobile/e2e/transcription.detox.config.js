@@ -1,8 +1,9 @@
 /** @type {Detox.DetoxConfig} */
 // Isolate this alternate bundle so another probe's cached app cannot run in its place.
+// Share the CI build/cache root unless a local probe explicitly overrides it.
 const derivedDataPath =
   process.env.OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH ||
-  'ios/build-speech-transcription';
+  'ios/build-detox-transcription';
 const simulatorId = process.env.OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
@@ -21,10 +22,11 @@ module.exports = {
       type: 'ios.app',
       binaryPath:
         derivedDataPath + '/Build/Products/Release-iphonesimulator/Orot.app',
+      // Match the host-only architecture checked by the CI builder and avoid compiling both Simulator slices.
       build:
         'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ' +
         derivedDataPath +
-        " CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements OTHER_SWIFT_FLAGS='$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST' ENTRY_FILE=e2e/transcriptionProbeEntry.tsx",
+        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements OTHER_SWIFT_FLAGS=\'$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST\' ENTRY_FILE=e2e/transcriptionProbeEntry.tsx',
     },
   },
   devices: {

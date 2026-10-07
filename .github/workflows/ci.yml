@@ -5,6 +5,18 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      detox_trace:
+        description: Emit Detox lifecycle and device-call traces for diagnosis.
+        required: false
+        type: boolean
+        default: false
+      detox_resource_sampling:
+        description: Collect bounded process and memory samples for diagnosis.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -51,10 +63,20 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
+
       - name: Enforce the 250-line policy
         env:
           LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            node scripts/ci/check-loc.mjs --all
+          else
+            node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
+          fi
 
       - name: Verify runner toolchain
         run: scripts/ci/verify-toolchain.sh
@@ -101,44 +123,80 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
       - name: Set up pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           version: 12.3.4
           run_install: false
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-
+      - name: Cache pnpm lockfile verification
+        uses: ./.github/actions/pnpm-lockfile-verification
+        with:
+          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
           ruby-version: '4.0.7'
           bundler-cache: false
-
       - name: Install CocoaPods
         run: |
           scripts/ci/run-command.sh cocoapods-install artifacts/ios-build/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-
       - name: Verify runner toolchain
+        id: verify_toolchain
         run: scripts/ci/verify-toolchain.sh --cocoapods
-
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/ios-build/install.log -- pnpm install --frozen-lockfile
+      - name: Compute production app cache fingerprints
+        id: production_app_fingerprint
+        run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
+      - name: Cache production app DerivedData and CocoaPods
+        id: production_app_cache
+        timeout-minutes: 10
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            apps/mobile/ios/build-production
+            apps/mobile/ios/Pods
+          key: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          restore-keys: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ env.EXPECTED_MACOS_VERSION }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
+      - name: Prepare production app DerivedData cache
+        id: prepare_production_app_cache
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+          APP_CACHE_HIT: ${{ steps.production_app_cache.outputs.cache-hit }}
+        run: |
+          set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs prepare production 2>&1 | tee artifacts/ios-build/native-cache.log
+          printf 'derived_data_cache_hit=%s\n' "${APP_CACHE_HIT:-false}" >> artifacts/ios-build/native-cache.log
+      - name: Install app CocoaPods dependencies
+        if: ${{ steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
+        run: scripts/ci/run-command.sh app-pods artifacts/ios-build/pods-install.log -- bash scripts/ci/build-ios-simulator-app.sh pods
 
       - name: Build the iOS Simulator app
-        run: scripts/ci/run-command.sh ios-simulator-build artifacts/ios-build/build.log -- pnpm ios:build
+        if: ${{ steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
+        run: scripts/ci/run-command.sh ios-simulator-build artifacts/ios-build/build.log -- bash scripts/ci/build-ios-simulator-app.sh build
 
-      - name: Verify Simulator Keychain signing defaults
-        run: node scripts/ci/verify-simulator-keychain-defaults.mjs
+      - name: Write production app DerivedData manifest
+        if: ${{ steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.build_inputs }}
+          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.native_dependencies }}
+          EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.production_app_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+        run: set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs write production 2>&1 | tee -a artifacts/ios-build/native-cache.log
 
-      - name: Test the standalone ChatGPT OAuth package
-        run: scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
+      - name: Verify Simulator defaults and test OAuth package
+        run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
 
       - name: Build the standalone ChatGPT OAuth Simulator harness
         run: |
@@ -159,66 +217,26 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  detox-ios-e2e:
+  detox_profiles:
+    name: Detox profile suite
+    uses: ./.github/workflows/detox-e2e-profiles.yml
+    with:
+      trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
+      resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
+
+  detox_ios_e2e:
     name: Detox iOS E2E
-    runs-on: xcode-27
-    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [detox_profiles]
+    if: ${{ always() }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
-
-      - name: Install CocoaPods
+      - name: Require every Detox profile workflow
+        env:
+          DETOX_PROFILES_RESULT: ${{ needs.detox_profiles.result }}
         run: |
-          scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-
-      - name: Verify runner toolchain
-        run: scripts/ci/verify-toolchain.sh --cocoapods
-
-      - name: Install frozen workspace dependencies
-        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
-
-      - name: Build Detox iOS framework cache
-        run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
-
-      - name: Build Detox iOS Simulator app
-        run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- pnpm e2e:build:ios
-
-      - name: Install Detox Simulator utilities
-        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
-
-      - name: Run Detox iOS Simulator tests
-        run: scripts/ci/run-test-suite.sh e2e artifacts/detox
-
-      - name: Collect simulator logs
-        if: ${{ always() }}
-        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log
-
-      - name: Upload Detox reports, logs, screenshots, and videos
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-detox-ios-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/detox/
-          if-no-files-found: error
-          retention-days: 14
+          if [[ "$DETOX_PROFILES_RESULT" != success ]]; then
+            printf 'The complete Detox profile workflow must succeed; received %s\n' "${DETOX_PROFILES_RESULT:-missing}" >&2
+            exit 1
+          fi
+          printf 'All Detox profiles and fail-closed summaries passed.\n'

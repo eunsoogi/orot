@@ -1,0 +1,75 @@
+name: Detox E2E profiles
+
+on:
+  workflow_call:
+    inputs:
+      trace_logging:
+        description: Enable Detox trace logging for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+      resource_sampling:
+        description: Collect bounded process and memory samples for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  detox_release_e2e:
+    name: Detox Release iOS E2E
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_openai_provider_e2e:
+    name: Detox OpenAI Debug iOS E2E
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: openai-provider
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_transcription_e2e:
+    name: Detox Speech Transcription iOS E2E
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: transcription
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  validate_detox_profiles:
+    name: Require complete profile summaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [detox_release_e2e, detox_openai_provider_e2e, detox_transcription_e2e]
+    if: ${{ always() }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Require all profile results and test counts
+        env:
+          RELEASE_JOB_RESULT: ${{ needs.detox_release_e2e.result }}
+          RELEASE_PROFILE: ${{ needs.detox_release_e2e.outputs.profile }}
+          RELEASE_TEST_CASES: ${{ needs.detox_release_e2e.outputs.test_cases }}
+          RELEASE_TEST_SUITES: ${{ needs.detox_release_e2e.outputs.test_suites }}
+          OPENAI_JOB_RESULT: ${{ needs.detox_openai_provider_e2e.result }}
+          OPENAI_PROFILE: ${{ needs.detox_openai_provider_e2e.outputs.profile }}
+          OPENAI_TEST_CASES: ${{ needs.detox_openai_provider_e2e.outputs.test_cases }}
+          OPENAI_TEST_SUITES: ${{ needs.detox_openai_provider_e2e.outputs.test_suites }}
+          TRANSCRIPTION_JOB_RESULT: ${{ needs.detox_transcription_e2e.result }}
+          TRANSCRIPTION_PROFILE: ${{ needs.detox_transcription_e2e.outputs.profile }}
+          TRANSCRIPTION_TEST_CASES: ${{ needs.detox_transcription_e2e.outputs.test_cases }}
+          TRANSCRIPTION_TEST_SUITES: ${{ needs.detox_transcription_e2e.outputs.test_suites }}
+        run: |
+          node scripts/ci/require-detox-e2e-aggregate.mjs \
+            "$RELEASE_JOB_RESULT" "$RELEASE_PROFILE" "$RELEASE_TEST_CASES" "$RELEASE_TEST_SUITES" \
+            "$OPENAI_JOB_RESULT" "$OPENAI_PROFILE" "$OPENAI_TEST_CASES" "$OPENAI_TEST_SUITES"
+          node scripts/ci/require-detox-transcription-aggregate.mjs \
+            "$TRANSCRIPTION_JOB_RESULT" "$TRANSCRIPTION_PROFILE" "$TRANSCRIPTION_TEST_CASES" "$TRANSCRIPTION_TEST_SUITES"
