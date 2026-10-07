@@ -8,6 +8,8 @@ import {
 import { preserveIngestedAt } from './syncIdentity';
 import type {
   CommonObservationRepository,
+  CommonObservationSyncResult,
+  CommonObservationSyncStatus,
   SyncCommonObservationChangesOptions,
 } from './syncOptions';
 import { measureCommonObservationOperation } from './syncOptions';
@@ -15,28 +17,12 @@ import type { CommonObservationFeature } from './types';
 
 export type {
   CommonObservationRepository,
+  CommonObservationSyncResult,
+  CommonObservationSyncStatus,
   SyncCommonObservationChangesOptions,
 } from './syncOptions';
 
 const PAGE_SIZE = 200;
-
-export type CommonObservationSyncStatus =
-  | 'complete'
-  | 'empty'
-  | 'unavailable'
-  | 'unsupportedFeature'
-  | 'unsupportedPlatform'
-  | 'unsupportedData'
-  | 'partial';
-
-export interface CommonObservationSyncResult {
-  readonly status: CommonObservationSyncStatus;
-  readonly readAuthorization: 'notObservable';
-  readonly upserted: number;
-  readonly deleted: number;
-  readonly skipped: number;
-  readonly cursorAdvanced: boolean;
-}
 
 const pendingSyncs = new WeakMap<
   CommonObservationRepository,
@@ -74,6 +60,7 @@ async function syncCommonObservationChangesExclusive(
   if (authorization.requestStatus !== 'completed') {
     return result('unavailable', 0, 0, 0, false);
   }
+
   const checkpointKey = healthKitSampleChangesCheckpointKey(feature, feature);
   const savedCheckpoint = await repository.getSyncCheckpoint(checkpointKey);
   let cursor = savedCheckpoint?.value ?? null;
@@ -82,6 +69,7 @@ async function syncCommonObservationChangesExclusive(
   let skipped = 0;
   let cursorAdvanced = false;
   let pageCount = 0;
+
   while (true) {
     const page = await measureCommonObservationOperation(
       options.instrumentation,
@@ -108,6 +96,7 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned a full observation page without advancing its cursor.',
       );
     }
+
     const ingestedAt = now();
     const mappings = page.addedSamples.map(sample =>
       mapCommonObservationSample(feature, sample),
@@ -125,6 +114,7 @@ async function syncCommonObservationChangesExclusive(
         cursorAdvanced,
       );
     }
+
     const candidates = mappings.map(mapping => {
       if (mapping.status !== 'mapped') {
         throw new Error(
@@ -150,6 +140,7 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned conflicting common observation identifiers.',
       );
     }
+
     const nextCursor = page.cursor ?? cursor;
     const pageHasChanges = candidates.length > 0 || deletedIds.size > 0;
     if (pageHasChanges && nextCursor === cursor) {
