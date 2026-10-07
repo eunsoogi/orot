@@ -28,7 +28,10 @@ export interface SourceRecordRepository {
   get(id: string): Promise<SourceRecord | null>;
   findByContentHash(hash: SourceContentHash): Promise<HashedSourceRecord | null>;
   update(record: HashedSourceRecord): Promise<void>;
-  delete(id: string): Promise<boolean>;
+  delete(
+    id: string,
+    withinDeletionTransaction?: (transaction: SqlExecutor) => Promise<void>,
+  ): Promise<boolean>;
 }
 
 export interface EvidenceSpanRepository {
@@ -131,10 +134,14 @@ export function createSourceEvidenceRepositories(database: SqlDatabase): {
         }
       });
     },
-    async delete(id) {
+    async delete(id, withinDeletionTransaction) {
       let deleted = false;
       await database.transaction(async (transaction) => {
-        deleted = await deleteStoredRecord(transaction, 'source_record', RecordIdSchema.parse(id));
+        const sourceId = RecordIdSchema.parse(id);
+        if (!(await readStoredRecord(transaction, 'source_record', sourceId))) return;
+        // Vector fences and source cascades commit together so a resumed graph cannot revive deleted evidence.
+        await withinDeletionTransaction?.(transaction);
+        deleted = await deleteStoredRecord(transaction, 'source_record', sourceId);
       });
       return deleted;
     },

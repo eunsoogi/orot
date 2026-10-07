@@ -1,9 +1,18 @@
 import { runDiseaseHypothesisAnalysis } from '../task';
+import * as deletionAwareRevalidation from '../../memory/deletionAwareEvidenceRevalidation';
 import {
   completeInventory,
   hypothesis,
   workflowOptionsFor,
 } from '../taskTestSupport';
+
+beforeEach(() => {
+  jest
+    .spyOn(deletionAwareRevalidation, 'withLocalDeletionAwareRevalidation')
+    .mockImplementation(revalidate => revalidate);
+});
+
+afterEach(() => jest.restoreAllMocks());
 
 test.each([
   ['limited information', 'Limited information'],

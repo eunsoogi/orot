@@ -1,11 +1,29 @@
 import type {
   LocalEmbeddingModelIdentity,
   LocalEmbeddingVectorStore,
+  LocalEmbeddingWrite,
   PersistedLocalEmbedding,
 } from '@orot/rag';
-import type { SqlDatabase, SqlExecutor, SqlValue } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
+import {
+  EMBEDDING_MODELS_TABLE,
+  ensureModelRow,
+  verifyModelRow,
+} from './ragEmbeddingModel';
+import {
+  decodeVector,
+  encodeVector,
+  validateVector,
+} from './ragEmbeddingVector';
+import {
+  assertRagEvidenceNotRemoved,
+  clearRagEvidence,
+  deleteRagEvidence,
+  ensureRagEmbeddingDeletionSchema,
+  findRemovedRagEvidence,
+  upsertRagEmbeddingSources,
+} from './ragEmbeddingDeletionStorage';
 
-const EMBEDDING_MODELS_TABLE = 'rag_embedding_models';
 const EMBEDDINGS_TABLE = 'rag_embeddings';
 
 function cancelled(): Error {
@@ -14,115 +32,39 @@ function cancelled(): Error {
   return error;
 }
 
-function validateVector(
-  model: LocalEmbeddingModelIdentity,
-  vector: readonly number[],
-): void {
-  if (
-    vector.length !== model.dimension ||
-    vector.some(value => !Number.isFinite(value))
-  ) {
-    throw new Error(
-      'Embedding vector does not match the stored model dimension.',
-    );
-  }
-}
-
-function encodeVector(vector: readonly number[]): Uint8Array {
-  const bytes = new Uint8Array(vector.length * Float32Array.BYTES_PER_ELEMENT);
-  const view = new DataView(bytes.buffer);
-  vector.forEach((value, index) => {
-    view.setFloat32(index * Float32Array.BYTES_PER_ELEMENT, value, true);
-  });
-  return bytes;
-}
-
-function decodeBytes(value: SqlValue | undefined): Uint8Array {
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  if (ArrayBuffer.isView(value)) {
-    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-  }
-  throw new Error('The encrypted embedding row has no binary vector.');
-}
-
-function decodeVector(
-  value: SqlValue | undefined,
-  dimension: number,
-): number[] {
-  const bytes = decodeBytes(value);
-  if (bytes.byteLength !== dimension * Float32Array.BYTES_PER_ELEMENT) {
-    throw new Error(
-      'The encrypted embedding row has an invalid vector length.',
-    );
-  }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return Array.from({ length: dimension }, (_, index) =>
-    view.getFloat32(index * Float32Array.BYTES_PER_ELEMENT, true),
-  );
-}
-
-async function verifyModelRow(
-  executor: SqlExecutor,
-  model: LocalEmbeddingModelIdentity,
-): Promise<boolean> {
-  const result = await executor.execute(
-    `SELECT dimension, model_sha256, tokenizer_sha256 FROM ${EMBEDDING_MODELS_TABLE} WHERE model_id = ? AND model_revision = ?`,
-    [model.id, model.revision],
-  );
-  const row = result.rows[0];
-  if (!row) return false;
-  if (
-    row.dimension !== model.dimension ||
-    row.model_sha256 !== model.modelSha256 ||
-    row.tokenizer_sha256 !== model.tokenizerSha256
-  ) {
-    throw new Error(
-      'A model revision cannot be reused with different embedding identity metadata.',
-    );
-  }
-  return true;
-}
-
-async function ensureModelRow(
-  executor: SqlExecutor,
-  model: LocalEmbeddingModelIdentity,
-): Promise<void> {
-  await executor.execute(
-    `INSERT INTO ${EMBEDDING_MODELS_TABLE} (model_id, model_revision, dimension, model_sha256, tokenizer_sha256) VALUES (?, ?, ?, ?, ?) ON CONFLICT(model_id, model_revision) DO NOTHING`,
-    [
-      model.id,
-      model.revision,
-      model.dimension,
-      model.modelSha256,
-      model.tokenizerSha256,
-    ],
-  );
-  if (!(await verifyModelRow(executor, model))) {
-    throw new Error('The embedding model identity row could not be persisted.');
-  }
-}
-
 // Stores model-keyed vectors in the already-open SQLCipher database without editing shared migrations.
 export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
   private schemaReady: Promise<void> | null = null;
 
   constructor(private readonly database: SqlDatabase) {}
 
+  /** Prepares RAG tables before callers join vector cleanup to an open deletion transaction. */
+  async prepare(): Promise<void> {
+    await this.ensureSchema();
+  }
+
   async upsertBatch(
     model: LocalEmbeddingModelIdentity,
-    entries: readonly PersistedLocalEmbedding[],
+    entries: readonly LocalEmbeddingWrite[],
     signal?: AbortSignal,
   ): Promise<void> {
     if (entries.length === 0) return;
     for (const entry of entries) {
       if (!entry.chunkId)
         throw new Error('Embedding rows need a chunk identifier.');
+      if (
+        entry.sourceRecordIds.length === 0 ||
+        entry.sourceRecordIds.some(sourceRecordId => !sourceRecordId.trim())
+      ) {
+        throw new Error('Embedding rows need source identifiers.');
+      }
       validateVector(model, entry.vector);
     }
     await this.ensureSchema();
     if (signal?.aborted) throw cancelled();
 
     await this.database.transaction(async transaction => {
+      await assertRagEvidenceNotRemoved(transaction, entries);
       await ensureModelRow(transaction, model);
       for (const entry of entries) {
         if (signal?.aborted) throw cancelled();
@@ -136,8 +78,60 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
             encodeVector(entry.vector),
           ],
         );
+        await upsertRagEmbeddingSources(
+          transaction,
+          entry.chunkId,
+          entry.sourceRecordIds,
+        );
       }
     });
+  }
+
+  async deleteEvidence(
+    sourceRecordIds: readonly string[],
+    chunkIds: readonly string[],
+    transaction?: SqlExecutor,
+  ): Promise<void> {
+    if (sourceRecordIds.length === 0 && chunkIds.length === 0) return;
+    await this.ensureSchema();
+    if (transaction) {
+      await deleteRagEvidence(transaction, sourceRecordIds, chunkIds);
+      return;
+    }
+    await this.database.transaction(async deletionTransaction => {
+      await deleteRagEvidence(deletionTransaction, sourceRecordIds, chunkIds);
+    });
+  }
+
+  async clear(
+    sourceRecordIds: readonly string[] = [],
+    transaction?: SqlExecutor,
+  ): Promise<void> {
+    await this.ensureSchema();
+    if (transaction) {
+      await clearRagEvidence(transaction, sourceRecordIds);
+      return;
+    }
+    await this.database.transaction(async deletionTransaction => {
+      await clearRagEvidence(deletionTransaction, sourceRecordIds);
+    });
+  }
+
+  async findRemovedEvidence(
+    sourceRecordIds: readonly string[],
+    chunkIds: readonly string[],
+    rootSourceRecordIds: readonly string[],
+  ): Promise<{
+    sourceRecordIds: readonly string[];
+    chunkIds: readonly string[];
+  }> {
+    await this.ensureSchema();
+    return findRemovedRagEvidence(
+      this.database,
+      sourceRecordIds,
+      chunkIds,
+      rootSourceRecordIds,
+    );
   }
 
   async listForModel(
@@ -176,9 +170,12 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
           await this.database.execute(
             `CREATE TABLE IF NOT EXISTS ${EMBEDDINGS_TABLE} (chunk_id TEXT NOT NULL, model_id TEXT NOT NULL, model_revision TEXT NOT NULL, dimension INTEGER NOT NULL, vector_blob BLOB NOT NULL, PRIMARY KEY (chunk_id, model_id, model_revision))`,
           );
-          await this.database.execute(
-            `CREATE INDEX IF NOT EXISTS rag_embeddings_model_idx ON ${EMBEDDINGS_TABLE} (model_id, model_revision, dimension)`,
-          );
+          await this.database.transaction(async transaction => {
+            await transaction.execute(
+              `CREATE INDEX IF NOT EXISTS rag_embeddings_model_idx ON ${EMBEDDINGS_TABLE} (model_id, model_revision, dimension)`,
+            );
+            await ensureRagEmbeddingDeletionSchema(transaction);
+          });
         })
         .catch(error => {
           this.schemaReady = null;

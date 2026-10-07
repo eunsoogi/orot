@@ -86,10 +86,36 @@ export async function searchHybridEvidenceChunks(
   }
   if (!query.trim() || chunksById.size === 0) return [];
 
+  // A resumed workflow can retain chunks from before deletion; fence them before either search path.
+  // Provenance IDs may be transcript revisions, so only metadata.sourceId is a source_records key.
+  const rootSourceRecordIds = [...new Set(eligibleChunks.map((chunk) => chunk.metadata.sourceId))];
+  const removed = await vectorStore.findRemovedEvidence(
+    [
+      ...new Set(
+        eligibleChunks.flatMap((chunk) => [
+          chunk.metadata.sourceId,
+          ...chunk.metadata.sourceRecordIds,
+        ]),
+      ),
+    ],
+    [...chunksById.keys()],
+    rootSourceRecordIds,
+  );
+  const removedSourceIds = new Set(removed.sourceRecordIds);
+  const removedChunkIds = new Set(removed.chunkIds);
+  const searchableChunks = eligibleChunks.filter(
+    (chunk) =>
+      !removedChunkIds.has(chunk.id) &&
+      ![chunk.metadata.sourceId, ...chunk.metadata.sourceRecordIds].some((sourceId) =>
+        removedSourceIds.has(sourceId),
+      ),
+  );
+  if (searchableChunks.length === 0) return [];
+
   const candidateLimit = Math.max(limit, ranking.candidateLimit);
   const [lexicalMatches, vectorHits] = await Promise.all([
-    textStore.search(query, eligibleChunks, candidateLimit, options.signal),
-    searchEvidenceChunks(query, eligibleChunks, provider, vectorStore, candidateLimit, {
+    textStore.search(query, searchableChunks, candidateLimit, options.signal),
+    searchEvidenceChunks(query, searchableChunks, provider, vectorStore, candidateLimit, {
       signal: options.signal,
       onProgress: options.onProgress,
     }),

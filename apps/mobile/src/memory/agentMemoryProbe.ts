@@ -1,13 +1,23 @@
 import type { EmbeddingProvider } from '@orot/agent-memory';
+import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
 import type { RecordMap } from '@orot/storage';
+import {
+  AGENT_MEMORY_PROBE_CHUNK_ID,
+  assertAgentMemoryRagProbeSearch,
+  createAgentMemoryProbeRagVector,
+} from './agentMemoryRagProbe';
 import {
   closeLocalAgentMemory,
   openLocalAgentMemory,
 } from './localAgentMemory';
 import { removeLocalSourceWithMemory } from './removeSourceWithMemory';
-import { openLocalStorage } from '../storage/secureDatabase';
+import { SqlCipherRagEmbeddingStorage } from '../storage/ragEmbeddingStorage';
+import {
+  openLocalAgentMemoryDatabase,
+  openLocalStorage,
+} from '../storage/secureDatabase';
 
-export type AgentMemoryProbeMode = 'fresh' | 'restart';
+export type AgentMemoryProbeMode = 'fresh' | 'restart' | 'verify-deletion';
 
 const sourceRecord = {
   id: 'agent-memory-synthetic-source',
@@ -75,6 +85,17 @@ export async function runAgentMemoryProbe(
     if (mode === 'fresh') {
       const repository = await openLocalStorage();
       await repository.sourceRecords.create(sourceRecord);
+      // Seed one deterministic vector so deletion is exercised without model download or network access.
+      const embeddingStorage = new SqlCipherRagEmbeddingStorage(
+        await openLocalAgentMemoryDatabase(),
+      );
+      await embeddingStorage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
+        {
+          chunkId: AGENT_MEMORY_PROBE_CHUNK_ID,
+          vector: createAgentMemoryProbeRagVector(),
+          sourceRecordIds: [sourceRecord.id],
+        },
+      ]);
       const originalId = await memory.remember({
         ...memoryInput,
         text: originalText,
@@ -98,7 +119,31 @@ export async function runAgentMemoryProbe(
       ) {
         throw new Error('The superseded Korean memory remained visible.');
       }
-    } else {
+    } else if (mode === 'restart') {
+      const repository = await openLocalStorage();
+      if (!(await repository.sourceRecords.get(sourceRecord.id))) {
+        throw new Error('The synthetic source did not survive relaunch.');
+      }
+      const embeddingDatabase = await openLocalAgentMemoryDatabase();
+      const embeddingStorage = new SqlCipherRagEmbeddingStorage(
+        embeddingDatabase,
+      );
+      const vectors = await embeddingStorage.listForModel(
+        LOCAL_EMBEDDING_IDENTITY,
+      );
+      if (
+        vectors.length !== 1 ||
+        vectors[0]?.chunkId !== AGENT_MEMORY_PROBE_CHUNK_ID
+      ) {
+        throw new Error(
+          'The synthetic source vector did not survive relaunch.',
+        );
+      }
+      await assertAgentMemoryRagProbeSearch(
+        embeddingDatabase,
+        sourceRecord.id,
+        true,
+      );
       const recalled = await memory.recall(correctedText, {
         minSimilarity: 0.999,
       });
@@ -115,6 +160,15 @@ export async function runAgentMemoryProbe(
         throw new Error(
           'Removing the source did not remove its linked memory.',
         );
+      }
+      if (await repository.sourceRecords.get(sourceRecord.id)) {
+        throw new Error('The removed source record remained in local storage.');
+      }
+      if (
+        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY))
+          .length !== 0
+      ) {
+        throw new Error('The removed source vector remained in local storage.');
       }
       if (
         (await memory.recall(correctedText, { minSimilarity: 0.999 }))
@@ -137,6 +191,41 @@ export async function runAgentMemoryProbe(
         throw new Error(
           'A removed source accepted a memory after service reopen.',
         );
+    } else {
+      const repository = await openLocalStorage();
+      if (await repository.sourceRecords.get(sourceRecord.id)) {
+        throw new Error('The removed source record returned after relaunch.');
+      }
+      const embeddingDatabase = await openLocalAgentMemoryDatabase();
+      const embeddingStorage = new SqlCipherRagEmbeddingStorage(
+        embeddingDatabase,
+      );
+      if (
+        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY))
+          .length !== 0
+      ) {
+        throw new Error('The removed source vector returned after relaunch.');
+      }
+      await assertAgentMemoryRagProbeSearch(
+        embeddingDatabase,
+        sourceRecord.id,
+        false,
+      );
+      if (
+        (await memory.recall(correctedText, { minSimilarity: 0.999 })).length
+      ) {
+        throw new Error('The removed source memory returned after relaunch.');
+      }
+      let staleWriteRejected = false;
+      try {
+        await memory.remember({ ...memoryInput, text: correctedText });
+      } catch (error) {
+        staleWriteRejected =
+          error instanceof Error && error.message.includes('already removed');
+      }
+      if (!staleWriteRejected) {
+        throw new Error('A removed source accepted memory after relaunch.');
+      }
     }
     if (networkAttempts !== 0)
       throw new Error('The memory probe attempted network access.');
