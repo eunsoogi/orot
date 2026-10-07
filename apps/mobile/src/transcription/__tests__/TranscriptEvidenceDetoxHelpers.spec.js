@@ -204,8 +204,13 @@ describe('transcript control scrolling', () => {
   it('dismisses multiline editing before scrolling a clipped control into view', async () => {
     const actions = [];
     const target = {};
+    let resolveDismissal;
     const dismissalTarget = {
-      tap: async () => actions.push('dismiss-keyboard'),
+      tap: () =>
+        new Promise(resolve => {
+          actions.push('dismiss-keyboard');
+          resolveDismissal = resolve;
+        }),
     };
     global.by = { id: id => ({ id }) };
     global.element = jest.fn(() => dismissalTarget);
@@ -218,7 +223,13 @@ describe('transcript control scrolling', () => {
       }),
     });
 
-    await scrollToTranscriptControl(target, 'up', true);
+    // Keep the tap pending so removing its await would allow the scroll to start early.
+    const scrolling = scrollToTranscriptControl(target, 'up', true);
+    await Promise.resolve();
+
+    expect(actions).toEqual(['dismiss-keyboard']);
+    resolveDismissal();
+    await scrolling;
 
     expect(global.element).toHaveBeenCalledWith({
       id: 'recording-export-authorization-probe',
