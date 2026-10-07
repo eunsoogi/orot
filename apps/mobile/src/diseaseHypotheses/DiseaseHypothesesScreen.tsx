@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { diseaseHypothesisCopy as copy } from './copy';
+import { getDiseaseHypothesisCopy } from './copy';
 import type {
   DiseaseHypothesisAnalysis,
   DiseaseHypothesisRunOutcome,
@@ -22,10 +22,12 @@ type ScreenState =
 function EvidenceLinks({
   title,
   references,
+  sourceTitle,
   onOpenSource,
 }: {
   readonly title: string;
   readonly references: readonly EvidenceReference[];
+  readonly sourceTitle: (sourceId: string) => string;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }) {
   return (
@@ -35,7 +37,7 @@ function EvidenceLinks({
         <Button
           key={`${reference.sourceId}:${reference.evidenceId}:${reference.evidenceRevision}`}
           onPress={() => onOpenSource(reference)}
-          title={`${copy.source} · ${reference.sourceId}`}
+          title={sourceTitle(reference.sourceId)}
         />
       ))}
     </View>
@@ -48,6 +50,7 @@ export function DiseaseHypothesesScreen({
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
+  const copy = getDiseaseHypothesisCopy();
   const [state, setState] = useState<ScreenState>({ status: 'idle' });
 
   async function generate() {
@@ -72,7 +75,7 @@ export function DiseaseHypothesesScreen({
       contentContainerStyle={styles.container}
       testID="disease-hypotheses-screen"
     >
-      <Button onPress={onBack} title="뒤로" />
+      <Button onPress={onBack} title={copy.back} />
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -109,12 +112,14 @@ export function DiseaseHypothesesScreen({
               <EvidenceLinks
                 title={copy.supporting}
                 references={hypothesis.supportingEvidence}
+                sourceTitle={copy.source}
                 onOpenSource={onOpenSource}
               />
               {hypothesis.contraryEvidence.length > 0 ? (
                 <EvidenceLinks
                   title={copy.contrary}
                   references={hypothesis.contraryEvidence}
+                  sourceTitle={copy.source}
                   onOpenSource={onOpenSource}
                 />
               ) : (
@@ -122,7 +127,7 @@ export function DiseaseHypothesesScreen({
               )}
               <Text style={styles.label}>{copy.missingData}</Text>
               {hypothesis.missingData.length === 0 ? (
-                <Text>확인된 추가 정보가 없어요.</Text>
+                <Text>{copy.noAdditionalInfo}</Text>
               ) : null}
               {hypothesis.missingData.map(item => (
                 <Text key={item}>• {item}</Text>

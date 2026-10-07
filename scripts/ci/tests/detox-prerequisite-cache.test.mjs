@@ -64,7 +64,7 @@ test('prepares the app cache before optional CocoaPods restores and installation
   for (const toolchainValue of [
     'runner.os',
     'runner.arch',
-    'EXPECTED_MACOS_VERSION',
+    'steps.verify_toolchain.outputs.macos_version',
     'EXPECTED_NODE_VERSION',
     'EXPECTED_PNPM_VERSION',
     'EXPECTED_RUBY_VERSION',

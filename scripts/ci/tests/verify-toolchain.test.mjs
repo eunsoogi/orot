@@ -13,7 +13,6 @@ test('verifies the transcription profile runtime and device against their pinned
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '26',
       SIMULATED_MACOS_VERSION: '26.6.2',
       EXPECTED_XCODE_VERSION: '26.2',
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
@@ -31,7 +30,7 @@ test('verifies the transcription profile runtime and device against their pinned
     },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Verified macOS 26\.6\.2/);
+  assert.match(result.stdout, /Observed macOS release 26\.6\.2 \(cache identity, not a gate\)/);
   assert.equal(
     result.githubOutput,
     `macos_version=26.6.2\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('26.2')}\n`,
@@ -46,12 +45,68 @@ test('verifies the transcription profile runtime and device against their pinned
   );
 });
 
-test('rejects an unavailable expected runtime even when another iOS runtime is installed', () => {
+const acceptedHostProfiles = [
+  {
+    macosVersion: '26.6.2',
+    developerDir: '/Applications/Xcode_26.2.app/Contents/Developer',
+    xcodeVersion: '26.2',
+    simulatorSdk: '26.2',
+    runtime: runtime26,
+    device: transcriptionSimulator,
+  },
+  ...['27.0', '27.0.1', '27.3.4', '99.17.42'].map((macosVersion) => ({
+    macosVersion,
+    developerDir: '/Applications/Xcode.app/Contents/Developer',
+    xcodeVersion: '27.0',
+    simulatorSdk: '27.0',
+    runtime: runtime27,
+    device: currentSimulator,
+  })),
+];
+
+for (const profile of acceptedHostProfiles) {
+  test(`records macOS ${profile.macosVersion} without gating the pinned toolchain`, () => {
+    // The OS release is evidence/cache identity; exact Xcode and Simulator pins remain the gate.
+    const result = runToolchainCheck(
+      {
+        DEVELOPER_DIR: profile.developerDir,
+        SIMULATED_MACOS_VERSION: profile.macosVersion,
+        EXPECTED_XCODE_VERSION: profile.xcodeVersion,
+        EXPECTED_IOS_SIMULATOR_SDK: profile.simulatorSdk,
+        EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: profile.runtime.name,
+        EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: profile.runtime.identifier,
+        EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: profile.device.name,
+        EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: profile.device.deviceTypeIdentifier,
+      },
+      {
+        availableRuntimes: [runtime27, runtime26],
+        availableDevices: {
+          [runtime27.identifier]: [currentSimulator],
+          [runtime26.identifier]: [transcriptionSimulator],
+        },
+      },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(
+      result.stdout.includes(
+        `Observed macOS release ${profile.macosVersion} (cache identity, not a gate); verified Xcode ${profile.xcodeVersion}`,
+      ),
+    );
+    assert.ok(result.stdout.includes(`device ${profile.device.name}`));
+    // Keep the complete observed release in the output consumed by cache keys and evidence.
+    assert.equal(
+      result.githubOutput,
+      `macos_version=${profile.macosVersion}\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint(profile.xcodeVersion)}\n`,
+    );
+  });
+}
+
+test('still rejects a missing pinned Simulator runtime on macOS 99.17.42', () => {
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '26',
-      SIMULATED_MACOS_VERSION: '26.6.2',
+      SIMULATED_MACOS_VERSION: '99.17.42',
       EXPECTED_XCODE_VERSION: '26.2',
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
@@ -64,62 +119,56 @@ test('rejects an unavailable expected runtime even when another iOS runtime is i
       availableDevices: { [runtime27.identifier]: [currentSimulator] },
     },
   );
+
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Toolchain mismatch for iOS-Simulator-runtime/);
 });
 
-test('rejects a different macOS major even when the pinned Xcode and runtime exist', () => {
-  const result = runToolchainCheck(
-    {
-      DEVELOPER_DIR: '/Applications/Xcode_26.2.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '26',
-      SIMULATED_MACOS_VERSION: '27.0',
-      EXPECTED_XCODE_VERSION: '26.2',
-      EXPECTED_IOS_SIMULATOR_SDK: '26.2',
-      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
-      EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime26.identifier,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
-    },
-    {
-      availableRuntimes: [runtime26],
-      availableDevices: { [runtime26.identifier]: [transcriptionSimulator] },
-    },
-  );
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Toolchain mismatch for macOS: expected 26\.x, got 27\.0/);
-});
-
-test('keeps the existing default Release toolchain and Simulator expectation', () => {
-  // Omit runtime/device overrides to prove the shell defaults reach Node selectors.
+test('still rejects a missing pinned Simulator device on macOS 99.17.42', () => {
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '27.0',
+      SIMULATED_MACOS_VERSION: '99.17.42',
+      EXPECTED_XCODE_VERSION: '27.0',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: runtime27.name,
+      EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime27.identifier,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: currentSimulator.name,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: currentSimulator.deviceTypeIdentifier,
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [] },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for iOS-Simulator-device/);
+});
+
+test('still rejects a mismatched Xcode version on macOS 99.17.42', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      SIMULATED_MACOS_VERSION: '99.17.42',
+      SIMULATED_XCODE_VERSION: '28.0',
       EXPECTED_XCODE_VERSION: '27.0',
       EXPECTED_IOS_SIMULATOR_SDK: '27.0',
     },
     {
-      availableRuntimes: [runtime27, runtime26],
-      availableDevices: {
-        [runtime27.identifier]: [currentSimulator],
-        [runtime26.identifier]: [transcriptionSimulator],
-      },
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [currentSimulator] },
     },
   );
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /macOS 27\.0, Xcode 27\.0/);
-  assert.match(result.stdout, /device iPhone 18 Pro/);
-  assert.equal(
-    result.githubOutput,
-    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0')}\n`,
-  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for Xcode: expected 27\.0, got 28\.0/);
 });
 
 test('includes the complete Xcode build string in its cache fingerprint', () => {
   const profile = {
     DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
-    EXPECTED_MACOS_VERSION: '27.0',
+    SIMULATED_MACOS_VERSION: '27.0',
     EXPECTED_XCODE_VERSION: '27.0',
     EXPECTED_IOS_SIMULATOR_SDK: '27.0',
     SIMULATED_XCODE_BUILD_VERSION: 'different-build',
