@@ -45,9 +45,11 @@ export interface ChatGPTAccountSetup {
   readonly actionTitle: string;
   readonly busy: boolean;
   readonly signingIn: boolean;
+  readonly signingOut: boolean;
   readonly actionDisabled: boolean;
   readonly onAccountSelected: (issuedClientID: string) => void;
   readonly onAction: () => void;
+  readonly onSignOut: (issuedClientID: string) => void;
   readonly onCancelSignIn: () => void;
 }
 

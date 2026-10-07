@@ -28,6 +28,8 @@ export const providerSelectionText = {
   chatGPTNoAccounts: t('provider.selection.chatGPTNoAccounts'),
   chatGPTAccountSignedIn: t('provider.selection.chatGPTAccountSignedIn'),
   chatGPTAccountSignedOut: t('provider.selection.chatGPTAccountSignedOut'),
+  chatGPTAccountName: (accountNumber: number) =>
+    t('provider.selection.chatGPTAccountName', { accountNumber }),
   chatGPTAccountMissingScope: t(
     'provider.selection.chatGPTAccountMissingScope',
   ),
@@ -38,6 +40,16 @@ export const providerSelectionText = {
   chatGPTCancelLogin: t('provider.selection.chatGPTCancelLogin'),
   chatGPTChecking: t('provider.selection.chatGPTChecking'),
   chatGPTLoginSuccess: t('provider.selection.chatGPTLoginSuccess'),
+  chatGPTSignOutAccount: (accountNumber: number) =>
+    t('provider.selection.chatGPTSignOutAccount', { accountNumber }),
+  chatGPTSigningOut: (accountNumber: number) =>
+    t('provider.selection.chatGPTSigningOut', { accountNumber }),
+  chatGPTSignOutRemoteConfirmed: (accountNumber: number) =>
+    t('provider.selection.chatGPTSignOutRemoteConfirmed', { accountNumber }),
+  chatGPTSignOutLocalOnly: (accountNumber: number) =>
+    t('provider.selection.chatGPTSignOutLocalOnly', { accountNumber }),
+  chatGPTSignOutFailed: (accountNumber: number) =>
+    t('provider.selection.chatGPTSignOutFailed', { accountNumber }),
   chatGPTModelsLoaded: t('provider.selection.chatGPTModelsLoaded'),
   chatGPTModelsUnavailable: t('provider.selection.chatGPTModelsUnavailable'),
   chatGPTLoginCancelled: t('provider.selection.chatGPTLoginCancelled'),

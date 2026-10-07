@@ -202,7 +202,8 @@ function resolutionMessage(
 
 const styles = StyleSheet.create({
   scrollView: { flex: 1 },
-  container: { flex: 1, gap: 12, padding: 24, backgroundColor: '#f7f8fa' },
+  // Account rows and disclosures must remain scrollable in short viewports.
+  container: { flexGrow: 1, gap: 12, padding: 24, backgroundColor: '#f7f8fa' },
   title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
   introduction: { color: '#45515f', fontSize: 15 },
 });
