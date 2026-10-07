@@ -26,6 +26,10 @@ switch (selectEntryRoute(launchSettings)) {
   case 'checkpoint':
     require('./checkpointProbeEntry');
     break;
+  case 'safe-area':
+    // Keep keyboard and large-text checks synthetic and free of provider permissions.
+    require('./safeAreaProbeEntry');
+    break;
   case 'storage':
     require('./storageProbeEntry');
     break;
