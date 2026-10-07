@@ -1,22 +1,5 @@
 {
   "schemaVersion": 3,
-  "jdk": {
-    "version": "17.0.20.1+1",
-    "platforms": {
-      "darwin-arm64": {
-        "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.20.1_1.tar.gz",
-        "sha256": "196d13ba5f10414bef7f6a05a9b3f00edacb18ebacef2b99485db9e2ee18f0e8",
-        "archiveHome": "jdk-17.0.20.1+1/Contents/Home",
-        "cacheHome": "Contents/Home"
-      },
-      "linux-x64": {
-        "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz",
-        "sha256": "3808d1d15e3ec6bd5b84057fb5d84c33d8a1536a258146bcea2e603fc726e08e",
-        "archiveHome": "jdk-17.0.20.1+1",
-        "cacheHome": "linux-x64"
-      }
-    }
-  },
   "tools": {
     "swiftformat": {
       "version": "0.62.1",
@@ -67,22 +50,6 @@
           "url": "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64",
           "sha256": "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1",
           "binary": "shfmt"
-        }
-      }
-    },
-    "ktlint": {
-      "version": "1.8.0",
-      "platform": "linux",
-      "assets": {
-        "darwin-arm64": {
-          "url": "https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint",
-          "sha256": "a3fd620207d5c40da6ca789b95e7f823c54e854b7fade7f613e91096a3706d75",
-          "binary": "ktlint"
-        },
-        "linux-x64": {
-          "url": "https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint",
-          "sha256": "a3fd620207d5c40da6ca789b95e7f823c54e854b7fade7f613e91096a3706d75",
-          "binary": "ktlint"
         }
       }
     },
