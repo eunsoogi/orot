@@ -69,6 +69,9 @@ export default function MedicalAppointmentClassificationScreen({
     setLoading(true);
     setEvents([]);
     setCandidates([]);
+    // Batch counts describe the current candidate set, so clear them with the list.
+    setCompletedBatches(0);
+    setTotalBatches(0);
     setSavedIds(new Set());
     setAccessAvailable(false);
     setMessage('');
