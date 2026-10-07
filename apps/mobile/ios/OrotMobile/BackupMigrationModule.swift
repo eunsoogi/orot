@@ -44,34 +44,6 @@ enum RecordingBackupEligibility {
     }
 }
 
-private struct DatabaseKeychainItem {
-    let data: Data
-    let accessibility: String
-}
-
-private enum BackupMigrationFailure: LocalizedError {
-    case keychainRead(OSStatus)
-    case keychainWrite(OSStatus)
-    case invalidKeychainItem
-    case unsupportedAccessibility
-    case invalidDatabaseLocation
-
-    var errorDescription: String? {
-        switch self {
-        case let .keychainRead(status):
-            "The database key could not be read from Keychain (\(status))."
-        case let .keychainWrite(status):
-            "The database key accessibility could not be updated (\(status))."
-        case .invalidKeychainItem:
-            "The database key item could not be verified."
-        case .unsupportedAccessibility:
-            "The database key has an unsupported accessibility setting."
-        case .invalidDatabaseLocation:
-            "The encrypted database location could not be verified."
-        }
-    }
-}
-
 @objc(BackupMigrationModule)
 public final class BackupMigrationModule: NSObject {
     private static let keychainService = "com.orot.mobile.database-encryption-key.v1"
@@ -104,6 +76,19 @@ public final class BackupMigrationModule: NSObject {
             return Self.isValidKey(item.data) && item.accessibility == Self.backupAccessibility
         }
     }
+
+    #if OROT_BACKUP_PROBE_TEST
+        static func backupKeyAccessibilityForProbe() throws -> String {
+            guard let item = try readDatabaseKey() else { return "missing" }
+            if item.accessibility == oldAccessibility {
+                return "this-device-only"
+            }
+            if item.accessibility == backupAccessibility {
+                return "when-unlocked"
+            }
+            return "other"
+        }
+    #endif
 
     @objc(databaseFileState:location:resolver:rejecter:)
     public func databaseFileState(
@@ -169,7 +154,15 @@ public final class BackupMigrationModule: NSObject {
                 kSecValueData as String: previous.data,
             ] as CFDictionary,
         )
-        guard let updated = try readDatabaseKey(),
+        #if OROT_BACKUP_PROBE_TEST
+            // Hide only the first post-update readback so the real rollback path runs.
+            let updated = try BackupMigrationProbeSupport.readAfterSuccessfulUpdate(status: status) {
+                try readDatabaseKey()
+            }
+        #else
+            let updated = try readDatabaseKey()
+        #endif
+        guard let updated,
               updated.data == previous.data,
               updated.accessibility == backupAccessibility
         else {

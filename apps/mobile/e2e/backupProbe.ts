@@ -3,7 +3,6 @@ import {
   getGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
-import { NativeModules } from 'react-native';
 import {
   isDatabaseKeyBackupEligible,
   migrateDatabaseKeyForBackup,
@@ -19,42 +18,20 @@ import { saveRecordingSource } from '../src/recording/recordingPersistence';
 import { openLocalStorage } from '../src/storage/secureDatabase';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import syntheticFixture from './transcription/fixtures/synthetic-korean.json';
+import {
+  prepareLegacyRecording,
+  runKeyRollbackProbe,
+  verifyRollbackRecovery,
+} from './backupProbeRecording';
+import { recoverSnapshotProbe, seedSnapshotProbe } from './backupProbeSnapshot';
+import type { BackupProbeMode, BackupProbeResult } from './backupProbeTypes';
+
+export { getBackupProbeMode } from './backupProbeConfig';
+export type { BackupProbeMode, BackupProbeResult } from './backupProbeTypes';
 
 // This probe targets the stable native service without ever displaying its secret value.
 const databaseKeyService = 'com.orot.mobile.database-encryption-key.v1';
 const databaseKeyAccount = 'database';
-
-export type BackupProbeMode = 'seed' | 'recover';
-
-export interface BackupProbeResult {
-  readonly evidenceScope?: 'synthetic-simulator-process-restart';
-  readonly keyMigration?: string;
-  readonly keyPreserved?: boolean;
-  readonly keyEligible?: boolean;
-  readonly storageRelationsReopened?: boolean;
-  readonly agentMemoryTombstonePreserved?: boolean;
-  readonly recording?: {
-    readonly fileProtection: string;
-    readonly excludedFromBackup: boolean;
-    readonly strictPreparation: string;
-    readonly sourcePersisted: boolean;
-  };
-}
-
-export function getBackupProbeMode(): BackupProbeMode | null {
-  const settingsManager = (
-    NativeModules as unknown as {
-      SettingsManager?: {
-        settings?: Record<string, unknown>;
-        getConstants?: () => { settings?: Record<string, unknown> };
-      };
-    }
-  ).SettingsManager;
-  const settings =
-    settingsManager?.settings ?? settingsManager?.getConstants?.().settings;
-  const value = settings?.OROT_BACKUP_PROBE;
-  return value === 'seed' || value === 'recover' ? value : null;
-}
 
 async function readDatabaseKey() {
   const credentials = await getGenericPassword({ service: databaseKeyService });
@@ -199,7 +176,20 @@ async function verifyRecoveryAndBackupEligibility(): Promise<BackupProbeResult> 
 export function runBackupProbe(
   mode: BackupProbeMode,
 ): Promise<BackupProbeResult> {
-  return mode === 'seed'
-    ? seedInterruptedMigration()
-    : verifyRecoveryAndBackupEligibility();
+  switch (mode) {
+    case 'seed':
+      return seedInterruptedMigration();
+    case 'recover':
+      return verifyRecoveryAndBackupEligibility();
+    case 'legacy-recording':
+      return prepareLegacyRecording();
+    case 'rollback':
+      return runKeyRollbackProbe();
+    case 'rollback-recover':
+      return verifyRollbackRecovery();
+    case 'snapshot-seed':
+      return seedSnapshotProbe();
+    case 'snapshot-recover':
+      return recoverSnapshotProbe();
+  }
 }

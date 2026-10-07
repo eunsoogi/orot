@@ -27,7 +27,7 @@ module.exports = {
       build:
         'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ' +
         derivedDataPath +
-        " CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements OTHER_SWIFT_FLAGS='$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST' ENTRY_FILE=e2e/backupProbeEntry.tsx",
+        " CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements GCC_PREPROCESSOR_DEFINITIONS='$(inherited) OROT_BACKUP_PROBE_TEST=1' OTHER_SWIFT_FLAGS='$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST -DOROT_BACKUP_PROBE_TEST' ENTRY_FILE=e2e/backupProbeEntry.tsx",
     },
   },
   devices: {
