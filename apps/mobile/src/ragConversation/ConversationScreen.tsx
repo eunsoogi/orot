@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { ragConversationCopy as copy } from './copy';
+import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
 import type { RagConversationOutcome } from './service';
 
@@ -33,6 +33,7 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
 }: ConversationScreenProps) {
+  const copy = getRagConversationCopy();
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<readonly DisplayMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -85,7 +86,7 @@ export function ConversationScreen({
       contentContainerStyle={styles.container}
       testID="rag-conversation-screen"
     >
-      <Button onPress={onBack} title="뒤로" />
+      <Button onPress={onBack} title={copy.back} />
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -93,7 +94,7 @@ export function ConversationScreen({
       {messages.map(message => (
         <View key={message.id} style={styles.message}>
           <Text style={styles.role}>
-            {message.role === 'user' ? '나' : 'Orot'}
+            {message.role === 'user' ? copy.speakerUser : 'Orot'}
           </Text>
           <Text>{message.content}</Text>
           {message.citations?.map(reference => (
@@ -103,7 +104,7 @@ export function ConversationScreen({
               onPress={() => onOpenSource(reference)}
             >
               <Text style={styles.source}>
-                {copy.source} · {reference.sourceId}
+                {copy.source(reference.sourceId)}
               </Text>
             </Pressable>
           ))}

@@ -139,7 +139,7 @@ test('reuses only the exact production app while OAuth package and harness check
     ciWorkflow,
     'Build the standalone ChatGPT OAuth Simulator harness',
   );
-  assert.match(ciWorkflow, /EXPECTED_MACOS_VERSION: '27'/);
+  assert.doesNotMatch(ciWorkflow, /EXPECTED_MACOS_VERSION/);
   const indices = [
     ciWorkflow.indexOf('- name: Compute production app cache fingerprints'),
     ciWorkflow.indexOf('- name: Cache production app DerivedData and CocoaPods'),

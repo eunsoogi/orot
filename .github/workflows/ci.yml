@@ -34,8 +34,7 @@ env:
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  # Use the hosted runner family for validation; cache identity records the actual patch.
-  EXPECTED_MACOS_VERSION: '27'
+  # Validate pinned build tools while recording the actual runner release for cache identity.
   EXPECTED_XCODE_VERSION: '27.0'
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
 
