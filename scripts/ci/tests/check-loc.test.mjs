@@ -75,6 +75,19 @@ test('exactly 250 physical lines pass and 251 fail', (t) => {
   assert.match(failing.output, /FAIL UNTRACKED "src\/boundary\.ts" lines=251 limit=250/);
 });
 
+test('checks Ruby source extensions against the shared physical-line limit', (t) => {
+  const repo = repository();
+  clean(t, repo.root);
+  const rubyPath = 'scripts/ci/cocoapods-null-byte-diagnostic.rb';
+  put(repo.root, rubyPath, 'source\n'.repeat(251));
+  const result = run(repo.root, '--base', repo.base);
+  assert.equal(result.status, 1, result.output);
+  assert.match(
+    result.output,
+    /FAIL UNTRACKED "scripts\/ci\/cocoapods-null-byte-diagnostic\.rb" lines=251 limit=250/,
+  );
+});
+
 test('reports every over-limit changed path', (t) => {
   const repo = repository();
   clean(t, repo.root);

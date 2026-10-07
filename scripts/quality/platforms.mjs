@@ -66,19 +66,6 @@ export function selectQualityTools(versions, hostKey, platform) {
     };
   }
 
-  const jdkAsset = versions.jdk.platforms?.[hostKey];
-  if (!jdkAsset || !/^[a-f0-9]{64}$/.test(jdkAsset.sha256)) {
-    throw new Error(`No valid JDK pin is configured for ${hostKey}`);
-  }
-  const jdk = {
-    ...jdkAsset,
-    version: versions.jdk.version,
-    cachePath: join('jdk', versions.jdk.version, jdkAsset.cacheHome),
-  };
-  return {
-    hostKey,
-    platform,
-    tools,
-    jdk,
-  };
+  // Ruby checks use the pinned Gemfile; this selection contains only downloaded quality binaries.
+  return { hostKey, platform, tools };
 }

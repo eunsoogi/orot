@@ -1,4 +1,4 @@
-import type { EvidenceBatch } from './contracts';
+import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
 import {
   hasIncompleteCoverage,
   referencesFromBatch,
@@ -11,7 +11,7 @@ import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 
-// Search is a deterministic local read; the model only selects its allowlisted ID and typed input.
+// Search remains read-only; the external adapter obtains query-specific approval before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const { options } = context;
 
@@ -72,6 +72,14 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       if (searched.kind === 'error') {
         stop(context, 'The allowlisted evidence search failed.', 'unavailable');
+        return completeState();
+      }
+      if (requiresExternalConsent(searched.value)) {
+        stop(
+          context,
+          'User approval is required before the external evidence query can run.',
+          'consent_required',
+        );
         return completeState();
       }
       batch = searched.value;
@@ -143,6 +151,12 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   };
 
   return { prepareSearch, executeSearch };
+}
+
+function requiresExternalConsent(
+  outcome: EvidenceSearchOutcome,
+): outcome is { readonly status: 'consent_required' } {
+  return 'status' in outcome && outcome.status === 'consent_required';
 }
 
 async function evidenceIsFresh<TResult>(

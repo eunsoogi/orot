@@ -6,6 +6,7 @@ import Network
 public final class LoopbackCallbackServer: @unchecked Sendable {
     private let lock = NSLock()
     private let queue = DispatchQueue(label: "com.orot.oauth-spike.loopback")
+    private let returnsToApp: Bool
     private var listener: NWListener?
     private var readyContinuation: CheckedContinuation<URL, Error>?
     private var callbackContinuation: CheckedContinuation<URL, Error>?
@@ -13,7 +14,10 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
     private var port: NWEndpoint.Port?
 
     /// Creates a one-shot IPv4 loopback listener for the OAuth redirect.
-    public init() {}
+    /// Successful callbacks redirect only to Orot's fixed, secret-free authentication-session return URL.
+    public init(returnsToApp: Bool = false) {
+        self.returnsToApp = returnsToApp
+    }
 
     public func start() async throws -> URL {
         let parameters = NWParameters.tcp
@@ -157,7 +161,13 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
             respond(404, body: "로그인 응답을 찾지 못했습니다. Orot 앱으로 돌아가세요.", on: connection)
             return
         }
-        respond(200, body: "로그인 응답을 받았습니다. Orot 앱으로 돌아가세요.", on: connection) { [weak self] in
+        let status = returnsToApp ? 302 : 200
+        respond(
+            status,
+            body: "로그인 응답을 받았습니다. Orot 앱으로 돌아가세요.",
+            on: connection,
+            redirectTo: returnsToApp ? ChatGPTOAuthConstants.appReturnURL : nil,
+        ) { [weak self] in
             self?.finishCallback(.success(callbackURL))
             self?.stop()
         }
@@ -167,12 +177,30 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
         _ status: Int,
         body: String,
         on connection: NWConnection,
+        redirectTo: URL? = nil,
         completion: @escaping @Sendable () -> Void = {},
     ) {
-        let reason = status == 200 ? "OK" : (status == 404 ? "Not Found" : "Bad Request")
+        let reason = switch status {
+        case 200: "OK"
+        case 302: "Found"
+        case 404: "Not Found"
+        default: "Bad Request"
+        }
         let bodyData = Data(body.utf8)
+        var headers = [
+            "Content-Type: text/plain; charset=utf-8",
+            "Content-Length: \(bodyData.count)",
+            "Connection: close",
+        ]
+        if let redirectTo {
+            headers.append(contentsOf: [
+                "Location: \(redirectTo.absoluteString)",
+                "Cache-Control: no-store",
+                "Referrer-Policy: no-referrer",
+            ])
+        }
         var response = Data(
-            "HTTP/1.1 \(status) \(reason)\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: \(bodyData.count)\r\nConnection: close\r\n\r\n".utf8,
+            "HTTP/1.1 \(status) \(reason)\r\n\(headers.joined(separator: "\r\n"))\r\n\r\n".utf8,
         )
         response.append(bodyData)
         connection.send(content: response, completion: .contentProcessed { _ in
