@@ -92,7 +92,26 @@ test('saves validated app products before E2E tests can fail the job', () => {
   const restorePath = cachePathBlock(restoreAction);
   const savePath = cachePathBlock(saveAction);
   assert.equal(restorePath, savePath, 'restore and save must use the same cache allowlist');
-  assert.match(save, /cache-hit != 'true'/);
-  assert.match(save, /write_derived_data_cache\.outcome == 'success'/);
-  assert.match(save, /profile_derived_data_cache\.outputs\.cache-primary-key/);
+  const saveKey = save.match(/^\s+key:\s*(.+)$/m)?.[1];
+  // Bind the truth table to the actual workflow expression so OR cannot weaken either guard.
+  assert.equal(
+    saveKey,
+    "${{ steps.profile_derived_data_cache.outputs.cache-hit != 'true' && steps.write_derived_data_cache.outcome == 'success' && steps.profile_derived_data_cache.outputs.cache-primary-key || '' }}",
+  );
+  const saveKeyCases = [
+    {
+      cacheHit: 'false',
+      manifestOutcome: 'success',
+      primaryKey: 'profile-key',
+      expected: 'profile-key',
+    },
+    { cacheHit: 'true', manifestOutcome: 'success', primaryKey: 'profile-key', expected: '' },
+    { cacheHit: 'false', manifestOutcome: 'failure', primaryKey: 'profile-key', expected: '' },
+    { cacheHit: 'false', manifestOutcome: 'skipped', primaryKey: 'profile-key', expected: '' },
+    { cacheHit: 'false', manifestOutcome: 'success', primaryKey: '', expected: '' },
+  ];
+  for (const { cacheHit, manifestOutcome, primaryKey, expected } of saveKeyCases) {
+    const key = cacheHit !== 'true' && manifestOutcome === 'success' ? primaryKey : '';
+    assert.equal(key, expected);
+  }
 });

@@ -103,11 +103,16 @@ test('connects a dedicated Simulator, native app cache, and required aggregate f
     join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
     'utf8',
   );
+  const profileAppCacheAction = readFileSync(
+    join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+    'utf8',
+  );
 
   assert.match(simulatorSetup, /OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID/);
   assert.match(builder, /ios\.sim\.release\.transcription/);
   assert.match(profileWorkflow, /inputs\.profile == 'transcription'/);
-  assert.match(profileWorkflow, /build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/);
+  // The profile workflow delegates its app path allowlist to the shared cache action.
+  assert.match(profileAppCacheAction, /build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/);
   assert.match(profilesWorkflow, /detox_transcription_e2e:[\s\S]*?profile: transcription/);
   assert.match(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
 });
