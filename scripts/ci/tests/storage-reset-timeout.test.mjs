@@ -28,7 +28,7 @@ async function registerStorageCases() {
     },
     require(modulePath) {
       assert.equal(modulePath, './storageProbeResetGuard.e2e.js');
-      return { createStorageResetGuard: () => ({}) };
+      return { createStorageResetGuard: () => ({}), installFreshApp: async () => {} };
     },
   };
 
@@ -46,7 +46,7 @@ test('only fresh-reset storage cases receive the four-minute Jest deadline', asy
     "it('reopens a source and its evidence span after an app process restart'",
   );
   const migrationCaseStart = source.indexOf(
-    "it('migrates the earlier test schema on fresh install'",
+    "it(\n    'migrates the earlier test schema on fresh install'",
   );
   const restartCaseSource = source.slice(restartCaseStart, migrationCaseStart);
 
@@ -67,7 +67,7 @@ test('only fresh-reset storage cases receive the four-minute Jest deadline', asy
   assert.doesNotMatch(restartCaseSource, /installFreshApp/);
   assert.match(
     source,
-    /it\(\s*'migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(device, resetGuard\);[\s\S]*?await expectProbeSuccess\('legacy'\);/,
+    /it\([\s\S]*?'migrates the earlier test schema on fresh install'[\s\S]*?await installFreshApp\(device, resetGuard\);[\s\S]*?await expectProbeSuccess\('legacy'\);/,
   );
   assert.match(source, /async function expectProbeSuccess\(mode\)[\s\S]*?withTimeout\(30000\)/);
 });

@@ -21,9 +21,10 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     });
     // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
     await device.disableSynchronization();
+    const reportElement = element(by.id('transcription-probe-report'));
     let nativeProbeFailure;
     try {
-      await verifyNativeSpeechProbe();
+      await verifyNativeSpeechProbe(reportElement);
     } catch (failure) {
       // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
       nativeProbeFailure = failure;
@@ -201,7 +202,8 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
 
     try {
       // The native probe runs asynchronously while the synthetic review flow is exercised.
-      await verifyFinalNativeSpeechProbe();
+      // Keep its terminal verdict inside Jest's test window and leave the cleanup attempt reachable.
+      await verifyFinalNativeSpeechProbe(reportElement, { timeoutMs: 120000 });
     } catch (failure) {
       nativeProbeFailure ??= failure;
     }
