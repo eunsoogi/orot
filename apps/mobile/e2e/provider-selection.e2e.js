@@ -7,6 +7,7 @@ const {
 const {
   tapLoopbackConsentContinue,
 } = require('./providerSelectionSystemConsent');
+const scrollToConfirmation = require('./providerSelectionScroll');
 
 describe('provider selection on iOS Simulator', () => {
   it('returns from auth, refreshes synthetic account state, and restores explicit selection', async () => {
@@ -114,8 +115,7 @@ describe('provider selection on iOS Simulator', () => {
     const selectionScreen = element(by.id('provider-selection-screen'));
     const lastOption = element(by.id('provider-option-12'));
     await waitFor(lastOption).toExist().withTimeout(120000);
-    // The confirmation follows the long synthetic model catalog in one scroll view.
-    await selectionScreen.scrollTo('bottom');
+    await scrollToConfirmation(selectionScreen, device);
     const confirmation = element(by.id('provider-selection-confirm'));
     await waitFor(confirmation).toBeVisible().withTimeout(120000);
     const privacy = element(by.id('provider-selection-confirmation-privacy'));
