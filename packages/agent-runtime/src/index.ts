@@ -9,6 +9,36 @@ export {
 } from './localRecordQueryService';
 export { createLocalRecordQueryTools } from './localRecordQueryTools';
 export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
+export { runMultiAgentWorkflow } from './multiAgent/workflow';
+export {
+  createLocalObservationEvidenceTool,
+  createLocalTranscriptEvidenceTool,
+} from './multiAgent/localQueryEvidence';
+export type {
+  AllowedEvidenceScope,
+  ConsentDecision,
+  EvidenceBatch,
+  EvidenceCoverage,
+  EvidenceItem,
+  EvidenceNeed,
+  EvidenceReference,
+  EvidenceSearchRequest,
+  EvidenceSearchTool,
+  EvidenceSourceKind,
+  ExecutionConsentPort,
+  MultiAgentBudget,
+  MultiAgentCheckpointState,
+  MultiAgentExecutionIdentity,
+  MultiAgentInvocation,
+  MultiAgentPhase,
+  MultiAgentRunResult,
+  MultiAgentWorkflowOptions,
+  OutboundProcessingRequest,
+  TaskResponderContract,
+  TaskResponderInput,
+  TaskResultValidation,
+} from './multiAgent/contracts';
+export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './multiAgent/contracts';
 
 export type {
   LocalAppointmentQueryResult,
