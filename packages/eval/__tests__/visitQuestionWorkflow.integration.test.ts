@@ -26,7 +26,6 @@ const {
   toLangSmithRevisionMetadata,
 } = require('../../../scripts/evaluation/visit-questions/revision.cjs');
 const repoRoot = path.resolve(__dirname, '../../..');
-const evaluationSuite = process.env.OROT_RUN_VISIT_QUESTION_EVAL === '1' ? describe : describe.skip;
 
 /** Uploads only allowlisted outputs previously produced by the local app graph. */
 async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any>, revisions: any) {
@@ -64,7 +63,8 @@ async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any
   return dataset;
 }
 
-evaluationSuite('manual synthetic visit-question graph evaluation', () => {
+// The dedicated runner opts this suite in through Jest config instead of reporting a skipped test.
+describe('manual synthetic visit-question graph evaluation', () => {
   it('runs the actual #30 graph and optionally uploads allowlisted results', async () => {
     disableAmbientTracing(process.env);
     const fixture = createSyntheticVisitQuestionFixture(FIXTURE_SEED);
