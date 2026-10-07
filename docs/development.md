@@ -51,7 +51,7 @@ node scripts/ci/check-loc.mjs --all
 
 The repository policy is in [`scripts/ci/loc-policy.json`](../scripts/ci/loc-policy.json). It counts physical lines, including comments and blank lines: 250 passes and 251 fails. It includes maintained application and package source, tests, scripts, and executable configuration. Documentation, lockfiles, generated/vendor/build output, binary assets, and serialized Xcode project metadata have explicit exclusion reasons. Unknown changed file types and missing Git history fail the check.
 
-GitHub Actions runs this check in the `Quality` job of workflow `CI`. The other CI jobs are `iOS Simulator Build` and `Detox iOS E2E`.
+GitHub Actions runs this check on the Linux `Quality` aggregate in workflow `CI`. That required check fails closed unless the complete `Quality Linux` job succeeds. The other required checks are `iOS Simulator Build` and `Detox iOS E2E`.
 
 ## iOS 빌드
 
