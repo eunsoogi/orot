@@ -6,7 +6,7 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 
 | 도구 | 버전 |
 | --- | --- |
-| macOS | 27.0 |
+| macOS | 버전은 진단 및 캐시 식별에 기록하며 고정하지 않음 |
 | Node.js | 22.23.2 (`.nvmrc`; React Native는 22.13 이상 필요) |
 | pnpm | 12.3.4 |
 | React Native / React | 0.87.1 / 19.2.3 |

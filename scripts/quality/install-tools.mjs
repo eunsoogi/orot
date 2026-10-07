@@ -104,87 +104,23 @@ async function ensureAsset(name, spec, runtimeEnv) {
   }
 }
 
-async function ensureJdk(spec, runtimeEnv) {
-  const home = join(cache, spec.cachePath);
-  const java = join(home, 'bin/java');
-  try {
-    await stat(java);
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    const parent = dirname(home);
-    await mkdir(parent, { recursive: true });
-    const temporary = await mkdtemp(join(parent, '.install-'));
-    try {
-      const archive = join(temporary, basename(new URL(spec.url).pathname));
-      run('curl', [
-        '--fail',
-        '--location',
-        '--retry',
-        '3',
-        '--connect-timeout',
-        '30',
-        '--max-time',
-        '300',
-        spec.url,
-        '--output',
-        archive,
-      ]);
-      const actualHash = await sha256(archive);
-      if (actualHash !== spec.sha256)
-        throw new Error(`JDK archive SHA-256 mismatch: ${actualHash}`);
-      run('tar', ['-xzf', archive, '-C', temporary]);
-      const extractedHome = resolve(temporary, spec.archiveHome);
-      if (!extractedHome.startsWith(`${temporary}${sep}`)) {
-        throw new Error('JDK archive home escapes its temporary install directory');
-      }
-      await stat(join(extractedHome, 'bin/java'));
-      await mkdir(dirname(home), { recursive: true });
-      // Publish the cached JDK only after its archive hash and expected executable path pass.
-      await rename(extractedHome, home);
-    } finally {
-      await rm(temporary, { recursive: true, force: true });
-    }
-  }
-  const env = {
-    ...runtimeEnv,
-    JAVA_HOME: home,
-    PATH: `${join(home, 'bin')}${process.platform === 'win32' ? ';' : ':'}${runtimeEnv.PATH || ''}`,
-  };
-  const version = run(java, ['-version'], { env });
-  if (!version.includes(spec.version.split('+')[0]))
-    throw new Error(`JDK reports ${version}; expected ${spec.version}`);
-  return { home, env };
-}
-
 async function main() {
   const { platform: requestedPlatform, remaining } = parsePlatformArgument(process.argv.slice(2));
   if (remaining.length > 0) throw new Error('Use only --platform all or --platform linux');
   const selection = selectQualityTools(versions, platform, requestedPlatform);
   await mkdir(cache, { recursive: true });
 
-  let runtimeEnv = process.env;
-  if (selection.jdk) {
-    // Keep JDK lookup and its PATH/JAVA_HOME contract together for every selected platform.
-    ({ env: runtimeEnv } = await ensureJdk(selection.jdk, process.env));
-  }
   for (const [name, spec] of Object.entries(selection.tools)) {
-    await ensureAsset(name, spec, runtimeEnv);
+    await ensureAsset(name, spec, process.env);
   }
-  if (selection.jdk) {
-    const env = { ...runtimeEnv, BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile') };
-    run('bundle', ['install', '--jobs', '4', '--retry', '3'], { env });
-    const rubocop = run('bundle', ['exec', 'rubocop', '--version'], { env });
-    if (!rubocop.includes('1.91.0')) {
-      throw new Error(`RuboCop reports ${rubocop}; expected 1.91.0`);
-    }
-    const groovyPackage = JSON.parse(
-      await readFile(join(root, 'node_modules/npm-groovy-lint/package.json'), 'utf8'),
-    );
-    if (groovyPackage.version !== '18.0.0') {
-      throw new Error(`npm-groovy-lint package is ${groovyPackage.version}; expected 18.0.0`);
-    }
-    console.log(`Ruby tools are locked by ${env.BUNDLE_GEMFILE}.`);
+  // Podfile and Gemfile remain iOS quality surfaces and use their own locked Ruby toolchain.
+  const env = { ...process.env, BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile') };
+  run('bundle', ['install', '--jobs', '4', '--retry', '3'], { env });
+  const rubocop = run('bundle', ['exec', 'rubocop', '--version'], { env });
+  if (!rubocop.includes('1.91.0')) {
+    throw new Error(`RuboCop reports ${rubocop}; expected 1.91.0`);
   }
+  console.log(`Ruby tools are locked by ${env.BUNDLE_GEMFILE}.`);
 
   console.log(`Pinned ${requestedPlatform} quality tools installed for ${platform}.`);
 }

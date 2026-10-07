@@ -86,6 +86,31 @@ test('shows an insufficient-data state when the shared workflow finds gaps', asy
   expect(screen.getByText(/더 많은 기록이나 근거/)).toBeTruthy();
 });
 
+test('states when no additional information was found', async () => {
+  const outcome: DiseaseHypothesisRunOutcome = {
+    status: 'workflow',
+    result: {
+      status: 'result',
+      value: {
+        hypotheses: [{ ...analysis.hypotheses[0], missingData: [] }],
+      },
+      citations: [reference],
+      coverage: [],
+      checkpoint: {} as never,
+    },
+  };
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onGenerate={async () => outcome}
+      onOpenSource={jest.fn()}
+    />,
+  );
+
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(await screen.findByText('확인된 추가 정보가 없어요.')).toBeTruthy();
+});
+
 test('shows a recoverable error when analysis cannot run', async () => {
   const onGenerate = jest.fn(async () => {
     throw new Error('provider unavailable');

@@ -3,7 +3,6 @@ set -euo pipefail
 
 expected_node="${EXPECTED_NODE_VERSION:-22.23.2}"
 expected_pnpm="${EXPECTED_PNPM_VERSION:-12.3.4}"
-expected_macos="${EXPECTED_MACOS_VERSION:-27.0}"
 expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
 expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
 expected_simulator_runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
@@ -75,14 +74,8 @@ actual_node="$(node -p 'process.versions.node')"
 actual_pnpm="$(pnpm --version)"
 [[ "$actual_pnpm" == "$expected_pnpm" ]] || fail_version pnpm "$expected_pnpm" "$actual_pnpm"
 
+# Preserve the observed OS release; pinned Xcode, SDK, runtime, and host tools define compatibility.
 actual_macos="$(sw_vers -productVersion)"
-# Integer expectations validate rolling major families; dotted pins remain exact.
-if [[ "$expected_macos" =~ ^[0-9]+$ ]]; then
-  actual_macos_major="${actual_macos%%.*}"
-  [[ "$actual_macos_major" == "$expected_macos" ]] || fail_version macOS "${expected_macos}.x" "$actual_macos"
-else
-  [[ "$actual_macos" == "$expected_macos" ]] || fail_version macOS "$expected_macos" "$actual_macos"
-fi
 
 actual_developer_dir="${DEVELOPER_DIR:-}"
 expected_developer_dir="/Applications/Xcode.app/Contents/Developer"
@@ -131,7 +124,7 @@ if [[ "${1:-}" == "--cocoapods" ]]; then
   verify_cocoapods
 fi
 
-# Preserve the actual macOS patch for cache keys after validating the expected family.
+# Record the observed release for cache identity and diagnostics; pinned tools define compatibility.
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   printf 'macos_version=%s\n' "$actual_macos" >>"$GITHUB_OUTPUT"
   printf 'xcodebuild_fingerprint=%s\n' "$actual_xcodebuild_fingerprint" >>"$GITHUB_OUTPUT"
@@ -141,7 +134,7 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   printf 'XCODEBUILD_FINGERPRINT=%s\n' "$actual_xcodebuild_fingerprint" >>"$GITHUB_ENV"
 fi
 
-printf 'Verified macOS %s, Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
+printf 'Observed macOS release %s (cache identity, not a gate); verified Xcode %s (%s), iOS Simulator SDK %s, runtime %s, device %s, Node %s, pnpm %s\n' \
   "$actual_macos" "$actual_xcode" "$actual_developer_dir" "$actual_simulator_sdk" "$expected_simulator_runtime_name ($actual_simulator_runtime)" "$actual_simulator_device" "$actual_node" "$actual_pnpm"
 if [[ "${1:-}" == "--cocoapods" ]]; then
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
