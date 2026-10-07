@@ -3,62 +3,74 @@
   "surfaces": {
     "javascript": {
       "extensions": [".js", ".jsx", ".mjs", ".cjs"],
+      "platform": "linux",
       "lint": "eslint",
       "format": "prettier"
     },
     "typescript": {
       "extensions": [".ts", ".tsx"],
+      "platform": "linux",
       "lint": "workspace-eslint",
       "format": "prettier"
     },
     "swift": {
       "extensions": [".swift"],
+      "platform": "linux",
       "lint": "swiftformat",
       "format": "swiftformat"
     },
     "objective-c": {
       "extensions": [".m", ".mm", ".h", ".hpp", ".cc", ".cpp", ".c"],
+      "platform": "linux",
       "lint": "clang-format",
       "format": "clang-format"
     },
     "shell": {
       "extensions": [".sh", ".bash", ".zsh", ".command"],
+      "platform": "linux",
       "lint": "shellcheck",
       "format": "shfmt"
     },
     "kotlin": {
       "extensions": [".kt", ".kts"],
+      "platform": "linux",
       "lint": "ktlint",
       "format": "ktlint"
     },
     "groovy": {
       "extensions": [".gradle", ".groovy"],
+      "platform": "linux",
       "lint": "npm-groovy-lint",
       "format": "npm-groovy-lint"
     },
     "ruby": {
       "extensions": [".rb"],
+      "platform": "linux",
       "lint": "rubocop",
       "format": "rubocop"
     },
     "yaml": {
       "extensions": [".yaml", ".yml"],
+      "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier",
       "additionalLint": "actionlint-workflows"
     },
     "json": {
       "extensions": [".json", ".jsonc"],
+      "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier"
     },
     "xml": {
       "extensions": [".xml", ".plist", ".entitlements", ".storyboard", ".xcprivacy", ".svg"],
+      "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier"
     },
     "properties": {
       "extensions": [".properties"],
+      "platform": "linux",
       "lint": "prettier-parser",
       "format": "prettier"
     }

@@ -25,21 +25,39 @@ describe('Calendar appointment confirmation with a synthetic-only provider', () 
     await expect(element(by.id('appointment-add'))).not.toExist();
     await element(by.id('calendar-connect')).tap();
 
+    await element(by.id('calendar-screen')).scrollTo('bottom');
+    await waitFor(element(by.id('calendar-month-title')))
+      .toHaveText('2035년 6월')
+      .withTimeout(30000);
+    await expect(element(by.id('calendar-day-2035-06-02'))).toHaveLabel(
+      '2035년 6월 2일, 합성 외래 방문',
+    );
+    await element(by.id('calendar-day-2035-06-02')).tap();
+
     const selectedEvent = element(
       by.id('calendar-candidate-calendar-synthetic-clinic'),
     );
     await waitFor(selectedEvent).toBeVisible().withTimeout(30000);
+    await expect(
+      element(by.id('calendar-candidate-calendar-synthetic-unrelated')),
+    ).not.toExist();
     await element(by.id('calendar-candidate-calendar-synthetic-clinic')).tap();
-    await expect(element(by.id('calendar-selection'))).toBeVisible();
+    // Candidate selection inserts this card before the month grid, so wait for that layout update.
+    await waitFor(element(by.id('calendar-selection')))
+      .toBeVisible()
+      .withTimeout(30000);
     await expect(element(by.id('calendar-confirm-selected'))).toBeVisible();
 
     await element(by.id('calendar-confirm-selected')).tap();
+    await waitFor(element(by.id('calendar-selection')))
+      .not.toExist()
+      .withTimeout(30000);
+    await element(by.id('calendar-screen')).scrollTo('bottom');
     await waitFor(element(by.id('calendar-next-visit-title')))
       .toHaveText('합성 외래 방문')
       .withTimeout(30000);
     await expect(element(by.id('calendar-next-visit-time'))).toHaveText(
       '2035년 6월 2일 09:00–10:00 · Asia/Seoul',
     );
-    await expect(element(by.text('팀 회의 테스트 데이터'))).not.toExist();
   });
 });

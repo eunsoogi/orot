@@ -40,6 +40,10 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
     );
     writeCommand('pnpm', "printf '12.3.4\\n'");
     writeCommand(
+      'uname',
+      'if [[ "$1" == "-s" ]]; then printf \'%s\\n\' "${SIMULATED_UNAME_SYSTEM:-Linux}"; elif [[ "$1" == "-m" ]]; then printf \'%s\\n\' "${SIMULATED_UNAME_ARCH:-x86_64}"; else exit 97; fi',
+    );
+    writeCommand(
       'sw_vers',
       'printf \'%s\\n\' "${SIMULATED_MACOS_VERSION:-$EXPECTED_MACOS_VERSION}"',
     );

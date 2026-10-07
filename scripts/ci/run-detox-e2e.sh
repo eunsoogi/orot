@@ -71,6 +71,12 @@ if [[ -n "$resource_log" ]]; then
   : >>"$resource_log"
 fi
 
+# Script-level tests inject a portable timer; GitHub runs keep the Darwin host timer.
+time_command=/usr/bin/time
+if [[ "${GITHUB_ACTIONS:-false}" != true && -n "${OROT_DETOX_TEST_TIME_COMMAND:-}" ]]; then
+  time_command="$OROT_DETOX_TEST_TIME_COMMAND"
+fi
+
 sample_processes() {
   local name="$1"
   local phase="$2"
@@ -112,14 +118,14 @@ run_profile() {
   printf 'DETOX_PROFILE_START profile=%s simulator=%s utc=%s loglevel=%s\n' \
     "$name" "$simulator_id" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$log_level"
   if [[ -z "$resource_log" ]]; then
-    if /usr/bin/time -l "$@"; then
+    if "$time_command" -l "$@"; then
       status=0
     else
       status=$?
     fi
   else
     sample_processes "$name" before 0
-    /usr/bin/time -l "$@" &
+    "$time_command" -l "$@" &
     process_id=$!
     sample_elapsed=0
     while kill -0 "$process_id" 2>/dev/null; do
