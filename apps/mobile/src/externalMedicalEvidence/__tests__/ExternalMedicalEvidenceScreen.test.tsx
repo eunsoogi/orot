@@ -42,6 +42,12 @@ test('requires query consent and presents provenance and dates', async () => {
   expect(service.search).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('external-evidence-consent'));
+  expect(screen.getByRole('checkbox')).toBeChecked();
+  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  expect(service.search).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(service.search).toHaveBeenCalledWith('sleep and blood pressure', {
     externalQueryConsented: true,
@@ -105,6 +111,12 @@ test('shows loading and empty-result states', async () => {
   await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(screen.getByTestId('external-evidence-loading')).toBeTruthy();
+  expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
+  expect(screen.getByTestId('external-evidence-query').props.editable).toBe(
+    false,
+  );
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  expect(service.search).toHaveBeenCalledTimes(1);
   resolve({ status: 'empty' });
   expect(await screen.findByTestId('external-evidence-empty')).toBeTruthy();
 });

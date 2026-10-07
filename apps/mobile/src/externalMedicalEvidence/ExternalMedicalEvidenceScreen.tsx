@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import {
-  Button,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+  DesignButton,
+  DesignCard,
+  DesignCheckbox,
+  DesignInput,
+  DesignNotice,
+  DesignScreen,
+  DesignText,
+  designTokens,
+} from '../design';
 import { getExternalMedicalEvidenceCopy } from './copy';
 import type {
   EuropePmcMedicalEvidenceService,
@@ -29,7 +31,7 @@ type SearchState =
     }
   | { readonly status: 'empty' | 'unavailable' };
 
-/** Requires separate query-only opt-in before calling the public literature service. */
+/** Keeps query-only consent beside search and provenance beside each external result. */
 export function ExternalMedicalEvidenceScreen({
   onBack,
   service,
@@ -58,97 +60,100 @@ export function ExternalMedicalEvidenceScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
+    <DesignScreen
+      backAction={{ label: copy.back, onPress: onBack }}
+      description={copy.description}
       testID="external-medical-evidence-screen"
+      title={copy.title}
     >
-      <Button onPress={onBack} title={copy.back} />
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
-      <Text>{copy.description}</Text>
-      <TextInput
-        accessibilityLabel={copy.placeholder}
-        editable={state.status !== 'loading'}
-        maxLength={240}
-        onChangeText={setQuery}
-        placeholder={copy.placeholder}
-        testID="external-evidence-query"
-        value={query}
-      />
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: consented }}
-        onPress={() => setConsented(value => !value)}
-        testID="external-evidence-consent"
-      >
-        <Text>
-          {consented ? '☑' : '☐'} {copy.consent}
-        </Text>
-      </Pressable>
-      <Button
-        disabled={!consented || !query.trim() || state.status === 'loading'}
-        onPress={() => {
-          search().catch(() => setState({ status: 'unavailable' }));
-        }}
-        testID="external-evidence-search"
-        title={copy.search}
-      />
-      {!consented ? <Text>{copy.consentRequired}</Text> : null}
+      <View style={styles.search}>
+        <DesignInput
+          label={copy.placeholder}
+          editable={state.status !== 'loading'}
+          maxLength={240}
+          onChangeText={setQuery}
+          placeholder={copy.placeholder}
+          testID="external-evidence-query"
+          value={query}
+        />
+        <DesignCheckbox
+          checked={consented}
+          label={copy.consent}
+          onPress={() => setConsented(value => !value)}
+          testID="external-evidence-consent"
+        />
+        {!consented ? (
+          <DesignText tone="secondary" variant="caption">
+            {copy.consentRequired}
+          </DesignText>
+        ) : null}
+        <DesignButton
+          accessibilityState={{ busy: state.status === 'loading' }}
+          disabled={!consented || !query.trim() || state.status === 'loading'}
+          onPress={() => {
+            search().catch(() => setState({ status: 'unavailable' }));
+          }}
+          testID="external-evidence-search"
+          label={copy.search}
+        />
+      </View>
       {state.status === 'loading' ? (
-        <Text testID="external-evidence-loading">{copy.loading}</Text>
+        <DesignNotice
+          busy
+          message={copy.loading}
+          testID="external-evidence-loading"
+        />
       ) : null}
       {state.status === 'empty' ? (
-        <Text testID="external-evidence-empty">{copy.empty}</Text>
+        <DesignNotice message={copy.empty} testID="external-evidence-empty" />
       ) : null}
       {state.status === 'unavailable' ? (
-        <Text accessibilityRole="alert">{copy.unavailable}</Text>
+        <DesignNotice message={copy.unavailable} tone="danger" />
       ) : null}
       {state.status === 'available'
         ? state.publications.map(publication => (
-            <View
-              key={`${publication.source}:${publication.recordId}`}
-              style={styles.card}
-            >
-              <Text accessibilityRole="header" style={styles.title}>
+            <DesignCard key={`${publication.source}:${publication.recordId}`}>
+              <DesignText accessibilityRole="header" variant="heading">
                 {publication.title}
-              </Text>
-              <Text>{publication.authors ?? copy.authorUnknown}</Text>
-              <Text>{publication.journal ?? ''}</Text>
-              <Text>
+              </DesignText>
+              <DesignText>
+                {publication.authors ?? copy.authorUnknown}
+              </DesignText>
+              <DesignText tone="secondary">
+                {publication.journal ?? ''}
+              </DesignText>
+              <DesignText tone="secondary" variant="caption">
                 {copy.publicationDate(
                   publication.publicationDate ?? copy.unknownDate,
                 )}
-              </Text>
-              <Text>
+              </DesignText>
+              <DesignText tone="secondary" variant="caption">
                 {copy.updatedDate(publication.updatedDate ?? copy.unknownDate)}
-              </Text>
-              <Text>{copy.retrievedAt(publication.retrievedAt)}</Text>
-              <Text>{copy.source(publication.provider)}</Text>
-              <Text selectable>{publication.originalUrl}</Text>
+              </DesignText>
+              <DesignText tone="secondary" variant="caption">
+                {copy.retrievedAt(publication.retrievedAt)}
+              </DesignText>
+              <DesignText variant="bodyStrong">
+                {copy.source(publication.provider)}
+              </DesignText>
+              <DesignText selectable tone="secondary" variant="caption">
+                {publication.originalUrl}
+              </DesignText>
               {publication.abstract ? (
-                <Text>{publication.abstract}</Text>
+                <DesignText>{publication.abstract}</DesignText>
               ) : null}
-              <Button
+              <DesignButton
                 onPress={() => onOpenArticle(publication)}
-                title={copy.open}
+                label={copy.open}
+                variant="secondary"
               />
-            </View>
+            </DesignCard>
           ))
         : null}
-    </ScrollView>
+    </DesignScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  card: {
-    borderColor: '#C9D4D1',
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
+  search: { gap: designTokens.spacing.md },
 });

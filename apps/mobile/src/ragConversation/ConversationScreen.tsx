@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react';
-import {
-  Button,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
+import {
+  DesignButton,
+  DesignCard,
+  DesignInput,
+  DesignNotice,
+  DesignScreen,
+  DesignText,
+  designTokens,
+  useAppTheme,
+} from '../design';
 import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
 import type { RagConversationOutcome } from './service';
@@ -16,6 +18,7 @@ import type { RagConversationOutcome } from './service';
 interface DisplayMessage extends RagConversationMessage {
   readonly id: number;
   readonly citations?: readonly EvidenceReference[];
+  readonly noticeTone?: 'warning' | 'danger';
 }
 
 interface ConversationScreenProps {
@@ -34,6 +37,7 @@ export function ConversationScreen({
   onOpenSource,
 }: ConversationScreenProps) {
   const copy = getRagConversationCopy();
+  const { colors } = useAppTheme();
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<readonly DisplayMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -71,7 +75,12 @@ export function ConversationScreen({
           content: assistantContent,
           ...(outcome.status === 'answer'
             ? { citations: outcome.citations }
-            : {}),
+            : {
+                noticeTone:
+                  outcome.status === 'unavailable'
+                    ? ('danger' as const)
+                    : ('warning' as const),
+              }),
         },
       ]);
     } catch {
@@ -82,69 +91,72 @@ export function ConversationScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
+    <DesignScreen
+      backAction={{ label: copy.back, onPress: onBack }}
+      description={copy.description}
       testID="rag-conversation-screen"
+      title={copy.title}
     >
-      <Button onPress={onBack} title={copy.back} />
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
-      <Text>{copy.description}</Text>
       {messages.map(message => (
-        <View key={message.id} style={styles.message}>
-          <Text style={styles.role}>
+        <DesignCard
+          key={message.id}
+          style={
+            message.role === 'user'
+              ? { backgroundColor: colors.accentSubtle }
+              : undefined
+          }
+        >
+          <DesignText variant="caption" tone="secondary">
             {message.role === 'user' ? copy.speakerUser : 'Orot'}
-          </Text>
-          <Text>{message.content}</Text>
+          </DesignText>
+          {message.noticeTone ? (
+            <DesignNotice message={message.content} tone={message.noticeTone} />
+          ) : (
+            <DesignText>{message.content}</DesignText>
+          )}
           {message.citations?.map(reference => (
-            <Pressable
+            <DesignButton
               key={`${reference.sourceId}:${reference.evidenceId}:${reference.evidenceRevision}`}
-              accessibilityRole="button"
+              label={copy.source(reference.sourceId)}
               onPress={() => onOpenSource(reference)}
-            >
-              <Text style={styles.source}>
-                {copy.source(reference.sourceId)}
-              </Text>
-            </Pressable>
+              variant="quiet"
+            />
           ))}
-        </View>
+        </DesignCard>
       ))}
       {busy ? (
-        <Text testID="rag-conversation-loading">{copy.loading}</Text>
+        <DesignNotice
+          busy
+          message={copy.loading}
+          testID="rag-conversation-loading"
+        />
       ) : null}
-      {error ? <Text accessibilityRole="alert">{error}</Text> : null}
-      <TextInput
-        accessibilityLabel={copy.placeholder}
-        editable={!busy}
-        maxLength={1000}
-        onChangeText={setDraft}
-        placeholder={copy.placeholder}
-        testID="rag-conversation-input"
-        value={draft}
-      />
-      <Button
-        disabled={busy || !draft.trim()}
-        onPress={() => {
-          send().catch(() => setError(copy.unavailable));
-        }}
-        testID="rag-conversation-send"
-        title={copy.send}
-      />
-    </ScrollView>
+      {error ? <DesignNotice message={error} tone="danger" /> : null}
+      {/* The composer stays in the scroll flow so large labels never cover earlier evidence. */}
+      <View style={styles.composer}>
+        <DesignInput
+          label={copy.placeholder}
+          editable={!busy}
+          maxLength={1000}
+          onChangeText={setDraft}
+          placeholder={copy.placeholder}
+          testID="rag-conversation-input"
+          value={draft}
+        />
+        <DesignButton
+          accessibilityState={{ busy }}
+          disabled={busy || !draft.trim()}
+          onPress={() => {
+            send().catch(() => setError(copy.unavailable));
+          }}
+          testID="rag-conversation-send"
+          label={copy.send}
+        />
+      </View>
+    </DesignScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  message: {
-    borderColor: '#C9D4D1',
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-    padding: 12,
-  },
-  role: { fontWeight: '700' },
-  source: { color: '#174F45', fontWeight: '700', paddingVertical: 4 },
+  composer: { gap: designTokens.spacing.md },
 });

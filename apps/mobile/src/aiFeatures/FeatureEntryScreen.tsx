@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DesignButton, DesignCard, DesignScreen, DesignText } from '../design';
 import { getAiFeatureCopy } from './copy';
 
 export interface FeatureEntryScreenProps {
@@ -8,7 +8,7 @@ export interface FeatureEntryScreenProps {
   readonly onOpenExternalEvidence: () => void;
 }
 
-/** Keeps feature routing with the app owner while giving each entry a clear action. */
+/** Groups each task's explanation and action while routing stays with the app owner. */
 export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
   const copy = getAiFeatureCopy();
   const actions = [
@@ -19,45 +19,21 @@ export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
   ];
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      testID="ai-features-screen"
-    >
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.heading}
-      </Text>
+    <DesignScreen title={copy.heading} testID="ai-features-screen">
       {copy.features.map((feature, index) => (
-        <View key={feature.id} style={styles.card}>
-          <Text accessibilityRole="header" style={styles.title}>
+        <DesignCard key={feature.id}>
+          <DesignText accessibilityRole="header" variant="heading">
             {feature.title}
-          </Text>
-          <Text style={styles.description}>{feature.description}</Text>
-          <Pressable
-            accessibilityRole="button"
+          </DesignText>
+          <DesignText tone="secondary">{feature.description}</DesignText>
+          <DesignButton
+            label={feature.action}
             onPress={actions[index]}
-            style={styles.action}
             testID={`ai-feature-${feature.id}`}
-          >
-            <Text style={styles.actionText}>{feature.action}</Text>
-          </Pressable>
-        </View>
+            variant="secondary"
+          />
+        </DesignCard>
       ))}
-    </ScrollView>
+    </DesignScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  card: {
-    borderColor: '#C9D4D1',
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
-  description: { color: '#45524F', fontSize: 14, lineHeight: 20 },
-  action: { alignSelf: 'flex-start', paddingVertical: 8 },
-  actionText: { color: '#174F45', fontSize: 15, fontWeight: '700' },
-});

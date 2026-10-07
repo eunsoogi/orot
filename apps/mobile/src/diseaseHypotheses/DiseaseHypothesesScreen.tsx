@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
+import {
+  DesignButton,
+  DesignCard,
+  DesignNotice,
+  DesignScreen,
+  DesignText,
+  designTokens,
+} from '../design';
 import { getDiseaseHypothesisCopy } from './copy';
 import type {
   DiseaseHypothesisAnalysis,
@@ -32,19 +40,22 @@ function EvidenceLinks({
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.label}>{title}</Text>
+      <DesignText style={styles.label} variant="bodyStrong">
+        {title}
+      </DesignText>
       {references.map(reference => (
-        <Button
+        <DesignButton
           key={`${reference.sourceId}:${reference.evidenceId}:${reference.evidenceRevision}`}
           onPress={() => onOpenSource(reference)}
-          title={sourceTitle(reference.sourceId)}
+          label={sourceTitle(reference.sourceId)}
+          variant="quiet"
         />
       ))}
     </View>
   );
 }
 
-/** Presents hypotheses only after #117 validates coverage, freshness, and exact citations. */
+/** Keeps uncertainty beside each result; #117 still owns validation and exact citations. */
 export function DiseaseHypothesesScreen({
   onBack,
   onGenerate,
@@ -71,44 +82,50 @@ export function DiseaseHypothesesScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
+    <DesignScreen
+      backAction={{ label: copy.back, onPress: onBack }}
+      description={copy.explanation}
       testID="disease-hypotheses-screen"
+      title={copy.title}
     >
-      <Button onPress={onBack} title={copy.back} />
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
-      <Text>{copy.explanation}</Text>
-      <Button
+      <DesignButton
+        accessibilityState={{ busy: state.status === 'loading' }}
         disabled={state.status === 'loading'}
         onPress={() => {
           generate().catch(() => setState({ status: 'error' }));
         }}
         testID="disease-hypotheses-generate"
-        title={state.status === 'error' ? copy.retry : copy.generate}
+        label={state.status === 'error' ? copy.retry : copy.generate}
       />
       {state.status === 'loading' ? (
-        <Text testID="disease-hypotheses-loading">{copy.loading}</Text>
+        <DesignNotice
+          busy
+          message={copy.loading}
+          testID="disease-hypotheses-loading"
+        />
       ) : null}
       {state.status === 'insufficient' ? (
-        <Text testID="disease-hypotheses-insufficient">
-          {copy.insufficient}
-        </Text>
+        <DesignNotice
+          message={copy.insufficient}
+          testID="disease-hypotheses-insufficient"
+          tone="warning"
+        />
       ) : null}
       {state.status === 'error' ? (
-        <Text accessibilityRole="alert">{copy.error}</Text>
+        <DesignNotice message={copy.error} tone="danger" />
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
           {state.value.hypotheses.map((hypothesis, index) => (
-            <View key={`${hypothesis.title}-${index}`} style={styles.card}>
-              <Text accessibilityRole="header" style={styles.title}>
+            <DesignCard key={`${hypothesis.title}-${index}`}>
+              <DesignText accessibilityRole="header" variant="heading">
                 {hypothesis.title}
-              </Text>
-              <Text>{hypothesis.summary}</Text>
-              <Text style={styles.label}>{copy.uncertainty}</Text>
-              <Text>{hypothesis.uncertainty}</Text>
+              </DesignText>
+              <DesignText>{hypothesis.summary}</DesignText>
+              <DesignText style={styles.label} variant="bodyStrong">
+                {copy.uncertainty}
+              </DesignText>
+              <DesignNotice message={hypothesis.uncertainty} tone="warning" />
               <EvidenceLinks
                 title={copy.supporting}
                 references={hypothesis.supportingEvidence}
@@ -123,35 +140,29 @@ export function DiseaseHypothesesScreen({
                   onOpenSource={onOpenSource}
                 />
               ) : (
-                <Text>{copy.noContrary}</Text>
+                <DesignText tone="secondary">{copy.noContrary}</DesignText>
               )}
-              <Text style={styles.label}>{copy.missingData}</Text>
+              <DesignText style={styles.label} variant="bodyStrong">
+                {copy.missingData}
+              </DesignText>
               {hypothesis.missingData.length === 0 ? (
-                <Text>{copy.noAdditionalInfo}</Text>
+                <DesignText tone="secondary">
+                  {copy.noAdditionalInfo}
+                </DesignText>
               ) : null}
               {hypothesis.missingData.map(item => (
-                <Text key={item}>• {item}</Text>
+                <DesignText key={item}>• {item}</DesignText>
               ))}
-            </View>
+            </DesignCard>
           ))}
         </View>
       ) : null}
-    </ScrollView>
+    </DesignScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  results: { gap: 12 },
-  card: {
-    borderColor: '#C9D4D1',
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
-  label: { fontWeight: '700', marginTop: 4 },
-  section: { gap: 4 },
+  results: { gap: designTokens.spacing.lg },
+  label: { marginTop: designTokens.spacing.sm },
+  section: { gap: designTokens.spacing.sm },
 });

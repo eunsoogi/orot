@@ -47,6 +47,9 @@ test('shows loading and opens the source citation for a result', async () => {
   );
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(screen.getByTestId('disease-hypotheses-loading')).toBeTruthy();
+  expect(screen.getByTestId('disease-hypotheses-generate')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(onGenerate).toHaveBeenCalledTimes(1);
   resolve({
     status: 'workflow',
     result: {
@@ -124,4 +127,7 @@ test('shows a recoverable error when analysis cannot run', async () => {
   );
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(await screen.findByText(/가능성을 정리하지 못했어요/)).toBeTruthy();
+  expect(screen.getByRole('alert')).toHaveTextContent(/다시 시도/);
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(onGenerate).toHaveBeenCalledTimes(2);
 });

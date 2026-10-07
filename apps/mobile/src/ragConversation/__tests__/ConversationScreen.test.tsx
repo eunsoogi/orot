@@ -76,6 +76,14 @@ test('shows loading and a recoverable response failure', async () => {
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(screen.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-send')).toBeDisabled();
+  expect(screen.getByTestId('rag-conversation-input').props.editable).toBe(
+    false,
+  );
   resolve({ status: 'unavailable' });
   expect(await screen.findByText(/답변을 만들지 못했어요/)).toBeTruthy();
+  expect(screen.getByRole('alert')).toHaveTextContent(/다시 시도/);
+  expect(screen.getByTestId('rag-conversation-input').props.editable).toBe(
+    true,
+  );
 });
