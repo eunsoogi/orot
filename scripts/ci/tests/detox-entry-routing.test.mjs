@@ -102,6 +102,7 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
+    './safe-area.test.js',
     './appointments.test.js',
     './agentMemory.test.js',
     './graph.test.js',
