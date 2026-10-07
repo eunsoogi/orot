@@ -54,8 +54,8 @@ export const evidenceSpan = {
   provenance: { origin: 'derived', sourceRecordIds: ['source-1'] },
   reviewState: { status: 'unreviewed' },
   sourceRecordId: 'source-1',
-  text: 'Synthetic value to discuss',
-  locator: { kind: 'text_range', startOffset: 0, endOffset: 26 },
+  text: '검사 메모 Aa',
+  locator: { kind: 'text_range', startOffset: 0, endOffset: 8 },
 };
 
 export const citation: VisitQuestionEvidenceItem = {
@@ -67,7 +67,7 @@ export const citation: VisitQuestionEvidenceItem = {
   locator: { kind: 'text_range', startOffset: 0, endOffset: 26 },
   effectiveTime: '2026-09-01T09:00:00Z',
   reviewState: 'unreviewed',
-  content: 'Synthetic value to discuss',
+  content: '검사 메모 Aa',
 };
 
 export const candidate: VisitQuestionCandidate = {

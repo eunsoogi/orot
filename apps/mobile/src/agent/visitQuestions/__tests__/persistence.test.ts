@@ -103,7 +103,7 @@ describe('saving reviewed visit questions', () => {
     const store = repository({
       appointment: [appointment],
       source_record: [sourceRecord],
-      evidence_span: [{ ...evidenceSpan, text: 'new source value' }],
+      evidence_span: [{ ...evidenceSpan, text: '검사 메모 BB' }],
       visit_question: [oldQuestion('old-a', 'appointment-1')],
     });
 

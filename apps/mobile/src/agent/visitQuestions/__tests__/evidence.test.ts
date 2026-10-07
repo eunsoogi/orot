@@ -96,15 +96,21 @@ describe('visit question evidence mapping', () => {
     );
   });
 
+  it('distinguishes different evidence text with a colliding polynomial hash', () => {
+    expect(localEvidenceFingerprint({ text: '검사 메모 Aa' })).not.toBe(
+      localEvidenceFingerprint({ text: '검사 메모 BB' }),
+    );
+  });
+
   it('keeps current RAG evidence linked to its source and evidence-span record', async () => {
     const mapped = await mapRagHitToVisitQuestionEvidence(repository(), hit);
 
     expect(mapped.item).toMatchObject({
       sourceKind: 'personal_record',
       sourceId: 'source-1',
-      sourceRevision: expect.stringMatching(/^local-v1-/),
+      sourceRevision: expect.stringMatching(/^local-v2-/),
       evidenceId: 'span-1',
-      evidenceRevision: expect.stringMatching(/^local-v1-/),
+      evidenceRevision: expect.stringMatching(/^local-v2-/),
       reviewState: 'reviewed',
     });
     expect(mapped.metadata).toEqual({

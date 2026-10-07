@@ -40,32 +40,44 @@ export const VISIT_QUESTION_RECORD_KINDS: Readonly<
   transcript_segment: 'transcript_segment',
 };
 
-function stableJson(value: unknown): string {
-  if (value === null || typeof value !== 'object')
-    return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map(key => `${JSON.stringify(key)}:${stableJson(record[key])}`)
-    .join(',')}}`;
-}
-
-function hash32(value: string, seed: number): number {
-  let hash = seed;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (Math.imul(hash, 31) + value.charCodeAt(index)) % 0x1_0000_0000;
-    if (hash < 0) hash += 0x1_0000_0000;
+function stableValue(value: unknown): string {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') {
+    const encoded = JSON.stringify(value);
+    return `s${encoded.length}:${encoded}`;
   }
-  return hash;
+  if (typeof value === 'number') {
+    const encoded = Object.is(value, -0) ? '-0' : String(value);
+    return `n${encoded.length}:${encoded}`;
+  }
+  if (typeof value === 'boolean') return value ? 'b1' : 'b0';
+  if (Array.isArray(value)) {
+    return `a${value.length}:${Array.from(value, stableValue).join('')}`;
+  }
+  if (typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error('Evidence revisions require plain data objects.');
+    }
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map(key => {
+        const encodedKey = JSON.stringify(key);
+        const encodedValue = stableValue(
+          (value as Record<string, unknown>)[key],
+        );
+        return `${encodedKey.length}:${encodedKey}${encodedValue.length}:${encodedValue}`;
+      })
+      .join('');
+    return `o${Object.keys(value).length}:${entries}`;
+  }
+  throw new Error('Evidence revisions require serializable record values.');
 }
 
-/** Fingerprints stay local and let review/save reject evidence whose record payload changed. */
+/** Exact canonical values prevent collisions from bypassing local freshness checks. */
 export function localEvidenceFingerprint(value: unknown): string {
-  const encoded = stableJson(value);
-  const first = hash32(encoded, 0x811c9dc5).toString(16).padStart(8, '0');
-  const second = hash32(encoded, 0x9e3779b9).toString(16).padStart(8, '0');
-  return `local-v1-${first}${second}`;
+  return `local-v2-${stableValue(value)}`;
 }
 
 function healthObservationConflictFact(record: unknown) {
