@@ -182,4 +182,20 @@ describe('multi-agent resumed checkpoint persistence', () => {
     expect((provider.generate as jest.Mock).mock.calls).toHaveLength(0);
     expect(result.checkpoint).toMatchObject({ phase: 'complete', terminal: true });
   });
+
+  it('rejects a checkpoint that references deleted evidence before restoring or dispatching', async () => {
+    const { options, provider, resumeFrom } = makeRun([]);
+    const revalidateEvidence = jest.fn(async () => false);
+    const restoreEvidence = jest.fn(async () => evidence);
+
+    const result = await runMultiAgentWorkflow(
+      { ...options, revalidateEvidence, restoreEvidence },
+      { resumeFrom },
+    );
+
+    expect(result.status).toBe('stale_evidence');
+    expect(revalidateEvidence).toHaveBeenCalledWith([reference], expect.any(AbortSignal));
+    expect(restoreEvidence).not.toHaveBeenCalled();
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
 });
