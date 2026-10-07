@@ -1,6 +1,6 @@
 const {
   tapLoopbackConsentContinue,
-} = require('./providerSelectionSystemConsent');
+} = require('../../../../e2e/providerSelectionSystemConsent');
 
 describe('provider selection system consent helper', () => {
   it('taps the observed Continue button by position, regardless of system language', async () => {
