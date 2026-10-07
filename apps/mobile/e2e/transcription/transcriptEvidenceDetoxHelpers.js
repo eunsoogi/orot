@@ -150,9 +150,26 @@ async function verifyRecordingExportLifecycle(device) {
   await element(by.id('recording-export-arm-simulated-cancel')).tap();
   await scrollToTranscriptControl(audioExport);
   await audioExport.tap();
-  await waitFor(element(by.id('recording-export-status')))
-    .toHaveText('내보내기를 취소했어요.')
-    .withTimeout(30000);
+  try {
+    await waitFor(element(by.id('recording-export-status')))
+      .toHaveText('내보내기를 취소했어요.')
+      .withTimeout(30000);
+  } catch (failure) {
+    let diagnostic = 'unavailable';
+    try {
+      diagnostic = accessibilityText(
+        await element(
+          by.id('recording-export-probe-diagnostic'),
+        ).getAttributes(),
+      );
+    } catch {
+      // Keep the original status failure if the probe diagnostic is unavailable.
+    }
+    console.error('RECORDING_EXPORT_AUDIO_DIAGNOSTIC ' + diagnostic);
+    throw new Error(
+      `Audio export status failed (${diagnostic}): ${failureDescription(failure)}`,
+    );
+  }
   await element(by.id('recording-export-read-residue')).tap();
   await waitFor(residue).toHaveText('0').withTimeout(30000);
 }

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import RecordingControls from '../../src/recording/RecordingControls';
+import { recordingExportService } from '../../src/recording/recordingExportService';
 import type { CompletedRecording } from '../../src/recording/recordingTypes';
 import {
   armSyntheticExportCancellation,
@@ -13,6 +14,7 @@ import {
   prepareSyntheticTranscriptRecording,
   type TranscriptEvidenceProbeService,
 } from './transcriptEvidenceProbeSupport';
+import { installAudioExportProbeDiagnostics } from './recordingExportProbeDiagnostics';
 
 type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
@@ -30,6 +32,8 @@ export function TranscriptEvidenceProbe() {
   } | null>(null);
   const [memoryStatus, setMemoryStatus] = useState('not-checked');
   const [exportResidueCount, setExportResidueCount] = useState('unknown');
+  const [audioExportDiagnostic, setAudioExportDiagnostic] =
+    useState('not-observed');
   const [correctionStatus, setCorrectionStatus] =
     useState<CorrectionStatus>('idle');
   const [error, setError] = useState('');
@@ -37,6 +41,15 @@ export function TranscriptEvidenceProbe() {
     () =>
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
     [setCorrectionStatus, setPlayback],
+  );
+  // This probe-only wrapper records a safe rejection code and rethrows the original failure.
+  useEffect(
+    () =>
+      installAudioExportProbeDiagnostics(
+        recordingExportService,
+        setAudioExportDiagnostic,
+      ),
+    [setAudioExportDiagnostic],
   );
   const syntheticCompletedRecording: CompletedRecording | null =
     recordingSourceId === null
@@ -149,6 +162,9 @@ export function TranscriptEvidenceProbe() {
         title="Simulate export cancellation"
       />
       <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
+      <Text testID="recording-export-probe-diagnostic">
+        {audioExportDiagnostic}
+      </Text>
       <Text testID="transcript-evidence-correction-status">
         {correctionStatus}
       </Text>
