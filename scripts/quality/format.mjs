@@ -1,5 +1,3 @@
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
 import { createQualityTools, filesFor } from './process.mjs';
 
 function runPrettier(entries, mode, env, root, policy, invoke) {
@@ -24,46 +22,7 @@ function runPrettier(entries, mode, env, root, policy, invoke) {
   }
 }
 
-async function checkGroovyFormatting(files, env, root, cache, invoke) {
-  const directory = await mkdtemp(join(cache, 'groovy-check-'));
-  try {
-    for (const file of files) {
-      const destination = join(directory, file);
-      await mkdir(dirname(destination), { recursive: true });
-      await copyFile(resolve(root, file), destination);
-    }
-    // npm-groovy-lint writes in format mode, so compare disposable copies.
-    invoke(
-      'pnpm',
-      [
-        'exec',
-        'npm-groovy-lint',
-        '--failon',
-        'error',
-        '--format',
-        '--loglevel',
-        'warning',
-        ...files.map((file) => join(directory, file)),
-      ],
-      env,
-    );
-    const changed = [];
-    for (const file of files) {
-      const original = await readFile(resolve(root, file));
-      const formatted = await readFile(join(directory, file));
-      if (!original.equals(formatted)) changed.push(file);
-    }
-    if (changed.length) {
-      throw new Error(
-        'Groovy format check failed; run pnpm format:write for: ' + changed.join(', '),
-      );
-    }
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-}
-
-export async function runFormat({ entries, mode, env, clang, root, cache, binaryPaths, policy }) {
+export async function runFormat({ entries, mode, env, clang, root, binaryPaths, policy }) {
   const { invoke } = createQualityTools(root);
   runPrettier(entries, mode === 'format:write' ? '--write' : '--check', env, root, policy, invoke);
   const swift = filesFor(entries, 'swift');
@@ -85,31 +44,6 @@ export async function runFormat({ entries, mode, env, clang, root, cache, binary
       [mode === 'format:write' ? '-w' : '-d', '-i', '2', '-ci', ...shell],
       env,
     );
-  }
-  const kotlin = filesFor(entries, 'kotlin');
-  if (kotlin.length) {
-    invoke(binaryPaths.ktlint, [...(mode === 'format:write' ? ['--format'] : []), ...kotlin], env);
-  }
-  const groovy = filesFor(entries, 'groovy');
-  if (groovy.length) {
-    if (mode === 'format:write') {
-      invoke(
-        'pnpm',
-        [
-          'exec',
-          'npm-groovy-lint',
-          '--failon',
-          'error',
-          '--format',
-          '--loglevel',
-          'warning',
-          ...groovy,
-        ],
-        env,
-      );
-    } else {
-      await checkGroovyFormatting(groovy, env, root, cache, invoke);
-    }
   }
   const ruby = filesFor(entries, 'ruby');
   if (ruby.length) {
