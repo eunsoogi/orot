@@ -158,10 +158,10 @@ jobs:
       - name: Install CocoaPods
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-      - name: Install Detox CocoaPods dependencies # Runner validation already ran before Simulator startup.
+      - name: Install Detox CocoaPods dependencies # The path hook is limited to this install after toolchain validation.
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         timeout-minutes: 20
-        run: scripts/ci/verify-toolchain.sh --cocoapods-only && scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+        run: bash scripts/ci/install-detox-cocoapods.sh
       - name: Record Detox cache state
         timeout-minutes: 1
         env:

@@ -13,6 +13,11 @@ const cacheStateRecorder = readFileSync(
   join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
   'utf8',
 );
+// The workflow delegates CocoaPods validation and installation to this helper.
+const cocoapodsInstaller = readFileSync(
+  join(repositoryRoot, 'scripts/ci/install-detox-cocoapods.sh'),
+  'utf8',
+);
 
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
@@ -54,5 +59,12 @@ test('installs CocoaPods only when the validated app cache cannot be reused', ()
   assert.match(cacheRecord, /COCOAPODS_VERSION: \$\{\{ env\.EXPECTED_COCOAPODS_VERSION \}\}/);
   assert.match(cacheStateRecorder, /expected_ruby=/);
   assert.match(cacheStateRecorder, /expected_cocoapods=/);
-  assert.match(nativePods, /verify-toolchain\.sh --cocoapods-only/);
+  assert.match(nativePods, /run: bash scripts\/ci\/install-detox-cocoapods\.sh/);
+  assert.match(cocoapodsInstaller, /scripts\/ci\/verify-toolchain\.sh --cocoapods-only/);
+  assert.match(cocoapodsInstaller, /scripts\/ci\/build-detox-apps\.sh pods/);
+  assert.ok(
+    cocoapodsInstaller.indexOf('verify-toolchain.sh') <
+      cocoapodsInstaller.indexOf('build-detox-apps.sh pods'),
+    'CocoaPods validation must precede the install command',
+  );
 });
