@@ -161,8 +161,13 @@ export function createLocalHealthEvidenceRepository(
         for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
           checkHealthEvidenceAbort(options.signal);
           if (kind !== 'source_record') queriedKinds.push(kind);
+          // The exact source was already added above, so linked sources share its per-kind quota.
+          const kindRowLimit =
+            kind === 'source_record'
+              ? Math.max(0, rowsPerKind - 1)
+              : rowsPerKind;
           const rowLimit = Math.min(
-            rowsPerKind,
+            kindRowLimit,
             Math.max(0, totalRows - records.length),
           );
           const rows = await queryHealthEvidenceRows(
