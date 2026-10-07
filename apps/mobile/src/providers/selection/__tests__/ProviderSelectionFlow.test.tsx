@@ -31,6 +31,7 @@ jest.mock('../../openai', () => ({
   cancelOpenAISignIn: jest.fn(),
   listOpenAIAccounts: jest.fn(),
   listOpenAIPlanModels: jest.fn(),
+  signOutFromOpenAI: jest.fn(),
   signInToOpenAI: jest.fn(),
 }));
 
@@ -160,6 +161,7 @@ describe('ProviderSelectionFlow', () => {
             pendingRejectors.push(reject);
           }),
       ),
+      signOut: jest.fn(),
       cancelSignIn: jest.fn(() => {
         pendingRejectors.shift()?.({ code: 'CHATGPT_AUTH_CANCELLED' });
       }),
