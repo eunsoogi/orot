@@ -11,6 +11,16 @@ describe('Detox entry routing', () => {
     );
   });
 
+  it('opens the safe-area keyboard fixture through its test-only selector', () => {
+    expect(selectEntryRoute({ OROT_E2E_PROBE: 'safe-area' })).toBe('safe-area');
+  });
+
+  it('opens the synthetic blood-pressure safe-area route through its test-only selector', () => {
+    expect(
+      selectEntryRoute({ OROT_E2E_PROBE: 'safe-area-blood-pressure' }),
+    ).toBe('safe-area-blood-pressure');
+  });
+
   it('rejects unknown and conflicting test-only selectors', () => {
     expect(() => selectEntryRoute({ OROT_E2E_PROBE: 'unknown' })).toThrow(
       'Unsupported OROT_E2E_PROBE value',
