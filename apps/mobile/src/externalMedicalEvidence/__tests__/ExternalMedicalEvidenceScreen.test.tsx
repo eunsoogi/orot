@@ -49,8 +49,36 @@ test('requires query consent and presents provenance and dates', async () => {
   expect(await screen.findByText('Sleep and blood pressure')).toBeTruthy();
   expect(screen.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();
   expect(screen.getByText(/자료 수정 날짜: 확인할 수 없어요./)).toBeTruthy();
+  expect(
+    screen.getByText('가져온 시각: 2026-10-07T03:00:00.000Z'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByText('원문 열기'));
   expect(onOpenArticle).toHaveBeenCalledWith(publication);
+});
+
+test('shows a localized fallback when publication authors are absent', async () => {
+  const service: EuropePmcMedicalEvidenceService = {
+    search: jest.fn(async () => ({
+      status: 'available' as const,
+      publications: [{ ...publication, authors: null }],
+    })),
+  };
+  await render(
+    <ExternalMedicalEvidenceScreen
+      onBack={jest.fn()}
+      service={service}
+      onOpenArticle={jest.fn()}
+    />,
+  );
+
+  await fireEvent.changeText(
+    screen.getByTestId('external-evidence-query'),
+    'query',
+  );
+  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+
+  expect(await screen.findByText('저자 정보를 확인할 수 없어요.')).toBeTruthy();
 });
 
 test('shows loading and empty-result states', async () => {

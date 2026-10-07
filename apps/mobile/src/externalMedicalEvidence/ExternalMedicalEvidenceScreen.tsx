@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { externalMedicalEvidenceCopy as copy } from './copy';
+import { getExternalMedicalEvidenceCopy } from './copy';
 import type {
   EuropePmcMedicalEvidenceService,
   EuropePmcSearchResult,
@@ -35,6 +35,7 @@ export function ExternalMedicalEvidenceScreen({
   service,
   onOpenArticle,
 }: ExternalMedicalEvidenceScreenProps) {
+  const copy = getExternalMedicalEvidenceCopy();
   const [query, setQuery] = useState('');
   const [consented, setConsented] = useState(false);
   const [state, setState] = useState<SearchState>({ status: 'idle' });
@@ -61,7 +62,7 @@ export function ExternalMedicalEvidenceScreen({
       contentContainerStyle={styles.container}
       testID="external-medical-evidence-screen"
     >
-      <Button onPress={onBack} title="뒤로" />
+      <Button onPress={onBack} title={copy.back} />
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -112,24 +113,18 @@ export function ExternalMedicalEvidenceScreen({
               <Text accessibilityRole="header" style={styles.title}>
                 {publication.title}
               </Text>
-              <Text>
-                {publication.authors ?? '저자 정보를 확인할 수 없어요.'}
-              </Text>
+              <Text>{publication.authors ?? copy.authorUnknown}</Text>
               <Text>{publication.journal ?? ''}</Text>
               <Text>
-                {copy.publicationDate}:{' '}
-                {publication.publicationDate ?? copy.unknownDate}
+                {copy.publicationDate(
+                  publication.publicationDate ?? copy.unknownDate,
+                )}
               </Text>
               <Text>
-                {copy.updatedDate}:{' '}
-                {publication.updatedDate ?? copy.unknownDate}
+                {copy.updatedDate(publication.updatedDate ?? copy.unknownDate)}
               </Text>
-              <Text>
-                {copy.retrievedAt}: {publication.retrievedAt}
-              </Text>
-              <Text>
-                {copy.source}: {publication.provider}
-              </Text>
+              <Text>{copy.retrievedAt(publication.retrievedAt)}</Text>
+              <Text>{copy.source(publication.provider)}</Text>
               <Text selectable>{publication.originalUrl}</Text>
               {publication.abstract ? (
                 <Text>{publication.abstract}</Text>
