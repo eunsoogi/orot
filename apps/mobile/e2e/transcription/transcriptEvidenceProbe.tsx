@@ -6,9 +6,9 @@ import type { CompletedRecording } from '../../src/recording/recordingTypes';
 import {
   armSyntheticExportCancellation,
   getSyntheticExportResidueCount,
-  isSyntheticTranscriptionFixtureUnchanged,
   prepareSyntheticExportResidue,
 } from '../../src/recording/nativeRecordingBridge';
+import { isSyntheticTranscriptionFixtureUnchanged } from '../../src/recording/syntheticRecordingExportProbeBridge';
 import {
   cleanupSyntheticTranscriptRecording,
   createTranscriptEvidenceProbeService,
@@ -16,6 +16,7 @@ import {
   type TranscriptEvidenceProbeService,
 } from './transcriptEvidenceProbeSupport';
 import { installAudioExportProbeDiagnostics } from './recordingExportProbeDiagnostics';
+import { RecordingExportAuthorizationStatus } from './RecordingExportAuthorizationStatus';
 
 type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
@@ -69,7 +70,8 @@ export function TranscriptEvidenceProbe() {
     setStatus('preparing');
     setError('');
     try {
-      setSyntheticRecording(await prepareSyntheticTranscriptRecording());
+      const recording = await prepareSyntheticTranscriptRecording();
+      setSyntheticRecording(recording);
       setStatus('ready');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -171,6 +173,7 @@ export function TranscriptEvidenceProbe() {
       />
       <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
       <Text testID="recording-export-source-status">{exportSourceStatus}</Text>
+      <RecordingExportAuthorizationStatus recordingId={recordingSourceId} />
       {syntheticRecording ? (
         // This is fixture metadata only; Simulator values are not device protection evidence.
         <Text testID="transcript-evidence-source-security">

@@ -37,6 +37,8 @@ RCT_EXTERN_METHOD(simulateInterruption : (NSString *)phase resolver : (RCTPromis
 #endif
 
 #if TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(verifySyntheticRecordingExportAuthorization : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getSyntheticExportResidueCount : (RCTPromiseResolveBlock)

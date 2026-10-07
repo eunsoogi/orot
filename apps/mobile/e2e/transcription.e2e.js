@@ -3,7 +3,6 @@
 const { expect: jestExpect } = require('@jest/globals');
 const {
   accessibilityText,
-  captureRecordingExportFailure,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,
@@ -11,6 +10,9 @@ const {
   verifyNativeSpeechProbe,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
+const {
+  captureRecordingExportFailure,
+} = require('./transcription/recordingExportDetoxHelpers');
 
 describe('Apple Korean on-device transcription on iOS Simulator', () => {
   it('records native provider status and exercises synthetic transcript review', async () => {
@@ -231,11 +233,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);
       failures.push(`Transcript assertion failed: ${description}`);
     }
-    if (exportLifecycleFailure) {
-      const description = failureDescription(exportLifecycleFailure);
-      console.error('RECORDING_EXPORT_LIFECYCLE_FAILURE ' + description);
-      failures.push(`Recording export lifecycle failed: ${description}`);
-    }
+    if (exportLifecycleFailure) failures.push(exportLifecycleFailure);
     if (cleanupFailure) {
       const description = failureDescription(cleanupFailure);
       console.error('TRANSCRIPT_EVIDENCE_CLEANUP_FAILURE ' + description);
