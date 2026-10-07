@@ -44,6 +44,15 @@ test('redacts unsafe codes and non-error rejection details', () => {
   expect(diagnostic).not.toContain('Authorization');
 });
 
+test('redacts code-shaped values outside the native audio export contract', () => {
+  const diagnostic = formatAudioExportProbeDiagnostic({
+    code: 'AUDIO_KEY_7F8A',
+  });
+
+  expect(diagnostic).toBe('stage=audio-share-promise code=unavailable');
+  expect(diagnostic).not.toContain('AUDIO_KEY_7F8A');
+});
+
 test('keeps successful synthetic cancellation results unchanged', async () => {
   const originalShareAudio = jest.fn(
     async (_recordingId: string) => 'cancelled' as const,

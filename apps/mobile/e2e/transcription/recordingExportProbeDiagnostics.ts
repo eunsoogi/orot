@@ -4,7 +4,15 @@ interface AudioExportProbePort {
   shareAudio(recordingId: string): Promise<RecordingExportResult>;
 }
 
-const SAFE_REJECTION_CODE = /^[A-Z0-9_]{1,64}$/;
+// Native export errors use fixed categories; do not echo arbitrary code strings that could carry private data.
+const SAFE_AUDIO_EXPORT_REJECTION_CODES = new Set([
+  'RECORDING_BUSY',
+  'RECORDING_EXPORT_SOURCE_MISSING',
+  'RECORDING_EXPORT_BUSY',
+  'RECORDING_EXPORT_FAILED',
+  'RECORDING_EXPORT_UNAVAILABLE',
+  'RECORDING_UNAVAILABLE',
+]);
 
 /** Keep probe diagnostics useful without logging arbitrary native error text or paths. */
 export function formatAudioExportProbeDiagnostic(reason: unknown): string {
@@ -18,7 +26,7 @@ export function formatAudioExportProbeDiagnostic(reason: unknown): string {
     code = undefined;
   }
   const safeCode =
-    typeof code === 'string' && SAFE_REJECTION_CODE.test(code)
+    typeof code === 'string' && SAFE_AUDIO_EXPORT_REJECTION_CODES.has(code)
       ? code
       : 'unavailable';
   return `stage=audio-share-promise code=${safeCode}`;
