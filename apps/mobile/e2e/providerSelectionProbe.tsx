@@ -20,11 +20,17 @@ import {
   syntheticSignOutLifecycleServices,
 } from './providerSelectionSignOutFixture';
 
+// Keep confirmation below a long model catalog so the native probe must scroll to it.
+const syntheticModelCatalog = [
+  { slug: 'gpt-synthetic', displayName: 'Synthetic ChatGPT model' },
+  ...Array.from({ length: 11 }, (_, index) => ({
+    slug: `gpt-synthetic-${index + 2}`,
+    displayName: `Synthetic ChatGPT model ${index + 2}`,
+  })),
+];
 const options = [
   createAppleSelectionOption('available'),
-  ...createChatGPTSelectionOptions('synthetic-account', [
-    { slug: 'gpt-synthetic', displayName: 'Synthetic ChatGPT model' },
-  ]),
+  ...createChatGPTSelectionOptions('synthetic-account', syntheticModelCatalog),
 ];
 const initialSummary =
   'selectionCallback=not-called-on-load; synthetic=enabled; realAccount=unverified';
