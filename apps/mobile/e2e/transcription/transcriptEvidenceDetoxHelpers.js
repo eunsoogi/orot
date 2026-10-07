@@ -1,4 +1,4 @@
-/* global by, device, element, expect, system, waitFor */
+/* global by, element, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const EXPLICIT_AVAILABILITY_STATES = [
@@ -204,31 +204,8 @@ async function waitForProbeControl(target) {
   await waitFor(target).toBeVisible().withTimeout(30000);
 }
 
-// Use the controls panel's real drag path to dismiss the editor keyboard and reveal clipped actions.
-async function scrollToTranscriptControl(
-  control,
-  direction = 'down',
-  focusedInput = null,
-) {
-  if (focusedInput) {
-    // The keyboard is system UI, so match its XCTest element type at the system level.
-    const keyboard = system.element(by.system.type('keyboard'));
-    const controls = element(by.id('recording-controls-scroll'));
-    await expect(keyboard).toExist();
-    await waitFor(focusedInput).toBeFocused().withTimeout(5000);
-    console.log(
-      'TRANSCRIPT_EVIDENCE_KEYBOARD_OPEN ' +
-        (await device.takeScreenshot('transcript-evidence-keyboard-open')),
-    );
-    // A real drag on the ScrollView is the user's keyboard-dismiss path.
-    await controls.swipe(direction, 'slow', 0.55, 0.5, 0.35);
-    await waitFor(focusedInput).not.toBeFocused().withTimeout(5000);
-    await expect(keyboard).not.toExist();
-    console.log(
-      'TRANSCRIPT_EVIDENCE_KEYBOARD_DISMISSED ' +
-        (await device.takeScreenshot('transcript-evidence-keyboard-dismissed')),
-    );
-  }
+// Use the recording screen's single scroll container to reveal actions while the multiline editor is open.
+async function scrollToTranscriptControl(control, direction = 'down') {
   await waitFor(control)
     .toBeVisible()
     .whileElement(by.id('recording-controls-scroll'))

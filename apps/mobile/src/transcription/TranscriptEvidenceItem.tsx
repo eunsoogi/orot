@@ -67,23 +67,6 @@ export default function TranscriptEvidenceItem({
       style={styles.segment}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
-      {editing ? (
-        // Keep correction controls before long provenance details so the keyboard cannot push them below the viewport.
-        <View style={styles.actions}>
-          <Button
-            disabled={busy}
-            onPress={onSave}
-            testID={`transcript-save-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.save')}
-          />
-          <Button
-            disabled={busy}
-            onPress={onCancel}
-            testID={`transcript-cancel-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.cancel')}
-          />
-        </View>
-      ) : null}
       {/* Keep review state beside each segment so machine output stays visibly provisional. */}
       <Text
         style={styles.metadata}
@@ -145,6 +128,23 @@ export default function TranscriptEvidenceItem({
           {segment.text}
         </Text>
       )}
+      {editing ? (
+        // Keep actions after the editor so the parent can reveal them above the keyboard.
+        <View style={styles.actions}>
+          <Button
+            disabled={busy}
+            onPress={onSave}
+            testID={`transcript-save-${segment.segmentOrdinal}`}
+            title={t('recording.transcript.save')}
+          />
+          <Button
+            disabled={busy}
+            onPress={onCancel}
+            testID={`transcript-cancel-${segment.segmentOrdinal}`}
+            title={t('recording.transcript.cancel')}
+          />
+        </View>
+      ) : null}
       {history.map(revision => (
         <Text
           key={revision.id}

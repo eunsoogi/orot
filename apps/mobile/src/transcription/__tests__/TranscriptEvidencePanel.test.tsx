@@ -113,10 +113,16 @@ test('shows provenance and range, preserves correction history, and plays the se
   expect(service.play).toHaveBeenCalledWith(original);
 
   await fireEvent.press(screen.getByTestId('transcript-edit-0'));
-  await fireEvent.changeText(
-    screen.getByTestId('transcript-input-0'),
-    correction.text,
-  );
+  const transcriptInput = screen.getByTestId('transcript-input-0');
+  // Keep save and cancel after the editor so the parent can scroll them into view.
+  expect(
+    screen
+      .getAllByTestId(
+        /^(?:transcript-input-0|transcript-save-0|transcript-cancel-0)$/,
+      )
+      .map(control => control.props.testID),
+  ).toEqual(['transcript-input-0', 'transcript-save-0', 'transcript-cancel-0']);
+  await fireEvent.changeText(transcriptInput, correction.text);
   await fireEvent.press(screen.getByTestId('transcript-save-0'));
 
   await waitFor(() => expect(screen.getByText(correction.text)).toBeTruthy());
