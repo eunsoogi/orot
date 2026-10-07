@@ -1,46 +1,102 @@
-/** Korean copy keeps this feature independent from the calendar owner's shared catalog. */
+import { t } from '../i18n';
+
+/**
+ * Preserve the feature's semantic copy names while resolving each value from
+ * the shared typed catalog at access time; this adapter contains no locale text.
+ */
 export const medicalAppointmentCopy = {
-  title: '진료 일정 분류',
-  description: 'AI 분류를 검토하고 원하는 일정을 직접 선택할 수 있습니다.',
-  queryLimit: '캘린더에서 향후 1년의 일정을 최대 100건까지 불러옵니다.',
-  incompleteCalendar:
-    '추가 일정 여부를 확인할 수 없어 전체 캘린더를 분류한 결과가 아닙니다.',
-  localNotice:
-    '선택한 온디바이스 모델은 일정 제목과 시간을 기기에서 처리합니다.',
-  remoteNotice:
-    '원격 제공자를 선택하면 일정 제목과 시간은 별도 동의 후 전송됩니다.',
-  loadCalendar: '캘린더 일정 불러오기',
-  classify: '선택한 AI로 분류',
-  manual: '수동 입력 및 일정 편집',
-  loading: '캘린더 일정을 불러오는 중입니다.',
-  classifying: '일정을 분류하고 있습니다.',
-  noCandidates: '불러온 일정이 없습니다.',
-  permissionUnavailable:
-    '캘린더 읽기 권한을 사용할 수 없습니다. 직접 일정을 입력할 수 있습니다.',
-  providerUnavailable:
-    '선택된 AI를 사용할 수 없습니다. 수동으로 일정을 확인할 수 있습니다.',
-  noProvider: 'AI를 분류에 사용하려면 선택한 제공자와 실행 정보가 필요합니다.',
-  emptyCoverage: '불러온 후보가 없어 전체 캘린더를 확인했다고 볼 수 없습니다.',
-  manualReview:
-    'AI 결과를 사용할 수 없어 분류하지 않았습니다. 직접 확인해 주세요.',
-  notClassified: '아직 분류하지 않았습니다.',
-  save: '의료 일정으로 직접 선택',
-  saving: '저장 중입니다.',
-  saved: '일정을 저장했습니다.',
-  stale: '일정이나 권한이 바뀌었습니다. 다시 불러온 뒤 확인해 주세요.',
-  saveError: '일정을 저장하지 못했습니다.',
-  resultNotice: '분류 결과는 참고용이며 진단이나 의료 조언이 아닙니다.',
-  uncertainty: '불확실성',
-  reason: '분류 근거',
-  unclassified: '미분류',
-  coverage: (returned: number, classified: number) =>
-    `불러온 일정 ${returned}건 중 ${classified}건을 분류했습니다.`,
-  labels: {
-    medical: '진료 일정',
-    non_medical: '진료 일정 아님',
-    uncertain: '불확실',
-    low: '낮음',
-    medium: '보통',
-    high: '높음',
+  get title() {
+    return t('medicalAppointments.title');
   },
-} as const;
+  get description() {
+    return t('medicalAppointments.description');
+  },
+  get queryLimit() {
+    return t('medicalAppointments.queryLimit');
+  },
+  get incompleteCalendar() {
+    return t('medicalAppointments.incompleteCalendar');
+  },
+  get localNotice() {
+    return t('medicalAppointments.localNotice');
+  },
+  get remoteNotice() {
+    return t('medicalAppointments.remoteNotice');
+  },
+  get loadCalendar() {
+    return t('medicalAppointments.actions.loadCalendar');
+  },
+  get classify() {
+    return t('medicalAppointments.actions.classify');
+  },
+  get manual() {
+    return t('medicalAppointments.actions.manual');
+  },
+  get loading() {
+    return t('medicalAppointments.status.loading');
+  },
+  get classifying() {
+    return t('medicalAppointments.status.classifying');
+  },
+  get noCandidates() {
+    return t('medicalAppointments.status.noCandidates');
+  },
+  get permissionUnavailable() {
+    return t('medicalAppointments.status.permissionUnavailable');
+  },
+  get providerUnavailable() {
+    return t('medicalAppointments.status.providerUnavailable');
+  },
+  get noProvider() {
+    return t('medicalAppointments.status.noProvider');
+  },
+  get emptyCoverage() {
+    return t('medicalAppointments.status.emptyCoverage');
+  },
+  get manualReview() {
+    return t('medicalAppointments.status.manualReview');
+  },
+  get notClassified() {
+    return t('medicalAppointments.status.notClassified');
+  },
+  get save() {
+    return t('medicalAppointments.actions.save');
+  },
+  get saving() {
+    return t('medicalAppointments.actions.saving');
+  },
+  get saved() {
+    return t('medicalAppointments.status.saved');
+  },
+  get stale() {
+    return t('medicalAppointments.status.stale');
+  },
+  get saveError() {
+    return t('medicalAppointments.status.saveError');
+  },
+  get resultNotice() {
+    return t('medicalAppointments.resultNotice');
+  },
+  get uncertainty() {
+    return t('medicalAppointments.uncertainty');
+  },
+  get reason() {
+    return t('medicalAppointments.reason');
+  },
+  get unclassified() {
+    return t('medicalAppointments.unclassified');
+  },
+  coverage(returned: number, classified: number) {
+    return t('medicalAppointments.coverage', { returned, classified });
+  },
+  get labels() {
+    return {
+      medical: t('medicalAppointments.labels.medical'),
+      non_medical: t('medicalAppointments.labels.nonMedical'),
+      uncertain: t('medicalAppointments.labels.uncertain'),
+      low: t('medicalAppointments.labels.low'),
+      medium: t('medicalAppointments.labels.medium'),
+      high: t('medicalAppointments.labels.high'),
+    };
+  },
+};
