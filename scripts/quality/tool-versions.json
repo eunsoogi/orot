@@ -32,7 +32,7 @@
           "url": "https://github.com/nicklockwood/SwiftFormat/releases/download/0.62.1/swiftformat_linux.zip",
           "sha256": "61ff55f3581e2144a4ad114831167102c38be853df75c1477d20b40a8e8120aa",
           "archive": "zip",
-          "binary": "swiftformat"
+          "binary": "swiftformat_linux"
         }
       }
     },

@@ -60,6 +60,8 @@ test('Linux selects host-pinned portable tools and JDK without requiring Xcode',
   assert.deepEqual(Object.keys(selected.tools).sort(), expectedTools.sort());
   assert.equal(selected.jdk.url, versions.jdk.platforms['linux-x64'].url);
   assert.equal(selected.clangFormat, null);
+  // The Linux release archive contains this entry name; setup stages it under the selected name.
+  assert.equal(selected.tools.swiftformat.binary, 'swiftformat_linux');
   for (const [name, tool] of Object.entries(selected.tools)) {
     assert.equal(tool.url, versions.tools[name].assets['linux-x64'].url);
     assert.match(tool.sha256, /^[a-f0-9]{64}$/);
