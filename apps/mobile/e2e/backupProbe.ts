@@ -10,6 +10,7 @@ import {
   prepareRecordingsForBackup,
 } from '../src/backup/nativeBackupMigration';
 import { prepareRecordingBackup } from '../src/backup/recordingBackupPreparation';
+import { runAgentMemoryProbe } from '../src/memory/agentMemoryProbe';
 import {
   installSyntheticTranscriptionRecording,
   removeSyntheticTranscriptionRecording,
@@ -31,6 +32,7 @@ export interface BackupProbeResult {
   readonly keyPreserved?: boolean;
   readonly keyEligible?: boolean;
   readonly storageRelationsReopened?: boolean;
+  readonly agentMemoryTombstonePreserved?: boolean;
   readonly recording?: {
     readonly fileProtection: string;
     readonly excludedFromBackup: boolean;
@@ -65,6 +67,9 @@ async function readDatabaseKey() {
 async function seedInterruptedMigration(): Promise<BackupProbeResult> {
   // Seed database, provenance, transcript, and search records before restarting the app process.
   await runStorageProbe('fresh');
+  // Exercise the existing memory removal contract before the app process restarts.
+  await runAgentMemoryProbe('fresh');
+  await runAgentMemoryProbe('delete');
   const original = await readDatabaseKey();
   const saved = await setGenericPassword(
     databaseKeyAccount,
@@ -93,6 +98,7 @@ async function seedInterruptedMigration(): Promise<BackupProbeResult> {
 async function verifyRecoveryAndBackupEligibility(): Promise<BackupProbeResult> {
   // The restarted process retries migration, then opens the same encrypted database with its saved key.
   await runStorageProbe('restart');
+  await runAgentMemoryProbe('tombstone-restart');
   const original = await readDatabaseKey();
   const restored = await setGenericPassword(
     databaseKeyAccount,
@@ -176,6 +182,7 @@ async function verifyRecoveryAndBackupEligibility(): Promise<BackupProbeResult> 
       keyPreserved: true,
       keyEligible,
       storageRelationsReopened: true,
+      agentMemoryTombstonePreserved: true,
       recording: {
         fileProtection: recording.fileProtection,
         excludedFromBackup: recording.excludedFromBackup,

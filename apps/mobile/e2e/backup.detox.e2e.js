@@ -11,7 +11,7 @@ beforeEach(() => resetGuard.assertResetMayContinue());
 afterEach(() => resetGuard.afterTest());
 
 describe('native backup eligibility probe on an isolated Simulator', () => {
-  it('preserves the SQLCipher key through migration failure and checks recording attributes', async () => {
+  it('preserves key and memory tombstones across process restart', async () => {
     // The test deliberately seeds synthetic Keychain and app data only on its configured Simulator.
     await installFreshApp(device, resetGuard);
     await device.launchApp({
@@ -41,6 +41,7 @@ describe('native backup eligibility probe on an isolated Simulator', () => {
       keyPreserved: true,
       keyEligible: true,
       storageRelationsReopened: true,
+      agentMemoryTombstonePreserved: true,
     });
     jestExpect(result.recording.excludedFromBackup).toBe(false);
     jestExpect(['complete', 'unverified']).toContain(
