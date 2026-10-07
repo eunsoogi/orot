@@ -2,6 +2,8 @@
 
 describe('SQLCipher LangGraph checkpoint resume', () => {
   it('resumes a completed node after the app process restarts', async () => {
+    // Detox reinstalls this probe with a fresh app container, while the iOS Keychain survives uninstall.
+    await device.clearKeychain();
     await device.launchApp({ newInstance: true });
     await element(by.id('checkpoint-start')).tap();
     await waitFor(element(by.id('checkpoint-saved')))
