@@ -8,7 +8,12 @@ import {
 import { useNextVisitQuestionsController } from '../controller';
 import { NextVisitQuestionsScreen } from '../NextVisitQuestionsScreen';
 import type { GenerationOutcome, NextVisitEvidenceReference } from '../types';
-import { makeProps, questions, type Props } from '../testSupport/fixtures';
+import {
+  appointment,
+  makeProps,
+  questions,
+  type Props,
+} from '../testSupport/fixtures';
 
 // Cold React Native test workers can need longer than Jest's five-second default.
 jest.setTimeout(15000);
@@ -101,33 +106,35 @@ test('aborts in-flight generation when the selected provider changes', async () 
     await Promise.resolve();
   });
 
-  rerender({
-    props: {
-      ...initialProps,
-      provider: {
-        status: 'available',
-        selection: {
-          providerId: 'synthetic-provider-2',
-          modelId: 'fixture-model',
+  await act(async () => {
+    rerender({
+      props: {
+        ...initialProps,
+        provider: {
+          status: 'available',
+          selection: {
+            providerId: 'synthetic-provider-2',
+            modelId: 'fixture-model',
+          },
+          displayName: '다른 합성 제공자',
+          privacyBoundary: 'on-device',
         },
-        displayName: '다른 합성 제공자',
-        privacyBoundary: 'on-device',
       },
-    },
+    });
   });
 
-  expect(requestSignal?.aborted).toBe(true);
-  expect(result.current.phase).toBe('idle');
-  expect(result.current.generationMessage).toBe(
-    '선택한 AI가 바뀌어 질문 생성을 멈췄어요. 새 선택으로 다시 시도해 주세요.',
-  );
+  const wasAborted = requestSignal?.aborted;
   await act(async () => {
     // The fixture deliberately resolves despite abort to prove late results are ignored.
     resolveOutcome({ status: 'ready', questions, caveats: [] });
     await pendingGeneration;
   });
 
+  expect(wasAborted).toBe(true);
   expect(result.current.phase).toBe('idle');
+  expect(result.current.generationMessage).toBe(
+    '선택한 AI가 바뀌어 질문 생성을 멈췄어요. 새 선택으로 다시 시도해 주세요.',
+  );
   expect(result.current.draftQuestions).toEqual([]);
 });
 
@@ -159,14 +166,15 @@ test('does not apply a completed save to a different appointment', async () => {
     ...appointment,
     id: 'synthetic-appointment-2',
   };
-  rerender({
-    props: {
-      ...initialProps,
-      appointment: { status: 'ready', appointment: nextAppointment },
-      savedQuestions: { status: 'ready', questions: [] },
-    },
+  await act(async () => {
+    rerender({
+      props: {
+        ...initialProps,
+        appointment: { status: 'ready', appointment: nextAppointment },
+        savedQuestions: { status: 'ready', questions: [] },
+      },
+    });
   });
-  expect(result.current.phase).toBe('idle');
 
   await act(async () => {
     // Persistence may finish after navigation; its response belongs to the old visit.

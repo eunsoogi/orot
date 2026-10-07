@@ -24,6 +24,7 @@ export function NextVisitQuestionsScreen<
   const controller = useNextVisitQuestionsController(props);
   const savedQuestions =
     controller.savedOverride ?? props.savedQuestions.questions;
+  const savedCaveats = controller.savedCaveats ?? [];
   const savedStatus = controller.savedOverride
     ? 'ready'
     : props.savedQuestions.status;
@@ -113,7 +114,13 @@ export function NextVisitQuestionsScreen<
                 {controller.generationMessage}
               </Text>
             ) : null}
-            <EvidenceCaveats caveats={controller.caveats} theme={props.theme} />
+            {controller.phase === 'saved' &&
+            savedQuestions.length > 0 ? null : (
+              <EvidenceCaveats
+                caveats={controller.caveats}
+                theme={props.theme}
+              />
+            )}
             {controller.saveMessage ? (
               <Text
                 accessibilityRole={
@@ -182,6 +189,7 @@ export function NextVisitQuestionsScreen<
             <Text accessibilityRole="header" style={styles.sectionHeading}>
               {copy.saved.heading}
             </Text>
+            <EvidenceCaveats caveats={savedCaveats} theme={props.theme} />
             {savedQuestions.map((question, index) => (
               <QuestionCard
                 count={savedQuestions.length}
@@ -199,7 +207,9 @@ export function NextVisitQuestionsScreen<
             ))}
             <ActionButton
               label={copy.saved.edit}
-              onPress={() => controller.startReview(savedQuestions)}
+              onPress={() =>
+                controller.startReview(savedQuestions, savedCaveats)
+              }
               theme={props.theme}
               variant="secondary"
               testID="next-visit-saved-edit"

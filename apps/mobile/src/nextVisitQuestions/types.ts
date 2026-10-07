@@ -122,6 +122,9 @@ export type EvidenceCaveat =
   | 'reviewed_memory_unavailable'
   | 'no_matching_reviewed_memory';
 
+export type QuestionGenerationPhase =
+  'idle' | 'generating' | 'reviewing' | 'saving' | 'saved' | 'error';
+
 export type GenerationOutcome<TReference extends NextVisitEvidenceReference> =
   | {
       readonly status: 'ready';

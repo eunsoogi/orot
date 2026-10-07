@@ -2,50 +2,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { copyQuestions, isValidReview } from './questionReview';
 import { useQuestionDraftControls } from './questionDraftControls';
+import { useQuestionPersistence } from './useQuestionPersistence';
 import { useCommittedContextKeys } from './useCommittedContextKeys';
+import type {
+  NextVisitQuestionsController,
+  NextVisitQuestionsControllerInputs,
+} from './controllerTypes';
 import type {
   EvidenceCaveat,
   NextVisitEvidenceReference,
   NextVisitQuestion,
-  NextVisitQuestionUpdate,
-  NextVisitQuestionsScreenProps,
+  QuestionGenerationPhase,
 } from './types';
+export type { QuestionGenerationPhase } from './types';
 
-export type QuestionGenerationPhase =
-  'idle' | 'generating' | 'reviewing' | 'saving' | 'saved' | 'error';
-
-export interface NextVisitQuestionsController<
-  TReference extends NextVisitEvidenceReference,
-> {
-  readonly phase: QuestionGenerationPhase;
-  readonly draftQuestions: readonly NextVisitQuestion<TReference>[];
-  readonly savedOverride: readonly NextVisitQuestion<TReference>[] | null;
-  readonly caveats: readonly EvidenceCaveat[];
-  readonly generationMessage: string | null;
-  readonly saveMessage: string | null;
-  readonly sourceReference: TReference | null;
-  readonly isReviewValid: boolean;
-  generate(): Promise<void>;
-  cancelGeneration(): void;
-  startReview(questions: readonly NextVisitQuestion<TReference>[]): void;
-  cancelReview(): void;
-  updateQuestion(index: number, update: NextVisitQuestionUpdate<TReference>): void;
-  moveQuestion(index: number, offset: -1 | 1): void;
-  removeQuestion(index: number): void;
-  save(): Promise<void>;
-  openSource(reference: TReference): void;
-  closeSource(): void;
-}
-
-type Inputs<TReference extends NextVisitEvidenceReference> = Pick<
-  NextVisitQuestionsScreenProps<TReference>,
-  'appointment' | 'provider' | 'onGenerate' | 'onSaveReviewedQuestions'
->;
-
-/** Owns view transitions and rejects async replies after their appointment or provider context changes. */
+/** Owns view transitions and rejects replies after visit/provider changes or newer user intent. */
 export function useNextVisitQuestionsController<
   TReference extends NextVisitEvidenceReference,
->(inputs: Inputs<TReference>): NextVisitQuestionsController<TReference> {
+>(
+  inputs: NextVisitQuestionsControllerInputs<TReference>,
+): NextVisitQuestionsController<TReference> {
   const { appointment, provider, onGenerate, onSaveReviewedQuestions } = inputs;
   const [phase, setPhase] = useState<QuestionGenerationPhase>('idle');
   const [draftQuestions, setDraftQuestions] = useState<
@@ -54,11 +30,14 @@ export function useNextVisitQuestionsController<
   const [savedOverride, setSavedOverride] = useState<
     readonly NextVisitQuestion<TReference>[] | null
   >(null);
+  // Saved-list warnings belong to those questions, so later generation cannot replace them.
+  const [savedCaveats, setSavedCaveats] = useState<
+    readonly EvidenceCaveat[] | null
+  >(null);
   const [caveats, setCaveats] = useState<readonly EvidenceCaveat[]>([]);
   const [generationMessage, setGenerationMessage] = useState<string | null>(
     null,
   );
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [sourceReference, setSourceReference] = useState<TReference | null>(
     null,
   );
@@ -79,20 +58,41 @@ export function useNextVisitQuestionsController<
     appointmentKey,
     providerKey,
   );
+  const {
+    save,
+    saveMessage,
+    clearMessage: clearSaveMessage,
+    invalidate: invalidateSave,
+  } = useQuestionPersistence({
+    appointment,
+    appointmentKey,
+    contextKeys: currentContextKeys,
+    draftQuestions,
+    caveats,
+    onSaveReviewedQuestions,
+    setPhase,
+    setDraftQuestions,
+    setSavedOverride,
+    setSavedCaveats,
+  });
   const previousProviderKey = useRef(providerKey);
 
   useEffect(() => {
     setPhase('idle');
     setDraftQuestions([]);
     setSavedOverride(null);
+    setSavedCaveats(null);
     setCaveats([]);
     setGenerationMessage(null);
-    setSaveMessage(null);
+    clearSaveMessage();
     setSourceReference(null);
     activeGeneration.current?.abort();
     activeGeneration.current = null;
-    return () => activeGeneration.current?.abort();
-  }, [appointmentKey]);
+    return () => {
+      activeGeneration.current?.abort();
+      activeGeneration.current = null;
+    };
+  }, [appointmentKey, clearSaveMessage]);
 
   useEffect(() => {
     if (previousProviderKey.current === providerKey) return;
@@ -116,7 +116,7 @@ export function useNextVisitQuestionsController<
     activeGeneration.current = request;
     setPhase('generating');
     setGenerationMessage(null);
-    setSaveMessage(null);
+    clearSaveMessage();
     setCaveats([]);
     try {
       const outcome = await onGenerate(
@@ -124,8 +124,10 @@ export function useNextVisitQuestionsController<
         provider.selection,
         request.signal,
       );
-      if (request.signal.aborted) return;
-      if (currentContextKeys.current.appointment !== requestAppointmentKey) return;
+      if (request.signal.aborted || activeGeneration.current !== request)
+        return;
+      if (currentContextKeys.current.appointment !== requestAppointmentKey)
+        return;
       if (currentContextKeys.current.provider !== requestProviderKey) {
         setPhase('idle');
         setGenerationMessage(copy.generation.providerChanged);
@@ -150,8 +152,10 @@ export function useNextVisitQuestionsController<
       setPhase('error');
       setGenerationMessage(outcome.message);
     } catch {
-      if (request.signal.aborted) return;
-      if (currentContextKeys.current.appointment !== requestAppointmentKey) return;
+      if (request.signal.aborted || activeGeneration.current !== request)
+        return;
+      if (currentContextKeys.current.appointment !== requestAppointmentKey)
+        return;
       if (currentContextKeys.current.provider !== requestProviderKey) {
         setPhase('idle');
         setGenerationMessage(copy.generation.providerChanged);
@@ -162,7 +166,15 @@ export function useNextVisitQuestionsController<
     } finally {
       if (activeGeneration.current === request) activeGeneration.current = null;
     }
-  }, [appointment, appointmentKey, onGenerate, provider, providerKey]);
+  }, [
+    appointment,
+    appointmentKey,
+    clearSaveMessage,
+    currentContextKeys,
+    onGenerate,
+    provider,
+    providerKey,
+  ]);
 
   const cancelGeneration = useCallback(() => {
     activeGeneration.current?.abort();
@@ -172,60 +184,41 @@ export function useNextVisitQuestionsController<
   }, []);
 
   const startReview = useCallback(
-    (questions: readonly NextVisitQuestion<TReference>[]) => {
+    (
+      questions: readonly NextVisitQuestion<TReference>[],
+      reviewCaveats: readonly EvidenceCaveat[] = [],
+    ) => {
+      // Opening a saved list supersedes pending generation and save replies.
+      activeGeneration.current?.abort();
+      activeGeneration.current = null;
+      invalidateSave();
       setDraftQuestions(copyQuestions(questions));
+      setCaveats([...reviewCaveats]);
       setPhase('reviewing');
       setGenerationMessage(null);
-      setSaveMessage(null);
+      clearSaveMessage();
     },
-    [],
+    [clearSaveMessage, invalidateSave],
   );
 
   const cancelReview = useCallback(() => {
+    invalidateSave();
     setDraftQuestions([]);
+    setCaveats([]);
     setPhase('idle');
-    setSaveMessage(null);
-  }, []);
+    clearSaveMessage();
+  }, [clearSaveMessage, invalidateSave]);
 
   const { updateQuestion, moveQuestion, removeQuestion } =
     useQuestionDraftControls<TReference>(setDraftQuestions);
 
   const isReviewValid = isValidReview(draftQuestions);
 
-  const save = useCallback(async () => {
-    if (appointment.status !== 'ready' || !isValidReview(draftQuestions)) {
-      setSaveMessage(copy.review.empty);
-      return;
-    }
-    const saveAppointmentKey = appointmentKey;
-    setPhase('saving');
-    setSaveMessage(null);
-    try {
-      const result = await onSaveReviewedQuestions(
-        appointment.appointment,
-        copyQuestions(draftQuestions),
-      );
-      // Persistence is scoped to the captured visit; its late reply must not replace another visit's view.
-      if (currentContextKeys.current.appointment !== saveAppointmentKey) return;
-      setSavedOverride(copyQuestions(result.questions));
-      setDraftQuestions([]);
-      setPhase('saved');
-      setSaveMessage(
-        result.memoryStatus === 'retry_required'
-          ? copy.review.memoryRetry
-          : copy.review.saved,
-      );
-    } catch {
-      if (currentContextKeys.current.appointment !== saveAppointmentKey) return;
-      setPhase('reviewing');
-      setSaveMessage(copy.review.saveError);
-    }
-  }, [appointment, appointmentKey, draftQuestions, onSaveReviewedQuestions]);
-
   return {
     phase,
     draftQuestions,
     savedOverride,
+    savedCaveats,
     caveats,
     generationMessage,
     saveMessage,
