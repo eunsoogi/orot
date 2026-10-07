@@ -35,6 +35,7 @@ export interface SyntheticVisitQuestionCase {
     readonly appointmentDate: string;
     readonly forbiddenDates: readonly string[];
     readonly requiredValues: readonly string[];
+    readonly requiredMeasurements: readonly { readonly value: string; readonly unit: string }[];
     readonly unobservedDates: readonly string[];
   };
 }
@@ -152,6 +153,10 @@ export function createSyntheticVisitQuestionFixture(seed: string): SyntheticVisi
           appointmentDate: nextVisitDate,
           forbiddenDates: [cancelledDate],
           requiredValues: ['7.5', '450'],
+          requiredMeasurements: [
+            { value: '7.5', unit: 'hours' },
+            { value: '450', unit: 'minutes' },
+          ],
           unobservedDates: [],
         },
       },
@@ -178,6 +183,7 @@ export function createSyntheticVisitQuestionFixture(seed: string): SyntheticVisi
           appointmentDate: nextVisitDate,
           forbiddenDates: [],
           requiredValues: [],
+          requiredMeasurements: [],
           unobservedDates: [],
         },
       },
@@ -199,6 +205,7 @@ export function createSyntheticVisitQuestionFixture(seed: string): SyntheticVisi
           appointmentDate: nextVisitDate,
           forbiddenDates: [],
           requiredValues: [],
+          requiredMeasurements: [],
           unobservedDates: ['2030-04-22'],
         },
       },

@@ -1,4 +1,15 @@
+const { createHash } = require('node:crypto');
+
 const PROJECT_NAME = 'orot-visit-questions-synthetic';
+
+// Hash-derived UUIDs make example creation retries idempotent within one dataset.
+function stableUuid(value) {
+  const bytes = createHash('sha256').update(value).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 /** Disables ambient LangChain tracing before the graph module is loaded. */
 function disableAmbientTracing(env) {
@@ -21,9 +32,9 @@ function getLangSmithApiKey(env) {
 }
 
 /** Projects fixture inputs into an explicit LangSmith allowlist. */
-function toLangSmithExample(testCase) {
+function toLangSmithExample(testCase, datasetId) {
   const snapshot = testCase.appointment.calendarEventSnapshot;
-  return {
+  const example = {
     inputs: {
       caseId: testCase.caseId,
       query: testCase.query,
@@ -75,8 +86,22 @@ function toLangSmithExample(testCase) {
       appointmentDate: testCase.expected.appointmentDate,
       forbiddenDates: [...testCase.expected.forbiddenDates],
       requiredValues: [...testCase.expected.requiredValues],
+      requiredMeasurements: testCase.expected.requiredMeasurements.map((measurement) => ({
+        value: measurement.value,
+        unit: measurement.unit,
+      })),
       unobservedDates: [...testCase.expected.unobservedDates],
     },
+  };
+  if (!datasetId) return example;
+
+  // Stable identities let an opt-in rerun resume the same fixture without duplicating examples.
+  return {
+    ...example,
+    id: stableUuid(`orot-langsmith-example-v1:${datasetId}:${testCase.caseId}`),
+    dataset_id: datasetId,
+    // This is LangSmith upload metadata, not a clinical event time from the fixture.
+    created_at: new Date().toISOString(),
   };
 }
 

@@ -1,6 +1,6 @@
 # 진료 질문 합성 평가
 
-이 평가는 고정 seed의 합성 상담 기록, 혈압·수면 측정, 일정, 검토된 메모리를 사용해 #30의 실제 `runVisitQuestionWorkflow` 그래프를 실행합니다. 그래프 소스가 체크아웃에 없으면 러너가 실행 전에 종료 코드 2와 누락된 선행 조건을 알립니다.
+그래프 소스가 체크아웃에 있을 때, 이 평가는 고정 seed의 합성 상담 기록, 혈압·수면 측정, 일정, 검토된 메모리를 사용해 #30의 실제 `runVisitQuestionWorkflow`를 실행합니다. 현재 #36 브랜치에는 그래프 소스가 없으므로 러너는 실행 전에 종료 코드 2와 누락된 선행 조건을 알립니다.
 
 저장소 루트에서 오프라인 평가를 실행합니다.
 
@@ -16,9 +16,9 @@ LangSmith에 보내려면 별도 개발용 환경에서 명시적으로 opt-in�
 OROT_LANGSMITH_EVAL=1 node scripts/evaluation/visit-questions/run.cjs
 ```
 
-이 모드에는 `LANGSMITH_API_KEY`가 필요합니다. 키가 없으면 러너가 누락 사실만 표시하고 종료합니다. 러너는 환경 변수의 키를 입력·출력·피드백에 넣거나 출력하지 않습니다. LangSmith에는 `packages/eval`의 생성 fixture에서 만든 allowlist 입력, 그래프 결과의 allowlist 출력, 평가 점수만 전송합니다. 환경에서 상속된 `LANGSMITH_TRACING`과 `LANGCHAIN_TRACING_V2`는 그래프를 불러오기 전에 끕니다. 앱 `TelemetrySink`, 실제 사용자 기록, 운영 trace, Orot backend는 사용하지 않습니다.
+이 모드에는 `LANGSMITH_API_KEY`가 필요합니다. 키가 없으면 러너가 누락 사실만 표시하고 종료합니다. 러너는 환경 변수의 키를 입력·출력·피드백에 넣거나 출력하지 않습니다. LangSmith에는 `packages/eval`의 생성 fixture에서 만든 allowlist 입력, 기대 출력, 그래프 결과의 allowlist 출력, 평가 점수만 전송합니다. fixture 내용의 SHA-256으로 이름이 정해진 데이터셋을 생성하거나 재사용하며, 평가에는 데이터셋 ID를 전달해 SDK가 유효한 예제 ID와 생성 시각을 읽도록 합니다. 동일 fixture의 일부 업로드가 중단되면 누락된 예제만 채우고, 기존 내용이 달라졌다면 덮어쓰지 않고 실패합니다. 환경에서 상속된 `LANGSMITH_TRACING`과 `LANGCHAIN_TRACING_V2`는 그래프를 불러오기 전에 끕니다. 앱 `TelemetrySink`, 실제 사용자 기록, 운영 trace, Orot backend는 사용하지 않습니다.
 
-점수는 출처 ID와 원본 기록 일치, 예약 날짜, 숫자 근거, 유용한 질문 또는 필요한 확인 요청, clarification 동작, 위험한 약 변경 권고를 다룹니다. 적절한 clarification은 근거가 부족한 fixture에서 유용한 응답으로 평가합니다. 측정 가능한 실행 시간은 `latency_ms`로 기록하고, 토큰 수는 현재 워크플로가 내보내지 않으므로 출력 상태에 미측정 사유를 남깁니다.
+점수는 출처 ID와 원본 기록 일치, 다음 진료 cue에 연결된 날짜, 수치와 단위의 연결 및 근거, 유용한 질문 또는 필요한 확인 요청, clarification 동작, 위험한 약 변경 권고를 다룹니다. 취소된 날짜는 이력에서 언급할 수 있지만, 다음 진료로 연결하면 안 됩니다. 적절한 clarification은 근거가 부족한 fixture에서 유용한 응답으로 평가합니다. 측정 가능한 실행 시간은 `latency_ms`로 기록하고, 토큰 수는 현재 워크플로가 내보내지 않으므로 출력 상태에 미측정 사유를 남깁니다.
 
 각 로컬 보고서와 LangSmith 실험에는 평가 대상 workflow의 저장소 commit·경로·작업 트리 상태와 toolchain의 `pnpm-lock.yaml` SHA-256·Node 버전을 별도 필드로 기록합니다. 따라서 그래프 변경과 의존성 변경을 구분해 결과를 다시 확인할 수 있습니다.
 

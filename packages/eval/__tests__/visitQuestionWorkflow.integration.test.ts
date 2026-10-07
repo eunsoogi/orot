@@ -4,6 +4,7 @@ import { createSyntheticVisitQuestionFixture } from '../src';
 
 const {
   disableAmbientTracing,
+  getLangSmithApiKey,
   isLangSmithUploadEnabled,
   toLangSmithExample,
 } = require('../../../scripts/evaluation/visit-questions/privacy');
@@ -15,6 +16,9 @@ const {
   runSyntheticCase,
 } = require('../../../scripts/evaluation/visit-questions/workflow-harness.cjs');
 const {
+  ensureSyntheticDataset,
+} = require('../../../scripts/evaluation/visit-questions/langsmith-dataset.cjs');
+const {
   getEvaluationRevisionMetadata,
   toLangSmithRevisionMetadata,
 } = require('../../../scripts/evaluation/visit-questions/revision.cjs');
@@ -22,11 +26,14 @@ const repoRoot = path.resolve(__dirname, '../../..');
 const evaluationSuite = process.env.OROT_RUN_VISIT_QUESTION_EVAL === '1' ? describe : describe.skip;
 
 /** Uploads only allowlisted outputs previously produced by the local app graph. */
-async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>, revisions: any) {
+async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any>, revisions: any) {
   const { createRequire } = require('node:module');
   const runtimeRequire = createRequire(path.join(repoRoot, 'packages/agent-runtime/package.json'));
   const coreRequire = createRequire(runtimeRequire.resolve('@langchain/core'));
   const { evaluate } = coreRequire('langsmith/evaluation');
+  const { Client } = coreRequire('langsmith');
+  const client = new Client({ apiKey: getLangSmithApiKey(process.env) });
+  const dataset = await ensureSyntheticDataset(client, FIXTURE_SEED, testCases);
   const experiment = await evaluate(
     async (inputs: any) => {
       const output = outputs.get(inputs.caseId);
@@ -34,10 +41,13 @@ async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>
       return output;
     },
     {
-      data: examples,
+      // Evaluate the persisted dataset so the SDK receives complete Example objects and timestamps.
+      data: dataset.datasetId,
       evaluators: [evaluateVisitQuestionWithLangSmith],
       experimentPrefix: 'orot-visit-questions-synthetic',
       description: 'Actual #30 workflow with a deterministic test-only provider.',
+      client,
+      disableEvaluatorTracing: true,
       metadata: {
         providerMode: 'test-adapter',
         fixtureSeed: FIXTURE_SEED,
@@ -52,9 +62,10 @@ async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>
     if (!row.run) throw new Error('LangSmith returned an incomplete run.');
     completed += 1;
   }
-  if (completed !== examples.length) {
+  if (completed !== testCases.length) {
     throw new Error('LangSmith did not finish every synthetic example.');
   }
+  return dataset;
 }
 
 evaluationSuite('manual synthetic visit-question graph evaluation', () => {
@@ -98,13 +109,16 @@ evaluationSuite('manual synthetic visit-question graph evaluation', () => {
     }
 
     const uploaded = isLangSmithUploadEnabled(process.env);
-    if (uploaded) await uploadSyntheticResults(examples, outputs, revisions);
+    const langSmithDataset = uploaded
+      ? await uploadSyntheticResults(fixture.cases, outputs, revisions)
+      : null;
     process.stdout.write(
       `${JSON.stringify(
         {
           fixtureSeed: FIXTURE_SEED,
           providerMode: 'test-adapter',
           uploadedToLangSmith: uploaded,
+          langSmithDataset,
           ...revisions,
           cases: report,
         },
