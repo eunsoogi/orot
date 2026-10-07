@@ -32,11 +32,12 @@ export interface LocalEmbeddingVectorStore {
   ): Promise<void>;
   /** Clears vectors and retains fences for known sources and every stored chunk. */
   clear(sourceRecordIds?: readonly string[], transaction?: SqlExecutor): Promise<void>;
-  /** Matches tombstones across provenance, but checks missing rows only for root source IDs. */
+  /** Matches tombstones across evidence identities and checks missing source and record rows. */
   findRemovedEvidence(
     sourceRecordIds: readonly string[],
     chunkIds: readonly string[],
     rootSourceRecordIds: readonly string[],
+    localRecordIds?: readonly string[],
   ): Promise<RemovedEvidenceReferences>;
   upsertBatch(
     model: LocalEmbeddingModelIdentity,

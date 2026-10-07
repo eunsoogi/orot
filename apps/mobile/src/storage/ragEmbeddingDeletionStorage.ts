@@ -1,4 +1,5 @@
 import type { LocalEmbeddingWrite } from '@orot/rag';
+import { STORAGE_TABLES } from '@orot/storage';
 import type { SqlExecutor } from '@orot/storage';
 
 const EMBEDDINGS_TABLE = 'rag_embeddings';
@@ -6,6 +7,9 @@ const EMBEDDING_MODELS_TABLE = 'rag_embedding_models';
 const EMBEDDING_SOURCES_TABLE = 'rag_embedding_sources';
 const REMOVED_CHUNKS_TABLE = 'rag_embedding_removed_chunks';
 const REMOVED_SOURCES_TABLE = 'rag_embedding_removed_sources';
+const LOCAL_RECORD_TABLES_SQL = Object.values(STORAGE_TABLES)
+  .map(({ table }) => `SELECT id FROM ${table}`)
+  .join(' UNION ALL ');
 
 export async function ensureRagEmbeddingDeletionSchema(
   executor: SqlExecutor,
@@ -70,41 +74,52 @@ export async function assertRagEvidenceNotRemoved(
   }
 }
 
-/** Reads matching tombstones and checks source-row existence only for root source IDs. */
+/** Reads fences and validates source roots and structured records against their owning tables. */
 export async function findRemovedRagEvidence(
   executor: SqlExecutor,
   sourceRecordIds: readonly string[],
   chunkIds: readonly string[],
   rootSourceRecordIds: readonly string[],
+  localRecordIds: readonly string[] = [],
 ): Promise<{
   sourceRecordIds: readonly string[];
   chunkIds: readonly string[];
 }> {
-  const [removedSources, missingSources, removedChunks] = await Promise.all([
-    sourceRecordIds.length === 0
-      ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
-      : executor.execute(
-          `SELECT source_record_id FROM ${REMOVED_SOURCES_TABLE} WHERE source_record_id IN (SELECT value FROM json_each(?))`,
-          [JSON.stringify([...new Set(sourceRecordIds)])],
-        ),
-    rootSourceRecordIds.length === 0
-      ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
-      : executor.execute(
-          `SELECT requested.value AS source_record_id FROM json_each(?) AS requested WHERE NOT EXISTS (SELECT 1 FROM source_records WHERE id = requested.value)`,
-          [JSON.stringify([...new Set(rootSourceRecordIds)])],
-        ),
-    chunkIds.length === 0
-      ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
-      : executor.execute(
-          `SELECT chunk_id FROM ${REMOVED_CHUNKS_TABLE} WHERE chunk_id IN (SELECT value FROM json_each(?))`,
-          [JSON.stringify([...new Set(chunkIds)])],
-        ),
-  ]);
-  // A pre-migration graph may still hold chunks whose root source row vanished before tombstones existed.
+  const [removedSources, missingSources, missingRecords, removedChunks] =
+    await Promise.all([
+      sourceRecordIds.length === 0
+        ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
+        : executor.execute(
+            `SELECT source_record_id FROM ${REMOVED_SOURCES_TABLE} WHERE source_record_id IN (SELECT value FROM json_each(?))`,
+            [JSON.stringify([...new Set(sourceRecordIds)])],
+          ),
+      rootSourceRecordIds.length === 0
+        ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
+        : executor.execute(
+            `SELECT requested.value AS source_record_id FROM json_each(?) AS requested WHERE NOT EXISTS (SELECT 1 FROM source_records WHERE id = requested.value)`,
+            [JSON.stringify([...new Set(rootSourceRecordIds)])],
+          ),
+      localRecordIds.length === 0
+        ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
+        : executor.execute(
+            `SELECT requested.value AS record_id FROM json_each(?) AS requested WHERE NOT EXISTS (SELECT 1 FROM (${LOCAL_RECORD_TABLES_SQL}) AS local_records WHERE local_records.id = requested.value)`,
+            [JSON.stringify([...new Set(localRecordIds)])],
+          ),
+      chunkIds.length === 0
+        ? Promise.resolve({ rows: [] as readonly Record<string, unknown>[] })
+        : executor.execute(
+            `SELECT chunk_id FROM ${REMOVED_CHUNKS_TABLE} WHERE chunk_id IN (SELECT value FROM json_each(?))`,
+            [JSON.stringify([...new Set(chunkIds)])],
+          ),
+    ]);
+  // A legacy graph may retain evidence after its source or structured-record row vanished.
   const removedSourceIds = new Set<string>();
   for (const row of [...removedSources.rows, ...missingSources.rows]) {
     if (typeof row.source_record_id === 'string')
       removedSourceIds.add(row.source_record_id);
+  }
+  for (const row of missingRecords.rows) {
+    if (typeof row.record_id === 'string') removedSourceIds.add(row.record_id);
   }
   return {
     sourceRecordIds: [...removedSourceIds],

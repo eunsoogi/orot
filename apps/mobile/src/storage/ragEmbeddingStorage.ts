@@ -121,6 +121,7 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
     sourceRecordIds: readonly string[],
     chunkIds: readonly string[],
     rootSourceRecordIds: readonly string[],
+    localRecordIds: readonly string[] = [],
   ): Promise<{
     sourceRecordIds: readonly string[];
     chunkIds: readonly string[];
@@ -131,6 +132,7 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
       sourceRecordIds,
       chunkIds,
       rootSourceRecordIds,
+      localRecordIds,
     );
   }
 

@@ -17,6 +17,16 @@ export async function listAllLocalDeletionReferences(
       references.add(RecordIdSchema.parse(row.id));
     }
   }
+  // Transcript bundle IDs are stable citations even though only segment rows have SQL IDs.
+  const transcripts = await executor.execute(
+    "SELECT DISTINCT json_extract(payload_json, '$.transcriptId') AS transcript_id FROM transcript_segments WHERE json_extract(payload_json, '$.transcriptId') IS NOT NULL",
+  );
+  for (const row of transcripts.rows) {
+    if (typeof row.transcript_id !== 'string') {
+      throw new Error('A transcript bundle deletion reference is invalid.');
+    }
+    references.add(RecordIdSchema.parse(row.transcript_id));
+  }
   return [...references].sort();
 }
 

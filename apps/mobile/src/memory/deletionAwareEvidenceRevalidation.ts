@@ -16,22 +16,19 @@ function locatorRecordIds(locator: EvidenceReference['locator']): string[] {
   );
 }
 
-function isStructuredRecordRoot(
-  reference: EvidenceReference,
-  sourceId: string,
-): boolean {
+function structuredRecordIdentity(reference: EvidenceReference): string | null {
   if (
     !reference.locator ||
     typeof reference.locator !== 'object' ||
     Array.isArray(reference.locator)
   )
-    return false;
+    return null;
   const locator = reference.locator as Record<string, unknown>;
-  return (
-    locator.kind === 'structured_record' &&
-    locator.recordId === sourceId &&
-    reference.evidenceId === sourceId
-  );
+  return locator.kind === 'structured_record' &&
+    typeof locator.recordId === 'string' &&
+    locator.recordId === reference.evidenceId
+    ? locator.recordId
+    : null;
 }
 
 /** Rejects deleted or missing local identities before a resume can restore evidence. */
@@ -70,13 +67,13 @@ export function withLocalDeletionAwareRevalidation(
           return false;
         const sourceId = uniqueIds[0]!;
         const source = await repository.get('source_record', sourceId);
-        // Manual structured chunks use their record ID as sourceId when provenance is empty.
-        if (
-          !source &&
-          (!isStructuredRecordRoot(reference, sourceId) ||
-            !(await repository.hasStoredRecordId(sourceId)))
-        )
-          return false;
+        // Structured evidence uses its persisted row key when provenance names an external sample.
+        if (!source) {
+          const recordId = structuredRecordIdentity(reference);
+          if (!recordId || !(await repository.hasStoredRecordId(recordId)))
+            return false;
+          continue;
+        }
         const liveReferences = new Set(
           await repository.listSourceDeletionReferences(sourceId),
         );
