@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { installDetoxHostSamplerStubs } from './detox-host-sampling-stubs.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const builder = join(repositoryRoot, 'scripts/ci/build-detox-apps.sh');
@@ -43,6 +44,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
     ].join('\n'),
     { mode: 0o755 },
   );
+  installDetoxHostSamplerStubs(binDirectory);
   const hostArch = spawnSync('uname', ['-m'], { encoding: 'utf8' }).stdout.trim();
   const result = spawnSync(
     'bash',
@@ -57,6 +59,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
         PATH: [binDirectory, process.env.PATH].join(':'),
         BUILD_CALLS: callsPath,
         EXPECTED_HOST_ARCH: hostArch,
+        OROT_DETOX_TEST_TIME_COMMAND: join(binDirectory, 'time'),
         OROT_DETOX_RELEASE_DERIVED_DATA_PATH: releaseDerivedData,
         OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH: debugDerivedData,
         OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH: transcriptionDerivedData,

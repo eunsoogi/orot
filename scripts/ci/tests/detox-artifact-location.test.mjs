@@ -113,6 +113,7 @@ test('publishes Release results with failure-only logs and no resource sample by
       ].join('\n'),
       { mode: 0o755 },
     );
+    installDetoxHostSamplerStubs(tempDirectory);
     const result = spawnSync('bash', [runner, 'e2e-release', artifactRelativePath], {
       cwd: repositoryRoot,
       encoding: 'utf8',
@@ -123,9 +124,11 @@ test('publishes Release results with failure-only logs and no resource sample by
         RESOURCE_CAPTURE: resourceCapture,
         DETOX_COMMAND_CAPTURE: commandCapture,
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        GITHUB_ACTIONS: 'false',
         OROT_DETOX_SIMULATOR_UDID: simulatorId,
         OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
         OROT_DETOX_RESOURCE_SAMPLING: '',
+        OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
         PATH: [tempDirectory, process.env.PATH].join(':'),
       },
     });
@@ -189,9 +192,11 @@ test('allows bounded profile sampling only when explicitly requested', () => {
         RESOURCE_CAPTURE: resourceCapture,
         DETOX_SAMPLER_CALLS: samplerCallsPath,
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        GITHUB_ACTIONS: 'false',
         OROT_DETOX_SIMULATOR_UDID: simulatorId,
         OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
         OROT_DETOX_RESOURCE_SAMPLING: 'true',
+        OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
         PATH: [tempDirectory, process.env.PATH].join(':'),
       },
     });

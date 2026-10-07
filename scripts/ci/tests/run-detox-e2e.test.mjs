@@ -42,7 +42,8 @@ function runRunner({
     ].join('\n'),
     { mode: 0o755 },
   );
-  if (resourceLog) installDetoxHostSamplerStubs(directory);
+  // These tests verify wrapper routing, so provide host-tool stubs without launching a Simulator.
+  installDetoxHostSamplerStubs(directory);
 
   const args = profile === 'both' ? [] : [profile];
   const result = spawnSync('bash', [runner, ...args], {
@@ -58,6 +59,8 @@ function runRunner({
       DEBUG_STATUS: debugStatus,
       TRANSCRIPTION_STATUS: transcriptionStatus,
       CI: ci,
+      GITHUB_ACTIONS: 'false',
+      OROT_DETOX_TEST_TIME_COMMAND: join(directory, 'time'),
       OROT_DETOX_RESOURCE_LOG_PATH: resourceLog ? resourceLogPath : '',
       OROT_DETOX_RESOURCE_SAMPLING: resourceLog ? 'true' : 'false',
       OROT_DETOX_TEST_LOG_LEVEL: logLevel,

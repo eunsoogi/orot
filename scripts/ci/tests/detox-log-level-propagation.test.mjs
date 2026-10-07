@@ -14,6 +14,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { installDetoxHostSamplerStubs } from './detox-host-sampling-stubs.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const suiteRunner = join(repositoryRoot, 'scripts/ci/run-test-suite.sh');
@@ -40,11 +41,14 @@ function runReleaseSuite(logLevel) {
       ].join('\n'),
       { mode: 0o755 },
     );
+    installDetoxHostSamplerStubs(tempDirectory);
     const env = { ...process.env };
     delete env.OROT_DETOX_TEST_LOG_LEVEL;
     Object.assign(env, {
       DETOX_LOG_LEVEL_CAPTURE: capturePath,
       DETOX_PNPM_INVOKED: invocationPath,
+      GITHUB_ACTIONS: 'false',
+      OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
       OROT_DETOX_SIMULATOR_UDID: releaseSimulatorId,
       OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
       OROT_DETOX_RESOURCE_SAMPLING: 'false',
