@@ -153,7 +153,7 @@ describe('provider selection on iOS Simulator', () => {
     await waitFor(element(by.text('ChatGPT 계정 1 로그아웃')))
       .toBeVisible()
       .withTimeout(120000);
-    // The delayed offline stream stays active after its first delta until native sign-out cancels it.
+    // This fixture emits one delta; the package gate tests cover queued late packets.
     const signOutRequest = element(
       by.id('provider-selection-sign-out-request'),
     );
@@ -198,7 +198,7 @@ describe('provider selection on iOS Simulator', () => {
       'failed:authentication_required',
     );
     console.log(
-      'PROVIDER_SELECTION_SIMULATOR nativeSyntheticSignOut=revoked; inFlightRequestCancelled=verified; lateResponseSuppressed=verified; selectedProviderUnavailable=verified; realAccount=unverified',
+      'PROVIDER_SELECTION_SIMULATOR nativeSyntheticSignOut=revoked; inFlightRequestCancelled=verified; postSignOutStateStable=verified; selectedProviderUnavailable=verified; realAccount=unverified',
     );
     await element(by.id('provider-selection-back')).tap();
 
