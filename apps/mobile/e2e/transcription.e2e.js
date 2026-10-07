@@ -200,7 +200,8 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
 
     try {
       // The native probe runs asynchronously while the synthetic review flow is exercised.
-      await verifyFinalNativeSpeechProbe(reportElement);
+      // Keep its terminal verdict inside Jest's test window and leave the cleanup attempt reachable.
+      await verifyFinalNativeSpeechProbe(reportElement, { timeoutMs: 120000 });
     } catch (failure) {
       nativeProbeFailure ??= failure;
     }

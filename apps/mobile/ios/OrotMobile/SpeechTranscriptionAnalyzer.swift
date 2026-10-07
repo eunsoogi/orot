@@ -15,13 +15,16 @@ enum SpeechTranscriptionAnalyzer {
 
         // Enable source audio ranges without requesting alternatives or provisional results.
         let transcriber = makeTimeIndexedTranscriber(locale: supportedLocale)
-        try await installAssets(for: transcriber, engine: "speech_transcriber")
-
-        return try await analyze(
-            file,
-            module: transcriber,
-            allowUnverifiedProtectionForSyntheticFixture: allowUnverifiedProtectionForSyntheticFixture,
-            collectResults: { try await collectResults(from: transcriber, duration: file.durationSeconds) },
+        return try await withInstalledAssets(
+            prepare: { try await installAssets(for: transcriber, engine: "speech_transcriber") },
+            analyze: {
+                try await analyze(
+                    file,
+                    module: transcriber,
+                    allowUnverifiedProtectionForSyntheticFixture: allowUnverifiedProtectionForSyntheticFixture,
+                    collectResults: { try await collectResults(from: transcriber, duration: file.durationSeconds) },
+                )
+            },
         )
     }
 
@@ -36,13 +39,16 @@ enum SpeechTranscriptionAnalyzer {
 
         // Consultation files can exceed a minute, and evidence links need the source audio time range.
         let transcriber = DictationTranscriber(locale: supportedLocale, preset: .timeIndexedLongDictation)
-        try await installAssets(for: transcriber, engine: "dictation_transcriber")
-
-        return try await analyze(
-            file,
-            module: transcriber,
-            allowUnverifiedProtectionForSyntheticFixture: allowUnverifiedProtectionForSyntheticFixture,
-            collectResults: { try await collectDictationResults(from: transcriber, duration: file.durationSeconds) },
+        return try await withInstalledAssets(
+            prepare: { try await installAssets(for: transcriber, engine: "dictation_transcriber") },
+            analyze: {
+                try await analyze(
+                    file,
+                    module: transcriber,
+                    allowUnverifiedProtectionForSyntheticFixture: allowUnverifiedProtectionForSyntheticFixture,
+                    collectResults: { try await collectDictationResults(from: transcriber, duration: file.durationSeconds) },
+                )
+            },
         )
     }
 
@@ -56,8 +62,8 @@ enum SpeechTranscriptionAnalyzer {
         )
     }
 
-    /// Capture both installation snapshots because a request returning nil only proves readiness when status and formats agree.
-    private static func installAssets(for module: any SpeechModule, engine: String) async throws {
+    /// Capture both installation snapshots for diagnostics so analysis can require the `.installed` postcondition.
+    private static func installAssets(for module: any SpeechModule, engine: String) async throws -> AssetInventory.Status {
         #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
             let startedAt = Date()
             let statusBefore = await AssetInventory.status(forModules: [module])
@@ -66,7 +72,9 @@ enum SpeechTranscriptionAnalyzer {
             var downloadWasCalled = false
         #endif
 
+        let statusAfter: AssetInventory.Status
         do {
+            try Task.checkCancellation()
             let installation = try await AssetInventory.assetInstallationRequest(supporting: [module])
             if let installation {
                 #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
@@ -79,6 +87,10 @@ enum SpeechTranscriptionAnalyzer {
                     requestNilResult = "true"
                 #endif
             }
+            // The async request can return while a later system download attempt is still pending.
+            try Task.checkCancellation()
+            statusAfter = await AssetInventory.status(forModules: [module])
+            try Task.checkCancellation()
         } catch {
             #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
                 let statusAfter = await AssetInventory.status(forModules: [module])
@@ -102,7 +114,6 @@ enum SpeechTranscriptionAnalyzer {
         }
 
         #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
-            let statusAfter = await AssetInventory.status(forModules: [module])
             let compatibleFormats = await module.availableCompatibleAudioFormats
             let bestAvailableFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module])
             let reservationsAfter = await AssetInventory.reservedLocales
@@ -122,6 +133,34 @@ enum SpeechTranscriptionAnalyzer {
                 Date().timeIntervalSince(startedAt) * 1000,
             )
         #endif
+
+        return statusAfter
+    }
+
+    /// An installation request can finish before assets are ready, so never enter analysis without `.installed`.
+    static func withInstalledAssets<Result>(
+        prepare: () async throws -> AssetInventory.Status,
+        analyze: () async throws -> Result,
+    ) async throws -> Result {
+        do {
+            try Task.checkCancellation()
+            let status = try await prepare()
+            try Task.checkCancellation()
+            guard status == .installed else {
+                throw SpeechTranscriptionFailure(
+                    "MODEL_INSTALL_FAILED",
+                    "Apple did not install the Korean on-device speech model.",
+                )
+            }
+            try Task.checkCancellation()
+        } catch {
+            throw SpeechTranscriptionFailure(
+                "MODEL_INSTALL_FAILED",
+                "The Korean on-device speech model could not be installed.",
+            )
+        }
+
+        return try await analyze()
     }
 
     private static func analyze(

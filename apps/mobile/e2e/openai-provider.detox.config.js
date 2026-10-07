@@ -1,7 +1,7 @@
 /** @type {Detox.DetoxConfig} */
 const derivedDataPath =
   process.env.OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH ||
-  'ios/build-openai-provider';
+  'ios/build-detox-openai-provider';
 const simulatorId = process.env.OROT_OPENAI_PROVIDER_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
@@ -11,6 +11,19 @@ if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
 }
 
 module.exports = {
+  behavior: {
+    init: { reinstallApp: true },
+  },
+  artifacts: {
+    plugins: {
+      screenshot: {
+        enabled: true,
+        shouldTakeAutomaticSnapshots: true,
+        keepOnlyFailedTestsArtifacts: true,
+        takeWhen: { testStart: false, testFailure: true, testDone: false },
+      },
+    },
+  },
   testRunner: {
     args: { $0: 'jest', config: 'e2e/openai-provider.jest.config.js' },
     jest: { setupTimeout: 240000 },
@@ -20,10 +33,8 @@ module.exports = {
       type: 'ios.app',
       binaryPath:
         derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
-      build:
-        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' +
-        derivedDataPath +
-        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx',
+      // Use project Simulator defaults so E2E exercises the shared Keychain group.
+      build: `FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ${derivedDataPath} CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES -showBuildTimingSummary ENTRY_FILE=e2e/openaiProviderProbeEntry.tsx`,
     },
   },
   devices: {

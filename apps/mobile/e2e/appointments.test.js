@@ -37,12 +37,6 @@ async function fillAppointment(clinic, date, time, note) {
 }
 
 describe('manual appointments', () => {
-  beforeAll(async () => {
-    await device.uninstallApp();
-    await device.clearKeychain();
-    await device.installApp();
-  });
-
   it('creates, edits, and cancels an appointment that survives process restarts', async () => {
     await device.launchApp({
       newInstance: true,
@@ -69,7 +63,7 @@ describe('manual appointments', () => {
 
     await device.terminateApp();
     await device.launchApp({
-      newInstance: true,
+      newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
       launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
@@ -91,7 +85,7 @@ describe('manual appointments', () => {
 
     await device.terminateApp();
     await device.launchApp({
-      newInstance: true,
+      newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
       launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
