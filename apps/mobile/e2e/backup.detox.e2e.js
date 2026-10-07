@@ -80,17 +80,16 @@ describe('native backup eligibility probe on an isolated Simulator', () => {
         transcriptLinked: true,
       });
     } else {
-      // Missing or non-complete Simulator metadata remains a measured fail-closed result.
-      jestExpect(['unverified', 'not-complete']).toContain(
-        result.recording.fileProtection,
-      );
+      // Only an unavailable Simulator protection readback may take the negative branch.
+      jestExpect(result.recording.fileProtection).toBe('unverified');
       jestExpect(result.recording).toMatchObject({
         strictPreparation: 'not-ready',
         preparationReady: false,
         sourcePersisted: false,
         transcriptLinked: false,
+        preparedCount: 0,
+        preparationError: 'protection-not-applied',
       });
-      jestExpect(result.recording.preparationError).not.toBe('none');
     }
   }, 180000);
 

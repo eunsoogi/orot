@@ -10,6 +10,13 @@ export type BackupProbeMode =
 
 export type ProbeFileProtection = 'complete' | 'unverified' | 'not-complete';
 
+export type PreparationErrorCode =
+  | 'none'
+  | 'protection-not-applied'
+  | 'backup-eligibility-not-applied'
+  | 'recording-preparation-failed'
+  | 'other-native-error';
+
 export interface RecordingProbeState {
   readonly fileProtection: ProbeFileProtection;
   readonly excludedFromBackup: boolean;
@@ -19,7 +26,7 @@ export interface RecordingProbeState {
 export interface LegacyRecordingProbeState extends RecordingProbeState {
   readonly legacyExcludedBefore: boolean;
   readonly preparedCount: number;
-  readonly preparationError: string;
+  readonly preparationError: PreparationErrorCode;
   readonly preparationReady: boolean;
 }
 

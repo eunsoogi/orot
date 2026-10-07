@@ -13,10 +13,8 @@ import {
 } from '../src/backup/nativeBackupMigration';
 import { getBackupProbeRecordingId } from './backupProbeConfig';
 import { requireNativeBackupProbe } from './backupProbeNative';
-import {
-  createBackupProbeTranscript,
-  verifyRecordingProbeState,
-} from './backupProbeRecording';
+import { createBackupProbeTranscript } from './backupProbeRecording';
+import { verifyRecordingProbeState } from './backupProbePreparation';
 import type { BackupProbeResult } from './backupProbeTypes';
 
 async function persistSnapshotRelationships(recording: {

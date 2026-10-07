@@ -17,10 +17,11 @@ import { openLocalStorage } from '../src/storage/secureDatabase';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import syntheticFixture from './transcription/fixtures/synthetic-korean.json';
 import { requireNativeBackupProbe } from './backupProbeNative';
-import type {
-  BackupProbeResult,
-  RecordingProbeState,
-} from './backupProbeTypes';
+import {
+  isExpectedProtectionMetadataGap,
+  verifyRecordingProbeState,
+} from './backupProbePreparation';
+import type { BackupProbeResult } from './backupProbeTypes';
 
 const databaseKeyService = 'com.orot.mobile.database-encryption-key.v1';
 const databaseKeyAccount = 'database';
@@ -143,14 +144,6 @@ export function createBackupProbeTranscript(
   };
 }
 
-export function verifyRecordingProbeState(state: RecordingProbeState): void {
-  if (!state.fileReadable || state.excludedFromBackup) {
-    throw new Error(
-      'The synthetic recording is unreadable or backup-excluded.',
-    );
-  }
-}
-
 export async function prepareLegacyRecording(): Promise<BackupProbeResult> {
   const audio = syntheticFixture.cases[0]?.audio;
   if (!audio)
@@ -199,7 +192,7 @@ export async function prepareLegacyRecording(): Promise<BackupProbeResult> {
           'The prepared recording source or transcript was not persisted.',
         );
       }
-    } else {
+    } else if (isExpectedProtectionMetadataGap(migrated)) {
       let persistenceRejected = false;
       try {
         await saveRecordingSource({
@@ -217,15 +210,15 @@ export async function prepareLegacyRecording(): Promise<BackupProbeResult> {
       sourcePersisted = Boolean(
         await repository.get('source_record', recording.id),
       );
-      if (
-        migrated.fileProtection === 'complete' ||
-        !persistenceRejected ||
-        sourcePersisted
-      ) {
+      if (!persistenceRejected || sourcePersisted) {
         throw new Error(
           'An unverified recording source bypassed the fail-closed persistence gate.',
         );
       }
+    } else {
+      throw new Error(
+        'Legacy recording backup preparation failed outside the Simulator protection-metadata limit.',
+      );
     }
 
     return {
