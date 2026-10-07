@@ -9,6 +9,7 @@ final class OpenAIProviderAuthCoordinator {
     static let shared = OpenAIProviderAuthCoordinator()
 
     private let client = ChatGPTOAuthClient()
+    private let authorizationSession = OpenAIProviderAuthSession()
     private var callbackServer: LoopbackCallbackServer?
     private var signInTask: Task<ChatGPTAccountSummary, Error>?
 
@@ -20,18 +21,76 @@ final class OpenAIProviderAuthCoordinator {
         return try await task.value
     }
 
-    func signOut(issuedClientID: String) async throws -> ChatGPTSignOutResult {
-        try await client.signOut(issuedClientID: issuedClientID)
+    func signOut(
+        issuedClientID: String,
+        using clientOverride: ChatGPTOAuthClient? = nil,
+    ) async throws -> ChatGPTSignOutResult {
+        try await (clientOverride ?? client).signOut(issuedClientID: issuedClientID)
     }
+
+    #if DEBUG && targetEnvironment(simulator)
+        func probeAuthSessionReturn() async throws {
+            guard signInTask == nil, callbackServer == nil else {
+                throw OpenAIProviderAuthError.alreadyInProgress
+            }
+            let server = LoopbackCallbackServer(returnsToApp: true)
+            defer { server.stop() }
+            let redirectURI = try await server.start()
+            var components = URLComponents(url: redirectURI, resolvingAgainstBaseURL: false)
+            components?.queryItems = [
+                URLQueryItem(name: "code", value: "synthetic-auth-code"),
+                URLQueryItem(name: "state", value: "synthetic-auth-state"),
+            ]
+            guard let authorizationURL = components?.url else {
+                throw OpenAIProviderAuthError.callbackMismatch
+            }
+
+            // Exercise the system callback matcher without contacting provider endpoints or exchanging code.
+            try await authorizationSession.authenticate(url: authorizationURL)
+            let callbackURL = try await server.waitForCallback()
+            let queryItems = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?.queryItems
+            guard queryItems?.first(where: { $0.name == "code" })?.value == "synthetic-auth-code",
+                  queryItems?.first(where: { $0.name == "state" })?.value == "synthetic-auth-state"
+            else {
+                throw OpenAIProviderAuthError.callbackMismatch
+            }
+        }
+
+        func probeAuthSessionCancellation() async throws {
+            guard signInTask == nil, callbackServer == nil else {
+                throw OpenAIProviderAuthError.alreadyInProgress
+            }
+            // The plain loopback response has no app-return scheme, so it leaves the system session open.
+            let server = LoopbackCallbackServer(returnsToApp: false)
+            callbackServer = server
+            defer { server.stop() }
+            defer { callbackServer = nil }
+            let redirectURI = try await server.start()
+
+            // Wait until the local page loads, then cancel through the same native owner as route dismissal.
+            let cancellation = Task { @MainActor in
+                _ = try? await server.waitForCallback()
+                cancelSignIn()
+            }
+            defer { cancellation.cancel() }
+            do {
+                try await authorizationSession.authenticate(url: redirectURI)
+            } catch is CancellationError {
+                return
+            }
+            throw OpenAIProviderAuthError.callbackMismatch
+        }
+    #endif
 
     func cancelSignIn() {
         signInTask?.cancel()
+        authorizationSession.cancel()
         callbackServer?.stop()
     }
 
     private func performSignIn(existingIssuedClientID: String?) async throws -> ChatGPTAccountSummary {
         try Task.checkCancellation()
-        let server = LoopbackCallbackServer()
+        let server = LoopbackCallbackServer(returnsToApp: true)
         callbackServer = server
         defer {
             server.stop()
@@ -45,17 +104,12 @@ final class OpenAIProviderAuthCoordinator {
         )
         try Task.checkCancellation()
 
-        // The callback URL, PKCE verifier, and returned credentials remain native-only.
-        let callbackTask = Task { try await server.waitForCallback() }
-        defer { callbackTask.cancel() }
-        guard await openAuthorizationURL(pending.authorizationURL) else {
-            throw OpenAIProviderAuthError.browserUnavailable
-        }
+        // The session returns only after the loopback server answers with its fixed, secret-free app URL.
+        try await authorizationSession.authenticate(url: pending.authorizationURL)
         try Task.checkCancellation()
-
-        let callbackURL = try await callbackTask.value
+        let callbackURL = try await server.waitForCallback()
         let access = try await client.completeAuthorization(callbackURL: callbackURL, pending: pending)
-        try Task.checkCancellation()
+        // The client checks cancellation before saving; after its save, return the matching signed-in state.
 
         guard let summary = try client.listStoredAccounts().first(where: {
             $0.issuedClientID == access.issuedClientID
@@ -64,24 +118,16 @@ final class OpenAIProviderAuthCoordinator {
         }
         return summary
     }
-
-    private func openAuthorizationURL(_ url: URL) async -> Bool {
-        await withCheckedContinuation { continuation in
-            UIApplication.shared.open(url, options: [:]) { opened in
-                continuation.resume(returning: opened)
-            }
-        }
-    }
 }
 
 private enum OpenAIProviderAuthError: LocalizedError {
     case alreadyInProgress
-    case browserUnavailable
+    case callbackMismatch
 
     var errorDescription: String? {
         switch self {
         case .alreadyInProgress: "ChatGPT 로그인 창이 이미 열려 있어요."
-        case .browserUnavailable: "시스템 브라우저에서 ChatGPT 로그인 페이지를 열지 못했어요."
+        case .callbackMismatch: "ChatGPT 로그인 복귀 검사를 완료하지 못했어요."
         }
     }
 }
@@ -131,11 +177,23 @@ public extension OpenAIProviderModule {
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
+        guard beginSignOut(for: issuedClientID) else {
+            Self.rejectAuth(reject, error: ChatGPTOAuthError.sessionSigningOut)
+            return
+        }
         Task { @MainActor in
+            defer { finishSignOut(for: issuedClientID) }
             do {
-                let result = try await OpenAIProviderAuthCoordinator.shared.signOut(
-                    issuedClientID: issuedClientID,
-                )
+                #if DEBUG && targetEnvironment(simulator)
+                    let result = try await OpenAIProviderAuthCoordinator.shared.signOut(
+                        issuedClientID: issuedClientID,
+                        using: activeSimulatorFixtureClient,
+                    )
+                #else
+                    let result = try await OpenAIProviderAuthCoordinator.shared.signOut(
+                        issuedClientID: issuedClientID,
+                    )
+                #endif
                 resolve(result == .revoked ? "revoked" : "localCredentialsCleared")
             } catch {
                 Self.rejectAuth(reject, error: error)

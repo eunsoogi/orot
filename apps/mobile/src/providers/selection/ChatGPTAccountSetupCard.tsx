@@ -9,6 +9,11 @@ interface ChatGPTAccountSetupCardProps {
 export default function ChatGPTAccountSetupCard({
   setup,
 }: ChatGPTAccountSetupCardProps) {
+  const selectedAccountIndex = setup.accounts.findIndex(
+    account => account.issuedClientID === setup.selectedAccountID,
+  );
+  const selectedAccount = setup.accounts[selectedAccountIndex];
+
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
       <Text style={styles.heading}>{providerSelectionText.remoteHeading}</Text>
@@ -38,13 +43,30 @@ export default function ChatGPTAccountSetupCard({
             style={[styles.account, selected && styles.selectedAccount]}
             testID={`chatgpt-account-${index}`}
           >
-            <Text
-              style={styles.accountTitle}
-            >{`ChatGPT 계정 ${index + 1}`}</Text>
+            <Text style={styles.accountTitle}>
+              {providerSelectionText.chatGPTAccountName(index + 1)}
+            </Text>
             <Text>{status}</Text>
           </Pressable>
         );
       })}
+      {selectedAccount && !selectedAccount.requiresSignIn ? (
+        // The numbered label keeps the sign-out target clear when several accounts are saved.
+        <Button
+          disabled={setup.busy}
+          onPress={() => setup.onSignOut(selectedAccount.issuedClientID)}
+          testID="chatgpt-account-sign-out"
+          title={
+            setup.signingOut
+              ? providerSelectionText.chatGPTSigningOut(
+                  selectedAccountIndex + 1,
+                )
+              : providerSelectionText.chatGPTSignOutAccount(
+                  selectedAccountIndex + 1,
+                )
+          }
+        />
+      ) : null}
       {setup.signingIn ? (
         <Button
           onPress={setup.onCancelSignIn}
