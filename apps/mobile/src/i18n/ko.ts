@@ -4,6 +4,7 @@ import { aiFeaturesKo } from './aiFeatures';
 import { diseaseHypothesesKo } from './diseaseHypotheses';
 import { ragConversationKo } from './ragConversation';
 import { externalMedicalEvidenceKo } from './externalMedicalEvidence';
+import { medicalAppointmentsKo } from './medicalAppointments';
 
 export const ko = {
   'app.welcome.title': 'Orot에 오신 걸 환영해요',
@@ -134,7 +135,13 @@ export const ko = {
   'calendar.chooseAnother': '다른 일정 선택',
   'calendar.back': '뒤로',
   'calendar.loading': '캘린더 일정을 확인하고 있어요…',
-  'calendar.empty': '다가오는 일정이 없어요.',
+  'calendar.empty': '조회된 일정이 없어요.',
+  'calendar.emptyQueryNote':
+    '이미 시작했지만 이 날짜까지 이어지는 일정은 조회되지 않을 수 있어요.',
+  'calendar.outsideQueryRange':
+    '이 날짜는 캘린더 조회 기간 밖이라 일정이 모두 표시되지 않을 수 있어요.',
+  'calendar.resultsMayBeIncomplete':
+    '일정이 많아 일부 날짜의 일정이 표시되지 않았을 수 있어요.',
   'calendar.candidateHint':
     '목록의 일정은 모두 후보예요. Orot가 의료 일정으로 판단하지 않아요.',
   'calendar.selectEvent': '이 일정 선택',
@@ -165,12 +172,14 @@ export const ko = {
   'calendar.reviewChange': '변경 내용 확인',
   'calendar.eventMissing':
     '연결한 일정을 찾을 수 없어요. 삭제되었거나 일정 정보가 바뀌었을 수 있어요. 다른 일정을 선택해 확인해 주세요.',
+  // Feature catalogs stay modular while the app uses one shared Korean lookup table.
   ...commonObservationsKo,
   ...bloodPressureKo,
   ...aiFeaturesKo,
   ...diseaseHypothesesKo,
   ...ragConversationKo,
   ...externalMedicalEvidenceKo,
+  ...medicalAppointmentsKo,
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',

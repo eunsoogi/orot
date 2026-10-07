@@ -164,11 +164,10 @@ test('isolates the speech transcription app and invalidates its cache when nativ
   }
 });
 
-test('keys the DerivedData manifest with the actual macOS patch version', () => {
+test('keys the DerivedData manifest with the observed release and requires it', () => {
   const root = createFixtureRepository();
   const derivedData = join(root, 'apps/mobile/ios/build-detox-transcription');
   const host = {
-    EXPECTED_MACOS_VERSION: '26',
     MACOS_VERSION: '26.6.2',
     EXPECTED_XCODE_VERSION: '26.2',
     EXPECTED_IOS_SIMULATOR_SDK: '26.2',
@@ -186,6 +185,11 @@ test('keys the DerivedData manifest with the actual macOS patch version', () => 
       /classification=invalidated/,
     );
     assert.equal(existsSync(derivedData), false);
+    const missingObservedVersion = { ...host, MACOS_VERSION: '', EXPECTED_MACOS_VERSION: '27.0' };
+    assert.throws(
+      () => runCacheCommand(root, 'prepare', 'transcription', missingObservedVersion),
+      /Missing Detox cache toolchain values: macosVersion/,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
