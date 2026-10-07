@@ -13,6 +13,9 @@ const {
   getEvaluationRevisionMetadata,
   toLangSmithRevisionMetadata,
 } = require('../../../scripts/evaluation/visit-questions/revision.cjs');
+const {
+  getWorkflowSourceRoot,
+} = require('../../../scripts/evaluation/visit-questions/source-root.cjs');
 
 describe('synthetic visit-question fixtures', () => {
   it('creates repeatable calendar, health, consultation, and reviewed-memory inputs', () => {
@@ -103,10 +106,23 @@ describe('synthetic visit-question fixtures', () => {
       gitRevision: expectedRevision,
       workingTreeClean: expectedWorkingTreeClean,
     });
+    expect(metadata.evaluationHarness).toMatchObject({
+      gitRevision: expectedRevision,
+      workingTreeClean: expectedWorkingTreeClean,
+    });
     expect(metadata.toolchain).toMatchObject({
       lockfileSha256: expectedLockfileHash,
       nodeVersion: process.version,
     });
+  });
+
+  it('resolves a detached graph checkout without changing the evaluator root', () => {
+    expect(
+      getWorkflowSourceRoot('/eval-worktree', {
+        OROT_VISIT_QUESTION_SOURCE_ROOT: '/graph-worktree',
+      }),
+    ).toBe('/graph-worktree');
+    expect(getWorkflowSourceRoot('/eval-worktree', {})).toBe('/eval-worktree');
   });
 
   it('allowlists only revision and toolchain metadata for LangSmith', () => {
@@ -117,6 +133,11 @@ describe('synthetic visit-question fixtures', () => {
           sourcePath: 'apps/mobile/src/agent/visitQuestions/workflow.ts',
           workingTreeClean: false,
           fixtureContent: 'excluded',
+        },
+        evaluationHarness: {
+          gitRevision: 'c'.repeat(40),
+          workingTreeClean: true,
+          debugPayload: 'excluded',
         },
         toolchain: {
           lockfileSha256: 'b'.repeat(64),
@@ -129,6 +150,8 @@ describe('synthetic visit-question fixtures', () => {
       evaluationTargetCommit: 'a'.repeat(40),
       evaluationTargetPath: 'apps/mobile/src/agent/visitQuestions/workflow.ts',
       evaluationTargetWorkingTreeClean: false,
+      evaluationHarnessCommit: 'c'.repeat(40),
+      evaluationHarnessWorkingTreeClean: true,
       toolchainLockfileSha256: 'b'.repeat(64),
       toolchainNodeVersion: process.version,
     });

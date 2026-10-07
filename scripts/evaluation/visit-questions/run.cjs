@@ -8,17 +8,18 @@ const {
   getLangSmithApiKey,
   isLangSmithUploadEnabled,
 } = require('./privacy');
+const { getWorkflowSourceRoot } = require('./source-root.cjs');
 
 const repositoryRoot = path.resolve(__dirname, '../../..');
 const workflowSource = path.join(
-  repositoryRoot,
+  getWorkflowSourceRoot(repositoryRoot),
   'apps/mobile/src/agent/visitQuestions/workflow.ts',
 );
 
-// Fail before invoking Jest when the issue #30 graph is not part of this checkout.
+// Fail before invoking Jest when the configured issue #30 source checkout is incomplete.
 if (!require('node:fs').existsSync(workflowSource)) {
   process.stderr.write(
-    'The actual issue #30 visit-question workflow is not in this checkout. Integrate that workflow before running this evaluation.\n',
+    `The actual issue #30 visit-question workflow was not found at ${workflowSource}. Set OROT_VISIT_QUESTION_SOURCE_ROOT to a checkout containing that file.\n`,
   );
   process.exitCode = 2;
 } else {
