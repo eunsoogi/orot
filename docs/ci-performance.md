@@ -437,3 +437,23 @@ After main was merged at `fc1fd84`, a local `--derived-data-only` fingerprint re
 | Speech Transcription | 591s | 217s | 1/1 passed |
 
 The original nine-case path began with the OpenAI Debug profile at 17:27:24Z and ended after Release deleted its Simulator at 18:01:17Z, an elapsed 33m53s. The full required-workflow interval ran from the first Quality job at 17:27:25Z through the final required aggregate at 18:02:06Z, an elapsed 34m41s. The 14m32s from the first original E2E step to the last original-profile cleanup excludes native builds and setup, so it is not the acceptance interval. Neither measured full interval meets ten minutes; this cold-cache run is not a timing pass and establishes no speedup. Two consecutive successful warm runs on the same integrated implementation remain required.
+
+## 2026-10-07 PR #129 first hosted run
+
+Run [37586928599](https://github.com/eunsoogi/orot/actions/runs/37586928599), attempt 1, succeeded on `a8ac364bfb79707c460a1c494042b1ea04337071` with PR base `500854e5de743ff57a358ab675f794f5af1e53c2`. Quality, production/OAuth, all three Detox profiles, profile-summary validation, and the required `Detox iOS E2E` aggregate passed. The profile logs report Release 8/8 and OpenAI Debug 1/1, preserving the original nine-case count. Speech Transcription passed its separate synthetic 1/1 case; it is additional coverage and does not establish live Apple Speech behavior.
+
+All timestamps below are UTC. GitHub job and step timestamps provide elapsed seconds, including step overhead; they are not the command-only measurements from profile artifacts.
+
+| Profile | Hosted runner | Job | Fingerprint step | Native app build step | E2E step | Dedicated Simulator deletion |
+| ------- | ------------- | --: | ---------------: | --------------------: | -------: | ---------------------------: |
+| Release | 1000071829 | 975s | 68s | 354s | 196s | 6s |
+| OpenAI Debug | 1000071726 | 447s | 69s | skipped | 71s | 14s |
+| Speech Transcription | 1000071615 | 603s | 54s | skipped | 281s | 7s |
+
+The profile toolchain checks verified macOS 27.0, Xcode 27.0, iOS Simulator SDK/runtime 27.0, and iPhone 18 Pro for Release and OpenAI Debug. Speech Transcription used macOS 26.6.2, Xcode 26.2, iOS Simulator SDK/runtime 26.2, and iPhone 17 Pro. All three verified Node 22.23.2 and pnpm 12.3.4. A subsequent comparison must retain these per-profile toolchain distinctions instead of comparing the profiles as equivalent runners.
+
+Release classified its DerivedData cache as `miss`, with `reason=derived_data_absent`, and performed the native build. OpenAI Debug and Speech Transcription each classified DerivedData as `exact`, with `reason=manifest_matches`, and skipped the native build. The production job took 341s and its fingerprint step took 1s. Different runners and cache states prevent treating these durations as a controlled before/after comparison.
+
+The full required-workflow interval began with Quality at 08:12:25Z and ended with the required aggregate at 09:23:55Z: **71m30s**. The original nine-case profile interval began with OpenAI Debug at 08:50:09Z and ended with Release Simulator deletion at 09:23:25Z: **33m16s**. Neither interval meets ten minutes. Workflow creation at 07:22:32Z preceded the first required job by 49m53s; creation through aggregate completion took 121m23s. This additional scheduling delay is recorded separately and does not shorten the acceptance interval.
+
+This is one successful hosted run of the implementation, with mixed cache states. It establishes no measured speedup and supplies no qualifying consecutive under-ten-minute pair. Two comparable hosted runs on the same final implementation, including runner/toolchain identity, cache classification, stage and total timing, remain required. Exact-final-head independent strict review and required checks must also be confirmed after any subsequent change. Issue #74 remains open and PR #129 remains Draft; this evidence does not authorize merge.
