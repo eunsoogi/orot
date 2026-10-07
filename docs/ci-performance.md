@@ -532,6 +532,33 @@ Run [37663394033](https://github.com/eunsoogi/orot/actions/runs/37663394033) suc
 | Require complete profile summaries | 18:38:43–18:38:48 | 5s | passed |
 | Detox iOS E2E | 18:38:51–18:38:55 | 4s | passed |
 
-The original nine E2E cases passed across Release (8/8) and OpenAI Debug (1/1). Speech Transcription passed its separate synthetic case; it is additional coverage and does not establish live Apple Speech behavior. The profile jobs completed successfully, including their required diagnostics and dedicated Simulator cleanup steps.
+Release reported 12/12 passing cases ([job log](https://github.com/eunsoogi/orot/actions/runs/37663394033/job/112937283244)): the original eight Release cases plus four Safe Area regressions. The earlier 8/8 Release log ([job log](https://github.com/eunsoogi/orot/actions/runs/37586928599/job/112679113129)) contains the same eight original cases. OpenAI Debug reported the ninth original case at 1/1 ([job log](https://github.com/eunsoogi/orot/actions/runs/37663394033/job/112937283100)). Speech Transcription passed its separate synthetic case; it is additional coverage and does not establish live Apple Speech behavior. The profile jobs completed successfully, including their required diagnostics and dedicated Simulator cleanup steps.
 
 Toolchains differed across profiles: Speech used macOS 26.6.2/Xcode 26.2; Release used macOS 27.0/Xcode 27.0; OpenAI Debug used macOS 27.0.1/Xcode 27.0. Their within-run durations are not interchangeable. The successful 39m04s run is functional evidence for head `801a4b6`, not a ten-minute timing pass or latest-main integration proof. It supplies no under-ten sample, and the strict review on `801a4b6` is stale after the later integration. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-07 PR #129 exact-head run 37672055988
+
+Run [37672055988](https://github.com/eunsoogi/orot/actions/runs/37672055988) passed all required jobs on PR head `a529f6bc712da41eb6a2a5f2316891a091632a9e` against base `62a90d394719339881c74713c04a897d0d2feb79`. It was created at 19:07:10Z and completed at 19:57:16Z, 50m06s from creation. The required-job interval, from the first job at 19:07:12Z through the final aggregate at 19:57:16Z, was 50m04s.
+
+| Job | Recorded interval (UTC) | Duration | Result |
+| --- | ---------------------- | -------: | ------ |
+| [Quality Linux](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966016426) | 19:07:12–19:09:04 | 1m52s | passed, 182 gate tests and 570 unit tests |
+| [Quality](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966835177) | 19:09:06–19:09:16 | 10s | passed |
+| [iOS Simulator Build](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966015846) | 19:11:01–19:19:50 | 8m49s | passed, including production and OAuth checks |
+| [Release](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966016425) | 19:22:41–19:48:33 | 25m52s | passed, 12/12 cases |
+| [OpenAI Debug](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966016420) | 19:28:32–19:57:01 | 28m29s | passed, 1/1 case |
+| [Speech Transcription](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112966016840) | 19:33:16–19:47:44 | 14m28s | passed, separate synthetic 1/1 case |
+| [Require complete profile summaries](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112987551997) | 19:57:04–19:57:10 | 6s | passed |
+| [Detox iOS E2E](https://github.com/eunsoogi/orot/actions/runs/37672055988/job/112987611755) | 19:57:12–19:57:16 | 4s | passed |
+
+GitHub job and step timestamps include step overhead. The profile-stage measurements were:
+
+| Profile | Runner | Verified toolchain and device | App cache | Fingerprint | Native app build | Detox tests | Simulator deletion |
+| ------- | ------ | ---------------------------- | --------- | ----------: | ---------------: | ---------: | -----------------: |
+| Release | 1000072711 | macOS 27.0.1, Xcode/SDK 27.0, iPhone 18 Pro | miss, `derived_data_absent` | 99s | 429s | 405s, 12/12 | 13s |
+| OpenAI Debug | 1000072712 | macOS 27.0.1, Xcode/SDK 27.0, iPhone 18 Pro | miss, `derived_data_absent` | 122s | 681s | 63s, 1/1 | 13s |
+| Speech Transcription | 1000072715 | macOS 26.6.2, Xcode/SDK 26.2, iPhone 17 Pro | miss, `derived_data_absent` | 45s | 343s | 220s, synthetic 1/1 | 7s |
+
+All three app-product save steps passed after manifest validation and before E2E. GitHub's cache API lists three resulting entries under `refs/pull/129/merge`. The cache fingerprint includes `packages/**`; main commit `b220cba` (#139) changed `packages/agent-runtime`, so these entries do not apply to the newly integrated head and this run does not warm its app cache. The different Speech toolchain also prevents comparing its profile duration directly with Release or OpenAI Debug.
+
+Run 37672055988 is successful functional evidence for head `a529f6b`, including all three profile test results, production/OAuth checks, diagnostics, Simulator cleanup, and the profile-summary and required Detox aggregates. Its 50m04s required-job interval does not meet the under-ten-minute target. The run predates main commit `b220cba`; local integration, the required checks, and strict review must bind the updated head. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. No speedup is claimed. Issue #74 remains open and PR #129 remains Draft.
