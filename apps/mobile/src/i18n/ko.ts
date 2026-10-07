@@ -1,11 +1,7 @@
 import { commonObservationsKo } from './healthkitCommonObservations';
 import { bloodPressureKo } from './healthkitBloodPressure';
-import { aiFeaturesKo } from './aiFeatures';
-import { diseaseHypothesesKo } from './diseaseHypotheses';
-import { ragConversationKo } from './ragConversation';
-import { externalMedicalEvidenceKo } from './externalMedicalEvidence';
+import { aiFeatureCatalogsKo } from './aiFeatureCatalogs';
 import { medicalAppointmentsKo } from './medicalAppointments';
-import { visitQuestionsKo } from './visitQuestions';
 
 export const ko = {
   'app.welcome.title': 'Orot에 오신 걸 환영해요',
@@ -176,12 +172,8 @@ export const ko = {
   // Feature catalogs stay modular while the app uses one shared Korean lookup table.
   ...commonObservationsKo,
   ...bloodPressureKo,
-  ...aiFeaturesKo,
-  ...diseaseHypothesesKo,
-  ...ragConversationKo,
-  ...externalMedicalEvidenceKo,
+  ...aiFeatureCatalogsKo,
   ...medicalAppointmentsKo,
-  ...visitQuestionsKo,
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
