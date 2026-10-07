@@ -89,6 +89,8 @@ export default function RecordingControls({
     <ScrollView
       automaticallyAdjustKeyboardInsets
       contentContainerStyle={recordingControlStyles.container}
+      // Dragging is the user's way to dismiss the transcript editor keyboard and reach row actions.
+      keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       style={recordingControlStyles.scroll}
       testID="recording-controls-scroll"

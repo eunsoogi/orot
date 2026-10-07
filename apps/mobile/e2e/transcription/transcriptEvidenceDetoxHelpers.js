@@ -1,4 +1,4 @@
-/* global by, element, waitFor */
+/* global by, device, element, expect, system, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const EXPLICIT_AVAILABILITY_STATES = [
@@ -204,19 +204,35 @@ async function waitForProbeControl(target) {
   await waitFor(target).toBeVisible().withTimeout(30000);
 }
 
-// Scroll the controls panel so a visible but clipped target can receive a Detox tap.
+// Use the controls panel's real drag path to dismiss the editor keyboard and reveal clipped actions.
 async function scrollToTranscriptControl(
   control,
   direction = 'down',
-  dismissKeyboard = false,
+  focusedInput = null,
 ) {
-  if (dismissKeyboard) {
-    // The visible probe report blurs multiline editing without changing product keyboard behavior.
-    await element(by.id('recording-export-authorization-probe')).tap();
+  if (focusedInput) {
+    // The keyboard is system UI, so match its XCTest element type at the system level.
+    const keyboard = system.element(by.system.type('keyboard'));
+    const controls = element(by.id('recording-controls-scroll'));
+    await expect(keyboard).toExist();
+    await waitFor(focusedInput).toBeFocused().withTimeout(5000);
+    console.log(
+      'TRANSCRIPT_EVIDENCE_KEYBOARD_OPEN ' +
+        (await device.takeScreenshot('transcript-evidence-keyboard-open')),
+    );
+    // A real drag on the ScrollView is the user's keyboard-dismiss path.
+    await controls.swipe(direction, 'slow', 0.55, 0.5, 0.35);
+    await waitFor(focusedInput).not.toBeFocused().withTimeout(5000);
+    await expect(keyboard).not.toExist();
+    console.log(
+      'TRANSCRIPT_EVIDENCE_KEYBOARD_DISMISSED ' +
+        (await device.takeScreenshot('transcript-evidence-keyboard-dismissed')),
+    );
   }
   await waitFor(control)
     .toBeVisible()
     .whileElement(by.id('recording-controls-scroll'))
+    // The 35% start point stays above the keyboard over this short scroll viewport.
     .scroll(100, direction, 0.5, 0.35);
 }
 

@@ -1,4 +1,4 @@
-/* global by, element, waitFor */
+/* global by, element, expect, system, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const {
@@ -29,7 +29,7 @@ async function verifyRecordingExportAuthorizationProbe() {
 }
 
 async function verifyRecordingExportLifecycle(device) {
-  // The Simulator hook completes UIKit's real share sheet programmatically; it does not tap the user's cancel control.
+  // Transcript cancellation keeps its Simulator hook; audio cancellation uses a user swipe below.
   const transcriptExport = element(by.id('recording-export-transcript'));
   await scrollToTranscriptControl(transcriptExport);
   await waitFor(element(by.id('recording-export-arm-simulated-cancel')))
@@ -71,10 +71,24 @@ async function verifyRecordingExportLifecycle(device) {
   console.log('TRANSCRIPTION_SYNTHETIC_FILE_SECURITY_UI ' + sourceSecurityText);
   const audioExport = element(by.id('recording-export-audio'));
   await waitFor(audioExport).toExist().withTimeout(30000);
-  await element(by.id('recording-export-arm-simulated-cancel')).tap();
   await scrollToTranscriptControl(audioExport);
   await audioExport.tap();
+  const shareSheet = system.element(by.system.type('sheet'));
   try {
+    await expect(shareSheet).toExist();
+    console.log(
+      'RECORDING_EXPORT_AUDIO_SHARE_SHEET ' +
+        (await device.takeScreenshot('recording-export-audio-share-sheet')),
+    );
+    // System elements expose taps only, so swipe the visible overlay through the app viewport.
+    await element(by.id('recording-controls-scroll')).swipe(
+      'down',
+      'slow',
+      0.7,
+      0.5,
+      0.5,
+    );
+    await expect(shareSheet).not.toExist();
     await waitFor(element(by.id('recording-export-status')))
       .toHaveText('내보내기를 취소했어요.')
       .withTimeout(30000);
@@ -106,7 +120,10 @@ async function verifyRecordingExportLifecycle(device) {
         temporaryFiles: 'cleaned',
         sourceBytes: 'unchanged',
         fixture: 'synthetic',
-        cancellation: 'programmatic UIKit completion',
+        cancellation: {
+          transcript: 'simulator hook',
+          audio: 'user swipe dismissal',
+        },
       }),
   );
 }

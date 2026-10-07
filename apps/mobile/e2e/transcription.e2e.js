@@ -121,7 +121,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       await transcriptInput.replaceText(correction);
       assertionStage = 'save transcript correction';
       const saveButton = element(by.id('transcript-save-0'));
-      await scrollToTranscriptControl(saveButton, 'up', true);
+      await scrollToTranscriptControl(saveButton, 'up', transcriptInput);
       console.log(
         'TRANSCRIPT_EVIDENCE_SAVE_SCREENSHOT ' +
           (await device.takeScreenshot('transcript-evidence-save-visible')),

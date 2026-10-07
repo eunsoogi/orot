@@ -94,7 +94,10 @@ test('exposes transcript review from the recording screen', async () => {
   expect(
     await screen.findByText('이 녹음에는 저장된 전사 내용이 없어요.'),
   ).toBeTruthy();
-  expect(screen.getByTestId('recording-controls-scroll')).toBeTruthy();
+  const controlsScroll = screen.getByTestId('recording-controls-scroll');
+  expect(controlsScroll).toBeTruthy();
+  // A scroll gesture is the user's available path to dismiss the multiline editor keyboard.
+  expect(controlsScroll.props.keyboardDismissMode).toBe('on-drag');
   expect(transcriptService.load).toHaveBeenCalledWith(completed.id);
 });
 

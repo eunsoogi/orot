@@ -2,7 +2,6 @@
 const {
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
-  scrollToTranscriptControl,
 } = require('../../../e2e/transcription/transcriptEvidenceDetoxHelpers');
 
 const syntheticFixture = { synthetic: true };
@@ -187,64 +186,5 @@ describe('native speech probe report validation', () => {
         pollIntervalMs: 5,
       }),
     ).rejects.toThrow('did not reach a terminal outcome within 30ms');
-  });
-});
-
-describe('transcript control scrolling', () => {
-  const originalBy = global.by;
-  const originalElement = global.element;
-  const originalWaitFor = global.waitFor;
-
-  afterEach(() => {
-    global.by = originalBy;
-    global.element = originalElement;
-    global.waitFor = originalWaitFor;
-  });
-
-  it('dismisses multiline editing before scrolling a clipped control into view', async () => {
-    const actions = [];
-    const target = {};
-    let resolveDismissal;
-    const dismissalTarget = {
-      tap: () =>
-        new Promise(resolve => {
-          actions.push('dismiss-keyboard');
-          resolveDismissal = resolve;
-        }),
-    };
-    global.by = { id: id => ({ id }) };
-    global.element = jest.fn(() => dismissalTarget);
-    global.waitFor = control => ({
-      toBeVisible: () => ({
-        whileElement: container => ({
-          scroll: async (...scrollArguments) =>
-            actions.push(['scroll', control, container, ...scrollArguments]),
-        }),
-      }),
-    });
-
-    // Keep the tap pending so removing its await would allow the scroll to start early.
-    const scrolling = scrollToTranscriptControl(target, 'up', true);
-    await Promise.resolve();
-
-    expect(actions).toEqual(['dismiss-keyboard']);
-    resolveDismissal();
-    await scrolling;
-
-    expect(global.element).toHaveBeenCalledWith({
-      id: 'recording-export-authorization-probe',
-    });
-    expect(actions).toEqual([
-      'dismiss-keyboard',
-      [
-        'scroll',
-        target,
-        { id: 'recording-controls-scroll' },
-        100,
-        'up',
-        0.5,
-        0.35,
-      ],
-    ]);
   });
 });
