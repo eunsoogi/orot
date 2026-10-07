@@ -2,8 +2,8 @@
 
 describe('SQLCipher LangGraph checkpoint resume', () => {
   it('resumes a completed node after the app process restarts', async () => {
-    // Detox reinstalls this probe with a fresh app container, while the iOS Keychain survives uninstall.
-    await device.clearKeychain();
+    // Profile setup owns resets. The shared Release suite retains its database
+    // and must keep the matching Keychain key.
     await device.launchApp({
       newInstance: true,
       launchArgs: { OROT_E2E_PROBE: 'checkpoint' },
