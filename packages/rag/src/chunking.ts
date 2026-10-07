@@ -48,6 +48,8 @@ export interface EvidenceChunk {
   readonly metadata: EvidenceChunkMetadata;
 }
 
+// This unsigned 32-bit FNV-style hash defines persisted `rag-v1` chunk IDs, so preserve its exact output.
+/* eslint-disable no-bitwise -- FNV-style ID compatibility depends on JavaScript's 32-bit coercion. */
 function hash32(value: string, seed: number): number {
   let hash = seed >>> 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -55,6 +57,7 @@ function hash32(value: string, seed: number): number {
   }
   return hash >>> 0;
 }
+/* eslint-enable no-bitwise */
 
 // IDs hash stable record identity rather than text or revision so corrections can replace a chunk without exposing its contents.
 function chunkId(recordType: ChunkRecordType, sourceId: string, evidenceId: string): string {
