@@ -135,6 +135,8 @@ The automated run selects all six HealthKit features, uses the synthetic HealthK
 
 To inspect the production HealthKit bridge interactively, run the same Detox test with `OROT_UNIFIED_IMPORT_PROBE_MODE=live` and without `--headless` on the assigned Simulator. It selects heart rate and steps, then waits for the HealthKit request and terminal import state. This mode does not prepare a HealthKit fixture, alter permissions, or reset device settings; an already-decided permission may suppress a system sheet. Observe and time the actual system sheet separately from the bridge measurements shown by the screen. Simulator evidence does not establish behavior on the user's physical iPhone; no real-device timing should be inferred from the synthetic Detox run.
 
+The dedicated Jest config gives the synthetic case five minutes to cover its 240-second terminal-state wait and setup/assertion margin, and the live case eleven minutes to cover its 600-second consent wait and margin. Detox's four-minute `setupTimeout` applies only while setting up the suite; it does not extend a running Jest test. These are test deadlines, not observed consent durations.
+
 ```sh
 OROT_UNIFIED_IMPORT_PROBE_MODE=live pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --no-start --cleanup
 ```
