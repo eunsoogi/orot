@@ -31,8 +31,10 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const simulatorUtilities = profileWorkflow.indexOf('- name: Install Detox Simulator utilities');
   const nodeSetup = profileWorkflow.indexOf('- name: Set up Node.js');
   const toolchain = profileWorkflow.indexOf('- name: Verify runner toolchain');
-  const installIndex = profileWorkflow.indexOf('- name: Install frozen workspace dependencies');
-  const install = workflowStep('Install frozen workspace dependencies');
+  const installIndex = profileWorkflow.indexOf(
+    '- name: Install dependencies and check Speech readiness',
+  );
+  const install = workflowStep('Install dependencies and check Speech readiness');
   const rubySetup = profileWorkflow.indexOf('- name: Set up Ruby');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
