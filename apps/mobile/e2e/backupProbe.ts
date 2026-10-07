@@ -9,6 +9,7 @@ import {
   migrateDatabaseKeyForBackup,
   prepareRecordingsForBackup,
 } from '../src/backup/nativeBackupMigration';
+import { prepareRecordingBackup } from '../src/backup/recordingBackupPreparation';
 import {
   installSyntheticTranscriptionRecording,
   removeSyntheticTranscriptionRecording,
@@ -121,25 +122,16 @@ async function verifyRecoveryAndBackupEligibility(): Promise<BackupProbeResult> 
   if (!audio)
     throw new Error('The synthetic recording fixture is unavailable.');
   const recording = await installSyntheticTranscriptionRecording(audio.base64);
-  let strictPreparation = 'blocked';
   let sourcePersisted = false;
   try {
+    const strictPreparation = await prepareRecordingBackup(
+      recording.fileProtection,
+      prepareRecordingsForBackup,
+    );
     if (recording.excludedFromBackup) {
       throw new Error(
         'The permanent synthetic recording remained backup-excluded.',
       );
-    }
-    try {
-      const count = await prepareRecordingsForBackup();
-      if (count !== 1)
-        throw new Error('The permanent recording count was unexpected.');
-      strictPreparation = 'ready';
-    } catch {
-      if (recording.fileProtection === 'complete')
-        throw new Error('Recording readback failed.');
-      if (recording.fileProtection !== 'unverified')
-        throw new Error('Recording protection is unknown.');
-      strictPreparation = 'simulator-protection-unverified';
     }
     if (
       recording.fileProtection === 'unverified' &&

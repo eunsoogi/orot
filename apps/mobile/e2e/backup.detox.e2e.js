@@ -1,4 +1,4 @@
-/* global by, device, element, waitFor, describe, it */
+/* global afterEach, beforeEach, by, device, element, waitFor, describe, it */
 
 const { expect: jestExpect } = require('@jest/globals');
 const {
