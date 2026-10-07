@@ -62,6 +62,25 @@ describe('selected provider ordering', () => {
           phase: 'authorization',
         }),
         expect.objectContaining({ provider: 'eventKit', phase: 'query' }),
+        expect.objectContaining({
+          provider: 'localStore',
+          sourceProvider: 'healthKit',
+          phase: 'persistence',
+          transition: 'started',
+        }),
+        expect.objectContaining({
+          provider: 'localStore',
+          sourceProvider: 'healthKit',
+          phase: 'persistence',
+          transition: 'finished',
+          outcome: 'completed',
+        }),
+        expect.objectContaining({
+          provider: 'localStore',
+          phase: 'storagePreparation',
+          transition: 'finished',
+          outcome: 'completed',
+        }),
       ]),
     );
   });

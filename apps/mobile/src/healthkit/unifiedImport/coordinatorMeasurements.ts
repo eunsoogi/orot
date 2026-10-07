@@ -2,9 +2,14 @@ import type { HealthKitFeature } from '../types';
 import type {
   UnifiedFeatureInstrumentation,
   UnifiedImportMeasurement,
+  UnifiedMeasurementSourceProvider,
 } from './types';
 import type { ActiveRun } from './coordinatorProgress';
 import { recordMeasurement, setFeature } from './coordinatorProgress';
+
+interface MeasurementContext {
+  readonly sourceProvider?: UnifiedMeasurementSourceProvider;
+}
 
 export function featureInstrumentation(
   run: ActiveRun,
@@ -18,7 +23,9 @@ export function featureInstrumentation(
     },
     persist: operation => {
       setFeature(run, feature, { status: 'persisting' });
-      return measure(run, 'localStore', 'persistence', operation, now);
+      return measure(run, 'localStore', 'persistence', operation, now, {
+        sourceProvider: 'healthKit',
+      });
     },
   };
 }
@@ -29,8 +36,13 @@ export async function measure<T>(
   phase: UnifiedImportMeasurement['phase'],
   operation: () => Promise<T>,
   now: () => number,
+  context: MeasurementContext = {},
 ): Promise<T> {
-  recordMeasurement(run, { provider, phase, transition: 'started' }, now);
+  recordMeasurement(
+    run,
+    { provider, phase, transition: 'started', ...context },
+    now,
+  );
   const startedAt = now();
   try {
     const result = await operation();
@@ -42,6 +54,7 @@ export async function measure<T>(
         transition: 'finished',
         durationMs: elapsedMilliseconds(startedAt, now()),
         outcome: 'completed',
+        ...context,
       },
       now,
     );
@@ -55,6 +68,7 @@ export async function measure<T>(
         transition: 'finished',
         durationMs: elapsedMilliseconds(startedAt, now()),
         outcome: 'failed',
+        ...context,
       },
       now,
     );

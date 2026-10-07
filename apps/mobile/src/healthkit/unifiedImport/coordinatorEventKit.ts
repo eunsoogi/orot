@@ -121,6 +121,7 @@ export function confirmCalendarCandidate(
     'persistence',
     () => services.confirmCalendarEvent(candidate),
     now,
+    { sourceProvider: 'eventKit' },
   )
     .then(() => {
       run.eventConfirmationComplete = true;

@@ -58,7 +58,7 @@ describe('HealthKit import authorization ordering', () => {
     expect(result.measurements).toContainEqual(
       expect.objectContaining({
         provider: 'localStore',
-        phase: 'persistence',
+        phase: 'storagePreparation',
         transition: 'started',
         offsetMs: expect.any(Number),
       }),
@@ -72,7 +72,7 @@ describe('HealthKit import authorization ordering', () => {
     const storageOpenEnd = result.measurements.find(
       measurement =>
         measurement.provider === 'localStore' &&
-        measurement.phase === 'persistence' &&
+        measurement.phase === 'storagePreparation' &&
         measurement.transition === 'finished',
     );
     const firstQuery = result.measurements.find(

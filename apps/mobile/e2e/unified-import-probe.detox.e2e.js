@@ -1,5 +1,41 @@
 /* global by, device, element, expect, waitFor, describe, it */
 
+const measurementSummaryPattern = (eventKitQueryCalls = '\\d+') =>
+  new RegExp(
+    [
+      'healthKitAuthorizationCalls=1',
+      'healthKitAuthorizationStartOffsetMs=\\d+',
+      'healthKitRequestInvocationOffsetMs=\\d+',
+      'healthKitAuthorizationFinishedOffsetMs=\\d+',
+      'healthKitAuthorizationMs=\\d+',
+      'eventKitAuthorizationCalls=1',
+      'eventKitAuthorizationStartOffsetMs=\\d+',
+      'eventKitRequestInvocationOffsetMs=\\d+',
+      'eventKitAuthorizationFinishedOffsetMs=\\d+',
+      'eventKitAuthorizationMs=\\d+',
+      'healthKitQueryCalls=\\d+',
+      'healthKitQueryStartOffsetMs=\\d+',
+      'healthKitQueryFinishedOffsetMs=\\d+',
+      'healthKitQueryMs=\\d+',
+      `eventKitQueryCalls=${eventKitQueryCalls}`,
+      'eventKitQueryStartOffsetMs=\\d+',
+      'eventKitQueryFinishedOffsetMs=\\d+',
+      'eventKitQueryMs=\\d+',
+      'healthKitPersistenceOperations=\\d+',
+      'healthKitPersistenceStartOffsetMs=\\d+',
+      'healthKitPersistenceFinishedOffsetMs=\\d+',
+      'healthKitPersistenceMs=\\d+',
+      'eventKitPersistenceOperations=\\d+',
+      'eventKitPersistenceStartOffsetMs=\\d+',
+      'eventKitPersistenceFinishedOffsetMs=\\d+',
+      'eventKitPersistenceMs=\\d+',
+      'localStorePreparationStartOffsetMs=\\d+',
+      'localStorePreparationFinishedOffsetMs=\\d+',
+      'localStorePreparationMs=\\d+',
+    ].join(';'),
+    'u',
+  );
+
 describe('selected HealthKit and EventKit import on iOS Simulator', () => {
   it('completes both selected consent calls before provider queries', async () => {
     // Live mode invokes both native consent APIs; sheet visibility needs a separate observer.
@@ -47,11 +83,7 @@ describe('selected HealthKit and EventKit import on iOS Simulator', () => {
       ).getAttributes();
       const liveText = liveSummary.label || liveSummary.text;
       // Detox replaces global expect with native matcher dispatch for UI elements.
-      if (
-        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitAuthorizationCalls=1;eventKitAuthorizationStartOffsetMs=\d+;eventKitRequestInvocationOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;eventKitQueryCalls=\d+;firstEventKitQueryOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;eventKitAuthorizationMs=\d+;eventKitQueryMs=\d+;localStoreMs=\d+/u.test(
-          liveText,
-        )
-      ) {
+      if (!measurementSummaryPattern().test(liveText)) {
         throw new Error(
           'Live HealthKit and EventKit authorization measurements are missing.',
         );
@@ -78,8 +110,6 @@ describe('selected HealthKit and EventKit import on iOS Simulator', () => {
       .toExist()
       .withTimeout(30000);
     const summary = element(by.id('unified-import-probe-measurements'));
-    await expect(summary).toHaveText(
-      /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitAuthorizationCalls=1;eventKitAuthorizationStartOffsetMs=\d+;eventKitRequestInvocationOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;eventKitQueryCalls=1;firstEventKitQueryOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;eventKitAuthorizationMs=\d+;eventKitQueryMs=\d+;localStoreMs=\d+/u,
-    );
+    await expect(summary).toHaveText(measurementSummaryPattern('1'));
   });
 });

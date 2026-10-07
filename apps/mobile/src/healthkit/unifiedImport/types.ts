@@ -44,11 +44,18 @@ export type UnifiedImportStatus =
 export type UnifiedMeasurementProvider =
   'healthKit' | 'eventKit' | 'localStore';
 export type UnifiedMeasurementPhase =
-  'authorization' | 'permissionRequestInvocation' | 'query' | 'persistence';
+  | 'authorization'
+  | 'permissionRequestInvocation'
+  | 'query'
+  | 'storagePreparation'
+  | 'persistence';
+export type UnifiedMeasurementSourceProvider = 'healthKit' | 'eventKit';
 
-/** Uses relative monotonic offsets and durations only; never attach record data or wall time. */
+/** Uses relative monotonic timings; never attach record data or wall time. */
 export interface UnifiedImportMeasurement {
   readonly provider: UnifiedMeasurementProvider;
+  /** Attributes local writes to the selected source without including its records. */
+  readonly sourceProvider?: UnifiedMeasurementSourceProvider;
   readonly phase: UnifiedMeasurementPhase;
   readonly transition: 'started' | 'invoked' | 'finished';
   readonly offsetMs: number;

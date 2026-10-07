@@ -130,10 +130,11 @@ export function createUnifiedImportCoordinator(
     setPhase(run, 'preparingStorage');
     try {
       // Database initialization may migrate storage, so both selected provider requests finish first.
+      // Repository setup is shared by both providers, so keep it separate from record writes.
       repository = await measure(
         run,
         'localStore',
-        'persistence',
+        'storagePreparation',
         services.openRepository,
         now,
       );

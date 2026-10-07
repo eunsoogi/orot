@@ -150,6 +150,15 @@ test('queries selected calendar candidates, then saves only an explicitly confir
   expect(onMeasurement).toHaveBeenCalledWith(
     expect.objectContaining({
       provider: 'localStore',
+      sourceProvider: 'eventKit',
+      phase: 'persistence',
+      transition: 'started',
+    }),
+  );
+  expect(onMeasurement).toHaveBeenCalledWith(
+    expect.objectContaining({
+      provider: 'localStore',
+      sourceProvider: 'eventKit',
       phase: 'persistence',
       transition: 'finished',
       outcome: 'completed',
