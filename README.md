@@ -24,84 +24,163 @@ _앱 화면은 콘셉트 이미지입니다._
 
 ## 오롯의 구성과 데이터 흐름
 
-오롯은 상담·건강·일정 기록을 아이폰에 모아, 기록의 맥락을 살피고 다음 진료를 준비하도록 돕는 개인 건강 기록 앱입니다. 서로 다른 곳에서 들어온 자료는 출처와 시점을 함께 정리해 기기 안에 보관하고, 필요한 내용을 찾아볼 수 있도록 검색과 모델 실행을 나눕니다.
+오롯은 상담·건강·일정 기록을 아이폰에 모아 다음 진료를 준비하도록 돕는 개인 건강 기록 앱입니다. 아래 흐름도는 앱 화면에서 이어지는 기록 수집·저장 경로와, 별도로 제공되는 검색·AI 구성요소의 경계를 나눠 보여줍니다.
+
+### 기록 수집과 기기 안의 저장
+
+```mermaid
+flowchart LR
+  subgraph capture["iOS 앱에서 기록을 모읍니다"]
+    consent["참여자 안내와 동의<br/>마이크 접근"]
+    recording["상담 녹음"]
+    audio[("보호된 오디오 파일<br/>앱 백업 제외")]
+    transcribe{"사용자가 전사를 별도 요청"}
+    speech["Apple Speech<br/>기기 안에서 처리"]
+    health["HealthKit<br/>선택한 건강 관찰"]
+    eventkit["EventKit<br/>일정 후보 조회"]
+    selectEvent["사용자가 일정 선택·확인"]
+  end
+
+  subgraph local["아이폰 안의 기록 저장"]
+    source["@orot/domain<br/>출처·시점·근거 위치"]
+    appointment["AppointmentRepository<br/>확인된 일정 스냅샷"]
+    records["@orot/storage<br/>record repository"]
+    db[("SQLCipher 데이터베이스")]
+    key["iOS Keychain<br/>데이터베이스 암호화 키"]
+  end
+
+  consent --> recording --> audio
+  recording --> source
+  recording --> transcribe
+  transcribe -->|"예"| speech --> source
+  health --> source
+  eventkit --> selectEvent --> appointment
+  source --> records
+  appointment --> records
+  records --> db
+  key -. "키로 사용" .-> db
+```
+
+녹음과 전사는 별도 동작입니다. 녹음은 참여자 안내와 동의, 마이크 접근을 확인한 뒤 시작하며, 전사는 사용자가 따로 요청해야 Apple Speech가 처리합니다. HealthKit 기록은 선택해 가져옵니다. EventKit 일정 후보는 앱 안에서 확인하고, 사용자가 선택해 확인한 일정만 암호화 저장소에 남깁니다. 녹음 파일은 보호된 파일로 따로 보관하고 앱 백업에서 제외합니다. 데이터베이스 키는 iOS Keychain에 저장합니다. 건강 기록을 보관하는 오롯 자체 서버는 없습니다.
+
+### 로컬 근거 검색과 에이전트 메모리
+
+```mermaid
+flowchart LR
+  subgraph rag["로컬 RAG 모듈"]
+    chunks["호출자가 전달하는 EvidenceChunk<br/>출처 ID와 원문 위치"]
+    document["기기 안의 E5<br/>문서 임베딩"]
+    vectors[("SQLCipher<br/>문서 벡터")]
+    query["검색 질문"]
+    queryVector["기기 안의 E5<br/>질의 임베딩"]
+    similarity["문서 벡터와<br/>코사인 유사도 순위"]
+    fts["FTS5 임시 테이블<br/>BM25 키워드 순위"]
+    fusion["의미·키워드 순위 결합<br/>역순위 융합"]
+    hits["검색 근거와 원문 위치"]
+    chunks --> document --> vectors
+    query --> queryVector --> similarity
+    vectors --> similarity --> fusion
+    chunks --> fts --> fusion
+    fusion --> hits
+  end
+
+  subgraph memory["별도 Rememori 메모리"]
+    approved["사용자가 확인했거나<br/>사람이 검토한 정보"]
+    tools["LangChain 메모리 도구<br/>저장·검색·수정·삭제"]
+    engine["오픈소스 Rememori<br/>메모리 엔진"]
+    memoryTable[("SQLCipher 안의 별도 메모리 테이블")]
+    removeSource["출처 삭제 연동점"]
+    approved --> engine
+    tools <--> engine
+    engine <--> memoryTable
+    removeSource --> memoryTable
+  end
+```
+
+로컬 RAG 모듈은 호출자가 건넨 출처 연결 검색 단위를 E5로 임베딩하고, 벡터 순위와 임시 FTS5 테이블의 BM25 순위를 합쳐 근거를 반환합니다. 벡터는 SQLCipher에 저장하고, FTS5 검색 본문은 메모리 안의 임시 테이블에서 사용한 뒤 지웁니다. 검색을 쓰는 제품 기능은 이 모듈에 검색 단위를 전달하고 결과를 연결해야 합니다.
+
+Rememori는 기록 전체를 검색하는 RAG와 다른 메모리 구성요소입니다. 사용자가 확인했거나 사람이 검토한 선호·요약·작업 맥락만 출처 정보와 함께 저장하며, 의료 기록을 통째로 복사하거나 모델이 자동으로 기억을 만들지 않습니다. 메모리 도구는 같은 SQLCipher 데이터베이스의 별도 테이블을 사용합니다. 출처 삭제 연동점은 해당 출처를 참조하는 메모리를 함께 정리한 뒤 기록을 삭제합니다. 메모리를 사용하는 제품 기능은 이 도구와 삭제 연동점을 명시적으로 호출해야 합니다.
+
+### 제공자 선택과 모델 실행 구성요소
+
+```mermaid
+flowchart LR
+  subgraph selection["제공자 선택 화면 구성요소"]
+    appleOption["Apple Intelligence 사용 가능 여부"]
+    account["ChatGPT 계정 로그인<br/>OAuth"]
+    catalog["계정의 모델 목록"]
+    choose["제공자와 모델 선택"]
+    confirm["기기 내 처리 또는<br/>외부 전송 안내 확인"]
+    identifiers["providerId와 modelId 저장"]
+    keychain["iOS Keychain"]
+    appleOption --> choose
+    account --> catalog --> choose
+    choose --> confirm --> identifiers --> keychain
+  end
+
+  subgraph execution["공용 단일 모델 요청 그래프"]
+    providerGraph["LangGraph generate 노드"]
+    contract["LanguageModelProvider 계약"]
+    apple["Apple Foundation Models<br/>기기 안에서 처리"]
+    openai["ChatGPT / OpenAI 제공자"]
+    providerGraph --> contract
+    contract --> apple
+    contract --> openai
+  end
+```
+
+선택 화면은 ChatGPT 계정에 로그인해 모델 목록을 불러오고, 외부 제공자 사용 안내를 확인한 다음 제공자와 모델 식별자만 Keychain에 저장합니다. 이 선택 화면과 단일 요청 그래프는 별도 구성요소이며, 앱 화면에서 둘을 대화 기능으로 연결하는 경로는 없습니다. 따라서 이 도식은 모델 실행 구성요소를 설명하며, 완성된 ChatGPT 대화를 앱에서 제공한다는 뜻은 아닙니다.
+
+기기 안에서만 처리하는 제공자 호출에는 외부 전송이 필요하지 않습니다. 멀티 에이전트 실행 기반에서 원격 모델을 호출할 때는 별도의 동의 계약이 요청 직전 제공자·모델·수신자·허용 범위·실제 전송 내용을 확인합니다. 이 계약을 사용하는 기능은 사용자 확인 화면도 함께 제공해야 합니다. Orot에는 건강 기록을 받아 전달하는 자체 서버가 없으며, 원격 요청은 해당 호출이 연결되고 동의된 경우 선택된 내용만 OpenAI로 향합니다.
+
+### 공용 멀티 에이전트 실행 기반
 
 ```mermaid
 flowchart TB
-  subgraph app["아이폰 앱"]
-    recording["상담 녹음<br/>참여자 안내와 동의"]
-    speech["Apple Speech<br/>요청할 때 기기 안에서 전사"]
-    health["HealthKit<br/>선택한 건강 관찰 가져오기"]
-    calendar["캘린더 · EventKit<br/>진료 일정 연결"]
-    selection["AI 처리 방식 선택<br/>외부 전송 동의"]
-  end
+  input["호출자가 제공<br/>요청·허용 범위·초기 근거·제공자·도구"]
+  validate["실행 설정과 예산 확인<br/>근거 출처·시점 검증"]
+  responder["TaskResponder<br/>응답 또는 추가 근거 요청"]
+  decision{"추가 근거가 필요한가?"}
+  validateResult["응답 형식·인용을<br/>현재 근거와 대조"]
+  researcher["EvidenceResearcher<br/>허용된 읽기 전용 도구 선택"]
+  validateTool["도구와 입력이<br/>허용 범위 안인지 확인"]
+  localTool["LangChain 읽기 전용 도구<br/>결정론적으로 로컬 조회"]
+  evidenceCheck["근거 범위·누락·최신성 확인"]
+  revision["TaskResponder<br/>근거를 반영해 응답 수정"]
+  result["검증된 결과·추가 질문·안전한 중단"]
 
-  subgraph local["기기 안의 저장소와 검색 구성요소"]
-    audio[("보호된 녹음 파일")]
-    records["건강·상담·일정 기록<br/>출처와 시점"]
-    db[("아이폰 안의 암호화 저장소<br/>SQLCipher · iOS Keychain")]
-    chunks["출처·위치를 유지한 검색 단위"]
-    vectors[("E5 의미 검색 벡터<br/>SQLCipher에 저장")]
-    fts["FTS5 키워드 검색<br/>임시 인덱스"]
-    retrieval["의미·키워드 순위 결합<br/>근거 위치 유지"]
-    memory["사용자가 확인한 선호와 맥락<br/>Rememori 메모리"]
-    memoryTools["LangChain 메모리 도구<br/>저장 · 찾기 · 고치기 · 지우기"]
-    queryTools["LangChain 기록 조회 도구<br/>기간 · 결과 수 제한"]
-  end
-
-  subgraph model["모델 제공자와 요청 실행 구성요소"]
-    modelRunner["LangGraph<br/>한 번의 generate 요청"]
-    apple["Apple Foundation Models<br/>기기 안에서 처리"]
-    chatgpt["ChatGPT<br/>계정 로그인 · 동의 뒤 OpenAI 요청"]
-  end
-
-  subgraph evaluation["별도 모델 평가 계획"]
-    synthetic["합성 건강 기록"]
-    langsmith["LangSmith<br/>추천 모델 평가"]
-    synthetic --> langsmith
-  end
-
-  subgraph future["0.1.0에 추가할 기능"]
-    collaboration["진료 준비를 돕는<br/>멀티 에이전트 협업"]
-  end
-
-  recording --> audio
-  recording --> records
-  recording -. "사용자가 전사를 요청" .-> speech
-  speech --> records
-  health --> records
-  calendar --> records
-  records --> db
-  db --> chunks
-  chunks --> vectors
-  chunks --> fts
-  vectors --> retrieval
-  fts --> retrieval
-  db --> memory
-  memory --> memoryTools
-  db --> queryTools
-  modelRunner -->|공통 제공자 계약| apple
-  modelRunner -->|공통 제공자 계약| chatgpt
+  input --> validate --> responder --> decision
+  decision -->|"아니오"| validateResult --> result
+  decision -->|"예"| researcher --> validateTool --> localTool
+  localTool --> evidenceCheck --> revision --> validateResult
+  evidenceCheck -->|"누락·모순·오래된 근거"| result
 ```
 
-### 기록을 모으고 아이폰 안에 보관합니다
+공용 실행 기반은 답변 담당자와 근거 조사 담당자의 역할을 분리합니다. 조사 담당자는 허용된 읽기 전용 도구와 입력만 고르고, 실제 조회는 결정론적 로컬 도구가 수행합니다. 실행 기반은 도구 결과의 출처·범위·최신성을 확인하고, 인용이 근거와 일치하는지 검증합니다. 근거가 모자라거나 서로 모순되면 단정적인 결과 대신 추가 질문이나 안전한 중단으로 끝냅니다. 모델 호출과 도구 사용에는 상한이 있으며 자동 재시도나 제공자 대체는 하지 않습니다.
 
-상담 녹음은 참여자에게 안내하고 동의를 확인한 뒤 시작합니다. 녹음만으로 전사가 시작되지는 않습니다. 전사가 필요하면 사용자가 별도로 요청하고 Apple Speech가 기기 안에서 처리합니다. 건강 관찰은 HealthKit에서 선택해 가져오고, 진료 일정은 iOS 캘린더와 연결합니다.
+원격 처리 모드에서는 각 모델 호출 직전에 `ExecutionConsentPort`가 실제 요청 내용까지 묶어 동의를 확인합니다. 로컬 처리 모드에는 원격 전송 동의가 적용되지 않습니다. 제품 기능은 이 실행 기반에 화면·제공자·기록 도구를 연결해야 합니다. 진료 질문 생성, 일정 분류, 질환 가능성 분석, 외부 의학 자료 조회는 기능별 데이터 연결과 사용자 흐름이 필요한 별도 작업입니다.
 
-녹음 파일은 보호된 파일로 저장하고, 가져온 건강·일정 기록은 SQLCipher로 암호화한 데이터베이스에 보관합니다. 암호화 키는 iOS Keychain에 둡니다. 기본 보관 위치는 아이폰이며 Orot 자체 서버에는 건강 기록을 저장하지 않습니다. 0.1.0에는 녹음을 포함한 앱 데이터를 iCloud에 백업하는 기능을 추가할 계획입니다.
+### 체크포인트와 합성 평가
 
-### 기록을 검색하고 모델에 연결합니다
+```mermaid
+flowchart LR
+  run["체크포인트 저장기를 제공한 실행"]
+  metadata["체크포인트에 저장<br/>식별자·단계·예산·근거 참조"]
+  saver["호출자가 제공하는 저장기<br/>모바일 어댑터는 SQLCipher 사용"]
+  resume["새 thread_id로 재개 요청"]
+  revalidate["같은 실행인지 확인하고<br/>저장된 출처의 최신성 재검증"]
+  safe{"미완료 호출이 없고<br/>안전한 단계인가?"}
+  continueRun["허용된 단계에서 계속"]
+  stop["재생하지 않고 중단<br/>필요하면 새 실행"]
+  run --> metadata --> saver --> resume --> revalidate --> safe
+  safe -->|"예"| continueRun
+  safe -->|"아니오"| stop
+```
 
-오롯은 상담 기록의 전사 구간과 구조화된 건강 기록을 출처 ID와 원문 위치가 연결된 작은 검색 단위로 나눕니다. 아이폰에서 `multilingual-e5-small`로 문서와 질문을 임베딩해 의미가 가까운 단위를 찾고, 문서 벡터는 SQLCipher 데이터베이스에 저장합니다. FTS5는 임시 키워드 인덱스에서 BM25 순위를 매깁니다. 오롯은 E5 벡터의 코사인 유사도 순위와 BM25 순위를 역순위 융합(RRF)으로 합쳐 관련 근거를 돌려주며, 검색 결과에는 원본 기록과 출처 위치가 함께 남습니다. 이 근거 검색이 오롯의 로컬 RAG를 이룹니다.
+체크포인트에는 실행 식별자와 단계, 예산, 근거 참조만 저장합니다. 사용자 문장, 건강 기록 본문, 도구 입력, 모델 응답과 최종 결과는 저장하지 않습니다. 새 실행 식별자를 사용해 재개하고 원본 근거가 여전히 같은지 확인합니다. 진행 중이던 외부 호출을 다시 보내지 않으며, 저장된 상태가 안전하지 않으면 중단합니다. 체크포인트 저장기는 호출자가 실행 기반에 전달할 때 사용합니다.
 
-Rememori는 이 기록 검색과 구분되는 별도 메모리입니다. 사용자가 확인한 선호, 사람이 검토한 대화 요약, 작업 맥락을 기억하고, LangChain 도구가 기억을 저장·검색·수정·삭제하는 동작을 감쌉니다. 의료 기록 전체를 복사해 두는 기능은 아닙니다.
-
-기록 조회 도구도 별도로 마련되어 있습니다. LangChain 도구는 같은 암호화 저장소에서 건강 관찰, 복약 기록, 사용자가 확인한 다음 진료 일정, 선택한 상담의 전사 근거를 제한된 기간과 개수만큼 읽고 원본 출처를 반환합니다. 현재 LangGraph는 모델을 한 번 호출하는 구성요소이며, 도구를 골라 호출하고 답변의 근거를 검증하는 진료 준비 협업 흐름은 0.1.0에 추가할 계획입니다.
-
-Apple과 ChatGPT 제공자는 공통 `LanguageModelProvider` 계약에 맞춰 요청과 응답을 정규화합니다. LangGraph 그래프는 이 제공자에게 한 번의 모델 요청을 전달하고 응답을 받으며, 그래프 상태를 SQLCipher에 저장할 수 있는 체크포인트 저장기도 있습니다. Apple Foundation Models를 선택하면 질문과 기록을 아이폰 안에서 처리합니다. ChatGPT를 쓰려면 계정에 로그인해 모델을 고르고, 앱의 외부 전송 안내에 동의해야 합니다. 요청을 보내면 질문과 사용자가 선택한 기록이 OpenAI로 전송됩니다.
-
-0.1.0에는 여러 에이전트가 협력해 기록과 외부 의학 자료를 바탕으로 진료 준비를 돕는 기능을 추가할 계획입니다. 병명 가능성은 진료 때 의사와 함께 살펴볼 참고 정보이며, 의사의 진단이나 치료 결정을 대신하지 않습니다. 합성 건강 기록을 이용한 추천 모델의 LangSmith 평가는 앱의 실제 기록 흐름과 분리된 별도 계획입니다.
+`@orot/eval`은 검색·에이전트·안전성 평가용 합성 기록과 기대 근거를 제공합니다. 합성 자료는 제품의 건강 기록과 분리되어 있으며 임상적으로 검증된 데이터가 아닙니다. LangSmith는 앱 밖에서 합성 자료를 평가하는 별도 계획이며, 저장소에는 LangSmith로 결과를 보내는 연동 경로가 없습니다.
 
 ### 더 알아보기
 
-세부 내용은 [상담 녹음](docs/recording.md), [기기 내 전사](docs/transcription.md), [HealthKit](docs/healthkit.md), [캘린더](docs/calendar.md), [로컬 RAG](docs/local-rag-embeddings.md), [에이전트 메모리](docs/agent-memory.md), [합성 평가 자료](packages/eval/README.md), [AI 제공자 계약](docs/provider-contracts.md)에서 확인할 수 있습니다. 개발 환경은 [개발 안내](docs/development.md), 검사 절차는 [코드 품질 안내](docs/code-quality.md), 릴리즈 절차는 [릴리즈 안내](docs/releasing.md)를 참고하세요.
+세부 내용은 [상담 녹음](docs/recording.md), [기기 내 전사](docs/transcription.md), [HealthKit](docs/healthkit.md), [캘린더](docs/calendar.md), [로컬 RAG](docs/local-rag-embeddings.md), [에이전트 메모리](docs/agent-memory.md), [제공자 계약](docs/provider-contracts.md), [멀티 에이전트 실행](docs/multi-agent.md), [체크포인트](docs/langgraph-checkpoints.md), [합성 평가 자료](packages/eval/README.md)에서 확인할 수 있습니다. 개발 환경은 [개발 안내](docs/development.md), 검사 절차는 [코드 품질 안내](docs/code-quality.md), 릴리즈 절차는 [릴리즈 안내](docs/releasing.md)를 참고하세요.
