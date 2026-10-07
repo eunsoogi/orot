@@ -6,6 +6,8 @@ import UIKit
 /// Owns one system web-auth session and accepts only Orot's secret-free return URL.
 @MainActor
 final class OpenAIProviderAuthSession: NSObject, ASWebAuthenticationPresentationContextProviding {
+    private var attempts = ChatGPTAuthAttemptRegistry()
+    private var attemptID: UUID?
     private var session: ASWebAuthenticationSession?
     private var continuation: CheckedContinuation<Void, Error>?
     private var presentationWindow: UIWindow?
@@ -18,10 +20,16 @@ final class OpenAIProviderAuthSession: NSObject, ASWebAuthenticationPresentation
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            guard let attemptID = attempts.begin() else {
+                continuation.resume(throwing: AuthSessionError.browserUnavailable)
+                return
+            }
+            self.attemptID = attemptID
             self.continuation = continuation
             presentationWindow = window
             let completion: ASWebAuthenticationSession.CompletionHandler = { [weak self] callbackURL, error in
-                Task { @MainActor in self?.finish(callbackURL: callbackURL, error: error) }
+                // A delayed system callback may arrive after cancellation and a new retry starts.
+                Task { @MainActor in self?.finish(attemptID: attemptID, callbackURL: callbackURL, error: error) }
             }
             let session = if #available(iOS 17.4, *) {
                 ASWebAuthenticationSession(
@@ -40,22 +48,25 @@ final class OpenAIProviderAuthSession: NSObject, ASWebAuthenticationPresentation
             session.presentationContextProvider = self
             self.session = session
             if !session.start() {
-                finish(callbackURL: nil, error: AuthSessionError.browserUnavailable)
+                finish(attemptID: attemptID, callbackURL: nil, error: AuthSessionError.browserUnavailable)
             }
         }
     }
 
     func cancel() {
+        guard let attemptID else { return }
         session?.cancel()
         // Programmatic dismissal must also release our waiting Swift task if the system callback does not arrive.
-        finish(callbackURL: nil, error: CancellationError())
+        finish(attemptID: attemptID, callbackURL: nil, error: CancellationError())
     }
 
     func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {
         presentationWindow ?? Self.activePresentationWindow() ?? UIWindow()
     }
 
-    private func finish(callbackURL: URL?, error: Error?) {
+    private func finish(attemptID: UUID, callbackURL: URL?, error: Error?) {
+        guard attempts.finish(attemptID) else { return }
+        self.attemptID = nil
         guard let continuation else { return }
         self.continuation = nil
         session = nil
