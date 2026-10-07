@@ -1,8 +1,30 @@
 # Opt-in CocoaPods 1.17.0 context capture for the observed Detox file-reference failure.
+require 'pathname'
+
 module OrotCocoapodsNullByteDiagnostic
   COCOAPODS_VERSION = '1.17.0'
   NULL_BYTE_PATH_ERROR = 'path name contains null byte'
   TARGET_SOURCE_SUFFIX = '/cocoapods/installer/xcode/pods_project_generator/file_references_installer.rb'
+  PROJECT_SOURCE_SUFFIX = '/cocoapods/project.rb'
+
+  # Keep CocoaPods' path grouping lexical when both file and base share a package symlink.
+  class LexicalSymlinkBasePath < Pathname
+    def realdirpath
+      cleanpath
+    end
+  end
+
+  # CocoaPods 1.17.0 canonicalizes a local pod's common path before computing relative groups.
+  module ProjectGroupPathPatch
+    def group_for_path_in_group(absolute_pathname, group, reflect_file_system_structure, base_path = nil)
+      if OrotCocoapodsNullByteDiagnostic.shared_symlink_prefix?(absolute_pathname, base_path)
+        # Pathname#realdirpath can fail at this boundary and would detach a lexical file path from its symlinked base.
+        base_path = LexicalSymlinkBasePath.new(base_path.to_s)
+      end
+
+      super(absolute_pathname, group, reflect_file_system_structure, base_path)
+    end
+  end
 
   # CocoaPods keeps the accessor and path context in this private loop; mirror its pinned body only in diagnostic mode.
   module FileReferencesInstallerPatch
@@ -58,6 +80,24 @@ module OrotCocoapodsNullByteDiagnostic
     "<unavailable:#{error.class}>"
   end
 
+  # Apply the workaround only when both clean inputs pass through the same real symlink.
+  def self.shared_symlink_prefix?(absolute_pathname, base_path)
+    return false unless absolute_pathname.is_a?(Pathname) && base_path.is_a?(Pathname)
+
+    absolute_path = absolute_pathname.to_s
+    base_string = base_path.to_s
+    return false if absolute_path.include?("\0") || base_string.include?("\0")
+
+    lexical_file = absolute_pathname.cleanpath.to_s
+    base_path.cleanpath.ascend.any? do |candidate|
+      prefix = candidate.to_s
+      shared_prefix = lexical_file == prefix || lexical_file.start_with?("#{prefix}#{File::SEPARATOR}")
+      shared_prefix && File.symlink?(prefix)
+    end
+  rescue StandardError
+    false
+  end
+
   # Logging is best-effort so a diagnostic failure cannot replace CocoaPods' original exception.
   def self.report_failure(error, pod_name, accessor_key, absolute_pathname, base_path, group)
     fields = [
@@ -96,11 +136,24 @@ module OrotCocoapodsNullByteDiagnostic
       next unless method&.source_location&.first&.end_with?(TARGET_SOURCE_SUFFIX)
 
       if Pod.const_defined?(:VERSION, false) && Pod::VERSION.to_s == COCOAPODS_VERSION
+        install_project_group_path_workaround
         klass.prepend(FileReferencesInstallerPatch) unless klass.ancestors.include?(FileReferencesInstallerPatch)
       end
       loader_trace.disable
     end
     loader_trace.enable
+  end
+
+  def self.install_project_group_path_workaround
+    return unless Pod.const_defined?(:Project, false)
+
+    project_class = Pod.const_get(:Project, false)
+    method = project_class.instance_method(:group_for_path_in_group)
+    return unless method.source_location&.first&.end_with?(PROJECT_SOURCE_SUFFIX)
+
+    project_class.prepend(ProjectGroupPathPatch) unless project_class.ancestors.include?(ProjectGroupPathPatch)
+  rescue NameError
+    # Preserve CocoaPods behavior if its pinned project method is unavailable.
   end
 end
 
