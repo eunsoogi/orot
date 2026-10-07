@@ -137,7 +137,7 @@ export function formatInventory(entries) {
   for (const [surface, count] of [...bySurface].sort(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    lines.push(`\n${surface} (${count})`);
+    lines.push(`\n${surface} (${count}; ${policy.surfaces[surface].platform})`);
     for (const entry of included.filter((item) => item.surface === surface))
       lines.push(`  ${entry.path}`);
   }

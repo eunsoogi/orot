@@ -39,6 +39,7 @@ function requireCacheInWorkflow(relativePath, expectedCount) {
 }
 
 test('caches pnpm policy verification in each independent dependency-install job', () => {
-  requireCacheInWorkflow('.github/workflows/ci.yml', 2);
+  requireCacheInWorkflow('.github/workflows/ci.yml', 1);
+  requireCacheInWorkflow('.github/workflows/quality-linux.yml', 1);
   requireCacheInWorkflow('.github/workflows/detox-e2e-profile.yml', 1);
 });

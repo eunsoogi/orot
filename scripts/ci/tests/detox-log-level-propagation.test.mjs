@@ -14,13 +14,15 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { installDetoxHostSamplerStubs } from './detox-host-sampling-stubs.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const suiteRunner = join(repositoryRoot, 'scripts/ci/run-test-suite.sh');
 const releaseSimulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
 
 function runReleaseSuite(logLevel) {
-  const artifactParent = join(repositoryRoot, 'artifacts');
+  // Keep generated logs in the ignored mobile artifact root so concurrent inventory checks skip them.
+  const artifactParent = join(repositoryRoot, 'apps/mobile/artifacts');
   const createdArtifactParent = !existsSync(artifactParent);
   mkdirSync(artifactParent, { recursive: true });
   const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-log-level-'));
@@ -40,11 +42,14 @@ function runReleaseSuite(logLevel) {
       ].join('\n'),
       { mode: 0o755 },
     );
+    installDetoxHostSamplerStubs(tempDirectory);
     const env = { ...process.env };
     delete env.OROT_DETOX_TEST_LOG_LEVEL;
     Object.assign(env, {
       DETOX_LOG_LEVEL_CAPTURE: capturePath,
       DETOX_PNPM_INVOKED: invocationPath,
+      GITHUB_ACTIONS: 'false',
+      OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
       OROT_DETOX_SIMULATOR_UDID: releaseSimulatorId,
       OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
       OROT_DETOX_RESOURCE_SAMPLING: 'false',
