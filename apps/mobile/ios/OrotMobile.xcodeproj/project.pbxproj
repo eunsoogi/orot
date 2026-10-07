@@ -29,6 +29,7 @@
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
 		A64F00000000000000000008 /* RecordingExportShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000008 /* RecordingExportShare.swift */; };
 		A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000009 /* RecordingExportFiles.swift */; };
+		A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
@@ -91,6 +92,7 @@
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
 		B64F00000000000000000008 /* RecordingExportShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportShare.swift; path = OrotMobile/RecordingExportShare.swift; sourceTree = "<group>"; };
 		B64F00000000000000000009 /* RecordingExportFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportFiles.swift; path = OrotMobile/RecordingExportFiles.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportAuthorizationProbe.swift; path = OrotMobile/RecordingExportAuthorizationProbe.swift; sourceTree = "<group>"; };
 		E16A00000000000000000011 /* HealthKitBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitBoundary.swift; path = OrotMobile/HealthKitBoundary.swift; sourceTree = "<group>"; };
 		E16A00000000000000000012 /* HealthKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitModule.swift; path = OrotMobile/HealthKitModule.swift; sourceTree = "<group>"; };
 		E16A00000000000000000013 /* HealthKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HealthKitModule.m; path = OrotMobile/HealthKitModule.m; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
+				B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */,
 				B65F00000000000000000001 /* EventKitCalendarModule.swift */,
 				B65F00000000000000000002 /* EventKitCalendarModule.m */,
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
@@ -429,6 +432,7 @@
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
+				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,
 				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,
 				A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */,
 				A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */,
