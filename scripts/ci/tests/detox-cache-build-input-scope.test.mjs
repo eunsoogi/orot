@@ -2,13 +2,36 @@ import assert from 'node:assert/strict';
 import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
+import {
+  computeDetoxCacheFingerprints,
+  computeDetoxDerivedDataFingerprints,
+} from '../detox-cache-fingerprint.mjs';
 import {
   createFixtureRepository,
   git,
   writeFixtureFile,
 } from './fixtures/detox-derived-data-cache.mjs';
 import { listChangedDetoxBuildInputs } from '../detox-cache-fingerprint.mjs';
+
+test('reads overlapping DerivedData fingerprint inputs once', () => {
+  const root = createFixtureRepository();
+  try {
+    const readPaths = new Set();
+    const countedRead = (path) => {
+      assert.equal(readPaths.has(path), false, `Repeated fingerprint read: ${path}`);
+      readPaths.add(path);
+      return readFileSync(path);
+    };
+    const fingerprints = computeDetoxDerivedDataFingerprints(root, {}, countedRead);
+
+    assert.equal(readPaths.size, fingerprints.buildInputCount);
+    assert.ok(fingerprints.nativeDependencyInputCount < fingerprints.buildInputCount);
+    assert.ok(readPaths.has(join(root, 'apps/mobile/ios/Podfile')));
+    assert.deepEqual(fingerprints, computeDetoxDerivedDataFingerprints(root));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('hashes unstaged tracked and untracked inputs while excluding generated output', () => {
   const root = createFixtureRepository();

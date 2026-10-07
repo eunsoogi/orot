@@ -108,6 +108,10 @@ test('keys pre-Pods app outputs and reuses only a validated exact DerivedData ca
     join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
     'utf8',
   );
+  const fingerprintInputSource = readFileSync(
+    join(repositoryRoot, 'scripts/ci/detox-cache-inputs.mjs'),
+    'utf8',
+  );
   const getStep = (name) => {
     const start = profileWorkflow.indexOf(`- name: ${name}`);
     const end = profileWorkflow.indexOf('\n      - name:', start + 1);
@@ -226,9 +230,9 @@ test('keys pre-Pods app outputs and reuses only a validated exact DerivedData ca
   assert.match(fingerprintSource, /packages/);
   assert.match(fingerprintSource, /nativeDependencies/);
   assert.match(fingerprintConfigSource, /ENTRY_FILE\|FORCE_BUNDLING/);
-  assert.match(fingerprintSource, /node_modules/);
-  assert.match(fingerprintSource, /iosBuildDirectory\.toLowerCase\(\)/);
-  assert.match(fingerprintSource, /build\(\?:-\|\$\)/);
+  assert.match(fingerprintInputSource, /node_modules/);
+  assert.match(fingerprintInputSource, /iosBuildDirectory\.toLowerCase\(\)/);
+  assert.match(fingerprintInputSource, /build\(\?:-\|\$\)/);
 
   assert.match(
     buildStep,
