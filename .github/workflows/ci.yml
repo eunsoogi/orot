@@ -43,15 +43,11 @@ jobs:
     name: Quality Linux
     uses: ./.github/workflows/quality-linux.yml
 
-  quality_macos:
-    name: Quality macOS
-    uses: ./.github/workflows/quality-macos.yml
-
   quality:
     name: Quality
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [quality_linux, quality_macos]
+    needs: [quality_linux]
     if: ${{ always() }}
     steps:
       - name: Check out source
@@ -75,11 +71,10 @@ jobs:
             node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
           fi
 
-      - name: Require both quality partitions
+      - name: Require Linux quality partition
         env:
           QUALITY_LINUX_RESULT: ${{ needs.quality_linux.result }}
-          QUALITY_MACOS_RESULT: ${{ needs.quality_macos.result }}
-        run: node scripts/ci/require-quality-aggregate.mjs "$QUALITY_LINUX_RESULT" "$QUALITY_MACOS_RESULT"
+        run: node scripts/ci/require-quality-aggregate.mjs "$QUALITY_LINUX_RESULT"
 
   ios-simulator-build:
     name: iOS Simulator Build

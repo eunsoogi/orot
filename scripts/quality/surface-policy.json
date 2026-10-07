@@ -21,7 +21,7 @@
     },
     "objective-c": {
       "extensions": [".m", ".mm", ".h", ".hpp", ".cc", ".cpp", ".c"],
-      "platform": "macos",
+      "platform": "linux",
       "lint": "clang-format",
       "format": "clang-format"
     },

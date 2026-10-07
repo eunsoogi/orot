@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "jdk": {
     "version": "17.0.20.1+1",
     "platforms": {
@@ -103,14 +103,30 @@
           "binary": "actionlint"
         }
       }
+    },
+    "clangFormat": {
+      "version": "21.1.8",
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-macOS-ARM64.tar.xz",
+          "sha256": "b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669",
+          "archive": "tar.xz",
+          "binary": "LLVM-21.1.8-macOS-ARM64/bin/clang-format",
+          "archiveEntries": ["LLVM-21.1.8-macOS-ARM64/bin/clang-format"]
+        },
+        "linux-x64": {
+          "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-X64.tar.xz",
+          "sha256": "b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b",
+          "archive": "tar.xz",
+          "binary": "LLVM-21.1.8-Linux-X64/bin/clang-format",
+          "archiveEntries": [
+            "LLVM-21.1.8-Linux-X64/bin/clang-format",
+            "LLVM-21.1.8-Linux-X64/lib/libclang-cpp.so.21.1"
+          ]
+        }
+      }
     }
   },
-  "clangFormat": {
-    "version": "21.0.0",
-    "source": "Xcode 27.0 toolchain via xcrun"
-  },
-  "platforms": {
-    "darwin-arm64": { "clangFormat": true },
-    "linux-x64": { "clangFormat": false }
-  }
+  "supportedHosts": ["darwin-arm64", "linux-x64"]
 }

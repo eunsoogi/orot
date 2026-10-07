@@ -51,21 +51,11 @@ function qualityEnvironment(selection) {
       throw new Error(`JDK version mismatch: ${java}`);
     }
   }
-  let clang;
-  if (selection.clangFormat) {
-    clang = capture('xcrun', ['--find', 'clang-format'], env);
-    const clangVersion = capture(clang, ['--version'], env);
-    if (!clangVersion.includes(selection.clangFormat.version)) {
-      throw new Error(`clang-format version mismatch: ${clangVersion}`);
-    }
-  }
-  if (selection.platform !== 'macos') {
-    const prettier = capture('pnpm', ['exec', 'prettier', '--version'], env);
-    if (prettier !== '3.9.9') throw new Error(`Prettier version mismatch: ${prettier}`);
-    const eslint = capture('pnpm', ['exec', 'eslint', '--version'], env);
-    if (!eslint.includes('8.57.1')) throw new Error(`ESLint version mismatch: ${eslint}`);
-  }
-  return { env, clang };
+  const prettier = capture('pnpm', ['exec', 'prettier', '--version'], env);
+  if (prettier !== '3.9.9') throw new Error(`Prettier version mismatch: ${prettier}`);
+  const eslint = capture('pnpm', ['exec', 'eslint', '--version'], env);
+  if (!eslint.includes('8.57.1')) throw new Error(`ESLint version mismatch: ${eslint}`);
+  return { env };
 }
 
 function entriesWithout(entries, rawOptions, command) {
@@ -110,8 +100,11 @@ async function main() {
     console.log(formatInventory(entries));
     return;
   }
+  if (!entries.some((entry) => entry.kind === 'surface')) {
+    throw new Error(`No maintained files are selected for the ${platform} quality invocation`);
+  }
   const selection = selectQualityTools(versions, `${process.platform}-${process.arch}`, platform);
-  const { env, clang } = qualityEnvironment(selection);
+  const { env } = qualityEnvironment(selection);
   console.log(
     `Checking ${entries.filter((entry) => entry.kind === 'surface').length} maintained files across ${Object.keys(policy.surfaces).length} configured surfaces on ${platform}.`,
   );
@@ -122,7 +115,7 @@ async function main() {
         join(cache, spec.cachePath, spec.binary),
       ]),
     );
-    runLint({ entries, env, clang, binaryPaths, root });
+    runLint({ entries, env, clang: binaryPaths.clangFormat, binaryPaths, root });
   } else {
     const binaryPaths = Object.fromEntries(
       Object.entries(selection.tools).map(([name, spec]) => [
@@ -134,7 +127,7 @@ async function main() {
       entries,
       mode: command,
       env,
-      clang,
+      clang: binaryPaths.clangFormat,
       root,
       cache,
       binaryPaths,

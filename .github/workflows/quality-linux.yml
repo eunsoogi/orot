@@ -55,6 +55,12 @@ jobs:
       - name: Install frozen workspace dependencies
         run: scripts/ci/run-command.sh install artifacts/quality/install.log -- pnpm install --frozen-lockfile
 
+      - name: Cache pinned quality tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: node_modules/.cache/orot-quality
+          key: orot-quality-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/quality/tool-versions.json') }}
+
       - name: Install pinned quality tools
         run: scripts/ci/run-command.sh quality-tools-install artifacts/quality/quality-tools-install.log -- pnpm quality:setup -- --platform linux
 
