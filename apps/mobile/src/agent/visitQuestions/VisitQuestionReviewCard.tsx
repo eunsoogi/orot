@@ -1,4 +1,5 @@
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { t } from '../../i18n';
 import type { VisitQuestionCandidate } from './taskContract';
 import { visitQuestionReviewStyles as styles } from './VisitQuestionReview.styles';
 
@@ -14,7 +15,7 @@ export interface VisitQuestionReviewCardProps {
   readonly onRemove: () => void;
 }
 
-/** Renders one editable question while the parent owns ordered-list state. */
+/** Renders one editable question while the parent owns order and evidence remains read-only. */
 export function VisitQuestionReviewCard({
   question,
   index,
@@ -28,46 +29,60 @@ export function VisitQuestionReviewCard({
     <View style={styles.card}>
       <View style={styles.cardHeading}>
         <Text accessibilityRole="header" style={styles.questionNumber}>
-          질문 {index + 1}
+          {t('visitQuestions.review.question.number', { number: index + 1 })}
         </Text>
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`질문 ${index + 1} 위로 이동`}
+            accessibilityLabel={t('visitQuestions.review.question.moveUp', {
+              number: index + 1,
+            })}
             accessibilityState={{ disabled: index === 0 || saving }}
             disabled={index === 0 || saving}
             onPress={() => onMove(-1)}
             style={styles.smallButton}
             testID={`visit-question-move-up-${index}`}
           >
-            <Text style={styles.buttonText}>위로</Text>
+            <Text style={styles.buttonText}>
+              {t('visitQuestions.review.question.moveUpAction')}
+            </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`질문 ${index + 1} 아래로 이동`}
+            accessibilityLabel={t('visitQuestions.review.question.moveDown', {
+              number: index + 1,
+            })}
             accessibilityState={{ disabled: index === count - 1 || saving }}
             disabled={index === count - 1 || saving}
             onPress={() => onMove(1)}
             style={styles.smallButton}
             testID={`visit-question-move-down-${index}`}
           >
-            <Text style={styles.buttonText}>아래로</Text>
+            <Text style={styles.buttonText}>
+              {t('visitQuestions.review.question.moveDownAction')}
+            </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`질문 ${index + 1} 삭제`}
+            accessibilityLabel={t('visitQuestions.review.question.remove', {
+              number: index + 1,
+            })}
             disabled={saving}
             onPress={onRemove}
             style={styles.smallButton}
             testID={`visit-question-remove-${index}`}
           >
-            <Text style={styles.buttonText}>삭제</Text>
+            <Text style={styles.buttonText}>
+              {t('visitQuestions.review.question.removeAction')}
+            </Text>
           </Pressable>
         </View>
       </View>
 
       <TextInput
-        accessibilityLabel={`질문 ${index + 1}`}
+        accessibilityLabel={t('visitQuestions.review.question.label', {
+          number: index + 1,
+        })}
         editable={!saving}
         multiline
         onChangeText={questionText =>
@@ -77,7 +92,9 @@ export function VisitQuestionReviewCard({
         value={question.questionText}
       />
       <TextInput
-        accessibilityLabel={`질문 ${index + 1} 이유`}
+        accessibilityLabel={t('visitQuestions.review.question.rationale', {
+          number: index + 1,
+        })}
         editable={!saving}
         multiline
         onChangeText={rationale =>
@@ -88,7 +105,9 @@ export function VisitQuestionReviewCard({
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`질문 ${index + 1} 우선순위`}
+        accessibilityLabel={t('visitQuestions.review.question.priorityLabel', {
+          number: index + 1,
+        })}
         accessibilityState={{
           selected: question.priority === 'important',
           disabled: saving,
@@ -105,12 +124,19 @@ export function VisitQuestionReviewCard({
         testID={`visit-question-priority-${index}`}
       >
         <Text style={styles.buttonText}>
-          {question.priority === 'important' ? '중요 질문' : '일반 질문'} ·
-          우선순위 변경
+          {t('visitQuestions.review.question.priorityStatus', {
+            status: t(
+              question.priority === 'important'
+                ? 'visitQuestions.review.question.priority.important'
+                : 'visitQuestions.review.question.priority.routine',
+            ),
+          })}
         </Text>
       </Pressable>
 
-      <Text style={styles.evidenceHeading}>근거</Text>
+      <Text style={styles.evidenceHeading}>
+        {t('visitQuestions.review.evidence.heading')}
+      </Text>
       {question.citations.map(citation => (
         <View
           key={`${citation.sourceKind}:${citation.sourceId}:${citation.evidenceId}`}
@@ -118,8 +144,8 @@ export function VisitQuestionReviewCard({
         >
           <Text style={styles.evidenceSource}>
             {citation.sourceKind === 'reviewed_memory'
-              ? '이전 검토 메모'
-              : '건강 기록'}
+              ? t('visitQuestions.review.evidence.source.reviewedMemory')
+              : t('visitQuestions.review.evidence.source.personalRecord')}
             {citation.effectiveTime ? ` · ${citation.effectiveTime}` : ''}
           </Text>
           <Text style={styles.evidenceContent}>{citation.content}</Text>

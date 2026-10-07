@@ -10,6 +10,7 @@ import type {
   VisitQuestionTaskResult,
 } from './taskContract';
 import type { VisitQuestionContextResult } from './evidenceService';
+import { t } from '../../i18n';
 
 type ReadyContext = Extract<VisitQuestionContextResult, { status: 'ready' }>;
 
@@ -31,20 +32,16 @@ export type VisitQuestionWorkflowResult =
   | { readonly status: 'consent_required'; readonly message: string }
   | { readonly status: 'cancelled' };
 
-const SAFE_FAILURE_MESSAGES: Record<string, string> = {
+const SAFE_FAILURE_MESSAGE_KEYS = {
   needs_clarification:
-    '질문을 뒷받침할 기록이 충분하지 않거나 기록 사이에 차이가 있어요. 의료진에게 확인할 내용을 알려 주세요.',
-  stale_evidence:
-    '진료 일정이나 기록이 바뀌었어요. 최신 자료로 질문을 다시 준비해 주세요.',
-  invalid_output:
-    '근거와 내용을 안전하게 확인할 수 없어 질문을 준비하지 못했어요. 다시 시도해 주세요.',
-  budget_exceeded:
-    '허용된 범위 안에서 질문에 필요한 자료를 충분히 확인하지 못했어요.',
-  unavailable:
-    '선택한 AI 제공자에서 질문을 준비하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.',
-};
+    'visitQuestions.workflowResults.failure.needsClarification',
+  stale_evidence: 'visitQuestions.workflowResults.failure.staleEvidence',
+  invalid_output: 'visitQuestions.workflowResults.failure.invalidOutput',
+  budget_exceeded: 'visitQuestions.workflowResults.failure.budgetExceeded',
+  unavailable: 'visitQuestions.workflowResults.failure.unavailable',
+} as const;
 
-/** Restores aliased citations only after the shared workflow validates its exact reference set. */
+/** Restores exact citations and maps runtime failures to app-owned localized copy. */
 export async function mapVisitQuestionWorkflowResult(input: {
   readonly result: MultiAgentRunResult<VisitQuestionTaskResult>;
   readonly aliases: VisitQuestionEvidenceAliases;
@@ -55,14 +52,15 @@ export async function mapVisitQuestionWorkflowResult(input: {
   if (result.status === 'consent_required') {
     return {
       status: 'consent_required',
-      message:
-        '선택한 외부 AI 제공자에게 예약 맥락과 근거를 보내려면 먼저 동의가 필요해요.',
+      message: t('visitQuestions.workflowResults.consentRequired'),
     };
   }
   if (result.status !== 'result') {
-    const message =
-      SAFE_FAILURE_MESSAGES[result.status] ??
-      SAFE_FAILURE_MESSAGES.unavailable!;
+    const messageKey =
+      SAFE_FAILURE_MESSAGE_KEYS[
+        result.status as keyof typeof SAFE_FAILURE_MESSAGE_KEYS
+      ] ?? SAFE_FAILURE_MESSAGE_KEYS.unavailable;
+    const message = t(messageKey);
     return {
       status:
         result.status === 'needs_clarification'
@@ -97,7 +95,7 @@ export async function mapVisitQuestionWorkflowResult(input: {
   ) {
     return {
       status: 'unavailable',
-      message: SAFE_FAILURE_MESSAGES.invalid_output!,
+      message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
       memoryStatus: prepared.evidence.memoryStatus,
     };
   }
@@ -110,7 +108,7 @@ export async function mapVisitQuestionWorkflowResult(input: {
       if (!original) {
         return {
           status: 'unavailable',
-          message: SAFE_FAILURE_MESSAGES.invalid_output!,
+          message: t(SAFE_FAILURE_MESSAGE_KEYS.invalid_output),
           memoryStatus: prepared.evidence.memoryStatus,
         };
       }

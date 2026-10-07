@@ -1,4 +1,5 @@
 import type { JsonValue } from '@orot/model-runtime';
+import { t } from '../../i18n';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import type {
   VisitQuestionEvidenceItem,
@@ -43,7 +44,7 @@ function appointmentDateFromContext(
   return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
 }
 
-/** Locally validates generated fields and resolves aliases to the exact current evidence objects. */
+/** Validates generated fields and aliases; validator-owned clarification copy comes from the Korean catalog. */
 export function validateVisitQuestionTaskResult(
   value: JsonValue,
   input: VisitQuestionResponderInput,
@@ -80,15 +81,13 @@ export function validateVisitQuestionTaskResult(
   if (input.evidence.conflicts.length > 0) {
     return {
       status: 'needs_clarification',
-      message:
-        '저장된 기록 사이에 차이가 있어 질문을 만들기 전에 어떤 내용이 맞는지 확인이 필요해요.',
+      message: t('visitQuestions.validation.conflictingRecords'),
     };
   }
   if (input.evidence.items.length === 0) {
     return {
       status: 'needs_clarification',
-      message:
-        '질문을 뒷받침할 수 있는 기록을 찾지 못했어요. 어떤 내용을 진료에서 확인하고 싶은지 알려 주세요.',
+      message: t('visitQuestions.validation.noEvidence'),
     };
   }
   if (
@@ -166,8 +165,7 @@ export function validateVisitQuestionTaskResult(
     ) {
       return {
         status: 'needs_clarification',
-        message:
-          '질문에 기록에서 확인되지 않는 날짜나 수치가 들어 있어 근거를 다시 확인해야 해요.',
+        message: t('visitQuestions.validation.unverifiedDateOrValue'),
       };
     }
     questions.push({

@@ -4,6 +4,7 @@ import type {
   VisitQuestionEvidenceItem,
   VisitQuestionTaskResult,
 } from './taskContract';
+import { t } from '../../i18n';
 
 export type VisitQuestionPresentationResult =
   | {
@@ -13,7 +14,7 @@ export type VisitQuestionPresentationResult =
   | { readonly status: 'needs_clarification'; readonly message: string }
   | { readonly status: 'refresh_required'; readonly message: string };
 
-/** Rechecks the appointment and source revisions before any generated list reaches the UI. */
+/** Rechecks appointment and source revisions; provider-authored clarification stays separate from app fallbacks. */
 export async function validateVisitQuestionPresentation(
   result: VisitQuestionTaskResult,
   revalidateEvidence: (
@@ -30,7 +31,7 @@ export async function validateVisitQuestionPresentation(
   if (citations.size === 0) {
     return {
       status: 'refresh_required',
-      message: '질문 근거를 다시 확인할 수 없어 제안을 새로 준비해야 해요.',
+      message: t('visitQuestions.presentation.noEvidence'),
     };
   }
   try {
@@ -42,7 +43,6 @@ export async function validateVisitQuestionPresentation(
   }
   return {
     status: 'refresh_required',
-    message:
-      '진료 일정이나 기록이 바뀌었어요. 최신 자료로 질문을 다시 준비해 주세요.',
+    message: t('visitQuestions.presentation.staleEvidence'),
   };
 }

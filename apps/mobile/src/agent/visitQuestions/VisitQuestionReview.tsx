@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { t } from '../../i18n';
 import type { VisitQuestionCandidate } from './taskContract';
 import { visitQuestionReviewStyles as styles } from './VisitQuestionReview.styles';
 import { VisitQuestionReviewCard } from './VisitQuestionReviewCard';
@@ -57,16 +58,16 @@ function memoryMessage(
   status: VisitQuestionReviewProps['memoryStatus'],
 ): string | null {
   if (status === 'available')
-    return '이전에 검토한 진료 메모를 함께 확인했어요.';
+    return t('visitQuestions.review.memory.available');
   if (status === 'no_matching_current_memory')
-    return '관련된 이전 검토 메모를 찾지 못했어요.';
+    return t('visitQuestions.review.memory.none');
   if (status === 'local_memory_unavailable') {
-    return '이전 검토 메모를 불러오지 못했어요. 다른 기록과 전사 자료를 확인해 주세요.';
+    return t('visitQuestions.review.memory.unavailable');
   }
   return null;
 }
 
-/** Holds draft ordering and edits until the user explicitly confirms the list. */
+/** Holds editable draft state until confirmation; app-owned review copy comes from the Korean catalog. */
 export function VisitQuestionReview({
   appointmentLabel,
   questions,
@@ -96,7 +97,7 @@ export function VisitQuestionReview({
   return (
     <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
-        다음 진료에서 물어볼 내용
+        {t('visitQuestions.review.title')}
       </Text>
       <Text style={styles.appointment}>{appointmentLabel}</Text>
       {memoryMessage(memoryStatus) ? (
@@ -130,7 +131,7 @@ export function VisitQuestionReview({
       ))}
 
       {drafts.length === 0 ? (
-        <Text style={styles.notice}>저장할 질문을 하나 이상 남겨 주세요.</Text>
+        <Text style={styles.notice}>{t('visitQuestions.review.empty')}</Text>
       ) : null}
       <View style={styles.footer}>
         {onCancel ? (
@@ -141,7 +142,9 @@ export function VisitQuestionReview({
             style={styles.secondaryButton}
             testID="visit-question-cancel"
           >
-            <Text style={styles.buttonText}>취소</Text>
+            <Text style={styles.buttonText}>
+              {t('visitQuestions.review.actions.cancel')}
+            </Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -161,7 +164,9 @@ export function VisitQuestionReview({
           testID="visit-question-confirm"
         >
           <Text style={styles.confirmText}>
-            {saving ? '저장 중…' : '검토 완료하고 저장'}
+            {saving
+              ? t('visitQuestions.review.actions.saving')
+              : t('visitQuestions.review.actions.confirm')}
           </Text>
         </Pressable>
       </View>

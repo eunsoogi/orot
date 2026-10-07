@@ -13,6 +13,7 @@ import type {
 } from '../../providers/selection/types';
 import { resolveProviderSelection } from '../../providers/selection/providerSelection';
 import { visitRecommendationRequirements } from '../../providers/selection/options';
+import { t } from '../../i18n';
 import { createVisitQuestionEvidenceAliases } from './evidenceAliases';
 import { createVisitQuestionEvidenceSearchTools } from './evidenceTools';
 import type { VisitQuestionContextResult } from './evidenceService';
@@ -24,7 +25,7 @@ type ReadyContext = Extract<VisitQuestionContextResult, { status: 'ready' }>;
 
 let nextOperationId = 0;
 
-/** Runs #30 through the shared role handoff, binding every remote call to fresh consent. */
+/** Runs #30 through the shared role handoff; app-owned fallback copy is localized and consent stays fresh. */
 export async function runVisitQuestionWorkflow(input: {
   readonly prepared: ReadyContext;
   readonly selection: ProviderSelection | null;
@@ -51,7 +52,9 @@ export async function runVisitQuestionWorkflow(input: {
     if (resolution.reason === 'provider-unavailable') {
       return {
         status: 'provider_unavailable',
-        message: resolution.message ?? '선택한 AI 제공자를 사용할 수 없어요.',
+        message:
+          resolution.message ??
+          t('visitQuestions.workflow.providerUnavailable'),
       } as const;
     }
     return { status: 'provider_selection_required' } as const;
@@ -68,7 +71,7 @@ export async function runVisitQuestionWorkflow(input: {
   ) {
     return {
       status: 'consent_required',
-      message: '선택한 계정을 확인한 뒤 외부 AI 전송 동의를 받을 수 있어요.',
+      message: t('visitQuestions.workflow.consent.accountRequired'),
     } as const;
   }
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
@@ -78,8 +81,7 @@ export async function runVisitQuestionWorkflow(input: {
   if (input.prepared.evidence.batch.items.length > maxInitialItems) {
     return {
       status: 'unavailable',
-      message:
-        '추가로 확인할 자료를 위한 여유가 부족해요. 자료를 다시 준비해 주세요.',
+      message: t('visitQuestions.workflow.insufficientEvidenceBudget'),
       memoryStatus: input.prepared.evidence.memoryStatus,
     } as const;
   }

@@ -19,7 +19,8 @@ describe('evidence-linked visit-question flow with synthetic-only inputs', () =>
       .withTimeout(30000);
 
     await element(by.id('visit-question-probe-prepare')).tap();
-    await waitFor(element(by.id('visit-question-review-screen')))
+    // The review wrapper spans several scroll pages, so Detox rejects its offscreen center.
+    await waitFor(element(by.id('visit-question-probe-metrics')))
       .toBeVisible()
       .withTimeout(30000);
     await expect(element(by.id('visit-question-probe-metrics'))).toHaveText(
@@ -27,11 +28,11 @@ describe('evidence-linked visit-question flow with synthetic-only inputs', () =>
     );
 
     await element(by.id('visit-question-probe-scroll')).scrollTo('bottom');
-    // Each synthetic question cites the same span; index 2 targets question 3.
+    // The review wrapper is not an accessibility ancestor; the probe scroll view contains all three citations.
     const thirdQuestionEvidence = element(
       by
         .text('이 프로브에만 쓰는 합성 검사 기록입니다.')
-        .withAncestor(by.id('visit-question-review-screen')),
+        .withAncestor(by.id('visit-question-probe-scroll')),
     ).atIndex(2);
     await expect(thirdQuestionEvidence).toBeVisible();
 

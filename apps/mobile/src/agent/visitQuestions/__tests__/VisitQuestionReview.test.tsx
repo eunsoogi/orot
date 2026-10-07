@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { t } from '../../../i18n';
 import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
@@ -76,5 +77,25 @@ describe('VisitQuestionReview', () => {
       screen.getByTestId('visit-question-confirm').props.accessibilityState
         .disabled,
     ).toBe(true);
+  });
+
+  it('renders review copy and interpolated labels through the Korean catalog', async () => {
+    await render(
+      <VisitQuestionReview
+        appointmentLabel="Synthetic outpatient visit"
+        questions={questions}
+        onConfirm={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(t('visitQuestions.review.title'))).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        t('visitQuestions.review.question.label', { number: 1 }),
+      ),
+    ).toBeTruthy();
+    expect(t('visitQuestions.review.question.moveUp', { number: 2 })).toBe(
+      '질문 2 위로 이동',
+    );
   });
 });
