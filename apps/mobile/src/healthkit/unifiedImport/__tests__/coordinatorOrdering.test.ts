@@ -2,8 +2,8 @@ import { createUnifiedImportCoordinator } from '../coordinator';
 import { healthKitFeatures } from '../../types';
 import { availableBatch, createTestServices } from '../testSupport';
 
-describe('unified import consent ordering', () => {
-  it('finishes each selected consent call before calendar or HealthKit reads begin', async () => {
+describe('HealthKit import authorization ordering', () => {
+  it('waits for one selected batch request before opening storage or querying', async () => {
     const base = createTestServices();
     const requestReadAuthorizations = jest.fn(async features => {
       base.timeline.push('healthKit.authorization.finished');
@@ -16,7 +16,7 @@ describe('unified import consent ordering', () => {
     const measurements: unknown[] = [];
 
     const result = await coordinator.start(
-      { healthKitFeatures: ['steps', 'heartRate'], calendar: true },
+      { healthKitFeatures: ['steps', 'heartRate'] },
       { onMeasurement: measurement => measurements.push(measurement) },
     ).result;
 
@@ -27,28 +27,34 @@ describe('unified import consent ordering', () => {
     ]);
     expect(
       base.timeline.indexOf('healthKit.authorization.finished'),
-    ).toBeLessThan(base.timeline.indexOf('eventKit.authorization'));
-    expect(base.timeline.indexOf('eventKit.authorization')).toBeLessThan(
-      base.timeline.indexOf('eventKit.query'),
-    );
-    expect(base.timeline.indexOf('eventKit.query')).toBeLessThan(
-      base.timeline.indexOf('storage.open'),
-    );
+    ).toBeLessThan(base.timeline.indexOf('storage.open'));
     expect(base.timeline.indexOf('storage.open')).toBeLessThan(
       base.timeline.indexOf('query:heartRate'),
     );
     expect(result.status).toBe('complete');
     expect(result.readAuthorization).toBe('notObservable');
-    expect(result.progress.features.heartRate.status).toBe('complete');
-    expect(result.progress.features.steps.status).toBe('complete');
-    expect(result.progress.calendar.eventCount).toBe(0);
+    expect(result.progress).not.toHaveProperty('calendar');
     expect(measurements).toEqual(result.measurements);
-    expect(result.measurements).toContainEqual({
-      provider: 'eventKit',
+    const authorizationStart = result.measurements.find(
+      measurement =>
+        measurement.provider === 'healthKit' &&
+        measurement.phase === 'authorization' &&
+        measurement.transition === 'started',
+    );
+    const requestInvocation = result.measurements.find(
+      measurement =>
+        measurement.provider === 'healthKit' &&
+        measurement.phase === 'permissionRequestInvocation',
+    );
+    expect(requestInvocation).toEqual({
+      provider: 'healthKit',
       phase: 'permissionRequestInvocation',
       transition: 'invoked',
       offsetMs: expect.any(Number),
     });
+    expect(requestInvocation?.offsetMs).toBeGreaterThanOrEqual(
+      authorizationStart?.offsetMs ?? Number.POSITIVE_INFINITY,
+    );
     expect(result.measurements).toContainEqual(
       expect.objectContaining({
         provider: 'localStore',
@@ -57,20 +63,9 @@ describe('unified import consent ordering', () => {
         offsetMs: expect.any(Number),
       }),
     );
-    const healthKitAuthorizationEnd = result.measurements.find(
+    const authorizationEnd = result.measurements.find(
       measurement =>
         measurement.provider === 'healthKit' &&
-        measurement.phase === 'authorization' &&
-        measurement.transition === 'finished',
-    );
-    const eventKitRequest = result.measurements.find(
-      measurement =>
-        measurement.provider === 'eventKit' &&
-        measurement.phase === 'permissionRequestInvocation',
-    );
-    const eventKitAuthorizationEnd = result.measurements.find(
-      measurement =>
-        measurement.provider === 'eventKit' &&
         measurement.phase === 'authorization' &&
         measurement.transition === 'finished',
     );
@@ -86,11 +81,11 @@ describe('unified import consent ordering', () => {
         measurement.phase === 'query' &&
         measurement.transition === 'started',
     );
-    expect(eventKitRequest?.offsetMs).toBeGreaterThanOrEqual(
-      healthKitAuthorizationEnd?.offsetMs ?? Number.POSITIVE_INFINITY,
+    expect(authorizationEnd?.offsetMs).toBeGreaterThanOrEqual(
+      requestInvocation?.offsetMs ?? Number.POSITIVE_INFINITY,
     );
     expect(storageOpenEnd?.offsetMs).toBeGreaterThanOrEqual(
-      eventKitAuthorizationEnd?.offsetMs ?? Number.POSITIVE_INFINITY,
+      authorizationEnd?.offsetMs ?? Number.POSITIVE_INFINITY,
     );
     expect(firstQuery?.offsetMs).toBeGreaterThanOrEqual(
       storageOpenEnd?.offsetMs ?? Number.POSITIVE_INFINITY,
@@ -108,7 +103,7 @@ describe('unified import consent ordering', () => {
     ).toBe(true);
   });
 
-  it('requests only supported selected types and reports an unsupported feature independently', async () => {
+  it('requests only selected types and reports unsupported types independently', async () => {
     const base = createTestServices();
     const requestReadAuthorizations = jest.fn(async () => ({
       availability: 'available' as const,
@@ -126,7 +121,6 @@ describe('unified import consent ordering', () => {
 
     const result = await coordinator.start({
       healthKitFeatures: ['medications', 'heartRate'],
-      calendar: false,
     }).result;
 
     expect(requestReadAuthorizations).toHaveBeenCalledWith([
@@ -160,8 +154,7 @@ describe('unified import consent ordering', () => {
     });
 
     const result = await coordinator.start({
-      healthKitFeatures: healthKitFeatures,
-      calendar: false,
+      healthKitFeatures,
     }).result;
 
     expect(requestReadAuthorizations).toHaveBeenCalledTimes(1);
@@ -175,33 +168,7 @@ describe('unified import consent ordering', () => {
     expect(result.status).toBe('complete');
   });
 
-  it('continues HealthKit import when Calendar access is denied and never runs a calendar query', async () => {
-    const base = createTestServices({
-      calendar: {
-        async requestAccessIfNeeded() {
-          base.timeline.push('eventKit.denied');
-          return 'denied';
-        },
-        async listUpcomingEvents() {
-          throw new Error('query must not run without full access');
-        },
-      },
-    });
-    const coordinator = createUnifiedImportCoordinator(base.services);
-
-    const result = await coordinator.start({
-      healthKitFeatures: ['bodyMass'],
-      calendar: true,
-    }).result;
-
-    expect(base.timeline).toContain('eventKit.denied');
-    expect(result.progress.calendar.status).toBe('denied');
-    expect(base.timeline).toContain('query:bodyMass');
-    expect(base.timeline).not.toContain('eventKit.query');
-    expect(result.status).toBe('partial');
-  });
-
-  it('still requests and reads Calendar after a HealthKit API failure', async () => {
+  it('fails selected types without exposing native errors when the batch request fails', async () => {
     const base = createTestServices({
       healthKit: {
         async requestReadAuthorizations() {
@@ -213,18 +180,15 @@ describe('unified import consent ordering', () => {
 
     const result = await coordinator.start({
       healthKitFeatures: ['heartRate'],
-      calendar: true,
     }).result;
 
-    expect(base.timeline).toContain('eventKit.authorization');
-    expect(base.timeline).toContain('eventKit.query');
+    expect(base.timeline).not.toContain('storage.open');
     expect(result.progress.features.heartRate.status).toBe('failed');
-    expect(result.progress.calendar.status).toBe('empty');
     expect(
       result.measurements.some(measurement =>
         JSON.stringify(measurement).includes('private failure detail'),
       ),
     ).toBe(false);
-    expect(result.status).toBe('partial');
+    expect(result.status).toBe('failed');
   });
 });

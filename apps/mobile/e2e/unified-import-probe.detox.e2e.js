@@ -1,8 +1,8 @@
 /* global by, device, element, expect, waitFor, describe, it */
 
-describe('unified HealthKit and Calendar import on iOS Simulator', () => {
-  it('batches selected HealthKit types before the Calendar query and local import', async () => {
-    // Synthetic mode is deterministic; live mode pauses here for the actual Simulator system consent screens.
+describe('selected HealthKit import on iOS Simulator', () => {
+  it('batches selected HealthKit types before queries and local import', async () => {
+    // Synthetic mode is deterministic; live mode pauses for the HealthKit consent request.
     const mode =
       process.env.OROT_UNIFIED_IMPORT_PROBE_MODE === 'live'
         ? 'live'
@@ -33,7 +33,6 @@ describe('unified HealthKit and Calendar import on iOS Simulator', () => {
     for (const feature of selected) {
       await element(by.id(`unified-import-toggle-${feature}`)).tap();
     }
-    await element(by.id('unified-import-toggle-calendar')).tap();
     await element(by.id('unified-import-start')).tap();
 
     const status = element(by.id('unified-import-status'));
@@ -48,7 +47,7 @@ describe('unified HealthKit and Calendar import on iOS Simulator', () => {
       const liveText = liveSummary.label || liveSummary.text;
       // Detox replaces global expect with native matcher dispatch for UI elements.
       if (
-        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitRequestCalls=1;eventKitRequestOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;/u.test(
+        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;/u.test(
           liveText,
         )
       ) {
@@ -66,13 +65,9 @@ describe('unified HealthKit and Calendar import on iOS Simulator', () => {
         element(by.id(`unified-import-toggle-${feature}`)),
       ).toHaveText(/complete|empty/u);
     }
-    await expect(element(by.id('unified-import-toggle-calendar'))).toHaveText(
-      /empty/u,
-    );
-
     const summary = element(by.id('unified-import-probe-measurements'));
     await expect(summary).toHaveText(
-      /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitRequestCalls=1;eventKitRequestOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;healthKitQueryCalls=\d+;eventKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;eventKitAuthorizationMs=\d+;eventKitQueryMs=\d+;localStoreMs=\d+/u,
+      /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;localStoreMs=\d+/u,
     );
   });
 });

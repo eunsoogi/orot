@@ -4,7 +4,6 @@ import { healthKitFeatures } from '../types';
 import type { HealthKitFeature } from '../types';
 import { createUnifiedImportCoordinator } from './coordinator';
 import type {
-  UnifiedCalendarStatus,
   UnifiedFeatureStatus,
   UnifiedImportMeasurement,
   UnifiedImportProgress,
@@ -13,43 +12,39 @@ import type {
   UnifiedImportStatus,
 } from './types';
 
-export interface UnifiedImportScreenCopy {
+export interface HealthKitImportScreenCopy {
   readonly title: string;
   readonly description: string;
   readonly localOnly: string;
   readonly readAuthorization: string;
   readonly importButton: string;
   readonly cancelButton: string;
-  readonly calendarName: string;
   readonly featureNames: Readonly<Record<HealthKitFeature, string>>;
   readonly featureStatuses: Readonly<Record<UnifiedFeatureStatus, string>>;
-  readonly calendarStatuses: Readonly<Record<UnifiedCalendarStatus, string>>;
   readonly phaseStatuses: Readonly<Record<UnifiedImportStatus, string>>;
   readonly changeSummary: (imported: number, deleted: number) => string;
-  readonly calendarCount: (count: number) => string;
 }
 
 type UnifiedImportCoordinator = ReturnType<
   typeof createUnifiedImportCoordinator
 >;
 
-interface UnifiedHealthCalendarImportScreenProps {
-  readonly copy: UnifiedImportScreenCopy;
+interface HealthKitImportScreenProps {
+  readonly copy: HealthKitImportScreenCopy;
   readonly coordinator: UnifiedImportCoordinator;
   readonly onMeasurement?: (measurement: UnifiedImportMeasurement) => void;
 }
 
-/** Presents one explicit selection and keeps per-type outcomes visible during sync. */
-export function UnifiedHealthCalendarImportScreen({
+/** Presents selected HealthKit types and keeps per-type outcomes visible during sync. */
+export function HealthKitImportScreen({
   copy,
   coordinator,
   onMeasurement,
-}: UnifiedHealthCalendarImportScreenProps) {
+}: HealthKitImportScreenProps) {
   const mounted = useRef(true);
   const [selected, setSelected] = useState<ReadonlySet<HealthKitFeature>>(
     new Set(),
   );
-  const [calendarSelected, setCalendarSelected] = useState(false);
   const [progress, setProgress] = useState<UnifiedImportProgress | null>(null);
   const [run, setRun] = useState<UnifiedImportRun | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -76,12 +71,8 @@ export function UnifiedHealthCalendarImportScreen({
       healthKitFeatures: healthKitFeatures.filter(feature =>
         selected.has(feature),
       ),
-      calendar: calendarSelected,
     };
-    if (
-      isRunning ||
-      (selection.healthKitFeatures.length === 0 && !selection.calendar)
-    ) {
+    if (isRunning || selection.healthKitFeatures.length === 0) {
       return;
     }
     setIsRunning(true);
@@ -107,7 +98,7 @@ export function UnifiedHealthCalendarImportScreen({
   }
 
   const phase = progress?.phase ?? 'queued';
-  const selectedCount = selected.size + Number(calendarSelected);
+  const selectedCount = selected.size;
   return (
     <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
@@ -144,27 +135,6 @@ export function UnifiedHealthCalendarImportScreen({
           </Pressable>
         );
       })}
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: calendarSelected, disabled: isRunning }}
-        disabled={isRunning}
-        onPress={() => {
-          setCalendarSelected(value => !value);
-          setProgress(null);
-        }}
-        style={styles.option}
-        testID="unified-import-toggle-calendar"
-      >
-        <Text>{`${calendarSelected ? '☑' : '☐'} ${copy.calendarName}`}</Text>
-        {progress?.calendar.status !== undefined &&
-        progress.calendar.status !== 'notSelected' ? (
-          <Text>{copy.calendarStatuses[progress.calendar.status]}</Text>
-        ) : null}
-        {progress?.calendar.eventCount !== null &&
-        progress?.calendar.eventCount !== undefined ? (
-          <Text>{copy.calendarCount(progress.calendar.eventCount)}</Text>
-        ) : null}
-      </Pressable>
       <Text>{copy.localOnly}</Text>
       <Text testID="unified-import-read-authorization">
         {copy.readAuthorization}
@@ -217,10 +187,6 @@ function failedProgress(
   return {
     phase: 'failed',
     features,
-    calendar: {
-      status: selection.calendar ? 'failed' : 'notSelected',
-      eventCount: null,
-    },
   };
 }
 

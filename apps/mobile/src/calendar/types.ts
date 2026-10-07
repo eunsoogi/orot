@@ -24,9 +24,3 @@ export interface CalendarBridge {
   ): Promise<CalendarEventLookup>;
   addEventStoreListener(listener: () => void): { remove: () => void };
 }
-
-/** Separates one explicit permission request from later read-only event queries. */
-export interface CalendarImportBridge {
-  requestAccessIfNeeded(): Promise<CalendarAccessState>;
-  listUpcomingEvents(): Promise<UpcomingCalendarEvents>;
-}

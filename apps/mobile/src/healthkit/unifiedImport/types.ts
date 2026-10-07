@@ -1,4 +1,3 @@
-import type { CalendarImportBridge } from '../../calendar/types';
 import type {
   HealthKitAuthorizationResult,
   HealthKitFeature,
@@ -23,24 +22,9 @@ export type UnifiedFeatureStatus =
   | 'failed'
   | 'cancelled';
 
-export type UnifiedCalendarStatus =
-  | 'notSelected'
-  | 'waitingAuthorization'
-  | 'fullAccess'
-  | 'querying'
-  | 'complete'
-  | 'empty'
-  | 'writeOnly'
-  | 'denied'
-  | 'restricted'
-  | 'notDetermined'
-  | 'failed'
-  | 'cancelled';
-
 export type UnifiedImportStatus =
   | 'queued'
   | 'authorizingHealthKit'
-  | 'authorizingEventKit'
   | 'preparingStorage'
   | 'querying'
   | 'cancelling'
@@ -50,8 +34,7 @@ export type UnifiedImportStatus =
   | 'failed'
   | 'cancelled';
 
-export type UnifiedMeasurementProvider =
-  'healthKit' | 'eventKit' | 'localStore';
+export type UnifiedMeasurementProvider = 'healthKit' | 'localStore';
 export type UnifiedMeasurementPhase =
   'authorization' | 'permissionRequestInvocation' | 'query' | 'persistence';
 
@@ -74,15 +57,10 @@ export interface UnifiedFeatureProgress {
 export interface UnifiedImportProgress {
   readonly phase: UnifiedImportStatus;
   readonly features: Readonly<Record<HealthKitFeature, UnifiedFeatureProgress>>;
-  readonly calendar: {
-    readonly status: UnifiedCalendarStatus;
-    readonly eventCount: number | null;
-  };
 }
 
 export interface UnifiedImportSelection {
   readonly healthKitFeatures: readonly HealthKitFeature[];
-  readonly calendar: boolean;
 }
 
 export type UnifiedFeatureOutcomeStatus = Exclude<
@@ -104,7 +82,6 @@ export interface UnifiedFeatureInstrumentation {
 /** Injected feature adapter keeps consent ordering testable without HealthKit data. */
 export interface UnifiedImportServices {
   readonly healthKit: Pick<HealthKitNativeModule, 'requestReadAuthorizations'>;
-  readonly calendar: CalendarImportBridge;
   readonly openRepository: () => Promise<RecordRepository>;
   readonly runFeature: (
     feature: HealthKitFeature,
@@ -125,7 +102,6 @@ export interface UnifiedImportResult {
     UnifiedImportStatus,
     | 'queued'
     | 'authorizingHealthKit'
-    | 'authorizingEventKit'
     | 'preparingStorage'
     | 'querying'
     | 'cancelling'

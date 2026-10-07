@@ -21,16 +21,6 @@ export function createTestServices(
         };
       },
     },
-    calendar: {
-      async requestAccessIfNeeded() {
-        timeline.push('eventKit.authorization');
-        return 'fullAccess';
-      },
-      async listUpcomingEvents() {
-        timeline.push('eventKit.query');
-        return { access: 'fullAccess', events: [] };
-      },
-    },
     async openRepository() {
       timeline.push('storage.open');
       return repository;

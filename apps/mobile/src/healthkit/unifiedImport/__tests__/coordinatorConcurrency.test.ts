@@ -13,7 +13,6 @@ describe('unified import re-entry and cancellation', () => {
     });
     const selection = {
       healthKitFeatures: ['heartRate'] as const,
-      calendar: false,
     };
     const first = coordinator.start(selection);
     const replayed = jest.fn();
@@ -38,7 +37,7 @@ describe('unified import re-entry and cancellation', () => {
     expect(result.progress.features.heartRate.status).toBe('complete');
   });
 
-  it('serializes different selections to keep provider prompts and cursor writes from racing', async () => {
+  it('serializes different selections to keep HealthKit prompts and cursor writes from racing', async () => {
     const base = createTestServices();
     const firstFeature = deferred<UnifiedFeatureOutcome>();
     const firstEntered = deferred<void>();
@@ -61,12 +60,10 @@ describe('unified import re-entry and cancellation', () => {
     });
     const first = coordinator.start({
       healthKitFeatures: ['heartRate'],
-      calendar: false,
     });
     await firstEntered.promise;
     const second = coordinator.start({
       healthKitFeatures: ['steps'],
-      calendar: false,
     });
     await Promise.resolve();
 
@@ -104,7 +101,6 @@ describe('unified import re-entry and cancellation', () => {
     });
     const run = coordinator.start({
       healthKitFeatures: ['heartRate', 'steps'],
-      calendar: false,
     });
     await firstEntered.promise;
     run.cancel();
@@ -138,7 +134,6 @@ describe('unified import re-entry and cancellation', () => {
     });
     const selection = {
       healthKitFeatures: ['bodyMass'] as const,
-      calendar: false,
     };
 
     const failed = await coordinator.start(selection).result;

@@ -52,30 +52,6 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         }
     }
 
-    @objc(requestAccessIfNeeded:rejecter:)
-    public func requestCalendarAccess(
-        _ resolve: @escaping RCTPromiseResolveBlock,
-        rejecter _: @escaping RCTPromiseRejectBlock,
-    ) {
-        // The unified coordinator waits for this consent result before it starts any selected query.
-        eventQueue.async {
-            self.requestAccessIfNeeded { access in resolve(access) }
-        }
-    }
-
-    @objc(listUpcomingEvents:rejecter:)
-    public func listUpcomingCalendarEvents(
-        _ resolve: @escaping RCTPromiseResolveBlock,
-        rejecter _: @escaping RCTPromiseRejectBlock,
-    ) {
-        eventQueue.async {
-            // Querying is deliberately prompt-free so one selected import never asks once per event.
-            let access = self.currentAccess()
-            let events = access == "fullAccess" ? self.upcomingEvents() : []
-            resolve(["access": access, "events": events] as NSDictionary)
-        }
-    }
-
     @objc(findEvent:occurrenceDate:floatingOccurrenceAt:resolver:rejecter:)
     public func findEvent(
         _ calendarEventIdentifier: String,

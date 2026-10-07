@@ -5,13 +5,12 @@ import type {
   HealthKitFeature,
 } from '../types';
 import type {
-  UnifiedCalendarStatus,
   UnifiedFeatureStatus,
   UnifiedImportResult,
   UnifiedImportSelection,
 } from './types';
 import type { ActiveRun } from './coordinatorProgress';
-import { publish, setCalendar, setFeature } from './coordinatorProgress';
+import { publish, setFeature } from './coordinatorProgress';
 
 export function applyBatchResult(
   run: ActiveRun,
@@ -74,15 +73,14 @@ export function normalizeSelection(
   if (
     selected.size !== selection.healthKitFeatures.length ||
     [...selected].some(feature => !healthKitFeatures.includes(feature)) ||
-    (selected.size === 0 && !selection.calendar)
+    selected.size === 0
   ) {
-    throw new Error('Unified import selection is invalid.');
+    throw new Error('HealthKit import selection is invalid.');
   }
   return {
     healthKitFeatures: healthKitFeatures.filter(feature =>
       selected.has(feature),
     ),
-    calendar: selection.calendar,
   };
 }
 
@@ -92,13 +90,6 @@ export function cancelRemaining(run: ActiveRun): void {
     if (status === 'ready' || status === 'waitingAuthorization') {
       setFeature(run, feature, { status: 'cancelled' });
     }
-  }
-  if (
-    run.selection.calendar &&
-    (run.progress.calendar.status === 'waitingAuthorization' ||
-      run.progress.calendar.status === 'fullAccess')
-  ) {
-    setCalendar(run, { status: 'cancelled' });
   }
 }
 
@@ -110,20 +101,17 @@ export function requestCancel(run: ActiveRun): void {
 }
 
 export function finish(run: ActiveRun): void {
-  const statuses: (UnifiedFeatureStatus | UnifiedCalendarStatus)[] =
-    run.selection.healthKitFeatures.map(
-      feature => run.progress.features[feature].status,
-    );
-  if (run.selection.calendar) statuses.push(run.progress.calendar.status);
+  const statuses = run.selection.healthKitFeatures.map(
+    feature => run.progress.features[feature].status,
+  );
   const hasCancelled = statuses.includes('cancelled');
   const hasFailure = statuses.includes('failed');
   const hasIssue = statuses.some(isIssueStatus);
   const hasSuccess = statuses.some(isSuccessStatus);
-  const hasChanges =
-    run.selection.healthKitFeatures.some(feature => {
-      const value = run.progress.features[feature];
-      return (value.importedCount ?? 0) + (value.deletedCount ?? 0) > 0;
-    }) || (run.progress.calendar.eventCount ?? 0) > 0;
+  const hasChanges = run.selection.healthKitFeatures.some(feature => {
+    const value = run.progress.features[feature];
+    return (value.importedCount ?? 0) + (value.deletedCount ?? 0) > 0;
+  });
   const status: UnifiedImportResult['status'] = hasCancelled
     ? 'cancelled'
     : hasIssue && hasSuccess
@@ -146,12 +134,6 @@ export function failUnfinished(run: ActiveRun): void {
     if (!isTerminalFeatureStatus(status))
       setFeature(run, feature, { status: 'failed' });
   }
-  if (
-    run.selection.calendar &&
-    !isTerminalCalendarStatus(run.progress.calendar.status)
-  ) {
-    setCalendar(run, { status: 'failed' });
-  }
   finish(run);
 }
 
@@ -171,29 +153,11 @@ function isTerminalFeatureStatus(status: UnifiedFeatureStatus): boolean {
   ].includes(status);
 }
 
-function isTerminalCalendarStatus(status: UnifiedCalendarStatus): boolean {
-  return [
-    'notSelected',
-    'complete',
-    'empty',
-    'writeOnly',
-    'denied',
-    'restricted',
-    'notDetermined',
-    'failed',
-    'cancelled',
-  ].includes(status);
-}
-
-function isSuccessStatus(
-  status: UnifiedFeatureStatus | UnifiedCalendarStatus,
-): boolean {
+function isSuccessStatus(status: UnifiedFeatureStatus): boolean {
   return status === 'complete' || status === 'empty';
 }
 
-function isIssueStatus(
-  status: UnifiedFeatureStatus | UnifiedCalendarStatus,
-): boolean {
+function isIssueStatus(status: UnifiedFeatureStatus): boolean {
   return [
     'partial',
     'unsupportedFeature',
@@ -203,9 +167,5 @@ function isIssueStatus(
     'notRun',
     'failed',
     'cancelled',
-    'writeOnly',
-    'denied',
-    'restricted',
-    'notDetermined',
   ].includes(status);
 }

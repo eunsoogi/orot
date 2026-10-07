@@ -55,10 +55,6 @@ export function createRun(
     progress: {
       phase: 'queued',
       features,
-      calendar: {
-        status: selection.calendar ? 'waitingAuthorization' : 'notSelected',
-        eventCount: null,
-      },
     },
     cancelled: false,
     finished: false,
@@ -103,19 +99,6 @@ export function setFeature(
       ...run.progress.features,
       [feature]: { ...run.progress.features[feature], ...update },
     },
-  };
-  publish(run);
-}
-
-export function setCalendar(
-  run: ActiveRun,
-  update: Partial<UnifiedImportProgress['calendar']> & {
-    readonly status: UnifiedImportProgress['calendar']['status'];
-  },
-): void {
-  run.progress = {
-    ...run.progress,
-    calendar: { ...run.progress.calendar, ...update },
   };
   publish(run);
 }
@@ -172,7 +155,6 @@ function copyProgress(progress: UnifiedImportProgress): UnifiedImportProgress {
   return {
     ...progress,
     features: { ...progress.features },
-    calendar: { ...progress.calendar },
   };
 }
 

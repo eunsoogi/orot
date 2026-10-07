@@ -2,19 +2,18 @@ import '../src/agent/polyfills';
 import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, Text, View } from 'react-native';
 import { name as appName } from '../app.json';
-import type { CalendarImportBridge } from '../src/calendar/types';
 import { openLocalStorage } from '../src/storage/secureDatabase';
 import { healthKit } from '../src/healthkit';
 import { healthKitFeatures } from '../src/healthkit/types';
 import { createUnifiedImportCoordinator } from '../src/healthkit/unifiedImport/coordinator';
-import { UnifiedHealthCalendarImportScreen } from '../src/healthkit/unifiedImport/UnifiedHealthCalendarImportScreen';
+import { HealthKitImportScreen } from '../src/healthkit/unifiedImport/HealthKitImportScreen';
 import { createUnifiedFeatureImporter } from '../src/healthkit/unifiedImport/featureImporter';
 import { summarizeUnifiedImportMeasurements } from './unifiedImportProbeMeasurements';
 import { unifiedImportProbeCopy } from './unifiedImportProbeCopy';
 import type { UnifiedImportMeasurement } from '../src/healthkit/unifiedImport/types';
-import { unifiedHealthCalendarImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
+import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
 
-// Synthetic mode validates the production HealthKit importers without prompts; live mode uses both system providers and needs separate screen observation.
+// Synthetic mode avoids consent prompts; live mode exposes only the HealthKit request for observation.
 
 interface SimulatorFixtureModule {
   prepareSyntheticFixtures(
@@ -26,21 +25,11 @@ interface SimulatorFixtureModule {
 const fixtureModule = NativeModules.HealthKitModule as
   SimulatorFixtureModule | undefined;
 
-const syntheticCalendar: CalendarImportBridge = {
-  async requestAccessIfNeeded() {
-    return 'fullAccess';
-  },
-  async listUpcomingEvents() {
-    return { access: 'fullAccess', events: [] };
-  },
-};
-
 const syntheticCoordinator = createUnifiedImportCoordinator({
   healthKit: {
     requestReadAuthorizations: features =>
       healthKit.requestReadAuthorizations(features),
   },
-  calendar: syntheticCalendar,
   openRepository: openLocalStorage,
   runFeature: createUnifiedFeatureImporter({
     healthKit,
@@ -104,10 +93,10 @@ function UnifiedImportProbe() {
 
   return (
     <View>
-      <UnifiedHealthCalendarImportScreen
+      <HealthKitImportScreen
         coordinator={
           mode === 'live'
-            ? unifiedHealthCalendarImportCoordinator
+            ? unifiedHealthImportCoordinator
             : syntheticCoordinator
         }
         copy={unifiedImportProbeCopy}

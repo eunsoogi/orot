@@ -1,6 +1,5 @@
 import type { HealthKitBatchAuthorizationResult } from '../types';
 import type {
-  UnifiedCalendarStatus,
   UnifiedImportListeners,
   UnifiedImportRun,
   UnifiedImportSelection,
@@ -11,7 +10,6 @@ import {
   createRun,
   makeResult,
   recordMeasurement,
-  setCalendar,
   setFeature,
   setPhase,
 } from './coordinatorProgress';
@@ -27,7 +25,7 @@ import {
   requestCancel,
 } from './coordinatorOutcomes';
 
-/** Queues re-entry and completes both consent APIs before opening local storage. */
+/** Queues re-entry and waits for the selected HealthKit request before storage. */
 export function createUnifiedImportCoordinator(
   services: UnifiedImportServices,
 ) {
@@ -40,7 +38,7 @@ export function createUnifiedImportCoordinator(
     listeners: UnifiedImportListeners = {},
   ): UnifiedImportRun {
     const normalized = normalizeSelection(selection);
-    const key = `${normalized.healthKitFeatures.join(',')}|calendar:${normalized.calendar}`;
+    const key = normalized.healthKitFeatures.join(',');
     const existing = inFlight.get(key);
     if (existing) {
       attachListeners(existing, listeners);
@@ -81,10 +79,21 @@ export function createUnifiedImportCoordinator(
           run,
           'healthKit',
           'authorization',
-          () =>
-            services.healthKit.requestReadAuthorizations(
+          () => {
+            // This marks the bridge call, not visibility of an OS consent sheet.
+            recordMeasurement(
+              run,
+              {
+                provider: 'healthKit',
+                phase: 'permissionRequestInvocation',
+                transition: 'invoked',
+              },
+              now,
+            );
+            return services.healthKit.requestReadAuthorizations(
               run.selection.healthKitFeatures,
-            ),
+            );
+          },
           now,
         );
         applyBatchResult(run, batch);
@@ -95,52 +104,6 @@ export function createUnifiedImportCoordinator(
       }
     }
 
-    if (run.selection.calendar && !run.cancelled) {
-      setPhase(run, 'authorizingEventKit');
-      recordMeasurement(
-        run,
-        {
-          provider: 'eventKit',
-          phase: 'permissionRequestInvocation',
-          transition: 'invoked',
-        },
-        now,
-      );
-      try {
-        const access = await measure(
-          run,
-          'eventKit',
-          'authorization',
-          () => services.calendar.requestAccessIfNeeded(),
-          now,
-        );
-        setCalendar(run, { status: access });
-      } catch {
-        setCalendar(run, { status: 'failed' });
-      }
-    }
-    if (run.cancelled) return cancelUnstarted(run);
-
-    if (run.progress.calendar.status === 'fullAccess') {
-      setPhase(run, 'querying');
-      setCalendar(run, { status: 'querying' });
-      try {
-        const upcoming = await measure(
-          run,
-          'eventKit',
-          'query',
-          () => services.calendar.listUpcomingEvents(),
-          now,
-        );
-        setCalendar(run, {
-          status: calendarStatus(upcoming.access, upcoming.events.length),
-          eventCount:
-            upcoming.access === 'fullAccess' ? upcoming.events.length : null,
-        });
-      } catch {
-        setCalendar(run, { status: 'failed' });
-      }
-    }
     if (run.cancelled) return cancelUnstarted(run);
 
     const readyFeatures = run.selection.healthKitFeatures.filter(
@@ -151,7 +114,7 @@ export function createUnifiedImportCoordinator(
     let repository;
     setPhase(run, 'preparingStorage');
     try {
-      // Database initialization may migrate storage, so it follows both providers' consent calls.
+      // Database initialization may migrate storage, so it follows the selected HealthKit request.
       repository = await measure(
         run,
         'localStore',
@@ -195,15 +158,6 @@ export function createUnifiedImportCoordinator(
   }
 
   return { start };
-}
-
-function calendarStatus(
-  access:
-    'fullAccess' | 'writeOnly' | 'notDetermined' | 'denied' | 'restricted',
-  eventCount: number,
-): UnifiedCalendarStatus {
-  if (access !== 'fullAccess') return access;
-  return eventCount === 0 ? 'empty' : 'complete';
 }
 
 function defaultMonotonicNow(): number {

@@ -1,4 +1,3 @@
-import { eventKitCalendarImportBridge } from '../../calendar/calendarBridge';
 import { openLocalStorage } from '../../storage/secureDatabase';
 import { healthKit } from '..';
 import { healthKitFeatures } from '../types';
@@ -10,16 +9,14 @@ const unifiedFeatureImporter = createUnifiedFeatureImporter({
   now: () => new Date().toISOString(),
 });
 
-/** One screen action may select HealthKit types and Calendar separately. */
-export const unifiedHealthCalendarImportCoordinator =
-  createUnifiedImportCoordinator({
-    healthKit: {
-      requestReadAuthorizations: features =>
-        healthKit.requestReadAuthorizations(features),
-    },
-    calendar: eventKitCalendarImportBridge,
-    openRepository: openLocalStorage,
-    runFeature: unifiedFeatureImporter,
-  });
+/** One explicit screen action imports only the selected HealthKit feature types. */
+export const unifiedHealthImportCoordinator = createUnifiedImportCoordinator({
+  healthKit: {
+    requestReadAuthorizations: features =>
+      healthKit.requestReadAuthorizations(features),
+  },
+  openRepository: openLocalStorage,
+  runFeature: unifiedFeatureImporter,
+});
 
 export const unifiedHealthImportFeatures = healthKitFeatures;

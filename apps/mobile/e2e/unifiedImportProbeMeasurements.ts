@@ -31,8 +31,8 @@ export function summarizeUnifiedImportMeasurements(
         item.phase === phase &&
         item.transition === transition,
     );
-  const eventKitInvocation = find(
-    'eventKit',
+  const healthKitRequestInvocation = find(
+    'healthKit',
     'permissionRequestInvocation',
     'invoked',
   );
@@ -46,26 +46,16 @@ export function summarizeUnifiedImportMeasurements(
     'authorization',
     'finished',
   );
-  const eventKitAuthorizationFinished = find(
-    'eventKit',
-    'authorization',
-    'finished',
-  );
   const firstQuery = find('healthKit', 'query', 'started');
   return [
     `healthKitAuthorizationCalls=${started('healthKit', 'authorization')}`,
     `healthKitAuthorizationStartOffsetMs=${healthKitAuthorizationStarted?.offsetMs ?? 0}`,
+    `healthKitRequestInvocationOffsetMs=${healthKitRequestInvocation?.offsetMs ?? 0}`,
     `healthKitAuthorizationFinishedOffsetMs=${healthKitAuthorizationFinished?.offsetMs ?? 0}`,
-    `eventKitRequestCalls=${eventKitInvocation ? 1 : 0}`,
-    `eventKitRequestOffsetMs=${eventKitInvocation?.offsetMs ?? 0}`,
-    `eventKitAuthorizationFinishedOffsetMs=${eventKitAuthorizationFinished?.offsetMs ?? 0}`,
     `healthKitQueryCalls=${started('healthKit', 'query')}`,
-    `eventKitQueryCalls=${started('eventKit', 'query')}`,
     `firstQueryOffsetMs=${firstQuery?.offsetMs ?? 0}`,
     `localStoreOperations=${started('localStore', 'persistence')}`,
     `healthKitAuthorizationMs=${duration('healthKit', 'authorization')}`,
-    `eventKitAuthorizationMs=${duration('eventKit', 'authorization')}`,
-    `eventKitQueryMs=${duration('eventKit', 'query')}`,
     `localStoreMs=${duration('localStore', 'persistence')}`,
   ].join(';');
 }
