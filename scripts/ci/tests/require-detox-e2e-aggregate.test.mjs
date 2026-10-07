@@ -15,7 +15,7 @@ test('accepts successful Release and OpenAI Debug jobs with the complete case in
   const result = runAggregate([
     'success',
     'release',
-    '8',
+    '12',
     '1',
     'success',
     'openai-provider',
@@ -23,7 +23,7 @@ test('accepts successful Release and OpenAI Debug jobs with the complete case in
     '1',
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /9\/9 tests passed across Release \(8\) and OpenAI Debug \(1\)/);
+  assert.match(result.stdout, /13\/13 tests passed across Release \(12\) and OpenAI Debug \(1\)/);
 });
 
 test('fails closed when either child job failed, was canceled, skipped, or is missing', () => {
@@ -31,7 +31,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedRelease = runAggregate([
       result,
       'release',
-      '8',
+      '12',
       '1',
       'success',
       'openai-provider',
@@ -43,7 +43,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedDebug = runAggregate([
       'success',
       'release',
-      '8',
+      '12',
       '1',
       result,
       'openai-provider',
@@ -60,14 +60,16 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
 
 test('fails closed when a profile, test count, or configured suite count is absent or incorrect', () => {
   for (const values of [
-    ['success', '', '8', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'openai-provider', '8', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', '', '12', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'openai-provider', '12', '1', 'success', 'openai-provider', '1', '1'],
     ['success', 'release', '', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '7', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '8', '0', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '8', '1', 'success', 'release', '1', '1'],
-    ['success', 'release', '8', '1', 'success', 'openai-provider', '0', '1'],
-    ['success', 'release', '8', '1', 'success', 'openai-provider', '1', '0'],
+    // The former inventory must fail after adding the blood-pressure regression.
+    ['success', 'release', '11', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '13', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '12', '0', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '12', '1', 'success', 'release', '1', '1'],
+    ['success', 'release', '12', '1', 'success', 'openai-provider', '0', '1'],
+    ['success', 'release', '12', '1', 'success', 'openai-provider', '1', '0'],
   ]) {
     assert.notEqual(runAggregate(values).status, 0, `accepted ${JSON.stringify(values)}`);
   }

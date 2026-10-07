@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
@@ -22,6 +22,7 @@ import type {
 } from './src/healthkit/bloodPressure/types';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
 import { providerSelectionText } from './src/providers/selection/text';
+import SafeAreaLayout from './src/layout/SafeAreaLayout';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -83,12 +84,14 @@ export default function App({
     setShowCommonObservations(true);
   }
 
-  if (showRecording) {
-    return <RecordingScreen onBack={() => setShowRecording(false)} />;
-  }
+  let routeContent: ReactNode,
+    scrollable = false;
 
-  if (showCommonObservations) {
-    return (
+  if (showRecording) {
+    routeContent = <RecordingScreen onBack={() => setShowRecording(false)} />;
+  } else if (showCommonObservations) {
+    scrollable = true;
+    routeContent = (
       <View style={styles.commonObservationsContainer}>
         <Button
           onPress={() => setShowCommonObservations(false)}
@@ -101,11 +104,9 @@ export default function App({
         />
       </View>
     );
-  }
-
-  if (showBloodPressure) {
+  } else if (showBloodPressure) {
     // This dedicated path keeps paired readings and source-unit availability explicit.
-    return (
+    routeContent = (
       <View style={styles.commonObservationsContainer}>
         <BloodPressureImportScreen
           onBack={() => setShowBloodPressure(false)}
@@ -114,9 +115,8 @@ export default function App({
         />
       </View>
     );
-  }
-
-  if (showProviderSelection) {
+  } else if (showProviderSelection) {
+    // This flow owns its root insets, so it bypasses the shared layout below.
     return (
       <ProviderSelectionFlow
         onBack={() => setShowProviderSelection(false)}
@@ -125,21 +125,18 @@ export default function App({
         }
       />
     );
-  }
-
-  if (showCalendar) {
-    if (appointmentRepository) {
-      return (
-        <CalendarLinkingScreen
-          repository={appointmentRepository}
-          bridge={calendarBridge}
-          onBack={() => setShowCalendar(false)}
-          onOpenRecording={() => setShowRecording(true)}
-        />
-      );
-    }
-
-    return (
+  } else if (showCalendar && appointmentRepository) {
+    routeContent = (
+      <CalendarLinkingScreen
+        repository={appointmentRepository}
+        bridge={calendarBridge}
+        onBack={() => setShowCalendar(false)}
+        onOpenRecording={() => setShowRecording(true)}
+      />
+    );
+  } else if (showCalendar) {
+    scrollable = true;
+    routeContent = (
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.title}>
           {t('calendar.title')}
@@ -165,69 +162,74 @@ export default function App({
         />
       </View>
     );
+  } else {
+    scrollable = true;
+    routeContent = (
+      <View style={styles.container}>
+        <Text
+          accessibilityRole="header"
+          style={styles.title}
+          testID="welcome-title"
+        >
+          {t('app.welcome.title')}
+        </Text>
+        <Text style={styles.message}>
+          {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
+        </Text>
+        {selectedRecommendationProvider ? (
+          <Text testID="selected-recommendation-provider">
+            {providerSelectionText.selectedPrefix}{' '}
+            {selectedRecommendationProvider}
+          </Text>
+        ) : null}
+        <Button
+          onPress={() => setShowProviderSelection(true)}
+          testID="open-provider-selection"
+          title={providerSelectionText.title}
+        />
+        <Button
+          onPress={() => setHasStarted(true)}
+          testID="get-started"
+          title={t('app.actions.getStarted')}
+        />
+        <Button
+          onPress={openCalendar}
+          testID="open-appointments"
+          title={t('app.actions.appointments')}
+        />
+        <Button
+          onPress={openCommonObservations}
+          testID="open-common-observations"
+          title={t('healthkit.commonObservations.open')}
+        />
+        <Button
+          onPress={() => setShowBloodPressure(true)}
+          testID="open-blood-pressure-import"
+          title={t('healthkit.bloodPressure.open')}
+        />
+        <Button
+          onPress={() => setShowRecording(true)}
+          testID="open-recording"
+          title={t('app.actions.recording')}
+        />
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="welcome-title"
-      >
-        {t('app.welcome.title')}
-      </Text>
-      <Text style={styles.message}>
-        {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-      </Text>
-      {selectedRecommendationProvider ? (
-        <Text testID="selected-recommendation-provider">
-          {providerSelectionText.selectedPrefix}{' '}
-          {selectedRecommendationProvider}
-        </Text>
-      ) : null}
-      <Button
-        onPress={() => setShowProviderSelection(true)}
-        testID="open-provider-selection"
-        title={providerSelectionText.title}
-      />
-      <Button
-        onPress={() => setHasStarted(true)}
-        testID="get-started"
-        title={t('app.actions.getStarted')}
-      />
-      <Button
-        onPress={openCalendar}
-        testID="open-appointments"
-        title={t('app.actions.appointments')}
-      />
-      <Button
-        onPress={openCommonObservations}
-        testID="open-common-observations"
-        title={t('healthkit.commonObservations.open')}
-      />
-      <Button
-        onPress={() => setShowBloodPressure(true)}
-        testID="open-blood-pressure-import"
-        title={t('healthkit.bloodPressure.open')}
-      />
-      <Button
-        onPress={() => setShowRecording(true)}
-        testID="open-recording"
-        title={t('app.actions.recording')}
-      />
-    </View>
+    <SafeAreaLayout scrollable={scrollable}>{routeContent}</SafeAreaLayout>
   );
 }
 
 const styles = StyleSheet.create({
   commonObservationsContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#f7f8fa',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,

@@ -22,33 +22,23 @@ function qualityEnvironment(selection) {
       join(cache, spec.cachePath, spec.binary),
     ]),
   );
-  const javaHome = selection.jdk ? join(cache, selection.jdk.cachePath) : null;
   const missing = Object.values(binaryPaths).filter((path) => !requireFile(path));
-  if ((javaHome && !requireFile(join(javaHome, 'bin/java'))) || missing.length > 0) {
+  if (missing.length > 0) {
     throw new Error(
       `Pinned tools are missing; run pnpm install and pnpm quality:setup -- --platform ${selection.platform}`,
     );
   }
-  const pathEntries = [
-    ...(javaHome ? [join(javaHome, 'bin')] : []),
-    ...Object.values(binaryPaths).map((path) => dirname(path)),
-  ];
+  const pathEntries = Object.values(binaryPaths).map((path) => dirname(path));
+  // Keep the pinned Ruby bundle separate while prepending only selected tools to the inherited PATH.
   const env = {
     ...process.env,
     BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile'),
     PATH: [...pathEntries, process.env.PATH || ''].join(':'),
-    ...(javaHome ? { JAVA_HOME: javaHome } : {}),
   };
   for (const [name, executable] of Object.entries(binaryPaths)) {
     const output = capture(executable, ['--version'], env);
     if (!output.includes(selection.tools[name].version)) {
       throw new Error(`${name} version mismatch: ${output}`);
-    }
-  }
-  if (javaHome) {
-    const java = capture(join(javaHome, 'bin/java'), ['-version'], env);
-    if (!java.includes(versions.jdk.version.split('+')[0])) {
-      throw new Error(`JDK version mismatch: ${java}`);
     }
   }
   const prettier = capture('pnpm', ['exec', 'prettier', '--version'], env);
@@ -129,7 +119,6 @@ async function main() {
       env,
       clang: binaryPaths.clangFormat,
       root,
-      cache,
       binaryPaths,
       policy,
     });

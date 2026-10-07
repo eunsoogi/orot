@@ -144,6 +144,7 @@ test('reuses only the exact production app while OAuth package and harness check
     ciWorkflow,
     'Build the standalone ChatGPT OAuth Simulator harness',
   );
+  assert.doesNotMatch(ciWorkflow, /EXPECTED_MACOS_VERSION/);
   const indices = [
     ciWorkflow.indexOf('- name: Compute production app cache fingerprints'),
     ciWorkflow.indexOf('- name: Cache production app DerivedData and CocoaPods'),
@@ -163,6 +164,26 @@ test('reuses only the exact production app while OAuth package and harness check
   );
   assert.match(cache, /key: orot-ios-app-deriveddata-v5-/);
   assert.match(cache, /restore-keys: orot-ios-app-deriveddata-v5-/);
+  assert.match(
+    cache,
+    /key:.*macos-\$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+  );
+  assert.match(
+    cache,
+    /restore-keys:.*macos-\$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+  );
+  assert.match(
+    cache,
+    /restore-keys:.*-xcode-\$\{\{\s*env\.EXPECTED_XCODE_VERSION\s*\}\}-build-\$\{\{\s*steps\.verify_toolchain\.outputs\.xcodebuild_fingerprint\s*\}\}/,
+  );
+  assert.match(
+    prepare,
+    /MACOS_VERSION: \$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+  );
+  assert.match(
+    writeManifest,
+    /MACOS_VERSION: \$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
+  );
   assert.match(cache, /xcodebuild_fingerprint/);
   assert.ok(
     ciWorkflow.indexOf('- name: Verify runner toolchain') <
