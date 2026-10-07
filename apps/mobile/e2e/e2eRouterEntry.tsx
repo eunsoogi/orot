@@ -30,6 +30,10 @@ switch (selectEntryRoute(launchSettings)) {
     // Keep keyboard and large-text checks synthetic and free of provider permissions.
     require('./safeAreaProbeEntry');
     break;
+  case 'safe-area-blood-pressure':
+    // Exercise the production route with deterministic rows and no HealthKit access.
+    require('./safeAreaBloodPressureProbeEntry');
+    break;
   case 'storage':
     require('./storageProbeEntry');
     break;

@@ -58,9 +58,9 @@ async function expectKeyboardOccludesScroll(scrollFrame) {
   );
 }
 
-async function expectScrollInsideSafeRoot() {
+async function expectScrollInsideSafeRoot(scrollTestID = 'safe-area-scroll') {
   const root = await frameFor('safe-area-root');
-  const scroll = await frameFor('safe-area-scroll');
+  const scroll = await frameFor(scrollTestID);
 
   // Require meaningful edge clearance so a 1-point padding regression fails.
   jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
@@ -116,6 +116,45 @@ describe('safe area routes on iOS Simulator', () => {
     await expect(element(by.id('safe-area-root'))).toBeVisible();
     await expect(element(by.id('safe-area-scroll'))).not.toExist();
     await expect(element(by.id('recording-start'))).toBeVisible();
+  });
+
+  it('keeps the blood-pressure list inside the safe area and reaches its import action', async () => {
+    await device.launchApp({
+      newInstance: true,
+      launchArgs: { OROT_E2E_PROBE: 'safe-area-blood-pressure' },
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+    });
+
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await element(by.id('open-blood-pressure-import')).tap();
+    await waitFor(element(by.id('blood-pressure-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await waitFor(element(by.id('blood-pressure-reading-systolic-11-card')))
+      .toExist()
+      .withTimeout(30000);
+
+    await expect(element(by.id('safe-area-root'))).toBeVisible();
+    await expect(element(by.id('safe-area-scroll'))).not.toExist();
+    await expectScrollInsideSafeRoot('blood-pressure-scroll');
+
+    const bloodPressureScroll = element(by.id('blood-pressure-scroll'));
+    await bloodPressureScroll.scrollTo('bottom');
+    await expect(
+      element(by.id('blood-pressure-reading-systolic-11-card')),
+    ).toBeVisible();
+    await bloodPressureScroll.scrollTo('top');
+
+    const importAction = element(by.id('blood-pressure-import'));
+    await expect(importAction).toBeVisible();
+    // Detox exposes enabled through attributes; keep this check before tapping.
+    jestExpect((await importAction.getAttributes()).enabled).toBe(true);
+    await importAction.tap();
+    await waitFor(element(by.id('blood-pressure-status')))
+      .toHaveText('새로운 혈압 기록 변경이 없어요.')
+      .withTimeout(30000);
   });
 
   it('keeps a primary action reachable with large text and the keyboard open', async () => {

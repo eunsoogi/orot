@@ -90,12 +90,12 @@ test('rejects a different macOS major even when the pinned Xcode and runtime exi
   assert.match(result.stderr, /Toolchain mismatch for macOS: expected 26\.x, got 27\.0/);
 });
 
-test('keeps the existing default Release toolchain and Simulator expectation', () => {
+test('verifies the Release toolchain against its configured macOS major family', () => {
   // Omit runtime/device overrides to prove the shell defaults reach Node selectors.
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '27.0',
+      EXPECTED_MACOS_VERSION: '27',
       EXPECTED_XCODE_VERSION: '27.0',
       EXPECTED_IOS_SIMULATOR_SDK: '27.0',
     },
@@ -108,18 +108,80 @@ test('keeps the existing default Release toolchain and Simulator expectation', (
     },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /macOS 27\.0, Xcode 27\.0/);
+  assert.match(result.stdout, /macOS 27, Xcode 27\.0/);
   assert.match(result.stdout, /device iPhone 18 Pro/);
   assert.equal(
     result.githubOutput,
-    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0')}\n`,
+    `macos_version=27\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0')}\n`,
   );
+});
+
+test('accepts a hosted macOS patch update and records its full cache identity', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      EXPECTED_MACOS_VERSION: '27',
+      SIMULATED_MACOS_VERSION: '27.0.1',
+      EXPECTED_XCODE_VERSION: '27.0',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [currentSimulator] },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Verified macOS 27\.0\.1, Xcode 27\.0/);
+  // Keep the hosted patch in the output consumed by cache keys and evidence.
+  assert.equal(
+    result.githubOutput,
+    `macos_version=27.0.1\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0')}\n`,
+  );
+});
+
+test('rejects a different macOS major for the hosted runner family', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      EXPECTED_MACOS_VERSION: '27',
+      SIMULATED_MACOS_VERSION: '28.0.1',
+      EXPECTED_XCODE_VERSION: '27.0',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [currentSimulator] },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for macOS: expected 27\.x, got 28\.0\.1/);
+});
+
+test('keeps dotted macOS expectations exact when a patch version is pinned', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      EXPECTED_MACOS_VERSION: '27.0',
+      SIMULATED_MACOS_VERSION: '27.0.1',
+      EXPECTED_XCODE_VERSION: '27.0',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [currentSimulator] },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for macOS: expected 27\.0, got 27\.0\.1/);
 });
 
 test('includes the complete Xcode build string in its cache fingerprint', () => {
   const profile = {
     DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
-    EXPECTED_MACOS_VERSION: '27.0',
+    EXPECTED_MACOS_VERSION: '27',
     EXPECTED_XCODE_VERSION: '27.0',
     EXPECTED_IOS_SIMULATOR_SDK: '27.0',
     SIMULATED_XCODE_BUILD_VERSION: 'different-build',
@@ -132,7 +194,7 @@ test('includes the complete Xcode build string in its cache fingerprint', () => 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     result.githubOutput,
-    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
+    `macos_version=27\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
   );
   assert.equal(
     result.githubEnvironment,

@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import type { CalendarBridge } from '../src/calendar/types';
@@ -151,6 +157,25 @@ test('requires selection and an explicit import before reading common HealthKit 
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('common-observations-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
+});
+
+test('keeps blood pressure list scrolling inside the shared safe area', async () => {
+  const loadBloodPressureObservations = jest.fn(async () => []);
+  await render(
+    <App loadBloodPressureObservations={loadBloodPressureObservations} />,
+  );
+
+  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+
+  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+  // Keep the screen-owned scroller and its action under the shared inset root.
+  const safeAreaRoot = screen.getByTestId('safe-area-root');
+  const safeAreaContents = within(safeAreaRoot);
+  expect(safeAreaRoot).toBeVisible();
+  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
+  expect(safeAreaContents.getByTestId('blood-pressure-scroll')).toBeVisible();
+  expect(safeAreaContents.getByTestId('blood-pressure-import')).toBeVisible();
+  expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });
 
 test('calls the production importer only after explicit selection', async () => {
