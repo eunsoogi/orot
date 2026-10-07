@@ -32,10 +32,41 @@ verify_cocoapods() {
 }
 
 if [[ "${1:-}" == "--cocoapods-only" ]]; then
+  [[ "$#" == 1 ]] || {
+    printf 'Usage: verify-toolchain.sh [--portable|--cocoapods|--cocoapods-only]\n' >&2
+    exit 2
+  }
   # Detox already checks the full runner before requesting Simulator startup; avoid simctl enumeration during that boot.
   verify_cocoapods
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
   exit 0
+fi
+
+if [[ "${1:-}" == "--portable" ]]; then
+  [[ "$#" == 1 ]] || {
+    printf 'Usage: verify-toolchain.sh [--portable|--cocoapods|--cocoapods-only]\n' >&2
+    exit 2
+  }
+  # Linux quality assets are pinned for x86_64 and need only Node, pnpm, and Ruby.
+  expected_linux_arch="${EXPECTED_LINUX_ARCH:-x86_64}"
+  actual_system="$(uname -s)"
+  [[ "$actual_system" == "Linux" ]] || fail_version OS Linux "$actual_system"
+  actual_arch="$(uname -m)"
+  [[ "$actual_arch" == "$expected_linux_arch" ]] || fail_version architecture "$expected_linux_arch" "$actual_arch"
+  actual_node="$(node -p 'process.versions.node')"
+  [[ "$actual_node" == "$expected_node" ]] || fail_version Node "$expected_node" "$actual_node"
+  actual_pnpm="$(pnpm --version)"
+  [[ "$actual_pnpm" == "$expected_pnpm" ]] || fail_version pnpm "$expected_pnpm" "$actual_pnpm"
+  actual_ruby="$(ruby -e 'print RUBY_VERSION')"
+  [[ "$actual_ruby" == "$expected_ruby" ]] || fail_version Ruby "$expected_ruby" "$actual_ruby"
+  printf 'Verified Linux %s, Node %s, pnpm %s, and Ruby %s\n' \
+    "$actual_arch" "$actual_node" "$actual_pnpm" "$actual_ruby"
+  exit 0
+fi
+
+if [[ -n "${1:-}" && "${1:-}" != "--cocoapods" ]]; then
+  printf 'Usage: verify-toolchain.sh [--portable|--cocoapods|--cocoapods-only]\n' >&2
+  exit 2
 fi
 
 actual_node="$(node -p 'process.versions.node')"

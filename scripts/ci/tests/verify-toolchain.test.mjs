@@ -139,3 +139,38 @@ test('includes the complete Xcode build string in its cache fingerprint', () => 
     `XCODEBUILD_FINGERPRINT=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
   );
 });
+
+test('verifies the Linux portable quality runner without consulting Apple tools', () => {
+  const result = runToolchainCheck(
+    {
+      EXPECTED_RUBY_VERSION: '4.0.7',
+      SIMULATED_UNAME_SYSTEM: 'Linux',
+      SIMULATED_UNAME_ARCH: 'x86_64',
+    },
+    { availableRuntimes: [], availableDevices: {} },
+    ['--portable'],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /Verified Linux x86_64, Node 22\.23\.2, pnpm 12\.3\.4, and Ruby 4\.0\.7/,
+  );
+  assert.equal(result.githubOutput, '');
+  assert.equal(result.githubEnvironment, '');
+});
+
+test('rejects a non-Linux or non-x64 runner for the portable pinned assets', () => {
+  for (const profile of [
+    { SIMULATED_UNAME_SYSTEM: 'Darwin' },
+    { SIMULATED_UNAME_SYSTEM: 'Linux', SIMULATED_UNAME_ARCH: 'aarch64' },
+  ]) {
+    const result = runToolchainCheck(
+      { EXPECTED_RUBY_VERSION: '4.0.7', ...profile },
+      { availableRuntimes: [], availableDevices: {} },
+      ['--portable'],
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Toolchain mismatch for (OS|architecture)/);
+  }
+});

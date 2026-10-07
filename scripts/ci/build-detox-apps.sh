@@ -47,6 +47,12 @@ case "$host_arch:$node_arch" in
     ;;
 esac
 
+# Script-level tests inject a portable timer; GitHub builds keep the Darwin host timer.
+time_command=/usr/bin/time
+if [[ "${GITHUB_ACTIONS:-false}" != true && -n "${OROT_DETOX_TEST_TIME_COMMAND:-}" ]]; then
+  time_command="$OROT_DETOX_TEST_TIME_COMMAND"
+fi
+
 snapshot_host_resources() {
   local stage="$1"
   printf 'DETOX_BUILD_RESOURCES stage=%s utc=%s host_arch=%s node_arch=%s logical_cpus=%s physical_memory_bytes=%s\n' \
@@ -62,7 +68,7 @@ run_timed_stage() {
   snapshot_host_resources "${stage}-before"
   printf 'DETOX_BUILD_STAGE_START stage=%s utc=%s\n' "$stage" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   set +e
-  /usr/bin/time -l "$@"
+  "$time_command" -l "$@"
   status=$?
   set -e
   printf 'DETOX_BUILD_STAGE_END stage=%s utc=%s status=%s\n' "$stage" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$status"
