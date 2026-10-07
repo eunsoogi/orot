@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
 
 export function DesignButton({
   accessibilityLabel,
+  accessibilityState,
   disabled = false,
   icon,
   label,
@@ -72,13 +73,14 @@ export function DesignButton({
       ? 'onAccent'
       : 'accent';
 
+  // Preserve caller state, but report disabled from the actual interaction prop.
   // Shared actions keep a 44pt target even when the visual treatment is icon-only.
   return (
     <Pressable
       {...pressableProps}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ ...accessibilityState, disabled }}
       disabled={disabled}
       hitSlop={8}
       style={(state: PressableStateCallbackType) =>

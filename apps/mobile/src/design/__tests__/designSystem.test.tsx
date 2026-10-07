@@ -104,6 +104,33 @@ describe('shared design system', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it('preserves caller accessibility state while disabled matches interaction', async () => {
+    const onPress = jest.fn();
+    const screen = await render(
+      <DesignButton
+        accessibilityState={{
+          selected: true,
+          busy: true,
+          expanded: true,
+          disabled: false,
+        }}
+        disabled
+        label="저장"
+        onPress={onPress}
+        testID="stateful-button"
+      />,
+    );
+    const button = screen.getByTestId('stateful-button');
+    expect(button.props.accessibilityState).toEqual({
+      selected: true,
+      busy: true,
+      expanded: true,
+      disabled: true,
+    });
+    await fireEvent.press(button);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
   it('labels input errors and keeps Dynamic Type enabled', async () => {
     const screen = await render(
       <DesignInput
@@ -171,7 +198,9 @@ describe('shared design system', () => {
     const restingStyle = StyleSheet.flatten(
       screen.getByTestId('focused-input').props.style,
     );
-    expect(restingStyle.borderColor).toBe(appThemeForScheme('light').colors.border);
+    expect(restingStyle.borderColor).toBe(
+      appThemeForScheme('light').colors.border,
+    );
     expect(restingStyle.borderWidth).toBe(1);
     expect(onBlur).toHaveBeenCalledTimes(1);
   });

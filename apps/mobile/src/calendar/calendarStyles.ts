@@ -49,6 +49,14 @@ function calendarStyleDefinition(colors: AppColorPalette) {
       backgroundColor: colors.canvas,
       gap: designTokens.spacing.md,
     },
+    calendarScrollContent: { flexGrow: 1 },
+    // Narrow viewports scroll the whole dated region so weekdays and dates retain
+    // seven aligned columns, each with a non-overlapping 44pt touch target.
+    calendarDates: {
+      flex: 1,
+      minWidth: designTokens.minTouchTarget * 7,
+      gap: designTokens.spacing.md,
+    },
     calendarMonthHeader: {
       alignItems: 'center' as const,
       flexDirection: 'row' as const,
@@ -77,6 +85,7 @@ function calendarStyleDefinition(colors: AppColorPalette) {
     },
     calendarWeekdayRow: { flexDirection: 'row' as const },
     calendarWeekday: {
+      minWidth: designTokens.minTouchTarget,
       color: colors.textMuted,
       fontSize: designTokens.typography.sizes.caption,
       fontWeight: designTokens.typography.weights.semibold,
@@ -94,6 +103,7 @@ function calendarStyleDefinition(colors: AppColorPalette) {
       flexShrink: 0,
       gap: 2,
       minHeight: 54,
+      minWidth: designTokens.minTouchTarget,
       padding: designTokens.spacing.xs,
       width: '14.285%' as const,
     },

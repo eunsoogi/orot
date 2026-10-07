@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import { DesignText } from '../design';
 import { t } from '../i18n';
@@ -142,28 +142,35 @@ export function CalendarMonthView({
 
   return (
     <View style={styles.calendarMonth} testID="calendar-month-view">
-      <CalendarMonthHeader
-        year={visibleMonth.year}
-        month={visibleMonth.month}
-        onMoveMonth={moveMonth}
-        styles={styles}
-      />
-      <View style={styles.calendarGrid} testID="calendar-date-grid">
-        {gridDays.map(day => {
-          const dayEvents = eventsForDay(day.dateKey);
-          return (
-            <CalendarDayCell
-              day={day}
-              dayEvents={dayEvents}
-              key={day.dateKey}
-              label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
-              onPress={focusDate}
-              selected={day.dateKey === selectedDate}
-              styles={styles}
-            />
-          );
-        })}
-      </View>
+      <ScrollView
+        horizontal
+        contentContainerStyle={styles.calendarScrollContent}
+      >
+        <View style={styles.calendarDates} testID="calendar-date-content">
+          <CalendarMonthHeader
+            year={visibleMonth.year}
+            month={visibleMonth.month}
+            onMoveMonth={moveMonth}
+            styles={styles}
+          />
+          <View style={styles.calendarGrid} testID="calendar-date-grid">
+            {gridDays.map(day => {
+              const dayEvents = eventsForDay(day.dateKey);
+              return (
+                <CalendarDayCell
+                  day={day}
+                  dayEvents={dayEvents}
+                  key={day.dateKey}
+                  label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
+                  onPress={focusDate}
+                  selected={day.dateKey === selectedDate}
+                  styles={styles}
+                />
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
       <View style={styles.calendarSelectedDateEvents}>
         <DesignText
           accessibilityRole="header"

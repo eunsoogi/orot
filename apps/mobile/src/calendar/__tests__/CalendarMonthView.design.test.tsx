@@ -37,6 +37,16 @@ describe('calendar month design', () => {
     expect(day.props.accessibilityState.selected).toBe(true);
     expect(day.props.accessibilityLabel).toContain('2035년 6월 2일');
     expect(dayStyle.minHeight).toBeGreaterThanOrEqual(44);
+    expect(dayStyle.minWidth).toBeGreaterThanOrEqual(44);
+    const dateRegion = StyleSheet.flatten(
+      screen.getByTestId('calendar-date-content').props.style,
+    );
+    // A 320pt screen with 20pt side padding has only 280pt of content space.
+    // The scrollable date region must still fit all seven 44pt columns.
+    expect(Math.max(280, dateRegion.minWidth)).toBeGreaterThanOrEqual(7 * 44);
+    expect(StyleSheet.flatten(weekday.props.style).minWidth).toBe(
+      dayStyle.minWidth,
+    );
     expect(
       screen.getByTestId('calendar-month-title').props.allowFontScaling,
     ).toBe(true);
