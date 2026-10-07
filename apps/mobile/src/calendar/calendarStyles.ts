@@ -1,120 +1,184 @@
+import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
+import { appColors, designTokens, useAppTheme } from '../design/tokens';
+import type { AppColorPalette } from '../design/tokens';
 
-export const calendarStyles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    gap: 14,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  message: { color: '#45515f', fontSize: 15 },
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  eventTitle: { color: '#17212b', fontSize: 17, fontWeight: '600' },
-  warning: { color: '#8a4b08', fontSize: 15 },
-  error: { color: '#a12b25', fontSize: 15 },
-  calendarMonth: { gap: 12 },
-  calendarMonthHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  calendarMonthButton: {
-    alignItems: 'center',
-    backgroundColor: '#edf1f5',
-    borderRadius: 10,
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 44,
-  },
-  calendarMonthButtonText: {
-    color: '#17212b',
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  calendarMonthTitle: {
-    color: '#17212b',
-    flexShrink: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  calendarWeekdayRow: { flexDirection: 'row' },
-  calendarWeekday: {
-    color: '#687582',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-    width: '14.285%',
-  },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  // Content-driven height lets larger accessibility text expand within the ScrollView.
-  calendarDay: {
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderColor: '#e0e5ea',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexShrink: 0,
-    gap: 2,
-    minHeight: 54,
-    padding: 4,
-    width: '14.285%',
-  },
-  calendarOutsideDay: { opacity: 0.55 },
-  calendarSelectedDay: {
-    backgroundColor: '#e7f0ff',
-    borderColor: '#3d70b2',
-    borderWidth: 2,
-  },
-  calendarDayNumber: { color: '#17212b', fontSize: 15, fontWeight: '600' },
-  calendarEventCount: { color: '#456887', fontSize: 12, fontWeight: '700' },
-  calendarVisitMarker: { color: '#87520b', fontSize: 14, fontWeight: '700' },
-  calendarSelectedDateEvents: { gap: 8 },
-  calendarSelectedDate: {
-    color: '#17212b',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  calendarEventRow: {
-    backgroundColor: 'white',
-    borderColor: '#e0e5ea',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-    padding: 12,
-  },
-  calendarNextVisitEvent: {
-    backgroundColor: '#fff8e8',
-    borderLeftColor: '#a56510',
-    borderLeftWidth: 4,
-  },
-  calendarEventHeading: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  calendarNextVisitBadge: {
-    color: '#7a4e10',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  calendarSelectEventButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#edf4ff',
-    borderRadius: 8,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 12,
-  },
-  calendarSelectEventLabel: {
-    color: '#244f86',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  calendarNotice: { color: '#6b530e', fontSize: 14 },
-});
+// Keep the seven-column labels compact while full-date details still follow Dynamic Type.
+export const calendarGridTextScaleLimit = 1.25;
+
+function calendarStyleDefinition(colors: AppColorPalette) {
+  return {
+    container: {
+      flexGrow: 1,
+      gap: designTokens.spacing.md,
+      justifyContent: 'center' as const,
+      padding: designTokens.spacing.xl,
+      backgroundColor: colors.canvas,
+    },
+    title: {
+      color: colors.text,
+      fontSize: designTokens.typography.sizes.title,
+      fontWeight: designTokens.typography.weights.bold,
+    },
+    message: {
+      color: colors.textMuted,
+      fontSize: designTokens.typography.sizes.body,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: designTokens.radii.card,
+      borderWidth: 1,
+      gap: designTokens.spacing.sm,
+      padding: designTokens.spacing.lg,
+    },
+    eventTitle: {
+      color: colors.text,
+      fontSize: designTokens.typography.sizes.body,
+      fontWeight: designTokens.typography.weights.semibold,
+    },
+    warning: {
+      color: colors.warning,
+      fontSize: designTokens.typography.sizes.body,
+    },
+    error: {
+      color: colors.danger,
+      fontSize: designTokens.typography.sizes.body,
+    },
+    calendarMonth: {
+      backgroundColor: colors.canvas,
+      gap: designTokens.spacing.md,
+    },
+    calendarMonthHeader: {
+      alignItems: 'center' as const,
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      gap: designTokens.spacing.sm,
+    },
+    calendarMonthButton: {
+      alignItems: 'center' as const,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: designTokens.radii.control,
+      justifyContent: 'center' as const,
+      minHeight: designTokens.minTouchTarget,
+      minWidth: designTokens.minTouchTarget,
+    },
+    calendarMonthButtonText: {
+      color: colors.text,
+      fontSize: designTokens.typography.sizes.title,
+      fontWeight: designTokens.typography.weights.semibold,
+    },
+    calendarMonthTitle: {
+      color: colors.text,
+      flexShrink: 1,
+      fontSize: designTokens.typography.sizes.heading,
+      fontWeight: designTokens.typography.weights.bold,
+      textAlign: 'center' as const,
+    },
+    calendarWeekdayRow: { flexDirection: 'row' as const },
+    calendarWeekday: {
+      color: colors.textMuted,
+      fontSize: designTokens.typography.sizes.caption,
+      fontWeight: designTokens.typography.weights.semibold,
+      textAlign: 'center' as const,
+      width: '14.285%' as const,
+    },
+    calendarGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
+    // Content-driven height lets larger accessibility text expand within the ScrollView.
+    calendarDay: {
+      alignItems: 'center' as const,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: designTokens.radii.control,
+      borderWidth: 1,
+      flexShrink: 0,
+      gap: 2,
+      minHeight: 54,
+      padding: designTokens.spacing.xs,
+      width: '14.285%' as const,
+    },
+    calendarOutsideDay: { backgroundColor: colors.canvas },
+    calendarSelectedDay: {
+      backgroundColor: colors.accentSubtle,
+      borderColor: colors.accent,
+      borderWidth: 2,
+    },
+    calendarDayNumber: {
+      color: colors.text,
+      fontSize: designTokens.typography.sizes.caption,
+      fontWeight: designTokens.typography.weights.semibold,
+    },
+    calendarEventCount: {
+      color: colors.accentText,
+      fontSize: designTokens.typography.sizes.small,
+      fontWeight: designTokens.typography.weights.bold,
+    },
+    calendarVisitMarker: {
+      color: colors.warning,
+      fontSize: designTokens.typography.sizes.caption,
+      fontWeight: designTokens.typography.weights.bold,
+    },
+    calendarSelectedDateEvents: { gap: designTokens.spacing.sm },
+    calendarSelectedDate: {
+      color: colors.text,
+      fontSize: designTokens.typography.sizes.heading,
+      fontWeight: designTokens.typography.weights.bold,
+    },
+    calendarEventRow: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: designTokens.radii.control,
+      borderWidth: 1,
+      gap: designTokens.spacing.xs,
+      padding: designTokens.spacing.md,
+    },
+    calendarNextVisitEvent: {
+      backgroundColor: colors.warningSurface,
+      borderLeftColor: colors.warning,
+      borderLeftWidth: 4,
+    },
+    calendarEventHeading: {
+      alignItems: 'flex-start' as const,
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: designTokens.spacing.xs,
+    },
+    calendarNextVisitBadge: {
+      color: colors.warning,
+      fontSize: designTokens.typography.sizes.small,
+      fontWeight: designTokens.typography.weights.bold,
+    },
+    calendarSelectEventButton: {
+      alignItems: 'center' as const,
+      alignSelf: 'flex-start' as const,
+      backgroundColor: colors.accentSubtle,
+      borderRadius: designTokens.radii.control,
+      justifyContent: 'center' as const,
+      minHeight: designTokens.minTouchTarget,
+      paddingHorizontal: designTokens.spacing.md,
+    },
+    calendarSelectEventLabel: {
+      color: colors.accentText,
+      fontSize: designTokens.typography.sizes.body,
+      fontWeight: designTokens.typography.weights.semibold,
+    },
+    calendarNotice: {
+      color: colors.warning,
+      fontSize: designTokens.typography.sizes.caption,
+    },
+  };
+}
+
+// This light export remains for the unassigned calendar screen; the month view follows system appearance.
+export const calendarStyles = StyleSheet.create(
+  calendarStyleDefinition(appColors.light),
+);
+export type CalendarStyleSet = typeof calendarStyles;
+
+export function useCalendarStyles(): CalendarStyleSet {
+  const { colors } = useAppTheme();
+  return useMemo(
+    () => StyleSheet.create(calendarStyleDefinition(colors)),
+    [colors],
+  );
+}

@@ -1,7 +1,9 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { t } from '../i18n';
+import { DesignButton, DesignCard, DesignIcon, DesignText } from '../design';
+import { calendarGridTextScaleLimit } from './calendarStyles';
+import type { CalendarStyleSet } from './calendarStyles';
 import { formatCalendarEventRange } from './dateTime';
-import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarGridDay } from './calendarMonth';
 import { formatCalendarDate } from './calendarMonth';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
@@ -29,14 +31,16 @@ interface CalendarDayCellProps {
   label: string;
   selected: boolean;
   onPress: (dateKey: string) => void;
+  styles: CalendarStyleSet;
 }
 
 export function CalendarDayCell({
   day,
   dayEvents,
   label,
-  selected,
   onPress,
+  selected,
+  styles,
 }: CalendarDayCellProps) {
   const hasNextVisit = dayEvents.some(item => item.isNextVisit);
   // Keep the date as one screen-reader stop; its button label summarizes these visual marks.
@@ -53,24 +57,36 @@ export function CalendarDayCell({
       ]}
       testID={`calendar-day-${day.dateKey}`}
     >
-      <Text style={styles.calendarDayNumber}>{day.dayNumber}</Text>
+      <DesignText
+        maxFontSizeMultiplier={calendarGridTextScaleLimit}
+        testID={`calendar-day-number-${day.dateKey}`}
+        tone={
+          selected ? 'accent' : day.belongsToMonth ? 'primary' : 'secondary'
+        }
+        variant="caption"
+      >
+        {day.dayNumber}
+      </DesignText>
       {dayEvents.length ? (
-        <Text
+        <DesignText
           accessibilityElementsHidden
+          importantForAccessibility="no"
+          maxFontSizeMultiplier={calendarGridTextScaleLimit}
           style={styles.calendarEventCount}
           testID={`calendar-day-event-count-${day.dateKey}`}
+          tone="accent"
+          variant="small"
         >
           {dayEvents.length}
-        </Text>
+        </DesignText>
       ) : null}
       {hasNextVisit ? (
-        <Text
-          accessibilityElementsHidden
-          style={styles.calendarVisitMarker}
+        <DesignIcon
+          name="next-visit"
           testID={`calendar-day-next-visit-${day.dateKey}`}
-        >
-          ★
-        </Text>
+          tone="warning"
+          size={designIconSize}
+        />
       ) : null}
     </Pressable>
   );
@@ -79,17 +95,20 @@ export function CalendarDayCell({
 interface CalendarMonthEventRowProps {
   item: CalendarMonthDisplayEvent;
   onSelectEvent: (event: CalendarEvent) => void;
+  styles: CalendarStyleSet;
 }
 
 export function CalendarMonthEventRow({
   item,
   onSelectEvent,
+  styles,
 }: CalendarMonthEventRowProps) {
   const title =
     item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
   const time = formatCalendarEventRange(item.event);
+
   return (
-    <View
+    <DesignCard
       style={[
         styles.calendarEventRow,
         item.isNextVisit && styles.calendarNextVisitEvent,
@@ -100,34 +119,41 @@ export function CalendarMonthEventRow({
         style={styles.calendarEventHeading}
         testID={`calendar-event-row-${item.rowKey}`}
       >
-        <Text
-          style={styles.eventTitle}
+        <DesignText
           testID={item.isNextVisit ? 'calendar-next-visit-title' : undefined}
+          variant="bodyStrong"
         >
           {title}
-        </Text>
+        </DesignText>
         {item.isNextVisit ? (
-          <Text style={styles.calendarNextVisitBadge}>
+          <DesignText
+            style={styles.calendarNextVisitBadge}
+            tone="warning"
+            variant="small"
+          >
             {t('calendar.nextVisit')}
-          </Text>
+          </DesignText>
         ) : null}
       </View>
-      <Text testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}>
+      <DesignText
+        testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}
+        tone="secondary"
+        variant="caption"
+      >
         {time}
-      </Text>
+      </DesignText>
       {item.canSelect ? (
-        <Pressable
+        <DesignButton
           accessibilityLabel={`${title}, ${time}, ${t('calendar.selectEvent')}`}
-          accessibilityRole="button"
+          label={t('calendar.selectEvent')}
           onPress={() => onSelectEvent(item.event)}
           style={styles.calendarSelectEventButton}
           testID={`calendar-candidate-${item.event.calendarEventIdentifier}`}
-        >
-          <Text style={styles.calendarSelectEventLabel}>
-            {t('calendar.selectEvent')}
-          </Text>
-        </Pressable>
+          variant="secondary"
+        />
       ) : null}
-    </View>
+    </DesignCard>
   );
 }
+
+const designIconSize = 14;

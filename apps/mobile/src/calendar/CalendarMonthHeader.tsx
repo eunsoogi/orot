@@ -1,62 +1,73 @@
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { DesignButton, DesignText } from '../design';
 import {
   calendarWeekdays,
   formatCalendarMonth,
   shiftCalendarMonth,
 } from './calendarMonth';
-import { calendarStyles as styles } from './calendarStyles';
+import { calendarGridTextScaleLimit } from './calendarStyles';
+import type { CalendarStyleSet } from './calendarStyles';
 
 interface CalendarMonthHeaderProps {
   year: number;
   month: number;
   onMoveMonth: (amount: number) => void;
+  styles: CalendarStyleSet;
 }
 
 export function CalendarMonthHeader({
-  year,
   month,
   onMoveMonth,
+  styles,
+  year,
 }: CalendarMonthHeaderProps) {
   const previous = shiftCalendarMonth(year, month, -1);
   const next = shiftCalendarMonth(year, month, 1);
   const weekdays = calendarWeekdays();
+
   return (
     <>
       <View style={styles.calendarMonthHeader}>
-        <Pressable
+        <DesignButton
           accessibilityLabel={formatCalendarMonth(
             previous.year,
             previous.month,
           )}
-          accessibilityRole="button"
+          icon="chevron-left"
+          label=""
           onPress={() => onMoveMonth(-1)}
           style={styles.calendarMonthButton}
           testID="calendar-previous-month"
-        >
-          <Text style={styles.calendarMonthButtonText}>‹</Text>
-        </Pressable>
-        <Text
+          variant="icon"
+        />
+        <DesignText
           accessibilityRole="header"
           style={styles.calendarMonthTitle}
           testID="calendar-month-title"
+          variant="heading"
         >
           {formatCalendarMonth(year, month)}
-        </Text>
-        <Pressable
+        </DesignText>
+        <DesignButton
           accessibilityLabel={formatCalendarMonth(next.year, next.month)}
-          accessibilityRole="button"
+          icon="chevron-right"
+          label=""
           onPress={() => onMoveMonth(1)}
           style={styles.calendarMonthButton}
           testID="calendar-next-month"
-        >
-          <Text style={styles.calendarMonthButtonText}>›</Text>
-        </Pressable>
+          variant="icon"
+        />
       </View>
       <View style={styles.calendarWeekdayRow}>
         {weekdays.map((weekday, index) => (
-          <Text key={`${weekday}-${index}`} style={styles.calendarWeekday}>
+          <DesignText
+            key={`${weekday}-${index}`}
+            maxFontSizeMultiplier={calendarGridTextScaleLimit}
+            style={styles.calendarWeekday}
+            variant="caption"
+          >
             {weekday}
-          </Text>
+          </DesignText>
         ))}
       </View>
     </>

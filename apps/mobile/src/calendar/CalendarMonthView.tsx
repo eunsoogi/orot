@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { Appointment } from '@orot/storage';
+import { DesignText } from '../design';
 import { t } from '../i18n';
 import {
   calendarDateKey,
@@ -21,7 +22,7 @@ import {
   CalendarMonthEventRow,
   calendarDayAccessibilityLabel,
 } from './CalendarMonthCells';
-import { calendarStyles as styles } from './calendarStyles';
+import { useCalendarStyles } from './calendarStyles';
 import type { CalendarEvent } from './types';
 
 interface CalendarMonthViewProps {
@@ -53,6 +54,7 @@ export function CalendarMonthView({
   queryWindow,
   resultsMayBeIncomplete,
 }: CalendarMonthViewProps) {
+  const styles = useCalendarStyles();
   const initialDateKey = localDateKey(initialDate);
   const [selectedDate, setSelectedDate] = useState(initialDateKey);
   const [visibleMonth, setVisibleMonth] = useState(() => ({
@@ -144,6 +146,7 @@ export function CalendarMonthView({
         year={visibleMonth.year}
         month={visibleMonth.month}
         onMoveMonth={moveMonth}
+        styles={styles}
       />
       <View style={styles.calendarGrid} testID="calendar-date-grid">
         {gridDays.map(day => {
@@ -156,42 +159,60 @@ export function CalendarMonthView({
               label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
               onPress={focusDate}
               selected={day.dateKey === selectedDate}
+              styles={styles}
             />
           );
         })}
       </View>
       <View style={styles.calendarSelectedDateEvents}>
-        <Text
+        <DesignText
           accessibilityRole="header"
           style={styles.calendarSelectedDate}
           testID="calendar-selected-date"
+          variant="heading"
         >
           {formatCalendarDate(selectedDate)}
-        </Text>
+        </DesignText>
         {selectedDateOutsideQuery ? (
-          <Text style={styles.calendarNotice} testID="calendar-outside-query">
+          <DesignText
+            style={styles.calendarNotice}
+            testID="calendar-outside-query"
+            tone="warning"
+            variant="caption"
+          >
             {t('calendar.outsideQueryRange')}
-          </Text>
+          </DesignText>
         ) : null}
         {candidatesLoaded && resultsMayBeIncomplete ? (
-          <Text style={styles.calendarNotice} testID="calendar-result-limit">
+          <DesignText
+            style={styles.calendarNotice}
+            testID="calendar-result-limit"
+            tone="warning"
+            variant="caption"
+          >
             {t('calendar.resultsMayBeIncomplete')}
-          </Text>
+          </DesignText>
         ) : null}
         {showNoReturnedEvents ? (
           <>
-            <Text testID="calendar-empty">{t('calendar.empty')}</Text>
-            <Text
+            <DesignText testID="calendar-empty" variant="body">
+              {t('calendar.empty')}
+            </DesignText>
+            <DesignText
               style={styles.calendarNotice}
               testID="calendar-empty-query-note"
+              tone="warning"
+              variant="caption"
             >
               {t('calendar.emptyQueryNote')}
-            </Text>
+            </DesignText>
           </>
         ) : null}
         {candidatesLoaded &&
         eventsOnSelectedDate.some(item => item.canSelect) ? (
-          <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
+          <DesignText style={styles.message} tone="secondary" variant="body">
+            {t('calendar.candidateHint')}
+          </DesignText>
         ) : null}
         <View testID="calendar-events-for-selected-date">
           {eventsOnSelectedDate.map(item => (
@@ -199,6 +220,7 @@ export function CalendarMonthView({
               item={item}
               key={item.rowKey}
               onSelectEvent={onSelectEvent}
+              styles={styles}
             />
           ))}
         </View>

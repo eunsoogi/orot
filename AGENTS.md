@@ -7,6 +7,7 @@
 - iOS 앱은 `apps/mobile/`에 있고, 공유 workspace 패키지는 `packages/*/`에 있습니다.
 - 제품 개요와 사용자 기능은 [`README.md`](README.md), 개발 환경과 검사 절차는 [`docs/development.md`](docs/development.md)를 기준으로 삼아야 합니다(`MUST`).
 - 품질 검사 범위와 도구 설명은 [`docs/code-quality.md`](docs/code-quality.md), 릴리즈 검증은 [`docs/releasing.md`](docs/releasing.md)를 따라야 합니다(`MUST`). 세부 절차를 이 파일에 복사하지 마세요(`MUST NOT`).
+- iOS 화면, 공유 UI 구성요소 또는 앱의 공통 액션 영역을 새로 만들거나 수정·검토하기 전에는 [`DESIGN.md`](DESIGN.md)를 읽고 적용해야 합니다(`MUST`). 디자인 기준을 바꾸는 경우 `DESIGN.md`도 갱신해야 합니다(`MUST`).
 
 ## 변경과 검증
 
