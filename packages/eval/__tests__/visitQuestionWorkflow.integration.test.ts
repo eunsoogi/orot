@@ -19,6 +19,9 @@ const {
   ensureSyntheticDataset,
 } = require('../../../scripts/evaluation/visit-questions/langsmith-dataset.cjs');
 const {
+  assertLangSmithEvaluationComplete,
+} = require('../../../scripts/evaluation/visit-questions/langsmith-evaluation.cjs');
+const {
   getEvaluationRevisionMetadata,
   toLangSmithRevisionMetadata,
 } = require('../../../scripts/evaluation/visit-questions/revision.cjs');
@@ -57,14 +60,7 @@ async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any
       maxConcurrency: 1,
     },
   );
-  let completed = 0;
-  for await (const row of experiment) {
-    if (!row.run) throw new Error('LangSmith returned an incomplete run.');
-    completed += 1;
-  }
-  if (completed !== testCases.length) {
-    throw new Error('LangSmith did not finish every synthetic example.');
-  }
+  assertLangSmithEvaluationComplete(experiment, testCases.length);
   return dataset;
 }
 
