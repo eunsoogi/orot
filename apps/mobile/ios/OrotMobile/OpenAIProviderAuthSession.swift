@@ -47,6 +47,8 @@ final class OpenAIProviderAuthSession: NSObject, ASWebAuthenticationPresentation
 
     func cancel() {
         session?.cancel()
+        // Programmatic dismissal must also release our waiting Swift task if the system callback does not arrive.
+        finish(callbackURL: nil, error: CancellationError())
     }
 
     func presentationAnchor(for _: ASWebAuthenticationSession) -> ASPresentationAnchor {

@@ -111,6 +111,8 @@ describe('provider selection on iOS Simulator', () => {
     );
 
     await element(by.id('provider-option-1')).tap();
+    // Keep the confirmation control hittable below the probe's own controls.
+    await element(by.id('provider-selection-screen')).scrollTo('bottom');
     const confirmation = element(by.id('provider-selection-confirm'));
     await waitFor(confirmation).toBeVisible().withTimeout(120000);
     const privacy = element(by.id('provider-selection-confirmation-privacy'));
