@@ -1,6 +1,4 @@
 # Opt-in CocoaPods 1.17.0 context capture for the observed Detox file-reference failure.
-require 'pathname'
-
 module OrotCocoapodsNullByteDiagnostic
   COCOAPODS_VERSION = '1.17.0'
   NULL_BYTE_PATH_ERROR = 'path name contains null byte'
