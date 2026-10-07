@@ -1,4 +1,5 @@
 import type {
+  HealthKitBatchAuthorizationResult,
   HealthKitAuthorizationResult,
   HealthKitAvailability,
   HealthKitFeature,
@@ -19,6 +20,10 @@ import {
   validateMedicationDefinitionLimit,
   validateSampleQuery,
 } from './validation';
+import {
+  requireBatchAuthorizationResult,
+  validateAuthorizationFeatures,
+} from './batchAuthorizationValidation';
 import {
   requireSampleChangesResult,
   validateSampleChangesQuery,
@@ -62,6 +67,25 @@ export function createHealthKitClient(
       }
       return requireAuthorizationResult(
         await requireNativeModule().requestReadAuthorization(feature),
+      );
+    },
+
+    async requestReadAuthorizations(
+      features: readonly HealthKitFeature[],
+    ): Promise<HealthKitBatchAuthorizationResult> {
+      validateAuthorizationFeatures(features);
+      if (platform !== 'ios') {
+        return {
+          availability: 'unsupportedPlatform',
+          requestStatus: 'notRequested',
+          readAuthorization: 'notObservable',
+          requestedFeatures: [],
+          unsupportedFeatures: [],
+        };
+      }
+      return requireBatchAuthorizationResult(
+        await requireNativeModule().requestReadAuthorizations(features),
+        features,
       );
     },
 

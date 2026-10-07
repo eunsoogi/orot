@@ -1,6 +1,7 @@
 const failureMessage =
   'A storage reset is still running after the previous case failed; later probes must not share the Simulator.';
 
+// Jest can time out while a Detox Simulator command is still running.
 function createStorageResetGuard() {
   let resetInFlight = false;
   let resetTimedOut = false;
@@ -20,7 +21,6 @@ function createStorageResetGuard() {
       resetInFlight = false;
     },
     afterTest() {
-      // Jest can time out the test while its Detox command remains pending.
       if (resetInFlight) resetTimedOut = true;
     },
   });
