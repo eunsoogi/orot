@@ -88,7 +88,7 @@ enum BackupMigrationFailure: LocalizedError {
         }
 
         static func prepareLegacyRecording(recordingID: String) throws -> [String: Any] {
-            let url = try recordingURL(recordingID: recordingID)
+            var url = try recordingURL(recordingID: recordingID)
             var legacyResources = URLResourceValues()
             legacyResources.isExcludedFromBackup = true
             var mutableURL = url
@@ -107,6 +107,7 @@ enum BackupMigrationFailure: LocalizedError {
                 preparationError = "other-native-error"
             }
 
+            url.removeCachedResourceValue(forKey: .isExcludedFromBackupKey) // Drop stale exclusion metadata.
             let after = try recordingState(at: url)
             let ready = preparedCount == 1 &&
                 preparationError == "none" &&
