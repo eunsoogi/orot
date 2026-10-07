@@ -1,19 +1,17 @@
 import { openLocalStorage } from '../../storage/secureDatabase';
+import type { RecordWriter } from '@orot/storage';
 import { createHealthKitClient } from '../client';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
-import type {
-  HealthKitFeature,
-  HealthKitNativeModule,
-  HealthKitSampleSnapshot,
-} from '../types';
+import type { HealthKitNativeModule, HealthKitSampleSnapshot } from '../types';
 import { importCommonObservations } from './importer';
 import type { CommonObservationsImportResult } from './importer';
 import { commonObservationRecordId } from './mapper';
 import type { CommonObservationFeature } from './types';
+import type { CommonObservationRepository } from './sync';
 import {
   assertCommonObservationQuantity,
   assertProbe as assert,
-  commonObservationProbeFeatures as features,
+  commonObservationProbeFeatures as probeFeatures,
   commonObservationProbeSampleIds as sourceSamples,
   findCommonObservationRecord,
   verifyCommonObservationReadPlans,
@@ -25,6 +23,15 @@ interface StorageProbeOutcome {
   readonly summary: string;
 }
 
+interface ImportPhaseTimings {
+  authorizationRequests: number;
+  authorizationMilliseconds: number;
+  queryRequests: number;
+  queryMilliseconds: number;
+  storageTransactions: number;
+  storageMilliseconds: number;
+}
+
 /** Verifies the real importer and encrypted repository using in-memory HealthKit samples. */
 export async function runCommonObservationsStorageProbe(
   native: CommonObservationsProbeModule,
@@ -32,7 +39,7 @@ export async function runCommonObservationsStorageProbe(
 ): Promise<StorageProbeOutcome> {
   assert(
     JSON.stringify([...selectedFeatures].sort()) ===
-      JSON.stringify([...features].sort()),
+      JSON.stringify([...probeFeatures].sort()),
     'The Simulator probe must select all three common observation types.',
   );
   const client = createHealthKitClient(native, 'ios');
@@ -42,41 +49,34 @@ export async function runCommonObservationsStorageProbe(
 
   // Open the same encrypted local repository used by the app before importing fixtures.
   const repository = await openLocalStorage();
-  let activeFixture: HealthKitFeature | null = null;
+  const fixture = await native.prepareSyntheticFixtures(selectedFeatures);
+  assert(fixture.mode === 'synthetic', 'Synthetic fixtures were not enabled.');
+  let fixtureActive = true;
+  let activeTimings = createImportPhaseTimings();
+  const initialTimings = activeTimings;
+  const replayTimings = createImportPhaseTimings();
   const observedSamples = new Map<string, HealthKitSampleSnapshot>();
   const clearFixture = async () => {
-    if (activeFixture === null) return;
-    activeFixture = null;
+    if (!fixtureActive) return;
+    fixtureActive = false;
     await native.removeSyntheticFixture();
-  };
-  const installFixture = async (feature: HealthKitFeature) => {
-    await clearFixture();
-    const fixture = await native.prepareSyntheticFixture(feature);
-    assert(fixture.mode === 'synthetic', 'Synthetic fixture was not enabled.');
-    activeFixture = feature;
   };
   const healthKit: Pick<
     HealthKitNativeModule,
-    'requestReadAuthorization' | 'querySampleChanges'
+    'requestReadAuthorizations' | 'querySampleChanges'
   > = {
-    requestReadAuthorization: async feature => {
-      await installFixture(feature);
+    requestReadAuthorizations: async selected => {
+      const start = performance.now();
+      activeTimings.authorizationRequests += 1;
       try {
-        const result = await client.requestReadAuthorization(feature);
-        if (
-          result.availability !== 'available' ||
-          result.requestStatus !== 'completed'
-        ) {
-          await clearFixture();
-        }
-        return result;
-      } catch (error) {
-        await clearFixture();
-        throw error;
+        return await client.requestReadAuthorizations(selected);
+      } finally {
+        activeTimings.authorizationMilliseconds += performance.now() - start;
       }
     },
     querySampleChanges: async query => {
-      if (activeFixture !== query.feature) await installFixture(query.feature);
+      const start = performance.now();
+      activeTimings.queryRequests += 1;
       try {
         const page = await client.querySampleChanges(query);
         if (page.status === 'completed') {
@@ -86,8 +86,21 @@ export async function runCommonObservationsStorageProbe(
         }
         return page;
       } finally {
-        // The native debug fixture supports one feature at a time and never writes HealthKit data.
-        await clearFixture();
+        activeTimings.queryMilliseconds += performance.now() - start;
+      }
+    },
+  };
+  const timedRepository: CommonObservationRepository = {
+    getSyncCheckpoint: key => repository.getSyncCheckpoint(key),
+    async transaction<T>(
+      operation: (writer: RecordWriter) => Promise<T>,
+    ): Promise<T> {
+      const start = performance.now();
+      activeTimings.storageTransactions += 1;
+      try {
+        return await repository.transaction(operation);
+      } finally {
+        activeTimings.storageMilliseconds += performance.now() - start;
       }
     },
   };
@@ -96,7 +109,7 @@ export async function runCommonObservationsStorageProbe(
     const firstImport = await importCommonObservations({
       features: selectedFeatures,
       healthKit,
-      repository,
+      repository: timedRepository,
       now: () => new Date().toISOString(),
     });
     assert(
@@ -159,7 +172,7 @@ export async function runCommonObservationsStorageProbe(
       stepSample,
     );
 
-    for (const feature of features) {
+    for (const feature of selectedFeatures) {
       assert(
         await repository.getSyncCheckpoint(
           healthKitSampleChangesCheckpointKey(feature, feature),
@@ -168,10 +181,11 @@ export async function runCommonObservationsStorageProbe(
       );
     }
 
+    activeTimings = replayTimings;
     const replay = await importCommonObservations({
       features: selectedFeatures,
       healthKit,
-      repository,
+      repository: timedRepository,
       now: () => new Date().toISOString(),
     });
     const replayRecords = await repository.list('health_observation');
@@ -203,10 +217,30 @@ export async function runCommonObservationsStorageProbe(
         'records=2',
         'writeTypes=0',
         'storage=encrypted-local',
+        'source=synthetic',
         'replayIdempotent=true',
+        formatTimings('initial', initialTimings),
+        formatTimings('replay', replayTimings),
       ].join('; '),
     };
   } finally {
     await clearFixture();
   }
+}
+
+function createImportPhaseTimings(): ImportPhaseTimings {
+  return {
+    authorizationRequests: 0,
+    authorizationMilliseconds: 0,
+    queryRequests: 0,
+    queryMilliseconds: 0,
+    storageTransactions: 0,
+    storageMilliseconds: 0,
+  };
+}
+
+function formatTimings(name: string, timings: ImportPhaseTimings): string {
+  // Timing spans contain aggregate counts and durations, not source IDs or raw samples.
+  const milliseconds = (value: number) => Math.max(0, Math.round(value));
+  return `${name}Timing=authorization_calls:${timings.authorizationRequests},authorization_ms:${milliseconds(timings.authorizationMilliseconds)},query_calls:${timings.queryRequests},query_ms:${milliseconds(timings.queryMilliseconds)},storage_transactions:${timings.storageTransactions},storage_ms:${milliseconds(timings.storageMilliseconds)}`;
 }

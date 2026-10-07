@@ -36,6 +36,7 @@ describe('local common-observation app importer', () => {
     expect(Object.keys(healthKit)).toEqual([
       'getAvailability',
       'requestReadAuthorization',
+      'requestReadAuthorizations',
       'querySamples',
       'queryMedicationDefinitions',
       'querySampleChanges',
