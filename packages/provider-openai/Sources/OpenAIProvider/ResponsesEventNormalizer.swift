@@ -13,6 +13,13 @@ struct ResponsesEventNormalizer {
     private var functionCallsByItemID = [String: FunctionCallState]()
     private var emittedFunctionCalls = [String: ChatGPTResponsesFunctionCall]()
 
+    /// Creates a normalizer while preserving the request identifier for diagnostics.
+    ///
+    /// Private stream state makes the synthesized memberwise initializer private.
+    init(requestID: String?) {
+        self.requestID = requestID
+    }
+
     mutating func consume(_ frame: ResponsesSSEFrame) throws -> ChatGPTResponsesEvent? {
         guard !completed else { return nil }
         if frame.data == "[DONE]" {
