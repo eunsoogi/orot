@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Button, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { healthKitFeatures } from '../types';
 import type { HealthKitFeature } from '../types';
+import { t } from '../../i18n';
 import { EventKitImportSection } from './EventKitImportSection';
 import { createUnifiedImportCoordinator } from './coordinator';
 import type {
@@ -26,13 +27,14 @@ export interface HealthKitImportScreenCopy {
   readonly changeSummary: (imported: number, deleted: number) => string;
 }
 
-type UnifiedImportCoordinator = ReturnType<
+export type UnifiedImportCoordinator = ReturnType<
   typeof createUnifiedImportCoordinator
 >;
 
 interface HealthKitImportScreenProps {
   readonly copy: HealthKitImportScreenCopy;
   readonly coordinator: UnifiedImportCoordinator;
+  readonly onBack?: () => void;
   readonly onMeasurement?: (measurement: UnifiedImportMeasurement) => void;
 }
 
@@ -40,6 +42,7 @@ interface HealthKitImportScreenProps {
 export function HealthKitImportScreen({
   copy,
   coordinator,
+  onBack,
   onMeasurement,
 }: HealthKitImportScreenProps) {
   const mounted = useRef(true);
@@ -115,6 +118,13 @@ export function HealthKitImportScreen({
   const hasSelection = selected.size > 0 || eventKitSelected;
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {onBack ? (
+        <Button
+          onPress={onBack}
+          testID="healthkit-unified-import-back"
+          title={t('healthkit.unifiedImport.back')}
+        />
+      ) : null}
       <Text accessibilityRole="header" style={styles.title}>
         {copy.title}
       </Text>

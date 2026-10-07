@@ -4,6 +4,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { View } from 'react-native';
 import { healthKitFeatures } from '../../types';
 import { createUnifiedImportCoordinator } from '../coordinator';
 import type { UnifiedFeatureStatus, UnifiedImportStatus } from '../types';
@@ -61,6 +62,12 @@ const copy: HealthKitImportScreenCopy = {
   changeSummary: (imported, deleted) =>
     `${imported} imported / ${deleted} deleted`,
 };
+
+// Keep cold React Native renderer startup outside the feature test's five-second behavior budget.
+beforeAll(async () => {
+  const warmup = await render(<View />);
+  warmup.unmount();
+}, 15000);
 
 test('requires a selected type and shows HealthKit results from one action', async () => {
   const base = createTestServices();

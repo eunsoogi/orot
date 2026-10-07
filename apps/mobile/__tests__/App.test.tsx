@@ -14,7 +14,6 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
-
 // Unit tests omit native window insets; Detox verifies the actual simulator layout.
 jest.mock(
   'react-native-safe-area-context',

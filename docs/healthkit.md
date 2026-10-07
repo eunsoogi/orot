@@ -114,6 +114,8 @@ Issue #19 has a dedicated sleep probe. From `apps/mobile`, build it with `pnpm e
 
 ## Selected HealthKit and EventKit import
 
+From the welcome screen, **건강 기록 및 캘린더 가져오기** opens the production flow; its Back action returns to the existing entry points.
+
 `HealthKitImportScreen` accepts selected HealthKit types and an optional EventKit provider selection in one explicit action. The coordinator requests the selected HealthKit types in one HealthKit batch and requests EventKit access through its separate consent API. It waits for every selected provider request to return before querying either provider. HealthKit and EventKit access states and outcomes remain independent; failure or empty results from one provider do not hide the other provider's results. HealthKit read access remains `notObservable`; the request callback is not a grant result, and an empty query remains an empty visible result.
 
 An EventKit query lists only upcoming candidates in the existing `[now, now + 1 year)` window, capped at 100. The user must select one candidate and explicitly confirm before it is linked to an appointment; candidate lookup alone does not import or save calendar events. Confirmation updates an active appointment for the same event occurrence or creates one, and is measured as local persistence.

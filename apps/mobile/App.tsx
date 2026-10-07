@@ -20,12 +20,22 @@ import type {
   BloodPressureObservation,
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
+import {
+  HealthKitImportScreen,
+  type UnifiedImportCoordinator,
+} from './src/healthkit/unifiedImport/HealthKitImportScreen';
+import { unifiedHealthImportCopy } from './src/healthkit/unifiedImport/copy';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
-import { providerSelectionText } from './src/providers/selection/text';
+import { WelcomeHomeScreen } from './src/home/WelcomeHomeScreen';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
 
-declare const require: (path: string) => {
-  openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
+declare const require: {
+  (path: './src/appointments/localRepository'): {
+    openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
+  };
+  (path: './src/healthkit/unifiedImport/localImport'): {
+    unifiedHealthImportCoordinator: UnifiedImportCoordinator;
+  };
 };
 
 interface AppProps {
@@ -55,6 +65,7 @@ export default function App({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCommonObservations, setShowCommonObservations] = useState(false);
   const [showBloodPressure, setShowBloodPressure] = useState(false);
+  const [showUnifiedImport, setShowUnifiedImport] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
   // Keep only the selected display label in route state; selection identifiers stay in the provider store.
@@ -80,10 +91,6 @@ export default function App({
     }
   }
 
-  function openCommonObservations() {
-    setShowCommonObservations(true);
-  }
-
   let routeContent: ReactNode,
     scrollable = false;
 
@@ -103,6 +110,15 @@ export default function App({
           onImport={importHealthObservations}
         />
       </View>
+    );
+  } else if (showUnifiedImport) {
+    // This screen owns its scroller and gathers both selected providers in one action.
+    routeContent = (
+      <HealthKitImportScreen
+        copy={unifiedHealthImportCopy}
+        coordinator={defaultUnifiedImportCoordinator()}
+        onBack={() => setShowUnifiedImport(false)}
+      />
     );
   } else if (showBloodPressure) {
     // This dedicated path keeps paired readings and source-unit availability explicit.
@@ -165,60 +181,29 @@ export default function App({
   } else {
     scrollable = true;
     routeContent = (
-      <View style={styles.container}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="welcome-title"
-        >
-          {t('app.welcome.title')}
-        </Text>
-        <Text style={styles.message}>
-          {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-        </Text>
-        {selectedRecommendationProvider ? (
-          <Text testID="selected-recommendation-provider">
-            {providerSelectionText.selectedPrefix}{' '}
-            {selectedRecommendationProvider}
-          </Text>
-        ) : null}
-        <Button
-          onPress={() => setShowProviderSelection(true)}
-          testID="open-provider-selection"
-          title={providerSelectionText.title}
-        />
-        <Button
-          onPress={() => setHasStarted(true)}
-          testID="get-started"
-          title={t('app.actions.getStarted')}
-        />
-        <Button
-          onPress={openCalendar}
-          testID="open-appointments"
-          title={t('app.actions.appointments')}
-        />
-        <Button
-          onPress={openCommonObservations}
-          testID="open-common-observations"
-          title={t('healthkit.commonObservations.open')}
-        />
-        <Button
-          onPress={() => setShowBloodPressure(true)}
-          testID="open-blood-pressure-import"
-          title={t('healthkit.bloodPressure.open')}
-        />
-        <Button
-          onPress={() => setShowRecording(true)}
-          testID="open-recording"
-          title={t('app.actions.recording')}
-        />
-      </View>
+      <WelcomeHomeScreen
+        hasStarted={hasStarted}
+        onGetStarted={() => setHasStarted(true)}
+        onOpenAppointments={openCalendar}
+        onOpenBloodPressure={() => setShowBloodPressure(true)}
+        onOpenCommonObservations={() => setShowCommonObservations(true)}
+        onOpenProviderSelection={() => setShowProviderSelection(true)}
+        onOpenRecording={() => setShowRecording(true)}
+        onOpenUnifiedImport={() => setShowUnifiedImport(true)}
+        selectedRecommendationProvider={selectedRecommendationProvider}
+      />
     );
   }
 
   return (
     <SafeAreaLayout scrollable={scrollable}>{routeContent}</SafeAreaLayout>
   );
+}
+
+function defaultUnifiedImportCoordinator() {
+  // Defer native provider and database modules until the user opens this import route.
+  return require('./src/healthkit/unifiedImport/localImport')
+    .unifiedHealthImportCoordinator;
 }
 
 const styles = StyleSheet.create({
@@ -240,11 +225,6 @@ const styles = StyleSheet.create({
     color: '#17212b',
     fontSize: 24,
     fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#45515f',
-    fontSize: 16,
     textAlign: 'center',
   },
 });
