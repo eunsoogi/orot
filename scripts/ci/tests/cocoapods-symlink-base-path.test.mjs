@@ -1,12 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,7 +23,9 @@ function runProjectFixture({ useSymlink, failRealpath = false }) {
     'apps/mobile/node_modules/.pnpm/react-native@0.87.1/node_modules/react-native',
   );
   const linkedPath = path.join(temporaryRoot, 'apps/mobile/node_modules/react-native');
-  const packagePath = useSymlink ? linkedPath : path.join(temporaryRoot, 'apps/mobile/react-native');
+  const packagePath = useSymlink
+    ? linkedPath
+    : path.join(temporaryRoot, 'apps/mobile/react-native');
   const basePath = path.join(packagePath, 'ReactCommon/jsinspector-modern/network');
   const sourcePath = path.join(basePath, 'BoundedRequestBuffer.h');
 
@@ -171,10 +166,7 @@ test('keeps the original realpath error and diagnostic on an ordinary path', () 
   const output = result.stderr ?? '';
 
   assert.equal(result.status, 1, output);
-  assert.match(
-    output,
-    /TEST_REALDIRPATH_CALLS=1/,
-  );
+  assert.match(output, /TEST_REALDIRPATH_CALLS=1/);
   assert.match(output, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC version=1\.17\.0/);
   assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
   assert.match(output, /path name contains null byte/);
