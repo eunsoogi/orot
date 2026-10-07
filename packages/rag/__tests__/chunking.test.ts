@@ -19,7 +19,17 @@ describe('evidence-aware chunks', () => {
     const original = chunkTranscriptSegment(originalTranscript);
     const corrected = chunkTranscriptSegment(correctedTranscript);
 
+    // Persisted chunk IDs must remain stable when the 32-bit hash implementation changes.
+    expect(original.id).toBe('rag-v1-f0a0462737bf675b');
     expect(corrected.id).toBe(original.id);
+
+    const unicodeIdentity = chunkEvidenceSpan({
+      ...medicationEvidenceSpan,
+      id: 'rag-fixture-근거:segment-0',
+      sourceRecordId: 'rag-fixture-기록',
+    });
+    expect(unicodeIdentity.id).toBe('rag-v1-e92a5c16a6d15ee2');
+
     expect(corrected).toMatchObject({
       text: 'Metformin 500 mg after breakfast.',
       metadata: {

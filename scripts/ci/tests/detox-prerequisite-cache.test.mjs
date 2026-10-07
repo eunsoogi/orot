@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import { computeDetoxCocoapodsCacheFingerprint } from '../detox-cocoapods-cache-fingerprint.mjs';
+
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const cacheAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-cocoapods-cache/action.yml'),
+  'utf8',
+);
+const fingerprintCli = join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint-cli.mjs');
+const cacheStateRecorder = readFileSync(
+  join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
+  'utf8',
+);
+const profileWorkflow = readFileSync(
+  join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
+  'utf8',
+);
+
+test('keys CocoaPods intermediates by pinned toolchain and dependency metadata', () => {
+  const podsCache = cacheAction.slice(cacheAction.indexOf('id: cocoapods_cache'));
+
+  for (const path of [
+    'apps/mobile/ios/Pods',
+    'apps/mobile/ios/build/generated',
+    '~/Library/Caches/CocoaPods',
+  ]) {
+    assert.ok(podsCache.includes(path));
+  }
+  for (const input of ['inputs.cache-context', 'outputs.cocoapods_inputs']) {
+    assert.ok(podsCache.includes(input), 'cache key is missing ' + input);
+  }
+  assert.ok(podsCache.includes('orot-detox-cocoapods-v2'));
+  assert.doesNotMatch(podsCache, /outputs\.(?:native_dependencies|build_inputs)/);
+  assert.doesNotMatch(podsCache, /restore-keys:/);
+  assert.equal(podsCache.includes('inputs.profile'), false);
+});
+
+test('prepares the app cache before optional CocoaPods restores and installation', () => {
+  const cacheStep = profileWorkflow.indexOf('- name: Cache Detox CocoaPods intermediates');
+  const podsStep = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
+  const fingerprintStep = profileWorkflow.indexOf(
+    '- name: Compute stable Detox cache fingerprints',
+  );
+  const derivedDataCache = profileWorkflow.indexOf('- name: Cache Detox profile app product');
+  const podsBlock = profileWorkflow.slice(
+    podsStep,
+    profileWorkflow.indexOf('\n      - name:', podsStep + 1),
+  );
+
+  assert.ok(fingerprintStep >= 0 && fingerprintStep < derivedDataCache);
+  assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);
+  assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));
+  // The extracted logger must retain the cache hit passed by this workflow step.
+  assert.ok(
+    profileWorkflow.includes('COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}'),
+  );
+  assert.ok(cacheStateRecorder.includes('cocoapods_intermediates_cache_hit='));
+  for (const toolchainValue of [
+    'runner.os',
+    'runner.arch',
+    'EXPECTED_MACOS_VERSION',
+    'EXPECTED_NODE_VERSION',
+    'EXPECTED_PNPM_VERSION',
+    'EXPECTED_RUBY_VERSION',
+    'EXPECTED_COCOAPODS_VERSION',
+    'EXPECTED_XCODE_VERSION',
+    'EXPECTED_IOS_SIMULATOR_SDK',
+  ]) {
+    assert.ok(profileWorkflow.includes(toolchainValue));
+  }
+  assert.match(podsBlock, /app_reusable != 'true'/);
+});
+
+test('pre-Pods mode reports dependency inputs without setting post-install expectations', () => {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'orot-pods-cache-fingerprint-'));
+  const outputPath = join(temporaryDirectory, 'github-output');
+  const environmentPath = join(temporaryDirectory, 'github-environment');
+
+  try {
+    execFileSync(process.execPath, [fingerprintCli, '--cocoapods-cache-inputs-only'], {
+      cwd: repositoryRoot,
+      env: { ...process.env, GITHUB_OUTPUT: outputPath, GITHUB_ENV: environmentPath },
+      stdio: 'pipe',
+    });
+    const output = readFileSync(outputPath, 'utf8');
+    const cocoapodsInputs = computeDetoxCocoapodsCacheFingerprint();
+
+    assert.equal(output, `cocoapods_inputs=${cocoapodsInputs}\n`);
+    assert.equal(existsSync(environmentPath), false);
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
