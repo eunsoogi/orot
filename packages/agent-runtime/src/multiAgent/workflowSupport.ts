@@ -1,7 +1,9 @@
 import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type {
   MultiAgentCheckpointState,
+  AllowedEvidenceScope,
   EvidenceCoverage,
+  EvidenceSearchTool,
   MultiAgentInvocation,
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
@@ -22,6 +24,18 @@ import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
 import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
+
+function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope): boolean {
+  // Network access is reserved for external medical sources; local health and memory tools stay local.
+  const executionMatchesSource =
+    (tool.execution === 'local_read_only' && tool.sourceKind !== 'external_medical') ||
+    (tool.execution === 'external_read_only' && tool.sourceKind === 'external_medical');
+  return (
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(tool.id) &&
+    executionMatchesSource &&
+    isSourceAllowed(scope, tool.sourceKind)
+  );
+}
 
 export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
   // Require every limit so a malformed runtime config cannot disable one guardrail by omission.
@@ -53,12 +67,7 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     ) &&
     provider.capabilities.inputTypes.includes('text') &&
     new Set(options.tools.map((tool) => tool.id)).size === options.tools.length &&
-    options.tools.every(
-      (tool) =>
-        /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(tool.id) &&
-        tool.execution === 'local_read_only' &&
-        isSourceAllowed(execution.allowedScope, tool.sourceKind),
-    ) &&
+    options.tools.every((tool) => validEvidenceTool(tool, execution.allowedScope)) &&
     (!execution.allowedScope.timeRange ||
       isOrderedTimestampRange(
         execution.allowedScope.timeRange.fromInclusive,

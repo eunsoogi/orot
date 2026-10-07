@@ -106,6 +106,25 @@ export interface ExecutionConsentPort {
   authorize(request: OutboundProcessingRequest): Promise<ConsentDecision>;
 }
 
+export type EvidenceSearchOutcome = EvidenceBatch | { readonly status: 'consent_required' };
+
+export interface ExternalMedicalQueryConsentRequest {
+  readonly operationRunId: string;
+  readonly operationKey: string;
+  readonly sourceId: 'europe-pmc';
+  readonly query: string;
+  readonly signal: AbortSignal;
+}
+
+export type ExternalMedicalQueryConsentDecision = 'authorized' | 'denied';
+
+// Query consent is separate from model-payload consent because this port crosses the network itself.
+export interface ExternalMedicalQueryConsentPort {
+  authorize(
+    request: ExternalMedicalQueryConsentRequest,
+  ): Promise<ExternalMedicalQueryConsentDecision>;
+}
+
 export interface EvidenceSearchRequest {
   readonly operationRunId: string;
   readonly operationKey: string;
@@ -119,9 +138,9 @@ export interface EvidenceSearchRequest {
 export interface EvidenceSearchTool {
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
-  readonly execution: 'local_read_only';
+  readonly execution: 'local_read_only' | 'external_read_only';
   readonly description: string;
   readonly inputSchema: JsonObject;
   parseInput(value: unknown): JsonObject | undefined;
-  search(request: EvidenceSearchRequest): Promise<EvidenceBatch>;
+  search(request: EvidenceSearchRequest): Promise<EvidenceSearchOutcome>;
 }

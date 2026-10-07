@@ -14,6 +14,12 @@ export {
   createLocalObservationEvidenceTool,
   createLocalTranscriptEvidenceTool,
 } from './multiAgent/localQueryEvidence';
+export { createEuropePmcEvidenceSearchTool } from './multiAgent/externalMedicalEvidence';
+export type {
+  EuropePmcAdapterPublication,
+  EuropePmcAdapterSearchResult,
+  EuropePmcEvidenceServicePort,
+} from './multiAgent/externalMedicalEvidence';
 export type {
   AllowedEvidenceScope,
   ConsentDecision,
@@ -21,11 +27,15 @@ export type {
   EvidenceCoverage,
   EvidenceItem,
   EvidenceNeed,
+  EvidenceSearchOutcome,
   EvidenceReference,
   EvidenceSearchRequest,
   EvidenceSearchTool,
   EvidenceSourceKind,
   ExecutionConsentPort,
+  ExternalMedicalQueryConsentDecision,
+  ExternalMedicalQueryConsentPort,
+  ExternalMedicalQueryConsentRequest,
   MultiAgentBudget,
   MultiAgentCheckpointState,
   MultiAgentExecutionIdentity,
