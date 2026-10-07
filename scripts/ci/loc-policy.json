@@ -8,7 +8,6 @@
     ".cpp",
     ".cjs",
     ".entitlements",
-    ".gradle",
     ".h",
     ".ini",
     ".java",
@@ -16,8 +15,6 @@
     ".jsx",
     ".json",
     ".jsonc",
-    ".kt",
-    ".kts",
     ".m",
     ".mjs",
     ".mm",
@@ -26,6 +23,7 @@
     ".properties",
     ".pro",
     ".py",
+    ".rb",
     ".sh",
     ".storyboard",
     ".swift",
@@ -54,11 +52,9 @@
     "Dockerfile",
     "Gemfile",
     "Makefile",
-    "Podfile",
-    "gradlew"
+    "Podfile"
   ],
   "excludedFilenames": {
-    "gradle.lockfile": "Dependency lockfile; its resolved dependency graph is not maintained source.",
     "package-lock.json": "Dependency lockfile; its resolved dependency graph is not maintained source.",
     "package.resolved": "Dependency lockfile; its resolved dependency graph is not maintained source.",
     "pnpm-lock.yaml": "Dependency lockfile; its resolved dependency graph is not maintained source.",

@@ -1,5 +1,9 @@
 import { commonObservationsKo } from './healthkitCommonObservations';
 import { bloodPressureKo } from './healthkitBloodPressure';
+import { aiFeaturesKo } from './aiFeatures';
+import { diseaseHypothesesKo } from './diseaseHypotheses';
+import { ragConversationKo } from './ragConversation';
+import { externalMedicalEvidenceKo } from './externalMedicalEvidence';
 import { medicalAppointmentsKo } from './medicalAppointments';
 import { healthkitUnifiedImportKo } from './healthkitUnifiedImport';
 
@@ -172,8 +176,13 @@ export const ko = {
   'healthkit.unifiedImport.calendarLabel': '다가오는 캘린더 일정',
   'healthkit.unifiedImport.eventKitCancelled': '캘린더 일정 확인이 취소됐어요.',
   ...healthkitUnifiedImportKo,
+  // Feature catalogs stay modular while the app uses one shared Korean lookup table.
   ...commonObservationsKo,
   ...bloodPressureKo,
+  ...aiFeaturesKo,
+  ...diseaseHypothesesKo,
+  ...ragConversationKo,
+  ...externalMedicalEvidenceKo,
   ...medicalAppointmentsKo,
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',

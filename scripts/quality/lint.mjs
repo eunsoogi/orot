@@ -62,17 +62,6 @@ export function runLint({ entries, env, clang, binaryPaths, root }) {
   }
   const shell = filesFor(entries, 'shell');
   if (shell.length) invoke(binaryPaths.shellcheck, shell, env);
-  const kotlin = filesFor(entries, 'kotlin');
-  if (kotlin.length) invoke(binaryPaths.ktlint, kotlin, env);
-  const groovy = filesFor(entries, 'groovy');
-  if (groovy.length) {
-    // Fail on errors while keeping lower-severity findings visible.
-    invoke(
-      'pnpm',
-      ['exec', 'npm-groovy-lint', '--failon', 'error', '--loglevel', 'warning', ...groovy],
-      env,
-    );
-  }
   const ruby = filesFor(entries, 'ruby');
   if (ruby.length) {
     invoke(

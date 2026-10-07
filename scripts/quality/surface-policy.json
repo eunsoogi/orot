@@ -31,18 +31,6 @@
       "lint": "shellcheck",
       "format": "shfmt"
     },
-    "kotlin": {
-      "extensions": [".kt", ".kts"],
-      "platform": "linux",
-      "lint": "ktlint",
-      "format": "ktlint"
-    },
-    "groovy": {
-      "extensions": [".gradle", ".groovy"],
-      "platform": "linux",
-      "lint": "npm-groovy-lint",
-      "format": "npm-groovy-lint"
-    },
     "ruby": {
       "extensions": [".rb"],
       "platform": "linux",
@@ -118,31 +106,6 @@
     "scripts/quality/Gemfile.lock": {
       "reason": "Generated Ruby gem resolution data, pinned by Bundler rather than a formatter.",
       "validation": "bundle check --gemfile scripts/quality/Gemfile"
-    },
-    "apps/mobile/android/gradle/wrapper/gradle-wrapper.jar": {
-      "reason": "Binary Gradle wrapper supplied by the upstream wrapper generator.",
-      "validation": "./apps/mobile/android/gradlew --version and the pinned distribution URL in gradle-wrapper.properties"
-    },
-    "apps/mobile/android/gradlew": {
-      "reason": "Generated Gradle wrapper launcher; keep it paired with its upstream wrapper JAR.",
-      "validation": "./apps/mobile/android/gradlew --version"
-    },
-    "apps/mobile/android/gradlew.bat": {
-      "reason": "Generated Windows Gradle wrapper launcher; keep it paired with its upstream wrapper JAR.",
-      "validation": "The Gradle wrapper JAR and pinned distribution are validated by the Mac wrapper invocation."
-    },
-    "apps/mobile/android/app/debug.keystore": {
-      "reason": "Binary debug signing key; never pass key material to text formatters or linters.",
-      "validation": "Android debug signing consumes this file when an Android build is run."
-    },
-    "apps/mobile/android/app/proguard-rules.pro": {
-      "reason": "This tracked ProGuard file currently contains only comments and no executable rules.",
-      "validation": "The selector fails if an active rule is added; the Android Gradle build parses active rules.",
-      "guard": "comments-only"
-    },
-    "apps/mobile/android/gradle/wrapper/gradle-wrapper.properties": {
-      "reason": "Generated Gradle wrapper metadata; the upstream wrapper owns its distribution settings.",
-      "validation": "./apps/mobile/android/gradlew --version"
     },
     "apps/mobile/.env": {
       "reason": "Local environment/secret configuration is not committed source and must not be read.",
