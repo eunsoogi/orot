@@ -45,7 +45,8 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  expectedCases: 11,
+  // Release includes the blood-pressure Safe Area regression; Debug adds one case.
+  expectedCases: 12,
 });
 requireProfile({
   label: 'OpenAI Debug',
@@ -58,5 +59,5 @@ requireProfile({
 });
 
 console.log(
-  '12/12 tests passed across Release (11) and OpenAI Debug (1); both child jobs succeeded',
+  '13/13 tests passed across Release (12) and OpenAI Debug (1); both child jobs succeeded',
 );

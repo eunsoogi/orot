@@ -41,7 +41,7 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
         'if [[ "$*" == *openai-provider* ]]; then',
         "  printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
         'else',
-        "  printf 'Test Suites: 1 passed, 1 total\\nTests: 11 passed, 11 total\\n'",
+        "  printf 'Test Suites: 1 passed, 1 total\\nTests: 12 passed, 12 total\\n'",
         'fi',
       ].join('\n'),
       { mode: 0o755 },
@@ -108,7 +108,7 @@ test('publishes Release results with failure-only logs and no resource sample by
         'printf \'%s\\n%s\\n\' "$DETOX_RECORD_LOGS" "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_ENV_CAPTURE"',
         'printf \'%s\\n\' "${OROT_DETOX_RESOURCE_LOG_PATH:-}" > "$RESOURCE_CAPTURE"',
         'printf \'%s\\n\' "$*" > "$DETOX_COMMAND_CAPTURE"',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 11 passed, 11 total\\n'",
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 12 passed, 12 total\\n'",
         'mkdir -p "$DETOX_ARTIFACTS_LOCATION/release"',
       ].join('\n'),
       { mode: 0o755 },
@@ -133,7 +133,7 @@ test('publishes Release results with failure-only logs and no resource sample by
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.equal(
       readFileSync(summaryOutput, 'utf8'),
-      'e2e_profile=release\ne2e_test_cases=11\ne2e_test_suites=1\n',
+      'e2e_profile=release\ne2e_test_cases=12\ne2e_test_suites=1\n',
     );
     assert.equal(readFileSync(envCapture, 'utf8'), 'failing\ninfo\n');
     assert.equal(readFileSync(resourceCapture, 'utf8'), '\n');
@@ -174,7 +174,7 @@ test('allows bounded profile sampling only when explicitly requested', () => {
         'cd "$MOBILE_PACKAGE_DIRECTORY" || exit 93',
         'printf \'%s\\n%s\\n\' "$DETOX_RECORD_LOGS" "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_ENV_CAPTURE"',
         'printf \'%s\\n\' "${OROT_DETOX_RESOURCE_LOG_PATH:-}" > "$RESOURCE_CAPTURE"',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 11 passed, 11 total\\n'",
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 12 passed, 12 total\\n'",
       ].join('\n'),
       { mode: 0o755 },
     );

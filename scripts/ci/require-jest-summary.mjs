@@ -77,7 +77,7 @@ if (e2eSuites.includes(suiteName)) {
     throw new Error('e2e: OpenAI Debug Jest config must select its dedicated probe');
   }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 11],
+    ['Release', releaseConfig.testMatch, 12],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
   ].map(([configuration, testMatch, tests]) => {

@@ -4,7 +4,8 @@ export type E2EEntryRoute =
   | 'appointments'
   | 'graph'
   | 'checkpoint'
-  | 'safe-area';
+  | 'safe-area'
+  | 'safe-area-blood-pressure';
 
 export function selectEntryRoute(
   settings: Record<string, unknown>,
