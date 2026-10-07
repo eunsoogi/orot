@@ -10,6 +10,7 @@ import type {
   CommonObservationRepository,
   SyncCommonObservationChangesOptions,
 } from './syncOptions';
+import { measureCommonObservationOperation } from './syncOptions';
 import type { CommonObservationFeature } from './types';
 
 export type {
@@ -73,7 +74,6 @@ async function syncCommonObservationChangesExclusive(
   if (authorization.requestStatus !== 'completed') {
     return result('unavailable', 0, 0, 0, false);
   }
-
   const checkpointKey = healthKitSampleChangesCheckpointKey(feature, feature);
   const savedCheckpoint = await repository.getSyncCheckpoint(checkpointKey);
   let cursor = savedCheckpoint?.value ?? null;
@@ -82,14 +82,18 @@ async function syncCommonObservationChangesExclusive(
   let skipped = 0;
   let cursorAdvanced = false;
   let pageCount = 0;
-
   while (true) {
-    const page = await healthKit.querySampleChanges({
-      feature,
-      sampleKind: feature,
-      limit: PAGE_SIZE,
-      cursor,
-    });
+    const page = await measureCommonObservationOperation(
+      options.instrumentation,
+      'query',
+      () =>
+        healthKit.querySampleChanges({
+          feature,
+          sampleKind: feature,
+          limit: PAGE_SIZE,
+          cursor,
+        }),
+    );
     if (page.status !== 'completed' || page.availability !== 'available') {
       return result(
         pageCount === 0 ? page.availability : 'partial',
@@ -104,7 +108,6 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned a full observation page without advancing its cursor.',
       );
     }
-
     const ingestedAt = now();
     const mappings = page.addedSamples.map(sample =>
       mapCommonObservationSample(feature, sample),
@@ -122,7 +125,6 @@ async function syncCommonObservationChangesExclusive(
         cursorAdvanced,
       );
     }
-
     const candidates = mappings.map(mapping => {
       if (mapping.status !== 'mapped') {
         throw new Error(
@@ -148,7 +150,6 @@ async function syncCommonObservationChangesExclusive(
         'HealthKit returned conflicting common observation identifiers.',
       );
     }
-
     const nextCursor = page.cursor ?? cursor;
     const pageHasChanges = candidates.length > 0 || deletedIds.size > 0;
     if (pageHasChanges && nextCursor === cursor) {
@@ -158,26 +159,34 @@ async function syncCommonObservationChangesExclusive(
     }
     const pageCursorAdvanced = nextCursor !== cursor;
     if (pageHasChanges || pageCursorAdvanced) {
-      await repository.transaction(async writer => {
-        for (const candidate of candidates) {
-          const existing = await writer.get('health_observation', candidate.id);
-          const next = preserveIngestedAt(existing, candidate);
-          if (next !== existing) {
-            await writer.put('health_observation', next);
-            upserted += 1;
-          }
-        }
-        for (const id of deletedIds) {
-          if (await writer.delete('health_observation', id)) deleted += 1;
-        }
-        if (pageCursorAdvanced && nextCursor) {
-          await writer.putSyncCheckpoint({
-            key: checkpointKey,
-            value: nextCursor,
-            updatedAt: now(),
-          });
-        }
-      });
+      await measureCommonObservationOperation(
+        options.instrumentation,
+        'persist',
+        () =>
+          repository.transaction(async writer => {
+            for (const candidate of candidates) {
+              const existing = await writer.get(
+                'health_observation',
+                candidate.id,
+              );
+              const next = preserveIngestedAt(existing, candidate);
+              if (next !== existing) {
+                await writer.put('health_observation', next);
+                upserted += 1;
+              }
+            }
+            for (const id of deletedIds) {
+              if (await writer.delete('health_observation', id)) deleted += 1;
+            }
+            if (pageCursorAdvanced && nextCursor) {
+              await writer.putSyncCheckpoint({
+                key: checkpointKey,
+                value: nextCursor,
+                updatedAt: now(),
+              });
+            }
+          }),
+      );
     }
 
     cursor = nextCursor;
@@ -199,7 +208,7 @@ function serializeFeatureSync<T>(
   options: SyncCommonObservationChangesOptions,
   operation: () => Promise<T>,
 ): Promise<T> {
-  const lockIdentity = options.serializationIdentity ?? options.repository;
+  const lockIdentity = options.repository;
   let featureTails = pendingSyncs.get(lockIdentity);
   if (!featureTails) {
     featureTails = new Map();

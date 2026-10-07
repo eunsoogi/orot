@@ -35,14 +35,6 @@ export function createUnifiedFeatureImporter(options: {
   instrumentation: UnifiedFeatureInstrumentation,
 ) => Promise<UnifiedFeatureOutcome> {
   return async (feature, authorization, repository, instrumentation) => {
-    const healthKitClient = instrumentHealthKit(
-      options.healthKit,
-      instrumentation,
-    );
-    const instrumentedRepository = instrumentRepository(
-      repository,
-      instrumentation,
-    );
     const now = options.now;
 
     if (
@@ -51,13 +43,21 @@ export function createUnifiedFeatureImporter(options: {
       const result = await syncCommonObservationChanges({
         feature: feature as CommonObservationFeature,
         authorization,
-        healthKit: healthKitClient,
-        repository: instrumentedRepository,
-        serializationIdentity: repository,
+        healthKit: options.healthKit,
+        repository,
+        instrumentation,
         now,
       });
       return commonOutcome(result);
     }
+    const healthKitClient = instrumentHealthKit(
+      options.healthKit,
+      instrumentation,
+    );
+    const instrumentedRepository = instrumentRepository(
+      repository,
+      instrumentation,
+    );
     if (feature === 'bloodPressure') {
       const result = await syncHealthKitBloodPressure({
         authorization,

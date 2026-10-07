@@ -109,16 +109,23 @@ test('serializes overlapping adapter imports by the original repository identity
     now: () => '2026-10-07T00:00:00.000Z',
   });
   const repository = store as unknown as RecordRepository;
+  const phases: string[] = [];
   const instrumentation = {
     async query<T>(operation: () => Promise<T>) {
-      return operation();
+      phases.push('query:started');
+      const result = await operation();
+      phases.push('query:finished');
+      return result;
     },
     async persist<T>(operation: () => Promise<T>) {
-      return operation();
+      phases.push('persistence:started');
+      const result = await operation();
+      phases.push('persistence:finished');
+      return result;
     },
   };
 
-  // Persistence timing uses a Proxy, but reopened imports must share the underlying lock.
+  // Phase hooks must keep the repository object used for the reopened-import lock.
   const olderImport = importer(
     'heartRate',
     authorization,
@@ -151,6 +158,16 @@ test('serializes overlapping adapter imports by the original repository identity
   });
 
   expect(querySampleChanges).toHaveBeenCalledTimes(2);
+  expect(phases).toEqual([
+    'query:started',
+    'query:finished',
+    'persistence:started',
+    'persistence:finished',
+    'query:started',
+    'query:finished',
+    'persistence:started',
+    'persistence:finished',
+  ]);
   expect(querySampleChanges.mock.calls[1][0].cursor).toBe('a1');
   expect(store.read('healthkit:heartRate:sample-1')).toBeNull();
   await expect(
