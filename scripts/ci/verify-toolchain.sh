@@ -76,7 +76,7 @@ actual_pnpm="$(pnpm --version)"
 [[ "$actual_pnpm" == "$expected_pnpm" ]] || fail_version pnpm "$expected_pnpm" "$actual_pnpm"
 
 actual_macos="$(sw_vers -productVersion)"
-# The macos-26 hosted label rolls patch releases; keep exact checks for pinned version labels.
+# Integer expectations validate rolling major families; dotted pins remain exact.
 if [[ "$expected_macos" =~ ^[0-9]+$ ]]; then
   actual_macos_major="${actual_macos%%.*}"
   [[ "$actual_macos_major" == "$expected_macos" ]] || fail_version macOS "${expected_macos}.x" "$actual_macos"

@@ -70,33 +70,33 @@ test('validates every Jest summary when the root command runs multiple packages'
 });
 
 test('requires both the Release and OpenAI Debug E2E summaries', () => {
-  const release = 'Test Suites: 1 passed, 1 total\nTests: 8 passed, 8 total\n';
+  const release = 'Test Suites: 1 passed, 1 total\nTests: 12 passed, 12 total\n';
   const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
   const complete = runGuard(release + debug, 'e2e');
   assert.equal(complete.status, 0, complete.stderr);
-  assert.match(complete.stdout, /9\/9 tests passed across 2 suites in 2 Jest runs/);
+  assert.match(complete.stdout, /13\/13 tests passed across 2 suites in 2 Jest runs/);
 
   const missingDebug = runGuard(release, 'e2e');
   assert.notEqual(missingDebug.status, 0);
   assert.match(missingDebug.stderr, /expected one Release and one OpenAI Debug Jest summary/);
 
   const incompleteRelease = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n' + debug,
+    'Test Suites: 1 passed, 1 total\nTests: 11 passed, 11 total\n' + debug,
     'e2e',
   );
   assert.notEqual(incompleteRelease.status, 0);
-  assert.match(incompleteRelease.stderr, /Release summary expected 8 test cases, received 7/);
+  assert.match(incompleteRelease.stderr, /Release summary expected 12 test cases, received 11/);
 });
 
 test('validates a single CI profile and publishes only its proven counts', () => {
   const release = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 8 passed, 8 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 12 passed, 12 total\n',
     'e2e-release',
     true,
   );
   assert.equal(release.status, 0, release.stderr);
-  assert.match(release.stdout, /8\/8 tests passed across 1 suites in 1 Jest runs/);
-  assert.equal(release.githubOutput, 'e2e_profile=release\ne2e_test_cases=8\ne2e_test_suites=1\n');
+  assert.match(release.stdout, /12\/12 tests passed across 1 suites in 1 Jest runs/);
+  assert.equal(release.githubOutput, 'e2e_profile=release\ne2e_test_cases=12\ne2e_test_suites=1\n');
 
   const debug = runGuard(
     'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
@@ -122,7 +122,7 @@ test('validates a single CI profile and publishes only its proven counts', () =>
   );
 
   assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n', 'e2e-release').status,
+    runGuard('Test Suites: 1 passed, 1 total\nTests: 11 passed, 11 total\n', 'e2e-release').status,
     0,
   );
   assert.notEqual(
