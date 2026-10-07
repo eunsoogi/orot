@@ -4,7 +4,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { View } from 'react-native';
 import { healthKitFeatures } from '../../types';
 import { createUnifiedImportCoordinator } from '../coordinator';
 import type { UnifiedFeatureStatus, UnifiedImportStatus } from '../types';
@@ -63,10 +62,25 @@ const copy: HealthKitImportScreenCopy = {
     `${imported} imported / ${deleted} deleted`,
 };
 
-// Keep cold React Native renderer startup outside the feature test's five-second behavior budget.
+// Warm the actual screen and its successful flow so first-use renderer setup stays outside
+// the behavior assertions' five-second budget; the in-memory services perform no native work.
 beforeAll(async () => {
-  const warmup = await render(<View />);
-  warmup.unmount();
+  const warmupServices = createTestServices();
+  const warmup = await render(
+    <HealthKitImportScreen
+      copy={copy}
+      coordinator={createUnifiedImportCoordinator(warmupServices.services)}
+    />,
+  );
+  try {
+    await fireEvent.press(
+      warmup.getByTestId('unified-import-toggle-heartRate'),
+    );
+    await fireEvent.press(warmup.getByTestId('unified-import-start'));
+    await warmup.findByTestId('unified-import-feature-status-heartRate');
+  } finally {
+    warmup.unmount();
+  }
 }, 15000);
 
 test('requires a selected type and shows HealthKit results from one action', async () => {

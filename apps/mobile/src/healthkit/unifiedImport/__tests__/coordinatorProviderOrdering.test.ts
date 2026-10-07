@@ -23,6 +23,38 @@ describe('selected provider ordering', () => {
     expect(eventKitAuthorization).toBeLessThan(healthKitQuery);
     expect(result.progress.eventKit.status).toBe('complete');
     expect(result.progress.eventKit.candidates).toHaveLength(1);
+    const authorizationStarted = result.measurements.find(
+      measurement =>
+        measurement.provider === 'eventKit' &&
+        measurement.phase === 'authorization' &&
+        measurement.transition === 'started',
+    );
+    const permissionRequestInvoked = result.measurements.find(
+      measurement =>
+        measurement.provider === 'eventKit' &&
+        measurement.phase === 'permissionRequestInvocation',
+    );
+    const authorizationFinished = result.measurements.find(
+      measurement =>
+        measurement.provider === 'eventKit' &&
+        measurement.phase === 'authorization' &&
+        measurement.transition === 'finished',
+    );
+    const eventKitQueryStarted = result.measurements.find(
+      measurement =>
+        measurement.provider === 'eventKit' &&
+        measurement.phase === 'query' &&
+        measurement.transition === 'started',
+    );
+    expect(authorizationStarted?.offsetMs).toBeLessThanOrEqual(
+      permissionRequestInvoked?.offsetMs ?? -1,
+    );
+    expect(permissionRequestInvoked?.offsetMs).toBeLessThanOrEqual(
+      authorizationFinished?.offsetMs ?? -1,
+    );
+    expect(eventKitQueryStarted?.offsetMs).toBeGreaterThanOrEqual(
+      authorizationFinished?.offsetMs ?? Infinity,
+    );
     expect(result.measurements).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

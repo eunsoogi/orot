@@ -1,8 +1,8 @@
 /* global by, device, element, expect, waitFor, describe, it */
 
-describe('selected HealthKit import on iOS Simulator', () => {
-  it('batches selected HealthKit types before queries and local import', async () => {
-    // Synthetic mode is deterministic; live mode pauses for the HealthKit consent request.
+describe('selected HealthKit and EventKit import on iOS Simulator', () => {
+  it('completes both selected consent calls before provider queries', async () => {
+    // Live mode invokes both native consent APIs; sheet visibility needs a separate observer.
     const mode =
       process.env.OROT_UNIFIED_IMPORT_PROBE_MODE === 'live'
         ? 'live'
@@ -33,9 +33,7 @@ describe('selected HealthKit import on iOS Simulator', () => {
     for (const feature of selected) {
       await element(by.id(`unified-import-toggle-${feature}`)).tap();
     }
-    if (mode === 'synthetic') {
-      await element(by.id('unified-import-toggle-eventKit')).tap();
-    }
+    await element(by.id('unified-import-toggle-eventKit')).tap();
     await element(by.id('unified-import-start')).tap();
 
     const status = element(by.id('unified-import-status'));
@@ -50,11 +48,13 @@ describe('selected HealthKit import on iOS Simulator', () => {
       const liveText = liveSummary.label || liveSummary.text;
       // Detox replaces global expect with native matcher dispatch for UI elements.
       if (
-        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;/u.test(
+        !/healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitAuthorizationCalls=1;eventKitAuthorizationStartOffsetMs=\d+;eventKitRequestInvocationOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;eventKitQueryCalls=\d+;firstEventKitQueryOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;eventKitAuthorizationMs=\d+;eventKitQueryMs=\d+;localStoreMs=\d+/u.test(
           liveText,
         )
       ) {
-        throw new Error('Live import authorization measurements are missing.');
+        throw new Error(
+          'Live HealthKit and EventKit authorization measurements are missing.',
+        );
       }
       console.log(`UNIFIED_IMPORT_LIVE_MEASUREMENTS ${liveText}`);
       return;

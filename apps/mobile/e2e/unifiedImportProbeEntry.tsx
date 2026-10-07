@@ -17,7 +17,8 @@ import type { UnifiedImportMeasurement } from '../src/healthkit/unifiedImport/ty
 import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
 import type { CalendarEvent } from '../src/calendar/types';
 
-// Synthetic mode avoids consent prompts; live mode exposes only the HealthKit request for observation.
+// Synthetic mode substitutes provider services; live mode invokes both native consent APIs.
+// API completion timings do not measure the visibility of either system sheet.
 
 interface SimulatorFixtureModule {
   prepareSyntheticFixtures(

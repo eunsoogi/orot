@@ -17,20 +17,23 @@ export async function authorizeEventKit(
   setPhase(run, 'authorizingEventKit');
   setEventKit(run, { status: 'authorizing' });
   try {
-    recordMeasurement(
-      run,
-      {
-        provider: 'eventKit',
-        phase: 'permissionRequestInvocation',
-        transition: 'invoked',
-      },
-      now,
-    );
     const access = await measure(
       run,
       'eventKit',
       'authorization',
-      () => services.eventKit.requestEventAccess(),
+      () => {
+        // This marks the bridge call, not visibility of an OS consent sheet.
+        recordMeasurement(
+          run,
+          {
+            provider: 'eventKit',
+            phase: 'permissionRequestInvocation',
+            transition: 'invoked',
+          },
+          now,
+        );
+        return services.eventKit.requestEventAccess();
+      },
       now,
     );
     setEventKit(run, {

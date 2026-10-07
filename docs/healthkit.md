@@ -124,7 +124,7 @@ Each run emits provider, phase, transition, monotonic offset from the app action
 
 `UnifiedImportRun.cancel()` waits for an active provider API call to return, then stops before the next query or feature. It cannot dismiss an active iOS consent sheet or interrupt an in-flight provider query or feature import. Identical selections across the same providers share one run, while different selections are queued so consent prompts and anchored writes do not race. A completed or failed run can be explicitly retried.
 
-### HealthKit import Simulator probe
+### Selected HealthKit and EventKit Simulator probe
 
 Run the deterministic synthetic path from `apps/mobile` on a dedicated, task-assigned iOS Simulator:
 
@@ -137,12 +137,12 @@ pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --
 
 The automated run selects all six HealthKit features and EventKit, uses the synthetic HealthKit adapter and a synthetic calendar candidate, and writes only synthetic health observations plus the one explicitly confirmed synthetic appointment into the simulator's encrypted local store. It checks the one-batch HealthKit request, both-provider authorization-before-query ordering, per-feature outcomes, candidate confirmation, and privacy-safe relative offsets and durations. It does not trigger or observe OS consent sheets or use personal HealthKit or Calendar data. The Detox setup uninstalls the app and clears the simulator keychain; use only the assigned Simulator.
 
-To inspect the production HealthKit bridge interactively, run the same Detox test with `OROT_UNIFIED_IMPORT_PROBE_MODE=live` and without `--headless` on the assigned Simulator. It selects heart rate and steps, then waits for the HealthKit request and terminal import state. This mode does not prepare a HealthKit fixture, alter permissions, or reset device settings; an already-decided permission may suppress a system sheet. Observe and time the actual system sheet separately from the bridge measurements shown by the screen. Simulator evidence does not establish behavior on the user's physical iPhone; no real-device timing should be inferred from the synthetic Detox run.
+To inspect the production HealthKit and EventKit bridges interactively, run the same Detox test with `OROT_UNIFIED_IMPORT_PROBE_MODE=live` and without `--headless` on the assigned Simulator. It selects heart rate, steps, and EventKit in one app action, then waits for both consent API calls and the terminal import state. It does not prepare synthetic fixtures, confirm a returned calendar event, or reset permission settings; an already-decided permission may suppress either system sheet. The probe reports aggregate phase measurements only and marks `systemSheets=not-captured`; observe and time each visible sheet separately. Use a task-assigned Simulator with no personal calendar data, and keep Detox logs, screenshots, and video capture disabled. Simulator evidence does not establish behavior on the user's physical iPhone; no real-device timing should be inferred from the synthetic Detox run.
 
 The dedicated Jest config gives the synthetic case five minutes to cover its 240-second terminal-state wait and setup/assertion margin, and the live case eleven minutes to cover its 600-second consent wait and margin. Detox's four-minute `setupTimeout` applies only while setting up the suite; it does not extend a running Jest test. These are test deadlines, not observed consent durations.
 
 ```sh
-OROT_UNIFIED_IMPORT_PROBE_MODE=live pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --no-start --cleanup
+OROT_UNIFIED_IMPORT_PROBE_MODE=live pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --no-start --cleanup --record-logs none --take-screenshots none --record-videos none
 ```
 
 ## Apple API references
