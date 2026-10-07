@@ -27,7 +27,8 @@ test('validates the profile app cache before optional native dependency preparat
 
   assert.ok(fingerprints < cache && cache < prepare && prepare < framework && framework < pods);
   assert.ok(pods < build && build < tests);
-  assert.match(step('Cache Detox profile app product'), /orot-detox-deriveddata-v9-/);
+  // The v10 namespace prevents restoring older caches that included all Xcode build products.
+  assert.match(step('Cache Detox profile app product'), /orot-detox-app-product-v10-/);
   assert.match(step('Cache Detox profile app product'), /xcodebuild_fingerprint/);
   assert.match(step('Cache Detox profile app product'), /~\/Library\/Detox\/ios\/framework/);
   assert.match(step('Cache Detox profile app product'), /~\/Library\/Detox\/ios\/xcuitest-runner/);
