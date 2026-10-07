@@ -53,7 +53,6 @@ function calendarStyleDefinition(colors: AppColorPalette) {
     // Narrow viewports scroll the whole dated region so weekdays and dates retain
     // seven aligned columns, each with a non-overlapping 44pt touch target.
     calendarDates: {
-      flex: 1,
       minWidth: designTokens.minTouchTarget * 7,
       gap: designTokens.spacing.md,
     },

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
@@ -43,7 +43,18 @@ describe('calendar month design', () => {
     );
     // A 320pt screen with 20pt side padding has only 280pt of content space.
     // The scrollable date region must still fit all seven 44pt columns.
-    expect(Math.max(280, dateRegion.minWidth)).toBeGreaterThanOrEqual(7 * 44);
+    expect(dateRegion.width).toBe(7 * 44);
+    const viewport = screen.getByTestId('calendar-date-viewport');
+    for (const width of [280, 700, 280]) {
+      await fireEvent(viewport, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height: 400 } },
+      });
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId('calendar-date-content').props.style,
+        ).width,
+      ).toBe(Math.max(width, 7 * 44));
+    }
     expect(StyleSheet.flatten(weekday.props.style).minWidth).toBe(
       dayStyle.minWidth,
     );
