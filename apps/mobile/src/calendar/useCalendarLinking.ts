@@ -2,7 +2,7 @@ import { AppState } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
-import { calendarSnapshotsEqual } from './calendarSnapshot';
+import { calendarEventMatchesAppointment } from './calendarSnapshot';
 import { appointmentStartTime } from './appointmentTime';
 import type {
   CalendarAccessState,
@@ -35,33 +35,6 @@ function selectLinkedAppointment(
     return leftUpcoming ? leftStart - rightStart : rightStart - leftStart;
   });
   return linked[0] ?? null;
-}
-
-function calendarEventMatchesAppointment(
-  event: CalendarEvent,
-  appointment: Appointment,
-): boolean {
-  const eventSnapshot = event.calendarEventSnapshot;
-  const appointmentSnapshot = appointment.calendarEventSnapshot;
-  const hasFloatingCivilTimes =
-    eventSnapshot.timeZoneIdentifier === null &&
-    appointmentSnapshot?.timeZoneIdentifier === null &&
-    typeof eventSnapshot.floatingStartAt === 'string' &&
-    typeof eventSnapshot.floatingEndAt === 'string' &&
-    eventSnapshot.floatingStartAt === appointmentSnapshot.floatingStartAt &&
-    eventSnapshot.floatingEndAt === appointmentSnapshot.floatingEndAt;
-  return (
-    event.calendarEventIdentifier === appointment.calendarEventIdentifier &&
-    (hasFloatingCivilTimes ||
-      (event.effectiveAt === appointment.effectiveAt &&
-        event.endsAt === appointment.endsAt)) &&
-    event.calendarEventSnapshot !== undefined &&
-    appointment.calendarEventSnapshot !== undefined &&
-    calendarSnapshotsEqual(
-      event.calendarEventSnapshot,
-      appointment.calendarEventSnapshot,
-    )
-  );
 }
 
 export function useCalendarLinking(
