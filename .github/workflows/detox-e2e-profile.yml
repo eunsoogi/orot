@@ -162,8 +162,7 @@ jobs:
       - name: Install Detox CocoaPods dependencies # The path hook is limited to this install after toolchain validation.
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         timeout-minutes: 20
-        run: |
-          scripts/ci/verify-toolchain.sh --cocoapods-only && OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC=1 RUBYOPT="-r${GITHUB_WORKSPACE}/scripts/ci/cocoapods-null-byte-diagnostic.rb" scripts/ci/run-command.sh detox-pods artifacts/detox/pods-install.log -- bash scripts/ci/build-detox-apps.sh pods
+        run: bash scripts/ci/install-detox-cocoapods.sh
       - name: Record Detox cache state
         timeout-minutes: 1
         env:

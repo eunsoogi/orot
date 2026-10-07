@@ -129,11 +129,24 @@ test('enables the Ruby hook only on the Detox CocoaPods install step', () => {
     'utf8',
   );
   const step = workflowStep(workflow, 'Install Detox CocoaPods dependencies');
+  const installScript = readFileSync(
+    path.join(repositoryRoot, 'scripts/ci/install-detox-cocoapods.sh'),
+    'utf8',
+  );
 
-  assert.match(step, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC=1/);
-  assert.match(step, /RUBYOPT=/);
-  assert.match(step, /cocoapods-null-byte-diagnostic\.rb/);
-  assert.equal((workflow.match(/OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC/g) ?? []).length, 1);
+  assert.match(step, /run: bash scripts\/ci\/install-detox-cocoapods\.sh/);
+  assert.equal((workflow.match(/install-detox-cocoapods\.sh/g) ?? []).length, 1);
+  assert.match(installScript, /scripts\/ci\/verify-toolchain\.sh --cocoapods-only/);
+  assert.match(installScript, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC=1/);
+  assert.match(installScript, /RUBYOPT="-r\$\{diagnostic_path\}"/);
+  assert.match(installScript, /cocoapods-null-byte-diagnostic\.rb/);
+  assert.match(installScript, /scripts\/ci\/run-command\.sh detox-pods/);
+  assert.ok(
+    installScript.indexOf('verify-toolchain.sh') <
+      installScript.indexOf('OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC=1'),
+    'toolchain validation must precede enabling the diagnostic',
+  );
+  assert.equal((installScript.match(/OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC/g) ?? []).length, 1);
 });
 
 test('logs escaped file-reference context and preserves the original null-byte exception', () => {
