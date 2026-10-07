@@ -112,4 +112,79 @@ describe('native speech probe report validation', () => {
       verifyFinalNativeSpeechProbe(transitioningElement),
     ).rejects.toThrow('The native speech probe failed');
   });
+
+  it('waits for the final report to contain all measured native cases', async () => {
+    const measured = baseReport('measured', {
+      cases: Array.from({ length: 3 }, (_, index) => ({
+        id: `case-${index}`,
+        recognizedText: '측정된 음성',
+        accuracy: { characterErrorRate: 0 },
+        segments: [{ startSeconds: 0, endSeconds: 1 }],
+      })),
+    });
+    const reports = [baseReport('running'), measured];
+    let readCount = 0;
+    const transitioningElement = {
+      getAttributes: async () => ({
+        label: JSON.stringify(
+          reports[Math.min(readCount++, reports.length - 1)],
+        ),
+      }),
+    };
+
+    await expect(
+      verifyFinalNativeSpeechProbe(transitioningElement, {
+        timeoutMs: 100,
+        pollIntervalMs: 0,
+      }),
+    ).resolves.toEqual(measured);
+    expect(readCount).toBe(2);
+  });
+
+  it('waits for and preserves a terminal explicit unsupported result', async () => {
+    const unsupported = baseReport('explicitly_unsupported', {
+      reason: {
+        code: 'model_unavailable',
+        message: 'The native API reported the model unavailable.',
+      },
+    });
+    const reports = [baseReport('running'), unsupported];
+    let readCount = 0;
+    const transitioningElement = {
+      getAttributes: async () => ({
+        label: JSON.stringify(
+          reports[Math.min(readCount++, reports.length - 1)],
+        ),
+      }),
+    };
+
+    await expect(
+      verifyFinalNativeSpeechProbe(transitioningElement, {
+        timeoutMs: 100,
+        pollIntervalMs: 0,
+      }),
+    ).resolves.toEqual(unsupported);
+  });
+
+  it('fails when the final native report remains running until its deadline', async () => {
+    const element = reportElement(baseReport('running'));
+
+    await expect(
+      verifyFinalNativeSpeechProbe(element, {
+        timeoutMs: 30,
+        pollIntervalMs: 5,
+      }),
+    ).rejects.toThrow('did not reach a terminal outcome within 30ms');
+  });
+
+  it('bounds a final report read that never resolves', async () => {
+    const element = { getAttributes: () => new Promise(() => {}) };
+
+    await expect(
+      verifyFinalNativeSpeechProbe(element, {
+        timeoutMs: 30,
+        pollIntervalMs: 5,
+      }),
+    ).rejects.toThrow('did not reach a terminal outcome within 30ms');
+  });
 });
