@@ -562,3 +562,32 @@ GitHub job and step timestamps include step overhead. The profile-stage measurem
 All three app-product save steps passed after manifest validation and before E2E. GitHub's cache API lists three resulting entries under `refs/pull/129/merge`. The cache fingerprint includes `packages/**`; main commit `b220cba` (#139) changed `packages/agent-runtime`, so these entries do not apply to the newly integrated head and this run does not warm its app cache. The different Speech toolchain also prevents comparing its profile duration directly with Release or OpenAI Debug.
 
 Run 37672055988 is successful functional evidence for head `a529f6b`, including all three profile test results, production/OAuth checks, diagnostics, Simulator cleanup, and the profile-summary and required Detox aggregates. Its 50m04s required-job interval does not meet the under-ten-minute target. The run predates main commit `b220cba`; local integration, the required checks, and strict review must bind the updated head. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. No speedup is claimed. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-07 PR #129 exact-head run 37680877416
+
+Run [37680877416](https://github.com/eunsoogi/orot/actions/runs/37680877416), attempt 1, succeeded on PR head `06e1a26fc29e659986479b87638d942a2f1d2842` against base `b220cba802dd9bd2997978cfac0736b6bde293b5`. It started at 20:17:28Z and reached terminal status at 20:55:07Z, an elapsed 37m39s. The required-workflow interval, from Quality Linux at 20:17:31Z through the `Detox iOS E2E` aggregate at 20:55:06Z, was **37m35s**.
+
+| Job | Recorded interval (UTC) | Duration | Result |
+| --- | ---------------------- | -------: | ------ |
+| [Quality Linux](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112996280079) | 20:17:31–20:19:26 | 1m55s | passed, including 182 gate tests and 570 unit tests |
+| [Quality](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112997117762) | 20:19:28–20:19:38 | 10s | passed |
+| [Speech Transcription](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112996279833) | 20:21:59–20:35:47 | 13m48s | passed, separate synthetic 1/1 case |
+| [OpenAI Debug](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112996280249) | 20:22:00–20:34:48 | 12m48s | passed, 1/1 case |
+| [iOS Simulator Build](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112996279575) | 20:33:15–20:45:08 | 11m53s | passed, including production and OAuth checks |
+| [Release](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/112996280519) | 20:34:56–20:54:52 | 19m56s | passed, 12/12 cases |
+| [Require complete profile summaries](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/113012487940) | 20:54:54–20:55:00 | 6s | passed |
+| [Detox iOS E2E](https://github.com/eunsoogi/orot/actions/runs/37680877416/job/113012543901) | 20:55:03–20:55:06 | 3s | passed |
+
+GitHub job and step timestamps include step overhead. All three profile cache restores were cold: the app-product cache was missing, the DerivedData helper classified it as `miss` with `reason=derived_data_absent`, and each profile ran its native build. Each manifest write and app-product save step passed before E2E began.
+
+| Profile | Runner | Verified toolchain and device | App / DerivedData cache | Native app build | Simulator wait | Detox tests | Simulator deletion |
+| ------- | ------ | ---------------------------- | ---------------------- | ---------------: | --------------: | ----------: | -----------------: |
+| Release | 1000072755 | macOS 27.0, Xcode/SDK 27.0, iPhone 18 Pro | miss / miss | 355s | 2s | 395s, 12/12 | 11s |
+| OpenAI Debug | 1000072747 | macOS 27.0, Xcode/SDK 27.0, iPhone 18 Pro | miss / miss | 325s | 1s | 36s, 1/1 | 5s |
+| Speech Transcription | 1000072746 | macOS 26.6.2, Xcode/SDK 26.2, iPhone 17 Pro | miss / miss | 407s | 4s | 154s, synthetic 1/1 | 8s |
+
+All profiles verified Node 22.23.2 and pnpm 12.3.4. The original nine cases were Release 8/8 and OpenAI Debug 1/1; the Release total was 12/12 after four Safe Area regression cases were added. Speech Transcription remains a separate synthetic case. The dedicated Simulators were deleted successfully for all three profiles. The required iOS Simulator Build, production/OAuth verification, profile summary validation, and fail-closed aggregate all passed.
+
+During the run, main advanced to `1327929be75222ba7503c2d6a186cc2da0a60dd7` with #123, while the PR run remained based on `b220cba`. The #123 change modifies iOS app and `packages/provider-openai` inputs covered by the Detox cache fingerprints. Therefore the app-product entries saved by this run do not apply to the refreshed main integration; this follows from the changed paths and the fingerprint scope. The local PR branch now includes `1327929` through a normal merge, and its next hosted run must establish the cache state for those inputs.
+
+The successful 37m35s required-workflow interval misses the under-ten-minute target. This cold-cache run establishes functional and cache-population evidence on head `06e1a26`; it does not establish warm-cache reuse or a speedup. Two consecutive successful under-ten-minute runs on the same updated implementation, exact-head strict review, and passing required checks remain outstanding. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Issue #74 remains open and PR #129 remains Draft.
