@@ -21,7 +21,8 @@ const suiteRunner = join(repositoryRoot, 'scripts/ci/run-test-suite.sh');
 const releaseSimulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
 
 function runReleaseSuite(logLevel) {
-  const artifactParent = join(repositoryRoot, 'artifacts');
+  // Keep generated logs in the ignored mobile artifact root so concurrent inventory checks skip them.
+  const artifactParent = join(repositoryRoot, 'apps/mobile/artifacts');
   const createdArtifactParent = !existsSync(artifactParent);
   mkdirSync(artifactParent, { recursive: true });
   const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-log-level-'));
