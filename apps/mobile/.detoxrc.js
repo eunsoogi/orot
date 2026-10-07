@@ -1,29 +1,49 @@
 /** @type {Detox.DetoxConfig} */
+const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
+const releaseDerivedDataPath =
+  process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build-detox-release';
+
+if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
+  throw new Error(
+    'The Detox Release DerivedData path must use only letters, numbers, dots, slashes, underscores, and hyphens.',
+  );
+}
+
 module.exports = {
+  behavior: {
+    init: { reinstallApp: true },
+  },
   testRunner: {
     args: {
       $0: 'jest',
-      config: 'e2e/jest.config.js',
+      config: 'e2e/release-e2e.jest.config.js',
     },
     jest: {
       setupTimeout: 120000,
     },
   },
+  artifacts: {
+    plugins: {
+      screenshot: {
+        enabled: true,
+        shouldTakeAutomaticSnapshots: true,
+        keepOnlyFailedTestsArtifacts: true,
+        takeWhen: { testStart: false, testFailure: true, testDone: false },
+      },
+    },
+  },
   apps: {
     'ios.release': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/Orot.app',
-      // Exercise the project defaults in the storage E2E instead of overriding them here.
-      build:
-        'xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ENTRY_FILE=e2e/e2eRouterEntry.tsx',
+      binaryPath: `${releaseDerivedDataPath}/Build/Products/Release-iphonesimulator/Orot.app`,
+      // Use project Simulator defaults so E2E exercises the shared Keychain group.
+      build: `FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ${releaseDerivedDataPath} CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES -showBuildTimingSummary ENTRY_FILE=e2e/e2eRouterEntry.tsx`,
     },
   },
   devices: {
     simulator: {
       type: 'ios.simulator',
-      device: {
-        type: 'iPhone 18 Pro',
-      },
+      device: simulatorId ? { id: simulatorId } : { type: 'iPhone 18 Pro' },
     },
   },
   configurations: {
