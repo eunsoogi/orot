@@ -46,6 +46,8 @@ export function HealthKitImportScreen({
   onMeasurement,
 }: HealthKitImportScreenProps) {
   const mounted = useRef(true);
+  // A completed calendar save may publish after a later import has taken ownership.
+  const runGeneration = useRef(0);
   const [selected, setSelected] = useState<ReadonlySet<HealthKitFeature>>(
     new Set(),
   );
@@ -57,11 +59,13 @@ export function HealthKitImportScreen({
   useEffect(
     () => () => {
       mounted.current = false;
+      runGeneration.current += 1;
     },
     [],
   );
 
   function toggleFeature(feature: HealthKitFeature) {
+    runGeneration.current += 1;
     setSelected(current => {
       const next = new Set(current);
       if (next.has(feature)) next.delete(feature);
@@ -73,6 +77,7 @@ export function HealthKitImportScreen({
   }
 
   function toggleEventKit() {
+    runGeneration.current += 1;
     setEventKitSelected(current => !current);
     setProgress(null);
     setRun(null);
@@ -94,16 +99,19 @@ export function HealthKitImportScreen({
     setProgress(null);
     setRun(null);
     setIsRunning(true);
+    const generation = ++runGeneration.current;
     try {
       const active = coordinator.start(selection, {
         onProgress: value => {
-          if (mounted.current) setProgress(value);
+          if (mounted.current && runGeneration.current === generation) {
+            setProgress(value);
+          }
         },
         ...(onMeasurement ? { onMeasurement } : {}),
       });
       setRun(active);
       active.result.then(result => {
-        if (!mounted.current) return;
+        if (!mounted.current || runGeneration.current !== generation) return;
         setProgress(result.progress);
         setIsRunning(false);
       });
