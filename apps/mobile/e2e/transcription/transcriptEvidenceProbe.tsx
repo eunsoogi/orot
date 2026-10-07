@@ -6,6 +6,7 @@ import type { CompletedRecording } from '../../src/recording/recordingTypes';
 import {
   armSyntheticExportCancellation,
   getSyntheticExportResidueCount,
+  isSyntheticTranscriptionFixtureUnchanged,
   prepareSyntheticExportResidue,
 } from '../../src/recording/nativeRecordingBridge';
 import {
@@ -22,9 +23,9 @@ type CorrectionStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
 export function TranscriptEvidenceProbe() {
   const [status, setStatus] = useState<SetupStatus>('idle');
-  const [recordingSourceId, setRecordingSourceId] = useState<string | null>(
-    null,
-  );
+  const [syntheticRecording, setSyntheticRecording] =
+    useState<CompletedRecording | null>(null);
+  const recordingSourceId = syntheticRecording?.id ?? null;
   const [playback, setPlayback] = useState<{
     startMs: number;
     endMs: number;
@@ -32,6 +33,7 @@ export function TranscriptEvidenceProbe() {
   } | null>(null);
   const [memoryStatus, setMemoryStatus] = useState('not-checked');
   const [exportResidueCount, setExportResidueCount] = useState('unknown');
+  const [exportSourceStatus, setExportSourceStatus] = useState('not-checked');
   const [audioExportDiagnostic, setAudioExportDiagnostic] =
     useState('not-observed');
   const [correctionStatus, setCorrectionStatus] =
@@ -52,22 +54,22 @@ export function TranscriptEvidenceProbe() {
     [setAudioExportDiagnostic],
   );
   const syntheticCompletedRecording: CompletedRecording | null =
-    recordingSourceId === null
+    syntheticRecording === null
       ? null
       : {
-          id: recordingSourceId,
-          durationMs: 5_000,
-          startedAt: '2026-10-07T00:00:00.000Z',
-          completedAt: '2026-10-07T00:00:05.000Z',
-          fileProtection: 'complete',
-          excludedFromBackup: true,
+          id: syntheticRecording.id,
+          durationMs: syntheticRecording.durationMs,
+          startedAt: syntheticRecording.startedAt,
+          completedAt: syntheticRecording.completedAt,
+          fileProtection: syntheticRecording.fileProtection,
+          excludedFromBackup: syntheticRecording.excludedFromBackup,
         };
 
   async function prepare(): Promise<void> {
     setStatus('preparing');
     setError('');
     try {
-      setRecordingSourceId(await prepareSyntheticTranscriptRecording());
+      setSyntheticRecording(await prepareSyntheticTranscriptRecording());
       setStatus('ready');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -80,7 +82,7 @@ export function TranscriptEvidenceProbe() {
     setStatus('cleaning');
     try {
       await cleanupSyntheticTranscriptRecording(recordingSourceId);
-      setRecordingSourceId(null);
+      setSyntheticRecording(null);
       setStatus('cleaned');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -111,7 +113,13 @@ export function TranscriptEvidenceProbe() {
   async function refreshExportResidue(): Promise<void> {
     try {
       setExportResidueCount(String(await getSyntheticExportResidueCount()));
+      if (recordingSourceId) {
+        const unchanged =
+          await isSyntheticTranscriptionFixtureUnchanged(recordingSourceId);
+        setExportSourceStatus(unchanged ? 'unchanged' : 'changed-or-missing');
+      }
     } catch (failure) {
+      setExportSourceStatus('failed');
       setError(failure instanceof Error ? failure.message : String(failure));
     }
   }
@@ -162,6 +170,15 @@ export function TranscriptEvidenceProbe() {
         title="Simulate export cancellation"
       />
       <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
+      <Text testID="recording-export-source-status">{exportSourceStatus}</Text>
+      {syntheticRecording ? (
+        // This is fixture metadata only; Simulator values are not device protection evidence.
+        <Text testID="transcript-evidence-source-security">
+          fixture-protection={syntheticRecording.fileProtection}{' '}
+          backup-excluded=
+          {String(syntheticRecording.excludedFromBackup)}
+        </Text>
+      ) : null}
       <Text testID="recording-export-probe-diagnostic">
         {audioExportDiagnostic}
       </Text>

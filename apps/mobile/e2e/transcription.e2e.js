@@ -21,10 +21,9 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     });
     // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
     await device.disableSynchronization();
-    const reportElement = element(by.id('transcription-probe-report'));
     let nativeProbeFailure;
     try {
-      await verifyNativeSpeechProbe(reportElement);
+      await verifyNativeSpeechProbe();
     } catch (failure) {
       // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
       nativeProbeFailure = failure;
@@ -43,6 +42,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         .whileElement(by.id('recording-controls-scroll'))
         .scroll(120, 'down', 0.5, 0.35);
       assertionStage = 'create transcript';
+      await scrollToTranscriptControl(element(by.id('transcript-create')));
       await element(by.id('transcript-create')).tap();
 
       assertionStage = 'read transcript metadata';
@@ -201,7 +201,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
 
     try {
       // The native probe runs asynchronously while the synthetic review flow is exercised.
-      await verifyFinalNativeSpeechProbe(reportElement);
+      await verifyFinalNativeSpeechProbe();
     } catch (failure) {
       nativeProbeFailure ??= failure;
     }

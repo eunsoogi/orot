@@ -27,6 +27,29 @@ public extension RecordingModule {
             } catch RecordingExportFailure.busy {
                 reject("RECORDING_EXPORT_BUSY", "Another recording export is still open.", nil)
             } catch {
+                #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                    // Keep production verification unchanged while exposing only fixed categories to the Simulator probe.
+                    if let securityError = error as? RecordingFileSecurityError {
+                        switch securityError {
+                        case .protectionNotApplied:
+                            reject(
+                                "RECORDING_EXPORT_PROTECTION_NOT_APPLIED",
+                                "The source recording protection could not be verified.",
+                                nil,
+                            )
+                            return
+                        case .backupExclusionNotApplied:
+                            reject(
+                                "RECORDING_EXPORT_BACKUP_EXCLUSION_NOT_APPLIED",
+                                "The source recording backup exclusion could not be verified.",
+                                nil,
+                            )
+                            return
+                        default:
+                            break
+                        }
+                    }
+                #endif
                 reject("RECORDING_EXPORT_FAILED", "The recording could not be prepared for export.", error as NSError)
             }
         }
@@ -151,6 +174,24 @@ public extension RecordingModule {
             rejecter _: @escaping RCTPromiseRejectBlock,
         ) {
             workQueue.async { resolve(RecordingExportFiles.residueCount()) }
+        }
+
+        /// Checks fixture source bytes without returning a path or file contents to the probe.
+        @objc(isSyntheticTranscriptionFixtureUnchanged:resolver:rejecter:)
+        func isSyntheticTranscriptionFixtureUnchanged(
+            _ recordingID: String,
+            resolver resolve: @escaping RCTPromiseResolveBlock,
+            rejecter reject: @escaping RCTPromiseRejectBlock,
+        ) {
+            workQueue.async {
+                do {
+                    let unchanged = try RecordingFileSecurity.isSyntheticTranscriptionFixtureUnchanged(id: recordingID)
+                    resolve(unchanged)
+                } catch {
+                    // The probe reports only a fixed failure code; native paths and file contents stay private.
+                    reject("RECORDING_EXPORT_PROBE_FAILED", "The synthetic source could not be checked.", nil)
+                }
+            }
         }
 
         @objc(armSyntheticExportCancellation:rejecter:)

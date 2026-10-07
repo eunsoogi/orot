@@ -73,6 +73,7 @@ enum RecordingFileSecurity {
                 guard duration.isFinite, duration > 0 else {
                     throw RecordingFileSecurityError.invalidAudioFile
                 }
+                RecordingSimulatorFixtureIntegrity.register(id: id, bytes: data)
                 let completedAt = Date()
                 return [
                     "id": id,
@@ -89,6 +90,8 @@ enum RecordingFileSecurity {
         }
 
         static func removeSyntheticTranscriptionFixture(id: String) throws {
+            // Drop authorization before deletion so a failed cleanup cannot keep a fixture on the test-only export path.
+            RecordingSimulatorFixtureIntegrity.discard(id: id)
             let url = try fileURL(
                 id: id,
                 extension: "m4a",

@@ -115,3 +115,45 @@ public extension RecordingModule {
         #endif
     }
 }
+
+#if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+    /// Keeps byte snapshots only for synthetic fixtures installed in this Simulator process.
+    /// RecordingModule callers access this registry through its serial workQueue.
+    enum RecordingSimulatorFixtureIntegrity {
+        private static var installedBytes = [String: Data]()
+
+        /// Registers the original synthetic source bytes after fixture validation succeeds.
+        static func register(id: String, bytes: Data) {
+            installedBytes[id] = bytes
+        }
+
+        /// Removes test-only export authorization before fixture cleanup or a cleanup retry.
+        static func discard(id: String) {
+            installedBytes.removeValue(forKey: id)
+        }
+
+        /// Returns a snapshot only for a fixture installed during this process.
+        static func expectedBytes(for id: String) -> Data? {
+            installedBytes[id]
+        }
+    }
+
+    extension RecordingFileSecurity {
+        /// Allows unreadable Simulator protection metadata only for a registered fixture while backup exclusion stays enforced.
+        static func simulatorProbeAudioExportSourceURL(id: String) throws -> URL {
+            guard RecordingSimulatorFixtureIntegrity.expectedBytes(for: id) != nil else {
+                return try existingFileURL(id: id)
+            }
+            return try existingFileURL(id: id, allowUnverifiedProtectionForSimulator: true)
+        }
+
+        /// Compares current source bytes with the same-process fixture snapshot without exposing either value.
+        static func isSyntheticTranscriptionFixtureUnchanged(id: String) throws -> Bool {
+            guard let expectedBytes = RecordingSimulatorFixtureIntegrity.expectedBytes(for: id) else {
+                return false
+            }
+            let url = try existingFileURL(id: id, allowUnverifiedProtectionForSimulator: true)
+            return try Data(contentsOf: url) == expectedBytes
+        }
+    }
+#endif

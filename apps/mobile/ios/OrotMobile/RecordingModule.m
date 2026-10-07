@@ -41,6 +41,9 @@ RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getSyntheticExportResidueCount : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+// The dedicated Simulator probe checks source bytes without exposing the source path or content.
+RCT_EXTERN_METHOD(isSyntheticTranscriptionFixtureUnchanged : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(armSyntheticExportCancellation : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif

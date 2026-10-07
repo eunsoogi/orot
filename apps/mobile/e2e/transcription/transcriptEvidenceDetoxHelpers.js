@@ -16,7 +16,9 @@ function accessibilityText(attributes) {
   return attributes.label || attributes.text || '';
 }
 
-async function verifyNativeSpeechProbe(reportElement) {
+async function verifyNativeSpeechProbe(
+  reportElement = element(by.id('transcription-probe-report')),
+) {
   // Keep provider capability evidence distinct from the synthetic transcript review fixture.
   await waitFor(reportElement).toBeVisible().withTimeout(30000);
   const attributes = await reportElement.getAttributes();
@@ -75,7 +77,9 @@ async function verifyNativeSpeechProbe(reportElement) {
   return report;
 }
 
-async function verifyFinalNativeSpeechProbe(reportElement) {
+async function verifyFinalNativeSpeechProbe(
+  reportElement = element(by.id('transcription-probe-report')),
+) {
   // Read the same live report after review so an asynchronous provider failure cannot escape the test verdict.
   const report = await verifyNativeSpeechProbe(reportElement);
   console.log(
@@ -145,6 +149,13 @@ async function verifyRecordingExportLifecycle(device) {
   await waitFor(element(by.id('transcript-evidence-setup-status')))
     .toHaveText('ready')
     .withTimeout(30000);
+  const sourceSecurity = element(by.id('transcript-evidence-source-security'));
+  await waitFor(sourceSecurity).toExist().withTimeout(30000);
+  const sourceSecurityText = accessibilityText(
+    await sourceSecurity.getAttributes(),
+  );
+  jestExpect(sourceSecurityText).toContain('backup-excluded=true');
+  console.log('TRANSCRIPTION_SYNTHETIC_FILE_SECURITY_UI ' + sourceSecurityText);
   const audioExport = element(by.id('recording-export-audio'));
   await waitFor(audioExport).toExist().withTimeout(30000);
   await element(by.id('recording-export-arm-simulated-cancel')).tap();
@@ -172,6 +183,9 @@ async function verifyRecordingExportLifecycle(device) {
   }
   await element(by.id('recording-export-read-residue')).tap();
   await waitFor(residue).toHaveText('0').withTimeout(30000);
+  await waitFor(element(by.id('recording-export-source-status')))
+    .toHaveText('unchanged')
+    .withTimeout(30000);
 }
 
 async function captureRecordingExportFailure(device) {
@@ -193,6 +207,7 @@ async function waitForProbeControl(target) {
   await waitFor(target).toBeVisible().withTimeout(30000);
 }
 
+// Scroll the controls panel so a visible but clipped target can receive a Detox tap.
 async function scrollToTranscriptControl(control, direction = 'down') {
   await waitFor(control)
     .toBeVisible()

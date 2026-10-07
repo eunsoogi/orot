@@ -63,11 +63,20 @@ enum RecordingExportFiles {
         try mutableURL.setResourceValues(values)
     }
 
+    /// Only the registered dedicated Simulator fixture may use the unverified-metadata probe path.
+    private static func audioExportSourceURL(recordingID: String) throws -> URL {
+        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+            return try RecordingFileSecurity.simulatorProbeAudioExportSourceURL(id: recordingID)
+        #else
+            return try RecordingFileSecurity.existingFileURL(id: recordingID)
+        #endif
+    }
+
     static func audioCopy(recordingID: String) throws -> RecordingExportOperation {
         let directory = try beginOperation()
         do {
-            // Copy only a verified recording into an isolated temporary export; never write back to the protected source.
-            let source = try RecordingFileSecurity.existingFileURL(id: recordingID)
+            // User recordings remain fully verified; only the registered synthetic Simulator fixture may lack readable protection metadata.
+            let source = try audioExportSourceURL(recordingID: recordingID)
             let file = directory.appendingPathComponent("recording.\(source.pathExtension)")
             try FileManager.default.copyItem(at: source, to: file)
             try protectTemporaryFile(file)

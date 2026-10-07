@@ -43,6 +43,9 @@ interface NativeRecordingModule {
   shareRecordingTranscript?: (text: string) => Promise<RecordingExportResult>;
   prepareSyntheticExportResidue?: () => Promise<number>;
   getSyntheticExportResidueCount?: () => Promise<number>;
+  isSyntheticTranscriptionFixtureUnchanged?: (
+    recordingId: string,
+  ) => Promise<boolean>;
   armSyntheticExportCancellation?: () => Promise<boolean>;
 }
 
@@ -227,6 +230,15 @@ export async function getSyntheticExportResidueCount(): Promise<number> {
     throw new Error('Synthetic export residue is unavailable in this build.');
   }
   return getCount();
+}
+
+/// Returns only a byte-equality result for the registered synthetic Simulator fixture.
+export async function isSyntheticTranscriptionFixtureUnchanged(
+  recordingId: string,
+): Promise<boolean> {
+  const check = requireNativeModule().isSyntheticTranscriptionFixtureUnchanged;
+  if (!check) throw new Error('Synthetic fixture check is unavailable.');
+  return check(recordingId);
 }
 
 export async function armSyntheticExportCancellation(): Promise<void> {
