@@ -145,14 +145,19 @@ function toEvidenceBatch(
   resultLimit: number,
 ): EvidenceBatch {
   const candidates = publications.slice(0, resultLimit);
-  const items = candidates
-    .map(normalizePublication)
+  // Track missingness from the provider field; abstract wording may contain the display label.
+  const normalized = candidates.map((publication) => ({
+    item: normalizePublication(publication),
+    hasAbstract: optionalText(publication.abstract) !== null,
+  }));
+  const items = normalized
+    .map(({ item }) => item)
     .filter((item): item is EvidenceItem => item !== undefined);
   const gaps: string[] = [];
   if (items.length < candidates.length) {
     gaps.push('Some Europe PMC results were omitted because their citation metadata was invalid.');
   }
-  if (items.some((item) => item.content.includes('Abstract: unavailable'))) {
+  if (normalized.some(({ item, hasAbstract }) => item !== undefined && !hasAbstract)) {
     gaps.push('An abstract was unavailable for one or more Europe PMC results.');
   }
   return {

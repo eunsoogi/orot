@@ -69,6 +69,42 @@ describe('multi-agent external medical evidence adapter', () => {
     expect(options.revalidateEvidence).toHaveBeenCalledWith([reference], expect.any(AbortSignal));
   });
 
+  it('distinguishes abstract text beginning with unavailable from a missing abstract', async () => {
+    const runWithAbstract = async (abstract: string | null) => {
+      const { provider, generate } = makeProvider(scriptedOutputs());
+      const tool = createEuropePmcEvidenceSearchTool({
+        service: {
+          search: jest.fn(async () => ({
+            status: 'available' as const,
+            publications: [{ ...publication, abstract }],
+          })),
+        },
+        consent: { authorize: jest.fn(async () => 'authorized' as const) },
+      });
+      return { result: await runMultiAgentWorkflow(workflowOptions(provider, tool)), generate };
+    };
+
+    const available = await runWithAbstract(
+      'unavailable measurements were estimated from an external cohort.',
+    );
+    expect(available.result.status).toBe('result');
+    expect(available.generate).toHaveBeenCalledTimes(3);
+    if (available.result.status === 'result') {
+      expect(available.result.coverage[0]?.gaps).not.toContain(
+        'An abstract was unavailable for one or more Europe PMC results.',
+      );
+    }
+
+    const missing = await runWithAbstract(null);
+    expect(missing.result.status).toBe('needs_clarification');
+    expect(missing.generate).toHaveBeenCalledTimes(2);
+    if (missing.result.status === 'needs_clarification') {
+      expect(missing.result.coverage[0]?.gaps).toContain(
+        'An abstract was unavailable for one or more Europe PMC results.',
+      );
+    }
+  });
+
   it('rejects the external network adapter when it is assigned to personal records', async () => {
     const { provider, generate } = makeProvider(scriptedOutputs());
     const search = jest.fn(async () => ({
