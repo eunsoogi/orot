@@ -26,7 +26,23 @@ pnpm format:check
 | GitHub Actions YAML | actionlint 1.7.12; YAML 파싱은 Prettier로 확인합니다. | Prettier 3.9.9 |
 | JSON, XML, plist, Properties | Prettier 파서로 문법을 확인합니다. | Prettier 3.9.9와 XML·Properties 플러그인 |
 
-SwiftFormat, ShellCheck, shfmt, ktlint, actionlint, Temurin JDK는 공식 릴리스 아카이브의 SHA-256을 `scripts/quality/tool-versions.json`에 고정합니다. Java는 17.0.20.1+1입니다. Prettier, ESLint, npm-groovy-lint와 플러그인은 `pnpm-lock.yaml`, RuboCop은 `scripts/quality/Gemfile.lock`으로 고정합니다. clang-format은 Xcode 27.0 도구체인을 확인합니다. 현재 재현 설치 대상은 CI와 같은 macOS ARM64입니다.
+SwiftFormat, ShellCheck, shfmt, ktlint, actionlint, Temurin JDK는 공식 릴리스 아카이브의 SHA-256을 `scripts/quality/tool-versions.json`에 고정합니다. Java는 17.0.20.1+1입니다. Prettier, ESLint, npm-groovy-lint와 플러그인은 `pnpm-lock.yaml`, RuboCop은 `scripts/quality/Gemfile.lock`으로 고정합니다. clang-format은 Xcode 27.0 도구체인을 확인합니다. 품질 도구 설치는 CI의 Linux x64와 macOS ARM64 자산을 지원하며, 각 아카이브는 설치 전에 고정 SHA-256과 버전을 검사합니다.
+
+## 플랫폼별 검사
+
+`quality:inventory`는 모든 유지 관리 파일을 출력하고 각 언어 표면에 `linux` 또는 `macos` 실행 플랫폼을 표시합니다. 현재 Objective-C, C, C++ 표면은 Xcode 27.0의 `clang-format`을 사용하므로 macOS에서 검사합니다. JavaScript, TypeScript, Swift, Shell, Kotlin, Groovy, Ruby, YAML, JSON, XML, Properties 표면은 Linux에서 검사합니다. 새 코드 표면은 정책에 플랫폼을 지정해야 하며, 미지정 표면은 실패합니다.
+
+플랫폼별 도구 준비와 품질 명령은 다음과 같습니다. `all`이 기본값이며 Mac 개발 환경에서 두 플랫폼의 도구와 검사를 모두 확인합니다. Linux 호스트에서는 Apple 도구가 없으므로 전체 검사는 통과하지 않으며, Linux 범위를 명시해서 실행합니다.
+
+```sh
+pnpm quality:setup -- --platform linux
+pnpm lint -- --platform linux
+pnpm format:check -- --platform linux
+
+pnpm quality:setup -- --platform macos
+pnpm lint -- --platform macos
+pnpm format:check -- --platform macos
+```
 
 ## 파일 선택과 제외
 
@@ -36,4 +52,4 @@ SwiftFormat, ShellCheck, shfmt, ktlint, actionlint, Temurin JDK는 공식 릴리
 
 CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물로 분류합니다. 같은 경로 아래의 다른 확장자는 파일 형식에 따라 검사되거나 미지원 파일로 실패합니다.
 
-CI `Quality` 작업은 `pnpm quality:setup`, `pnpm quality:inventory`, `pnpm lint`, `pnpm format:check`를 실행합니다. 기존 타입 검사, 단위 테스트, 릴리즈 규칙, 250줄 검사와 별도 iOS·Detox 필수 작업은 계속 실행됩니다.
+CI의 `Quality Linux` 작업은 lockfile 검증, Linux 도구체인 검증, 고정 의존성·품질 도구 설치, 전체 인벤토리, CI·릴리즈·품질 게이트 테스트, Linux 린트·포맷, 타입 검사와 단위·컴포넌트 테스트를 실행합니다. `Quality macOS` 작업은 Xcode 도구체인을 확인하고 Xcode `clang-format`으로 Apple 코드 표면의 린트와 포맷을 실행합니다. 두 작업은 각각 로그 산출물을 보관합니다. Ubuntu에서 실행되는 필수 `Quality` 집계 작업이 변경 파일의 250줄 정책을 확인하고 두 작업 모두 성공했을 때만 통과합니다. 실패·취소·건너뜀·누락된 분할 작업은 통과하지 않습니다. iOS Simulator Build와 Detox 필수 작업도 계속 실행됩니다.
