@@ -1,5 +1,4 @@
-import type { RecordRepository } from '@orot/storage';
-import type { HealthKitNativeModule } from '../types';
+import type { HealthKitAuthorizationResult } from '../types';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import {
   commonObservationRecordId,
@@ -7,14 +6,18 @@ import {
   toCommonObservationRecord,
 } from './mapper';
 import { preserveIngestedAt } from './syncIdentity';
+import type {
+  CommonObservationRepository,
+  SyncCommonObservationChangesOptions,
+} from './syncOptions';
 import type { CommonObservationFeature } from './types';
 
-const PAGE_SIZE = 200;
+export type {
+  CommonObservationRepository,
+  SyncCommonObservationChangesOptions,
+} from './syncOptions';
 
-export type CommonObservationRepository = Pick<
-  RecordRepository,
-  'getSyncCheckpoint' | 'transaction'
->;
+const PAGE_SIZE = 200;
 
 export type CommonObservationSyncStatus =
   | 'complete'
@@ -32,16 +35,6 @@ export interface CommonObservationSyncResult {
   readonly deleted: number;
   readonly skipped: number;
   readonly cursorAdvanced: boolean;
-}
-
-export interface SyncCommonObservationChangesOptions {
-  readonly feature: CommonObservationFeature;
-  readonly healthKit: Pick<
-    HealthKitNativeModule,
-    'requestReadAuthorization' | 'querySampleChanges'
-  >;
-  readonly repository: CommonObservationRepository;
-  readonly now: () => string;
 }
 
 const pendingSyncs = new WeakMap<
@@ -63,7 +56,17 @@ async function syncCommonObservationChangesExclusive(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
   const { feature, healthKit, repository, now } = options;
-  const authorization = await healthKit.requestReadAuthorization(feature);
+  // A completed outer batch avoids a second prompt; standalone sync keeps its single-feature request.
+  let authorization: HealthKitAuthorizationResult;
+  if (options.authorization) {
+    authorization = options.authorization;
+  } else if ('requestReadAuthorization' in healthKit) {
+    authorization = await healthKit.requestReadAuthorization(feature);
+  } else {
+    throw new Error(
+      'A feature-scoped authorization result is required before sync.',
+    );
+  }
   if (authorization.availability !== 'available') {
     return result(authorization.availability, 0, 0, 0, false);
   }
