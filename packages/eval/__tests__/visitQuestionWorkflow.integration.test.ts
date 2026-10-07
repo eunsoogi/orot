@@ -14,11 +14,15 @@ const {
   FIXTURE_SEED,
   runSyntheticCase,
 } = require('../../../scripts/evaluation/visit-questions/workflow-harness.cjs');
+const {
+  getEvaluationRevisionMetadata,
+  toLangSmithRevisionMetadata,
+} = require('../../../scripts/evaluation/visit-questions/revision.cjs');
 const repoRoot = path.resolve(__dirname, '../../..');
 const evaluationSuite = process.env.OROT_RUN_VISIT_QUESTION_EVAL === '1' ? describe : describe.skip;
 
 /** Uploads only allowlisted outputs previously produced by the local app graph. */
-async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>) {
+async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>, revisions: any) {
   const { createRequire } = require('node:module');
   const runtimeRequire = createRequire(path.join(repoRoot, 'packages/agent-runtime/package.json'));
   const coreRequire = createRequire(runtimeRequire.resolve('@langchain/core'));
@@ -38,6 +42,7 @@ async function uploadSyntheticResults(examples: any[], outputs: Map<string, any>
         providerMode: 'test-adapter',
         fixtureSeed: FIXTURE_SEED,
         tokenUsage: 'unmeasured',
+        ...toLangSmithRevisionMetadata(revisions),
       },
       maxConcurrency: 1,
     },
@@ -56,6 +61,7 @@ evaluationSuite('manual synthetic visit-question graph evaluation', () => {
   it('runs the actual #30 graph and optionally uploads allowlisted results', async () => {
     disableAmbientTracing(process.env);
     const fixture = createSyntheticVisitQuestionFixture(FIXTURE_SEED);
+    const revisions = getEvaluationRevisionMetadata(repoRoot);
     const examples = fixture.cases.map(toLangSmithExample);
     const outputs = new Map<string, any>();
     const report = [];
@@ -92,13 +98,14 @@ evaluationSuite('manual synthetic visit-question graph evaluation', () => {
     }
 
     const uploaded = isLangSmithUploadEnabled(process.env);
-    if (uploaded) await uploadSyntheticResults(examples, outputs);
+    if (uploaded) await uploadSyntheticResults(examples, outputs, revisions);
     process.stdout.write(
       `${JSON.stringify(
         {
           fixtureSeed: FIXTURE_SEED,
           providerMode: 'test-adapter',
           uploadedToLangSmith: uploaded,
+          ...revisions,
           cases: report,
         },
         null,

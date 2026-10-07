@@ -20,6 +20,8 @@ OROT_LANGSMITH_EVAL=1 node scripts/evaluation/visit-questions/run.cjs
 
 점수는 출처 ID와 원본 기록 일치, 예약 날짜, 숫자 근거, 유용한 질문 또는 필요한 확인 요청, clarification 동작, 위험한 약 변경 권고를 다룹니다. 적절한 clarification은 근거가 부족한 fixture에서 유용한 응답으로 평가합니다. 측정 가능한 실행 시간은 `latency_ms`로 기록하고, 토큰 수는 현재 워크플로가 내보내지 않으므로 출력 상태에 미측정 사유를 남깁니다.
 
+각 로컬 보고서와 LangSmith 실험에는 평가 대상 workflow의 저장소 commit·경로·작업 트리 상태와 toolchain의 `pnpm-lock.yaml` SHA-256·Node 버전을 별도 필드로 기록합니다. 따라서 그래프 변경과 의존성 변경을 구분해 결과를 다시 확인할 수 있습니다.
+
 별도의 실제 provider 실행은 이 러너에 포함되지 않습니다. 실제 provider를 통해 얻은 결과가 있을 경우 테스트 어댑터 결과와 분리해 provider 종류와 토큰·지연 측정 가능 여부를 함께 보고해야 합니다.
 
 평가 코드 자체의 오프라인 단위 검사는 다음 명령으로 실행합니다.

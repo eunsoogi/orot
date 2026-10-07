@@ -1,10 +1,18 @@
 import { AppointmentSchema } from '@orot/domain';
 import { describe, expect, it } from '@jest/globals';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { createSyntheticVisitQuestionFixture } from '../src';
 
 const {
   buildSyntheticClarificationResponse,
 } = require('../../../scripts/evaluation/visit-questions/clarification-response.cjs');
+const {
+  getEvaluationRevisionMetadata,
+  toLangSmithRevisionMetadata,
+} = require('../../../scripts/evaluation/visit-questions/revision.cjs');
 
 describe('synthetic visit-question fixtures', () => {
   it('creates repeatable calendar, health, consultation, and reviewed-memory inputs', () => {
@@ -71,5 +79,58 @@ describe('synthetic visit-question fixtures', () => {
       ).toBe(true);
     });
     expect(buildSyntheticClarificationResponse(fixture.cases[0])).toBeNull();
+  });
+
+  it('records the graph target revision separately from the dependency toolchain', () => {
+    const repositoryRoot = path.resolve(__dirname, '../../..');
+    const metadata = getEvaluationRevisionMetadata(repositoryRoot);
+    const expectedRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    }).trim();
+    const expectedWorkingTreeClean =
+      execFileSync('git', ['status', '--porcelain'], {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      }).trim().length === 0;
+    const expectedLockfileHash = createHash('sha256')
+      .update(readFileSync(path.join(repositoryRoot, 'pnpm-lock.yaml')))
+      .digest('hex');
+
+    expect(metadata.evaluationTarget).toMatchObject({
+      name: 'runVisitQuestionWorkflow',
+      sourcePath: 'apps/mobile/src/agent/visitQuestions/workflow.ts',
+      gitRevision: expectedRevision,
+      workingTreeClean: expectedWorkingTreeClean,
+    });
+    expect(metadata.toolchain).toMatchObject({
+      lockfileSha256: expectedLockfileHash,
+      nodeVersion: process.version,
+    });
+  });
+
+  it('allowlists only revision and toolchain metadata for LangSmith', () => {
+    expect(
+      toLangSmithRevisionMetadata({
+        evaluationTarget: {
+          gitRevision: 'a'.repeat(40),
+          sourcePath: 'apps/mobile/src/agent/visitQuestions/workflow.ts',
+          workingTreeClean: false,
+          fixtureContent: 'excluded',
+        },
+        toolchain: {
+          lockfileSha256: 'b'.repeat(64),
+          nodeVersion: process.version,
+          debugPayload: 'excluded',
+        },
+        input: 'excluded',
+      }),
+    ).toEqual({
+      evaluationTargetCommit: 'a'.repeat(40),
+      evaluationTargetPath: 'apps/mobile/src/agent/visitQuestions/workflow.ts',
+      evaluationTargetWorkingTreeClean: false,
+      toolchainLockfileSha256: 'b'.repeat(64),
+      toolchainNodeVersion: process.version,
+    });
   });
 });
