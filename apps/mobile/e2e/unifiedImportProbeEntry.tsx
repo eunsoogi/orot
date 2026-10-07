@@ -2,7 +2,10 @@ import '../src/agent/polyfills';
 import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, Text, View } from 'react-native';
 import { name as appName } from '../app.json';
-import { openLocalStorage } from '../src/storage/secureDatabase';
+import {
+  openLocalAppointmentRepository,
+  openLocalStorage,
+} from '../src/storage/secureDatabase';
 import { healthKit } from '../src/healthkit';
 import { healthKitFeatures } from '../src/healthkit/types';
 import { createUnifiedImportCoordinator } from '../src/healthkit/unifiedImport/coordinator';
@@ -12,6 +15,7 @@ import { summarizeUnifiedImportMeasurements } from './unifiedImportProbeMeasurem
 import { unifiedImportProbeCopy } from './unifiedImportProbeCopy';
 import type { UnifiedImportMeasurement } from '../src/healthkit/unifiedImport/types';
 import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
+import type { CalendarEvent } from '../src/calendar/types';
 
 // Synthetic mode avoids consent prompts; live mode exposes only the HealthKit request for observation.
 
@@ -22,6 +26,20 @@ interface SimulatorFixtureModule {
   removeSyntheticFixture(): Promise<void>;
 }
 
+const syntheticCalendarEvent: CalendarEvent = {
+  calendarEventIdentifier: 'synthetic-calendar-event',
+  effectiveAt: '2035-06-02T00:00:00.000Z',
+  endsAt: '2035-06-02T01:00:00.000Z',
+  calendarEventSnapshot: {
+    title: 'Synthetic appointment candidate',
+    timeZoneIdentifier: 'Asia/Seoul',
+    isAllDay: false,
+    occurrenceDate: null,
+    isDetached: false,
+    recurrenceRules: [],
+  },
+};
+
 const fixtureModule = NativeModules.HealthKitModule as
   SimulatorFixtureModule | undefined;
 
@@ -30,7 +48,19 @@ const syntheticCoordinator = createUnifiedImportCoordinator({
     requestReadAuthorizations: features =>
       healthKit.requestReadAuthorizations(features),
   },
+  eventKit: {
+    async requestEventAccess() {
+      return 'fullAccess';
+    },
+    async listUpcomingEvents() {
+      return { access: 'fullAccess', events: [syntheticCalendarEvent] };
+    },
+  },
   openRepository: openLocalStorage,
+  async confirmCalendarEvent(event) {
+    const repository = await openLocalAppointmentRepository();
+    await repository.confirmCalendarEvent(event);
+  },
   runFeature: createUnifiedFeatureImporter({
     healthKit,
     now: () => new Date().toISOString(),

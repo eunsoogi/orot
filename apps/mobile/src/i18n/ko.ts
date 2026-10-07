@@ -161,6 +161,8 @@ export const ko = {
   'calendar.reviewChange': '변경 내용 확인',
   'calendar.eventMissing':
     '연결한 일정을 찾을 수 없어요. 삭제되었거나 일정 정보가 바뀌었을 수 있어요. 다른 일정을 선택해 확인해 주세요.',
+  'healthkit.unifiedImport.calendarLabel': '다가오는 캘린더 일정',
+  'healthkit.unifiedImport.eventKitCancelled': '캘린더 일정 확인이 취소됐어요.',
   ...commonObservationsKo,
   ...bloodPressureKo,
   'provider.apple.available':

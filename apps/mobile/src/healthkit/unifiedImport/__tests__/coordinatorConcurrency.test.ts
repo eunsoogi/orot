@@ -3,16 +3,24 @@ import { createUnifiedImportCoordinator } from '../coordinator';
 import { availableBatch, createTestServices, deferred } from '../testSupport';
 
 describe('unified import re-entry and cancellation', () => {
-  it('coalesces identical in-flight selections and replays current progress to a re-entered screen', async () => {
+  it('coalesces identical selected-provider runs and replays current progress', async () => {
     const base = createTestServices();
     const authorization = deferred<ReturnType<typeof availableBatch>>();
     const requestReadAuthorizations = jest.fn(() => authorization.promise);
+    const requestEventAccess = jest.fn(
+      base.services.eventKit.requestEventAccess,
+    );
+    const listUpcomingEvents = jest.fn(
+      base.services.eventKit.listUpcomingEvents,
+    );
     const coordinator = createUnifiedImportCoordinator({
       ...base.services,
       healthKit: { requestReadAuthorizations },
+      eventKit: { requestEventAccess, listUpcomingEvents },
     });
     const selection = {
       healthKitFeatures: ['heartRate'] as const,
+      eventKit: true,
     };
     const first = coordinator.start(selection);
     const replayed = jest.fn();
@@ -27,6 +35,8 @@ describe('unified import re-entry and cancellation', () => {
     const result = await first.result;
 
     expect(requestReadAuthorizations).toHaveBeenCalledTimes(1);
+    expect(requestEventAccess).toHaveBeenCalledTimes(1);
+    expect(listUpcomingEvents).toHaveBeenCalledTimes(1);
     expect(replayed).toHaveBeenCalledWith(
       expect.objectContaining({
         features: expect.objectContaining({
@@ -35,6 +45,7 @@ describe('unified import re-entry and cancellation', () => {
       }),
     );
     expect(result.progress.features.heartRate.status).toBe('complete');
+    expect(result.progress.eventKit.status).toBe('complete');
   });
 
   it('serializes different selections to keep HealthKit prompts and cursor writes from racing', async () => {
@@ -80,6 +91,34 @@ describe('unified import re-entry and cancellation', () => {
     expect(base.timeline.indexOf('feature:heartRate')).toBeLessThan(
       base.timeline.indexOf('feature:steps'),
     );
+  });
+
+  it('keeps an EventKit selection distinct from the same HealthKit-only selection', async () => {
+    const base = createTestServices();
+    const authorization = deferred<ReturnType<typeof availableBatch>>();
+    const requestReadAuthorizations = jest.fn(() => authorization.promise);
+    const coordinator = createUnifiedImportCoordinator({
+      ...base.services,
+      healthKit: { requestReadAuthorizations },
+    });
+    const healthKitOnly = coordinator.start({
+      healthKitFeatures: ['heartRate'],
+    });
+    const withEventKit = coordinator.start({
+      healthKitFeatures: ['heartRate'],
+      eventKit: true,
+    });
+
+    expect(withEventKit).not.toBe(healthKitOnly);
+    authorization.resolve(availableBatch(['heartRate']));
+    const [healthKitResult, combinedResult] = await Promise.all([
+      healthKitOnly.result,
+      withEventKit.result,
+    ]);
+
+    expect(requestReadAuthorizations).toHaveBeenCalledTimes(2);
+    expect(healthKitResult.progress.eventKit.status).toBe('notSelected');
+    expect(combinedResult.progress.eventKit.status).toBe('complete');
   });
 
   it('finishes the active feature and marks later features cancelled without starting them', async () => {

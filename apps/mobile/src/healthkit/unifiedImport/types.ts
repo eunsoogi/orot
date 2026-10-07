@@ -4,6 +4,11 @@ import type {
   HealthKitNativeModule,
 } from '../types';
 import type { RecordRepository } from '@orot/storage';
+import type {
+  CalendarAccessState,
+  CalendarEvent,
+  EventKitImportBridge,
+} from '../../calendar/types';
 
 export type UnifiedFeatureStatus =
   | 'notSelected'
@@ -25,8 +30,10 @@ export type UnifiedFeatureStatus =
 export type UnifiedImportStatus =
   | 'queued'
   | 'authorizingHealthKit'
+  | 'authorizingEventKit'
   | 'preparingStorage'
   | 'querying'
+  | 'queryingEventKit'
   | 'cancelling'
   | 'complete'
   | 'empty'
@@ -34,7 +41,8 @@ export type UnifiedImportStatus =
   | 'failed'
   | 'cancelled';
 
-export type UnifiedMeasurementProvider = 'healthKit' | 'localStore';
+export type UnifiedMeasurementProvider =
+  'healthKit' | 'eventKit' | 'localStore';
 export type UnifiedMeasurementPhase =
   'authorization' | 'permissionRequestInvocation' | 'query' | 'persistence';
 
@@ -57,10 +65,31 @@ export interface UnifiedFeatureProgress {
 export interface UnifiedImportProgress {
   readonly phase: UnifiedImportStatus;
   readonly features: Readonly<Record<HealthKitFeature, UnifiedFeatureProgress>>;
+  readonly eventKit: UnifiedEventKitProgress;
+}
+
+export type UnifiedEventKitStatus =
+  | 'notSelected'
+  | 'waitingAuthorization'
+  | 'authorizing'
+  | 'ready'
+  | 'querying'
+  | 'complete'
+  | 'empty'
+  | 'failed'
+  | 'cancelled'
+  | CalendarAccessState;
+
+export interface UnifiedEventKitProgress {
+  readonly status: UnifiedEventKitStatus;
+  readonly access: CalendarAccessState | null;
+  readonly candidates: readonly CalendarEvent[];
+  readonly appointmentConfirmed: boolean;
 }
 
 export interface UnifiedImportSelection {
   readonly healthKitFeatures: readonly HealthKitFeature[];
+  readonly eventKit?: boolean;
 }
 
 export type UnifiedFeatureOutcomeStatus = Exclude<
@@ -82,7 +111,9 @@ export interface UnifiedFeatureInstrumentation {
 /** Injected feature adapter keeps consent ordering testable without HealthKit data. */
 export interface UnifiedImportServices {
   readonly healthKit: Pick<HealthKitNativeModule, 'requestReadAuthorizations'>;
+  readonly eventKit: EventKitImportBridge;
   readonly openRepository: () => Promise<RecordRepository>;
+  readonly confirmCalendarEvent: (event: CalendarEvent) => Promise<void>;
   readonly runFeature: (
     feature: HealthKitFeature,
     authorization: HealthKitAuthorizationResult,
@@ -102,8 +133,10 @@ export interface UnifiedImportResult {
     UnifiedImportStatus,
     | 'queued'
     | 'authorizingHealthKit'
+    | 'authorizingEventKit'
     | 'preparingStorage'
     | 'querying'
+    | 'queryingEventKit'
     | 'cancelling'
   >;
   readonly readAuthorization: 'notObservable';
@@ -115,4 +148,6 @@ export interface UnifiedImportRun {
   readonly result: Promise<UnifiedImportResult>;
   /** Stops before the next feature; an active HealthKit page remains atomic. */
   cancel(): void;
+  /** Persists a returned candidate only after the user explicitly confirms it. */
+  confirmCalendarEvent(event: CalendarEvent): Promise<void>;
 }

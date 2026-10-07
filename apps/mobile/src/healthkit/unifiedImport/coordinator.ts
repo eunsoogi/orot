@@ -16,6 +16,11 @@ import {
 import type { ActiveRun } from './coordinatorProgress';
 import { featureInstrumentation, measure } from './coordinatorMeasurements';
 import {
+  authorizeEventKit,
+  confirmCalendarCandidate,
+  queryEventKit,
+} from './coordinatorEventKit';
+import {
   applyBatchResult,
   authorizationForFeature,
   cancelRemaining,
@@ -25,7 +30,7 @@ import {
   requestCancel,
 } from './coordinatorOutcomes';
 
-/** Queues re-entry and waits for the selected HealthKit request before storage. */
+/** Queues re-entry and completes selected provider consent before any query. */
 export function createUnifiedImportCoordinator(
   services: UnifiedImportServices,
 ) {
@@ -38,7 +43,7 @@ export function createUnifiedImportCoordinator(
     listeners: UnifiedImportListeners = {},
   ): UnifiedImportRun {
     const normalized = normalizeSelection(selection);
-    const key = normalized.healthKitFeatures.join(',');
+    const key = `${normalized.healthKitFeatures.join(',')}|eventKit:${normalized.eventKit}`;
     const existing = inFlight.get(key);
     if (existing) {
       attachListeners(existing, listeners);
@@ -59,7 +64,13 @@ export function createUnifiedImportCoordinator(
         return makeResult(run);
       },
     );
-    const handle = { result, cancel: () => requestCancel(run) };
+    const handle = {
+      result,
+      cancel: () => requestCancel(run),
+      confirmCalendarEvent: (
+        event: Parameters<UnifiedImportRun['confirmCalendarEvent']>[0],
+      ) => confirmCalendarCandidate(run, event, services, now),
+    };
     run.handle = handle;
     inFlight.set(key, run);
     attachListeners(run, listeners);
@@ -105,6 +116,10 @@ export function createUnifiedImportCoordinator(
     }
 
     if (run.cancelled) return cancelUnstarted(run);
+    await authorizeEventKit(run, services, now);
+    if (run.cancelled) return cancelUnstarted(run);
+    await queryEventKit(run, services, now);
+    if (run.cancelled) return cancelUnstarted(run);
 
     const readyFeatures = run.selection.healthKitFeatures.filter(
       feature => run.progress.features[feature].status === 'ready',
@@ -114,7 +129,7 @@ export function createUnifiedImportCoordinator(
     let repository;
     setPhase(run, 'preparingStorage');
     try {
-      // Database initialization may migrate storage, so it follows the selected HealthKit request.
+      // Database initialization may migrate storage, so both selected provider requests finish first.
       repository = await measure(
         run,
         'localStore',

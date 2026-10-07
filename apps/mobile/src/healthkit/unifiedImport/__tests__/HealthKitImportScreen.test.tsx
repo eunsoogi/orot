@@ -46,8 +46,10 @@ const copy: HealthKitImportScreenCopy = {
     [
       'queued',
       'authorizingHealthKit',
+      'authorizingEventKit',
       'preparingStorage',
       'querying',
+      'queryingEventKit',
       'cancelling',
       'complete',
       'empty',
@@ -82,7 +84,7 @@ test('requires a selected type and shows HealthKit results from one action', asy
   expect(screen.getByText('1 imported / 0 deleted')).toBeTruthy();
 });
 
-test('offers HealthKit selections without a Calendar option', async () => {
+test('offers EventKit as an optional provider in the selected import flow', async () => {
   const base = createTestServices();
   const coordinator = createUnifiedImportCoordinator(base.services);
   await render(<HealthKitImportScreen copy={copy} coordinator={coordinator} />);
@@ -90,7 +92,48 @@ test('offers HealthKit selections without a Calendar option', async () => {
   for (const feature of healthKitFeatures) {
     expect(screen.getByTestId(`unified-import-toggle-${feature}`)).toBeTruthy();
   }
-  expect(screen.queryByTestId('unified-import-toggle-calendar')).toBeNull();
+  expect(screen.getByTestId('unified-import-toggle-eventKit')).toBeTruthy();
+});
+
+test('queries selected calendar candidates, then saves only an explicitly confirmed choice', async () => {
+  const base = createTestServices();
+  const onMeasurement = jest.fn();
+  const coordinator = createUnifiedImportCoordinator(base.services);
+  await render(
+    <HealthKitImportScreen
+      copy={copy}
+      coordinator={coordinator}
+      onMeasurement={onMeasurement}
+    />,
+  );
+
+  expect(screen.getByTestId('unified-import-start')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('unified-import-toggle-eventKit'));
+  await fireEvent.press(screen.getByTestId('unified-import-start'));
+  expect(
+    await screen.findByTestId('unified-import-eventkit-candidate-0'),
+  ).toBeTruthy();
+  expect(base.timeline).not.toContain('eventKit.confirm');
+
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-select-0'));
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-confirm'));
+
+  expect(
+    await screen.findByTestId('unified-import-eventkit-confirmed'),
+  ).toBeTruthy();
+  expect(base.timeline).toEqual([
+    'eventKit.authorization',
+    'eventKit.query',
+    'eventKit.confirm',
+  ]);
+  expect(onMeasurement).toHaveBeenCalledWith(
+    expect.objectContaining({
+      provider: 'localStore',
+      phase: 'persistence',
+      transition: 'finished',
+      outcome: 'completed',
+    }),
+  );
 });
 
 test('prevents repeated taps, supports app-level cancellation, and retries with the same selection', async () => {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { healthKitFeatures } from '../types';
 import type { HealthKitFeature } from '../types';
+import { EventKitImportSection } from './EventKitImportSection';
 import { createUnifiedImportCoordinator } from './coordinator';
 import type {
   UnifiedFeatureStatus,
@@ -35,7 +36,7 @@ interface HealthKitImportScreenProps {
   readonly onMeasurement?: (measurement: UnifiedImportMeasurement) => void;
 }
 
-/** Presents selected HealthKit types and keeps per-type outcomes visible during sync. */
+/** Presents selected providers and keeps per-provider outcomes visible during sync. */
 export function HealthKitImportScreen({
   copy,
   coordinator,
@@ -45,6 +46,7 @@ export function HealthKitImportScreen({
   const [selected, setSelected] = useState<ReadonlySet<HealthKitFeature>>(
     new Set(),
   );
+  const [eventKitSelected, setEventKitSelected] = useState(false);
   const [progress, setProgress] = useState<UnifiedImportProgress | null>(null);
   const [run, setRun] = useState<UnifiedImportRun | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -64,6 +66,13 @@ export function HealthKitImportScreen({
       return next;
     });
     setProgress(null);
+    setRun(null);
+  }
+
+  function toggleEventKit() {
+    setEventKitSelected(current => !current);
+    setProgress(null);
+    setRun(null);
   }
 
   function startImport() {
@@ -71,10 +80,16 @@ export function HealthKitImportScreen({
       healthKitFeatures: healthKitFeatures.filter(feature =>
         selected.has(feature),
       ),
+      eventKit: eventKitSelected,
     };
-    if (isRunning || selection.healthKitFeatures.length === 0) {
+    if (
+      isRunning ||
+      (selection.healthKitFeatures.length === 0 && !selection.eventKit)
+    ) {
       return;
     }
+    setProgress(null);
+    setRun(null);
     setIsRunning(true);
     try {
       const active = coordinator.start(selection, {
@@ -88,7 +103,6 @@ export function HealthKitImportScreen({
         if (!mounted.current) return;
         setProgress(result.progress);
         setIsRunning(false);
-        setRun(null);
       });
     } catch {
       setProgress(failedProgress(selection));
@@ -98,9 +112,9 @@ export function HealthKitImportScreen({
   }
 
   const phase = progress?.phase ?? 'queued';
-  const selectedCount = selected.size;
+  const hasSelection = selected.size > 0 || eventKitSelected;
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
         {copy.title}
       </Text>
@@ -137,6 +151,13 @@ export function HealthKitImportScreen({
           </Pressable>
         );
       })}
+      <EventKitImportSection
+        disabled={isRunning}
+        onToggle={toggleEventKit}
+        progress={progress?.eventKit ?? null}
+        run={run}
+        selected={eventKitSelected}
+      />
       <Text>{copy.localOnly}</Text>
       <Text testID="unified-import-read-authorization">
         {copy.readAuthorization}
@@ -144,16 +165,16 @@ export function HealthKitImportScreen({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{
-          disabled: selectedCount === 0 || isRunning,
+          disabled: !hasSelection || isRunning,
         }}
-        disabled={selectedCount === 0 || isRunning}
+        disabled={!hasSelection || isRunning}
         onPress={startImport}
         style={styles.importButton}
         testID="unified-import-start"
       >
         <Text>{copy.importButton}</Text>
       </Pressable>
-      {run ? (
+      {run && isRunning ? (
         <Pressable
           accessibilityRole="button"
           disabled={!isRunning}
@@ -167,7 +188,7 @@ export function HealthKitImportScreen({
       <Text accessibilityLiveRegion="polite" testID="unified-import-status">
         {copy.phaseStatuses[phase]}
       </Text>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -189,6 +210,12 @@ function failedProgress(
   return {
     phase: 'failed',
     features,
+    eventKit: {
+      status: selection.eventKit ? 'failed' : 'notSelected',
+      access: null,
+      candidates: [],
+      appointmentConfirmed: false,
+    },
   };
 }
 

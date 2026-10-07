@@ -33,6 +33,9 @@ describe('selected HealthKit import on iOS Simulator', () => {
     for (const feature of selected) {
       await element(by.id(`unified-import-toggle-${feature}`)).tap();
     }
+    if (mode === 'synthetic') {
+      await element(by.id('unified-import-toggle-eventKit')).tap();
+    }
     await element(by.id('unified-import-start')).tap();
 
     const status = element(by.id('unified-import-status'));
@@ -66,9 +69,17 @@ describe('selected HealthKit import on iOS Simulator', () => {
         element(by.id(`unified-import-feature-status-${feature}`)),
       ).toHaveText(/^(complete|empty)$/u);
     }
+    await expect(
+      element(by.id('unified-import-eventkit-candidate-0')),
+    ).toExist();
+    await element(by.id('unified-import-eventkit-select-0')).tap();
+    await element(by.id('unified-import-eventkit-confirm')).tap();
+    await waitFor(element(by.id('unified-import-eventkit-confirmed')))
+      .toExist()
+      .withTimeout(30000);
     const summary = element(by.id('unified-import-probe-measurements'));
     await expect(summary).toHaveText(
-      /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;localStoreMs=\d+/u,
+      /healthKitAuthorizationCalls=1;healthKitAuthorizationStartOffsetMs=\d+;healthKitRequestInvocationOffsetMs=\d+;healthKitAuthorizationFinishedOffsetMs=\d+;eventKitAuthorizationCalls=1;eventKitAuthorizationStartOffsetMs=\d+;eventKitRequestInvocationOffsetMs=\d+;eventKitAuthorizationFinishedOffsetMs=\d+;eventKitQueryCalls=1;firstEventKitQueryOffsetMs=\d+;healthKitQueryCalls=\d+;firstQueryOffsetMs=\d+;localStoreOperations=\d+;healthKitAuthorizationMs=\d+;eventKitAuthorizationMs=\d+;eventKitQueryMs=\d+;localStoreMs=\d+/u,
     );
   });
 });

@@ -1,4 +1,5 @@
 import type { RecordRepository } from '@orot/storage';
+import type { CalendarEvent } from '../../calendar/types';
 import { healthKitFeatures } from '../types';
 import type { UnifiedImportServices } from './types';
 
@@ -7,6 +8,19 @@ export function createTestServices(
 ) {
   const timeline: string[] = [];
   const repository = {} as RecordRepository;
+  const calendarEvent: CalendarEvent = {
+    calendarEventIdentifier: 'synthetic-calendar-event',
+    effectiveAt: '2035-06-02T00:00:00.000Z',
+    endsAt: '2035-06-02T01:00:00.000Z',
+    calendarEventSnapshot: {
+      title: 'Synthetic appointment candidate',
+      timeZoneIdentifier: 'Asia/Seoul',
+      isAllDay: false,
+      occurrenceDate: null,
+      isDetached: false,
+      recurrenceRules: [],
+    },
+  };
   let clock = 0;
   const services: UnifiedImportServices = {
     healthKit: {
@@ -20,6 +34,19 @@ export function createTestServices(
           unsupportedFeatures: [],
         };
       },
+    },
+    eventKit: {
+      async requestEventAccess() {
+        timeline.push('eventKit.authorization');
+        return 'fullAccess';
+      },
+      async listUpcomingEvents() {
+        timeline.push('eventKit.query');
+        return { access: 'fullAccess', events: [calendarEvent] };
+      },
+    },
+    async confirmCalendarEvent() {
+      timeline.push('eventKit.confirm');
     },
     async openRepository() {
       timeline.push('storage.open');
@@ -41,7 +68,7 @@ export function createTestServices(
     },
     ...overrides,
   };
-  return { services, timeline, repository };
+  return { services, timeline, repository, calendarEvent };
 }
 
 export function availableBatch(

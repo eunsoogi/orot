@@ -3,6 +3,7 @@ import type { HealthKitFeature } from '../types';
 import type {
   UnifiedFeatureProgress,
   UnifiedFeatureStatus,
+  UnifiedEventKitProgress,
   UnifiedImportListeners,
   UnifiedImportMeasurement,
   UnifiedImportProgress,
@@ -25,6 +26,8 @@ export interface ActiveRun {
   progress: UnifiedImportProgress;
   cancelled: boolean;
   finished: boolean;
+  eventConfirmationInProgress: boolean;
+  eventConfirmationComplete: boolean;
   handle: UnifiedImportRun | null;
 }
 
@@ -55,9 +58,17 @@ export function createRun(
     progress: {
       phase: 'queued',
       features,
+      eventKit: {
+        status: selection.eventKit ? 'waitingAuthorization' : 'notSelected',
+        access: null,
+        candidates: [],
+        appointmentConfirmed: false,
+      },
     },
     cancelled: false,
     finished: false,
+    eventConfirmationInProgress: false,
+    eventConfirmationComplete: false,
     handle: null,
   };
 }
@@ -99,6 +110,19 @@ export function setFeature(
       ...run.progress.features,
       [feature]: { ...run.progress.features[feature], ...update },
     },
+  };
+  publish(run);
+}
+
+export function setEventKit(
+  run: ActiveRun,
+  update: Partial<UnifiedEventKitProgress> & {
+    readonly status: UnifiedEventKitProgress['status'];
+  },
+): void {
+  run.progress = {
+    ...run.progress,
+    eventKit: { ...run.progress.eventKit, ...update },
   };
   publish(run);
 }
@@ -155,6 +179,10 @@ function copyProgress(progress: UnifiedImportProgress): UnifiedImportProgress {
   return {
     ...progress,
     features: { ...progress.features },
+    eventKit: {
+      ...progress.eventKit,
+      candidates: [...progress.eventKit.candidates],
+    },
   };
 }
 
