@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
+import BackupStatusRecovery from './src/backup/BackupStatusRecovery';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
@@ -179,6 +180,7 @@ export default function App({
       <Text style={styles.message}>
         {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
       </Text>
+      <BackupStatusRecovery />
       {selectedRecommendationProvider ? (
         <Text testID="selected-recommendation-provider">
           {providerSelectionText.selectedPrefix}{' '}

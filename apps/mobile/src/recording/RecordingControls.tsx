@@ -73,11 +73,12 @@ export default function RecordingControls({
   probeError,
   transcriptService,
 }: RecordingControlsProps) {
+  // A retry is valid only for a permanently protected, backup-eligible file.
   const sourceRetryPending =
     lastRecording !== null &&
     !sourceSaved &&
     lastRecording.fileProtection === 'complete' &&
-    lastRecording.excludedFromBackup;
+    lastRecording.excludedFromBackup === false;
   const canLeave =
     stateReady &&
     (status === 'idle' || status === 'completed') &&

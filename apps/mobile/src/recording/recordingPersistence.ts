@@ -14,7 +14,11 @@ export async function saveRecordingSource(
   loadRepository: RecordingRepositoryLoader = loadLocalRepository,
   now: () => Date = () => new Date(),
 ): Promise<SourceRecord> {
-  if (recording.fileProtection !== 'complete' || recording.excludedFromBackup) {
+  // The native bridge must explicitly confirm backup inclusion before linking a source record.
+  if (
+    recording.fileProtection !== 'complete' ||
+    recording.excludedFromBackup !== false
+  ) {
     const error = new Error(
       'The recording file protection or backup eligibility could not be verified.',
     ) as Error & {

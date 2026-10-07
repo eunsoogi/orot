@@ -15,6 +15,11 @@ jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
 }));
 
+// The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
+jest.mock('../src/backup/backupSupport', () => ({
+  prepareBackupSupport: jest.fn(async () => 'ready'),
+}));
+
 // Detox covers this route with a synthetic HealthKit fixture; no real account is read.
 jest.mock(
   'react-native-safe-area-context',

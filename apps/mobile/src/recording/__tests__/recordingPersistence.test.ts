@@ -63,6 +63,20 @@ test('does not link a recording that remains excluded from device backup', async
   expect(loadRepository).not.toHaveBeenCalled();
 });
 
+test('does not link a recording when native backup eligibility is unknown', async () => {
+  const loadRepository = jest.fn(async () => repository());
+  // The native bridge must explicitly confirm inclusion; a missing value is not proof.
+  const unknownBackupStatus = {
+    ...recording,
+    excludedFromBackup: undefined,
+  } as unknown as CompletedRecording;
+
+  await expect(
+    saveRecordingSource(unknownBackupStatus, loadRepository),
+  ).rejects.toMatchObject({ code: 'RECORDING_FILE_PROTECTION_FAILED' });
+  expect(loadRepository).not.toHaveBeenCalled();
+});
+
 test('allows an exact metadata retry and rejects an identity collision', async () => {
   const existing = {
     id: recording.id,

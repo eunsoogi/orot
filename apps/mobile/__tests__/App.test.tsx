@@ -15,6 +15,11 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   listLocalBloodPressureObservations: jest.fn(),
 }));
 
+// The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
+jest.mock('../src/backup/backupSupport', () => ({
+  prepareBackupSupport: jest.fn(async () => 'ready'),
+}));
+
 // Unit tests omit native window insets; Detox verifies the actual simulator layout.
 jest.mock(
   'react-native-safe-area-context',

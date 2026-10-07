@@ -144,7 +144,9 @@ export default function RecordingScreen({
     try {
       const result = await service.stop();
       setLastRecording(result);
-      if (result.fileProtection === 'complete' && result.excludedFromBackup) {
+      // Keep metadata retries only after both permanent-file checks are verified.
+      const backupEligible = result.excludedFromBackup === false;
+      if (result.fileProtection === 'complete' && backupEligible) {
         setPendingRecordingRetry(service, result);
       } else {
         clearPendingRecordingRetry(service);
