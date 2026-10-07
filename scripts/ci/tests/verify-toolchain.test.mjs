@@ -124,6 +124,28 @@ test('still rejects a missing pinned Simulator runtime on macOS 99.17.42', () =>
   assert.match(result.stderr, /Toolchain mismatch for iOS-Simulator-runtime/);
 });
 
+test('still rejects a missing pinned Simulator device on macOS 99.17.42', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      SIMULATED_MACOS_VERSION: '99.17.42',
+      EXPECTED_XCODE_VERSION: '27.0',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+      EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: runtime27.name,
+      EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime27.identifier,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: currentSimulator.name,
+      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: currentSimulator.deviceTypeIdentifier,
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [] },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Toolchain mismatch for iOS-Simulator-device/);
+});
+
 test('still rejects a mismatched Xcode version on macOS 99.17.42', () => {
   const result = runToolchainCheck(
     {
