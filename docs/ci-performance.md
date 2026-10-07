@@ -457,3 +457,23 @@ Release classified its DerivedData cache as `miss`, with `reason=derived_data_ab
 The full required-workflow interval began with Quality at 08:12:25Z and ended with the required aggregate at 09:23:55Z: **71m30s**. The original nine-case profile interval began with OpenAI Debug at 08:50:09Z and ended with Release Simulator deletion at 09:23:25Z: **33m16s**. Neither interval meets ten minutes. Workflow creation at 07:22:32Z preceded the first required job by 49m53s; creation through aggregate completion took 121m23s. This additional scheduling delay is recorded separately and does not shorten the acceptance interval.
 
 This is one successful hosted run of the implementation, with mixed cache states. It establishes no measured speedup and supplies no qualifying consecutive under-ten-minute pair. Two comparable hosted runs on the same final implementation, including runner/toolchain identity, cache classification, stage and total timing, remain required. Exact-final-head independent strict review and required checks must also be confirmed after any subsequent change. Issue #74 remains open and PR #129 remains Draft; this evidence does not authorize merge.
+
+## 2026-10-07 post-PR #132 main observation
+
+Run [37618963870](https://github.com/eunsoogi/orot/actions/runs/37618963870), attempt 1, was a successful `push` run on main `0cb45603c88ff51dd26d9136daf7606e88df83dd` after PR #132 merged. All eight jobs passed, including Linux quality, the unchanged required `Quality` aggregate, production/OAuth, three Detox profiles, profile-summary validation, and required `Detox iOS E2E`. This observes the new main baseline; it is not a run of PR #129's final implementation or one of its required controlled consecutive samples.
+
+GitHub job/step elapsed times below include step overhead. All timestamps are UTC.
+
+| Profile | Hosted runner | Job | Fingerprint step | CocoaPods installation | Native app build step | E2E step | Diagnostics | Simulator deletion |
+| ------- | ------------- | --: | ---------------: | ---------------------: | --------------------: | -------: | ----------: | -----------------: |
+| Release | 1000072187 | 1746s | 140s | 264s | 721s | 314s | 7s | 10s |
+| OpenAI Debug | 1000072184 | 1621s | 181s | 427s | 567s | 43s | 3s | 7s |
+| Speech Transcription | 1000072186 | 1550s | 68s | 148s | 761s | 183s | 4s | 7s |
+
+All three profiles classified DerivedData as `miss`, `reason=derived_data_absent`, `app_reusable=false`, and performed native app builds. Their Detox framework build steps were skipped; a skipped framework build does not establish a reusable app product. Release and OpenAI verified macOS/Xcode/iOS SDK/runtime 27.0 with iPhone 18 Pro, while Speech verified macOS 26.6.2, Xcode/iOS SDK/runtime 26.2 with iPhone 17 Pro. All verified Node 22.23.2 and pnpm 12.3.4. Profile toolchain differences and absent app products must remain explicit in subsequent comparisons.
+
+Production/OAuth ran on runner 1000072183 and passed in 554s. Its DerivedData was also absent: CocoaPods installation took 74s, native app build 182s, OAuth package verification 110s, and standalone OAuth harness build 98s. Linux Quality ran on runner 1000072185, Ubuntu 24.04.5, Node 22.23.2, pnpm 12.3.4, and Ruby 4.0.7. It passed in 304s, including 181s installing pinned quality tools after a quality-tool cache miss; the log confirms cache storage afterward. The required `Quality` aggregate took 11s, profile-summary validation 5s, and required Detox aggregation 3s.
+
+The profile logs report Release 8/8, OpenAI Debug 1/1, and separate synthetic Speech 1/1; all profile diagnostics and dedicated Simulator deletion steps succeeded. This preserves the observed original nine-case count without treating the additional synthetic Speech case as live Apple Speech evidence.
+
+The full required-workflow interval starts at the earliest required prerequisite, Linux Quality at 12:09:05Z, and ends at the required Detox aggregate at 12:38:28Z: **29m23s (1763s)**. Starting at the later `Quality` aggregate would omit required work. Workflow creation at 12:09:03Z precedes that start by 2s; creation through aggregation is 29m25s. This cache-miss main run exceeds ten minutes and establishes no controlled speedup. PR #129 still needs the new baseline integration when its remote execution slot is assigned, two comparable successful hosted runs below ten minutes on the same implementation, and independent strict review plus required checks on its exact final head. The extra performance goal remains distinct from the previously deferred PR #75 release gate. Issue #74 stays open and PR #129 stays Draft; no merge is authorized by this observation.

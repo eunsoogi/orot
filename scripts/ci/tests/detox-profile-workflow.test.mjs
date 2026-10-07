@@ -103,7 +103,7 @@ test('leaves heavy resource sampling off unless a manual run requests it and cap
   assert.match(runner, /sample_index < resource_sample_limit/);
 });
 
-test('keys pre-Pods app outputs and reuses only a validated exact DerivedData cache', () => {
+test('keys pre-Pods app outputs and caches only the validated runtime app product', () => {
   const fingerprintSource = readFileSync(
     join(repositoryRoot, 'scripts/ci/detox-cache-fingerprint.mjs'),
     'utf8',
@@ -200,15 +200,17 @@ test('keys pre-Pods app outputs and reuses only a validated exact DerivedData ca
   assert.match(buildStep, /app_reusable != 'true'/);
 
   assert.match(profileCache, /uses: actions\/cache@[0-9a-f]{40}/);
-  assert.equal(profileCache.match(/orot-detox-deriveddata-v9-/g)?.length, 2);
+  assert.equal(profileCache.match(/orot-detox-app-product-v10-/g)?.length, 2);
   assert.match(profileCache, /inputs\.profile == 'release'.*inputs\.profile == 'transcription'/s);
   assert.match(
     profileCache,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/\.orot-detox-cache\.json/,
   );
+  // The app cache is consumed as an installed binary; Xcode intermediates and dSYMs are not runtime inputs.
+  const cachedAppPath = profileCache.split('\n').find((line) => line.includes('/Build/Products/'));
   assert.match(
-    profileCache,
-    /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/,
+    cachedAppPath ?? '',
+    /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products\/\$\{\{ inputs\.profile == 'openai-provider' && 'Debug' \|\| 'Release' \}\}-iphonesimulator\/Orot\.app/,
   );
   assert.match(profileCache, /~\/Library\/Detox\/ios\/framework/);
   assert.match(profileCache, /~\/Library\/Detox\/ios\/xcuitest-runner/);

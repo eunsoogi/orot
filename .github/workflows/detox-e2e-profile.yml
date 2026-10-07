@@ -89,7 +89,7 @@ jobs:
         id: detox_cache_fingerprint
         timeout-minutes: 5
         run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
-      - name: Cache Detox profile app product # Include and verify Detox runtime outputs.
+      - name: Cache Detox profile app product # Only the validated app bundle is needed at runtime.
         id: profile_derived_data_cache
         if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' }}
         timeout-minutes: 10
@@ -97,12 +97,12 @@ jobs:
         with:
           path: |
             apps/mobile/ios/build-detox-${{ inputs.profile }}/.orot-detox-cache.json
-            apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products
+            apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products/${{ inputs.profile == 'openai-provider' && 'Debug' || 'Release' }}-iphonesimulator/Orot.app
             ~/Library/Detox/ios/framework
             ~/Library/Detox/ios/xcuitest-runner
-          key: orot-detox-deriveddata-v9-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          key: orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
           restore-keys: |
-            orot-detox-deriveddata-v9-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
+            orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
         timeout-minutes: 5
