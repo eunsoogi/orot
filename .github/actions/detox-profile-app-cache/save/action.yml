@@ -1,0 +1,23 @@
+name: Save validated Detox profile app product
+description: Save a verified app bundle before E2E tests can fail the job.
+inputs:
+  profile:
+    description: The isolated Detox app configuration.
+    required: true
+  key:
+    description: Exact app cache key returned by the restore action.
+    required: true
+runs:
+  using: composite
+  steps:
+    # Persist after manifest validation and before E2E so a test failure keeps the expensive build.
+    - name: Save Detox profile app product
+      if: ${{ inputs.key != '' }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          apps/mobile/ios/build-detox-${{ inputs.profile }}/.orot-detox-cache.json
+          apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products/${{ inputs.profile == 'openai-provider' && 'Debug' || 'Release' }}-iphonesimulator/Orot.app
+          ~/Library/Detox/ios/framework
+          ~/Library/Detox/ios/xcuitest-runner
+        key: ${{ inputs.key }}

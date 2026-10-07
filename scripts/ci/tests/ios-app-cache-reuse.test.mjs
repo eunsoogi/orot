@@ -16,6 +16,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const profileCacheAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
 const mobilePackage = readFileSync(join(repositoryRoot, 'apps/mobile/package.json'), 'utf8');
 
 function workflowStep(source, name) {
@@ -99,17 +103,18 @@ test('keeps cache misses on the existing build path and preserves every Detox or
   const podsIndex = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
   assert.ok(podsIndex >= 0 && fingerprintIndex < cacheIndex && cacheIndex < prepareIndex);
   assert.ok(prepareIndex < podsIndex);
+  assert.ok(cache.includes('uses: ./.github/actions/detox-profile-app-cache/restore'));
   assert.match(
-    cache,
+    profileCacheAction,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/\.orot-detox-cache\.json/,
   );
   assert.match(
-    cache,
+    profileCacheAction,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/,
   );
-  assert.match(cache, /~\/Library\/Detox\/ios\/framework/);
-  assert.match(cache, /~\/Library\/Detox\/ios\/xcuitest-runner/);
-  assert.doesNotMatch(cache, /Build\/Intermediates|Index\.noIndex|Logs/);
+  assert.match(profileCacheAction, /~\/Library\/Detox\/ios\/framework/);
+  assert.match(profileCacheAction, /~\/Library\/Detox\/ios\/xcuitest-runner/);
+  assert.doesNotMatch(profileCacheAction, /Build\/Intermediates|Index\.noIndex|Logs/);
   assert.match(pods, /app_reusable != 'true'/);
   assert.match(build, /app_reusable != 'true'/);
   assert.match(testRun, /run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/);

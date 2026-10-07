@@ -9,6 +9,20 @@ const workflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const restoreAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
+const saveAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/save/action.yml'),
+  'utf8',
+);
+
+function cachePathBlock(action) {
+  const start = action.indexOf('        path: |\n');
+  const end = action.indexOf('\n        key:', start);
+  return start < 0 || end < 0 ? '' : action.slice(start, end);
+}
 
 function step(name) {
   const start = workflow.indexOf(`- name: ${name}`);
@@ -30,8 +44,8 @@ test('validates the profile app cache before optional native dependency preparat
   // The v10 namespace prevents restoring older caches that included all Xcode build products.
   assert.match(step('Cache Detox profile app product'), /orot-detox-app-product-v10-/);
   assert.match(step('Cache Detox profile app product'), /xcodebuild_fingerprint/);
-  assert.match(step('Cache Detox profile app product'), /~\/Library\/Detox\/ios\/framework/);
-  assert.match(step('Cache Detox profile app product'), /~\/Library\/Detox\/ios\/xcuitest-runner/);
+  assert.match(restoreAction, /~\/Library\/Detox\/ios\/framework/);
+  assert.match(restoreAction, /~\/Library\/Detox\/ios\/xcuitest-runner/);
   assert.match(step('Compute stable Detox cache fingerprints'), /timeout-minutes: 5/);
   assert.match(step('Prepare restored Detox DerivedData cache'), /timeout-minutes: 5/);
   assert.match(step('Write Detox DerivedData cache manifest'), /timeout-minutes: 5/);
@@ -52,4 +66,33 @@ test('skips build-only setup on an exact validated cache and keeps tests uncondi
   }
   assert.doesNotMatch(step('Run Detox iOS Simulator tests'), /if:/);
   assert.match(step('Write Detox DerivedData cache manifest'), /app_reusable != 'true'/);
+});
+
+test('saves validated app products before E2E tests can fail the job', () => {
+  const restore = step('Cache Detox profile app product');
+  const manifestIndex = workflow.indexOf('- name: Write Detox DerivedData cache manifest');
+  const saveIndex = workflow.indexOf('- name: Save validated Detox profile app product');
+  const testIndex = workflow.indexOf('- name: Run Detox iOS Simulator tests');
+  const save = step('Save validated Detox profile app product');
+
+  assert.ok(restore.includes('uses: ./.github/actions/detox-profile-app-cache/restore'));
+  assert.match(restoreAction, /uses: actions\/cache\/restore@[0-9a-f]{40}/);
+  assert.ok(
+    restoreAction.includes('value: ${{ steps.profile_app_cache.outputs.cache-hit }}') &&
+      restoreAction.includes('value: ${{ steps.profile_app_cache.outputs.cache-primary-key }}'),
+  );
+  const restoreRef = restoreAction.match(/actions\/cache\/restore@([0-9a-f]{40})/);
+  const saveRef = saveAction.match(/actions\/cache\/save@([0-9a-f]{40})/);
+  assert.ok(restoreRef && saveRef);
+  assert.equal(restoreRef[1], saveRef[1]);
+  assert.ok(manifestIndex < saveIndex && saveIndex < testIndex);
+  assert.ok(save.includes('uses: ./.github/actions/detox-profile-app-cache/save'));
+  assert.match(saveAction, /uses: actions\/cache\/save@[0-9a-f]{40}/);
+  assert.ok(saveAction.includes("if: ${{ inputs.key != '' }}"));
+  const restorePath = cachePathBlock(restoreAction);
+  const savePath = cachePathBlock(saveAction);
+  assert.equal(restorePath, savePath, 'restore and save must use the same cache allowlist');
+  assert.match(save, /cache-hit != 'true'/);
+  assert.match(save, /write_derived_data_cache\.outcome == 'success'/);
+  assert.match(save, /profile_derived_data_cache\.outputs\.cache-primary-key/);
 });

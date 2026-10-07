@@ -1,0 +1,35 @@
+name: Restore Detox profile app product
+description: Restore a validated app bundle and its runtime artifacts for a supported Detox profile.
+inputs:
+  profile:
+    description: The isolated Detox app configuration.
+    required: true
+  key:
+    description: Exact app cache key derived from runner and build inputs.
+    required: true
+  restore_keys:
+    description: Compatible cache prefixes for the profile.
+    required: true
+outputs:
+  cache-hit:
+    description: Whether the exact app cache key matched.
+    value: ${{ steps.profile_app_cache.outputs.cache-hit }}
+  cache-primary-key:
+    description: Exact key used to save a validated app product after a miss.
+    value: ${{ steps.profile_app_cache.outputs.cache-primary-key }}
+runs:
+  using: composite
+  steps:
+    - name: Restore Detox profile app product
+      id: profile_app_cache
+      if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' }}
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        # Keep restore and save paths identical; intermediates and logs are not runtime inputs.
+        path: |
+          apps/mobile/ios/build-detox-${{ inputs.profile }}/.orot-detox-cache.json
+          apps/mobile/ios/build-detox-${{ inputs.profile }}/Build/Products/${{ inputs.profile == 'openai-provider' && 'Debug' || 'Release' }}-iphonesimulator/Orot.app
+          ~/Library/Detox/ios/framework
+          ~/Library/Detox/ios/xcuitest-runner
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore_keys }}

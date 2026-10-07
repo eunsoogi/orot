@@ -9,6 +9,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const profileCacheAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
 const profilesWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
   'utf8',
@@ -199,31 +203,34 @@ test('keys pre-Pods app outputs and caches only the validated runtime app produc
   assert.match(pods, /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/);
   assert.match(buildStep, /app_reusable != 'true'/);
 
-  assert.match(profileCache, /uses: actions\/cache@[0-9a-f]{40}/);
+  assert.ok(profileCache.includes('uses: ./.github/actions/detox-profile-app-cache/restore'));
+  assert.match(profileCacheAction, /uses: actions\/cache\/restore@[0-9a-f]{40}/);
   assert.equal(profileCache.match(/orot-detox-app-product-v10-/g)?.length, 2);
-  assert.match(profileCache, /inputs\.profile == 'release'.*inputs\.profile == 'transcription'/s);
   assert.match(
-    profileCache,
+    profileCacheAction,
+    /inputs\.profile == 'release'.*inputs\.profile == 'transcription'/s,
+  );
+  assert.match(
+    profileCacheAction,
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/\.orot-detox-cache\.json/,
   );
   // The app cache is consumed as an installed binary; Xcode intermediates and dSYMs are not runtime inputs.
-  const cachedAppPath = profileCache.split('\n').find((line) => line.includes('/Build/Products/'));
+  const cachedAppPath = profileCacheAction
+    .split('\n')
+    .find((line) => line.includes('/Build/Products/'));
   assert.match(
     cachedAppPath ?? '',
     /apps\/mobile\/ios\/build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products\/\$\{\{ inputs\.profile == 'openai-provider' && 'Debug' \|\| 'Release' \}\}-iphonesimulator\/Orot\.app/,
   );
-  assert.match(profileCache, /~\/Library\/Detox\/ios\/framework/);
-  assert.match(profileCache, /~\/Library\/Detox\/ios\/xcuitest-runner/);
+  assert.match(profileCacheAction, /~\/Library\/Detox\/ios\/framework/);
+  assert.match(profileCacheAction, /~\/Library\/Detox\/ios\/xcuitest-runner/);
   assert.match(
     profileCache,
-    /native-\$\{\{ steps\.detox_cache_fingerprint\.outputs\.native_dependencies \}\}-build-/,
+    /native-.*steps\.detox_cache_fingerprint\.outputs\.native_dependencies/,
   );
-  assert.match(
-    profileCache,
-    /build-\$\{\{ steps\.detox_cache_fingerprint\.outputs\.build_inputs \}\}/,
-  );
+  assert.match(profileCache, /build-.*steps\.detox_cache_fingerprint\.outputs\.build_inputs/);
   assert.doesNotMatch(
-    profileCache,
+    profileCacheAction,
     /Build\/Intermediates|Logs|CoreSimulator|Keychains|simulator\.udid/,
   );
   assert.match(fingerprintSource, /pnpm-lock\.yaml/);
