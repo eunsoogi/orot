@@ -77,7 +77,7 @@ test('requires a selected type and shows HealthKit results from one action', asy
     'complete',
   );
   expect(
-    screen.getByTestId('unified-import-toggle-heartRate'),
+    screen.getByTestId('unified-import-feature-status-heartRate'),
   ).toHaveTextContent(/complete/);
   expect(screen.getByText('1 imported / 0 deleted')).toBeTruthy();
 });

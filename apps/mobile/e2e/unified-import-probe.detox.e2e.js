@@ -61,9 +61,10 @@ describe('selected HealthKit import on iOS Simulator', () => {
       .toHaveText(/^(complete|empty)$/u)
       .withTimeout(240000);
     for (const feature of syntheticSelection) {
+      // The checkbox is an input; each outcome has its own status node.
       await expect(
-        element(by.id(`unified-import-toggle-${feature}`)),
-      ).toHaveText(/complete|empty/u);
+        element(by.id(`unified-import-feature-status-${feature}`)),
+      ).toHaveText(/^(complete|empty)$/u);
     }
     const summary = element(by.id('unified-import-probe-measurements'));
     await expect(summary).toHaveText(

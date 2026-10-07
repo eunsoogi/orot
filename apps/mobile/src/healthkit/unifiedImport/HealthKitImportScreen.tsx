@@ -120,7 +120,9 @@ export function HealthKitImportScreen({
           >
             <Text>{`${checked ? '☑' : '☐'} ${copy.featureNames[feature]}`}</Text>
             {outcome && outcome.status !== 'notSelected' ? (
-              <Text>{copy.featureStatuses[outcome.status]}</Text>
+              <Text testID={`unified-import-feature-status-${feature}`}>
+                {copy.featureStatuses[outcome.status]}
+              </Text>
             ) : null}
             {outcome &&
             outcome.importedCount !== null &&
