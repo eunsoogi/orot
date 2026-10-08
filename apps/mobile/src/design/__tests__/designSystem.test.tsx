@@ -40,6 +40,8 @@ describe('shared design system', () => {
         [theme.colors.text, theme.colors.accentSubtle],
         [theme.colors.textMuted, theme.colors.accentSubtle],
         [theme.colors.textMuted, theme.colors.surfaceSubtle],
+        // Quiet and icon buttons pair accent text with the subtle surface.
+        [theme.colors.accentText, theme.colors.surfaceSubtle],
         [theme.colors.accent, theme.colors.surface],
         [theme.colors.onAccent, theme.colors.accent],
         [theme.colors.accentText, theme.colors.accentSubtle],
