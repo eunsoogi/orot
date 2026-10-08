@@ -18,14 +18,15 @@ export async function assertAgentMemoryRagProbeSearch(
   database: SqlDatabase,
   sourceId: string,
   shouldBeVisible: boolean,
+  chunkId = AGENT_MEMORY_PROBE_CHUNK_ID,
 ): Promise<void> {
   const chunk: EvidenceChunk = {
-    id: AGENT_MEMORY_PROBE_CHUNK_ID,
+    id: chunkId,
     text: staleWorkflowChunkText,
     metadata: {
       sourceId,
       sourceRecordIds: [sourceId],
-      evidenceId: AGENT_MEMORY_PROBE_CHUNK_ID,
+      evidenceId: chunkId,
       evidenceLocator: { kind: 'structured_record', recordId: sourceId },
       effectiveTime: null,
       recordType: 'symptom_entry',

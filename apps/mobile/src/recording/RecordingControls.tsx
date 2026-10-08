@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Button, Pressable, ScrollView, Text, View } from 'react-native';
 import { t } from '../i18n';
+import { recordingStatusLabel } from './recordingStatusLabel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
+import RecordingLibraryPanel from './RecordingLibraryPanel';
+import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
+import type { RecordingLibraryService } from './recordingLibraryService';
 import type { CompletedRecording, RecordingStatus } from './recordingTypes';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
-import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -32,21 +36,8 @@ interface RecordingControlsProps {
   onSendInterruption: (phase: 'began' | 'ended') => void;
   probeError: string;
   transcriptService?: TranscriptEvidenceService;
-}
-
-function statusLabel(status: RecordingStatus): string {
-  switch (status) {
-    case 'idle':
-      return t('recording.status.idle');
-    case 'recording':
-      return t('recording.status.recording');
-    case 'paused':
-      return t('recording.status.paused');
-    case 'interrupted':
-      return t('recording.status.interrupted');
-    case 'completed':
-      return t('recording.status.completed');
-  }
+  recordingLibraryService?: RecordingLibraryService;
+  onRecordingSourceDeleted?: (sourceId: string) => void;
 }
 
 export default function RecordingControls({
@@ -72,7 +63,13 @@ export default function RecordingControls({
   onSendInterruption,
   probeError,
   transcriptService,
+  recordingLibraryService = defaultRecordingLibraryService,
+  onRecordingSourceDeleted,
 }: RecordingControlsProps) {
+  const [deletingRecording, setDeletingRecording] = useState(false);
+  const controlsBusy = busy || deletingRecording;
+  // The selected saved-recording detail owns the transcript editor and delete action.
+  const showRecordingLibrary = status === 'idle' || status === 'completed';
   const sourceRetryPending =
     lastRecording !== null &&
     !sourceSaved &&
@@ -81,7 +78,7 @@ export default function RecordingControls({
   const canLeave =
     stateReady &&
     (status === 'idle' || status === 'completed') &&
-    !busy &&
+    !controlsBusy &&
     !sourceRetryPending;
   return (
     // The transcript panel follows the recording controls and must remain reachable on shorter screens.
@@ -114,7 +111,7 @@ export default function RecordingControls({
         accessibilityRole="checkbox"
         accessibilityState={{ checked: consentAcknowledged }}
         disabled={
-          busy ||
+          controlsBusy ||
           status === 'recording' ||
           status === 'paused' ||
           status === 'interrupted'
@@ -135,7 +132,7 @@ export default function RecordingControls({
         style={recordingControlStyles.status}
         testID="recording-status"
       >
-        {statusLabel(status)}
+        {recordingStatusLabel(status)}
       </Text>
       <Text style={recordingControlStyles.duration} testID="recording-duration">
         {t('recording.duration', {
@@ -144,7 +141,7 @@ export default function RecordingControls({
       </Text>
       {status === 'idle' || status === 'completed' ? (
         <Button
-          disabled={!consentAcknowledged || busy || sourceRetryPending}
+          disabled={!consentAcknowledged || controlsBusy || sourceRetryPending}
           onPress={onStart}
           testID="recording-start"
           title={t('recording.start')}
@@ -152,7 +149,7 @@ export default function RecordingControls({
       ) : null}
       {status === 'recording' ? (
         <Button
-          disabled={busy}
+          disabled={controlsBusy}
           onPress={onPause}
           testID="recording-pause"
           title={t('recording.pause')}
@@ -160,7 +157,7 @@ export default function RecordingControls({
       ) : null}
       {status === 'paused' || status === 'interrupted' ? (
         <Button
-          disabled={busy}
+          disabled={controlsBusy}
           onPress={onResume}
           testID="recording-resume"
           title={t('recording.resume')}
@@ -170,7 +167,7 @@ export default function RecordingControls({
       status === 'paused' ||
       status === 'interrupted' ? (
         <Button
-          disabled={busy}
+          disabled={controlsBusy}
           onPress={onStop}
           testID="recording-stop"
           title={t('recording.stop')}
@@ -205,13 +202,14 @@ export default function RecordingControls({
           ) : null}
         </View>
       ) : null}
-      {status === 'idle' || status === 'completed' ? (
-        !lastRecording || sourceSaved ? (
-          <TranscriptEvidencePanel
-            recordingSourceId={lastRecording?.id}
-            service={transcriptService}
-          />
-        ) : null
+      {showRecordingLibrary ? (
+        <RecordingLibraryPanel
+          actionsDisabled={busy}
+          onBusyChange={setDeletingRecording}
+          onSourceDeleted={onRecordingSourceDeleted}
+          service={recordingLibraryService}
+          transcriptService={transcriptService}
+        />
       ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={recordingControlStyles.error}>
@@ -220,7 +218,7 @@ export default function RecordingControls({
       ) : null}
       {syntheticProbeAvailable ? (
         <RecordingControlsProbe
-          busy={busy}
+          busy={controlsBusy}
           status={status}
           syntheticProbeReady={syntheticProbeReady}
           onPrepareSyntheticProbe={onPrepareSyntheticProbe}

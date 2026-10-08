@@ -10,6 +10,9 @@ const {
   verifyNativeSpeechProbe,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
+const {
+  runTranscriptDeletionAssertion,
+} = require('./transcription/transcriptDeletionDetoxHelpers');
 
 describe('Apple Korean on-device transcription on iOS Simulator', () => {
   it('records native provider status and exercises synthetic transcript review', async () => {
@@ -205,6 +208,9 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     } catch (failure) {
       nativeProbeFailure ??= failure;
     }
+
+    // The transcript deletion proof relaunches the app, so finish the native report first.
+    assertionFailure ??= await runTranscriptDeletionAssertion();
 
     let cleanupFailure;
     let cleanupEvidence;
