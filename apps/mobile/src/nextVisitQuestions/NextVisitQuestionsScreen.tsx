@@ -24,7 +24,11 @@ export function NextVisitQuestionsScreen<
   const controller = useNextVisitQuestionsController(props);
   const savedQuestions =
     controller.savedOverride ?? props.savedQuestions.questions;
-  const savedCaveats = controller.savedCaveats ?? [];
+  const savedCaveats =
+    controller.savedCaveats ??
+    (props.savedQuestions.status === 'ready'
+      ? props.savedQuestions.caveats
+      : []);
   const savedStatus = controller.savedOverride
     ? 'ready'
     : props.savedQuestions.status;

@@ -85,7 +85,8 @@ export function makeProps(overrides: Partial<Props> = {}): Props {
   const onSaveReviewedQuestions: Props['onSaveReviewedQuestions'] = async (
     _appointment,
     reviewed,
-  ) => ({ questions: reviewed, memoryStatus: 'saved' });
+    caveats,
+  ) => ({ questions: reviewed, caveats, memoryStatus: 'saved' });
 
   return {
     theme,
@@ -96,7 +97,7 @@ export function makeProps(overrides: Partial<Props> = {}): Props {
       displayName: '합성 제공자',
       privacyBoundary: 'on-device',
     },
-    savedQuestions: { status: 'ready', questions: [] },
+    savedQuestions: { status: 'ready', questions: [], caveats: [] },
     onOpenProviderSelection: jest.fn(),
     onRefreshAppointment: jest.fn(),
     onRetrySavedQuestions: jest.fn(),

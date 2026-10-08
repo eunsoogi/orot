@@ -171,14 +171,14 @@ test('does not apply a completed save to a different appointment', async () => {
       props: {
         ...initialProps,
         appointment: { status: 'ready', appointment: nextAppointment },
-        savedQuestions: { status: 'ready', questions: [] },
+        savedQuestions: { status: 'ready', questions: [], caveats: [] },
       },
     });
   });
 
   await act(async () => {
     // Persistence may finish after navigation; its response belongs to the old visit.
-    resolveSave({ questions, memoryStatus: 'saved' });
+    resolveSave({ questions, caveats: [], memoryStatus: 'saved' });
     await pendingSave;
   });
 

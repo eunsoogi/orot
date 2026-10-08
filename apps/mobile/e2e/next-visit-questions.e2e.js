@@ -9,9 +9,8 @@ describe('synthetic next-visit questions screen', () => {
     );
     await expect(element(by.text('합성 진료 예약'))).toBeVisible();
     await element(by.id('next-visit-generate')).tap();
-    await waitFor(element(by.id('next-visit-generation-loading')))
-      .toBeVisible()
-      .withTimeout(10000);
+    await expect(element(by.id('next-visit-generation-loading'))).toBeVisible();
+    await element(by.id('next-visit-probe-complete-generation')).tap();
     await waitFor(element(by.id('next-visit-review-list')))
       .toBeVisible()
       .withTimeout(30000);
@@ -38,8 +37,12 @@ describe('synthetic next-visit questions screen', () => {
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
       .withTimeout(30000);
     await scroll.scrollTo('bottom');
+    await scroll.scroll(240, 'up');
     await expect(element(by.id('next-visit-saved-list'))).toBeVisible();
     await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
+    await expect(
+      element(by.id('next-visit-caveat-conflicting_records')),
+    ).toBeVisible();
 
     await element(by.id('next-visit-saved-edit')).tap();
     await scroll.scrollTo('top');
@@ -53,5 +56,14 @@ describe('synthetic next-visit questions screen', () => {
     await expect(element(by.id('next-visit-saved-list'))).toBeVisible();
     await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
     await expect(element(by.text('저장되지 않은 임시 수정'))).not.toExist();
+
+    await element(by.id('next-visit-probe-reload-screen')).tap();
+    await scroll.scrollTo('bottom');
+    await scroll.scroll(240, 'up');
+    await expect(element(by.id('next-visit-saved-list'))).toBeVisible();
+    await expect(
+      element(by.id('next-visit-caveat-conflicting_records')),
+    ).toBeVisible();
+    await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
   });
 });

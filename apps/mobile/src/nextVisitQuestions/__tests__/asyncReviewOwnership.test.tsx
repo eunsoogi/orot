@@ -90,7 +90,7 @@ test('a late save cannot replace a newer review after returning to the same visi
   await act(async () => result.current.startReview(replacement));
 
   await act(async () => {
-    resolveSave({ questions, memoryStatus: 'saved' });
+    resolveSave({ questions, caveats: [], memoryStatus: 'saved' });
     await pendingSave;
   });
 

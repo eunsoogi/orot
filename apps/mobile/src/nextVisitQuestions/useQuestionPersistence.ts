@@ -79,10 +79,11 @@ export function useQuestionPersistence<
       const result = await onSaveReviewedQuestions(
         appointment.appointment,
         copyQuestions(draftQuestions),
+        [...caveats],
       );
       if (!isCurrentSave()) return;
       setSavedOverride(copyQuestions(result.questions));
-      setSavedCaveats([...caveats]);
+      setSavedCaveats([...result.caveats]);
       setDraftQuestions([]);
       setPhase('saved');
       setSaveMessage(

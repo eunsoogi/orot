@@ -102,11 +102,13 @@ export type ProviderViewState =
       readonly message: string;
     };
 
+/** Ready questions carry their warnings through reload so uncertainty stays visible. */
 export type SavedQuestionsState<TReference extends NextVisitEvidenceReference> =
   | { readonly status: 'loading'; readonly questions: readonly [] }
   | {
       readonly status: 'ready';
       readonly questions: readonly NextVisitQuestion<TReference>[];
+      readonly caveats: readonly EvidenceCaveat[];
     }
   | {
       readonly status: 'error';
@@ -147,6 +149,7 @@ export interface SaveReviewedQuestionsResult<
   TReference extends NextVisitEvidenceReference,
 > {
   readonly questions: readonly NextVisitQuestion<TReference>[];
+  readonly caveats: readonly EvidenceCaveat[];
   readonly memoryStatus: 'saved' | 'retry_required';
 }
 
@@ -165,9 +168,11 @@ export interface NextVisitQuestionsScreenProps<
     selection: ProviderSelection,
     signal: AbortSignal,
   ) => Promise<GenerationOutcome<TReference>>;
+  /** The adapter must retain these warnings beside questions because question records do not store them. */
   readonly onSaveReviewedQuestions: (
     appointment: Appointment,
     questions: readonly NextVisitQuestion<TReference>[],
+    caveats: readonly EvidenceCaveat[],
   ) => Promise<SaveReviewedQuestionsResult<TReference>>;
   readonly onOpenSource?: (reference: TReference) => void;
 }

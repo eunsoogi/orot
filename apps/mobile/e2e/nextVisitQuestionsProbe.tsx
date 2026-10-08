@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Appointment } from '@orot/domain';
 import {
   NextVisitQuestionsScreen,
+  type EvidenceCaveat,
   type NextVisitEvidenceReference,
   type NextVisitQuestion,
   type NextVisitQuestionsScreenProps,
@@ -83,7 +84,12 @@ export function NextVisitQuestionsProbe() {
   const [savedQuestions, setSavedQuestions] = useState<
     readonly NextVisitQuestion[]
   >([]);
+  const [savedCaveats, setSavedCaveats] = useState<readonly EvidenceCaveat[]>(
+    [],
+  );
   const [adapterStatus, setAdapterStatus] = useState('synthetic-ready');
+  const [screenRevision, setScreenRevision] = useState(0);
+  const generationResolver = useRef<(() => void) | null>(null);
 
   const onGenerate: Props['onGenerate'] = async (
     _appointment,
@@ -91,8 +97,22 @@ export function NextVisitQuestionsProbe() {
     signal,
   ) => {
     setAdapterStatus('synthetic-generating');
-    await new Promise(resolve => setTimeout(resolve, 400));
-    if (signal.aborted) return { status: 'cancelled' };
+    // Keep loading observable until Detox explicitly releases this synthetic request.
+    await new Promise<void>(resolve => {
+      const finish = () => {
+        signal.removeEventListener('abort', finish);
+        if (generationResolver.current === finish) {
+          generationResolver.current = null;
+        }
+        resolve();
+      };
+      generationResolver.current = finish;
+      signal.addEventListener('abort', finish, { once: true });
+    });
+    if (signal.aborted) {
+      setAdapterStatus('synthetic-cancelled');
+      return { status: 'cancelled' };
+    }
     setAdapterStatus('synthetic-review');
     return {
       status: 'ready',
@@ -104,10 +124,12 @@ export function NextVisitQuestionsProbe() {
   const onSaveReviewedQuestions: Props['onSaveReviewedQuestions'] = async (
     _appointment,
     reviewed,
+    caveats,
   ) => {
     setSavedQuestions([...reviewed]);
+    setSavedCaveats([...caveats]);
     setAdapterStatus('synthetic-saved-in-memory');
-    return { questions: reviewed, memoryStatus: 'saved' };
+    return { questions: reviewed, caveats, memoryStatus: 'saved' };
   };
 
   return (
@@ -116,7 +138,27 @@ export function NextVisitQuestionsProbe() {
         합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음
       </Text>
       <Text testID="next-visit-probe-adapter-status">{adapterStatus}</Text>
+      {adapterStatus === 'synthetic-generating' ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => generationResolver.current?.()}
+          testID="next-visit-probe-complete-generation"
+        >
+          <Text>합성 질문 생성 완료</Text>
+        </Pressable>
+      ) : null}
+      {savedQuestions.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setScreenRevision(revision => revision + 1)}
+          testID="next-visit-probe-reload-screen"
+        >
+          <Text>합성 저장 목록 다시 불러오기</Text>
+        </Pressable>
+      ) : null}
       <NextVisitQuestionsScreen
+        // Preserve only the synthetic adapter state while rechecking screen rehydration.
+        key={screenRevision}
         appointment={{ status: 'ready', appointment }}
         provider={{
           status: 'available',
@@ -127,7 +169,11 @@ export function NextVisitQuestionsProbe() {
           displayName: '합성 제공자',
           privacyBoundary: 'on-device',
         }}
-        savedQuestions={{ status: 'ready', questions: savedQuestions }}
+        savedQuestions={{
+          status: 'ready',
+          questions: savedQuestions,
+          caveats: savedCaveats,
+        }}
         onOpenProviderSelection={() => setAdapterStatus('synthetic-selection')}
         onRefreshAppointment={() =>
           setAdapterStatus('synthetic-calendar-refresh')

@@ -63,10 +63,13 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
     ReturnType<Props['onSaveReviewedQuestions']>,
     Parameters<Props['onSaveReviewedQuestions']>
   >();
-  onSaveReviewedQuestions.mockImplementation(async (_visit, reviewed) => ({
-    questions: reviewed,
-    memoryStatus: 'saved',
-  }));
+  onSaveReviewedQuestions.mockImplementation(
+    async (_visit, reviewed, caveats) => ({
+      questions: reviewed,
+      caveats,
+      memoryStatus: 'saved',
+    }),
+  );
   const props = makeProps({ onOpenSource, onSaveReviewedQuestions });
   await render(<NextVisitQuestionsScreen {...props} />);
 
@@ -100,10 +103,11 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
   expect(
     await screen.findByText('검토한 질문을 이 예약에 저장했어요.'),
   ).toBeTruthy();
-  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(appointment, [
-    questions[1],
-    { ...questions[0], questionText: '수정한 증상 변화 질문' },
-  ]);
+  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(
+    appointment,
+    [questions[1], { ...questions[0], questionText: '수정한 증상 변화 질문' }],
+    ['conflicting_records'],
+  );
 
   await fireEvent.press(screen.getByTestId('next-visit-saved-edit'));
   await fireEvent.changeText(
@@ -140,4 +144,44 @@ test('preserves edited questions when saving fails', async () => {
   expect(screen.getByTestId('next-visit-question-text-0').props.value).toBe(
     '저장 실패 뒤에도 남아 있는 질문',
   );
+});
+
+test('passes evidence caveats to the save adapter', async () => {
+  const onSaveReviewedQuestions = jest.fn<
+    ReturnType<Props['onSaveReviewedQuestions']>,
+    Parameters<Props['onSaveReviewedQuestions']>
+  >(async (_visit, reviewed, caveats) => ({
+    questions: reviewed,
+    caveats,
+    memoryStatus: 'saved',
+  }));
+  const props = makeProps({ onSaveReviewedQuestions });
+  await render(<NextVisitQuestionsScreen {...props} />);
+
+  await fireEvent.press(screen.getByTestId('next-visit-generate'));
+  await screen.findByTestId('next-visit-review-list');
+  await fireEvent.press(screen.getByTestId('next-visit-review-save'));
+
+  expect(onSaveReviewedQuestions).toHaveBeenCalledWith(appointment, questions, [
+    'conflicting_records',
+  ]);
+});
+
+test('shows caveats when previously saved questions are reloaded', async () => {
+  const props = makeProps({
+    savedQuestions: {
+      status: 'ready',
+      questions,
+      caveats: ['conflicting_records'],
+    },
+  });
+  await render(<NextVisitQuestionsScreen {...props} />);
+
+  const caveat =
+    '기록에 서로 다른 내용이 있어 질문을 저장하기 전에 확인해 주세요.';
+  expect(screen.getByTestId('next-visit-saved-list')).toBeTruthy();
+  expect(screen.getByText(caveat)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('next-visit-saved-edit'));
+  expect(screen.getByTestId('next-visit-review-list')).toBeTruthy();
+  expect(screen.getByText(caveat)).toBeTruthy();
 });
