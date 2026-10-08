@@ -2,7 +2,6 @@ import Foundation
 import React
 
 private enum RecordingDeletionStore {
-    private static let pendingPrefix = ".pending-delete-"
     private static let supportedExtensions = ["m4a", "caf"]
 
     private static var allowSimulatorFixtureProtection: Bool {
@@ -20,7 +19,11 @@ private enum RecordingDeletionStore {
             id: identifier,
             allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
         )
-        let pending = stagedURL(original: original, id: identifier)
+        let pending = try RecordingDeletionPaths.pendingURL(
+            recordingID: identifier,
+            fileExtension: original.pathExtension,
+            allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
+        )
         guard !FileManager.default.fileExists(atPath: pending.path) else {
             throw RecordingFileSecurityError.recordingNotFound
         }
@@ -38,11 +41,13 @@ private enum RecordingDeletionStore {
 
     static func restore(recordingID: String) throws {
         let identifier = try normalizedID(recordingID)
-        let folder = try RecordingFileSecurity.directory(
+        let folder = try RecordingDeletionPaths.directory(
             allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
         )
-        let staged = supportedExtensions.map { folder.appendingPathComponent("\(pendingPrefix)\(identifier).\($0)") }
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        let staged = supportedExtensions.map {
+            folder.appendingPathComponent("\(RecordingDeletionPaths.pendingPrefix)\(identifier).\($0)")
+        }
+        .filter { FileManager.default.fileExists(atPath: $0.path) }
         guard !staged.isEmpty else {
             _ = try RecordingFileSecurity.existingFileURL(
                 id: identifier,
@@ -52,7 +57,11 @@ private enum RecordingDeletionStore {
         }
 
         for pending in staged {
-            let original = folder.appendingPathComponent("\(identifier).\(pending.pathExtension)")
+            let original = try RecordingFileSecurity.fileURL(
+                id: identifier,
+                extension: pending.pathExtension,
+                allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
+            )
             if FileManager.default.fileExists(atPath: original.path) {
                 try FileManager.default.removeItem(at: pending)
                 _ = try RecordingFileSecurity.protect(
@@ -76,12 +85,14 @@ private enum RecordingDeletionStore {
 
     static func commit(recordingID: String) throws {
         let identifier = try normalizedID(recordingID)
-        let folder = try RecordingFileSecurity.directory(
+        let folder = try RecordingDeletionPaths.directory(
             allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
         )
         // A completed or retried deletion may already have removed its staged file.
         for fileExtension in supportedExtensions {
-            let pending = folder.appendingPathComponent("\(pendingPrefix)\(identifier).\(fileExtension)")
+            let pending = folder.appendingPathComponent(
+                "\(RecordingDeletionPaths.pendingPrefix)\(identifier).\(fileExtension)",
+            )
             if FileManager.default.fileExists(atPath: pending.path) {
                 try FileManager.default.removeItem(at: pending)
             }
@@ -90,7 +101,7 @@ private enum RecordingDeletionStore {
 
     static func reconcile(sourceIDs: Set<String>) throws {
         // After a crash, a surviving source row means restore; its absence means finish deletion.
-        let folder = try RecordingFileSecurity.directory(
+        let folder = try RecordingDeletionPaths.directory(
             allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
         )
         let liveIDs = Set(sourceIDs.compactMap { try? normalizedID($0) })
@@ -98,8 +109,8 @@ private enum RecordingDeletionStore {
             at: folder,
             includingPropertiesForKeys: nil,
         )
-        for pending in files where pending.lastPathComponent.hasPrefix(pendingPrefix) {
-            let suffix = String(pending.lastPathComponent.dropFirst(pendingPrefix.count))
+        for pending in files where pending.lastPathComponent.hasPrefix(RecordingDeletionPaths.pendingPrefix) {
+            let suffix = String(pending.lastPathComponent.dropFirst(RecordingDeletionPaths.pendingPrefix.count))
             let parts = suffix.split(separator: ".", omittingEmptySubsequences: false)
             guard parts.count == 2,
                   supportedExtensions.contains(String(parts[1])),
@@ -111,7 +122,11 @@ private enum RecordingDeletionStore {
             } else {
                 // A missing database source means the prior cascade committed before the app stopped.
                 try FileManager.default.removeItem(at: pending)
-                let original = folder.appendingPathComponent("\(identifier).\(parts[1])")
+                let original = try RecordingFileSecurity.fileURL(
+                    id: identifier,
+                    extension: String(parts[1]),
+                    allowUnverifiedProtectionForSimulator: allowSimulatorFixtureProtection,
+                )
                 if FileManager.default.fileExists(atPath: original.path) {
                     try FileManager.default.removeItem(at: original)
                 }
@@ -124,11 +139,6 @@ private enum RecordingDeletionStore {
             throw RecordingFileSecurityError.invalidIdentifier
         }
         return uuid.uuidString.lowercased()
-    }
-
-    private static func stagedURL(original: URL, id: String) -> URL {
-        original.deletingLastPathComponent()
-            .appendingPathComponent("\(pendingPrefix)\(id).\(original.pathExtension)")
     }
 }
 

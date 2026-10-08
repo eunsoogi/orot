@@ -62,6 +62,12 @@ export async function seedTranscriptDeletionEvidence(
     ],
   );
   await assertAgentMemoryRagProbeSearch(database, sourceId, true, chunkId);
+  // Staging must stay backup-eligible without polluting the permanent UUID-only recording scan.
+  await stageRecordingDeletion(sourceId);
+  await reconcileRecordingDeletions([sourceId]);
+  // A second stage proves the recovery path restored the original audio before UI deletion.
+  await stageRecordingDeletion(sourceId);
+  await reconcileRecordingDeletions([sourceId]);
 }
 
 /** Reopens local storage after app relaunch and checks that every dependent record remains deleted. */
