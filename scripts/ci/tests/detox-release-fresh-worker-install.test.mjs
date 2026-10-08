@@ -9,12 +9,15 @@ import test from 'node:test';
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
 
-function loadDetoxConfig(releaseShardingEnabled) {
+function loadDetoxConfig({ freshSimulator = false, releaseSharding = false } = {}) {
+  const previousFreshSimulator = process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR;
   const previousSharding = process.env.OROT_DETOX_RELEASE_SHARDING;
   const configPath = './apps/mobile/.detoxrc.js';
   const resolvedConfigPath = requireFromRepository.resolve(configPath);
   const cachedConfig = requireFromRepository.cache[resolvedConfigPath];
-  if (releaseShardingEnabled) process.env.OROT_DETOX_RELEASE_SHARDING = 'true';
+  if (freshSimulator) process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR = 'true';
+  else delete process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR;
+  if (releaseSharding) process.env.OROT_DETOX_RELEASE_SHARDING = 'true';
   else delete process.env.OROT_DETOX_RELEASE_SHARDING;
   delete requireFromRepository.cache[resolvedConfigPath];
   try {
@@ -22,32 +25,45 @@ function loadDetoxConfig(releaseShardingEnabled) {
   } finally {
     if (cachedConfig) requireFromRepository.cache[resolvedConfigPath] = cachedConfig;
     else delete requireFromRepository.cache[resolvedConfigPath];
+    if (previousFreshSimulator === undefined) delete process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR;
+    else process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR = previousFreshSimulator;
     if (previousSharding === undefined) delete process.env.OROT_DETOX_RELEASE_SHARDING;
     else process.env.OROT_DETOX_RELEASE_SHARDING = previousSharding;
   }
 }
 
-async function runWrapperBeforeAll(wrapperName, releaseShardingEnabled) {
+async function runWrapperBeforeAll(wrapperName, freshSimulator, releaseSharding = false) {
   const beforeAllHooks = [];
   const deviceCalls = [];
   const wrapperPath = join(repositoryRoot, 'apps/mobile/e2e', wrapperName);
   const wrapperSource = readFileSync(wrapperPath, 'utf8');
 
-  // Execute the real wrapper setup with Detox and Jest globals replaced by ordered call recorders.
+  // Execute real phase hooks with Detox and Jest globals replaced by ordered call recorders.
   runInNewContext(wrapperSource, {
     beforeAll: (hook) => beforeAllHooks.push(hook),
+    describe: (_name, callback) => callback(),
     device: {
       clearKeychain: async () => deviceCalls.push('clearKeychain'),
       installApp: async () => deviceCalls.push('installApp'),
+      uninstallApp: async () => deviceCalls.push('uninstallApp'),
     },
     process: {
-      env: { OROT_DETOX_RELEASE_SHARDING: releaseShardingEnabled ? 'true' : 'false' },
+      env: {
+        OROT_DETOX_RELEASE_FRESH_SIMULATOR: freshSimulator ? 'true' : 'false',
+        OROT_DETOX_RELEASE_SHARDING: releaseSharding ? 'true' : 'false',
+        ...(releaseSharding ? { OROT_DETOX_RELEASE_SHARD: wrapperName } : {}),
+      },
     },
-    require: (specifier) => (specifier === './release-e2e-shards.js' ? { [wrapperName]: [] } : {}),
+    // Each wrapper reads the partition map; default mode loads both parts inside ordered phases.
+    require: (specifier) =>
+      specifier === './release-e2e-shards.js'
+        ? { 'release-e2e.test.js': [], 'release-e2e-data.test.js': [] }
+        : {},
   });
 
-  assert.equal(beforeAllHooks.length, 1);
-  await beforeAllHooks[0]();
+  const expectedHookCount = wrapperName === 'release-e2e.test.js' && !releaseSharding ? 2 : 1;
+  assert.equal(beforeAllHooks.length, expectedHookCount);
+  for (const hook of beforeAllHooks) await hook();
   return deviceCalls;
 }
 
@@ -87,14 +103,29 @@ async function runManualAppointmentScenario() {
   return deviceCalls;
 }
 
-test('fresh Release workers install directly while local Detox keeps its reinstall behavior', async () => {
-  // CI sets the shard marker only after preparing new Simulator clones; local Release runs keep Detox reinstall.
-  assert.equal(loadDetoxConfig(false).behavior.init.reinstallApp, true);
-  assert.equal(loadDetoxConfig(true).behavior.init.reinstallApp, false);
+test('the default Release phases reset app state while explicit fresh shards install directly', async () => {
+  assert.equal(loadDetoxConfig().behavior.init.reinstallApp, true);
+  assert.equal(loadDetoxConfig({ freshSimulator: true }).behavior.init.reinstallApp, false);
+  assert.equal(loadDetoxConfig({ releaseSharding: true }).behavior.init.reinstallApp, false);
 
+  assert.deepEqual(await runWrapperBeforeAll('release-e2e.test.js', false), [
+    'clearKeychain',
+    'uninstallApp',
+    'clearKeychain',
+    'installApp',
+  ]);
+  assert.deepEqual(await runWrapperBeforeAll('release-e2e.test.js', true), [
+    'clearKeychain',
+    'installApp',
+    'uninstallApp',
+    'clearKeychain',
+    'installApp',
+  ]);
   for (const wrapperName of ['release-e2e.test.js', 'release-e2e-data.test.js']) {
-    assert.deepEqual(await runWrapperBeforeAll(wrapperName, false), ['clearKeychain']);
-    assert.deepEqual(await runWrapperBeforeAll(wrapperName, true), ['clearKeychain', 'installApp']);
+    assert.deepEqual(await runWrapperBeforeAll(wrapperName, false, true), [
+      'clearKeychain',
+      'installApp',
+    ]);
   }
 });
 

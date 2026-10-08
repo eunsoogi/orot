@@ -46,12 +46,14 @@ function runWithFakeXcrun(directory, script, args, implementation, extraEnv = {}
       XCRUN_CALLS: join(directory, 'xcrun-calls.log'),
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime,
       EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: deviceType,
+      // Release targets one worker by default; only shard fixtures opt into a second assignment.
+      OROT_DETOX_RELEASE_SHARDING: 'false',
       ...extraEnv,
     },
   });
 }
 
-test('captures diagnostics and records every exact Simulator assigned to Release workers', () => {
+test('captures diagnostics for every Simulator assigned to explicitly sharded Release workers', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-worker-diagnostics-'));
   const artifacts = join(directory, 'artifacts');
   const testLog = join(artifacts, 'e2e-test.log');
@@ -83,6 +85,7 @@ test('captures diagnostics and records every exact Simulator assigned to Release
         '  exit 97',
         'fi',
       ].join('\n'),
+      { OROT_DETOX_RELEASE_SHARDING: 'true' },
     );
 
     assert.equal(result.status, 0, result.stderr + result.stdout);
@@ -104,7 +107,7 @@ test('captures diagnostics and records every exact Simulator assigned to Release
   }
 });
 
-test('fails closed on an unclassified new Simulator while retaining only safe cleanup targets', () => {
+test('fails closed on an unclassified Simulator in an explicitly sharded Release run', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-worker-drift-'));
   const artifacts = join(directory, 'artifacts');
   const testLog = join(artifacts, 'e2e-test.log');
@@ -142,6 +145,7 @@ test('fails closed on an unclassified new Simulator while retaining only safe cl
         '  exit 97',
         'fi',
       ].join('\n'),
+      { OROT_DETOX_RELEASE_SHARDING: 'true' },
     );
 
     assert.notEqual(result.status, 0);

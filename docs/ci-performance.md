@@ -860,3 +860,47 @@ Run [37815946148](https://github.com/eunsoogi/orot/actions/runs/37815946148) fai
 The run used Xcode/SDK 27.0, iOS 27.0, and iPhone 18 Pro for Release. Its UI shard passed 5/5; the ordered data shard failed all 8 cases. The first manual-appointments scenario exceeded Jest's 120-second test limit while awaiting its initial `device.launchApp` call, and no successful app-launch event for that worker appears before the timeout. Later cleanup/recovery output reported a missing app container and Simulator launch errors; these later errors do not establish the initial timeout's OS-level cause. The log's `info` level does not identify which low-level command inside the launch call was still pending. Dedicated Simulator deletion and artifact upload succeeded, while profile-summary validation and the required aggregate failed closed.
 
 Detox 20.51.4's `RuntimeDevice.launchApp` awaits `terminateApp()` before calling the Simulator launch driver when `newInstance: true`. The Release data wrapper had just installed the app on a fresh worker before the first scenario. The local follow-up changes only that first launch to `newInstance: false`; the scenario still explicitly terminates and relaunches twice to verify persistence after edits and cancellation. Its focused harness first failed on the old `newInstance: true` call and then passed with the new call order. The harness does not execute Detox or a Simulator; the next exact-head hosted run must establish whether this removes the observed startup failure. The earlier failure during the final relaunch on run 37801397427 remains a distinct unresolved observation. CPU, whole-runner peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 two-Simulator Release run 37828364243
+
+Run [37828364243](https://github.com/eunsoogi/orot/actions/runs/37828364243) failed on PR head `5f242c9446bcdb2b4918d6a931455238232e0e41` against base `cb9e0bed0f487bc8d6d952a57b768125346b1c3f`. Quality Linux started at 18:58:11Z and the required `Detox iOS E2E` aggregate failed at 20:38:54Z: **1h40m43s**. This is a failed run, not a timing sample.
+
+| Job | Runner and interval (UTC) | Result |
+| --- | ------------------------ | ------ |
+| Quality Linux | 1000073459, 18:58:11–19:00:53 | passed in 2m42s |
+| Compute shared Detox cache fingerprints | 1000073460, 18:58:16–18:58:26 | passed in 10s |
+| iOS Simulator Build | 1000073471, 19:14:21–19:20:44 | passed in 6m23s, including production and OAuth checks |
+| OpenAI Debug | 1000073480, 19:23:15–19:40:14 | passed 1/1 in 16m59s |
+| Speech Transcription | 1000073500, 20:12:50–20:30:30 | passed 1/1 synthetic case in 17m40s |
+| Release | 1000073498, 20:02:31–20:38:40 | failed in 36m09s |
+| Quality | 1000073461, 19:00:56–19:01:09 | passed in 13s |
+| Require complete profile summaries | 1000073517, 20:38:43–20:38:47 | failed closed |
+| Detox iOS E2E | 1000073518, 20:38:49–20:38:54 | failed closed |
+
+The Release job was created at 18:58:27Z and did not start until 20:02:31Z (64m04s later); the scheduling cause is unknown. It ran on macOS 27.0, Xcode/SDK 27.0, iOS 27.0, iPhone 18 Pro. Speech used macOS 26.6.2, Xcode/SDK 26.2, iOS 26.2, and iPhone 17 Pro, so its toolchain and runtime are not fully comparable with Release/OpenAI.
+
+Release cache and stage observations: the app DerivedData cache was not reusable (`derived_data_absent`); restoring the profile app product took 1m56s and preparing the restored DerivedData took 2m08s. Detox framework, React Native artifact, CocoaPods, Node, and pnpm caches recorded hits. The Release app rebuilt in 9m04s and its validated app product/manifest save succeeded. The dedicated-Simulator wait step took 3s, worker-Simulator preparation took 3m41s, and the Detox test step took 12m22s. Log collection took 10s, dedicated base/worker deletion 23s, and artifact upload 6s.
+
+Both Release shards started at 20:25:32Z on the prepared base and one cloned data Simulator. The data shard completed only 6/8 cases: the first manual-appointments `device.launchApp({newInstance: false})` issued `simctl launch` at 20:26:30Z and had not returned by Jest's 120-second timeout at 20:28:24Z. Its screenshot showed a black startup spinner. The following issue-40 launch with `newInstance: true` also timed out at 120 seconds; later launch/process activity appeared after the timeout, and Detox reported that it could not connect at 20:32:10Z. The UI shard logged welcome and safe-area failures, then exited 128 without a complete Jest summary. Its incomplete output cannot be treated as a case count. The summary validator and required aggregate rejected the failed/missing Release result.
+
+Dedicated Simulator log collection, deletion, and artifact upload succeeded; artifact `11577960841` contains the test log, Simulator logs, screenshots, and Detox trace. `OROT_DETOX_RESOURCE_SAMPLING` was false, so CPU/RSS/process samples are unavailable. The logs establish app-start and Detox-connection failures across both wrappers, but do not isolate app startup, Simulator scheduling/concurrency, or the Detox connection path as root cause. The `newInstance: false` first-launch change did not resolve the observed startup timeout and this run establishes neither a speedup nor the ten-minute target. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 stale-head diagnostic run 37843075193
+
+Run [37843075193](https://github.com/eunsoogi/orot/actions/runs/37843075193) was a `workflow_dispatch` run on the old PR branch head `5f242c9446bcdb2b4918d6a931455238232e0e41`; it did not execute the current one-Simulator candidate and is not a qualifying PR timing run. Quality Linux started at 20:55:45Z and the required `Detox iOS E2E` aggregate failed at 21:57:13Z: **61m28s**. This is a failed diagnostic run, not a timing sample.
+
+| Job | Runner and interval (UTC) | Result |
+| --- | ------------------------ | ------ |
+| Compute shared Detox cache fingerprints | 1000073529, 20:55:44–20:55:56 | passed in 12s |
+| Quality Linux | 1000073530, 20:55:45–20:58:19 | passed in 2m34s |
+| iOS Simulator Build | 1000073550, 21:26:46–21:36:26 | passed in 9m40s |
+| OpenAI Debug | 1000073545, 21:15:40–21:35:34 | passed 1/1 in 19m54s |
+| Speech Transcription | 1000073551, 21:32:44–21:57:01 | passed 1/1 synthetic case in 24m17s |
+| Release | 1000073546, 21:16:12–21:52:38 | failed in 36m26s |
+| Quality | 1000073532, 20:58:21–20:58:34 | passed in 13s |
+| Require complete profile summaries | 1000073565, 21:57:03–21:57:08 | failed closed |
+| Detox iOS E2E | 1000073566, 21:57:10–21:57:13 | failed closed |
+
+Release ran on macOS 27.0.1 with Xcode/SDK 27.0, iOS 27.0, and iPhone 18 Pro; Node was 22.23.2 and pnpm was 12.3.4. The app-product and Detox CocoaPods cache keys missed. Node/pnpm, lockfile-verification, Detox-framework, and React Native artifact caches hit. The app build took 11m02s, worker-Simulator preparation 3m48s, the Detox test step 10m19s, log collection 7s, dedicated Simulator deletion 10s, and artifact upload 3s.
+
+The UI shard passed 5/5; the data shard passed 6/8. During the first manual-appointments case, Detox issued `simctl launch` for `newInstance: false` at 21:43:15Z; Jest timed out the test at 21:45:14Z without a recorded completion for that launch before the timeout. The following issue-40 launch with `newInstance: true` also reached Jest's 120-second timeout. Later launch activity appears in the log, so this does not establish an OS-level cause. Dedicated Simulator diagnostics, deletion, and artifact upload succeeded; the profile-summary validator and required aggregate rejected the failed Release result. Artifact `11581027788` contains the run evidence. `OROT_DETOX_RESOURCE_SAMPLING` was false, so CPU/RSS/process samples are unavailable. The repeated launch timeout leaves the root cause unresolved and proves neither a speedup nor the ten-minute goal. Issue #74 remains open and PR #129 remains Draft.

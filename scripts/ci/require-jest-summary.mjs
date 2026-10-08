@@ -67,7 +67,7 @@ if (e2eSuites.includes(suiteName)) {
   );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
   const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
-  // Keep the shard wrappers exhaustive and ordered against the explicit Release scenario inventory.
+  // Keep the default wrapper and optional shard partitions exhaustive against the ordered scenario inventory.
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
     './safe-area.test.js',
@@ -87,14 +87,12 @@ if (e2eSuites.includes(suiteName)) {
       'e2e: Release shard manifest does not include the complete ordered test inventory',
     );
   }
-  const expectedReleaseWrappers = Object.keys(releaseE2EShards).map(
-    (wrapper) => `<rootDir>/e2e/${wrapper}`,
-  );
+  const expectedReleaseWrappers = ['<rootDir>/e2e/release-e2e.test.js'];
   if (
     JSON.stringify(releaseConfig.testMatch) !== JSON.stringify(expectedReleaseWrappers) ||
-    releaseConfig.maxWorkers !== expectedReleaseWrappers.length
+    releaseConfig.maxWorkers !== 1
   ) {
-    throw new Error('e2e: Release Jest config must assign one worker to each explicit shard');
+    throw new Error('e2e: Release Jest config must run the ordered inventory on one worker');
   }
   if (
     JSON.stringify(debugConfig.testMatch) !==

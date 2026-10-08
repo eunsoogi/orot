@@ -1,9 +1,6 @@
 const base = require('./jest.config.js');
 const releaseE2EShards = require('./release-e2e-shards.js');
 
-const releaseShardPaths = Object.keys(releaseE2EShards).map(
-  wrapper => `<rootDir>/e2e/${wrapper}`,
-);
 const selectedShard = process.env.OROT_DETOX_RELEASE_SHARD;
 
 if (
@@ -13,17 +10,17 @@ if (
   throw new Error(`Unknown Release Detox shard: ${selectedShard}`);
 }
 
-// Keep each hosted wrapper pinned to its dedicated Simulator; local combined discovery stays unchanged.
+// The default CI wrapper keeps ordered UI and stateful phases on one dedicated Simulator.
 const testMatch = selectedShard
   ? [`<rootDir>/e2e/${selectedShard}`]
-  : releaseShardPaths;
+  : ['<rootDir>/e2e/release-e2e.test.js'];
 
 module.exports = {
   ...base,
   // Stop later suites after failure; storage.test.js also guards later cases during a timed-out reset.
   bail: 1,
-  // The default combined command keeps one worker per wrapper; hosted isolated shards use one process and device.
-  maxWorkers: selectedShard ? 1 : releaseShardPaths.length,
+  // Serial execution preserves the suite order and avoids cloning a second Simulator for the default CI path.
+  maxWorkers: 1,
   testMatch,
   testPathIgnorePatterns: [],
 };

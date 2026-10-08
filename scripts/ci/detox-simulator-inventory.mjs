@@ -121,7 +121,12 @@ export function planDetoxSimulatorTargets({
 function main() {
   const [baselinePath, currentPath, testLogPath, baseUdid, profile, targetsPath] =
     process.argv.slice(2);
-  const profileWorkers = { release: 2, 'openai-provider': 1, transcription: 1 };
+  // The default Release run uses its dedicated base; only explicit sharding assigns a second worker.
+  const profileWorkers = {
+    release: process.env.OROT_DETOX_RELEASE_SHARDING === 'true' ? 2 : 1,
+    'openai-provider': 1,
+    transcription: 1,
+  };
   if (
     !baselinePath ||
     !currentPath ||

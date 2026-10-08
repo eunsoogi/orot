@@ -1,9 +1,13 @@
 /* global beforeAll, device */
 
+const hasFreshReleaseSimulator =
+  process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR === 'true' ||
+  process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
+
 beforeAll(async () => {
   await device.clearKeychain();
-  // Fresh CI clones have no app container, so install directly instead of uninstalling a missing app first.
-  if (process.env.OROT_DETOX_RELEASE_SHARDING === 'true') {
+  // Explicit shard runs start from a fresh device without an installed app.
+  if (hasFreshReleaseSimulator) {
     await device.installApp();
   }
 });

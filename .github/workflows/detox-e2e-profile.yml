@@ -217,16 +217,12 @@ jobs:
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}" artifacts/detox/simulator-baseline.json
 
-      - name: Prepare Release worker Simulators
-        if: ${{ inputs.profile == 'release' }}
-        timeout-minutes: 10
-        run: scripts/ci/run-command.sh detox-release-worker-simulators artifacts/detox/release-worker-simulators.log -- bash scripts/ci/prepare-detox-release-worker-simulators.sh artifacts/detox/release-worker-simulator-prepare.log artifacts/detox/release-worker-simulators.txt
-
       - name: Run Detox iOS Simulator tests
         id: run_detox_tests
         timeout-minutes: 45
         env:
           OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
+          OROT_DETOX_RELEASE_FRESH_SIMULATOR: ${{ inputs.profile == 'release' }}
         run: OROT_DETOX_TEST_LOG_LEVEL="${{ inputs.trace_logging && 'trace' || 'info' }}" scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
 
       - name: Collect simulator logs

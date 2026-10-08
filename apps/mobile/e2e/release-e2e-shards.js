@@ -1,4 +1,4 @@
-// Keep UI probes isolated from ordered data and storage tests with only two active Simulator apps.
+// Explicit shard runs keep UI probes separate from data and storage tests with at most two active Simulator apps.
 module.exports = Object.freeze({
   'release-e2e.test.js': Object.freeze([
     './smoke.test.js',

@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
@@ -14,16 +15,40 @@ const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shard
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 const releaseConfigPath = join(repositoryRoot, 'apps/mobile/e2e/release-e2e.jest.config.js');
 
-test('Release uses two isolated workers and keeps stateful scenarios ordered', () => {
-  // The UI probes stay isolated from the ordered data and storage probes without booting a third app process.
-  assert.deepEqual(releaseJestConfig.testMatch, [
-    '<rootDir>/e2e/release-e2e.test.js',
-    '<rootDir>/e2e/release-e2e-data.test.js',
-  ]);
-  assert.equal(releaseJestConfig.maxWorkers, 2);
+test('Release runs the full ordered inventory in one default worker', () => {
+  assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
+  assert.equal(releaseJestConfig.maxWorkers, 1);
   const assignedSuites = Object.values(releaseShards).flat();
   assert.deepEqual(assignedSuites, releaseSuiteFiles);
   assert.equal(new Set(assignedSuites).size, releaseSuiteFiles.length);
+});
+
+test('the ordered Release wrapper loads every scenario once while explicit shards retain their partition', () => {
+  const wrapper = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/release-e2e.test.js'), 'utf8');
+  const loadSuites = (selectedShard) => {
+    const loaded = [];
+    runInNewContext(wrapper, {
+      beforeAll: () => {},
+      device: {},
+      describe: (_name, callback) => callback(),
+      process: {
+        env: selectedShard ? { OROT_DETOX_RELEASE_SHARD: selectedShard } : {},
+      },
+      require: (path) => {
+        if (path === './release-e2e-shards.js') return releaseShards;
+        if (path === './release-e2e-suite-files.js') return releaseSuiteFiles;
+        loaded.push(path);
+        return {};
+      },
+    });
+    return loaded;
+  };
+
+  assert.deepEqual(loadSuites(), releaseSuiteFiles);
+  assert.deepEqual(
+    loadSuites('release-e2e-data.test.js'),
+    releaseShards['release-e2e-data.test.js'],
+  );
 });
 
 test('Release shard mode selects one wrapper and one Jest worker per explicit Simulator', () => {
