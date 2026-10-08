@@ -6,28 +6,30 @@ const {
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToTranscriptControl,
-  verifyFinalNativeSpeechProbe,
-  verifyNativeSpeechProbe,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
+const {
+  runTranscriptDeletionAssertion,
+} = require('./transcription/transcriptDeletionDetoxHelpers');
+const {
+  switchToTranscriptEvidenceMode,
+} = require('./transcription/transcriptProbeModeDetoxHelpers');
 
 describe('Apple Korean on-device transcription on iOS Simulator', () => {
-  it('records native provider status and exercises synthetic transcript review', async () => {
+  it('records provider status before exercising transcript deletion', async () => {
     // Grant only speech recognition on this dedicated Simulator so the legacy API never pauses for a system alert.
     await device.launchApp({
       newInstance: true,
       permissions: { speech: 'YES' },
     });
-    // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
+    // Speech can keep the Simulator run loop active while the provider reports its terminal result.
     await device.disableSynchronization();
-    const reportElement = element(by.id('transcription-probe-report'));
-    let nativeProbeFailure;
-    try {
-      await verifyNativeSpeechProbe(reportElement);
-    } catch (failure) {
-      // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
-      nativeProbeFailure = failure;
-    }
+    const nativeProbeFailure = await switchToTranscriptEvidenceMode({
+      by,
+      device,
+      element,
+      waitFor,
+    });
 
     let assertionFailure;
     let assertionStage = 'open evidence setup';
@@ -198,18 +200,14 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       );
     }
 
-    try {
-      // The native probe runs asynchronously while the synthetic review flow is exercised.
-      // Keep its terminal verdict inside Jest's test window and leave the cleanup attempt reachable.
-      await verifyFinalNativeSpeechProbe(reportElement, { timeoutMs: 120000 });
-    } catch (failure) {
-      nativeProbeFailure ??= failure;
-    }
+    // Pass the spec's Detox APIs into helpers instead of relying on global bindings.
+    const detoxApi = { by, device, element, waitFor };
+    assertionFailure ??= await runTranscriptDeletionAssertion(detoxApi);
 
     let cleanupFailure;
     let cleanupEvidence;
     try {
-      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent();
+      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent(detoxApi);
     } catch (failure) {
       cleanupFailure = failure;
     }
