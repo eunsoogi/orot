@@ -16,12 +16,20 @@ export function useProviderSelectionLeaveGuard(
     if (navigation.route.name !== 'provider-selection') return;
 
     return navigation.registerLeaveState({
-      readState: () => ({
-        hasUnsavedChanges: stateRef.current.hasPendingSelection,
-        isRecording: false,
-        revision: stateRef.current.revision,
-        inputRevision: stateRef.current.inputRevision,
-      }),
+      readState: () => {
+        const state = stateRef.current;
+        return {
+          hasUnsavedChanges: state.hasPendingSelection,
+          isRecording: false,
+          // The existing unmount cleanup cancels sign-in, so leaving must confirm it.
+          hasOngoingOperation: state.isSigningIn,
+          ongoingOperationKind: state.isSigningIn
+            ? 'account-connection'
+            : undefined,
+          revision: state.revision,
+          inputRevision: state.inputRevision,
+        };
+      },
       confirm: async request => {
         // Selection persistence cannot be canceled; keep its owning route mounted.
         if (stateRef.current.isSavingSelection) {

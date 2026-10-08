@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
+import { navigationText } from '../../../i18n/navigation';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import type { ChatGPTSelectionServices } from '../../../providers/selection/chatGPTServices';
 import type { ProviderSelectionStore } from '../../../providers/selection/types';
@@ -118,6 +119,76 @@ describe('AI feature guarded navigation', () => {
     );
     route.unmount();
   });
+
+  it('confirms before leaving a route that will cancel account sign-in', async () => {
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation(() => undefined);
+    let rejectSignIn: (error?: unknown) => void = () => undefined;
+    const cancelSignIn = jest.fn(() =>
+      rejectSignIn(
+        Object.assign(new Error('Sign-in cancelled'), {
+          code: 'CHATGPT_AUTH_CANCELLED',
+        }),
+      ),
+    );
+    const chatGPTServices = makeChatGPTServices({
+      signIn: jest.fn(
+        () =>
+          new Promise<never>((_resolve, reject) => {
+            rejectSignIn = reject;
+          }),
+      ),
+      cancelSignIn,
+    });
+    const route = await render(
+      <AiFeatureRoute
+        onBack={jest.fn()}
+        serviceDependencies={{
+          selectedAi: {
+            selectionStore: makeSelectionStore(),
+            chatGPTServices,
+          },
+        }}
+      />,
+    );
+
+    await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+    await waitFor(() =>
+      expect(screen.getByTestId('chatgpt-account-action')).toBeTruthy(),
+    );
+    // The route's existing unmount cleanup cancels this pending operation.
+    const signInAction = fireEvent.press(
+      screen.getByTestId('chatgpt-account-action'),
+    );
+    await waitFor(() =>
+      expect(chatGPTServices.signIn).toHaveBeenCalledTimes(1),
+    );
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+    expect(alert.mock.calls[0]?.[0]).toBe(
+      navigationText.leaveAccountConnection.title,
+    );
+    expect(alert.mock.calls[0]?.[1]).toBe(
+      navigationText.leaveAccountConnection.message,
+    );
+
+    await pressAlertButton(alert, 0);
+    await waitFor(() =>
+      expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
+    );
+    expect(cancelSignIn).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
+    await pressAlertButton(alert, 1);
+    await waitFor(() =>
+      expect(screen.queryByTestId('provider-selection-screen')).toBeNull(),
+    );
+    expect(cancelSignIn).toHaveBeenCalledTimes(1);
+    await signInAction;
+    route.unmount();
+  });
 });
 
 /** Runs the real guard's native confirmation callback in a component test. */
@@ -139,12 +210,15 @@ function makeSelectionStore(): ProviderSelectionStore {
   };
 }
 
-function makeChatGPTServices(): ChatGPTSelectionServices {
+function makeChatGPTServices(
+  overrides: Partial<ChatGPTSelectionServices> = {},
+): ChatGPTSelectionServices {
   return {
     listAccounts: jest.fn(async () => []),
     listModels: jest.fn(),
     signIn: jest.fn(),
     signOut: jest.fn(),
     cancelSignIn: jest.fn(),
+    ...overrides,
   };
 }

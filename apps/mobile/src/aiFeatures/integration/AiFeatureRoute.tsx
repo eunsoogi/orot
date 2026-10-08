@@ -17,9 +17,11 @@ export interface AiFeatureRouteProps extends Omit<
 }
 
 const cleanLeaveState: NavigationLeaveStateSource<AiFeatureRouteName> = {
+  // Active feature overlays register their own state; the app-owned root stays clean.
   readState: () => ({
     hasUnsavedChanges: false,
     isRecording: false,
+    hasOngoingOperation: false,
     revision: 0,
     inputRevision: 0,
   }),
