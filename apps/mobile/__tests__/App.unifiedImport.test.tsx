@@ -40,6 +40,11 @@ test('opens the unified provider flow from the production welcome route', async 
   expect(
     await screen.findByTestId('unified-import-eventkit-candidate-0'),
   ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-select-0'));
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-confirm'));
+  expect(
+    await screen.findByTestId('unified-import-eventkit-confirmed'),
+  ).toBeTruthy();
   expect(base.timeline).toEqual(
     expect.arrayContaining([
       'healthKit.authorization:heartRate',
@@ -52,4 +57,17 @@ test('opens the unified provider flow from the production welcome route', async 
 
   await fireEvent.press(screen.getByTestId('healthkit-unified-import-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
+
+  // Reopening through the production route must not resume or duplicate the completed import.
+  const completedTimeline = [...base.timeline];
+  await fireEvent.press(screen.getByTestId('open-unified-health-import'));
+  expect(
+    screen.getByRole('header', { name: 'HealthKit 및 캘린더 가져오기' }),
+  ).toBeTruthy();
+  expect(screen.getByTestId('unified-import-start')).toBeDisabled();
+  expect(
+    screen.queryByTestId('unified-import-eventkit-candidate-0'),
+  ).toBeNull();
+  expect(screen.queryByTestId('unified-import-eventkit-confirmed')).toBeNull();
+  expect(base.timeline).toEqual(completedTimeline);
 });
