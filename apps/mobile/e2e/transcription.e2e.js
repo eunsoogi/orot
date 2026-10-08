@@ -210,12 +210,14 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     }
 
     // The transcript deletion proof relaunches the app, so finish the native report first.
-    assertionFailure ??= await runTranscriptDeletionAssertion();
+    // Pass the spec's Detox APIs into helper modules instead of relying on global bindings.
+    const detoxApi = { by, device, element, waitFor };
+    assertionFailure ??= await runTranscriptDeletionAssertion(detoxApi);
 
     let cleanupFailure;
     let cleanupEvidence;
     try {
-      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent();
+      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent(detoxApi);
     } catch (failure) {
       cleanupFailure = failure;
     }

@@ -1,62 +1,80 @@
-/* global by, device, element, waitFor */
-
 const { expect: jestExpect } = require('@jest/globals');
 
 function textValue(attributes) {
   return attributes.label || attributes.text || '';
 }
 
-async function reveal(target) {
-  await waitFor(target)
+async function reveal(target, { by: detoxBy, waitFor: detoxWaitFor }) {
+  await detoxWaitFor(target)
     .toBeVisible()
-    .whileElement(by.id('recording-controls-scroll'))
+    .whileElement(detoxBy.id('recording-controls-scroll'))
     .scroll(100, 'down', 0.5, 0.35);
 }
 
-/** Drives the real transcript delete control, then checks persisted removal after a fresh app launch. */
-async function runTranscriptDeletionFlow() {
-  const sourceIDElement = element(by.id('transcript-evidence-source-id'));
-  await waitFor(sourceIDElement).toExist().withTimeout(30000);
+/** Drives transcript deletion; the spec supplies its Jest-scoped Detox APIs explicitly. */
+async function runTranscriptDeletionFlow(detoxApi) {
+  const {
+    by: detoxBy,
+    device: detoxDevice,
+    element: detoxElement,
+    waitFor: detoxWaitFor,
+  } = detoxApi;
+  const sourceIDElement = detoxElement(
+    detoxBy.id('transcript-evidence-source-id'),
+  );
+  await detoxWaitFor(sourceIDElement).toExist().withTimeout(30000);
   const sourceID = textValue(await sourceIDElement.getAttributes());
   jestExpect(sourceID).toMatch(/^[0-9a-f-]{36}$/i);
 
-  const seed = element(by.id('transcript-evidence-seed-deletion'));
-  await reveal(seed);
+  const seed = detoxElement(detoxBy.id('transcript-evidence-seed-deletion'));
+  await reveal(seed, detoxApi);
   await seed.tap();
-  await waitFor(element(by.id('transcript-evidence-deletion-seed-status')))
+  await detoxWaitFor(
+    detoxElement(detoxBy.id('transcript-evidence-deletion-seed-status')),
+  )
     .toHaveText('seeded')
     .withTimeout(30000);
 
-  const transcriptDelete = element(by.id('recording-transcript-delete'));
-  await reveal(transcriptDelete);
+  const transcriptDelete = detoxElement(
+    detoxBy.id('recording-transcript-delete'),
+  );
+  await reveal(transcriptDelete, detoxApi);
   await transcriptDelete.tap();
-  const confirmation = element(by.id('recording-delete-confirmation'));
-  await waitFor(confirmation).toBeVisible().withTimeout(10000);
-  await element(by.id('recording-delete-cancel')).tap();
-  await waitFor(confirmation).not.toExist().withTimeout(10000);
-  await waitFor(element(by.id(`recording-library-item-${sourceID}`)))
+  const confirmation = detoxElement(
+    detoxBy.id('recording-delete-confirmation'),
+  );
+  await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
+  await detoxElement(detoxBy.id('recording-delete-cancel')).tap();
+  await detoxWaitFor(confirmation).not.toExist().withTimeout(10000);
+  await detoxWaitFor(
+    detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
+  )
     .toExist()
     .withTimeout(10000);
 
-  await reveal(transcriptDelete);
+  await reveal(transcriptDelete, detoxApi);
   await transcriptDelete.tap();
-  await waitFor(confirmation).toBeVisible().withTimeout(10000);
-  await element(by.id('recording-delete-confirm')).tap();
-  await waitFor(element(by.id(`recording-library-item-${sourceID}`)))
+  await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
+  await detoxElement(detoxBy.id('recording-delete-confirm')).tap();
+  await detoxWaitFor(
+    detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
+  )
     .not.toExist()
     .withTimeout(30000);
-  await waitFor(element(by.id('recording-library-empty')))
+  await detoxWaitFor(detoxElement(detoxBy.id('recording-library-empty')))
     .toBeVisible()
     .withTimeout(30000);
 
-  await device.terminateApp();
-  await device.launchApp({
+  await detoxDevice.terminateApp();
+  await detoxDevice.launchApp({
     newInstance: false,
     launchArgs: { OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID: sourceID },
   });
-  const deletionStatus = element(by.id('transcript-evidence-deletion-status'));
-  await waitFor(deletionStatus).toHaveText('passed').withTimeout(30000);
-  await waitFor(element(by.id('recording-library-empty')))
+  const deletionStatus = detoxElement(
+    detoxBy.id('transcript-evidence-deletion-status'),
+  );
+  await detoxWaitFor(deletionStatus).toHaveText('passed').withTimeout(30000);
+  await detoxWaitFor(detoxElement(detoxBy.id('recording-library-empty')))
     .toBeVisible()
     .withTimeout(30000);
   console.log(
@@ -70,9 +88,9 @@ async function runTranscriptDeletionFlow() {
 }
 
 /** Returns failures so the enclosing Detox test can still attempt fixture cleanup. */
-async function runTranscriptDeletionAssertion() {
+async function runTranscriptDeletionAssertion(detoxApi) {
   try {
-    await runTranscriptDeletionFlow();
+    await runTranscriptDeletionFlow(detoxApi);
     return null;
   } catch (failure) {
     const message =
