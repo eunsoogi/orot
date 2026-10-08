@@ -61,6 +61,7 @@ test('runs the synthetic E2E profile from a focused PR workflow', () => {
   assert.match(workflow, /pull_request:[\s\S]*paths:/);
   assert.match(workflow, /apps\/mobile\/src\/nextVisitQuestions\/\*\*/);
   assert.match(workflow, /apps\/mobile\/e2e\/next-visit-questions\*/);
+  assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbe\.tsx/);
   assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbeEntry\.tsx/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
   assert.match(workflow, /profile: next-visit-questions/);

@@ -7,6 +7,7 @@ on:
       - '.github/workflows/next-visit-questions-e2e.yml'
       - 'apps/mobile/src/nextVisitQuestions/**'
       - 'apps/mobile/e2e/next-visit-questions*'
+      - 'apps/mobile/e2e/nextVisitQuestionsProbe.tsx'
       - 'apps/mobile/e2e/nextVisitQuestionsProbeEntry.tsx'
       - 'apps/mobile/.detoxrc.js'
       - 'apps/mobile/babel.config.js'
