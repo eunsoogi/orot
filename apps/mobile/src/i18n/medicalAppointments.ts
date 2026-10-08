@@ -14,6 +14,30 @@ export const medicalAppointmentsKo = {
     '선택한 온디바이스 모델은 일정 제목과 시간을 기기에서 처리합니다.',
   'medicalAppointments.remoteNotice':
     '원격 제공자를 선택하면 일정 제목과 시간은 별도 동의 후 전송됩니다.',
+  'medicalAppointments.inferenceDisclosure.title':
+    '전송 전에 내용을 확인해 주세요',
+  'medicalAppointments.inferenceDisclosure.service': '서비스',
+  'medicalAppointments.inferenceDisclosure.recipient': '받는 곳',
+  'medicalAppointments.inferenceDisclosure.model': '모델',
+  'medicalAppointments.inferenceDisclosure.privacyBoundary':
+    '이 승인은 아래 요청의 원격 추론만 허용하며 외부 추적 동의와는 별개입니다.',
+  'medicalAppointments.inferenceDisclosure.sentMessages': '전송할 대화',
+  'medicalAppointments.inferenceDisclosure.role.system': '시스템 지침',
+  'medicalAppointments.inferenceDisclosure.role.user': '사용자 내용',
+  'medicalAppointments.inferenceDisclosure.role.assistant': '모델 대화',
+  'medicalAppointments.inferenceDisclosure.role.tool': '도구 결과',
+  'medicalAppointments.inferenceDisclosure.toolCalls': '도구 호출:',
+  'medicalAppointments.inferenceDisclosure.tools': '사용 가능한 도구 정의',
+  'medicalAppointments.inferenceDisclosure.responseFormat': '응답 형식',
+  'medicalAppointments.inferenceDisclosure.settings': '생성 설정',
+  'medicalAppointments.inferenceDisclosure.previewUnavailable':
+    '[이 데이터를 안전하게 미리 볼 수 없습니다]',
+  'medicalAppointments.inferenceDisclosure.attachmentUnavailable':
+    '[{type} 첨부 내용을 이 화면에서 확인할 수 없습니다]',
+  'medicalAppointments.inferenceDisclosure.blockedAttachment':
+    '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
+  'medicalAppointments.inferenceDisclosure.allow': '이 내용 전송 허용',
+  'medicalAppointments.inferenceDisclosure.cancel': '취소',
   'medicalAppointments.actions.loadCalendar': '캘린더 일정 불러오기',
   'medicalAppointments.actions.classify': '선택한 AI로 분류',
   'medicalAppointments.actions.manual': '수동 입력 및 일정 편집',
