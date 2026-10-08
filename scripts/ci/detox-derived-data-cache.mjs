@@ -18,6 +18,7 @@ import {
   computeDetoxCacheFingerprints,
   listChangedDetoxBuildInputs,
 } from './detox-cache-fingerprint.mjs';
+import { prepareDetoxManifestFingerprints } from './detox-cache-manifest-fingerprints.mjs';
 import {
   readCocoapodsInputHashes,
   readExpectedCocoapodsInputHashes,
@@ -40,17 +41,19 @@ function requireGitHubActions() {
   }
 }
 
-function makeManifest(repositoryRoot, profile) {
-  // Hash source inputs before Pods so an exact app hit can skip native dependency installation.
+function makeManifest(repositoryRoot, profile, { reuseSharedFingerprints = false } = {}) {
+  // Capture source inputs before Pods so an exact app hit can skip native dependency installation.
   const capturedInputs = readExpectedCocoapodsInputHashes();
   const baselineInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
   if (!capturedInputs && process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256) {
     baselineInputs.privacyManifest = process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256;
   }
-  const fingerprints = computeDetoxCacheFingerprints(repositoryRoot, {
-    privacyManifestInputHash: baselineInputs.privacyManifest,
-    cocoapodsProjectInputHash: baselineInputs.projectFile,
-  });
+  const fingerprints = reuseSharedFingerprints
+    ? prepareDetoxManifestFingerprints(repositoryRoot, baselineInputs, capturedInputs)
+    : computeDetoxCacheFingerprints(repositoryRoot, {
+        privacyManifestInputHash: baselineInputs.privacyManifest,
+        cocoapodsProjectInputHash: baselineInputs.projectFile,
+      });
   return {
     schemaVersion: 6,
     profile,
@@ -157,7 +160,7 @@ function writeManifest(repositoryRoot, profile) {
 }
 
 function prepareCache(repositoryRoot, profile) {
-  const expected = makeManifest(repositoryRoot, profile);
+  const expected = makeManifest(repositoryRoot, profile, { reuseSharedFingerprints: true });
   validateDetoxInputsBeforeCacheLookup(repositoryRoot, expected);
   const dataRoot = getDerivedDataRoot(repositoryRoot, profile);
   let result;

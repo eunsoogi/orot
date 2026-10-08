@@ -702,3 +702,29 @@ Run [37721540124](https://github.com/eunsoogi/orot/actions/runs/37721540124), at
 All three profiles verified Node 22.23.2 and pnpm 12.3.4. Release and OpenAI Debug also verified Ruby 4.0.7 and CocoaPods 1.17.0. The production app cache was reused and both OAuth checks passed. Each Detox profile recorded cache state and diagnostics, passed its tests, deleted its dedicated Simulator, and uploaded its report/log artifacts. The Release and OpenAI Debug DerivedData caches were absent on this macOS 27.0 key, so both profiles built and saved validated app products; GitHub's cache API now lists those entries for `refs/pull/129/merge`. Speech reused its exact macOS 26.6.2 app product. The build-input fingerprint was `0eed33f80a6cb0604f4f1d9b72a392e82d8a9ab9a5fb4726b694633c706ea8e1`; the native-dependency fingerprint was `21371121647f715eef5a47e6b0fa896760a803df766edf75a0587ce79b135df0`.
 
 Runner assignment for the profile jobs was staggered: OpenAI Debug started 7m38s after Quality Linux and Release started 9m34s after it; Speech Transcription started 17m04s after. This run adds successful exact-head functional and check evidence and populates current macOS 27.0 profile app caches, but the 31m03s interval establishes no speedup. CPU, peak RSS, disk use, and whole-runner child-process counts were not measured. Two consecutive successful comparable under-ten-minute runs and an independent strict review on the eventual exact final head remain outstanding. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-08 exact-cache profile run 37724568242
+
+Run [37724568242](https://github.com/eunsoogi/orot/actions/runs/37724568242), attempt 1, passed all checks on PR head `ea2aa64b27f813bbf20b93f75d000c3db27e80fe` against base `673c13bc61644dab2f59712baa7fb122bec2bdc5`. Quality Linux began at 03:49:51Z and the `Detox iOS E2E` aggregate completed at 04:00:35Z: **10m44s**, 44 seconds over the target. The run does not count as an under-ten-minute pass.
+
+| Job | Recorded interval (UTC) | Duration | Result |
+| --- | ---------------------- | -------: | ------ |
+| Quality Linux | 03:49:51–03:52:07 | 2m16s | passed |
+| Compute shared Detox cache fingerprints | 03:49:51–03:50:02 | 11s | passed |
+| iOS Simulator Build | 03:49:55–03:54:35 | 4m40s | passed; production app cache reused and OAuth checks passed |
+| Quality | 03:52:10–03:52:21 | 11s | passed |
+| Release | 03:50:08–04:00:22 | 10m14s | passed, 13/13 cases |
+| OpenAI Debug | 03:50:11–03:59:42 | 9m31s | passed, 1/1 case |
+| Speech Transcription | 03:50:11–03:58:07 | 7m56s | passed, separate synthetic 1/1 case |
+| Require complete profile summaries | 04:00:24–04:00:28 | 4s | passed |
+| Detox iOS E2E | 04:00:32–04:00:35 | 3s | passed |
+
+The three profile app caches were exact hits with build fingerprint `0eed33f80a6cb0604f4f1d9b72a392e82d8a9ab9a5fb4726b694633c706ea8e1` and native-dependency fingerprint `21371121647f715eef5a47e6b0fa896760a803df766edf75a0587ce79b135df0`. App builds were skipped. All profiles used Node 22.23.2 and pnpm 12.3.4. Release ran on runner `1000073029` with macOS 27.0, Xcode/SDK 27.0, and iPhone 18 Pro; OpenAI Debug used runner `1000073030` with the same toolchain and device. Speech used runner `1000073028` with macOS 26.6.2, Xcode/SDK 26.2, and iPhone 17 Pro.
+
+| Profile | App-cache restore | Archive size | Cache preparation | Detox test time |
+| ------- | ----------------: | -----------: | ----------------: | --------------: |
+| Release | 2m56s | 28,818,744 bytes | 38s | 315.709s, 13/13 |
+| OpenAI Debug | 5m45s | 37,771,165 bytes | 24s | 61.139s, 1/1 |
+| Speech Transcription | 2m41s | 28,351,316 bytes | 30s | 173.892s, synthetic 1/1 |
+
+The app-cache logs show `gtar`/`unzstd` extraction taking about 80s for Release, 84s for OpenAI Debug, and 14s for Speech; these are observations from this attempt, not an isolated benchmark. Each profile completed diagnostics, dedicated Simulator deletion, artifact upload, and summary validation. The fail-closed aggregate passed. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Exact cache hits and green checks do not establish a speedup; this run misses the timing target and provides no qualifying sample. Issue #74 remains open and PR #129 remains Draft.
