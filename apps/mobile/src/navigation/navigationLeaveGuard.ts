@@ -79,7 +79,9 @@ export function createNavigationLeaveGuard<Name extends string>(
       if (
         afterStop.isRecording ||
         afterStop.inputRevision !== current.inputRevision ||
-        afterStop.hasUnsavedChanges !== current.hasUnsavedChanges
+        afterStop.hasUnsavedChanges !== current.hasUnsavedChanges ||
+        afterStop.hasOngoingOperation !== current.hasOngoingOperation ||
+        afterStop.ongoingOperationKind !== current.ongoingOperationKind
       ) {
         return false;
       }
