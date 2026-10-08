@@ -97,7 +97,12 @@ export function makeProps(overrides: Partial<Props> = {}): Props {
       displayName: '합성 제공자',
       privacyBoundary: 'on-device',
     },
-    savedQuestions: { status: 'ready', questions: [], caveats: [] },
+    savedQuestions: {
+      status: 'ready',
+      appointmentId: appointment.id,
+      questions: [],
+      caveats: [],
+    },
     onOpenProviderSelection: jest.fn(),
     onRefreshAppointment: jest.fn(),
     onRetrySavedQuestions: jest.fn(),

@@ -9,6 +9,7 @@ export type {
   NextVisitQuestionsScreenProps,
   NextVisitQuestionsTheme,
   ProviderViewState,
+  SavedQuestionsSnapshot,
   SavedQuestionsState,
   SaveReviewedQuestionsResult,
 } from './types';

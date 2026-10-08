@@ -5,6 +5,7 @@ apps/mobile/ios/build/
 apps/mobile/ios/build-detox-release/
 apps/mobile/ios/build-detox-openai-provider/
 apps/mobile/ios/build-detox-transcription/
+apps/mobile/ios/build-detox-next-visit-questions/
 apps/mobile/ios/build-production/
 apps/mobile/ios/build-issue24/
 apps/mobile/coverage/

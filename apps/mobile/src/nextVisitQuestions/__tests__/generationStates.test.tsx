@@ -171,7 +171,12 @@ test('does not apply a completed save to a different appointment', async () => {
       props: {
         ...initialProps,
         appointment: { status: 'ready', appointment: nextAppointment },
-        savedQuestions: { status: 'ready', questions: [], caveats: [] },
+        savedQuestions: {
+          status: 'ready',
+          appointmentId: nextAppointment.id,
+          questions: [],
+          caveats: [],
+        },
       },
     });
   });

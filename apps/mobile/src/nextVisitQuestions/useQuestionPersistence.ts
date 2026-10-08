@@ -10,6 +10,7 @@ import type {
   NextVisitQuestion,
   NextVisitQuestionsScreenProps,
   QuestionGenerationPhase,
+  SavedQuestionsSnapshot,
 } from './types';
 
 interface QuestionPersistenceInputs<
@@ -26,10 +27,7 @@ interface QuestionPersistenceInputs<
     SetStateAction<readonly NextVisitQuestion<TReference>[]>
   >;
   readonly setSavedOverride: Dispatch<
-    SetStateAction<readonly NextVisitQuestion<TReference>[] | null>
-  >;
-  readonly setSavedCaveats: Dispatch<
-    SetStateAction<readonly EvidenceCaveat[] | null>
+    SetStateAction<SavedQuestionsSnapshot<TReference> | null>
   >;
 }
 
@@ -47,7 +45,6 @@ export function useQuestionPersistence<
     setPhase,
     setDraftQuestions,
     setSavedOverride,
-    setSavedCaveats,
   } = inputs;
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const operationId = useRef(0);
@@ -82,8 +79,11 @@ export function useQuestionPersistence<
         [...caveats],
       );
       if (!isCurrentSave()) return;
-      setSavedOverride(copyQuestions(result.questions));
-      setSavedCaveats([...result.caveats]);
+      setSavedOverride({
+        appointmentId: saveAppointmentKey,
+        questions: copyQuestions(result.questions),
+        caveats: [...result.caveats],
+      });
       setDraftQuestions([]);
       setPhase('saved');
       setSaveMessage(
@@ -105,7 +105,6 @@ export function useQuestionPersistence<
     onSaveReviewedQuestions,
     setDraftQuestions,
     setPhase,
-    setSavedCaveats,
     setSavedOverride,
   ]);
 

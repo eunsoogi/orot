@@ -13,6 +13,7 @@ import type {
   NextVisitEvidenceReference,
   NextVisitQuestion,
   QuestionGenerationPhase,
+  SavedQuestionsSnapshot,
 } from './types';
 export type { QuestionGenerationPhase } from './types';
 
@@ -27,13 +28,8 @@ export function useNextVisitQuestionsController<
   const [draftQuestions, setDraftQuestions] = useState<
     readonly NextVisitQuestion<TReference>[]
   >([]);
-  const [savedOverride, setSavedOverride] = useState<
-    readonly NextVisitQuestion<TReference>[] | null
-  >(null);
-  // Saved-list warnings belong to those questions, so later generation cannot replace them.
-  const [savedCaveats, setSavedCaveats] = useState<
-    readonly EvidenceCaveat[] | null
-  >(null);
+  const [savedOverride, setSavedOverride] =
+    useState<SavedQuestionsSnapshot<TReference> | null>(null);
   const [caveats, setCaveats] = useState<readonly EvidenceCaveat[]>([]);
   const [generationMessage, setGenerationMessage] = useState<string | null>(
     null,
@@ -73,7 +69,6 @@ export function useNextVisitQuestionsController<
     setPhase,
     setDraftQuestions,
     setSavedOverride,
-    setSavedCaveats,
   });
   const previousProviderKey = useRef(providerKey);
 
@@ -81,7 +76,6 @@ export function useNextVisitQuestionsController<
     setPhase('idle');
     setDraftQuestions([]);
     setSavedOverride(null);
-    setSavedCaveats(null);
     setCaveats([]);
     setGenerationMessage(null);
     clearSaveMessage();
@@ -218,7 +212,6 @@ export function useNextVisitQuestionsController<
     phase,
     draftQuestions,
     savedOverride,
-    savedCaveats,
     caveats,
     generationMessage,
     saveMessage,

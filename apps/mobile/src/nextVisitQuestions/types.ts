@@ -102,16 +102,27 @@ export type ProviderViewState =
       readonly message: string;
     };
 
-/** Ready questions carry their warnings through reload so uncertainty stays visible. */
+/** Binds restored questions and their warnings to the visit that owns the review. */
+export interface SavedQuestionsSnapshot<
+  TReference extends NextVisitEvidenceReference,
+> {
+  readonly appointmentId: string;
+  readonly questions: readonly NextVisitQuestion<TReference>[];
+  readonly caveats: readonly EvidenceCaveat[];
+}
+
+/** Ready state separates persisted caveats from a notice about missing restoration data. */
 export type SavedQuestionsState<TReference extends NextVisitEvidenceReference> =
   | { readonly status: 'loading'; readonly questions: readonly [] }
-  | {
+  | ({
       readonly status: 'ready';
-      readonly questions: readonly NextVisitQuestion<TReference>[];
-      readonly caveats: readonly EvidenceCaveat[];
-    }
+      /** Explains missing persisted warnings without presenting them as new visit evidence. */
+      readonly restorationNotice?: string;
+    } & SavedQuestionsSnapshot<TReference>)
   | {
       readonly status: 'error';
+      /** Keeps a failed lookup attached to the visit whose saved list failed. */
+      readonly appointmentId: string;
       readonly questions: readonly [];
       readonly message?: string;
     };

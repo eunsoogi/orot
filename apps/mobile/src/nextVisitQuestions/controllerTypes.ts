@@ -5,6 +5,7 @@ import type {
   NextVisitQuestionUpdate,
   NextVisitQuestionsScreenProps,
   QuestionGenerationPhase,
+  SavedQuestionsSnapshot,
 } from './types';
 
 /** State and actions exposed to the focused next-visit screen. */
@@ -13,8 +14,7 @@ export interface NextVisitQuestionsController<
 > {
   readonly phase: QuestionGenerationPhase;
   readonly draftQuestions: readonly NextVisitQuestion<TReference>[];
-  readonly savedOverride: readonly NextVisitQuestion<TReference>[] | null;
-  readonly savedCaveats: readonly EvidenceCaveat[] | null;
+  readonly savedOverride: SavedQuestionsSnapshot<TReference> | null;
   readonly caveats: readonly EvidenceCaveat[];
   readonly generationMessage: string | null;
   readonly saveMessage: string | null;

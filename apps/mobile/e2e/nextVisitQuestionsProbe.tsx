@@ -171,6 +171,7 @@ export function NextVisitQuestionsProbe() {
         }}
         savedQuestions={{
           status: 'ready',
+          appointmentId: appointment.id,
           questions: savedQuestions,
           caveats: savedCaveats,
         }}

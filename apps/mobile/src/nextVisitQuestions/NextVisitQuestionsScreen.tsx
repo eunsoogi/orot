@@ -7,8 +7,8 @@ import {
   AppointmentSection,
   ProviderSection,
 } from './NextVisitComponents';
-import { QuestionCard } from './QuestionCard';
 import { QuestionReviewSection } from './QuestionReviewSection';
+import { SavedQuestionsSection } from './SavedQuestionsSection';
 import { SourceEvidenceSheet } from './SourceEvidenceSheet';
 import { createNextVisitStyles } from './styles';
 import type {
@@ -22,16 +22,40 @@ export function NextVisitQuestionsScreen<
 >(props: NextVisitQuestionsScreenProps<TReference>) {
   const styles = createNextVisitStyles(props.theme);
   const controller = useNextVisitQuestionsController(props);
-  const savedQuestions =
-    controller.savedOverride ?? props.savedQuestions.questions;
-  const savedCaveats =
-    controller.savedCaveats ??
-    (props.savedQuestions.status === 'ready'
-      ? props.savedQuestions.caveats
-      : []);
-  const savedStatus = controller.savedOverride
-    ? 'ready'
-    : props.savedQuestions.status;
+  const currentAppointmentId =
+    props.appointment.status === 'ready'
+      ? props.appointment.appointment.id
+      : null;
+  // Saved questions, warnings, and load errors belong to one visit; ignore old
+  // state while the next visit's list loads.
+  const savedSnapshot =
+    controller.savedOverride?.appointmentId === currentAppointmentId
+      ? controller.savedOverride
+      : props.savedQuestions.status === 'ready' &&
+          props.savedQuestions.appointmentId === currentAppointmentId
+        ? props.savedQuestions
+        : null;
+  const savedError =
+    props.savedQuestions.status === 'error' &&
+    props.savedQuestions.appointmentId === currentAppointmentId
+      ? props.savedQuestions
+      : null;
+  const savedQuestions = savedSnapshot?.questions ?? [];
+  const savedCaveats = savedSnapshot?.caveats ?? [];
+  const savedStatus =
+    currentAppointmentId === null
+      ? 'hidden'
+      : savedSnapshot
+        ? 'ready'
+        : savedError
+          ? 'error'
+          : 'loading';
+  const savedRestorationNotice =
+    savedStatus === 'ready' &&
+    props.savedQuestions.status === 'ready' &&
+    props.savedQuestions.appointmentId === currentAppointmentId
+      ? props.savedQuestions.restorationNotice
+      : undefined;
   const canGenerate =
     props.appointment.status === 'ready' &&
     props.provider.status === 'available';
@@ -161,69 +185,18 @@ export function NextVisitQuestionsScreen<
           />
         ) : null}
 
-        {savedStatus === 'loading' ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={styles.muted}
-            testID="next-visit-saved-loading"
-          >
-            {copy.saved.loading}
-          </Text>
-        ) : savedStatus === 'error' ? (
-          <View style={styles.section}>
-            <Text
-              accessibilityRole="alert"
-              style={styles.error}
-              testID="next-visit-saved-error"
-            >
-              {props.savedQuestions.status === 'error'
-                ? (props.savedQuestions.message ?? copy.saved.error)
-                : copy.saved.error}
-            </Text>
-            <ActionButton
-              label={copy.saved.retry}
-              onPress={props.onRetrySavedQuestions}
-              theme={props.theme}
-              variant="secondary"
-              testID="next-visit-saved-retry"
-            />
-          </View>
-        ) : savedQuestions.length > 0 && !isReviewing ? (
-          <View style={styles.section} testID="next-visit-saved-list">
-            <Text accessibilityRole="header" style={styles.sectionHeading}>
-              {copy.saved.heading}
-            </Text>
-            <EvidenceCaveats caveats={savedCaveats} theme={props.theme} />
-            {savedQuestions.map((question, index) => (
-              <QuestionCard
-                count={savedQuestions.length}
-                editable={false}
-                index={index}
-                key={`saved-${index}`}
-                onMove={() => undefined}
-                onOpenSource={openSource}
-                onRemove={() => undefined}
-                onUpdate={() => undefined}
-                question={question}
-                theme={props.theme}
-                disabled={false}
-              />
-            ))}
-            <ActionButton
-              label={copy.saved.edit}
-              onPress={() =>
-                controller.startReview(savedQuestions, savedCaveats)
-              }
-              theme={props.theme}
-              variant="secondary"
-              testID="next-visit-saved-edit"
-            />
-          </View>
-        ) : savedStatus === 'ready' && !isReviewing ? (
-          <Text style={styles.muted} testID="next-visit-saved-empty">
-            {copy.saved.empty}
-          </Text>
-        ) : null}
+        <SavedQuestionsSection
+          caveats={savedCaveats}
+          errorMessage={savedError?.message}
+          isReviewing={isReviewing}
+          onEdit={() => controller.startReview(savedQuestions, savedCaveats)}
+          onOpenSource={openSource}
+          onRetry={props.onRetrySavedQuestions}
+          questions={savedQuestions}
+          restorationNotice={savedRestorationNotice}
+          status={savedStatus}
+          theme={props.theme}
+        />
       </ScrollView>
       <SourceEvidenceSheet
         onClose={controller.closeSource}
