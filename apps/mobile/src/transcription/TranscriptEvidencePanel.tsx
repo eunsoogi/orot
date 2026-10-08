@@ -13,6 +13,8 @@ import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.st
 interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
+  deletionBusy?: boolean;
+  onRequestDelete?: (sourceId: string) => void;
 }
 
 function latestRevisions(
@@ -48,6 +50,8 @@ function errorLabel(error: TranscriptError): string {
 export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
+  deletionBusy = false,
+  onRequestDelete,
 }: TranscriptEvidencePanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +66,7 @@ export default function TranscriptEvidencePanel({
     setView(next);
   }
 
+  // The parent remounts this preview when its source list changes so deleted text cannot linger.
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -136,6 +141,14 @@ export default function TranscriptEvidencePanel({
       </Text>
       <Text style={styles.copy}>{t('recording.transcript.localOnly')}</Text>
       <Text style={styles.copy}>{t('recording.transcript.description')}</Text>
+      {view && onRequestDelete ? (
+        <Button
+          disabled={busy || deletionBusy}
+          onPress={() => onRequestDelete(view.source.id)}
+          testID="recording-transcript-delete"
+          title={t('recording.library.delete')}
+        />
+      ) : null}
       {loading ? <Text>{t('recording.transcript.loading')}</Text> : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>

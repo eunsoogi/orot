@@ -33,10 +33,16 @@ export type {
   LocalEmbeddingRole,
   LocalEmbeddingRunOptions,
 } from './localEmbeddings';
-export { indexEvidenceChunks, searchEvidenceChunks } from './embeddingRetrieval';
+export {
+  clearEvidenceIndex,
+  deleteEvidenceChunks,
+  indexEvidenceChunks,
+  searchEvidenceChunks,
+} from './embeddingRetrieval';
 export type {
   EmbeddingIndexOptions,
   EmbeddingIndexProgress,
+  LocalEmbeddingWrite,
   LocalEmbeddingSearchHit,
   LocalEmbeddingVectorStore,
   PersistedLocalEmbedding,
