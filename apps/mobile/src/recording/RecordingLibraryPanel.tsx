@@ -5,6 +5,7 @@ import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { RecordingSourceRecord } from './recordingTypes';
 import RecordingDeletionNotice from './RecordingDeletionNotice';
+import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import type { RecordingLibraryService } from './recordingLibraryService';
 import { formatRecordedAt } from './formatRecordedAt';
@@ -211,39 +212,12 @@ export default function RecordingLibraryPanel({
         recordingSourceId={selected?.id}
         service={transcriptService}
       />
-      {deleteTarget ? (
-        <View
-          style={styles.confirmation}
-          testID="recording-delete-confirmation"
-        >
-          <Text accessibilityRole="header" style={styles.confirmationTitle}>
-            {t('recording.library.confirmTitle')}
-          </Text>
-          <Text style={styles.copy}>
-            {t('recording.library.confirmMessage', {
-              title: deleteTarget.title ?? t('recording.library.untitled'),
-            })}
-          </Text>
-          <View style={styles.actions}>
-            <Button
-              disabled={disabled}
-              onPress={() => setDeleteTarget(null)}
-              testID="recording-delete-cancel"
-              title={t('recording.library.cancel')}
-            />
-            <Button
-              disabled={disabled}
-              onPress={confirmDelete}
-              testID="recording-delete-confirm"
-              title={
-                busy
-                  ? t('recording.library.deleting')
-                  : t('recording.library.confirmDelete')
-              }
-            />
-          </View>
-        </View>
-      ) : null}
+      <RecordingDeletionConfirmation
+        busy={disabled}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        target={deleteTarget}
+      />
       <RecordingDeletionNotice notice={deleteNotice} />
     </View>
   );

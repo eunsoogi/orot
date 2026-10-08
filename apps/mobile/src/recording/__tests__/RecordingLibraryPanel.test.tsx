@@ -86,9 +86,10 @@ test('cancelling list deletion keeps the saved recording available', async () =>
 
   await screen.findByTestId('recording-library-item-recording-1');
   await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
-  expect(
-    await screen.findByTestId('recording-delete-confirmation'),
-  ).toBeTruthy();
+  const confirmation = await screen.findByTestId(
+    'recording-delete-confirmation',
+  );
+  expect(confirmation.props.accessibilityViewIsModal).toBe(true);
   await fireEvent.press(screen.getByTestId('recording-delete-cancel'));
 
   expect(service.deleteRecording).not.toHaveBeenCalled();
