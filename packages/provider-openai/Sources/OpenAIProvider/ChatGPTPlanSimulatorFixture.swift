@@ -21,13 +21,19 @@
             let account = ChatGPTStoredAccount.syntheticKeychainFixture()
             issuedClientID = account.issuedClientID
             credentialStore = KeychainChatGPTCredentialStore(service: "com.orot.provider.openai.simulator-fixture")
-            try credentialStore.saveAccount(account)
+            // Preserve cleared credentials when a Simulator app process reopens the fixture.
+            if try credentialStore.loadAccount(issuedClientID: issuedClientID) == nil {
+                try credentialStore.saveAccount(account)
+            }
 
             let configuration = URLSessionConfiguration.ephemeral
             configuration.urlCache = nil
             configuration.httpCookieStorage = nil
             configuration.httpShouldSetCookies = false
-            configuration.protocolClasses = [ChatGPTPlanFixtureURLProtocol.self]
+            configuration.protocolClasses = [
+                ChatGPTPlanFixtureURLProtocol.self,
+                ChatGPTSignOutFixtureURLProtocol.self,
+            ]
             client = ChatGPTOAuthClient(
                 session: URLSession(configuration: configuration),
                 credentialStore: credentialStore,
@@ -37,6 +43,10 @@
 
         public func select(_ scenario: Scenario) {
             ChatGPTPlanFixtureState.shared.activate(scenario)
+        }
+
+        public func restoreSyntheticAccountForSignIn() throws {
+            try credentialStore.saveAccount(.syntheticKeychainFixture())
         }
 
         public func remove() throws {

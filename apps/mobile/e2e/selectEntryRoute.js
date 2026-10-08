@@ -8,6 +8,7 @@ function selectEntryRoute(settings) {
     const probe = launchSettings.OROT_E2E_PROBE;
     if (
       probe !== 'appointments' &&
+      probe !== 'medical-appointment-classification' &&
       probe !== 'graph' &&
       probe !== 'checkpoint' &&
       probe !== 'safe-area' &&

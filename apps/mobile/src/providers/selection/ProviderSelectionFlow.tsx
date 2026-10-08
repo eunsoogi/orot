@@ -4,19 +4,14 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
 import { nativeChatGPTSelectionServices } from './chatGPTServices';
 import type { ChatGPTSelectionServices } from './chatGPTServices';
+import { useChatGPTSelectionActions } from './useChatGPTSelectionActions';
 import {
-  createChatGPTSelectionOptions,
   loadAppleSelectionOption,
   visitRecommendationRequirements,
 } from './options';
 import { providerSelectionText } from './text';
 import { providerSelectionStore } from './keychainSelectionStore';
-import {
-  isSignInCancelled,
-  markAccountAsRequiringSignIn,
-  sortAccounts,
-  useCancelSignInOnUnmount,
-} from './flowHelpers';
+import { sortAccounts, useCancelSignInOnUnmount } from './flowHelpers';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
@@ -52,10 +47,6 @@ export default function ProviderSelectionFlow({
   );
   const [accountListReady, setAccountListReady] = useState(false);
   const [accountListError, setAccountListError] = useState(false);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
-  const [actionStatus, setActionStatus] = useState('');
-  const [actionError, setActionError] = useState(false);
   useCancelSignInOnUnmount(chatGPTServices.cancelSignIn);
 
   useEffect(() => {
@@ -122,72 +113,18 @@ export default function ProviderSelectionFlow({
     return nextAccounts;
   }
 
-  async function performChatGPTAction() {
-    if (actionBusy || !accountListReady || accountListError) return;
-    const account = accounts.find(
-      value => value.issuedClientID === selectedAccountID,
-    );
-    if (accounts.length > 0 && !account) {
-      setActionStatus(providerSelectionText.chatGPTChooseAccount);
-      setActionError(true);
-      return;
-    }
-
-    setActionBusy(true);
-    setActionError(false);
-    setActionStatus(providerSelectionText.chatGPTChecking);
-    try {
-      if (!account || account.requiresSignIn || !account.hasDirectPlanAccess) {
-        setSigningIn(true);
-        const summary = await chatGPTServices.signIn(account?.issuedClientID);
-        await refreshAccounts(summary.issuedClientID);
-        setOptions(appleOption ? [appleOption] : []);
-        setActionStatus(
-          summary.hasDirectPlanAccess && !summary.requiresSignIn
-            ? providerSelectionText.chatGPTLoginSuccess
-            : providerSelectionText.chatGPTAccountMissingScope,
-        );
-        setActionError(!summary.hasDirectPlanAccess || summary.requiresSignIn);
-        return;
-      }
-
-      const models = await chatGPTServices.listModels(account.issuedClientID);
-      if (!models.ok) {
-        // A failed remote catalog keeps ChatGPT unavailable; it never chooses Apple as a substitute.
-        if (models.error.code === 'authentication_required') {
-          // Catalog rejection may not update the cached native account summary.
-          setAccounts(markAccountAsRequiringSignIn(account.issuedClientID));
-        }
-        setOptions(appleOption ? [appleOption] : []);
-        setActionStatus(providerSelectionText.chatGPTModelsUnavailable);
-        setActionError(true);
-        return;
-      }
-      const remoteOptions = createChatGPTSelectionOptions(
-        account.issuedClientID,
-        models.value,
-      );
-      setOptions([...(appleOption ? [appleOption] : []), ...remoteOptions]);
-      setActionStatus(providerSelectionText.chatGPTModelsLoaded);
-    } catch (error) {
-      if (isSignInCancelled(error)) {
-        setActionStatus(providerSelectionText.chatGPTLoginCancelled);
-        setActionError(false);
-      } else {
-        setOptions(appleOption ? [appleOption] : []);
-        setActionStatus(providerSelectionText.chatGPTModelsUnavailable);
-        setActionError(true);
-        try {
-          await refreshAccounts(selectedAccountID ?? undefined);
-        } catch {
-          setAccountListError(true);
-        }
-      }
-    } finally {
-      setSigningIn(false);
-      setActionBusy(false);
-    }
-  }
+  const actions = useChatGPTSelectionActions({
+    accountListError,
+    accountListReady,
+    accounts,
+    appleOption,
+    chatGPTServices,
+    refreshAccounts,
+    selectedAccountID,
+    setAccountListError,
+    setAccounts,
+    setOptions,
+  });
 
   const accountStatus = selectedAccount?.requiresSignIn
     ? providerSelectionText.chatGPTAccountSignedOut
@@ -203,22 +140,23 @@ export default function ProviderSelectionFlow({
     selectedAccountID,
     statusMessage: accountListError
       ? providerSelectionText.chatGPTAccountReadError
-      : actionStatus || accountStatus,
-    statusIsError: accountListError || actionError,
+      : actions.actionStatus || accountStatus,
+    statusIsError: accountListError || actions.actionError,
     actionTitle,
-    busy: actionBusy || !accountListReady,
-    signingIn,
+    busy: actions.actionBusy || !accountListReady,
+    signingIn: actions.signingIn,
+    signingOut: actions.signingOut,
     actionDisabled:
       !accountListReady ||
       accountListError ||
       (accounts.length > 0 && selectedAccountID === null),
     onAccountSelected: issuedClientID => {
       setSelectedAccountID(issuedClientID);
-      setActionStatus('');
-      setActionError(false);
+      actions.clearStatus();
       setOptions(appleOption ? [appleOption] : []);
     },
-    onAction: performChatGPTAction,
+    onAction: actions.onAction,
+    onSignOut: actions.onSignOut,
     onCancelSignIn: chatGPTServices.cancelSignIn,
   };
 

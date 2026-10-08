@@ -25,12 +25,16 @@ export type {
   EvidenceCoverage,
   EvidenceItem,
   EvidenceNeed,
+  EvidenceSearchOutcome,
   EvidenceReference,
   EvidenceSearchRequest,
   EvidenceSearchTool,
   EvidenceSourceKind,
   EvidenceTimeRange,
   ExecutionConsentPort,
+  ExternalMedicalQueryConsentDecision,
+  ExternalMedicalQueryConsentPort,
+  ExternalMedicalQueryConsentRequest,
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
   OutboundProcessingRequest,
@@ -66,6 +70,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly initialEvidence: EvidenceBatch;
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
+  /** Return false for any missing or tombstoned reference so resume fails before evidence restoration. */
   readonly revalidateEvidence: (
     references: readonly EvidenceReference[],
     signal: AbortSignal,
