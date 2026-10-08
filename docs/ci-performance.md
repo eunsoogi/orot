@@ -904,3 +904,24 @@ Run [37843075193](https://github.com/eunsoogi/orot/actions/runs/37843075193) was
 Release ran on macOS 27.0.1 with Xcode/SDK 27.0, iOS 27.0, and iPhone 18 Pro; Node was 22.23.2 and pnpm was 12.3.4. The app-product and Detox CocoaPods cache keys missed. Node/pnpm, lockfile-verification, Detox-framework, and React Native artifact caches hit. The app build took 11m02s, worker-Simulator preparation 3m48s, the Detox test step 10m19s, log collection 7s, dedicated Simulator deletion 10s, and artifact upload 3s.
 
 The UI shard passed 5/5; the data shard passed 6/8. During the first manual-appointments case, Detox issued `simctl launch` for `newInstance: false` at 21:43:15Z; Jest timed out the test at 21:45:14Z without a recorded completion for that launch before the timeout. The following issue-40 launch with `newInstance: true` also reached Jest's 120-second timeout. Later launch activity appears in the log, so this does not establish an OS-level cause. Dedicated Simulator diagnostics, deletion, and artifact upload succeeded; the profile-summary validator and required aggregate rejected the failed Release result. Artifact `11581027788` contains the run evidence. `OROT_DETOX_RESOURCE_SAMPLING` was false, so CPU/RSS/process samples are unavailable. The repeated launch timeout leaves the root cause unresolved and proves neither a speedup nor the ten-minute goal. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 one-Simulator Release run 37854558660
+
+Run [37854558660](https://github.com/eunsoogi/orot/actions/runs/37854558660) passed every required check on PR head `2135b2e89ec97f68aab79f7e00dd75f19357c6e3` against base `b91fa2219f8820aa415ec9829024f4b822ae66ea`. Quality Linux started at 22:37:35Z and the required `Detox iOS E2E` aggregate completed at 23:20:08Z: **42m33s** from the first required job; the workflow ran 43m24s from creation at 22:36:45Z. The run succeeded functionally but exceeded the active ten-minute target and is not a qualifying timing sample.
+
+| Job | Runner | Interval (UTC) | Result |
+| --- | --- | --- | --- |
+| Quality Linux | 1000073589 | 22:37:35–22:40:13 | passed in 2m38s |
+| Compute shared Detox cache fingerprints | 1000073588 | 22:37:00–22:37:12 | passed in 12s |
+| iOS Simulator Build | 1000073600 (`xcode-27`) | 22:55:34–23:09:15 | passed in 13m41s, including production and standalone OAuth checks |
+| OpenAI Debug E2E | 1000073595 (`xcode-27`) | 22:46:49–23:07:32 | passed in 20m43s; 1/1 case |
+| Release E2E | 1000073596 (`xcode-27`) | 22:47:03–23:15:53 | passed in 28m50s; 13/13 cases in one suite |
+| Speech Transcription E2E | 1000073601 (`macos-26`) | 23:00:03–23:19:35 | passed in 19m32s; 1/1 case |
+| Require complete profile summaries | 1000073612 | 23:19:57–23:20:02 | passed |
+| Detox iOS E2E | 1000073613 | 23:20:04–23:20:08 | passed |
+
+Release, OpenAI, and Speech ran with Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, CocoaPods 1.17.0, and applesimutils 0.9.12. The Release and OpenAI runners used macOS 27.0.1, Xcode/SDK 27.0, iOS 27.0, and iPhone 18 Pro; Speech used macOS 26.6.2, Xcode/SDK 26.2, iOS 26.2, and iPhone 17 Pro. Their runner labels and runtimes differ, so this run alone cannot establish a comparable timing pair.
+
+The production app and all three profile app-product DerivedData caches missed with `derived_data_absent`. Detox framework and React Native artifact caches hit for all profiles; the Detox CocoaPods cache missed for Release and OpenAI and hit for Speech. The profile app-product cache save steps completed for Release, OpenAI, and Speech. Node and pnpm lockfile-verification caches hit. The production app build took 5m26s; the Release app build took 8m46s with a 7m57s test step; OpenAI's app build took 8m16s with a 56s test step; Speech's app build took 8m48s with a 4m43s test step. The logs show these stage durations, but do not isolate the full-workflow delay to cache restoration, runner scheduling, or Simulator execution.
+
+Dedicated Simulator preparation, diagnostics, teardown, summary validation, and artifact upload all passed. Artifacts are `11583616768` (Quality Linux), `11583759597` (iOS build), `11584901535` (OpenAI), `11584927459` (Release), and `11585525404` (Speech). Resource sampling was disabled, so CPU, peak RSS, disk, and process metrics were not collected. This run provides one functional pass, zero under-ten-minute passes, and no evidence for two consecutive qualifying runs. Issue #74 remains open and PR #129 remains Draft.
