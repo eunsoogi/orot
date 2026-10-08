@@ -11,7 +11,9 @@ describe('Orot mobile app', () => {
     await expect(element(by.id('welcome-title'))).toHaveText(
       'Orot에 오신 걸 환영해요',
     );
-    await expect(element(by.id('get-started'))).toHaveLabel('시작하기');
+    await expect(element(by.id('open-ai-features'))).toHaveLabel(
+      'AI 건강 기능 살펴보기',
+    );
     await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
     await element(by.id('open-appointments')).tap();
     // Manual appointment CRUD remains isolated in the dedicated appointments probe.

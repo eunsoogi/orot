@@ -58,12 +58,8 @@ test('restores the welcome entry and opens Calendar linking from appointments', 
   );
   expect(screen.getByTestId('safe-area-root')).toBeVisible();
   expect(screen.getByTestId('safe-area-scroll')).toBeVisible();
-  expect(screen.getByTestId('get-started')).toHaveTextContent('시작하기');
   expect(screen.getByTestId('open-appointments')).toHaveTextContent('예약');
   expect(loadAppointments).not.toHaveBeenCalled();
-
-  await fireEvent.press(screen.getByTestId('get-started'));
-  expect(screen.getByText('이제 시작할 수 있어요.')).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(screen.getByRole('header', { name: '캘린더 연결' })).toBeTruthy();

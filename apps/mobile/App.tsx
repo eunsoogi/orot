@@ -23,6 +23,7 @@ import type {
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
 import { providerSelectionText } from './src/providers/selection/text';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
+import { AiFeatureRoute } from './src/aiFeatures/integration';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -51,7 +52,7 @@ export default function App({
   importBloodPressure = importLocalBloodPressure,
   loadBloodPressureObservations = listLocalBloodPressureObservations,
 }: AppProps) {
-  const [hasStarted, setHasStarted] = useState(false);
+  const [showAiFeatures, setShowAiFeatures] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCommonObservations, setShowCommonObservations] = useState(false);
   const [showBloodPressure, setShowBloodPressure] = useState(false);
@@ -78,10 +79,6 @@ export default function App({
     } finally {
       setLoadingAppointments(false);
     }
-  }
-
-  function openCommonObservations() {
-    setShowCommonObservations(true);
   }
 
   let routeContent: ReactNode,
@@ -173,9 +170,7 @@ export default function App({
         >
           {t('app.welcome.title')}
         </Text>
-        <Text style={styles.message}>
-          {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-        </Text>
+        <Text style={styles.message}>{t('app.welcome.message')}</Text>
         {selectedRecommendationProvider ? (
           <Text testID="selected-recommendation-provider">
             {providerSelectionText.selectedPrefix}{' '}
@@ -188,9 +183,9 @@ export default function App({
           title={providerSelectionText.title}
         />
         <Button
-          onPress={() => setHasStarted(true)}
-          testID="get-started"
-          title={t('app.actions.getStarted')}
+          onPress={() => setShowAiFeatures(true)}
+          testID="open-ai-features"
+          title={t('aiFeatures.open')}
         />
         <Button
           onPress={openCalendar}
@@ -198,7 +193,7 @@ export default function App({
           title={t('app.actions.appointments')}
         />
         <Button
-          onPress={openCommonObservations}
+          onPress={() => setShowCommonObservations(true)}
           testID="open-common-observations"
           title={t('healthkit.commonObservations.open')}
         />
@@ -215,6 +210,10 @@ export default function App({
       </View>
     );
   }
+
+  // The feature hub owns its own scroller and exit control inside the shared inset root.
+  if (showAiFeatures)
+    return <AiFeatureRoute onBack={() => setShowAiFeatures(false)} />;
 
   return (
     <SafeAreaLayout scrollable={scrollable}>{routeContent}</SafeAreaLayout>

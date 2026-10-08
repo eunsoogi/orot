@@ -2,13 +2,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getAiFeatureCopy } from './copy';
 
 export interface FeatureEntryScreenProps {
-  readonly onOpenVisitQuestions: () => void;
+  readonly onOpenVisitQuestions?: () => void;
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
   readonly onOpenExternalEvidence: () => void;
 }
 
-/** Keeps feature routing with the app owner while giving each entry a clear action. */
+/** Keeps feature routing at the app boundary and disables entries without an owned screen. */
 export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
   const copy = getAiFeatureCopy();
   const actions = [
@@ -32,8 +32,18 @@ export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
             {feature.title}
           </Text>
           <Text style={styles.description}>{feature.description}</Text>
+          {feature.id === 'visit-questions' && !actions[index] ? (
+            <Text
+              accessibilityRole="alert"
+              testID="visit-questions-unavailable"
+            >
+              {copy.visitQuestionsUnavailable}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: !actions[index] }}
+            disabled={!actions[index]}
             onPress={actions[index]}
             style={styles.action}
             testID={`ai-feature-${feature.id}`}
