@@ -2,6 +2,9 @@
 const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
 const releaseDerivedDataPath =
   process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build-detox-release';
+// CI sets this only after cloning fresh Release Simulators, which do not yet have the app installed.
+const hasFreshReleaseWorkerSimulators =
+  process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
 
 if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
   throw new Error(
@@ -11,7 +14,7 @@ if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
 
 module.exports = {
   behavior: {
-    init: { reinstallApp: true },
+    init: { reinstallApp: !hasFreshReleaseWorkerSimulators },
   },
   testRunner: {
     args: {

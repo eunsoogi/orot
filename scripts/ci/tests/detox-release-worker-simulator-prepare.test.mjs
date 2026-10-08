@@ -133,6 +133,7 @@ test('retains the data worker identity when its Simulator boot fails', () => {
     assert.equal(readFileSync(context.simulatorIdsPath, 'utf8').trim(), dataId);
     const environment = readFileSync(context.environmentPath, 'utf8');
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID=${dataId}`));
+    assert.doesNotMatch(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
   }
