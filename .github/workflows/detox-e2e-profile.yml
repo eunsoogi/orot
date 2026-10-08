@@ -215,7 +215,7 @@ jobs:
           key: ${{ steps.profile_derived_data_cache.outputs.cache-hit != 'true' && steps.write_derived_data_cache.outcome == 'success' && steps.profile_derived_data_cache.outputs.cache-primary-key || '' }}
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20
-        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}"
+        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}" artifacts/detox/simulator-baseline.json
 
       - name: Run Detox iOS Simulator tests
         id: run_detox_tests
@@ -227,7 +227,7 @@ jobs:
       - name: Collect simulator logs
         if: ${{ always() }}
         timeout-minutes: 5
-        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log artifacts/detox/simulator.udid
+        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log artifacts/detox/simulator.udid "${{ inputs.profile }}" artifacts/detox/simulator-baseline.json artifacts/detox/simulator-targets.txt
 
       - name: Delete dedicated Detox Simulator
         if: ${{ always() }}
@@ -237,8 +237,8 @@ jobs:
             printf 'No dedicated Simulator ID was recorded; no device will be targeted.\n' > artifacts/detox/simulator-teardown.log
             exit 0
           fi
-          simulator_udid="$(cat artifacts/detox/simulator.udid)"
-          scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log
+          simulator_udid="$(cat artifacts/detox/simulator.udid)"; target_path=artifacts/detox/simulator-targets.txt; [[ -s "$target_path" ]] || printf '%s\n' "$simulator_udid" >"$target_path"
+          scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log "$target_path"
 
       - name: Upload Detox reports, logs, screenshots, and videos
         if: ${{ always() }}

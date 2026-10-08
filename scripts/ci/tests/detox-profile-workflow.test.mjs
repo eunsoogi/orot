@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -43,6 +43,8 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const testStepStart = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
   const testStepEnd = profileWorkflow.indexOf('\n      - name:', testStepStart + 1);
   const testStep = profileWorkflow.slice(testStepStart, testStepEnd);
+  const bootStep = workflowStep('Wait for dedicated Detox Simulator');
+  const diagnosticsStep = workflowStep('Collect simulator logs');
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
   const teardownStep = workflowStep('Delete dedicated Detox Simulator');
 
@@ -64,16 +66,27 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
+  assert.match(bootStep, /simulator-baseline\.json/);
+  assert.match(
+    diagnosticsStep,
+    /collect-simulator-diagnostics\.sh[\s\S]*inputs\.profile[\s\S]*simulator-baseline\.json[\s\S]*simulator-targets\.txt/,
+  );
   assert.match(teardownStep, /if: \$\{\{ always\(\) \}\}/);
   assert.match(
     teardownStep,
-    /if \[\[ ! -s artifacts\/detox\/simulator\.udid \]\][\s\S]*?cat artifacts\/detox\/simulator\.udid/,
+    /if \[\[ ! -s artifacts\/detox\/simulator\.udid \]\][\s\S]*?cat artifacts\/detox\/simulator\.udid[\s\S]*simulator-targets\.txt/,
   );
   assert.match(testStep, /timeout-minutes: 45/);
   assert.match(testStep, /run:.*scripts\/ci\/run-test-suite\.sh/);
   assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(profileWorkflow, /mdutil|Spotlight|spotlight/i);
   assert.doesNotMatch(ciWorkflow, /mdutil|Spotlight|spotlight/i);
+});
+
+test('keeps the directly invoked Simulator diagnostics helper executable', () => {
+  // The Git executable bit is required because the workflow runs this helper without Bash.
+  const diagnosticsPath = join(repositoryRoot, 'scripts/ci/collect-simulator-diagnostics.sh');
+  assert.notEqual(statSync(diagnosticsPath).mode & 0o111, 0);
 });
 
 test('leaves heavy resource sampling off unless a manual run requests it and caps samples', () => {

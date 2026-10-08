@@ -50,7 +50,8 @@ if (e2eSuites.includes(suiteName)) {
     './apps/mobile/e2e/transcription.jest.config.js',
   );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
-  // Keep the explicit inventory and case count aligned with the Release wrapper's required probes.
+  const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
+  // Keep the shard wrappers exhaustive and ordered against the explicit Release scenario inventory.
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
     './safe-area.test.js',
@@ -61,16 +62,23 @@ if (e2eSuites.includes(suiteName)) {
     './checkpoint.detox.e2e.js',
     './storage.test.js',
   ];
-  if (JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles)) {
+  const flattenedReleaseShards = Object.values(releaseE2EShards).flat();
+  if (
+    JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles) ||
+    JSON.stringify(flattenedReleaseShards) !== JSON.stringify(expectedReleaseSuiteFiles)
+  ) {
     throw new Error(
-      'e2e: Release suite manifest does not include the complete required test inventory',
+      'e2e: Release shard manifest does not include the complete ordered test inventory',
     );
   }
+  const expectedReleaseWrappers = Object.keys(releaseE2EShards).map(
+    (wrapper) => `<rootDir>/e2e/${wrapper}`,
+  );
   if (
-    JSON.stringify(releaseConfig.testMatch) !==
-    JSON.stringify(['<rootDir>/e2e/release-e2e.test.js'])
+    JSON.stringify(releaseConfig.testMatch) !== JSON.stringify(expectedReleaseWrappers) ||
+    releaseConfig.maxWorkers !== expectedReleaseWrappers.length
   ) {
-    throw new Error('e2e: Release Jest config must select the explicit suite-inventory wrapper');
+    throw new Error('e2e: Release Jest config must assign one worker to each explicit shard');
   }
   if (
     JSON.stringify(debugConfig.testMatch) !==

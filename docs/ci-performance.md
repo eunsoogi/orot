@@ -728,3 +728,35 @@ The three profile app caches were exact hits with build fingerprint `0eed33f80a6
 | Speech Transcription | 2m41s | 28,351,316 bytes | 30s | 173.892s, synthetic 1/1 |
 
 The app-cache logs show `gtar`/`unzstd` extraction taking about 80s for Release, 84s for OpenAI Debug, and 14s for Speech; these are observations from this attempt, not an isolated benchmark. Each profile completed diagnostics, dedicated Simulator deletion, artifact upload, and summary validation. The fail-closed aggregate passed. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Exact cache hits and green checks do not establish a speedup; this run misses the timing target and provides no qualifying sample. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-08 shared-fingerprint candidate run 37726693213
+
+Run [37726693213](https://github.com/eunsoogi/orot/actions/runs/37726693213), attempt 1, passed all jobs on PR head `f5d1d4791dd86928d4eac0b9038ba137cb961548` against base `673c13bc61644dab2f59712baa7fb122bec2bdc5`. Quality Linux started at 04:16:28Z and the `Detox iOS E2E` aggregate completed at 04:31:23Z: **14m55s**. The run is not a timing pass.
+
+| Job | Recorded interval (UTC) | Duration | Result |
+| --- | ---------------------- | -------: | ------ |
+| Quality Linux | 04:16:28–04:19:00 | 2m32s | passed |
+| Compute shared Detox cache fingerprints | 04:16:28–04:16:36 | 8s | passed |
+| iOS Simulator Build | 04:16:31–04:21:17 | 4m46s | production app cache reused; app build skipped; Simulator defaults and OAuth package/harness checks passed |
+| OpenAI Debug | 04:16:43–04:22:17 | 5m34s | passed, 1/1 case |
+| Speech Transcription | 04:16:46–04:23:56 | 7m10s | passed, separate synthetic 1/1 case |
+| Release | 04:16:48–04:31:08 | 14m20s | passed, 13/13 cases |
+| Quality | 04:19:02–04:19:13 | 11s | passed |
+| Require complete profile summaries | 04:31:11–04:31:19 | 8s | passed |
+| Detox iOS E2E | 04:31:20–04:31:23 | 3s | passed |
+
+All three profile jobs logged `fingerprint_source=shared`, an exact DerivedData manifest classification, and `app_reusable=true`; app builds were skipped. They used build-input fingerprint `0eed33f80a6cb0604f4f1d9b72a392e82d8a9ab9a5fb4726b694633c706ea8e1` and native-dependency fingerprint `21371121647f715eef5a47e6b0fa896760a803df766edf75a0587ce79b135df0`. The production app cache was reused, and OAuth package and standalone Simulator harness checks passed.
+
+| Profile | Runner and verified environment | App-cache restore | Cache preparation | Detox result | Simulator deletion |
+| ------- | ------------------------------ | ----------------: | ---------------: | -----------: | -----------------: |
+| Release | `1000073038`, macOS 27.0.1, Xcode/SDK 27.0, iPhone 18 Pro | 2m48s, exact hit | 11s | 448.967s, 13/13 | 20s |
+| OpenAI Debug | `1000073037`, macOS 27.0.1, Xcode/SDK 27.0, iPhone 18 Pro | 2m32s, exact hit | 33s | 37.146s, 1/1 | 15s |
+| Speech Transcription | `1000073039`, macOS 26.6.2, Xcode/SDK 26.2, iPhone 17 Pro | 2m15s, exact hit | 16s | 149.296s, synthetic 1/1 | 6s |
+
+Each profile also collected Simulator diagnostics and uploaded its logs and reports. The fail-closed profile-summary validator and aggregate passed. The Release Detox step alone took 7m29s, compared with 5m16s in the prior exact-cache attempt 37724568242; those are separate runs and do not establish a controlled speed comparison. Although shared fingerprint reuse was observed, the complete required interval grew from 10m44s to 14m55s. This candidate therefore demonstrates no under-ten-minute result or end-to-end speedup. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-08 Release worker-sharding candidate (not yet measured)
+
+The next implementation candidate keeps the eight-file Release scenario inventory and 13 required cases, assigning them in order to three Jest wrappers and three Detox workers. Each worker uses its own Simulator state. The profile records a device inventory after the dedicated Simulator boots, compares it with the post-E2E inventory, and collects logs and cleanup targets only for the dedicated base and new devices matching that profile's runtime and device type. An unexpected device or incomplete worker assignment fails the inventory check. Per-device log collection runs concurrently so multiple workers do not multiply the diagnostics timeout.
+
+This change has no hosted measurement yet. Run 37726693213 used the previous serial Release configuration and remains 14m55s from Quality Linux through the aggregate. The sharded implementation must pass its full hosted scenarios, diagnostics, exact Simulator deletion, fail-closed summaries, and required checks before any timing comparison; no speedup or under-ten-minute result is claimed from the design or local tests.
