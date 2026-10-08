@@ -213,6 +213,14 @@ async function scrollToTranscriptControl(control, direction = 'down') {
     .scroll(100, direction, 0.5, 0.35);
 }
 
+// The stale-artifact notice precedes transcript rows, so return to earlier content after reviewing them.
+async function scrollToStaleArtifactNotice() {
+  const notice = element(by.id('transcript-stale-artifacts'));
+  await waitFor(notice).toExist().withTimeout(30000);
+  await scrollToTranscriptControl(notice, 'up');
+  return notice;
+}
+
 // Save follows the multiline editor, so reveal it with Detox's down-scroll before tapping.
 async function scrollToSaveButton(testId) {
   const saveButton = element(by.id(testId));
@@ -225,6 +233,7 @@ module.exports = {
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToSaveButton,
+  scrollToStaleArtifactNotice,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,

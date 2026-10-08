@@ -6,6 +6,7 @@ const {
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
   scrollToSaveButton,
+  scrollToStaleArtifactNotice,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
@@ -161,9 +162,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         await reviewState.getAttributes(),
       );
       jestExpect(correctedReviewState).toBe('수정됨 · 다시 확인 필요');
-      const staleArtifacts = element(by.id('transcript-stale-artifacts'));
-      await waitFor(staleArtifacts).toExist().withTimeout(30000);
-      await scrollToTranscriptControl(staleArtifacts);
+      const staleArtifacts = await scrollToStaleArtifactNotice();
       await waitFor(staleArtifacts).toBeVisible().withTimeout(30000);
       const staleArtifactText = accessibilityText(
         await staleArtifacts.getAttributes(),

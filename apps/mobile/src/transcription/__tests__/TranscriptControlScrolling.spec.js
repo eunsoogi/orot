@@ -1,4 +1,5 @@
 const {
+  scrollToStaleArtifactNotice,
   scrollToSaveButton,
 } = require('../../../e2e/transcription/transcriptEvidenceDetoxHelpers');
 const { expect: jestExpect } = require('@jest/globals');
@@ -54,5 +55,43 @@ describe('transcript control scrolling', () => {
     scrollPending.resolve();
     await saveFlow;
     jestExpect(actions.at(-1)).toBe('tap');
+  });
+
+  it('scrolls up to reveal the stale-artifact notice before transcript segments', async () => {
+    const actions = [];
+    const target = {};
+    global.by = { id: id => ({ id }) };
+    global.element = selector => {
+      jestExpect(selector.id).toBe('transcript-stale-artifacts');
+      return target;
+    };
+    global.waitFor = control => {
+      jestExpect(control).toBe(target);
+      return {
+        toExist: () => ({
+          withTimeout: timeout => {
+            actions.push(['exists', timeout]);
+            return Promise.resolve();
+          },
+        }),
+        toBeVisible: () => ({
+          whileElement: container => {
+            jestExpect(container.id).toBe('recording-controls-scroll');
+            return {
+              scroll: (...args) => {
+                actions.push(['scroll', ...args]);
+                return Promise.resolve();
+              },
+            };
+          },
+        }),
+      };
+    };
+
+    await expect(scrollToStaleArtifactNotice()).resolves.toBe(target);
+    jestExpect(actions).toEqual([
+      ['exists', 30000],
+      ['scroll', 100, 'up', 0.5, 0.35],
+    ]);
   });
 });
