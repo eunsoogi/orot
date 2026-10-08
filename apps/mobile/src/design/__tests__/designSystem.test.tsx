@@ -58,6 +58,22 @@ describe('shared design system', () => {
     },
   );
 
+  it.each(['light', 'dark'] as const)(
+    'keeps component borders distinct from adjacent surfaces in %s appearance',
+    scheme => {
+      const { colors } = appThemeForScheme(scheme);
+      const adjacentSurfaces = [
+        colors.canvas,
+        colors.surface,
+        colors.surfaceSubtle,
+      ];
+
+      for (const surface of adjacentSurfaces) {
+        expect(contrastRatio(colors.border, surface)).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
+
   it('uses the light palette until the system reports an appearance', () => {
     expect(appThemeForScheme(null).scheme).toBe('light');
     expect(appThemeForScheme('dark').colors.canvas).not.toBe(

@@ -17,6 +17,7 @@ export const designTokens = {
   minTouchTarget: 44,
 } as const;
 
+// Boundary colors remain distinct from their adjacent surfaces.
 export const appColors = {
   light: {
     canvas: '#F3F7F7',
@@ -24,7 +25,7 @@ export const appColors = {
     surfaceSubtle: '#EEF3F3',
     text: '#152A2A',
     textMuted: '#455B5A',
-    border: '#C9D6D5',
+    border: '#758C8B',
     accent: '#155E62',
     onAccent: '#FFFFFF',
     accentSubtle: '#DCEFEB',
@@ -40,7 +41,7 @@ export const appColors = {
     surfaceSubtle: '#223330',
     text: '#F1F7F5',
     textMuted: '#B3C3C0',
-    border: '#455653',
+    border: '#708581',
     accent: '#9ADACB',
     onAccent: '#123B38',
     accentSubtle: '#214440',
