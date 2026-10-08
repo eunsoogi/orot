@@ -221,12 +221,6 @@ export function cancelAppointment(appointment: Appointment, recordedAt: string):
   });
 }
 
-export const VisitQuestionSchema = RecordMetadataSchema.safeExtend({
-  questionText: NonEmptyTextSchema,
-  priority: z.enum(['routine', 'important']),
-  evidenceSpanIds: UniqueRecordIdsSchema,
-});
-
 export const VisitBriefSchema = RecordMetadataSchema.safeExtend({
   encounterId: RecordIdSchema,
   summary: NonEmptyTextSchema,
@@ -238,5 +232,8 @@ export const VisitBriefSchema = RecordMetadataSchema.safeExtend({
 export type Appointment = z.infer<typeof AppointmentSchema>;
 export type CalendarAppointmentSnapshot = z.infer<typeof CalendarAppointmentSnapshotSchema>;
 export type AppointmentStatus = z.infer<typeof AppointmentStatusSchema>;
-export type VisitQuestion = z.infer<typeof VisitQuestionSchema>;
 export type VisitBrief = z.infer<typeof VisitBriefSchema>;
+
+// Preserve direct module imports for consumers that used the former schema location.
+export { VisitQuestionSchema } from './visitQuestions';
+export type { VisitQuestion } from './visitQuestions';
