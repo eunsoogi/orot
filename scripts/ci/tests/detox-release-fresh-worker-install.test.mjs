@@ -51,6 +51,42 @@ async function runWrapperBeforeAll(wrapperName, releaseShardingEnabled) {
   return deviceCalls;
 }
 
+async function runManualAppointmentScenario() {
+  const deviceCalls = [];
+  let appointmentScenario;
+  const elementHandle = {
+    replaceText: async () => {},
+    tap: async () => {},
+    tapReturnKey: async () => {},
+  };
+  const matcher = () => ({ withTimeout: async () => {} });
+  const source = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'), 'utf8');
+
+  // Run the actual scenario body with only Detox's native selectors replaced; hosted CI still proves Simulator behavior.
+  runInNewContext(source, {
+    by: { id: () => ({}), label: () => ({}), text: () => ({}) },
+    describe: (_name, callback) => callback(),
+    device: {
+      launchApp: async (options) => deviceCalls.push({ kind: 'launch', options }),
+      terminateApp: async () => deviceCalls.push({ kind: 'terminate' }),
+    },
+    element: () => elementHandle,
+    expect: () => ({
+      not: { toExist: async () => {} },
+      toBeVisible: async () => {},
+      toExist: async () => {},
+    }),
+    it: (_name, callback) => {
+      appointmentScenario = callback;
+    },
+    waitFor: () => ({ toBeVisible: matcher, toHaveText: matcher }),
+  });
+
+  assert.equal(typeof appointmentScenario, 'function');
+  await appointmentScenario();
+  return deviceCalls;
+}
+
 test('fresh Release workers install directly while local Detox keeps its reinstall behavior', async () => {
   // CI sets the shard marker only after preparing new Simulator clones; local Release runs keep Detox reinstall.
   assert.equal(loadDetoxConfig(false).behavior.init.reinstallApp, true);
@@ -60,4 +96,19 @@ test('fresh Release workers install directly while local Detox keeps its reinsta
     assert.deepEqual(await runWrapperBeforeAll(wrapperName, false), ['clearKeychain']);
     assert.deepEqual(await runWrapperBeforeAll(wrapperName, true), ['clearKeychain', 'installApp']);
   }
+});
+
+test('manual appointment probe avoids terminating its fresh first launch and keeps both explicit restarts', async () => {
+  const calls = await runManualAppointmentScenario();
+  const launches = calls.filter(({ kind }) => kind === 'launch');
+
+  assert.equal(launches.length, 3);
+  assert.deepEqual(
+    launches.map(({ options }) => options.newInstance),
+    [false, false, false],
+  );
+  assert.deepEqual(
+    calls.map(({ kind }) => kind),
+    ['launch', 'terminate', 'launch', 'terminate', 'launch'],
+  );
 });

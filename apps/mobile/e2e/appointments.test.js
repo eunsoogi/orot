@@ -39,7 +39,8 @@ async function fillAppointment(clinic, date, time, note) {
 describe('manual appointments', () => {
   it('creates, edits, and cancels an appointment that survives process restarts', async () => {
     await device.launchApp({
-      newInstance: true,
+      // The runner installs a fresh app before this scenario; the explicit terminations below cover actual restarts.
+      newInstance: false,
       languageAndLocale: { language: 'en', locale: 'en_US' },
       launchArgs: { OROT_E2E_PROBE: 'appointments' },
     });
