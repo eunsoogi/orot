@@ -73,7 +73,6 @@ function selectedProvider(): ProviderSelectionOption {
 interface ScreenOverrides {
   readonly selectedProvider?: ProviderSelectionOption | null;
   readonly recipient?: string | null;
-  readonly consent?: { authorize: () => Promise<'authorized'> } | null;
 }
 
 async function renderScreen(
@@ -103,7 +102,6 @@ async function renderScreen(
       repository={appointments}
       selectedProvider={overrides.selectedProvider ?? null}
       recipient={overrides.recipient ?? null}
-      consent={overrides.consent ?? null}
       onOpenManual={jest.fn()}
     />,
   );
@@ -184,7 +182,6 @@ describe('medical appointment candidate selection regressions', () => {
     await renderScreen([[first], [next]], appointments, {
       selectedProvider: selectedProvider(),
       recipient: 'selected-account',
-      consent: { authorize: async () => 'authorized' },
     });
     jest
       .spyOn(classificationWorkflow, 'classifyCalendarEvents')

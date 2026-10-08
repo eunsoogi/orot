@@ -20,6 +20,10 @@ switch (selectEntryRoute(launchSettings)) {
   case 'appointments':
     require('./appointmentsProbeEntry');
     break;
+  case 'medical-appointment-classification':
+    // Keep the issue-40 consent exercise on synthetic Calendar and provider data.
+    require('./medicalAppointmentClassificationProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;
