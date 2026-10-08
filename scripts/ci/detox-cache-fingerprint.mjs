@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fingerprintDetoxBuildConfigs } from './detox-build-config-fingerprint.mjs';
 import {
+  detoxInputPathspecs,
   filterDetoxBuildInputPaths,
   hashCurrentInputs,
   hashInputGroups,
@@ -36,6 +37,7 @@ const NATIVE_DEPENDENCY_INPUT_PATHS = [
 ];
 
 export function listChangedDetoxBuildInputs(repositoryRoot = process.cwd()) {
+  const pathspecs = detoxInputPathspecs(BUILD_INPUT_PATHS);
   const output = execFileSync(
     'git',
     [
@@ -47,22 +49,13 @@ export function listChangedDetoxBuildInputs(repositoryRoot = process.cwd()) {
       '-z',
       'HEAD',
       '--',
-      ...BUILD_INPUT_PATHS,
+      ...pathspecs,
     ],
     { encoding: 'buffer' },
   );
   const untracked = execFileSync(
     'git',
-    [
-      '-C',
-      repositoryRoot,
-      'ls-files',
-      '-z',
-      '--others',
-      '--exclude-standard',
-      '--',
-      ...BUILD_INPUT_PATHS,
-    ],
+    ['-C', repositoryRoot, 'ls-files', '-z', '--others', '--exclude-standard', '--', ...pathspecs],
     { encoding: 'buffer' },
   );
   const paths = Buffer.concat([output, untracked]).toString('utf8').split('\0').filter(Boolean);

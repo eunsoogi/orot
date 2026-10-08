@@ -614,3 +614,37 @@ The Speech CocoaPods step reported `React-CoreModules`, accessor `:source_files`
 OpenAI Debug built its app in 313s, wrote the validated DerivedData manifest, saved the app-product cache, and passed its one E2E case in 46s; its profile job still took 12m58s. The separate iOS Simulator Build restored its production DerivedData cache, skipped the production CocoaPods install and app build, and passed the OAuth package checks and standalone harness build. Only OpenAI Debug completed an E2E case in this run, so the nine original scenarios were not fully exercised. The required profile-summary and Detox aggregate checks failed as intended when two profiles lacked results.
 
 This run was based on `1327929` before main advanced to `0c2ec2453076cd8ba04b2daf9b099d72ff2366d5` (#140); PR #129's current base readback still points to `1327929`. The CocoaPods root cause remains unknown and is being investigated in its separately owned follow-up. The #74 change preserves the diagnostic helper and install path. Two consecutive successful comparable under-ten-minute runs, exact-head independent strict review, and passing required checks remain outstanding. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. No speedup is claimed.
+
+## 2026-10-08 PR #129 cold-cache run 37709667227
+
+Run [37709667227](https://github.com/eunsoogi/orot/actions/runs/37709667227) passed all required checks on PR head `de75034176d1d18d05e4a5faf4795df86cfb96a3` against base `faff64b70028c07a3228ac5a1165245c328e7c72`. It started at 00:48:22Z and completed at 02:00:20Z. The required-workflow interval, from Quality Linux at 00:48:24Z through the `Detox iOS E2E` aggregate at 02:00:19Z, was **71m55s**. This run is functional and cache-population evidence; it is not a timing pass.
+
+| Job | Recorded interval (UTC) | Duration | Result |
+| --- | ---------------------- | -------: | ------ |
+| Quality Linux | 00:48:24–00:50:47 | 2m23s | passed |
+| Compute shared Detox cache fingerprints | 00:48:24–00:48:37 | 13s | passed |
+| Quality | 00:50:50–00:51:02 | 12s | passed |
+| iOS Simulator Build | 01:12:18–01:19:02 | 6m44s | passed; production app cache reused, OAuth checks and standalone harness passed |
+| Speech Transcription | 01:13:54–01:36:30 | 22m36s | passed; separate synthetic 1/1 case |
+| OpenAI Debug | 01:21:07–01:38:31 | 17m24s | passed, 1/1 original case |
+| Release | 01:36:40–02:00:07 | 23m27s | passed, 12/12 cases |
+| Require complete profile summaries | 02:00:09–02:00:15 | 6s | passed |
+| Detox iOS E2E | 02:00:17–02:00:19 | 2s | passed |
+
+The Release and OpenAI Debug profiles passed the original nine cases (Release 8/8 plus four additional Release regressions, OpenAI Debug 1/1). Speech Transcription passed its separate synthetic case. Each profile collected Simulator diagnostics, deleted its dedicated Simulator, and uploaded reports and logs. The workflow-level required names remained `Quality`, `iOS Simulator Build`, and `Detox iOS E2E`.
+
+| Profile | Runner and verified environment | App-product cache | Native app build | Detox step | Simulator deletion |
+| ------- | ------------------------------ | ---------------- | ---------------: | ----------: | -----------------: |
+| Speech Transcription | `1000072965`, macOS 26.6.2, Xcode/SDK 26.2, iPhone 17 Pro | miss, `derived_data_absent` | 694s | 205s, synthetic 1/1 | 9s |
+| OpenAI Debug | `1000072972`, macOS 27.0, Xcode/SDK 27.0, iPhone 18 Pro | miss, `derived_data_absent` | 371s | 42s, 1/1 | 15s |
+| Release | `1000072979`, macOS 27.0, Xcode/SDK 27.0, iPhone 18 Pro | miss, `derived_data_absent` | 451s | 294s, 12/12 | 5s |
+
+All three Detox profiles verified Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, and CocoaPods 1.17.0. Their app-product caches were absent, so all profiles rebuilt and saved a validated product before E2E. The build-input fingerprint was `581982ea8b09df78d9b4b430d28f4474f1b6b14b3c56515ead4b57ac29aa1950` and the native-dependency fingerprint was `98e08ea178d5eaf65ea3b6f74cb415c3204ad743f6b873f752c32d0848a98f1f`. The production app cache was an exact validated hit. Speech used the macOS 26 runner image while Release and OpenAI Debug used the macOS 27 image, so their durations should not be treated as directly interchangeable.
+
+The first Detox profile started 25m30s after Quality Linux. Release started 48m16s after Quality Linux, and the required aggregate ended 71m55s after it. This interval exceeds the ten-minute target; the run establishes no speedup. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured.
+
+## Generated-output path discovery regression
+
+Separate run [37712005945](https://github.com/eunsoogi/orot/actions/runs/37712005945) on branch `eunsoogi/issue-32-next-visit-questions`, head `8c797af8be2a6c0d947d161ec32dc4019749b9b6`, failed after its native build with `spawnSync git ENOBUFS` while the cache helper enumerated current inputs. This is an adjacent consumer failure, not a #74 performance sample. The local regression test creates 5,000 long tracked and 5,000 long untracked paths under an iOS generated build directory: the previous discovery path failed with `ENOBUFS`; the current pathspec exclusions pass for both hashed inputs and changed-input discovery. The fix excludes generated trees in Git pathspecs before Node buffers those paths, while retaining the post-enumeration filter as a defensive check.
+
+Run 37709667227 predates that regression fix and does not prove the new code on hosted CI. Two consecutive successful comparable under-ten-minute runs, strict review, and required checks on the eventual exact final head remain outstanding. Issue #74 remains open and PR #129 remains Draft.

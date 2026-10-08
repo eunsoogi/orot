@@ -15,6 +15,23 @@ const GENERATED_DIRECTORY_NAMES = new Set([
   'simulator',
   'keychains',
 ]);
+// Git buffers paths before Node can apply the generated-tree filter, so mirror those exclusions here.
+const GENERATED_PATHSPEC_ROOTS = ['apps/mobile', 'packages'];
+const GENERATED_PATHSPEC_EXCLUSIONS = [
+  ...GENERATED_PATHSPEC_ROOTS.flatMap((root) =>
+    [...GENERATED_DIRECTORY_NAMES].map(
+      (directoryName) =>
+        `:(exclude,glob)${root}/**/${[...directoryName]
+          .map((character) =>
+            character >= 'a' && character <= 'z'
+              ? `[${character}${character.toUpperCase()}]`
+              : character,
+          )
+          .join('')}/**`,
+    ),
+  ),
+  ':(exclude,glob)apps/mobile/ios/[bB][uU][iI][lL][dD]*/**',
+];
 // CocoaPods can rewrite these tracked files during installation, so the preinstall digest remains authoritative.
 const PRIVACY_MANIFEST_INPUT = 'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy';
 const COCOAPODS_PROJECT_INPUT = 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj';
@@ -46,6 +63,11 @@ export function filterDetoxBuildInputPaths(paths) {
   return filterInputPaths(paths).filter((path) => !HOST_ONLY_DETOX_INPUT.test(path));
 }
 
+// Keep hashing and drift checks on the same input-selection boundary.
+export function detoxInputPathspecs(pathspecs) {
+  return [...pathspecs, ...GENERATED_PATHSPEC_EXCLUSIONS];
+}
+
 function listCurrentInputs(repositoryRoot, pathspecs) {
   // Dirty local builds can consume new non-ignored source files that Git has not indexed yet.
   const output = execFileSync(
@@ -59,7 +81,7 @@ function listCurrentInputs(repositoryRoot, pathspecs) {
       '--others',
       '--exclude-standard',
       '--',
-      ...pathspecs,
+      ...detoxInputPathspecs(pathspecs),
     ],
     { encoding: 'buffer' },
   );
