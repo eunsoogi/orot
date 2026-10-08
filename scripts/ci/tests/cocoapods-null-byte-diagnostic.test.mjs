@@ -23,6 +23,7 @@ function runDiagnosticFixture({
   message = failureMessage,
   success = false,
   version = '1.17.0',
+  loggingFailure = false,
 } = {}) {
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'orot-cocoapods-diagnostic-'));
   const sourcePath = path.join(
@@ -87,15 +88,25 @@ function runDiagnosticFixture({
     '    @calls += 1',
     '    return "file reference" if ENV["TEST_SUCCESS"] == "1"',
     '    raise TEST_ORIGINAL_ERROR',
+    '  rescue ArgumentError => error',
+    '    $TEST_ORIGINAL_BACKTRACE = error.backtrace.dup',
+    '    raise',
     '  end',
     'end',
+    'TEST_REAL_STDERR = STDERR',
+    '# Replace only the logging target so reporting failure cannot replace the project error.',
+    'class TestBrokenStderr; def write(*); raise IOError, "diagnostic log failed"; end; end',
+    '$stderr = TestBrokenStderr.new if ENV["TEST_LOGGING_FAILURE"] == "1"',
     'installer = Pod::Installer::Xcode::PodsProjectGenerator::FileReferencesInstaller.new',
     'begin',
     '  references = installer.send(:add_file_accessors_paths_to_pods_group, :source_files, nil, true)',
     '  warn "TEST_SUCCESS_RESULT=" + references.inspect',
     'rescue ArgumentError => error',
     '  abort "original exception was replaced" unless error.equal?(TEST_ORIGINAL_ERROR)',
+    '  $stderr = TEST_REAL_STDERR',
+    '  abort "original backtrace was replaced" unless error.backtrace == $TEST_ORIGINAL_BACKTRACE',
     '  warn "TEST_EXCEPTION_IDENTITY=preserved"',
+    '  warn "TEST_EXCEPTION_BACKTRACE=preserved"',
     '  warn "TEST_REFERENCE_CALLS=" + installer.project.calls.to_s',
     '  raise',
     'end',
@@ -115,6 +126,7 @@ function runDiagnosticFixture({
         TEST_FAILURE_MESSAGE: message,
         TEST_POD_VERSION: version,
         TEST_SUCCESS: success ? '1' : '0',
+        TEST_LOGGING_FAILURE: loggingFailure ? '1' : '0',
       },
     });
     return result;
@@ -202,4 +214,15 @@ test('does not patch a CocoaPods version outside the pinned diagnostic target', 
   assert.equal(result.status, 1, output);
   assert.doesNotMatch(output, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC/);
   assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
+});
+
+test('preserves the original exception when diagnostic logging fails', () => {
+  const result = runDiagnosticFixture({ loggingFailure: true });
+  const output = result.stderr ?? '';
+
+  assert.equal(result.status, 1, output);
+  assert.doesNotMatch(output, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC/);
+  assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
+  assert.match(output, /TEST_EXCEPTION_BACKTRACE=preserved/);
+  assert.match(output, /TEST_REFERENCE_CALLS=1/);
 });
