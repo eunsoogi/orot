@@ -1,9 +1,10 @@
-import { isSQLCipher, open } from '@op-engineering/op-sqlite';
+import { IOS_LIBRARY_PATH, isSQLCipher, open } from '@op-engineering/op-sqlite';
 import {
   ACCESSIBLE,
   getGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
+import { NativeModules } from 'react-native';
 import {
   createAppointmentRepository,
   openEncryptedStorage,
@@ -15,10 +16,32 @@ import type {
   SqlDatabase,
 } from '@orot/storage';
 import type { DB } from '@op-engineering/op-sqlite';
+import {
+  getDatabaseFileState,
+  isDatabaseKeyBackupEligible,
+  migrateDatabaseKeyForBackup,
+} from '../backup/nativeBackupMigration';
+import { formatStorageOpenDiagnostic } from './storageDiagnostics';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
 const KEYCHAIN_ACCOUNT = 'database';
+const INITIALIZATION_SERVICE = 'com.orot.mobile.database-initialization.v1';
+const INITIALIZATION_ACCOUNT = 'state';
+
+function shouldLogStorageDiagnostics(): boolean {
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
+  const settings =
+    settingsManager?.settings ?? settingsManager?.getConstants?.().settings;
+  return settings?.OROT_STORAGE_DIAGNOSTICS === 'enabled';
+}
 
 const keyStore = {
   async getSecret() {
@@ -28,10 +51,31 @@ const keyStore = {
   async setSecret(secret: string) {
     const result = await setGenericPassword(KEYCHAIN_ACCOUNT, secret, {
       service: KEYCHAIN_SERVICE,
-      accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      accessible: ACCESSIBLE.WHEN_UNLOCKED,
     });
     if (result === false) {
       throw new Error('The database key could not be saved to Keychain.');
+    }
+  },
+  async getDatabaseInitializationState() {
+    const state = await getGenericPassword({ service: INITIALIZATION_SERVICE });
+    if (state === false) return null;
+    if (state.username !== INITIALIZATION_ACCOUNT) {
+      throw new Error('The database initialization state is invalid.');
+    }
+    if (state.password !== 'pending' && state.password !== 'ready') {
+      throw new Error('The database initialization state is invalid.');
+    }
+    return state.password;
+  },
+  async setDatabaseInitializationState(state: 'pending' | 'ready') {
+    // Device-only state prevents a restored key from inheriting permission to create a missing database.
+    const result = await setGenericPassword(INITIALIZATION_ACCOUNT, state, {
+      service: INITIALIZATION_SERVICE,
+      accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    if (result === false) {
+      throw new Error('The database initialization state could not be saved.');
     }
   },
 };
@@ -58,15 +102,37 @@ export function openLocalStorage(): Promise<RecordRepository> {
     );
   }
   if (!opening) {
-    opening = openEncryptedStorage({
-      name: DATABASE_NAME,
-      keyStore,
-      randomBytes: fillSecureRandomBytes,
-      openDatabase(name, encryptionKey) {
-        database = open({ name, encryptionKey });
-        return database;
-      },
-    }).catch(error => {
+    opening = (async () => {
+      // If eligibility migration fails, retain the existing key path so the current device can still read its database.
+      try {
+        await migrateDatabaseKeyForBackup();
+      } catch {
+        // BackupStatusRecovery retries and reports this without rotating the SQLCipher key.
+      }
+      return openEncryptedStorage({
+        name: DATABASE_NAME,
+        keyStore,
+        randomBytes: fillSecureRandomBytes,
+        databaseFileState: () =>
+          getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
+        openDatabase(name, encryptionKey, allowCreate = true) {
+          database = open({
+            name,
+            location: IOS_LIBRARY_PATH,
+            encryptionKey,
+            failOnCreate: !allowCreate,
+          });
+          return database;
+        },
+      });
+    })().catch(error => {
+      // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.
+      if (shouldLogStorageDiagnostics()) {
+        console.error(
+          'Encrypted storage open failed:',
+          formatStorageOpenDiagnostic(error),
+        );
+      }
       opening = null;
       database = null;
       throw error;
@@ -95,6 +161,18 @@ export async function openLocalAppointmentRepository(): Promise<AppointmentRepos
 
 export async function hasDatabaseKey(): Promise<boolean> {
   return (await keyStore.getSecret()) !== null;
+}
+
+export async function prepareDatabaseForBackup(): Promise<void> {
+  await openLocalStorage();
+  await migrateDatabaseKeyForBackup();
+  if (!database) throw new Error('The encrypted database is not open.');
+  await database.execute('SELECT count(*) AS schema_count FROM sqlite_master');
+  if (!(await isDatabaseKeyBackupEligible())) {
+    throw new Error(
+      'The database key is not eligible for encrypted device restore.',
+    );
+  }
 }
 
 export async function getCipherVersion(): Promise<string | null> {
@@ -135,8 +213,14 @@ export async function prepareLegacyStorageForE2e(
 ): Promise<void> {
   if (!isSQLCipher())
     throw new Error('The native SQLite build does not include SQLCipher.');
-  const key = await resolveDatabaseKey(keyStore, fillSecureRandomBytes);
-  const legacyDatabase = open({ name: DATABASE_NAME, encryptionKey: key });
+  const key = await resolveDatabaseKey(keyStore, fillSecureRandomBytes, () =>
+    getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
+  );
+  const legacyDatabase = open({
+    name: DATABASE_NAME,
+    location: IOS_LIBRARY_PATH,
+    encryptionKey: key,
+  });
   await legacyDatabase.execute(
     'CREATE TABLE records (record_type TEXT NOT NULL, payload_json TEXT NOT NULL)',
   );

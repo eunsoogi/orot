@@ -7,6 +7,7 @@ import type {
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
+import { withLocalDeletionAwareRevalidation } from '../memory/deletionAwareEvidenceRevalidation';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import type {
@@ -112,6 +113,9 @@ export async function runRagConversationTurn(
         ) as unknown as import('@orot/model-runtime').JsonValue,
         task: ragConversationTask,
         initialEvidence,
+        revalidateEvidence: withLocalDeletionAwareRevalidation(
+          options.workflow.revalidateEvidence,
+        ),
       },
       invocation,
     );

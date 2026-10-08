@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { TranscriptionProbeReport } from './transcriptionProbe';
-import { TranscriptEvidenceProbe } from './transcriptEvidenceProbe';
 
 export default function TranscriptionProbeView({
   report,
@@ -15,7 +14,7 @@ export default function TranscriptionProbeView({
         : `Speech transcription probe ${report.outcome}`;
 
   return (
-    // Bound the production screen directly so its own recording controls provide the only scroll viewport.
+    // Keep this entry limited to provider output; deletion UI runs in transcript-only mode.
     <View style={styles.container}>
       <Text testID="transcription-probe-complete">
         {report.outcome === 'running' ? 'running' : 'complete'}
@@ -27,8 +26,6 @@ export default function TranscriptionProbeView({
       >
         {summary}
       </Text>
-      {/* Keep deterministic transcript review independent from a pending native capability probe. */}
-      <TranscriptEvidenceProbe />
     </View>
   );
 }

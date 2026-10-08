@@ -2,9 +2,10 @@ import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
 import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigrations';
+import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -135,9 +136,6 @@ async function createSourceEvidenceIntegrity(transaction: SqlExecutor): Promise<
   await transaction.execute(
     "CREATE TRIGGER IF NOT EXISTS evidence_spans_require_source_update BEFORE UPDATE OF payload_json ON evidence_spans WHEN NOT EXISTS (SELECT 1 FROM source_records WHERE id = json_extract(NEW.payload_json, '$.sourceRecordId')) BEGIN SELECT RAISE(ABORT, 'Evidence span source record does not exist.'); END",
   );
-  await transaction.execute(
-    "CREATE TRIGGER IF NOT EXISTS source_records_delete_evidence_spans AFTER DELETE ON source_records BEGIN DELETE FROM evidence_spans WHERE json_extract(payload_json, '$.sourceRecordId') = OLD.id; END",
-  );
 }
 
 async function hasLegacyTable(transaction: SqlExecutor): Promise<boolean> {
@@ -208,9 +206,10 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     await makeRecordedAtNullable(transaction, 'health_observations');
     await makeRecordedAtNullable(transaction, 'dose_events');
     await createSourceEvidenceIntegrity(transaction);
+    await createSourceDeletionIntegrity(transaction);
     await createTranscriptEvidenceIntegrity(transaction);
     await createSyncCheckpoints(transaction);
     await createLocalQueryIndexes(transaction);
-    await transaction.execute('PRAGMA user_version = 8');
+    await transaction.execute('PRAGMA user_version = 9');
   });
 }

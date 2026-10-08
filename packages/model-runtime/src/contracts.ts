@@ -199,14 +199,17 @@ export type TelemetryOperation =
   | 'transcription.stream'
   | 'transcription.transcribe';
 
+export type TelemetryOutcome = 'cancelled' | 'error' | 'success';
+
+// External telemetry carries operation metadata only; request and user identities stay in the caller.
 export interface TelemetryEvent {
-  readonly providerId: ProviderId;
   readonly operation: TelemetryOperation;
-  readonly outcome: 'error' | 'success';
+  readonly outcome: TelemetryOutcome;
   readonly durationMs: number;
   readonly errorCode?: ProviderErrorCode;
 }
 
+// A sink receives only the closed telemetry event, never a provider request or credential.
 export interface TelemetrySink {
   record(event: TelemetryEvent): void | Promise<void>;
 }

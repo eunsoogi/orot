@@ -2,6 +2,7 @@ export type E2EEntryRoute =
   | 'storage'
   | 'agent-memory'
   | 'appointments'
+  | 'medical-appointment-classification'
   | 'graph'
   | 'checkpoint'
   | 'safe-area'
