@@ -228,6 +228,8 @@ describe('multi-agent safety boundaries', () => {
 
     expect(result.status).toBe('needs_clarification');
     expect(result.coverage).toEqual(incomplete.coverage);
+    // Evidence gaps keep generic runtime copy instead of task-specific wording.
+    expect(result).not.toHaveProperty('message');
     expect(generate).toHaveBeenCalledTimes(2);
     expect(search).toHaveBeenCalledTimes(1);
   });

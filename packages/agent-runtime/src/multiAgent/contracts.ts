@@ -118,8 +118,16 @@ export type MultiAgentRunResult<TResult> =
       readonly checkpoint: MultiAgentCheckpointState;
     }
   | {
+      readonly status: 'needs_clarification';
+      readonly reason: string;
+      /** Task-validated display copy; generic evidence clarifications may omit it. */
+      readonly message?: string;
+      readonly providerErrorCode?: ProviderErrorCode;
+      readonly coverage?: readonly EvidenceCoverage[];
+      readonly checkpoint: MultiAgentCheckpointState;
+    }
+  | {
       readonly status:
-        | 'needs_clarification'
         | 'unavailable'
         | 'invalid_output'
         | 'budget_exceeded'

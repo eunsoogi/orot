@@ -91,6 +91,8 @@ export function consumeResponderResponse<TResult>(
     context.outcome = {
       status: 'needs_clarification',
       reason: 'The task requires clarification before it can return a result.',
+      // Keep task-approved copy distinct from generic runtime failure reasons.
+      message: validation.message,
       coverage: input.evidence.coverage,
     };
     return completeState();

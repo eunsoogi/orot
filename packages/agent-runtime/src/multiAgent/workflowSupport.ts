@@ -12,6 +12,7 @@ import { MAX_MULTI_AGENT_BUDGET } from './contracts';
 import {
   isSourceAllowed,
   isEvidenceReference,
+  isEvidenceReferenceWithinScope,
   projectEvidenceReference,
   referencesFromBatch,
   sameReference,
@@ -101,10 +102,15 @@ export function resumeState<TResult>(
   options: MultiAgentWorkflowOptions<TResult>,
 ): WorkflowState | undefined {
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
+  // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
-    saved.evidenceReferences.some((reference) => !isEvidenceReference(reference)) ||
+    saved.evidenceReferences.some(
+      (reference) =>
+        !isEvidenceReference(reference) ||
+        !isEvidenceReferenceWithinScope(reference, options.execution.allowedScope),
+    ) ||
     saved.terminal ||
     saved.phase === 'complete' ||
     saved.pendingOperation ||
