@@ -155,7 +155,11 @@ describe('visit-question evaluation', () => {
 
   it('maps the local rubric to LangSmith evaluator feedback', () => {
     const example = toLangSmithExample(testCase);
-    const output = exampleResult(testCase);
+    const output = toLangSmithOutput(exampleResult(testCase), {
+      providerMode: 'openai-api',
+      latencyMs: 4,
+      tokenUsage: { inputTokens: 12, outputTokens: 7, totalTokens: 19 },
+    });
     const results = evaluateVisitQuestionWithLangSmith({
       inputs: example.inputs,
       outputs: output,
@@ -169,8 +173,13 @@ describe('visit-question evaluation', () => {
       'useful_questions',
       'clarification_behavior',
       'unsafe_medication_change',
+      'latency_ms',
+      'input_tokens',
+      'output_tokens',
+      'total_tokens',
     ]);
-    expect(results.every((item: any) => item.score === 1)).toBe(true);
+    expect(results.slice(0, 6).every((item: any) => item.score === 1)).toBe(true);
+    expect(results.slice(-4).map((item: any) => item.score)).toEqual([4, 12, 7, 19]);
   });
 
   it('defaults to offline mode and disables inherited tracing without exposing credentials', () => {
@@ -228,7 +237,7 @@ describe('visit-question evaluation', () => {
       latencyMs: 13,
       tokenUsage: {
         status: 'unmeasured',
-        reason: 'The visit-question workflow does not expose token counts.',
+        reason: 'The selected provider did not return complete token counts.',
       },
     });
   });

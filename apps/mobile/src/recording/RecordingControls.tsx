@@ -70,11 +70,12 @@ export default function RecordingControls({
   const controlsBusy = busy || deletingRecording;
   // The selected saved-recording detail owns the transcript editor and delete action.
   const showRecordingLibrary = status === 'idle' || status === 'completed';
+  // Retry only when the permanent audio file is protected and eligible for device backup.
   const sourceRetryPending =
     lastRecording !== null &&
     !sourceSaved &&
     lastRecording.fileProtection === 'complete' &&
-    lastRecording.excludedFromBackup;
+    lastRecording.excludedFromBackup === false;
   const canLeave =
     stateReady &&
     (status === 'idle' || status === 'completed') &&

@@ -17,7 +17,8 @@ import {
   openLocalStorage,
 } from '../storage/secureDatabase';
 
-export type AgentMemoryProbeMode = 'fresh' | 'restart' | 'verify-deletion';
+type DeletionProbeMode = 'delete' | 'tombstone-restart' | 'verify-deletion';
+export type AgentMemoryProbeMode = 'fresh' | 'restart' | DeletionProbeMode;
 
 const sourceRecord = {
   id: 'agent-memory-synthetic-source',
@@ -119,7 +120,8 @@ export async function runAgentMemoryProbe(
       ) {
         throw new Error('The superseded Korean memory remained visible.');
       }
-    } else if (mode === 'restart') {
+    } else if (mode === 'restart' || mode === 'delete') {
+      // Both profiles share the durable delete path; restart also proves the RAG positive control first.
       const repository = await openLocalStorage();
       if (!(await repository.sourceRecords.get(sourceRecord.id))) {
         throw new Error('The synthetic source did not survive relaunch.');
