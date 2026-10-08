@@ -775,8 +775,28 @@ The Release Simulator app build took 6m07s (05:19:33–05:25:40Z). Its Detox tes
 
 This was a three-Jest-worker configuration under one Detox CLI, not three independently launched Detox processes. It is a failed functional run, not a performance sample. The `ECOMPROMISED` event and lingering worker output are observations; they do not prove that Simulator cloning caused the lock error or that process cleanup alone resolves it.
 
-## 2026-10-08 explicit-process Release sharding candidate (not yet hosted-measured)
+## 2026-10-08 explicit-process Release sharding candidate
 
 The PR candidate keeps the eight-file Release inventory and all 13 current cases, including the original nine. It assigns the ordered wrappers to case counts of 5, 5, and 3. After the base Simulator is recorded, CI creates and boots two additional profile-matched Simulators and records each identity before boot so the always-run teardown can clean up after a setup failure. Each wrapper then runs in a separate Detox CLI process, selects one Jest worker, and receives one explicit Simulator UDID. The runner owns each process group, stops orphan descendants after the controller exits, and stops sibling groups when a shard fails. The profile summary gate checks every wrapper's exact case and suite totals before publishing 13 passing cases. Diagnostics and teardown continue to verify only devices matching the dedicated profile runtime and device type.
 
-Local verification passed with the full maintained-code lint and format checks, typecheck, unit suite, 183 CI script tests, and both changed-file and all-file line-count checks. These checks do not execute Detox or boot native Simulators. This candidate has no hosted measurement yet. The previous serial Release run 37726693213 took 14m55s from Quality Linux through the aggregate, and the single-CLI three-worker attempt 37731203928 failed after 59m41s. The new implementation must pass the full hosted workload, production/OAuth checks, diagnostics, exact Simulator deletion, fail-closed summaries, and required checks before it can count as a timing sample. No speedup or under-ten-minute result is claimed.
+Local verification of the initial candidate passed the full maintained-code lint and format checks, typecheck, unit suite, 183 CI script tests, and both changed-file and all-file line-count checks. These checks do not execute Detox or boot native Simulators. Its first hosted result is recorded below. The previous serial Release run 37726693213 took 14m55s from Quality Linux through the aggregate, and the single-CLI three-worker attempt 37731203928 failed after 59m41s. No speedup or under-ten-minute result is claimed.
+
+## 2026-10-08 explicit-process Release sharding first hosted run 37742292689
+
+Run [37742292689](https://github.com/eunsoogi/orot/actions/runs/37742292689), attempt 1, failed on PR head `fcd1494af5940256f7fab0d397a06376ee617c5d` against base `673c13bc61644dab2f59712baa7fb122bec2bdc5`. Quality Linux started at 07:15:16Z and the required `Detox iOS E2E` aggregate failed at 08:05:58Z: **50m42s**. This is a failed run, not a timing sample.
+
+| Job | Runner and interval (UTC) | Result |
+| --- | ------------------------ | ------ |
+| Quality Linux | 1000073082, 07:15:16–07:16:10 | failed in two Linux timer fixtures; other quality checks were skipped |
+| Compute shared Detox cache fingerprints | 1000073083, 07:15:16–07:15:28 | passed |
+| iOS Simulator Build | 1000073081, 07:15:21–07:23:37 | passed, including production build and OAuth checks |
+| Speech Transcription | 1000073088, 07:21:52–07:42:27 | passed, separate synthetic 1/1 case |
+| Release | 1000073094, 07:32:15–08:05:42 | failed after 33m27s; no Release E2E cases ran |
+| OpenAI Debug | 1000073099, 07:41:45–07:52:42 | passed, 1/1 case |
+| Quality | 1000073085, 07:16:13–07:16:25 | failed closed on the Linux quality result |
+| Require complete profile summaries | 1000073112, 08:05:44–08:05:51 | failed closed |
+| Detox iOS E2E | 1000073113, 08:05:54–08:05:58 | failed closed |
+
+Release used runner `1000073094`, macOS 27.0, Xcode/SDK 27.0, iPhone 18 Pro, Node 22.23.2, and pnpm 12.3.4. Its DerivedData restore was dependency-compatible but not reusable because `build_inputs_changed`; the app rebuilt from 07:43:13Z to 07:57:29Z (14m16s). The worker-preparation step then failed after 2m40s: the artifact records that the data Simulator's `simctl bootstatus` exceeded the preparation script's 120,000ms per-command limit. Both worker IDs had been recorded before boot. E2E was skipped, diagnostics failed, and the always-run teardown deleted the dedicated base Simulator and both worker Simulators; artifact upload succeeded. The profile summary validator and required aggregate rejected the missing Release result.
+
+Quality Linux's two failures came from shell fixtures inheriting `GITHUB_ACTIONS=true` and selecting a Darwin-only timer on Linux. The local working tree now makes those fixtures select the portable timer, and the full CI/release/quality script suite passes 205/205. It also changes the Release worker boot default from 120,000ms to 900,000ms, matching the existing base-Simulator boot wait; the workflow step still caps total worker preparation at ten minutes. A focused test observed the 120,000ms default before the change and 900,000ms afterward. These local results do not show that hosted Simulator boot will finish within the workflow budget or that the pipeline meets the timing target. The timeout correction is not yet hosted-tested. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured.

@@ -63,6 +63,8 @@ if (shard === process.env.FAIL_SHARD) {
     orphanPidPath,
     env: {
       ...process.env,
+      // Shard shell fixtures inject a portable timer even when the outer test suite runs in GitHub Actions.
+      GITHUB_ACTIONS: 'false',
       PATH: [bin, process.env.PATH].join(':'),
       DETOX_ARTIFACTS_LOCATION: artifactRoot,
       OROT_DETOX_SIMULATOR_UDID: shards[0][1],

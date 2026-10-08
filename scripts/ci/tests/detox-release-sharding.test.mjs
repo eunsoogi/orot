@@ -72,6 +72,8 @@ test('routes a Release profile with three explicit Simulators through the shard 
       timeout: 10000,
       env: {
         ...process.env,
+        // The fixture runs on hosted Linux; select its portable timer instead of Darwin's production timer.
+        GITHUB_ACTIONS: 'false',
         PATH: [bin, process.env.PATH].join(':'),
         DETOX_ARTIFACTS_LOCATION: join(directory, 'detox'),
         OROT_DETOX_SIMULATOR_UDID: baseId,

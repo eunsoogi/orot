@@ -22,7 +22,8 @@ if [[ ! "$base_udid" =~ $udid_pattern || -z "$runtime_id" || -z "$device_type_id
   exit 2
 fi
 
-simctl_timeout_ms="${OROT_DETOX_SIMCTL_TIMEOUT_MS:-120000}"
+# Match the base Simulator's boot window; the workflow step still bounds total worker preparation.
+simctl_timeout_ms="${OROT_DETOX_SIMCTL_TIMEOUT_MS:-900000}"
 run_simctl() {
   bash "$script_dir/run-detox-simctl.sh" "$simctl_timeout_ms" "$@"
 }

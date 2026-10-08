@@ -18,6 +18,7 @@ function fixture(failBoot = false) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-worker-simulators-'));
   const bin = join(directory, 'bin');
   const callsPath = join(directory, 'simctl-calls.log');
+  const timeoutsPath = join(directory, 'simctl-timeouts.log');
   const environmentPath = join(directory, 'github-env');
   const simulatorIdsPath = join(directory, 'release-worker-simulators.txt');
   mkdirSync(bin, { recursive: true });
@@ -38,15 +39,29 @@ fi
 `,
     { mode: 0o755 },
   );
+  // Observe the timeout passed by run-detox-simctl while keeping simulator calls hermetic.
+  writeFileSync(
+    join(bin, 'node'),
+    `#!/bin/sh
+printf '%s\\n' "$2" >>"$SIMCTL_TIMEOUTS"
+shift 2
+exec xcrun simctl "$@"
+`,
+    { mode: 0o755 },
+  );
   return {
     directory,
     callsPath,
+    timeoutsPath,
     environmentPath,
     simulatorIdsPath,
     env: {
       ...process.env,
       PATH: [bin, process.env.PATH].join(':'),
       SIMCTL_CALLS: callsPath,
+      SIMCTL_TIMEOUTS: timeoutsPath,
+      // Force the shell default even when the developer process has an override.
+      OROT_DETOX_SIMCTL_TIMEOUT_MS: '',
       DATA_SIMULATOR_UDID: dataId,
       STORAGE_SIMULATOR_UDID: storageId,
       OROT_DETOX_SIMULATOR_UDID: baseId,
@@ -56,7 +71,6 @@ fi
       GITHUB_RUN_ID: '700',
       GITHUB_RUN_ATTEMPT: '2',
       FAIL_BOOT: failBoot ? 'true' : 'false',
-      OROT_DETOX_SIMCTL_TIMEOUT_MS: '1000',
     },
   };
 }
@@ -87,6 +101,14 @@ test('creates and boots both extra Release Simulators after recording exact clea
       assert.match(calls, new RegExp(`simctl boot ${udid}`));
       assert.match(calls, new RegExp(`simctl bootstatus ${udid} -b`));
     }
+    assert.deepEqual(readFileSync(context.timeoutsPath, 'utf8').trim().split('\n'), [
+      '900000',
+      '900000',
+      '900000',
+      '900000',
+      '900000',
+      '900000',
+    ]);
     assert.ok(calls.indexOf('simctl create') < calls.indexOf(`simctl boot ${dataId}`));
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
