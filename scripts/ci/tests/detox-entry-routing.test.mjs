@@ -132,7 +132,7 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
   assert.equal(releaseJestConfig.bail, 1);
-  assert.equal(releaseJestConfig.testMatch.length, 2);
+  assert.equal(releaseJestConfig.testMatch.length, 1); // One file nests both ordered phases; the inventory stays complete.
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
     './safe-area.test.js',
