@@ -39,6 +39,10 @@ test('routes the deterministic screen entry through its isolated app and Jest pr
     probe.apps['ios.next-visit-questions'].build,
     /ENTRY_FILE=e2e\/nextVisitQuestionsProbeEntry\.tsx/,
   );
+  assert.match(
+    probe.apps['ios.next-visit-questions'].build,
+    /ARCHS="\$\(uname -m\)" ONLY_ACTIVE_ARCH=YES/,
+  );
   assert.deepEqual(jestProfile.testMatch, probeJest.testMatch);
   assert.deepEqual(probeJest.testMatch, ['<rootDir>/e2e/next-visit-questions.e2e.js']);
 });

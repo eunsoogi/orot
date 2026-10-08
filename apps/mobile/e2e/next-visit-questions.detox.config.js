@@ -34,7 +34,8 @@ module.exports = {
       binaryPath:
         derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
       // A dedicated entry keeps the deterministic screen probe out of the shipping app route.
-      build: `FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ${derivedDataPath} CODE_SIGNING_ALLOWED=NO ENTRY_FILE=e2e/nextVisitQuestionsProbeEntry.tsx`,
+      // Match the host-only architecture checked by the CI builder.
+      build: `FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ${derivedDataPath} CODE_SIGNING_ALLOWED=NO ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES ENTRY_FILE=e2e/nextVisitQuestionsProbeEntry.tsx`,
     },
   },
   devices: {
