@@ -17,44 +17,50 @@ export default function RecordingDeletionConfirmation({
   onCancel,
   onConfirm,
 }: RecordingDeletionConfirmationProps) {
-  if (!target) return null;
-
   return (
-    <Modal animationType="fade" onRequestClose={onCancel} transparent visible>
-      <View style={styles.confirmationBackdrop}>
-        <View
-          accessibilityViewIsModal
-          style={styles.confirmation}
-          testID="recording-delete-confirmation"
-        >
-          <Text accessibilityRole="header" style={styles.confirmationTitle}>
-            {t('recording.library.confirmTitle')}
-          </Text>
-          <Text style={styles.copy}>
-            {t('recording.library.confirmMessage', {
-              title: target.title ?? t('recording.library.untitled'),
-            })}
-          </Text>
-          <View style={styles.actions}>
-            <Button
-              disabled={busy}
-              onPress={onCancel}
-              testID="recording-delete-cancel"
-              title={t('recording.library.cancel')}
-            />
-            <Button
-              disabled={busy}
-              onPress={onConfirm}
-              testID="recording-delete-confirm"
-              title={
-                busy
-                  ? t('recording.library.deleting')
-                  : t('recording.library.confirmDelete')
-              }
-            />
+    // Keep the native modal mounted after dismissal so iOS receives visible=false.
+    <Modal
+      animationType="fade"
+      onRequestClose={onCancel}
+      transparent
+      visible={target !== null}
+    >
+      {target ? (
+        <View style={styles.confirmationBackdrop}>
+          <View
+            accessibilityViewIsModal
+            style={styles.confirmation}
+            testID="recording-delete-confirmation"
+          >
+            <Text accessibilityRole="header" style={styles.confirmationTitle}>
+              {t('recording.library.confirmTitle')}
+            </Text>
+            <Text style={styles.copy}>
+              {t('recording.library.confirmMessage', {
+                title: target.title ?? t('recording.library.untitled'),
+              })}
+            </Text>
+            <View style={styles.actions}>
+              <Button
+                disabled={busy}
+                onPress={onCancel}
+                testID="recording-delete-cancel"
+                title={t('recording.library.cancel')}
+              />
+              <Button
+                disabled={busy}
+                onPress={onConfirm}
+                testID="recording-delete-confirm"
+                title={
+                  busy
+                    ? t('recording.library.deleting')
+                    : t('recording.library.confirmDelete')
+                }
+              />
+            </View>
           </View>
         </View>
-      </View>
+      ) : null}
     </Modal>
   );
 }

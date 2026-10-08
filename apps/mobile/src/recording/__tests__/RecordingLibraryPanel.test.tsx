@@ -5,6 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
+import { Modal } from 'react-native';
 import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import type { RecordingLibraryService } from '../recordingLibraryService';
@@ -77,6 +78,7 @@ function createTranscriptService(): TranscriptEvidenceService {
 
 test('cancelling list deletion keeps the saved recording available', async () => {
   const service = createLibraryService();
+  const modalRender = jest.spyOn(Modal.prototype, 'render');
   await render(
     <RecordingLibraryPanel
       service={service}
@@ -90,11 +92,21 @@ test('cancelling list deletion keeps the saved recording available', async () =>
     'recording-delete-confirmation',
   );
   expect(confirmation.props.accessibilityViewIsModal).toBe(true);
+  expect(
+    modalRender.mock.contexts.some(modal => modal.props.visible === true),
+  ).toBe(true);
   await fireEvent.press(screen.getByTestId('recording-delete-cancel'));
+  // iOS needs a visible=false update to dismiss the native modal host.
+  await waitFor(() => {
+    expect(
+      modalRender.mock.contexts.some(modal => modal.props.visible === false),
+    ).toBe(true);
+  });
 
   expect(service.deleteRecording).not.toHaveBeenCalled();
   expect(screen.getByTestId('recording-library-item-recording-1')).toBeTruthy();
   expect(screen.getByTestId('recording-library-item-recording-2')).toBeTruthy();
+  modalRender.mockRestore();
 });
 
 test('a source deletion failure keeps the recording in the list', async () => {
