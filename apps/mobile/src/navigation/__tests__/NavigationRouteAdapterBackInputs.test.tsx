@@ -41,7 +41,7 @@ function createPanEvent(
   currentX: number,
 ) {
   return {
-    nativeEvent: { touches: [{}] },
+    nativeEvent: { pageX: currentX, touches: [{}] },
     touchHistory: {
       indexOfSingleActiveTouch: 0,
       mostRecentTimeStamp: timestamp,
@@ -80,6 +80,7 @@ describe('shared back inputs', () => {
       hasUnsavedChanges: true,
       isRecording: false,
       revision: 1,
+      inputRevision: 1,
     }));
     const requestBack = jest.spyOn(controller, 'requestBack');
 
@@ -107,15 +108,25 @@ describe('shared back inputs', () => {
 
     const edgeRegion = screen.getByTestId('edge-swipe-back-region');
     expect(edgeRegion).toBeVisible();
-    // Exercise the responder wiring with the touch-history fields PanResponder reads.
-    const startEvent = createPanEvent(1, 12, 12);
-    const moveEvent = createPanEvent(2, 12, 112);
+    // PanResponder x0 is zero until grant, so the edge start must be tracked directly.
+    const centerStartEvent = createPanEvent(1, 120, 120);
+    const centerMoveEvent = createPanEvent(2, 120, 150);
+    edgeRegion.props.onStartShouldSetResponderCapture?.(centerStartEvent);
+    expect(
+      edgeRegion.props.onMoveShouldSetResponderCapture?.(centerMoveEvent),
+    ).toBe(false);
+
+    const startEvent = createPanEvent(3, 12, 12);
+    const claimEvent = createPanEvent(4, 12, 42);
+    const releaseEvent = createPanEvent(5, 42, 87);
     edgeRegion.props.onStartShouldSetResponderCapture?.(startEvent);
-    expect(edgeRegion.props.onMoveShouldSetResponderCapture?.(moveEvent)).toBe(
+    expect(edgeRegion.props.onMoveShouldSetResponderCapture?.(claimEvent)).toBe(
       true,
     );
+    edgeRegion.props.onResponderGrant?.(claimEvent);
+    edgeRegion.props.onResponderMove?.(releaseEvent);
     await act(async () => {
-      edgeRegion.props.onResponderRelease?.(moveEvent);
+      edgeRegion.props.onResponderRelease?.(releaseEvent);
       confirmationDecisions[1]?.(true);
       await Promise.resolve();
       await Promise.resolve();

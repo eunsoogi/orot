@@ -8,8 +8,10 @@ export type NavigationLeaveReason = 'unsaved-changes' | 'recording';
 export interface NavigationLeaveState {
   readonly hasUnsavedChanges: boolean;
   readonly isRecording: boolean;
-  // Increment when draft or activity state changes so an old prompt cannot approve new state.
+  // Increment on any draft or activity change so an open prompt cannot approve stale state.
   readonly revision: number;
+  // Increment for draft or transcript content changes, including finalized recording output.
+  readonly inputRevision: number;
 }
 
 export interface NavigationLeaveConfirmation<
@@ -23,6 +25,7 @@ export interface NavigationLeaveGuardOptions<Name extends string> {
   readonly confirm: (
     request: NavigationLeaveConfirmation<Name>,
   ) => boolean | Promise<boolean>;
+  // Resolve after readState exposes the stopped state and any finalized input.
   readonly stopRecording?: () => Promise<void>;
 }
 
@@ -42,6 +45,7 @@ export function createNavigationLeaveGuard<Name extends string>(
     const current = options.readState();
     if (
       current.revision !== initial.revision ||
+      current.inputRevision !== initial.inputRevision ||
       current.hasUnsavedChanges !== initial.hasUnsavedChanges ||
       current.isRecording !== initial.isRecording
     ) {
@@ -53,6 +57,15 @@ export function createNavigationLeaveGuard<Name extends string>(
       try {
         await options.stopRecording();
       } catch {
+        return false;
+      }
+
+      const afterStop = options.readState();
+      if (
+        afterStop.isRecording ||
+        afterStop.inputRevision !== current.inputRevision ||
+        afterStop.hasUnsavedChanges !== current.hasUnsavedChanges
+      ) {
         return false;
       }
     }

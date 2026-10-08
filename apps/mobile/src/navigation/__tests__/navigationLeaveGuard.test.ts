@@ -8,6 +8,13 @@ import type { NavigationLeaveConfirmation } from '../navigationLeaveGuard';
 
 type TestRoute = 'home' | 'details' | 'editor' | 'recording';
 
+interface MutableLeaveState {
+  hasUnsavedChanges: boolean;
+  isRecording: boolean;
+  revision: number;
+  inputRevision: number;
+}
+
 function makeController() {
   return createNavigationController<TestRoute>('home');
 }
@@ -33,6 +40,7 @@ describe('navigation leave guard', () => {
         hasUnsavedChanges: false,
         isRecording: false,
         revision: 0,
+        inputRevision: 0,
       }),
       confirm,
       stopRecording: jest.fn(async () => {}),
@@ -63,6 +71,7 @@ describe('navigation leave guard', () => {
           hasUnsavedChanges,
           isRecording: false,
           revision: 0,
+          inputRevision: 0,
         }),
         confirm,
         stopRecording: jest.fn(async () => {}),
@@ -81,22 +90,26 @@ describe('navigation leave guard', () => {
 
   it('stops an active recording before an approved leave can complete', async () => {
     const events: string[] = [];
+    const state: MutableLeaveState = {
+      hasUnsavedChanges: false,
+      isRecording: true,
+      revision: 0,
+      inputRevision: 0,
+    };
     const controller = makeController();
     const recording = pushRoute(controller, 'recording');
     controller.registerLeaveGuard(
       recording.key,
       createNavigationLeaveGuard<TestRoute>({
-        readState: () => ({
-          hasUnsavedChanges: false,
-          isRecording: true,
-          revision: 0,
-        }),
+        readState: () => ({ ...state }),
         confirm: async request => {
           events.push('confirm:' + request.reasons.join(','));
           return true;
         },
         stopRecording: async () => {
           events.push('stop');
+          state.isRecording = false;
+          state.revision += 1;
         },
       }),
     );
@@ -104,6 +117,61 @@ describe('navigation leave guard', () => {
     await expect(controller.requestBack()).resolves.toBe(true);
     expect(events).toEqual(['confirm:recording', 'stop']);
     expect(controller.getSnapshot().currentRoute.name).toBe('home');
+  });
+
+  it('does not discard input created while recording stops', async () => {
+    const state: MutableLeaveState = {
+      hasUnsavedChanges: false,
+      isRecording: true,
+      revision: 0,
+      inputRevision: 0,
+    };
+    const controller = makeController();
+    const recording = pushRoute(controller, 'recording');
+    controller.registerLeaveGuard(
+      recording.key,
+      createNavigationLeaveGuard<TestRoute>({
+        readState: () => ({ ...state }),
+        confirm: async () => true,
+        stopRecording: async () => {
+          state.isRecording = false;
+          state.hasUnsavedChanges = true;
+          state.revision += 1;
+          state.inputRevision += 1;
+        },
+      }),
+    );
+
+    await expect(controller.requestBack()).resolves.toBe(false);
+    expect(controller.getSnapshot().currentRoute.name).toBe('recording');
+    expect(state.hasUnsavedChanges).toBe(true);
+  });
+
+  it('rejects a new draft revision during stop when the draft was already dirty', async () => {
+    const state: MutableLeaveState = {
+      hasUnsavedChanges: true,
+      isRecording: true,
+      revision: 4,
+      inputRevision: 2,
+    };
+    const controller = makeController();
+    const recording = pushRoute(controller, 'recording');
+    controller.registerLeaveGuard(
+      recording.key,
+      createNavigationLeaveGuard<TestRoute>({
+        readState: () => ({ ...state }),
+        confirm: async () => true,
+        stopRecording: async () => {
+          state.isRecording = false;
+          state.revision += 1;
+          state.inputRevision += 1;
+        },
+      }),
+    );
+
+    await expect(controller.requestBack()).resolves.toBe(false);
+    expect(controller.getSnapshot().currentRoute.name).toBe('recording');
+    expect(state.hasUnsavedChanges).toBe(true);
   });
 
   it('does not leave if the active recording cannot be stopped', async () => {
@@ -116,6 +184,7 @@ describe('navigation leave guard', () => {
           hasUnsavedChanges: false,
           isRecording: true,
           revision: 0,
+          inputRevision: 0,
         }),
         confirm: async () => true,
         stopRecording: async () => {
@@ -139,6 +208,7 @@ describe('navigation leave guard', () => {
           hasUnsavedChanges: true,
           isRecording: false,
           revision,
+          inputRevision: revision,
         }),
         confirm: async () => {
           revision += 1;

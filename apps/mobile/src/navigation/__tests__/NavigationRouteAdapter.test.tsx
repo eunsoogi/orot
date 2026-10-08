@@ -60,6 +60,7 @@ describe('app navigation route adapter', () => {
         hasUnsavedChanges: true,
         isRecording: false,
         revision: 3,
+        inputRevision: 3,
       }),
       confirm,
     };
@@ -105,6 +106,7 @@ describe('app navigation route adapter', () => {
         hasUnsavedChanges: false,
         isRecording: false,
         revision: 0,
+        inputRevision: 0,
       }),
     };
     const childOwnsInsets = jest.fn(route => route.name === 'editor');

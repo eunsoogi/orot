@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { PanResponder, StyleSheet, View } from 'react-native';
 import type { PanResponderGestureState } from 'react-native';
 import type { NavigationController } from './navigationController';
@@ -27,6 +27,7 @@ export function shouldClaimEdgeBackGesture(
   return (
     availability.canGoBack &&
     !availability.isTransitioning &&
+    gesture.x0 >= 0 &&
     gesture.x0 <= edgeWidth &&
     gesture.dx >= activationDistance &&
     gesture.dx > Math.abs(gesture.dy) * horizontalDominance
@@ -60,22 +61,53 @@ export function EdgeSwipeBackRegion<Name extends string>({
   children,
   controller,
 }: EdgeSwipeBackRegionProps<Name>) {
+  const touchStartX = useRef<number | null>(null);
+  const preGrantMovement = useRef({ dx: 0, dy: 0 });
   const responder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
-        onStartShouldSetPanResponderCapture: () => false,
-        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
-          shouldClaimEdgeBackGesture(gesture, controller.getSnapshot()),
+        onStartShouldSetPanResponderCapture: event => {
+          const startX = event.nativeEvent.pageX;
+          touchStartX.current =
+            event.nativeEvent.touches.length === 1 && Number.isFinite(startX)
+              ? startX
+              : null;
+          preGrantMovement.current = { dx: 0, dy: 0 };
+          return false;
+        },
+        onMoveShouldSetPanResponderCapture: (_event, gesture) => {
+          const x0 = touchStartX.current;
+          const shouldClaim =
+            x0 !== null &&
+            gesture.numberActiveTouches === 1 &&
+            shouldClaimEdgeBackGesture(
+              { x0, dx: gesture.dx, dy: gesture.dy },
+              controller.getSnapshot(),
+            );
+          if (shouldClaim) {
+            preGrantMovement.current = { dx: gesture.dx, dy: gesture.dy };
+          }
+          return shouldClaim;
+        },
         onPanResponderTerminationRequest: () => true,
         onPanResponderRelease: (_event, gesture) => {
-          requestBackAfterEdgeGesture(controller, gesture).then(
+          touchStartX.current = null;
+          const totalMovement = {
+            dx: preGrantMovement.current.dx + gesture.dx,
+            dy: preGrantMovement.current.dy + gesture.dy,
+          };
+          preGrantMovement.current = { dx: 0, dy: 0 };
+          requestBackAfterEdgeGesture(controller, totalMovement).then(
             () => undefined,
             () => undefined,
           );
         },
         // A system or scroll-view cancellation is not a completed back gesture.
-        onPanResponderTerminate: () => undefined,
+        onPanResponderTerminate: () => {
+          touchStartX.current = null;
+          preGrantMovement.current = { dx: 0, dy: 0 };
+        },
       }),
     [controller],
   );
