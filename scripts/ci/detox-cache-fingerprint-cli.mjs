@@ -10,12 +10,16 @@ import { computeDetoxCocoapodsCacheFingerprint } from './detox-cocoapods-cache-f
 
 function writeGitHubOutputs(outputPath, fingerprints) {
   const outputLines = [];
-  if (fingerprints.buildInputs) outputLines.push(`build_inputs=${fingerprints.buildInputs}`);
+  if (fingerprints.buildInputs) {
+    outputLines.push(`build_inputs=${fingerprints.buildInputs}`);
+    outputLines.push(`build_input_count=${fingerprints.buildInputCount}`);
+  }
   if (fingerprints.reactNativeArtifacts) {
     outputLines.push(`react_native_artifacts=${fingerprints.reactNativeArtifacts}`);
   }
   if (fingerprints.nativeDependencies) {
     outputLines.push(`native_dependencies=${fingerprints.nativeDependencies}`);
+    outputLines.push(`native_dependency_input_count=${fingerprints.nativeDependencyInputCount}`);
   }
   if (fingerprints.cocoapodsInputs) {
     outputLines.push(`cocoapods_inputs=${fingerprints.cocoapodsInputs}`);
@@ -46,6 +50,42 @@ function writeGitHubEnvironment(outputPath, fingerprints) {
   );
 }
 
+function readPrecomputedDerivedDataFingerprints() {
+  let values;
+  try {
+    values = JSON.parse(process.env.DETOX_CACHE_FINGERPRINTS_JSON ?? '');
+  } catch {
+    throw new Error('DETOX_CACHE_FINGERPRINTS_JSON must contain valid fingerprint JSON.');
+  }
+
+  const readHash = (name) => {
+    const value = values?.[name];
+    if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) {
+      throw new Error(`The precomputed Detox fingerprint ${name} must be a SHA-256 hex value.`);
+    }
+    return value;
+  };
+  const readCount = (name) => {
+    const rawValue = values?.[name];
+    const value =
+      typeof rawValue === 'string' && /^\d+$/.test(rawValue) ? Number(rawValue) : rawValue;
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`The precomputed Detox fingerprint ${name} must be a non-negative integer.`);
+    }
+    return value;
+  };
+
+  // The profile job re-emits these hashes locally because GITHUB_ENV is job-scoped.
+  return {
+    buildInputs: readHash('build_inputs'),
+    buildInputCount: readCount('build_input_count'),
+    nativeDependencies: readHash('native_dependencies'),
+    nativeDependencyInputCount: readCount('native_dependency_input_count'),
+    privacyManifestInputHash: readHash('privacy_manifest_input_sha256'),
+    cocoapodsProjectInputHash: readHash('cocoapods_project_input_sha256'),
+  };
+}
+
 function computeFingerprints(mode) {
   if (mode === '--react-native-artifacts-only') {
     return computeDetoxReactNativeArtifactFingerprint();
@@ -54,6 +94,9 @@ function computeFingerprints(mode) {
     return { cocoapodsInputs: computeDetoxCocoapodsCacheFingerprint() };
   }
   if (mode === '--derived-data-only') return computeDetoxDerivedDataFingerprints();
+  if (mode === '--precomputed-derived-data-only') {
+    return readPrecomputedDerivedDataFingerprints();
+  }
   return computeDetoxCacheFingerprints();
 }
 
@@ -66,15 +109,21 @@ function main() {
       '--react-native-artifacts-only',
       '--cocoapods-cache-inputs-only',
       '--derived-data-only',
+      '--precomputed-derived-data-only',
     ].includes(mode)
   ) {
     throw new Error(
-      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--cocoapods-cache-inputs-only|--derived-data-only]',
+      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--cocoapods-cache-inputs-only|--derived-data-only|--precomputed-derived-data-only]',
     );
   }
   const outputPath = process.env.GITHUB_OUTPUT;
   if (!outputPath)
     throw new Error('GITHUB_OUTPUT is required to publish Detox cache fingerprints.');
+  if (mode === '--precomputed-derived-data-only' && !process.env.GITHUB_ENV) {
+    throw new Error(
+      'GITHUB_ENV is required to restore Detox cache fingerprint environment variables.',
+    );
+  }
 
   const fingerprints = computeFingerprints(mode);
   writeGitHubOutputs(outputPath, fingerprints);

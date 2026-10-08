@@ -23,11 +23,11 @@ test('records the invalidation diagnostic and passes prebuild hashes to manifest
   );
   assert.match(
     workflow,
-    /EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: \$\{\{ steps\.detox_cache_fingerprint\.outputs\.build_inputs \}\}/,
+    /EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: \$\{\{ steps\.profile_derived_data_cache\.outputs\.build_inputs \}\}/,
   );
   assert.match(
     workflow,
-    /EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: \$\{\{ steps\.detox_cache_fingerprint\.outputs\.native_dependencies \}\}/,
+    /EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: \$\{\{ steps\.profile_derived_data_cache\.outputs\.native_dependencies \}\}/,
   );
   assert.match(
     workflow,

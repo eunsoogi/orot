@@ -31,7 +31,6 @@ function step(name) {
 }
 
 test('validates the profile app cache before optional native dependency preparation', () => {
-  const fingerprints = workflow.indexOf('- name: Compute stable Detox cache fingerprints');
   const cache = workflow.indexOf('- name: Cache Detox profile app product');
   const prepare = workflow.indexOf('- name: Prepare restored Detox DerivedData cache');
   const framework = workflow.indexOf('- name: Cache Detox framework outputs');
@@ -39,14 +38,21 @@ test('validates the profile app cache before optional native dependency preparat
   const build = workflow.indexOf('- name: Build Detox iOS Simulator app');
   const tests = workflow.indexOf('- name: Run Detox iOS Simulator tests');
 
-  assert.ok(fingerprints < cache && cache < prepare && prepare < framework && framework < pods);
+  const fingerprintPublication = restoreAction.indexOf(
+    '- name: Publish shared Detox cache fingerprints',
+  );
+  const appCacheRestore = restoreAction.indexOf('- name: Restore Detox profile app product');
+
+  // The composite restore action re-emits shared hashes before its exact cache lookup.
+  assert.ok(fingerprintPublication >= 0 && fingerprintPublication < appCacheRestore);
+  assert.ok(cache >= 0 && cache < prepare && prepare < framework && framework < pods);
   assert.ok(pods < build && build < tests);
   // The v10 namespace prevents restoring older caches that included all Xcode build products.
   assert.match(step('Cache Detox profile app product'), /orot-detox-app-product-v10-/);
   assert.match(step('Cache Detox profile app product'), /xcodebuild_fingerprint/);
   assert.match(restoreAction, /~\/Library\/Detox\/ios\/framework/);
   assert.match(restoreAction, /~\/Library\/Detox\/ios\/xcuitest-runner/);
-  assert.match(step('Compute stable Detox cache fingerprints'), /timeout-minutes: 5/);
+  assert.match(step('Cache Detox profile app product'), /timeout-minutes: 10/);
   assert.match(step('Prepare restored Detox DerivedData cache'), /timeout-minutes: 5/);
   assert.match(step('Write Detox DerivedData cache manifest'), /timeout-minutes: 5/);
 });

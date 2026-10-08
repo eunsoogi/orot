@@ -10,6 +10,9 @@ inputs:
   restore_keys:
     description: Compatible cache prefixes for the profile.
     required: true
+  fingerprints:
+    description: Source hashes shared across profiles.
+    required: true
 outputs:
   cache-hit:
     description: Whether the exact app cache key matched.
@@ -17,9 +20,28 @@ outputs:
   cache-primary-key:
     description: Exact key used to save a validated app product after a miss.
     value: ${{ steps.profile_app_cache.outputs.cache-primary-key }}
+  build_inputs:
+    description: Shared app source fingerprint for the selected checkout.
+    value: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+  native_dependencies:
+    description: Shared native dependency fingerprint for the selected checkout.
+    value: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
+  privacy_manifest_input_sha256:
+    description: Privacy manifest source hash captured before CocoaPods integration.
+    value: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+  cocoapods_project_input_sha256:
+    description: Xcode project source hash captured before CocoaPods integration.
+    value: ${{ steps.detox_cache_fingerprint.outputs.cocoapods_project_input_sha256 }}
 runs:
   using: composite
   steps:
+    # GITHUB_ENV is job-scoped, so each profile republishes the common hashes before cache validation.
+    - name: Publish shared Detox cache fingerprints
+      id: detox_cache_fingerprint
+      shell: bash
+      env:
+        DETOX_CACHE_FINGERPRINTS_JSON: ${{ inputs.fingerprints }}
+      run: node scripts/ci/detox-cache-fingerprint-cli.mjs --precomputed-derived-data-only
     - name: Restore Detox profile app product
       id: profile_app_cache
       if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' }}

@@ -7,6 +7,10 @@ on:
         description: The isolated Detox app configuration to build and test.
         required: true
         type: string
+      fingerprints:
+        description: Shared source and build fingerprints from the profile workflow.
+        required: true
+        type: string
       resource_sampling:
         description: Collect bounded process and memory samples for diagnosis.
         required: false
@@ -84,19 +88,16 @@ jobs:
         id: prepare_detox_simulator
         timeout-minutes: 15
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
-      - name: Compute stable Detox cache fingerprints # Fingerprint before Pods.
-        id: detox_cache_fingerprint
-        timeout-minutes: 5
-        run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
-      - name: Cache Detox profile app product
+      - name: Cache Detox profile app product # The key retains profile-local runner and Xcode identity.
         id: profile_derived_data_cache
         timeout-minutes: 10
         uses: ./.github/actions/detox-profile-app-cache/restore
         with:
           profile: ${{ inputs.profile }}
-          key: orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-build-${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          fingerprints: ${{ inputs.fingerprints }}
+          key: orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ fromJSON(inputs.fingerprints).native_dependencies }}-build-${{ fromJSON(inputs.fingerprints).build_inputs }}
           restore_keys: |
-            orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}-
+            orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ fromJSON(inputs.fingerprints).native_dependencies }}-
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
         timeout-minutes: 5
@@ -165,14 +166,14 @@ jobs:
           RN_ARTIFACT_CACHE_HIT: ${{ steps.rn_artifact_cache.outputs.cache-hit }}
           COCOAPODS_CACHE_HIT: ${{ steps.cocoapods_cache.outputs.cache-hit }}
           PROFILE_DERIVED_DATA_CACHE_HIT: ${{ steps.profile_derived_data_cache.outputs.cache-hit }}
-          BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+          BUILD_INPUT_FINGERPRINT: ${{ steps.profile_derived_data_cache.outputs.build_inputs }}
           RN_ARTIFACT_FINGERPRINT: ${{ steps.rn_artifact_fingerprint.outputs.fingerprint }}
-          NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
+          NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.profile_derived_data_cache.outputs.native_dependencies }}
           DERIVED_DATA_CACHE_CLASSIFICATION: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_classification }}
           DERIVED_DATA_CACHE_DIAGNOSTIC: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_diagnostic }}
           APP_REUSABLE: ${{ steps.prepare_derived_data_cache.outputs.app_reusable }}
           APP_REUSE_REASON: ${{ steps.prepare_derived_data_cache.outputs.app_reuse_reason }}
-          PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.profile_derived_data_cache.outputs.privacy_manifest_input_sha256 }}
           MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           NODE_VERSION: ${{ env.EXPECTED_NODE_VERSION }}
           PNPM_VERSION: ${{ env.EXPECTED_PNPM_VERSION }}
@@ -196,9 +197,9 @@ jobs:
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
           DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
-          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
-          EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.profile_derived_data_cache.outputs.build_inputs }}
+          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.profile_derived_data_cache.outputs.native_dependencies }}
+          EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.profile_derived_data_cache.outputs.privacy_manifest_input_sha256 }}
           MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
           EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
           EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}

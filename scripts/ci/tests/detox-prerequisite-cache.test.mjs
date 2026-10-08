@@ -21,6 +21,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const profileAppCacheRestoreAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
 
 test('keys CocoaPods intermediates by pinned toolchain and dependency metadata', () => {
   const podsCache = cacheAction.slice(cacheAction.indexOf('id: cocoapods_cache'));
@@ -44,8 +48,11 @@ test('keys CocoaPods intermediates by pinned toolchain and dependency metadata',
 test('prepares the app cache before optional CocoaPods restores and installation', () => {
   const cacheStep = profileWorkflow.indexOf('- name: Cache Detox CocoaPods intermediates');
   const podsStep = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const fingerprintStep = profileWorkflow.indexOf(
-    '- name: Compute stable Detox cache fingerprints',
+  const fingerprintPublication = profileAppCacheRestoreAction.indexOf(
+    '- name: Publish shared Detox cache fingerprints',
+  );
+  const appCacheRestore = profileAppCacheRestoreAction.indexOf(
+    '- name: Restore Detox profile app product',
   );
   const derivedDataCache = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const podsBlock = profileWorkflow.slice(
@@ -53,7 +60,9 @@ test('prepares the app cache before optional CocoaPods restores and installation
     profileWorkflow.indexOf('\n      - name:', podsStep + 1),
   );
 
-  assert.ok(fingerprintStep >= 0 && fingerprintStep < derivedDataCache);
+  // Shared hashes must become job-local outputs before the profile cache is restored.
+  assert.ok(fingerprintPublication >= 0 && fingerprintPublication < appCacheRestore);
+  assert.ok(derivedDataCache >= 0);
   assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);
   assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));
   // The extracted logger must retain the cache hit passed by this workflow step.
