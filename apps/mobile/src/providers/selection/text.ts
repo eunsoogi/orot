@@ -53,5 +53,4 @@ export const providerSelectionText = {
   chatGPTModelsLoaded: t('provider.selection.chatGPTModelsLoaded'),
   chatGPTModelsUnavailable: t('provider.selection.chatGPTModelsUnavailable'),
   chatGPTLoginCancelled: t('provider.selection.chatGPTLoginCancelled'),
-  chatGPTBack: t('provider.selection.back'),
 } as const;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text } from 'react-native';
+import { navigationText } from '../../i18n/navigation';
 import ProviderSelectionConfirmation from './ProviderSelectionConfirmation';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
@@ -134,9 +135,10 @@ export default function ProviderSelectionScreen({
     >
       {onBack ? (
         <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
           onPress={onBack}
           testID="provider-selection-back"
-          title={providerSelectionText.chatGPTBack}
+          title={navigationText.back.label}
         />
       ) : null}
       <Text accessibilityRole="header" style={styles.title}>
