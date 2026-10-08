@@ -21,6 +21,8 @@ import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
 import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useProviderSelectionLeaveGuard } from './useProviderSelectionLeaveGuard';
+import { useVisitQuestionsLeaveGuard } from './useVisitQuestionsLeaveGuard';
+import type { VisitQuestionsRouteState } from './AiFeatureFlowScreen';
 
 const emptyProviderNavigationState: ProviderSelectionNavigationState = {
   hasPendingSelection: false,
@@ -59,6 +61,8 @@ export function AiFeatureFlow({
   const providerNavigationStateRef = useRef<ProviderSelectionNavigationState>(
     emptyProviderNavigationState,
   );
+  const visitQuestionsNavigationStateRef =
+    useRef<VisitQuestionsRouteState | null>(null);
   const routeName = navigation.route.name;
   const providerSelectionOpen = routeName === 'provider-selection';
   const sourceDetailOpen = routeName === 'source-detail';
@@ -130,7 +134,14 @@ export function AiFeatureFlow({
     },
     [],
   );
+  const reportVisitQuestionsRouteState = useCallback(
+    (state: VisitQuestionsRouteState) => {
+      visitQuestionsNavigationStateRef.current = state;
+    },
+    [],
+  );
   useProviderSelectionLeaveGuard(navigation, providerNavigationStateRef);
+  useVisitQuestionsLeaveGuard(navigation, visitQuestionsNavigationStateRef);
 
   return (
     <View style={styles.container} testID="ai-feature-flow">
@@ -157,6 +168,7 @@ export function AiFeatureFlow({
           <AiFeatureFlowScreen
             route={screenRoute}
             renderVisitQuestions={renderVisitQuestions}
+            onRouteStateChange={reportVisitQuestionsRouteState}
             onBack={requestBack}
             onOpenVisitQuestions={
               renderVisitQuestions

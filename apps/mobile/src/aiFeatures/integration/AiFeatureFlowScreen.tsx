@@ -13,9 +13,17 @@ export interface VisitQuestionsRenderInput {
   readonly onBack: () => void;
   readonly onOpenProviderSelection: () => void;
   readonly onOpenSource: (reference: EvidenceItem) => void;
+  readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly selectedAiRevision: number;
   readonly loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'];
+}
+
+/** Carries draft and save revisions back to navigation so stale prompts cannot leave. */
+export interface VisitQuestionsRouteState {
+  readonly hasUnsavedChanges: boolean;
+  readonly isSaving: boolean;
+  readonly revision: number;
 }
 
 export interface AiFeatureFlowScreenProps {
@@ -23,6 +31,7 @@ export interface AiFeatureFlowScreenProps {
   readonly renderVisitQuestions?: (
     input: VisitQuestionsRenderInput,
   ) => ReactElement;
+  readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
   readonly onBack: () => void;
   readonly onOpenVisitQuestions?: () => void;
   readonly onOpenDiseaseHypotheses: () => void;
@@ -40,6 +49,7 @@ export interface AiFeatureFlowScreenProps {
 export function AiFeatureFlowScreen({
   route,
   renderVisitQuestions,
+  onRouteStateChange,
   onBack,
   onOpenVisitQuestions,
   onOpenDiseaseHypotheses,
@@ -70,6 +80,7 @@ export function AiFeatureFlowScreen({
             onBack,
             onOpenProviderSelection,
             onOpenSource,
+            onRouteStateChange,
             resolveSelectedAi,
             selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,

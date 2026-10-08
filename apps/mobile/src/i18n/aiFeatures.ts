@@ -8,6 +8,10 @@ export const aiFeaturesKo = {
     '건강 기록과 녹음, 다음 예약, 기억을 바탕으로 진료 때 물어볼 내용을 준비해요.',
   'aiFeatures.visitQuestions.action': '진료 질문 준비하기',
   'aiFeatures.visitQuestions.unavailable': '현재 진료 질문을 준비할 수 없어요.',
+  'aiFeatures.visitQuestions.saveInProgressTitle': '질문을 저장하고 있어요',
+  'aiFeatures.visitQuestions.saveInProgressMessage':
+    '저장이 끝날 때까지 기다려 주세요. 저장 결과를 확인한 뒤 나갈 수 있어요.',
+  'aiFeatures.visitQuestions.saveInProgressConfirm': '확인',
   'aiFeatures.diseaseHypotheses.title': '질환 가능성 살펴보기',
   'aiFeatures.diseaseHypotheses.description':
     '앱에 있는 근거와 반대 근거, 불확실한 점과 더 필요한 정보를 함께 확인해요.',
