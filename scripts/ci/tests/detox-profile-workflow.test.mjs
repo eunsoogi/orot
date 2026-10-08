@@ -35,6 +35,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
   const boot = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
   const tests = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
+  const releaseWorkers = profileWorkflow.indexOf('- name: Prepare Release worker Simulators');
   const diagnostics = profileWorkflow.indexOf('- name: Collect simulator logs');
   const teardown = profileWorkflow.indexOf('- name: Delete dedicated Detox Simulator');
   const upload = profileWorkflow.indexOf(
@@ -44,6 +45,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const testStepEnd = profileWorkflow.indexOf('\n      - name:', testStepStart + 1);
   const testStep = profileWorkflow.slice(testStepStart, testStepEnd);
   const bootStep = workflowStep('Wait for dedicated Detox Simulator');
+  const releaseWorkersStep = workflowStep('Prepare Release worker Simulators');
   const diagnosticsStep = workflowStep('Collect simulator logs');
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
   const teardownStep = workflowStep('Delete dedicated Detox Simulator');
@@ -60,6 +62,8 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
       simulatorUtilities < build &&
       build > prepare &&
       boot > build &&
+      releaseWorkers > boot &&
+      releaseWorkers < tests &&
       tests > boot,
   );
   assert.match(install, /pnpm install --frozen-lockfile/);
@@ -67,15 +71,16 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
   assert.match(bootStep, /simulator-baseline\.json/);
+  assert.match(releaseWorkersStep, /if: \$\{\{ inputs\.profile == 'release' \}\}/);
+  assert.match(releaseWorkersStep, /prepare-detox-release-worker-simulators\.sh/);
+  assert.match(releaseWorkersStep, /release-worker-simulators\.txt/);
   assert.match(
     diagnosticsStep,
     /collect-simulator-diagnostics\.sh[\s\S]*inputs\.profile[\s\S]*simulator-baseline\.json[\s\S]*simulator-targets\.txt/,
   );
   assert.match(teardownStep, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(
-    teardownStep,
-    /if \[\[ ! -s artifacts\/detox\/simulator\.udid \]\][\s\S]*?cat artifacts\/detox\/simulator\.udid[\s\S]*simulator-targets\.txt/,
-  );
+  assert.match(teardownStep, /--identity-file artifacts\/detox\/simulator\.udid/);
+  assert.match(teardownStep, /release-worker-simulators\.txt/);
   assert.match(testStep, /timeout-minutes: 45/);
   assert.match(testStep, /run:.*scripts\/ci\/run-test-suite\.sh/);
   assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);

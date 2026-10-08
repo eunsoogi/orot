@@ -24,9 +24,9 @@ test('selects only new profile-matched worker Simulators and verifies unique ass
     [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)],
   });
   const testLog = [
-    `release-e2e.test.js is assigned to ${base} (undefined)`,
-    `release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
-    `release-e2e-storage.test.js is assigned to ${cloneTwo} (undefined)`,
+    `[release-e2e.test.js] release-e2e.test.js is assigned to ${base} (undefined)`,
+    `[release-e2e-data.test.js] release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
+    `[release-e2e-storage.test.js] release-e2e-storage.test.js is assigned to ${cloneTwo} (undefined)`,
   ].join('\n');
 
   const result = planDetoxSimulatorTargets({

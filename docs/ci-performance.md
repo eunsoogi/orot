@@ -755,8 +755,28 @@ All three profile jobs logged `fingerprint_source=shared`, an exact DerivedData 
 
 Each profile also collected Simulator diagnostics and uploaded its logs and reports. The fail-closed profile-summary validator and aggregate passed. The Release Detox step alone took 7m29s, compared with 5m16s in the prior exact-cache attempt 37724568242; those are separate runs and do not establish a controlled speed comparison. Although shared fingerprint reuse was observed, the complete required interval grew from 10m44s to 14m55s. This candidate therefore demonstrates no under-ten-minute result or end-to-end speedup. CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. Issue #74 remains open and PR #129 remains Draft.
 
-## 2026-10-08 Release worker-sharding candidate (not yet measured)
+## 2026-10-08 single-CLI Release worker failure 37731203928
 
-The next implementation candidate keeps the eight-file Release scenario inventory and 13 required cases, assigning them in order to three Jest wrappers and three Detox workers. Each worker uses its own Simulator state. The profile records a device inventory after the dedicated Simulator boots, compares it with the post-E2E inventory, and collects logs and cleanup targets only for the dedicated base and new devices matching that profile's runtime and device type. An unexpected device or incomplete worker assignment fails the inventory check. Per-device log collection runs concurrently so multiple workers do not multiply the diagnostics timeout.
+Run [37731203928](https://github.com/eunsoogi/orot/actions/runs/37731203928), attempt 1, failed on PR head `c3bc11c0db2c2c911e8b5e62372faba46c0fdc89` against base `673c13bc61644dab2f59712baa7fb122bec2bdc5`. Quality Linux began at 05:12:24Z and the required `Detox iOS E2E` aggregate failed at 06:12:05Z: **59m41s**. This run does not meet the ten-minute target.
 
-This change has no hosted measurement yet. Run 37726693213 used the previous serial Release configuration and remains 14m55s from Quality Linux through the aggregate. The sharded implementation must pass its full hosted scenarios, diagnostics, exact Simulator deletion, fail-closed summaries, and required checks before any timing comparison; no speedup or under-ten-minute result is claimed from the design or local tests.
+| Job | Runner and interval (UTC) | Result |
+| --- | ------------------------ | ------ |
+| Quality Linux | 1000073061, 05:12:24–05:14:01 | passed |
+| Compute shared Detox cache fingerprints | 1000073060, 05:12:24–05:12:37 | passed |
+| iOS Simulator Build | 1000073059, 05:12:28–05:18:46 | passed; production app build and standalone OAuth checks passed |
+| Release | 1000073062, 05:12:43–06:11:55 | failed after 59m12s; DerivedData cache miss |
+| OpenAI Debug | 1000073063, 05:12:45–05:30:52 | passed, 1/1 case |
+| Speech Transcription | 1000073064, 05:12:44–05:29:29 | passed, separate synthetic 1/1 case |
+| Quality | 1000073065, 05:14:03–05:14:14 | passed |
+| Require complete profile summaries | 1000073074, 06:11:57–06:12:00 | failed closed |
+| Detox iOS E2E | 1000073075, 06:12:02–06:12:05 | failed closed |
+
+The Release Simulator app build took 6m07s (05:19:33–05:25:40Z). Its Detox test step ran 45m13s (05:25:48–06:11:01Z) and reached the 45-minute workflow timeout. The test log records Detox `proper-lockfile` error `ECOMPROMISED` at 05:28:06Z and `DETOX_PROFILE_END profile=release status=1 elapsed_seconds=493` at 05:34:01Z; worker processes continued writing output after the controller failed, and the storage Jest teardown later timed out. Release Simulator diagnostics failed, but the dedicated Simulator deletion and artifact upload succeeded. The per-profile summary validator and required aggregate rejected the failed Release result.
+
+This was a three-Jest-worker configuration under one Detox CLI, not three independently launched Detox processes. It is a failed functional run, not a performance sample. The `ECOMPROMISED` event and lingering worker output are observations; they do not prove that Simulator cloning caused the lock error or that process cleanup alone resolves it.
+
+## 2026-10-08 explicit-process Release sharding candidate (not yet hosted-measured)
+
+The PR candidate keeps the eight-file Release inventory and all 13 current cases, including the original nine. It assigns the ordered wrappers to case counts of 5, 5, and 3. After the base Simulator is recorded, CI creates and boots two additional profile-matched Simulators and records each identity before boot so the always-run teardown can clean up after a setup failure. Each wrapper then runs in a separate Detox CLI process, selects one Jest worker, and receives one explicit Simulator UDID. The runner owns each process group, stops orphan descendants after the controller exits, and stops sibling groups when a shard fails. The profile summary gate checks every wrapper's exact case and suite totals before publishing 13 passing cases. Diagnostics and teardown continue to verify only devices matching the dedicated profile runtime and device type.
+
+Local verification passed with the full maintained-code lint and format checks, typecheck, unit suite, 183 CI script tests, and both changed-file and all-file line-count checks. These checks do not execute Detox or boot native Simulators. This candidate has no hosted measurement yet. The previous serial Release run 37726693213 took 14m55s from Quality Linux through the aggregate, and the single-CLI three-worker attempt 37731203928 failed after 59m41s. The new implementation must pass the full hosted workload, production/OAuth checks, diagnostics, exact Simulator deletion, fail-closed summaries, and required checks before it can count as a timing sample. No speedup or under-ten-minute result is claimed.

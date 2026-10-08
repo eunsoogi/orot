@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readReleaseShardBlocks } from './release-jest-summary.mjs';
 
 const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
 if (!logPath || !suiteName) {
@@ -18,8 +19,10 @@ if (suiteName.startsWith('e2e') && !e2eSuites.includes(suiteName)) {
 if (githubOutputPath && suiteName === 'e2e') {
   throw new Error('e2e: GitHub outputs require a single E2E profile summary');
 }
-const testSummaries = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
-const suiteSummaries = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
+const testSummaryMatches = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)];
+const suiteSummaryMatches = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)];
+const testSummaries = testSummaryMatches.map((match) => match[1]);
+const suiteSummaries = suiteSummaryMatches.map((match) => match[1]);
 
 function count(summary, label) {
   const match = summary.match(new RegExp(`(\\d+) ${label}\\b`, 'i'));
@@ -40,6 +43,19 @@ if (
     `${suiteName}: Jest did not produce a matching test and suite summary for every run`,
   );
 }
+
+const releaseShardBlocks = readReleaseShardBlocks(log);
+const releaseShardingRequired = process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
+if (releaseShardingRequired && !releaseShardBlocks) {
+  throw new Error('e2e-release: required Release shard summary markers are missing');
+}
+if (releaseShardBlocks && !['e2e', 'e2e-release'].includes(suiteName)) {
+  throw new Error(`${suiteName}: Release shard summaries appeared in another profile`);
+}
+if (releaseShardingRequired && !['e2e', 'e2e-release'].includes(suiteName)) {
+  throw new Error(`${suiteName}: Release sharding is not valid for this E2E profile`);
+}
+
 let expectedE2ESuites;
 if (e2eSuites.includes(suiteName)) {
   const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -101,7 +117,34 @@ if (e2eSuites.includes(suiteName)) {
     'e2e-openai-provider': profiles[1],
     'e2e-transcription': profiles[2],
   };
-  expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
+  if (releaseShardBlocks) {
+    const blockRanges = releaseShardBlocks.map(({ start, end }) => ({ start, end }));
+    const unmarkedTests = testSummaryMatches.filter(
+      (match) => !blockRanges.some(({ start, end }) => match.index >= start && match.index < end),
+    );
+    const unmarkedSuites = suiteSummaryMatches.filter(
+      (match) => !blockRanges.some(({ start, end }) => match.index >= start && match.index < end),
+    );
+    const expectedUnmarkedSummaries = suiteName === 'e2e' ? 1 : 0;
+    if (
+      unmarkedTests.length !== expectedUnmarkedSummaries ||
+      unmarkedSuites.length !== expectedUnmarkedSummaries ||
+      (suiteName === 'e2e' &&
+        (unmarkedTests[0]?.index <= releaseShardBlocks.at(-1).end ||
+          unmarkedSuites[0]?.index <= releaseShardBlocks.at(-1).end))
+    ) {
+      throw new Error(`${suiteName}: expected one OpenAI Debug summary after all Release shards`);
+    }
+    expectedE2ESuites = [
+      ...releaseShardBlocks.map(({ expected }) => expected),
+      ...(suiteName === 'e2e' ? [profiles[1]] : []),
+    ];
+    if (testSummaries.length !== expectedE2ESuites.length) {
+      throw new Error(`${suiteName}: summary count does not match its explicit Release shards`);
+    }
+  } else {
+    expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
+  }
   if (testSummaries.length !== expectedE2ESuites.length) {
     if (suiteName === 'e2e') {
       throw new Error(

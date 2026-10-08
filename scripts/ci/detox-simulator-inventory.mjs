@@ -40,6 +40,7 @@ function readInventory(value, label) {
 
 function assignedSimulatorIds(testLog) {
   const ids = [];
+  // Sharded Detox output prefixes worker lines; match the assignment inside that prefix.
   const assignment = /\b[\w.-]+\.js is assigned to ([A-Fa-f0-9-]{36})\b/g;
   for (const match of testLog.matchAll(assignment)) ids.push(match[1].toUpperCase());
   return ids;

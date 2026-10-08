@@ -217,6 +217,11 @@ jobs:
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}" artifacts/detox/simulator-baseline.json
 
+      - name: Prepare Release worker Simulators
+        if: ${{ inputs.profile == 'release' }}
+        timeout-minutes: 10
+        run: scripts/ci/run-command.sh detox-release-worker-simulators artifacts/detox/release-worker-simulators.log -- bash scripts/ci/prepare-detox-release-worker-simulators.sh artifacts/detox/release-worker-simulator-prepare.log artifacts/detox/release-worker-simulators.txt
+
       - name: Run Detox iOS Simulator tests
         id: run_detox_tests
         timeout-minutes: 45
@@ -232,13 +237,7 @@ jobs:
       - name: Delete dedicated Detox Simulator
         if: ${{ always() }}
         timeout-minutes: 15
-        run: |
-          if [[ ! -s artifacts/detox/simulator.udid ]]; then
-            printf 'No dedicated Simulator ID was recorded; no device will be targeted.\n' > artifacts/detox/simulator-teardown.log
-            exit 0
-          fi
-          simulator_udid="$(cat artifacts/detox/simulator.udid)"; target_path=artifacts/detox/simulator-targets.txt; [[ -s "$target_path" ]] || printf '%s\n' "$simulator_udid" >"$target_path"
-          scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log "$target_path"
+        run: scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh --identity-file artifacts/detox/simulator.udid artifacts/detox/simulator-teardown-details.log artifacts/detox/simulator-targets.txt artifacts/detox/release-worker-simulators.txt
 
       - name: Upload Detox reports, logs, screenshots, and videos
         if: ${{ always() }}

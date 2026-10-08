@@ -2,8 +2,27 @@
 set -euo pipefail
 
 udid_pattern='^[A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$'
-if [[ ($# -ne 2 && $# -ne 3) || ! "$1" =~ $udid_pattern ]]; then
-  printf 'Usage: %s <simulator-udid> <teardown-log-path> [target-udid-file]\n' "$0" >&2
+if [[ $# -eq 5 && "$1" == --identity-file ]]; then
+  identity_path="$2"
+  log_path="$3"
+  target_path="$4"
+  worker_ids_path="$5"
+  mkdir -p "$(dirname "$log_path")" "$(dirname "$target_path")"
+  if [[ ! -s "$identity_path" ]]; then
+    printf 'No dedicated Simulator ID was recorded; no device will be targeted.\n' >"$log_path"
+    exit 0
+  fi
+  simulator_identity="$(tr -d '\r\n' <"$identity_path")"
+  if [[ ! "$simulator_identity" =~ $udid_pattern ]]; then
+    printf 'Dedicated Simulator identity is invalid; no device will be targeted.\n' >"$log_path"
+    exit 2
+  fi
+  # Preserve worker IDs recorded before boot even if post-test inventory collection failed.
+  [[ -s "$target_path" ]] || printf '%s\n' "$simulator_identity" >"$target_path"
+  if [[ -s "$worker_ids_path" ]]; then cat "$worker_ids_path" >>"$target_path"; fi
+  set -- "$simulator_identity" "$log_path" "$target_path"
+elif [[ ($# -ne 2 && $# -ne 3) || ! "$1" =~ $udid_pattern ]]; then
+  printf 'Usage: %s <simulator-udid> <teardown-log-path> [target-udid-file] | --identity-file <identity-path> <teardown-log-path> <target-udid-file> <worker-udid-file>\n' "$0" >&2
   exit 2
 fi
 

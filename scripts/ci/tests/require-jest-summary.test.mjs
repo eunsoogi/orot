@@ -8,7 +8,7 @@ import test from 'node:test';
 
 const guardScript = fileURLToPath(new URL('../require-jest-summary.mjs', import.meta.url));
 
-function runGuard(log, suiteName = 'unit', emitGithubOutputs = false) {
+function runGuard(log, suiteName = 'unit', emitGithubOutputs = false, extraEnv = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-jest-summary-'));
   const logPath = join(directory, 'jest.log');
   const outputPath = join(directory, 'github-output');
@@ -17,7 +17,7 @@ function runGuard(log, suiteName = 'unit', emitGithubOutputs = false) {
     const result = spawnSync(
       process.execPath,
       [guardScript, logPath, suiteName, ...(emitGithubOutputs ? [outputPath] : [])],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: { ...process.env, ...extraEnv } },
     );
     return {
       ...result,
@@ -142,6 +142,69 @@ test('validates a single CI profile and publishes only its proven counts', () =>
     runGuard('Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n', 'e2e-typo').status,
     0,
   );
+});
+
+test('validates every explicit Release shard before publishing the profile total', () => {
+  const shard = (name, tests) =>
+    [
+      `DETOX_RELEASE_SHARD_SUMMARY_START shard=${name}`,
+      'Test Suites: 1 passed, 1 total',
+      `Tests: ${tests} passed, ${tests} total`,
+      `DETOX_RELEASE_SHARD_SUMMARY_END shard=${name}`,
+    ].join('\n');
+  const complete = [
+    shard('release-e2e.test.js', 5),
+    shard('release-e2e-data.test.js', 5),
+    shard('release-e2e-storage.test.js', 3),
+  ].join('\n');
+  const result = runGuard(complete, 'e2e-release', true, {
+    OROT_DETOX_RELEASE_SHARDING: 'true',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /13\/13 tests passed across 3 suites in 3 Jest runs/);
+  assert.equal(result.githubOutput, 'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=3\n');
+
+  const missingShard = runGuard(
+    [shard('release-e2e.test.js', 5), shard('release-e2e-data.test.js', 5)].join('\n'),
+    'e2e-release',
+  );
+  assert.notEqual(missingShard.status, 0);
+
+  const wrongCaseCount = runGuard(
+    [
+      shard('release-e2e.test.js', 4),
+      shard('release-e2e-data.test.js', 6),
+      shard('release-e2e-storage.test.js', 3),
+    ].join('\n'),
+    'e2e-release',
+  );
+  assert.notEqual(wrongCaseCount.status, 0);
+
+  const skippedCase = runGuard(
+    [
+      shard('release-e2e.test.js', 5),
+      shard('release-e2e-data.test.js', 5).replace(
+        '5 passed, 5 total',
+        '4 passed, 1 skipped, 5 total',
+      ),
+      shard('release-e2e-storage.test.js', 3),
+    ].join('\n'),
+    'e2e-release',
+  );
+  assert.notEqual(skippedCase.status, 0);
+
+  const missingMarkers = runGuard(
+    'Test Suites: 3 passed, 3 total\nTests: 13 passed, 13 total\n',
+    'e2e-release',
+    true,
+    { OROT_DETOX_RELEASE_SHARDING: 'true' },
+  );
+  assert.notEqual(missingMarkers.status, 0);
+
+  const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
+  const combined = runGuard(complete + '\n' + debug, 'e2e');
+  assert.equal(combined.status, 0, combined.stderr);
+  assert.match(combined.stdout, /14\/14 tests passed across 4 suites in 4 Jest runs/);
 });
 
 test('rejects missing summaries and zero discovered tests', () => {
