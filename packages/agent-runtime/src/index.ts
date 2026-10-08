@@ -44,6 +44,7 @@ export type {
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,
+  TaskClarificationValue,
   TaskResponderContract,
   TaskResponderInput,
   TaskResultValidation,
