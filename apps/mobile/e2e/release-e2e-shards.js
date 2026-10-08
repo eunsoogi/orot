@@ -1,4 +1,4 @@
-// Each wrapper gets its own Detox worker Simulator; preserve the scenario order inside each shard.
+// Keep UI probes isolated from ordered data and storage tests with only two active Simulator apps.
 module.exports = Object.freeze({
   'release-e2e.test.js': Object.freeze([
     './smoke.test.js',
@@ -10,6 +10,6 @@ module.exports = Object.freeze({
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
+    './storage.test.js',
   ]),
-  'release-e2e-storage.test.js': Object.freeze(['./storage.test.js']),
 });

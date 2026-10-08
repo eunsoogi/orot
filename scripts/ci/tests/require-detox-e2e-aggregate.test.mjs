@@ -16,7 +16,7 @@ test('accepts successful Release and OpenAI Debug jobs with the complete case in
     'success',
     'release',
     '13',
-    '3',
+    '2',
     'success',
     'openai-provider',
     '1',
@@ -32,7 +32,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
       result,
       'release',
       '13',
-      '3',
+      '2',
       'success',
       'openai-provider',
       '1',
@@ -44,7 +44,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
       'success',
       'release',
       '13',
-      '3',
+      '2',
       result,
       'openai-provider',
       '1',
@@ -60,16 +60,16 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
 
 test('fails closed when a profile, test count, or configured suite count is absent or incorrect', () => {
   for (const values of [
-    ['success', '', '13', '3', 'success', 'openai-provider', '1', '1'],
-    ['success', 'openai-provider', '13', '3', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '', '3', 'success', 'openai-provider', '1', '1'],
+    ['success', '', '13', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'openai-provider', '13', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '', '2', 'success', 'openai-provider', '1', '1'],
     // The former inventory must fail after adding the consent-disclosure regression.
-    ['success', 'release', '12', '3', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '14', '3', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '12', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '14', '2', 'success', 'openai-provider', '1', '1'],
     ['success', 'release', '13', '0', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '13', '3', 'success', 'release', '1', '1'],
-    ['success', 'release', '13', '3', 'success', 'openai-provider', '0', '1'],
-    ['success', 'release', '13', '3', 'success', 'openai-provider', '1', '0'],
+    ['success', 'release', '13', '2', 'success', 'release', '1', '1'],
+    ['success', 'release', '13', '2', 'success', 'openai-provider', '0', '1'],
+    ['success', 'release', '13', '2', 'success', 'openai-provider', '1', '0'],
   ]) {
     assert.notEqual(runAggregate(values).status, 0, `accepted ${JSON.stringify(values)}`);
   }

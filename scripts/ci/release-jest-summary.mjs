@@ -1,7 +1,6 @@
 const releaseShardInventory = [
   { wrapper: 'release-e2e.test.js', suites: 1, tests: 5 },
-  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 5 },
-  { wrapper: 'release-e2e-storage.test.js', suites: 1, tests: 3 },
+  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 8 },
 ];
 
 export function readReleaseShardBlocks(log) {
@@ -10,7 +9,7 @@ export function readReleaseShardBlocks(log) {
   if (markers.length === 0) return null;
   if (markers.length !== releaseShardInventory.length * 2) {
     throw new Error(
-      `e2e-release: expected three complete Release shard summaries, received ${markers.length} markers`,
+      `e2e-release: expected two complete Release shard summaries, received ${markers.length} markers`,
     );
   }
 

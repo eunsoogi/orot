@@ -14,7 +14,6 @@ const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shard
 const simulatorVariables = {
   'release-e2e.test.js': 'OROT_DETOX_SIMULATOR_UDID',
   'release-e2e-data.test.js': 'OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID',
-  'release-e2e-storage.test.js': 'OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID',
 };
 const simulatorPattern = /^[A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/;
 // Detox output may contain terminal styling codes; remove them before reading Jest summary lines.
@@ -172,6 +171,7 @@ function printSummaries(states) {
 
 async function run() {
   const { assignments, logLevel } = readShards();
+  // Two Detox processes isolate UI from stateful data while limiting concurrent Simulator load.
   const states = [];
   let failed = false;
   const stopSiblings = (failedState) => {

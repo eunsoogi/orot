@@ -10,7 +10,6 @@ const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const teardownScript = join(repositoryRoot, 'scripts/ci/teardown-detox-simulator.sh');
 const base = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
 const workerOne = '11111111-2222-4333-8444-555555555555';
-const workerTwo = '66666666-7777-4888-8999-AAAAAAAAAAAA';
 const unrelated = 'BBBBBBBB-CCCC-4DDD-8EEE-FFFFFFFFFFFF';
 
 function fixture(implementation) {
@@ -47,7 +46,7 @@ test('cleans recorded Release workers when diagnostics omitted their IDs', () =>
   const context = fixture(
     [
       'if [[ "$*" == "simctl list devices" || "$*" == "simctl list devices booted" ]]; then',
-      `  for id in ${base} ${workerOne} ${workerTwo}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
+      `  for id in ${base} ${workerOne}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
       `  printf '%s (Shutdown)\\n' '${unrelated}'`,
       'elif [[ "$1 $2" == "simctl shutdown" ]]; then',
       '  exit 0',
@@ -65,7 +64,7 @@ test('cleans recorded Release workers when diagnostics omitted their IDs', () =>
   try {
     writeFileSync(identityPath, `${base}\n`);
     writeFileSync(targetsPath, `${base}\n`);
-    writeFileSync(workerIdsPath, `${workerOne}\n${workerTwo}\n`);
+    writeFileSync(workerIdsPath, `${workerOne}\n`);
     const result = runTeardown(context, [
       '--identity-file',
       identityPath,
@@ -75,13 +74,9 @@ test('cleans recorded Release workers when diagnostics omitted their IDs', () =>
     ]);
 
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [
-      base,
-      workerOne,
-      workerTwo,
-    ]);
+    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [base, workerOne]);
     const calls = readFileSync(context.callsPath, 'utf8');
-    for (const simulator of [base, workerOne, workerTwo]) {
+    for (const simulator of [base, workerOne]) {
       assert.match(calls, new RegExp(`simctl delete ${simulator}`));
     }
     assert.doesNotMatch(calls, new RegExp(`simctl delete ${unrelated}`));
@@ -97,7 +92,7 @@ test('does not target worker IDs when the dedicated base identity was never reco
   const workerIdsPath = join(context.artifacts, 'release-worker-simulators.txt');
   const logPath = join(context.artifacts, 'simulator-teardown-details.log');
   try {
-    writeFileSync(workerIdsPath, `${workerOne}\n${workerTwo}\n`);
+    writeFileSync(workerIdsPath, `${workerOne}\n`);
     const result = runTeardown(context, [
       '--identity-file',
       identityPath,

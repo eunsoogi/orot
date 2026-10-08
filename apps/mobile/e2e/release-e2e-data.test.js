@@ -4,7 +4,7 @@ beforeAll(async () => {
   await device.clearKeychain();
 });
 
-// These routes mutate local data, so they stay ordered on their worker's dedicated Simulator.
+// Keep first-use, data mutation, and migration probes ordered on one data worker to avoid a third active Simulator.
 for (const suiteFile of require('./release-e2e-shards.js')[
   'release-e2e-data.test.js'
 ]) {

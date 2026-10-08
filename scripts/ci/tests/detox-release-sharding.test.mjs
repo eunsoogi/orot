@@ -14,14 +14,13 @@ const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shard
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 const releaseConfigPath = join(repositoryRoot, 'apps/mobile/e2e/release-e2e.jest.config.js');
 
-test('Release assigns each ordered scenario shard to an isolated Detox worker', () => {
-  // Each wrapper owns one simulator so first-use, data, and fresh-install state stay separate.
+test('Release uses two isolated workers and keeps stateful scenarios ordered', () => {
+  // The UI probes stay isolated from the ordered data and storage probes without booting a third app process.
   assert.deepEqual(releaseJestConfig.testMatch, [
     '<rootDir>/e2e/release-e2e.test.js',
     '<rootDir>/e2e/release-e2e-data.test.js',
-    '<rootDir>/e2e/release-e2e-storage.test.js',
   ]);
-  assert.equal(releaseJestConfig.maxWorkers, 3);
+  assert.equal(releaseJestConfig.maxWorkers, 2);
   const assignedSuites = Object.values(releaseShards).flat();
   assert.deepEqual(assignedSuites, releaseSuiteFiles);
   assert.equal(new Set(assignedSuites).size, releaseSuiteFiles.length);
@@ -47,12 +46,11 @@ test('Release shard mode selects one wrapper and one Jest worker per explicit Si
   assert.notEqual(invalid.status, 0);
 });
 
-test('routes a Release profile with three explicit Simulators through the shard runner', () => {
+test('routes a Release profile through two explicit Simulators', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-shard-route-'));
   const bin = join(directory, 'bin');
   const callsPath = join(directory, 'calls.log');
   const dataId = '11111111-2222-4333-8444-555555555555';
-  const storageId = '66666666-7777-4888-8999-AAAAAAAAAAAA';
   const baseId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
   const pnpm = join(bin, 'pnpm');
   const timer = join(bin, 'time');
@@ -77,8 +75,8 @@ test('routes a Release profile with three explicit Simulators through the shard 
         PATH: [bin, process.env.PATH].join(':'),
         DETOX_ARTIFACTS_LOCATION: join(directory, 'detox'),
         OROT_DETOX_SIMULATOR_UDID: baseId,
+        OROT_DETOX_RELEASE_SHARDING: 'true',
         OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID: dataId,
-        OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID: storageId,
         OROT_DETOX_TEST_TIME_COMMAND: timer,
         OROT_DETOX_TEST_LOG_LEVEL: 'info',
         CALLS_PATH: callsPath,
@@ -88,11 +86,7 @@ test('routes a Release profile with three explicit Simulators through the shard 
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.deepEqual(
       readFileSync(callsPath, 'utf8').trim().split('\n').sort(),
-      [
-        `release-e2e.test.js\t${baseId}`,
-        `release-e2e-data.test.js\t${dataId}`,
-        `release-e2e-storage.test.js\t${storageId}`,
-      ].sort(),
+      [`release-e2e.test.js\t${baseId}`, `release-e2e-data.test.js\t${dataId}`].sort(),
     );
     assert.match(result.stdout, /DETOX_PROFILE_END profile=release status=0/);
   } finally {

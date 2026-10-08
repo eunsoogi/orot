@@ -157,7 +157,7 @@ run_profile_for_configuration() {
   local artifact_name="$3"
   shift 3
   export OROT_DETOX_TEST_PROFILE="$name"
-  if [[ "$name" == release && ("${OROT_DETOX_RELEASE_SHARDING:-false}" == true || -n "${OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID:-}" || -n "${OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID:-}") ]]; then
+  if [[ "$name" == release && ("${OROT_DETOX_RELEASE_SHARDING:-false}" == true || -n "${OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID:-}") ]]; then
     run_profile "$name" "$simulator_id" "$artifact_name" \
       node scripts/ci/run-detox-release-shards.mjs
     return $?

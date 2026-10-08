@@ -12,7 +12,6 @@ const runtime = 'com.apple.CoreSimulator.SimRuntime.iOS-27-0';
 const deviceType = 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro';
 const baseId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
 const dataId = '11111111-2222-4333-8444-555555555555';
-const storageId = '66666666-7777-4888-8999-AAAAAAAAAAAA';
 
 function fixture(failBoot = false) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-worker-simulators-'));
@@ -40,7 +39,6 @@ elif [ "$2" = clone ]; then
   fi
   case "$4" in
     *"Release data") printf '%s\\n' "$DATA_SIMULATOR_UDID" ;;
-    *"Release storage") printf '%s\\n' "$STORAGE_SIMULATOR_UDID" ;;
     *) exit 98 ;;
   esac
 elif [ "$2" = boot ]; then
@@ -76,7 +74,6 @@ exec xcrun simctl "$@"
       // Force the shell default even when the developer process has an override.
       OROT_DETOX_SIMCTL_TIMEOUT_MS: '',
       DATA_SIMULATOR_UDID: dataId,
-      STORAGE_SIMULATOR_UDID: storageId,
       OROT_DETOX_SIMULATOR_UDID: baseId,
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime,
       EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: deviceType,
@@ -96,32 +93,23 @@ function runPrepare(context) {
   );
 }
 
-test('shuts down the prepared base before cloning, then boots the base and recorded workers', () => {
+test('shuts down the prepared base before cloning, then boots the base and one data worker', () => {
   const context = fixture();
   try {
     const result = runPrepare(context);
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.deepEqual(readFileSync(context.simulatorIdsPath, 'utf8').trim().split('\n'), [
-      dataId,
-      storageId,
-    ]);
+    assert.equal(readFileSync(context.simulatorIdsPath, 'utf8').trim(), dataId);
     const environment = readFileSync(context.environmentPath, 'utf8');
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID=${dataId}`));
-    assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID=${storageId}`));
     assert.match(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
     const calls = readFileSync(context.callsPath, 'utf8');
-    for (const udid of [baseId, dataId, storageId]) {
-      if (udid !== baseId) {
-        assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release (?:data|storage)`));
-      }
+    for (const udid of [baseId, dataId]) {
+      if (udid !== baseId) assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release data`));
       assert.match(calls, new RegExp(`simctl boot ${udid}`));
       assert.match(calls, new RegExp(`simctl bootstatus ${udid} -b`));
     }
     assert.doesNotMatch(calls, /simctl create/);
     assert.deepEqual(readFileSync(context.timeoutsPath, 'utf8').trim().split('\n'), [
-      '900000',
-      '900000',
-      '900000',
       '900000',
       '900000',
       '900000',
@@ -137,18 +125,14 @@ test('shuts down the prepared base before cloning, then boots the base and recor
   }
 });
 
-test('retains every cloned Simulator identity when booting a worker fails', () => {
+test('retains the data worker identity when its Simulator boot fails', () => {
   const context = fixture(true);
   try {
     const result = runPrepare(context);
     assert.notEqual(result.status, 0);
-    assert.deepEqual(readFileSync(context.simulatorIdsPath, 'utf8').trim().split('\n'), [
-      dataId,
-      storageId,
-    ]);
+    assert.equal(readFileSync(context.simulatorIdsPath, 'utf8').trim(), dataId);
     const environment = readFileSync(context.environmentPath, 'utf8');
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID=${dataId}`));
-    assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID=${storageId}`));
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
   }

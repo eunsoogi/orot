@@ -13,7 +13,7 @@ if (
   throw new Error(`Unknown Release Detox shard: ${selectedShard}`);
 }
 
-// Keep hosted single-wrapper processes pinned to pre-created Simulators; local combined discovery stays unchanged.
+// Keep each hosted wrapper pinned to its dedicated Simulator; local combined discovery stays unchanged.
 const testMatch = selectedShard
   ? [`<rootDir>/e2e/${selectedShard}`]
   : releaseShardPaths;

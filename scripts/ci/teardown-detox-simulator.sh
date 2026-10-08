@@ -127,4 +127,9 @@ fi
 
 if [[ "$failure_status" -ne 0 ]]; then exit "$failure_status"; fi
 worker_count=$((${#target_udids[@]} - 1))
-printf 'Deleted dedicated Simulator %s and %s worker Simulators.\n' "${target_udids[0]}" "$worker_count" | tee -a "$log_path"
+worker_label=Simulators
+if [[ "$worker_count" -eq 1 ]]; then
+  worker_label=Simulator
+fi
+printf 'Deleted dedicated Simulator %s and %s worker %s.\n' \
+  "${target_udids[0]}" "$worker_count" "$worker_label" | tee -a "$log_path"

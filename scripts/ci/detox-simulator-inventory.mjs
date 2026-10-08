@@ -121,7 +121,7 @@ export function planDetoxSimulatorTargets({
 function main() {
   const [baselinePath, currentPath, testLogPath, baseUdid, profile, targetsPath] =
     process.argv.slice(2);
-  const profileWorkers = { release: 3, 'openai-provider': 1, transcription: 1 };
+  const profileWorkers = { release: 2, 'openai-provider': 1, transcription: 1 };
   if (
     !baselinePath ||
     !currentPath ||
