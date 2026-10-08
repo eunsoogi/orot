@@ -25,10 +25,11 @@ function fixture(failBoot = false) {
   writeFileSync(environmentPath, '');
   writeFileSync(
     join(bin, 'xcrun'),
+    // Keep clone ancestry and labels visible without creating real host Simulators.
     `#!/bin/sh
 printf '%s\\n' "$*" >>"$SIMCTL_CALLS"
-if [ "$2" = create ]; then
-  case "$3" in
+if [ "$2" = clone ]; then
+  case "$4" in
     *"Release data") printf '%s\\n' "$DATA_SIMULATOR_UDID" ;;
     *"Release storage") printf '%s\\n' "$STORAGE_SIMULATOR_UDID" ;;
     *) exit 98 ;;
@@ -83,7 +84,7 @@ function runPrepare(context) {
   );
 }
 
-test('creates and boots both extra Release Simulators after recording exact cleanup identities', () => {
+test('clones both extra Release Simulators from the prepared base before recording and booting them', () => {
   const context = fixture();
   try {
     const result = runPrepare(context);
@@ -98,9 +99,11 @@ test('creates and boots both extra Release Simulators after recording exact clea
     assert.match(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
     const calls = readFileSync(context.callsPath, 'utf8');
     for (const udid of [dataId, storageId]) {
+      assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release (?:data|storage)`));
       assert.match(calls, new RegExp(`simctl boot ${udid}`));
       assert.match(calls, new RegExp(`simctl bootstatus ${udid} -b`));
     }
+    assert.doesNotMatch(calls, /simctl create/);
     assert.deepEqual(readFileSync(context.timeoutsPath, 'utf8').trim().split('\n'), [
       '900000',
       '900000',
@@ -109,13 +112,13 @@ test('creates and boots both extra Release Simulators after recording exact clea
       '900000',
       '900000',
     ]);
-    assert.ok(calls.indexOf('simctl create') < calls.indexOf(`simctl boot ${dataId}`));
+    assert.ok(calls.lastIndexOf('simctl clone') < calls.indexOf(`simctl boot ${dataId}`));
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
   }
 });
 
-test('retains every created Simulator identity when booting a worker fails', () => {
+test('retains every cloned Simulator identity when booting a worker fails', () => {
   const context = fixture(true);
   try {
     const result = runPrepare(context);
