@@ -25,6 +25,38 @@ function initialOperationState(): MutableOperationState {
 }
 
 describe('navigation with an ongoing operation', () => {
+  it('rejects leave when an operation starts while recording is stopping', async () => {
+    const state: MutableOperationState = {
+      hasUnsavedChanges: false,
+      isRecording: true,
+      hasOngoingOperation: false,
+      revision: 2,
+      inputRevision: 0,
+    };
+    const controller = createNavigationController<TestRoute>('home');
+    const provider = controller.push('provider-selection');
+    if (!provider) throw new Error('Provider route was not added.');
+
+    controller.registerLeaveGuard(
+      provider.key,
+      createNavigationLeaveGuard<TestRoute>({
+        readState: () => ({ ...state }),
+        confirm: async () => true,
+        stopRecording: async () => {
+          state.isRecording = false;
+          state.hasOngoingOperation = true;
+          state.ongoingOperationKind = 'account-connection';
+          state.revision += 1;
+        },
+      }),
+    );
+
+    await expect(controller.requestBack()).resolves.toBe(false);
+    expect(controller.getSnapshot().currentRoute.name).toBe(
+      'provider-selection',
+    );
+  });
+
   it('keeps the route and operation when the leave confirmation is cancelled', async () => {
     const state = initialOperationState();
     const confirm = jest.fn(async () => false);
