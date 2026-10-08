@@ -56,6 +56,11 @@ export function TranscriptEvidenceProbe() {
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
     [setCorrectionStatus, setPlayback],
   );
+  // On relaunch, wait for persisted deletion checks before opening the real recording list.
+  const showRecordingScreen = Boolean(
+    (recordingSourceId && status === 'ready') ||
+    (deletionVerificationId && deletionStatus === 'passed'),
+  );
 
   useEffect(() => {
     if (!deletionVerificationId) return;
@@ -128,7 +133,7 @@ export function TranscriptEvidenceProbe() {
   }
 
   return (
-    <View style={recordingSourceId ? styles.recordingScreen : undefined}>
+    <View style={showRecordingScreen ? styles.recordingScreen : undefined}>
       <Button
         disabled={
           status === 'preparing' ||
@@ -189,7 +194,7 @@ export function TranscriptEvidenceProbe() {
           title="Clean up test recording"
         />
       ) : null}
-      {recordingSourceId && status === 'ready' ? (
+      {showRecordingScreen ? (
         <RecordingScreen onBack={() => {}} transcriptService={service} />
       ) : null}
     </View>

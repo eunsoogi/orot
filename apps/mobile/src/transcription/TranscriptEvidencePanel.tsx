@@ -66,6 +66,7 @@ export default function TranscriptEvidencePanel({
     setView(next);
   }
 
+  // The parent remounts this preview when its source list changes so deleted text cannot linger.
   useEffect(() => {
     let active = true;
     setLoading(true);

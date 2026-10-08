@@ -67,7 +67,14 @@ describe('all-local transcript deletion', () => {
         clear,
       } as never);
 
-      await removeAllLocalDataWithMemory(memory);
+      await removeAllLocalDataWithMemory(memory, {
+        audioDeletion: {
+          reconcile: jest.fn().mockResolvedValue(undefined),
+          stage: jest.fn().mockResolvedValue(undefined),
+          restore: jest.fn().mockResolvedValue(undefined),
+          commit: jest.fn().mockResolvedValue(undefined),
+        },
+      });
       await expect(
         repository.get('source_record', source.id),
       ).resolves.toBeNull();

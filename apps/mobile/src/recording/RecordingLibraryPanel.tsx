@@ -66,8 +66,7 @@ export default function RecordingLibraryPanel({
     };
   }, [refreshKey, service]);
 
-  const selected =
-    recordings.find(source => source.id === selectedSourceId) ?? null;
+  const selected = recordings.find(item => item.id === selectedSourceId);
 
   function requestDelete(source: RecordingSourceRecord): void {
     setDeleteNotice(null);
@@ -206,6 +205,7 @@ export default function RecordingLibraryPanel({
         </View>
       ) : null}
       <TranscriptEvidencePanel
+        key={JSON.stringify(recordings.map(source => source.id))}
         deletionBusy={disabled}
         onRequestDelete={requestTranscriptDelete}
         recordingSourceId={selected?.id}

@@ -62,7 +62,7 @@ async function assertRecordingStopped(): Promise<void> {
   }
 }
 
-const nativeAudioDeletion: RecordingAudioDeletion = {
+export const nativeAudioDeletion: RecordingAudioDeletion = {
   async reconcile(sourceIds) {
     const { reconcileRecordingDeletions } =
       await import('./nativeRecordingBridge');
