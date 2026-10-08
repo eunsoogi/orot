@@ -12,7 +12,7 @@ const FIXTURE_SEED = 'orot-visit-questions-eval-v1';
 const repositoryRoot = path.resolve(__dirname, '../../..');
 
 /** Runs the #30 graph and records its result without replacing below-target rubric scores. */
-async function runSyntheticCase(testCase) {
+async function runSyntheticCase(testCase, testOverrides = {}) {
   const workflowSourceRoot = getWorkflowSourceRoot(repositoryRoot);
   const workflowRoot = path.join(workflowSourceRoot, 'apps/mobile/src/agent/visitQuestions');
   const { runVisitQuestionWorkflow } = require(path.join(workflowRoot, 'workflow'));
@@ -23,7 +23,8 @@ async function runSyntheticCase(testCase) {
   const aliases = createVisitQuestionEvidenceAliases(prepared.evidence.batch);
   aliases.aliasBatch(supplementalBatch);
   const references = referenceMapForEvidence(testCase, aliases);
-  const providerConfig = getVisitQuestionProviderConfig(process.env);
+  // Injected environment and fetch keep provider-boundary integration tests local while exercising the real graph.
+  const providerConfig = getVisitQuestionProviderConfig(testOverrides.environment ?? process.env);
   let selectedProvider;
   if (providerConfig.mode === 'test-adapter') {
     const scripted = createScriptedProvider(testCase, responseFor(testCase, references));
@@ -37,7 +38,11 @@ async function runSyntheticCase(testCase) {
       getTokenUsage: () => null,
     };
   } else {
-    selectedProvider = createOpenAIChatCompletionsProvider(providerConfig);
+    selectedProvider = createOpenAIChatCompletionsProvider({
+      apiKey: providerConfig.apiKey,
+      model: providerConfig.model,
+      ...(testOverrides.fetchImpl ? { fetchImpl: testOverrides.fetchImpl } : {}),
+    });
   }
   const selection = {
     providerId: selectedProvider.provider.id,
