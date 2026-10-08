@@ -66,9 +66,13 @@ async function runTranscriptDeletionFlow(detoxApi) {
     .withTimeout(30000);
 
   await detoxDevice.terminateApp();
+  // Keep the transcript-only entry active so relaunch verification does not start Speech again.
   await detoxDevice.launchApp({
     newInstance: false,
-    launchArgs: { OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID: sourceID },
+    launchArgs: {
+      OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID: sourceID,
+      OROT_TRANSCRIPTION_PROBE_MODE: 'transcript-evidence',
+    },
   });
   const deletionStatus = detoxElement(
     detoxBy.id('transcript-evidence-deletion-status'),
