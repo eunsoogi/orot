@@ -87,9 +87,9 @@ test('rejects a transcript-derived question already invalidated before restore',
   );
   const { records, sourceReader } = repositories({
     questions: [
-      question('question-1', 'appointment-1', 1, ['span-1'], 'segment-1:r1'),
+      question('question-1', 'appointment-1', 1, ['span-1'], 'transcript-1:r1'),
     ],
-    spans: [evidenceSpan('span-1', 'source-1', 'segment-1:r1')],
+    spans: [evidenceSpan('span-1', 'source-1', 'transcript-1:r1')],
     sources: [sourceRecord('source-1')],
     transcriptId: 'transcript-1',
     staleArtifacts: stale,
@@ -111,9 +111,9 @@ test('rejects a saved question when its cited transcript span is stale', async (
   );
   const { records, sourceReader } = repositories({
     questions: [
-      question('question-1', 'appointment-1', 1, ['span-1'], 'segment-1:r1'),
+      question('question-1', 'appointment-1', 1, ['span-1'], 'transcript-1:r1'),
     ],
-    spans: [evidenceSpan('span-1', 'source-1', 'segment-1:r1')],
+    spans: [evidenceSpan('span-1', 'source-1', 'transcript-1:r1')],
     sources: [sourceRecord('source-1')],
     transcriptId: 'transcript-1',
     staleArtifacts: stale,
@@ -132,9 +132,9 @@ test('rejects a saved question when its cited transcript span is stale', async (
 test('restores a transcript-derived question while its citation is current', async () => {
   const { records, sourceReader } = repositories({
     questions: [
-      question('question-1', 'appointment-1', 1, ['span-1'], 'segment-1:r1'),
+      question('question-1', 'appointment-1', 1, ['span-1'], 'transcript-1:r1'),
     ],
-    spans: [evidenceSpan('span-1', 'source-1', 'segment-1:r1')],
+    spans: [evidenceSpan('span-1', 'source-1', 'transcript-1:r1')],
     sources: [sourceRecord('source-1')],
     transcriptId: 'transcript-1',
   });
@@ -162,9 +162,9 @@ test('restores a transcript-derived question while its citation is current', asy
 test('invalidates restored citations after a transcript correction', async () => {
   const { records, sourceReader, setCurrentStaleArtifacts } = repositories({
     questions: [
-      question('question-1', 'appointment-1', 1, ['span-1'], 'segment-1:r1'),
+      question('question-1', 'appointment-1', 1, ['span-1'], 'transcript-1:r1'),
     ],
-    spans: [evidenceSpan('span-1', 'source-1', 'segment-1:r1')],
+    spans: [evidenceSpan('span-1', 'source-1', 'transcript-1:r1')],
     sources: [sourceRecord('source-1')],
     transcriptId: 'transcript-1',
   });
@@ -195,9 +195,9 @@ test('invalidates restored citations after a transcript correction', async () =>
 test('shows an appointment-scoped error when a corrected transcript invalidates its question', async () => {
   const { records, sourceReader } = repositories({
     questions: [
-      question('question-1', 'appointment-1', 1, ['span-1'], 'segment-1:r1'),
+      question('question-1', 'appointment-1', 1, ['span-1'], 'transcript-1:r1'),
     ],
-    spans: [evidenceSpan('span-1', 'source-1', 'segment-1:r1')],
+    spans: [evidenceSpan('span-1', 'source-1', 'transcript-1:r1')],
     sources: [sourceRecord('source-1')],
     transcriptId: 'transcript-1',
     staleArtifacts: staleTranscriptArtifacts().filter(

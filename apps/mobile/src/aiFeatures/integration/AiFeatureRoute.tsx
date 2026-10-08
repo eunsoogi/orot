@@ -24,6 +24,7 @@ export function AiFeatureRoute({
   onOpenArticle = openEuropePmcArticle,
   renderVisitQuestions,
   serviceDependencies,
+  onProviderSelectionCommitted,
 }: AiFeatureRouteProps) {
   const [controller] = useState(() => {
     const navigation =
@@ -69,6 +70,8 @@ export function AiFeatureRoute({
             onOpenArticle={onOpenArticle}
             renderVisitQuestions={renderVisitQuestions}
             serviceDependencies={serviceDependencies}
+            // The app stores only a display label outside the selected-provider store.
+            onProviderSelectionCommitted={onProviderSelectionCommitted}
           />
         )
       }

@@ -1,5 +1,6 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
+import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
 import { fingerprint } from './evidenceUtils';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
@@ -31,6 +32,35 @@ function referenceReviewState(status: string): EvidenceItem['reviewState'] {
   return 'unknown';
 }
 
+/** Hashes linked SourceRecord revisions; transcript lineage is fenced by stale-artifact rows. */
+async function linkedSourceRevision(
+  records: RecordRepository,
+  sourceRecordIds: readonly string[],
+): Promise<string | null> {
+  const linkedInputs = await Promise.all(
+    sourceRecordIds.map(async id => {
+      const source = await records.sourceRecords.get(id);
+      if (source) return { kind: 'source' as const, id, source };
+      // Transcript revisions are a separate record kind and use explicit invalidation rows.
+      const transcript = await records.get('transcript_segment', id);
+      return transcript
+        ? { kind: 'transcript' as const, id }
+        : { kind: 'missing' as const, id };
+    }),
+  );
+  const revisions: { sourceId: string; revision: string }[] = [];
+  for (const input of linkedInputs) {
+    if (input.kind === 'missing') return null;
+    if (input.kind === 'source') {
+      revisions.push({
+        sourceId: input.id,
+        revision: localEvidenceFingerprint(input.source),
+      });
+    }
+  }
+  return localEvidenceFingerprint(revisions);
+}
+
 /** Registers saved source links while checking transcript invalidations around each read. */
 export async function registerSavedCitation(input: {
   readonly spanId: string;
@@ -49,8 +79,12 @@ export async function registerSavedCitation(input: {
   }
   const span = await input.records.evidenceSpans.get(input.spanId);
   if (!span) throw new SavedVisitQuestionsReadError('missing_citation_source');
-  const source = await input.records.sourceRecords.get(span.sourceRecordId);
-  if (!source)
+  const sourceRecordIds = [...new Set(span.provenance.sourceRecordIds)];
+  const [source, sourceRevision] = await Promise.all([
+    input.records.sourceRecords.get(span.sourceRecordId),
+    linkedSourceRevision(input.records, sourceRecordIds),
+  ]);
+  if (!source || sourceRevision === null)
     throw new SavedVisitQuestionsReadError('missing_citation_source');
   if (
     await isCurrentTranscriptArtifactStale(
@@ -62,13 +96,14 @@ export async function registerSavedCitation(input: {
     throw new SavedVisitQuestionsReadError('stale_artifact');
   }
   const spanFingerprint = fingerprint(span);
+  const evidenceRevision = localEvidenceFingerprint(span);
   const sourceFingerprint = fingerprint(source);
   const reference = {
     sourceKind: 'personal_record' as const,
     sourceId: source.id,
-    sourceRevision: sourceFingerprint,
+    sourceRevision,
     evidenceId: span.id,
-    evidenceRevision: spanFingerprint,
+    evidenceRevision,
     locator: span.locator ?? { kind: 'evidence_span', evidenceSpanId: span.id },
     effectiveTime: span.effectiveAt,
     reviewState: referenceReviewState(span.reviewState.status),
@@ -88,14 +123,17 @@ export async function registerSavedCitation(input: {
       ) {
         return false;
       }
-      const [currentSpan, currentSource] = await Promise.all([
-        input.records.evidenceSpans.get(span.id),
-        input.records.sourceRecords.get(source.id),
-      ]);
+      const [currentSpan, currentSource, currentSourceRevision] =
+        await Promise.all([
+          input.records.evidenceSpans.get(span.id),
+          input.records.sourceRecords.get(source.id),
+          linkedSourceRevision(input.records, sourceRecordIds),
+        ]);
       return (
         !signal.aborted &&
         currentSpan !== null &&
         currentSource !== null &&
+        currentSourceRevision === sourceRevision &&
         fingerprint(currentSpan) === spanFingerprint &&
         fingerprint(currentSource) === sourceFingerprint &&
         !(await isCurrentTranscriptArtifactStale(

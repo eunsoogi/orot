@@ -1,5 +1,14 @@
-import { EvidenceSpanSchema, SourceRecordSchema } from '@orot/domain';
-import type { EvidenceSpan, SourceRecord, VisitQuestion } from '@orot/domain';
+import {
+  EvidenceSpanSchema,
+  SourceRecordSchema,
+  TranscriptEvidenceSegmentSchema,
+} from '@orot/domain';
+import type {
+  EvidenceSpan,
+  SourceRecord,
+  TranscriptEvidenceSegment,
+  VisitQuestion,
+} from '@orot/domain';
 import type { RecordRepository, StaleTranscriptArtifact } from '@orot/storage';
 import type { LocalHealthEvidenceRepository } from '../../../healthEvidence/localEvidenceRepository';
 
@@ -49,6 +58,37 @@ export function evidenceSpan(
   });
 }
 
+function transcriptSegment(
+  id: string,
+  transcriptId: string,
+  recordingSourceId: string,
+): TranscriptEvidenceSegment {
+  return TranscriptEvidenceSegmentSchema.parse({
+    id,
+    transcriptId,
+    recordingSourceId,
+    segmentOrdinal: 0,
+    revision: 1,
+    text: '상담 녹취 원문',
+    language: 'ko-KR',
+    recordingDurationMs: 1000,
+    audioRange: { startMs: 0, endMs: 1000 },
+    effectiveAt: recordedAt,
+    recordedAt,
+    ingestedAt: recordedAt,
+    provenance: {
+      origin: 'derived',
+      sourceRecordIds: [recordingSourceId],
+      source: {
+        system: 'Apple Speech',
+        sourceIdentifier: 'test-fixture',
+        sourceVersion: '1',
+      },
+    },
+    reviewState: { status: 'unreviewed' },
+  });
+}
+
 export function question(
   id: string,
   appointmentId: string,
@@ -83,13 +123,30 @@ export function repositories(input: {
 }) {
   const spans = new Map(input.spans.map(span => [span.id, span]));
   const sources = new Map(input.sources.map(source => [source.id, source]));
+  // Transcript segments have their own table and must not be treated as SourceRecords.
+  const transcriptSegments = new Map<string, TranscriptEvidenceSegment>();
+  if (input.transcriptId) {
+    for (const span of input.spans) {
+      for (const id of span.provenance.sourceRecordIds) {
+        if (id !== `${input.transcriptId}:r1`) continue;
+        transcriptSegments.set(
+          id,
+          transcriptSegment(id, input.transcriptId, span.sourceRecordId),
+        );
+      }
+    }
+  }
   let currentStaleArtifacts = [...(input.staleArtifacts ?? [])];
   const records = {
+    get: jest.fn(async (kind: string, id: string) => {
+      if (kind === 'transcript_segment')
+        return transcriptSegments.get(id) ?? null;
+      return null;
+    }),
     list: jest.fn(async (kind: string) => {
       if (kind === 'visit_question') return [...input.questions];
-      if (kind === 'transcript_segment' && input.transcriptId) {
-        return [{ transcriptId: input.transcriptId }];
-      }
+      if (kind === 'transcript_segment')
+        return [...transcriptSegments.values()];
       return [];
     }),
     evidenceSpans: {
@@ -143,15 +200,15 @@ export function staleTranscriptArtifacts(): StaleTranscriptArtifact[] {
     {
       kind: 'visit_question',
       id: 'question-1',
-      supersededSegmentId: 'segment-1:r1',
-      currentSegmentId: 'segment-1:r2',
+      supersededSegmentId: 'transcript-1:r1',
+      currentSegmentId: 'transcript-1:r2',
       invalidatedAt: '2026-10-01T09:10:00.000Z',
     },
     {
       kind: 'evidence_span',
       id: 'span-1',
-      supersededSegmentId: 'segment-1:r1',
-      currentSegmentId: 'segment-1:r2',
+      supersededSegmentId: 'transcript-1:r1',
+      currentSegmentId: 'transcript-1:r2',
       invalidatedAt: '2026-10-01T09:10:00.000Z',
     },
   ];

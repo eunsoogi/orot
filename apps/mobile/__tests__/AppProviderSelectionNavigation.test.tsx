@@ -8,6 +8,7 @@ import {
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import { navigationText } from '../src/i18n/navigation';
+import { providerSelectionText } from '../src/providers/selection/text';
 import {
   apple,
   localData,
@@ -61,6 +62,28 @@ test('routes the welcome provider shortcut through shared button and edge swipe'
   );
   await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
   await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+});
+
+test('updates the welcome provider summary after a committed selection', async () => {
+  const store = selectionStore(null);
+  await render(
+    <App aiFeatureServiceDependencies={providerDependencies(store)} />,
+  );
+
+  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+  await waitFor(() =>
+    expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
+  );
+  await fireEvent.press(screen.getByTestId('provider-option-0'));
+  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+
+  await waitFor(() =>
+    expect(
+      screen.getByText(
+        `${providerSelectionText.selectedPrefix} ${apple.provider.displayName}`,
+      ),
+    ).toBeTruthy(),
+  );
 });
 
 test('guards a pending provider choice through button and edge-swipe back', async () => {
