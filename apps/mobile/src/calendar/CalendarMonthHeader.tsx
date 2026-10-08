@@ -23,53 +23,52 @@ export function CalendarMonthHeader({
 }: CalendarMonthHeaderProps) {
   const previous = shiftCalendarMonth(year, month, -1);
   const next = shiftCalendarMonth(year, month, 1);
-  const weekdays = calendarWeekdays();
 
   return (
-    <>
-      <View style={styles.calendarMonthHeader}>
-        <DesignButton
-          accessibilityLabel={formatCalendarMonth(
-            previous.year,
-            previous.month,
-          )}
-          icon="chevron-left"
-          label=""
-          onPress={() => onMoveMonth(-1)}
-          style={styles.calendarMonthButton}
-          testID="calendar-previous-month"
-          variant="icon"
-        />
+    <View style={styles.calendarMonthHeader}>
+      <DesignButton
+        accessibilityLabel={formatCalendarMonth(previous.year, previous.month)}
+        icon="chevron-left"
+        label=""
+        onPress={() => onMoveMonth(-1)}
+        style={styles.calendarMonthButton}
+        testID="calendar-previous-month"
+        variant="icon"
+      />
+      <DesignText
+        accessibilityRole="header"
+        style={styles.calendarMonthTitle}
+        testID="calendar-month-title"
+        variant="heading"
+      >
+        {formatCalendarMonth(year, month)}
+      </DesignText>
+      <DesignButton
+        accessibilityLabel={formatCalendarMonth(next.year, next.month)}
+        icon="chevron-right"
+        label=""
+        onPress={() => onMoveMonth(1)}
+        style={styles.calendarMonthButton}
+        testID="calendar-next-month"
+        variant="icon"
+      />
+    </View>
+  );
+}
+
+export function CalendarWeekdayRow({ styles }: { styles: CalendarStyleSet }) {
+  return (
+    <View style={styles.calendarWeekdayRow}>
+      {calendarWeekdays().map((weekday, index) => (
         <DesignText
-          accessibilityRole="header"
-          style={styles.calendarMonthTitle}
-          testID="calendar-month-title"
-          variant="heading"
+          key={`${weekday}-${index}`}
+          maxFontSizeMultiplier={calendarGridTextScaleLimit}
+          style={styles.calendarWeekday}
+          variant="caption"
         >
-          {formatCalendarMonth(year, month)}
+          {weekday}
         </DesignText>
-        <DesignButton
-          accessibilityLabel={formatCalendarMonth(next.year, next.month)}
-          icon="chevron-right"
-          label=""
-          onPress={() => onMoveMonth(1)}
-          style={styles.calendarMonthButton}
-          testID="calendar-next-month"
-          variant="icon"
-        />
-      </View>
-      <View style={styles.calendarWeekdayRow}>
-        {weekdays.map((weekday, index) => (
-          <DesignText
-            key={`${weekday}-${index}`}
-            maxFontSizeMultiplier={calendarGridTextScaleLimit}
-            style={styles.calendarWeekday}
-            variant="caption"
-          >
-            {weekday}
-          </DesignText>
-        ))}
-      </View>
-    </>
+      ))}
+    </View>
   );
 }

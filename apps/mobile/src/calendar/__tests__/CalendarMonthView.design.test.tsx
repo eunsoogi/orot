@@ -1,10 +1,32 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
 import { calendarGridTextScaleLimit } from '../calendarStyles';
 
 describe('calendar month design', () => {
+  it('keeps month navigation outside the horizontal date viewport', async () => {
+    const screen = await render(
+      <CalendarMonthView
+        appointmentsLoading={false}
+        candidatesLoaded={false}
+        events={[]}
+        initialDate={new Date(2035, 5, 2, 12)}
+        linkedAppointment={null}
+        onSelectEvent={jest.fn()}
+        queryWindow={null}
+        resultsMayBeIncomplete={false}
+      />,
+    );
+    const dateViewport = within(screen.getByTestId('calendar-date-viewport'));
+
+    // Keep weekday headings beside the date cells so their columns scroll together.
+    expect(dateViewport.getByText('일')).toBeTruthy();
+    expect(dateViewport.getByTestId('calendar-date-grid')).toBeTruthy();
+    expect(dateViewport.queryByTestId('calendar-previous-month')).toBeNull();
+    expect(dateViewport.queryByTestId('calendar-next-month')).toBeNull();
+  });
+
   it('keeps month navigation and date selection accessible at larger text sizes', async () => {
     expect(calendarGridTextScaleLimit).toBe(1.25);
     const screen = await render(

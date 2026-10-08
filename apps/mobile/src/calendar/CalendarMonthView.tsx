@@ -16,7 +16,7 @@ import {
   projectCalendarMonthEvents,
 } from './calendarMonthEvents';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
-import { CalendarMonthHeader } from './CalendarMonthHeader';
+import { CalendarMonthHeader, CalendarWeekdayRow } from './CalendarMonthHeader';
 import { CalendarDateRegion } from './CalendarDateRegion';
 import {
   CalendarDayCell,
@@ -143,13 +143,15 @@ export function CalendarMonthView({
 
   return (
     <View style={styles.calendarMonth} testID="calendar-month-view">
+      {/* Keep month controls visible while weekday labels and dates scroll together. */}
+      <CalendarMonthHeader
+        year={visibleMonth.year}
+        month={visibleMonth.month}
+        onMoveMonth={moveMonth}
+        styles={styles}
+      />
       <CalendarDateRegion styles={styles}>
-        <CalendarMonthHeader
-          year={visibleMonth.year}
-          month={visibleMonth.month}
-          onMoveMonth={moveMonth}
-          styles={styles}
-        />
+        <CalendarWeekdayRow styles={styles} />
         <View style={styles.calendarGrid} testID="calendar-date-grid">
           {gridDays.map(day => {
             const dayEvents = eventsForDay(day.dateKey);
