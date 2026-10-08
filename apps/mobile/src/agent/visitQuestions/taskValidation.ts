@@ -10,6 +10,10 @@ import type {
 } from './taskContract';
 
 const HANGUL = /[\uac00-\ud7a3]/u;
+const MEDICATION_INSTRUCTION =
+  /(?:약|약물|용량|복용|투약|처방|치료).{0,20}(?:중단|시작|변경|조절|증량|감량|늘리|줄이|바꾸|끊|복용하지|투여하지|먹지)(?:하세요|십시오|해야 합니다|해야 해요|하시기 바랍니다|하지 마세요|마세요)/u;
+const DIAGNOSTIC_CLAIM =
+  /(?:고혈압|당뇨(?:병)?|고지혈증|심부전|[가-힣]{1,10}(?:병|증|염|암|질환)|진단).{0,16}(?:이므로|이라서|라서|때문에|로 보입니다|로 판단|이라고 할 수|입니다|이에요|일 수 있)/u;
 
 function asObject(value: unknown): Record<string, unknown> | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -40,8 +44,13 @@ function readNonEmptyKoreanText(
 function clarification(
   message: string,
 ): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
-  // Keep app-owned copy in the task result instead of the runtime's generic failure reason.
+  // Keep only validated Korean clarification copy on the task-result path.
   return { status: 'valid', value: { status: 'needs_clarification', message } };
+}
+
+/** Suppresses explicit diagnosis claims and medication or treatment instructions in provider-authored copy. */
+function hasUnsafeClinicalAdvice(message: string): boolean {
+  return MEDICATION_INSTRUCTION.test(message) || DIAGNOSTIC_CLAIM.test(message);
 }
 
 function appointmentDateFromContext(
@@ -51,7 +60,7 @@ function appointmentDateFromContext(
   return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
 }
 
-/** Validates generated fields and preserves app-owned clarification copy as a task result. */
+/** Validates generated fields and preserves only evidence-safe clarification copy as a task result. */
 export function validateVisitQuestionTaskResult(
   value: JsonValue,
   input: VisitQuestionResponderInput,
@@ -68,9 +77,30 @@ export function validateVisitQuestionTaskResult(
       };
     }
     const message = readNonEmptyKoreanText(result.message, 400);
-    return message
-      ? clarification(message)
-      : { status: 'invalid', reason: 'The clarification request is invalid.' };
+    if (!message) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification request is invalid.',
+      };
+    }
+    if (
+      hasUnsupportedDateOrValue(
+        message,
+        input.evidence.items,
+        appointmentDateFromContext(input.context),
+      )
+    ) {
+      return clarification(
+        t('visitQuestions.validation.unverifiedDateOrValue'),
+      );
+    }
+    if (hasUnsafeClinicalAdvice(message)) {
+      return {
+        status: 'invalid',
+        reason: 'The clarification contains unsafe clinical advice.',
+      };
+    }
+    return clarification(message);
   }
 
   if (
