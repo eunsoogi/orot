@@ -46,7 +46,8 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  expectedSuites: 2,
+  // The default Release config runs the combined inventory through one Jest test file.
+  expectedSuites: 1,
   // Release includes the Safe Area and consent-disclosure regressions; Debug adds one case.
   expectedCases: 13,
 });
