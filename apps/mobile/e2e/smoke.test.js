@@ -150,6 +150,13 @@ describe('Orot mobile app', () => {
     await waitFor(element(by.id('provider-selection-screen')))
       .toBeVisible()
       .withTimeout(30000);
+    // The provider route's screen-level back control shares navigation's Korean names.
+    await expect(
+      element(by.text('뒤로').withAncestor(by.id('provider-selection-screen'))),
+    ).toBeVisible();
+    await expect(element(by.id('provider-selection-back'))).toHaveLabel(
+      '이전 화면으로 돌아가기',
+    );
     await expect(element(by.id('navigation-back'))).toBeVisible();
     await element(by.id('navigation-back')).tap();
     await waitFor(element(by.id('welcome-title')))
