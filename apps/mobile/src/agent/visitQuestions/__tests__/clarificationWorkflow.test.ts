@@ -38,6 +38,17 @@ async function runClarification(message: string, prepared = preparedContext()) {
   });
 }
 
+function expectInvalidClarificationFallback(
+  result: Awaited<ReturnType<typeof runVisitQuestionWorkflow>>,
+  unsafeText: string,
+) {
+  expect(result).toMatchObject({
+    status: 'unavailable',
+    message: t('visitQuestions.workflowResults.failure.invalidOutput'),
+  });
+  expect(JSON.stringify(result)).not.toContain(unsafeText);
+}
+
 describe('visit-question clarification workflow', () => {
   it('preserves the responder clarification in the public result', async () => {
     // Complete coverage exercises the task-result path, including safe copy preservation.
@@ -65,16 +76,33 @@ describe('visit-question clarification workflow', () => {
     expect(JSON.stringify(result)).not.toContain('130/80');
   });
 
-  it('replaces medication-change advice with app-owned copy', async () => {
+  it('replaces diagnosis claims with app-owned copy', async () => {
     const result = await runClarification(
-      '고혈압이므로 약을 중단하세요. 확인해 주시겠어요?',
+      '고혈압이므로 확인해 주시겠어요?',
       withBloodPressureEvidence(),
     );
 
-    expect(result).toMatchObject({
-      status: 'unavailable',
-      message: t('visitQuestions.workflowResults.failure.invalidOutput'),
-    });
-    expect(JSON.stringify(result)).not.toContain('약을 중단하세요');
+    expectInvalidClarificationFallback(result, '고혈압이므로');
+  });
+
+  it('replaces advice to stop a medication with app-owned copy', async () => {
+    const message = '약을 중단하세요. 확인해 주시겠어요?';
+    const result = await runClarification(message, withBloodPressureEvidence());
+
+    expectInvalidClarificationFallback(result, '약을 중단하세요');
+  });
+
+  it('replaces advice to reduce a medication with app-owned copy', async () => {
+    const message = '약을 줄이세요. 어떤 약인지 알려 주세요.';
+    const result = await runClarification(message, withBloodPressureEvidence());
+
+    expectInvalidClarificationFallback(result, '약을 줄이세요');
+  });
+
+  it('replaces advice to increase a medication dose with app-owned copy', async () => {
+    const message = '약 용량을 늘리세요. 확인해 주시겠어요?';
+    const result = await runClarification(message, withBloodPressureEvidence());
+
+    expectInvalidClarificationFallback(result, '약 용량을 늘리세요');
   });
 });
