@@ -1,4 +1,4 @@
-import { Button, Modal, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { t } from '../i18n';
 import type { RecordingSourceRecord } from './recordingTypes';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
@@ -40,23 +40,41 @@ export default function RecordingDeletionConfirmation({
                 title: target.title ?? t('recording.library.untitled'),
               })}
             </Text>
-            <View style={styles.actions}>
-              <Button
+            <View style={styles.confirmationActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}
                 disabled={busy}
                 onPress={onCancel}
+                style={[
+                  styles.confirmationAction,
+                  styles.confirmationCancel,
+                  busy ? styles.confirmationActionDisabled : undefined,
+                ]}
                 testID="recording-delete-cancel"
-                title={t('recording.library.cancel')}
-              />
-              <Button
+              >
+                <Text style={styles.confirmationCancelText}>
+                  {t('recording.library.cancel')}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}
                 disabled={busy}
                 onPress={onConfirm}
+                style={[
+                  styles.confirmationAction,
+                  styles.confirmationConfirm,
+                  busy ? styles.confirmationActionDisabled : undefined,
+                ]}
                 testID="recording-delete-confirm"
-                title={
-                  busy
+              >
+                <Text style={styles.confirmationConfirmText}>
+                  {busy
                     ? t('recording.library.deleting')
-                    : t('recording.library.confirmDelete')
-                }
-              />
+                    : t('recording.library.confirmDelete')}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </View>

@@ -92,10 +92,13 @@ test('cancelling list deletion keeps the saved recording available', async () =>
     'recording-delete-confirmation',
   );
   expect(confirmation.props.accessibilityViewIsModal).toBe(true);
+  const cancelAction = screen.getByTestId('recording-delete-cancel');
+  expect(cancelAction.props.accessibilityRole).toBe('button');
+  expect(cancelAction.props.accessibilityState.disabled).toBe(false);
   expect(
     modalRender.mock.contexts.some(modal => modal.props.visible === true),
   ).toBe(true);
-  await fireEvent.press(screen.getByTestId('recording-delete-cancel'));
+  await fireEvent.press(cancelAction);
   // iOS needs a visible=false update to dismiss the native modal host.
   await waitFor(() => {
     expect(
