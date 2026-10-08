@@ -56,6 +56,13 @@ function mapMessages(messages) {
 function mapRequest(model, request) {
   const messages = mapMessages(request.messages);
   if (!messages) return null;
+  if (request.responseFormat?.schema) {
+    // JSON mode validates syntax only; include the graph schema in context while local checks stay authoritative.
+    const instruction = `Return a JSON object matching this JSON Schema:\n${JSON.stringify(request.responseFormat.schema)}`;
+    const systemMessage = messages.find((message) => message.role === 'system');
+    if (systemMessage) systemMessage.content = `${systemMessage.content}\n\n${instruction}`;
+    else messages.unshift({ role: 'system', content: instruction });
+  }
   return {
     model,
     messages,
@@ -181,6 +188,7 @@ function createOpenAIChatCompletionsProvider({
         );
       }
 
+      usageCollector.beginRequest();
       let response;
       try {
         response = await fetchImpl(CHAT_COMPLETIONS_URL, {

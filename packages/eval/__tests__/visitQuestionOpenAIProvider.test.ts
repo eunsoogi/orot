@@ -76,7 +76,7 @@ describe('OpenAI Chat Completions evaluation provider', () => {
     expect(calls[0].body).toMatchObject({
       model: 'model-test',
       messages: [
-        { role: 'system', content: 'synthetic instructions' },
+        { role: 'system', content: expect.stringContaining('synthetic instructions') },
         { role: 'user', content: 'synthetic visit question' },
       ],
       tools: [

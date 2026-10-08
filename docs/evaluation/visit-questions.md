@@ -37,6 +37,8 @@ env -u OROT_LANGSMITH_EVAL node scripts/evaluation/visit-questions/run.cjs
 
 러너는 고정된 OpenAI Chat Completions API 주소만 사용하며 임의 입력을 받지 않고 `packages/eval`의 합성 fixture만 전달합니다. API key는 결과와 LangSmith metadata에 포함하지 않습니다. 요청·응답 매핑과 토큰 수 필드는 [OpenAI Chat Completions API 문서](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)를 따릅니다. 선택한 model은 요청에서 사용하는 매개변수를 지원해야 합니다. 원격 provider 사용 동의와 아래의 LangSmith 업로드 설정은 별개입니다. provider 모드만 켜면 LangSmith 전송은 꺼져 있습니다.
 
+실제 그래프의 응답 JSON Schema는 system 지시문에 포함하고, JSON mode는 JSON 문법만 보장하므로 그래프의 로컬 검증을 계속 적용합니다. 이 runner는 세 fixture의 순차 실행과 최대 다섯 번의 60초 제한 API 요청을 허용하도록 Jest 테스트 제한 시간을 6분으로 설정합니다. [JSON mode와 구조화 출력 안내](https://developers.openai.com/api/docs/guides/structured-outputs)를 참고하세요.
+
 LangSmith에 보내려면 별도 개발용 환경에서 명시적으로 opt-in합니다.
 
 ```sh

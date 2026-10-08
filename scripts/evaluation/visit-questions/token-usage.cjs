@@ -21,13 +21,19 @@ function normalizeUsage(usage) {
   return { inputTokens, outputTokens, totalTokens };
 }
 
-/** Sums only complete counts returned by successful API responses; gaps invalidate the run total. */
+/** Sums only settled, complete provider counts; missing usage or an in-flight call invalidates the total. */
 function createTokenUsageCollector() {
   let responseCount = 0;
+  let pendingRequests = 0;
   let allResponsesMeasured = true;
   const totals = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
+  function beginRequest() {
+    pendingRequests += 1;
+  }
+
   function record(usage) {
+    if (pendingRequests > 0) pendingRequests -= 1;
     responseCount += 1;
     const measured = normalizeUsage(usage);
     if (!measured) {
@@ -41,12 +47,15 @@ function createTokenUsageCollector() {
 
   return {
     record,
+    beginRequest,
     markUnmeasured() {
+      if (pendingRequests > 0) pendingRequests -= 1;
       responseCount += 1;
       allResponsesMeasured = false;
     },
     snapshot() {
       return responseCount > 0 &&
+        pendingRequests === 0 &&
         allResponsesMeasured &&
         Object.values(totals).every(Number.isSafeInteger)
         ? { ...totals }

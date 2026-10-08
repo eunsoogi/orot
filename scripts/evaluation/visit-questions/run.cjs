@@ -9,6 +9,7 @@ const {
   isLangSmithUploadEnabled,
 } = require('./privacy');
 const { getVisitQuestionProviderConfig } = require('./provider-config.cjs');
+const { buildJestArguments } = require('./runner-arguments.cjs');
 const { getWorkflowSourceRoot } = require('./source-root.cjs');
 
 const repositoryRoot = path.resolve(__dirname, '../../..');
@@ -44,11 +45,7 @@ if (!require('node:fs').existsSync(workflowSource)) {
         '@orot/mobile',
         'exec',
         'jest',
-        '--config',
-        jestConfig,
-        '--runInBand',
-        '--runTestsByPath',
-        integrationTest,
+        ...buildJestArguments({ jestConfig, integrationTest }),
       ],
       {
         cwd: repositoryRoot,
