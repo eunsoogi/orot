@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,7 +10,14 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const diagnosticPath = path.join(repositoryRoot, 'scripts/ci/cocoapods-null-byte-diagnostic.rb');
 const nulPath = '/fixture/react-native\0/ReactCommon';
 
-function runCocoapodsFixture() {
+function runCocoapodsFixture({
+  basePath,
+  sourcePath,
+  mutateReceiver = false,
+  injectRealdirpathError = false,
+  captureFailure = false,
+  success = false,
+} = {}) {
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'orot-cocoapods-realdirpath-'));
   const projectSourcePath = path.join(temporaryRoot, 'gems/cocoapods/lib/cocoapods/project.rb');
   const installerSourcePath = path.join(
@@ -59,7 +66,8 @@ function runCocoapodsFixture() {
       '          def sandbox; TestSandbox.new; end',
       '          def preserve_pod_file_structure; true; end',
       '          def common_path(_paths)',
-      '            Pathname.allocate.tap { |path| path.instance_variable_set(:@path, "/fixture/react-native\\0/ReactCommon") }',
+      '            base_path = ENV["TEST_BASE_PATH"] || "/fixture/react-native\\0/ReactCommon"',
+      '            Pathname.allocate.tap { |path| path.instance_variable_set(:@path, base_path) }',
       '          end',
       '          def pods_project; @project; end',
       '          def add_file_accessors_paths_to_pods_group(*)',
@@ -72,7 +80,7 @@ function runCocoapodsFixture() {
       '  class TestSpec; def name; "ReactNative"; end; end',
       '  class TestFileAccessor',
       '    def spec; TestSpec.new; end',
-      '    def source_files; [Pathname.new("/fixture/react-native/ReactCommon/source.h")]; end',
+      '    def source_files; [Pathname.new(ENV["TEST_SOURCE_PATH"] || "/fixture/react-native/ReactCommon/source.h")]; end',
       '  end',
       '  class TestSandbox; def local?(_pod_name); true; end; end',
       'end',
@@ -83,27 +91,68 @@ function runCocoapodsFixture() {
     [
       'require ' + JSON.stringify(projectSourcePath),
       'require ' + JSON.stringify(installerSourcePath),
+      'original_file_realdirpath = File.method(:realdirpath)',
+      'TEST_REALDIRPATH_ERROR = ArgumentError.new("path name contains null byte")',
+      // Mutate Pathname's shared String while retaining its original bytes for Ruby's real NUL rejection.
+      'File.define_singleton_method(:realdirpath) do |path, *arguments|',
+      '  path_at_entry = path.dup',
+      '  path.replace("/fixture/mutated") if ENV["TEST_MUTATE_RECEIVER"] == "1"',
+      '  begin',
+      '    if ENV["TEST_INJECT_REALDIRPATH_ERROR"] == "1"',
+      '      raise TEST_REALDIRPATH_ERROR',
+      '    else',
+      '      original_file_realdirpath.call(path_at_entry, *arguments)',
+      '    end',
+      '  rescue ArgumentError => error',
+      '    $TEST_REALDIRPATH_ERROR = error',
+      '    $TEST_REALDIRPATH_BACKTRACE = error.backtrace.dup',
+      '    raise',
+      '  end',
+      'end',
+      'if ENV["TEST_CAPTURE_FAILURE"] == "1"',
+      '  OrotCocoapodsNullByteDiagnostic.define_singleton_method(:capture_realdirpath_input) do |_path|',
+      '    raise IOError, "diagnostic capture failed"',
+      '  end',
+      'end',
       'installer = Pod::Installer::Xcode::PodsProjectGenerator::FileReferencesInstaller.new',
-      'begin',
-      '  installer.send(:add_file_accessors_paths_to_pods_group, :source_files, nil, true)',
-      '  abort "expected Ruby realdirpath to reject the NUL path"',
-      'rescue ArgumentError => error',
-      '  abort "original exception was replaced" unless error.equal?($TEST_PROJECT_ERROR)',
-      '  warn "TEST_EXCEPTION_IDENTITY=preserved"',
-      '  raise',
+      'if ENV["TEST_SUCCESS"] == "1"',
+      '  references = installer.send(:add_file_accessors_paths_to_pods_group, :source_files, nil, true)',
+      '  warn "TEST_SUCCESS_RESULT=" + references.map(&:to_s).inspect',
+      'else',
+      '  begin',
+      '    installer.send(:add_file_accessors_paths_to_pods_group, :source_files, nil, true)',
+      '    abort "expected Ruby realdirpath to reject the NUL path"',
+      '  rescue ArgumentError => error',
+      '    abort "original exception was replaced" unless error.equal?($TEST_PROJECT_ERROR)',
+      '    abort "exception identity changed at realdirpath" unless error.equal?($TEST_REALDIRPATH_ERROR)',
+      '    abort "original backtrace was replaced" unless error.backtrace == $TEST_REALDIRPATH_BACKTRACE',
+      '    warn "TEST_EXCEPTION_IDENTITY=preserved"',
+      '    warn "TEST_EXCEPTION_BACKTRACE=preserved"',
+      '    raise',
+      '  end',
       'end',
     ].join('\n'),
   );
 
   try {
+    const fixtureEnvironment = {
+      ...process.env,
+      OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1',
+      RUBYOPT: '-r' + diagnosticPath,
+      TEST_MUTATE_RECEIVER: mutateReceiver ? '1' : '0',
+      TEST_INJECT_REALDIRPATH_ERROR: injectRealdirpathError ? '1' : '0',
+      TEST_CAPTURE_FAILURE: captureFailure ? '1' : '0',
+      TEST_SUCCESS: success ? '1' : '0',
+    };
+    if (basePath === undefined) delete fixtureEnvironment.TEST_BASE_PATH;
+    else fixtureEnvironment.TEST_BASE_PATH = basePath;
+    if (sourcePath === undefined) delete fixtureEnvironment.TEST_SOURCE_PATH;
+    else fixtureEnvironment.TEST_SOURCE_PATH = sourcePath;
+
     return spawnSync('ruby', [runnerPath], {
       cwd: repositoryRoot,
       encoding: 'utf8',
-      env: {
-        ...process.env,
-        OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1',
-        RUBYOPT: '-r' + diagnosticPath,
-      },
+      env: fixtureEnvironment,
     });
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -125,5 +174,65 @@ test('captures the failed realdirpath receiver as escaped bytes and preserves th
   assert.match(output, new RegExp(`realdirpath_input_nul_offsets=${nulOffset}(?:\\s|$)`));
   assert.match(output, /realdirpath_input_nul_count=1/);
   assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
+  assert.match(output, /TEST_EXCEPTION_BACKTRACE=preserved/);
   assert.equal(output.includes('\u0000'), false);
+});
+
+test('captures the receiver bytes before realdirpath mutates its shared path string', () => {
+  const result = runCocoapodsFixture({ mutateReceiver: true });
+  const output = result.stderr ?? '';
+
+  assert.equal(result.status, 1, output);
+  assert.match(output, /realdirpath_input="\/fixture\/react-native\\x00\/ReactCommon"/);
+  assert.doesNotMatch(output, /realdirpath_input="\/fixture\/mutated"/);
+  assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
+  assert.match(output, /TEST_EXCEPTION_BACKTRACE=preserved/);
+});
+
+test('records a NUL-free realdirpath entry when the matching error is raised', () => {
+  const basePath = '/fixture/react-native/ReactCommon';
+  const result = runCocoapodsFixture({ basePath, injectRealdirpathError: true });
+  const output = result.stderr ?? '';
+
+  assert.equal(result.status, 1, output);
+  assert.match(output, /realdirpath_input="\/fixture\/react-native\/ReactCommon"/);
+  assert.match(output, new RegExp('realdirpath_input_bytes=' + Buffer.byteLength(basePath)));
+  assert.match(output, /realdirpath_input_nul_offsets=none/);
+  assert.match(output, /realdirpath_input_nul_count=0/);
+  assert.match(
+    output,
+    new RegExp('realdirpath_input_scanned_bytes=' + Buffer.byteLength(basePath)),
+  );
+  assert.match(output, /TEST_EXCEPTION_BACKTRACE=preserved/);
+});
+
+test('keeps the original exception and reports unavailable input when capture fails', () => {
+  const result = runCocoapodsFixture({ captureFailure: true });
+  const output = result.stderr ?? '';
+
+  assert.equal(result.status, 1, output);
+  assert.match(output, /realdirpath_input="<unavailable:IOError>"/);
+  assert.match(output, /realdirpath_input_bytes=unavailable/);
+  assert.match(output, /TEST_EXCEPTION_IDENTITY=preserved/);
+  assert.match(output, /TEST_EXCEPTION_BACKTRACE=preserved/);
+});
+
+test('preserves a successful realdirpath return through the CocoaPods wrapper', () => {
+  const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'orot-cocoapods-realdirpath-success-'));
+
+  try {
+    const resolvedTemporaryRoot = realpathSync(temporaryRoot);
+    const result = runCocoapodsFixture({
+      basePath: resolvedTemporaryRoot,
+      sourcePath: path.join(resolvedTemporaryRoot, 'source.h'),
+      success: true,
+    });
+    const output = result.stderr ?? '';
+
+    assert.equal(result.status, 0, output);
+    assert.match(output, /TEST_SUCCESS_RESULT=\["source\.h"\]/);
+    assert.doesNotMatch(output, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC/);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
