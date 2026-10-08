@@ -28,6 +28,9 @@ run_simctl() {
   bash "$script_dir/run-detox-simctl.sh" "$simctl_timeout_ms" "$@"
 }
 
+# The preceding workflow step captured the baseline; simctl requires the prepared source to be shut down before cloning.
+run_simctl shutdown "$base_udid" >>"$log_path" 2>&1
+
 # Seed each independent worker from the already-prepared profile base instead of a blank device.
 clone_worker() {
   local label="$1"
@@ -63,11 +66,13 @@ data_udid="$worker_udid"
 clone_worker storage OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID
 storage_udid="$worker_udid"
 
-# Record both clone identities before booting either so teardown can recover from either boot failure.
+# Record both clone identities before any boot so teardown can recover from partial Simulator startup.
 {
+  run_simctl boot "$base_udid"
   run_simctl boot "$data_udid"
-  run_simctl bootstatus "$data_udid" -b
   run_simctl boot "$storage_udid"
+  run_simctl bootstatus "$base_udid" -b
+  run_simctl bootstatus "$data_udid" -b
   run_simctl bootstatus "$storage_udid" -b
 } >>"$log_path" 2>&1
 if [[ -n "${GITHUB_ENV:-}" ]]; then printf 'OROT_DETOX_RELEASE_SHARDING=true\n' >>"$GITHUB_ENV"; fi

@@ -21,21 +21,31 @@ function fixture(failBoot = false) {
   const timeoutsPath = join(directory, 'simctl-timeouts.log');
   const environmentPath = join(directory, 'github-env');
   const simulatorIdsPath = join(directory, 'release-worker-simulators.txt');
+  const baseStatePath = join(directory, 'base-simulator-state');
   mkdirSync(bin, { recursive: true });
   writeFileSync(environmentPath, '');
+  // The preceding profile setup has already booted the base before Release workers are prepared.
+  writeFileSync(baseStatePath, 'Booted\n');
   writeFileSync(
     join(bin, 'xcrun'),
     // Keep clone ancestry and labels visible without creating real host Simulators.
     `#!/bin/sh
 printf '%s\\n' "$*" >>"$SIMCTL_CALLS"
-if [ "$2" = clone ]; then
+if [ "$2" = shutdown ] && [ "$3" = "$BASE_SIMULATOR_UDID" ]; then
+  echo Shutdown >"$BASE_SIMULATOR_STATE"
+elif [ "$2" = clone ]; then
+  if [ "$(cat "$BASE_SIMULATOR_STATE")" = Booted ]; then
+    echo 'Unable to clone device in current state: Booted' >&2
+    exit 45
+  fi
   case "$4" in
     *"Release data") printf '%s\\n' "$DATA_SIMULATOR_UDID" ;;
     *"Release storage") printf '%s\\n' "$STORAGE_SIMULATOR_UDID" ;;
     *) exit 98 ;;
   esac
-elif [ "$2" = boot ] && [ "$FAIL_BOOT" = true ]; then
-  exit 23
+elif [ "$2" = boot ]; then
+  if [ -n "$FAIL_BOOT_UDID" ] && [ "$3" = "$FAIL_BOOT_UDID" ]; then exit 23; fi
+  if [ "$3" = "$BASE_SIMULATOR_UDID" ]; then echo Booted >"$BASE_SIMULATOR_STATE"; fi
 fi
 `,
     { mode: 0o755 },
@@ -61,6 +71,8 @@ exec xcrun simctl "$@"
       PATH: [bin, process.env.PATH].join(':'),
       SIMCTL_CALLS: callsPath,
       SIMCTL_TIMEOUTS: timeoutsPath,
+      BASE_SIMULATOR_STATE: baseStatePath,
+      BASE_SIMULATOR_UDID: baseId,
       // Force the shell default even when the developer process has an override.
       OROT_DETOX_SIMCTL_TIMEOUT_MS: '',
       DATA_SIMULATOR_UDID: dataId,
@@ -71,7 +83,7 @@ exec xcrun simctl "$@"
       GITHUB_ENV: environmentPath,
       GITHUB_RUN_ID: '700',
       GITHUB_RUN_ATTEMPT: '2',
-      FAIL_BOOT: failBoot ? 'true' : 'false',
+      FAIL_BOOT_UDID: failBoot ? dataId : '',
     },
   };
 }
@@ -84,7 +96,7 @@ function runPrepare(context) {
   );
 }
 
-test('clones both extra Release Simulators from the prepared base before recording and booting them', () => {
+test('shuts down the prepared base before cloning, then boots the base and recorded workers', () => {
   const context = fixture();
   try {
     const result = runPrepare(context);
@@ -98,8 +110,10 @@ test('clones both extra Release Simulators from the prepared base before recordi
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_STORAGE_SIMULATOR_UDID=${storageId}`));
     assert.match(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
     const calls = readFileSync(context.callsPath, 'utf8');
-    for (const udid of [dataId, storageId]) {
-      assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release (?:data|storage)`));
+    for (const udid of [baseId, dataId, storageId]) {
+      if (udid !== baseId) {
+        assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release (?:data|storage)`));
+      }
       assert.match(calls, new RegExp(`simctl boot ${udid}`));
       assert.match(calls, new RegExp(`simctl bootstatus ${udid} -b`));
     }
@@ -111,8 +125,13 @@ test('clones both extra Release Simulators from the prepared base before recordi
       '900000',
       '900000',
       '900000',
+      '900000',
+      '900000',
+      '900000',
     ]);
-    assert.ok(calls.lastIndexOf('simctl clone') < calls.indexOf(`simctl boot ${dataId}`));
+    assert.ok(calls.indexOf(`simctl shutdown ${baseId}`) < calls.indexOf(`simctl clone ${baseId}`));
+    assert.ok(calls.lastIndexOf('simctl clone') < calls.indexOf(`simctl boot ${baseId}`));
+    assert.equal(readFileSync(context.env.BASE_SIMULATOR_STATE, 'utf8'), 'Booted\n');
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
   }
