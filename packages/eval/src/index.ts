@@ -1,6 +1,12 @@
 import { createFixtureId } from './identity';
 import { buildFixtureExpectations } from './expectations';
 import { buildFixtureRecords } from './records';
+export {
+  createSyntheticVisitQuestionFixture,
+  type SyntheticVisitQuestionCase,
+  type SyntheticVisitQuestionEvidence,
+  type SyntheticVisitQuestionFixture,
+} from './visitQuestionFixtures';
 import type { SyntheticHealthFixture } from './types';
 
 export type {
