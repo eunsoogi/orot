@@ -1,10 +1,13 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
 import type { EvidenceItem } from '@orot/agent-runtime';
+import { Alert } from 'react-native';
+import type { AlertButton } from 'react-native';
 import type {
   ProviderSelection,
   ProviderSelectionStore,
@@ -15,6 +18,7 @@ import {
   type VisitQuestionRenderInput,
 } from '../testSupport/VisitQuestionRouteHarness';
 import { AiFeatureRoute } from '../AiFeatureRoute';
+import { navigationText } from '../../../i18n/navigation';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -32,6 +36,7 @@ jest.mock('../../../providers/selection/options', () => {
 });
 
 test('routes all four entry actions through the integration and returns from visit questions', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const reference: EvidenceItem = {
     sourceKind: 'personal_record',
     sourceId: 'record-source-1',
@@ -48,6 +53,7 @@ test('routes all four entry actions through the integration and returns from vis
       onBack,
       onOpenProviderSelection,
       onOpenSource: openVisitQuestionSource,
+      onRouteStateChange,
       resolveSelectedAi,
       selectedAiRevision,
       loadSavedVisitQuestions,
@@ -61,6 +67,7 @@ test('routes all four entry actions through the integration and returns from vis
           onBack={onBack}
           onOpenProviderSelection={onOpenProviderSelection}
           onOpenSource={openVisitQuestionSource}
+          onRouteStateChange={onRouteStateChange}
           reference={reference}
         />
       </>
@@ -156,6 +163,12 @@ test('routes all four entry actions through the integration and returns from vis
     remoteProcessing: false,
   });
   await fireEvent.press(screen.getByTestId('visit-question-back'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
+  await pressAlertButton(alert, 1);
+  await waitFor(() =>
+    expect(screen.getByTestId('ai-features-screen')).toBeTruthy(),
+  );
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
   expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
@@ -181,4 +194,15 @@ function mutableSelectionStore(): ProviderSelectionStore {
       selected = null;
     }),
   };
+}
+
+/** Uses the native confirmation callback to resume the shared navigation guard. */
+async function pressAlertButton(alert: jest.SpyInstance, index: number) {
+  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
+  const press = buttons?.[index]?.onPress;
+  if (!press) throw new Error(`Alert button ${index} was not registered.`);
+  await act(async () => {
+    press();
+    await Promise.resolve();
+  });
 }

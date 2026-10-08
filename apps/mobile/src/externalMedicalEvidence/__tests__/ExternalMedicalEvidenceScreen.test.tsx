@@ -45,6 +45,7 @@ test('requires query consent and presents provenance and dates', async () => {
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(service.search).toHaveBeenCalledWith('sleep and blood pressure', {
     externalQueryConsented: true,
+    signal: expect.any(AbortSignal),
   });
   expect(await screen.findByText('Sleep and blood pressure')).toBeTruthy();
   expect(screen.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();

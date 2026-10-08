@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Button, Text, View } from 'react-native';
 import type { EvidenceItem } from '@orot/agent-runtime';
+import type { VisitQuestionsRouteState } from '../AiFeatureFlowScreen';
 
 export interface VisitQuestionHarnessProps {
   readonly reference: EvidenceItem;
   readonly onBack: () => void;
   readonly onOpenProviderSelection: () => void;
   readonly onOpenSource: (reference: EvidenceItem) => void;
+  readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
   readonly loadSavedVisitQuestions: (appointmentId: string) => Promise<unknown>;
 }
 
@@ -24,9 +26,21 @@ export function VisitQuestionHarness({
   onBack,
   onOpenProviderSelection,
   onOpenSource,
+  onRouteStateChange,
   loadSavedVisitQuestions,
 }: VisitQuestionHarnessProps) {
   const [draft, setDraft] = useState('기존 질문 초안');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const revision = useRef(0);
+
+  // This harness reports edit state through the same route contract as production.
+  useLayoutEffect(() => {
+    onRouteStateChange({
+      hasUnsavedChanges,
+      isSaving: false,
+      revision: revision.current,
+    });
+  }, [hasUnsavedChanges, onRouteStateChange]);
 
   return (
     <View>
@@ -36,7 +50,11 @@ export function VisitQuestionHarness({
       </Text>
       <Text testID="visit-question-draft">{draft}</Text>
       <Button
-        onPress={() => setDraft('수정한 질문 초안')}
+        onPress={() => {
+          revision.current += 1;
+          setDraft('수정한 질문 초안');
+          setHasUnsavedChanges(true);
+        }}
         testID="visit-question-edit"
         title="초안 수정"
       />

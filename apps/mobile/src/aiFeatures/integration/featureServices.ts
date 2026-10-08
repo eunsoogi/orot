@@ -1,8 +1,6 @@
-import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
 import type {
   EvidenceBatch,
   EvidenceReference,
-  EvidenceSearchTool,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
@@ -14,7 +12,6 @@ import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvid
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { AiFeatureLocalData } from './localData';
-import { createLocalEvidenceSearchTool } from './evidenceSearchTool';
 import {
   boundRagConversationHistory,
   createPayloadBoundedRagSearch,
@@ -22,7 +19,6 @@ import {
 } from './evidencePayload';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
-import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import {
   indexChangedFeatureEvidence,
   loadFeatureEvidenceSnapshot,
@@ -31,16 +27,23 @@ import { requireSelectedAi, resolveSelectedAiProvider } from './provider';
 import type { SelectedAiResolverOptions } from './provider';
 import { loadSavedVisitQuestionState } from './savedVisitQuestions';
 import type { SavedVisitQuestionsLoadState } from './savedVisitQuestions';
+import { createVisitQuestionSourceService } from './visitQuestionSourceRegistration';
+import { executionOptions, toolsFor } from './featureServiceExecution';
+import { createLinkedAbortController } from './linkedAbortController';
+import type { VisitQuestionSourceService } from './visitQuestionSourceRegistration';
 
-export interface AiFeatureServices {
+export interface AiFeatureServices extends VisitQuestionSourceService {
   readonly externalEvidence: EuropePmcMedicalEvidenceService;
   loadSavedVisitQuestions(
     appointmentId: string,
   ): Promise<SavedVisitQuestionsLoadState>;
-  generateDiseaseHypotheses(): Promise<DiseaseHypothesisRunOutcome>;
+  generateDiseaseHypotheses(
+    signal?: AbortSignal,
+  ): Promise<DiseaseHypothesisRunOutcome>;
   sendRagMessage(
     question: string,
     previousMessages: readonly RagConversationMessage[],
+    signal?: AbortSignal,
   ): Promise<RagConversationOutcome>;
   resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
   readSource(
@@ -67,52 +70,6 @@ function operationRunId(): string {
   return `ai-feature-${Date.now()}-${operationSequence}`;
 }
 
-function toolsFor(snapshot: LocalEvidenceSnapshot, data: AiFeatureLocalData) {
-  return [
-    createLocalEvidenceSearchTool({
-      id: 'local-personal-records',
-      sourceKind: 'personal_record',
-      snapshot,
-      rag: data.rag,
-    }),
-    createLocalEvidenceSearchTool({
-      id: 'local-reviewed-memory',
-      sourceKind: 'reviewed_memory',
-      snapshot,
-      rag: data.rag,
-    }),
-  ] as const;
-}
-
-function executionOptions(input: {
-  readonly selected: ReturnType<typeof requireSelectedAi>;
-  readonly operationRunId: string;
-  readonly consent: MultiAgentWorkflowOptions['consent'];
-  readonly registry: LocalEvidenceReferenceRegistry;
-  readonly tools: readonly EvidenceSearchTool[];
-}) {
-  return {
-    execution: {
-      operationRunId: input.operationRunId,
-      providerId: input.selected.provider.id,
-      modelId: input.selected.modelId,
-      recipient: input.selected.recipient,
-      remoteProcessing: input.selected.remoteProcessing,
-      allowedScope: {
-        sourceKinds: ['personal_record', 'reviewed_memory'] as const,
-      },
-      budget: DEFAULT_MULTI_AGENT_BUDGET,
-    },
-    provider: input.selected.provider,
-    tools: input.tools,
-    consent: input.consent,
-    revalidateEvidence: (
-      references: readonly EvidenceReference[],
-      signal: AbortSignal,
-    ) => input.registry.revalidateEvidence(references, signal),
-  };
-}
-
 /** Connects selected-AI operations and freshly revalidated local citations to owned feature screens. */
 export function createAiFeatureServices(
   consent: MultiAgentWorkflowOptions['consent'],
@@ -125,7 +82,6 @@ export function createAiFeatureServices(
   const diseaseRunner =
     dependencies.diseaseRunner ?? runDiseaseHypothesisAnalysis;
   const ragRunner = dependencies.ragRunner ?? defaultRagRunner;
-
   async function selectedAi() {
     return requireSelectedAi(
       await resolveSelectedAiProvider(dependencies.selectedAi),
@@ -133,6 +89,7 @@ export function createAiFeatureServices(
   }
 
   return {
+    ...createVisitQuestionSourceService(registry, loadLocalData),
     externalEvidence:
       dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService(),
     async loadSavedVisitQuestions(appointmentId) {
@@ -145,20 +102,20 @@ export function createAiFeatureServices(
         registry,
       });
     },
-    async generateDiseaseHypotheses() {
+    async generateDiseaseHypotheses(signal) {
       const selected = await selectedAi();
       const data = await loadLocalData();
-      const signal = new AbortController().signal;
+      const operationSignal = signal ?? new AbortController().signal;
       const snapshot = await loadFeatureEvidenceSnapshot(
         data,
         registry,
-        signal,
+        operationSignal,
       );
-      await indexChangedFeatureEvidence(data, snapshot, signal);
+      await indexChangedFeatureEvidence(data, snapshot, operationSignal);
       let hits: Awaited<ReturnType<LocalE5RagService['search']>> = [];
       try {
         hits = await data.rag.search(DISEASE_REQUEST, snapshot.chunks, 8, {
-          signal,
+          signal: operationSignal,
         });
       } catch {
         // Empty initial evidence lets the runtime ask its local tools; validators reject unsupported claims.
@@ -180,66 +137,76 @@ export function createAiFeatureServices(
       const diseaseInventory = snapshot.gaps.length
         ? { ...snapshot.inventory, inventoryComplete: false }
         : snapshot.inventory;
-      return diseaseRunner(workflow, diseaseInventory, { signal });
+      return diseaseRunner(workflow, diseaseInventory, {
+        signal: operationSignal,
+      });
     },
-    async sendRagMessage(question, previousMessages) {
+    async sendRagMessage(question, previousMessages, parentSignal) {
       const normalizedQuestion = question.trim();
       if (!normalizedQuestion || normalizedQuestion.length > 1000) {
         return { status: 'unavailable' };
       }
-      const selected = await selectedAi();
-      const data = await loadLocalData();
-      const controller = new AbortController();
-      const snapshot = await loadFeatureEvidenceSnapshot(
-        data,
-        registry,
-        controller.signal,
-      );
-      if (snapshot.gaps.length) return { status: 'insufficient' };
-      await indexChangedFeatureEvidence(data, snapshot, controller.signal);
-      const tools = toolsFor(snapshot, data);
-      const runId = dependencies.createOperationRunId?.() ?? operationRunId();
-      const batch: {
-        items: EvidenceBatch['items'];
-        coverage: EvidenceBatch['coverage'];
-        conflicts: EvidenceBatch['conflicts'];
-      } = {
-        items: [...snapshot.items],
-        coverage: snapshot.coverage.map(coverage => ({
-          ...coverage,
-          searchedSourceIds: [],
-          resultLimit: 5,
-          returnedCount: 0,
-        })),
-        conflicts: [],
-      };
-      const boundedRag = createPayloadBoundedRagSearch({
-        rag: data.rag,
-        snapshot,
-        abort: () => controller.abort(),
-        onSelection: selection => {
-          batch.coverage = selection.coverage;
-        },
-      });
-      const outcome = await ragRunner(
-        {
-          question: normalizedQuestion,
-          previousMessages: boundRagConversationHistory(previousMessages),
-          loadCurrentEvidence: async () => ({ batch, chunks: snapshot.chunks }),
-          rag: boundedRag.rag,
-          workflow: executionOptions({
-            selected,
-            operationRunId: runId,
-            consent,
-            registry,
-            tools,
-          }),
-        },
-        { signal: controller.signal },
-      );
-      return boundedRag.didOmitEvidence()
-        ? { status: 'insufficient' }
-        : outcome;
+      const linked = createLinkedAbortController(parentSignal);
+      try {
+        const selected = await selectedAi();
+        const data = await loadLocalData();
+        const signal = linked.controller.signal;
+        const snapshot = await loadFeatureEvidenceSnapshot(
+          data,
+          registry,
+          signal,
+        );
+        if (snapshot.gaps.length) return { status: 'insufficient' };
+        await indexChangedFeatureEvidence(data, snapshot, signal);
+        const tools = toolsFor(snapshot, data);
+        const runId = dependencies.createOperationRunId?.() ?? operationRunId();
+        const batch: {
+          items: EvidenceBatch['items'];
+          coverage: EvidenceBatch['coverage'];
+          conflicts: EvidenceBatch['conflicts'];
+        } = {
+          items: [...snapshot.items],
+          coverage: snapshot.coverage.map(coverage => ({
+            ...coverage,
+            searchedSourceIds: [],
+            resultLimit: 5,
+            returnedCount: 0,
+          })),
+          conflicts: [],
+        };
+        const boundedRag = createPayloadBoundedRagSearch({
+          rag: data.rag,
+          snapshot,
+          abort: () => linked.controller.abort(),
+          onSelection: selection => {
+            batch.coverage = selection.coverage;
+          },
+        });
+        const outcome = await ragRunner(
+          {
+            question: normalizedQuestion,
+            previousMessages: boundRagConversationHistory(previousMessages),
+            loadCurrentEvidence: async () => ({
+              batch,
+              chunks: snapshot.chunks,
+            }),
+            rag: boundedRag.rag,
+            workflow: executionOptions({
+              selected,
+              operationRunId: runId,
+              consent,
+              registry,
+              tools,
+            }),
+          },
+          { signal },
+        );
+        return boundedRag.didOmitEvidence()
+          ? { status: 'insufficient' }
+          : outcome;
+      } finally {
+        linked.dispose();
+      }
     },
     resolveSource: reference => registry.resolve(reference),
     readSource: (reference, signal) => registry.readSource(reference, signal),

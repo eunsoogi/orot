@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { NavigationLeaveStateSource } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -16,17 +16,6 @@ export interface AiFeatureRouteProps extends Omit<
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
 
-const cleanLeaveState: NavigationLeaveStateSource<AiFeatureRouteName> = {
-  // Active feature overlays register their own state; the app-owned root stays clean.
-  readState: () => ({
-    hasUnsavedChanges: false,
-    isRecording: false,
-    hasOngoingOperation: false,
-    revision: 0,
-    inputRevision: 0,
-  }),
-};
-
 /** Keeps one guarded route tree mounted so provider/source overlays preserve feature state. */
 export function AiFeatureRoute({
   onBack,
@@ -41,6 +30,27 @@ export function AiFeatureRoute({
     return navigation;
   });
   const snapshot = useNavigationSnapshot(controller);
+  const rootLeaveState = useMemo<
+    NavigationLeaveStateSource<AiFeatureRouteName>
+  >(
+    () => ({
+      readState: () => {
+        if (controller.getSnapshot().currentRoute.name !== 'app-home') {
+          throw new Error(
+            'Only the app home route has a clean fallback state.',
+          );
+        }
+        return {
+          hasUnsavedChanges: false,
+          isRecording: false,
+          hasOngoingOperation: false,
+          revision: 0,
+          inputRevision: 0,
+        };
+      },
+    }),
+    [controller],
+  );
 
   useEffect(() => {
     // The app owns the parent route; reaching its root closes this feature flow.
@@ -48,10 +58,7 @@ export function AiFeatureRoute({
   }, [onBack, snapshot.currentRoute.name]);
 
   return (
-    <NavigationRouteAdapter
-      controller={controller}
-      leaveState={cleanLeaveState}
-    >
+    <NavigationRouteAdapter controller={controller} leaveState={rootLeaveState}>
       {navigation =>
         navigation.route.name === 'app-home' ? null : (
           <AiFeatureFlow

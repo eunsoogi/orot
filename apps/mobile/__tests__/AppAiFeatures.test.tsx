@@ -33,8 +33,8 @@ test('opens the Korean AI feature menu and returns to the welcome screen', async
   expect(screen.getByText('질환 가능성 살펴보기')).toBeTruthy();
   expect(screen.getByText('건강 기록과 대화하기')).toBeTruthy();
   expect(screen.getByText('의료 자료 찾아보기')).toBeTruthy();
-  expect(screen.getByTestId('ai-feature-visit-questions')).toBeDisabled();
-  expect(screen.getByText('현재 진료 질문을 준비할 수 없어요.')).toBeTruthy();
+  expect(screen.getByTestId('ai-feature-visit-questions')).toBeEnabled();
+  expect(screen.queryByText('현재 진료 질문을 준비할 수 없어요.')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();

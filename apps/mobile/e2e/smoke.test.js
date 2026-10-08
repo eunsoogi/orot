@@ -41,9 +41,16 @@ describe('Orot mobile app', () => {
     await expect(element(by.text('질환 가능성 살펴보기'))).toExist();
     await expect(element(by.text('건강 기록과 대화하기'))).toExist();
     await expect(element(by.text('의료 자료 찾아보기'))).toExist();
-    await expect(element(by.id('visit-questions-unavailable'))).toHaveText(
-      '현재 진료 질문을 준비할 수 없어요.',
-    );
+    // Exercise the app-connected route and its shared back action without starting inference.
+    await element(by.id('ai-feature-visit-questions')).tap();
+    await waitFor(element(by.id('next-visit-questions-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await expect(element(by.id('next-visit-appointment'))).toExist();
+    await element(by.id('next-visit-questions-back')).tap();
+    await waitFor(element(by.id('ai-features-screen')))
+      .toBeVisible()
+      .withTimeout(30000);
 
     await openFeatureAndReturn(
       'ai-feature-disease-hypotheses',

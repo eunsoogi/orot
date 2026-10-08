@@ -24,6 +24,7 @@ import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFl
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
 import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
+import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -85,9 +86,14 @@ export default function App({
     setShowCommonObservations(true);
   }
 
-  // The AI flow owns its insets and stays separate from the home's backup status route.
+  // The AI flow owns its insets and binds all feature routes to local app services.
   if (showAiFeatures)
-    return <AiFeatureRoute onBack={() => setShowAiFeatures(false)} />;
+    return (
+      <AiFeatureRoute
+        onBack={() => setShowAiFeatures(false)}
+        renderVisitQuestions={input => <NextVisitQuestionsRoute {...input} />}
+      />
+    );
 
   let routeContent: ReactNode,
     scrollable = false;

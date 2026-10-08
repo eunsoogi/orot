@@ -1,5 +1,9 @@
 import type { ReactElement } from 'react';
-import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
+import type {
+  EvidenceItem,
+  EvidenceReference,
+  OutboundProcessingRequest,
+} from '@orot/agent-runtime';
 import { FeatureEntryScreen } from '../FeatureEntryScreen';
 import { DiseaseHypothesesScreen } from '../../diseaseHypotheses/DiseaseHypothesesScreen';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
@@ -8,6 +12,7 @@ import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/e
 import type { AiFeatureServices } from './featureServices';
 import type { SelectedAiResolution } from './provider';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
+import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 
 export interface VisitQuestionsRenderInput {
   readonly onBack: () => void;
@@ -15,6 +20,11 @@ export interface VisitQuestionsRenderInput {
   readonly onOpenSource: (reference: EvidenceItem) => void;
   readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+  readonly confirmConsent: (
+    request: OutboundProcessingRequest,
+  ) => Promise<boolean>;
+  readonly resolveSource: AiFeatureServices['resolveSource'];
+  readonly registerVisitQuestionSource: AiFeatureServices['registerVisitQuestionSource'];
   readonly selectedAiRevision: number;
   readonly loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'];
 }
@@ -28,6 +38,8 @@ export interface VisitQuestionsRouteState {
 
 export interface AiFeatureFlowScreenProps {
   readonly route: FeatureScreenRoute;
+  readonly navigationRouteKey?: string;
+  readonly onFeatureNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly renderVisitQuestions?: (
     input: VisitQuestionsRenderInput,
   ) => ReactElement;
@@ -40,6 +52,9 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenProviderSelection: () => void;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+  readonly confirmConsent: (
+    request: OutboundProcessingRequest,
+  ) => Promise<boolean>;
   readonly selectedAiRevision: number;
   readonly services: AiFeatureServices;
   readonly onOpenArticle: (publication: ExternalMedicalPublication) => void;
@@ -48,6 +63,8 @@ export interface AiFeatureFlowScreenProps {
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
   route,
+  navigationRouteKey,
+  onFeatureNavigationStateChange,
   renderVisitQuestions,
   onRouteStateChange,
   onBack,
@@ -58,6 +75,7 @@ export function AiFeatureFlowScreen({
   onOpenProviderSelection,
   onOpenSource,
   resolveSelectedAi,
+  confirmConsent,
   selectedAiRevision,
   services,
   onOpenArticle,
@@ -82,6 +100,9 @@ export function AiFeatureFlowScreen({
             onOpenSource,
             onRouteStateChange,
             resolveSelectedAi,
+            confirmConsent,
+            resolveSource: services.resolveSource,
+            registerVisitQuestionSource: services.registerVisitQuestionSource,
             selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,
           })
@@ -89,6 +110,8 @@ export function AiFeatureFlowScreen({
     case 'disease-hypotheses':
       return (
         <DiseaseHypothesesScreen
+          navigationRouteKey={navigationRouteKey}
+          onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}
           onGenerate={services.generateDiseaseHypotheses}
           onOpenSource={onOpenSource}
@@ -97,6 +120,8 @@ export function AiFeatureFlowScreen({
     case 'rag-conversation':
       return (
         <ConversationScreen
+          navigationRouteKey={navigationRouteKey}
+          onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}
           onSend={services.sendRagMessage}
           onOpenSource={onOpenSource}
@@ -105,6 +130,8 @@ export function AiFeatureFlowScreen({
     case 'external-evidence':
       return (
         <ExternalMedicalEvidenceScreen
+          navigationRouteKey={navigationRouteKey}
+          onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}
           service={services.externalEvidence}
           onOpenArticle={onOpenArticle}

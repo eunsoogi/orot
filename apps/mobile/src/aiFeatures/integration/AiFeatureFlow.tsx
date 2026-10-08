@@ -1,10 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { Button, Text, View } from 'react-native';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
-import type { ProviderSelectionNavigationState } from '../../providers/selection/ProviderSelectionFlow';
 import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
 import { getAiFeatureIntegrationCopy } from './copy';
@@ -12,25 +10,11 @@ import { createAiFeatureServices } from './featureServices';
 import type { AiFeatureServiceDependencies } from './featureServices';
 import { resolveSelectedAiProvider as resolveSelectedAi } from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
-import type {
-  AiFeatureRouteName,
-  FeatureScreenRoute,
-} from './aiFeatureNavigation';
-import { isFeatureScreenRoute } from './aiFeatureNavigation';
+import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
 import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
-import { useProviderSelectionLeaveGuard } from './useProviderSelectionLeaveGuard';
-import { useVisitQuestionsLeaveGuard } from './useVisitQuestionsLeaveGuard';
-import type { VisitQuestionsRouteState } from './AiFeatureFlowScreen';
-
-const emptyProviderNavigationState: ProviderSelectionNavigationState = {
-  hasPendingSelection: false,
-  isSavingSelection: false,
-  isSigningIn: false,
-  revision: 0,
-  inputRevision: 0,
-};
+import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 
 export interface AiFeatureFlowProps {
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -50,29 +34,23 @@ export function AiFeatureFlow({
   onOpenArticle,
   serviceDependencies,
 }: AiFeatureFlowProps) {
-  const [sourceReference, setSourceReference] =
-    useState<EvidenceReference | null>(null);
-  const [sourceReturnRoute, setSourceReturnRoute] =
-    useState<FeatureScreenRoute>('entry');
-  const [providerReturnRoute, setProviderReturnRoute] =
-    useState<FeatureScreenRoute>('entry');
-  const [selectedAiRevision, setSelectedAiRevision] = useState(0);
-  const [articleOpenError, setArticleOpenError] = useState(false);
-  const providerNavigationStateRef = useRef<ProviderSelectionNavigationState>(
-    emptyProviderNavigationState,
-  );
-  const visitQuestionsNavigationStateRef =
-    useRef<VisitQuestionsRouteState | null>(null);
-  const routeName = navigation.route.name;
-  const providerSelectionOpen = routeName === 'provider-selection';
-  const sourceDetailOpen = routeName === 'source-detail';
-  const screenRoute = providerSelectionOpen
-    ? providerReturnRoute
-    : sourceDetailOpen
-      ? sourceReturnRoute
-      : isFeatureScreenRoute(routeName)
-        ? routeName
-        : 'entry';
+  const {
+    articleOpenError,
+    handleOpenArticle,
+    openProviderSelection,
+    openSource,
+    providerSelectionOpen,
+    pushFeatureRoute,
+    reportFeatureNavigationState,
+    reportProviderNavigationState,
+    reportVisitQuestionsRouteState,
+    screenRoute,
+    screenRouteKey,
+    selectedAiRevision,
+    setSelectedAiRevision,
+    sourceDetailOpen,
+    sourceReference,
+  } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
   const { consent, disclosureSheet } = useInferenceConsent();
   const selectedAiDependencies = serviceDependencies?.selectedAi;
   // Provider refreshes follow the explicit selection revision, not render churn.
@@ -91,58 +69,6 @@ export function AiFeatureFlow({
       () => undefined,
     );
   }, [navigation]);
-  const openProviderSelection = () => {
-    const returnRoute =
-      routeName === 'source-detail'
-        ? sourceReturnRoute
-        : routeName === 'provider-selection'
-          ? providerReturnRoute
-          : isFeatureScreenRoute(routeName)
-            ? routeName
-            : 'entry';
-    providerNavigationStateRef.current = { ...emptyProviderNavigationState };
-    setProviderReturnRoute(returnRoute);
-    if (!providerSelectionOpen) navigation.push('provider-selection');
-  };
-  const openSource = (reference: EvidenceReference) => {
-    const returnRoute =
-      routeName === 'provider-selection'
-        ? providerReturnRoute
-        : routeName === 'source-detail'
-          ? sourceReturnRoute
-          : isFeatureScreenRoute(routeName)
-            ? routeName
-            : 'entry';
-    setSourceReference(reference);
-    setSourceReturnRoute(returnRoute);
-    if (!sourceDetailOpen) navigation.push('source-detail');
-  };
-  const openArticle = async (publication: ExternalMedicalPublication) => {
-    try {
-      await onOpenArticle(publication);
-      setArticleOpenError(false);
-    } catch {
-      setArticleOpenError(true);
-    }
-  };
-  const pushFeatureRoute = (route: FeatureScreenRoute) => {
-    navigation.push(route);
-  };
-  const reportProviderNavigationState = useCallback(
-    (state: ProviderSelectionNavigationState) => {
-      providerNavigationStateRef.current = state;
-    },
-    [],
-  );
-  const reportVisitQuestionsRouteState = useCallback(
-    (state: VisitQuestionsRouteState) => {
-      visitQuestionsNavigationStateRef.current = state;
-    },
-    [],
-  );
-  useProviderSelectionLeaveGuard(navigation, providerNavigationStateRef);
-  useVisitQuestionsLeaveGuard(navigation, visitQuestionsNavigationStateRef);
-
   return (
     <View style={styles.container} testID="ai-feature-flow">
       {!providerSelectionOpen && !sourceDetailOpen ? (
@@ -167,6 +93,8 @@ export function AiFeatureFlow({
         >
           <AiFeatureFlowScreen
             route={screenRoute}
+            navigationRouteKey={screenRouteKey ?? undefined}
+            onFeatureNavigationStateChange={reportFeatureNavigationState}
             renderVisitQuestions={renderVisitQuestions}
             onRouteStateChange={reportVisitQuestionsRouteState}
             onBack={requestBack}
@@ -183,10 +111,13 @@ export function AiFeatureFlow({
             onOpenProviderSelection={openProviderSelection}
             onOpenSource={openSource}
             resolveSelectedAi={resolveSelectedAiForRoute}
+            confirmConsent={async request =>
+              (await consent.authorize(request)) === 'authorized'
+            }
             selectedAiRevision={selectedAiRevision}
             services={services}
             onOpenArticle={publication => {
-              openArticle(publication).then(
+              handleOpenArticle(publication).then(
                 () => undefined,
                 () => undefined,
               );
@@ -196,6 +127,8 @@ export function AiFeatureFlow({
         {sourceDetailOpen && sourceReference ? (
           <View style={styles.sourceOverlay}>
             <EvidenceSourceDetailScreen
+              navigationRouteKey={navigation.route.key}
+              onNavigationStateChange={reportFeatureNavigationState}
               onBack={requestBack}
               readSource={services.readSource}
               reference={sourceReference}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { Alert } from 'react-native';
 import type { MutableRefObject } from 'react';
 import { confirmNavigationLeave } from '../../navigation/navigationLeaveConfirmation';
@@ -12,19 +12,20 @@ export function useVisitQuestionsLeaveGuard(
   navigation: NavigationRouteActions<AiFeatureRouteName>,
   stateRef: MutableRefObject<VisitQuestionsRouteState | null>,
 ) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (navigation.route.name !== 'visit-questions') return;
 
     return navigation.registerLeaveState({
       readState: () => {
         const state = stateRef.current;
+        if (!state)
+          throw new Error('The visit-question screen has not reported state.');
         return {
           // A pending write is not safe to abandon until the screen publishes success.
-          hasUnsavedChanges:
-            state?.hasUnsavedChanges === true || state?.isSaving === true,
+          hasUnsavedChanges: state.hasUnsavedChanges || state.isSaving,
           isRecording: false,
           hasOngoingOperation: false,
-          revision: state?.revision ?? 0,
+          revision: state.revision,
           inputRevision: 0,
         };
       },

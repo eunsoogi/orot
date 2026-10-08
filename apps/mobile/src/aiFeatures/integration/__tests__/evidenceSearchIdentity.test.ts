@@ -54,6 +54,13 @@ describe('personal evidence semantic search identity', () => {
       })),
     };
     const vectors: LocalEmbeddingVectorStore = {
+      // No removal fences apply to this live fixture; deletion behavior is covered by ragEmbeddingDeletion tests.
+      deleteEvidence: jest.fn(async () => undefined),
+      clear: jest.fn(async () => undefined),
+      findRemovedEvidence: jest.fn(async () => ({
+        sourceRecordIds: [],
+        chunkIds: [],
+      })),
       upsertBatch: jest.fn(async () => undefined),
       listForModel: jest.fn(async () => [
         { chunkId: persisted.id, vector: [1] },

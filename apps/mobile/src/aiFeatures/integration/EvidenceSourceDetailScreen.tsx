@@ -4,8 +4,12 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { t } from '../../i18n';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { presentEvidenceSource } from './evidenceSourcePresentation';
+import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
+import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 
 interface EvidenceSourceDetailScreenProps {
+  readonly navigationRouteKey?: string;
+  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly reference: EvidenceReference;
   readonly onBack: () => void;
   readonly readSource: (
@@ -21,12 +25,26 @@ type ScreenState =
 
 /** Re-reads a citation on entry and discards the result if the screen closes mid-request. */
 export function EvidenceSourceDetailScreen({
+  navigationRouteKey,
+  onNavigationStateChange,
   reference,
   onBack,
   readSource,
 }: EvidenceSourceDetailScreenProps) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
+
+  useAiFeatureScreenNavigationState(
+    navigationRouteKey,
+    {
+      hasUnsavedChanges: false,
+      isRecording: false,
+      // Citation reads stop on unmount, so shared navigation confirms before aborting them.
+      hasOngoingOperation: state.status === 'loading',
+    },
+    attempt,
+    onNavigationStateChange,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
