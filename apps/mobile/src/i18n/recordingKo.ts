@@ -69,6 +69,24 @@ export const recordingKo = {
   'recording.transcript.history': '이전 버전 {revision}: {text}',
   'recording.transcript.staleArtifacts':
     '수정으로 관련 파생 자료 {count}개가 다시 확인 대기 상태예요.',
+  'recording.library.title': '저장된 녹음',
+  'recording.library.loading': '녹음 목록을 불러오는 중…',
+  'recording.library.loadError': '녹음 목록을 불러오지 못했어요.',
+  'recording.library.empty': '저장된 녹음이 없어요.',
+  'recording.library.details': '상세 보기',
+  'recording.library.closeDetails': '상세 닫기',
+  'recording.library.delete': '녹음 삭제',
+  'recording.library.untitled': '이름 없는 녹음',
+  'recording.library.confirmTitle': '녹음을 삭제할까요?',
+  'recording.library.confirmMessage':
+    '“{title}” 녹음과 전사 및 연결된 자료를 이 기기에서 삭제합니다.',
+  'recording.library.cancel': '취소',
+  'recording.library.deleting': '삭제 중…',
+  'recording.library.confirmDelete': '삭제',
+  'recording.library.deleteError':
+    '녹음을 삭제하지 못했어요. 저장된 기록을 확인한 뒤 다시 시도해 주세요.',
+  'recording.library.cleanupPending':
+    '기록은 삭제됐고 오디오 파일 정리를 다시 시도할게요.',
   'recording.probe.synthetic': '시뮬레이터용 합성 녹음 준비',
   'recording.probe.failBeforeFile': '파일 준비 전 실패 시뮬레이션',
   'recording.probe.failAfterFile': '임시 파일 생성 후 실패 시뮬레이션',

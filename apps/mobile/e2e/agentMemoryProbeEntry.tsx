@@ -23,7 +23,9 @@ function getProbeMode(): AgentMemoryProbeMode | null {
   const value =
     settingsManager?.settings?.OROT_AGENT_MEMORY_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_AGENT_MEMORY_PROBE;
-  return value === 'fresh' || value === 'restart' ? value : null;
+  return value === 'fresh' || value === 'restart' || value === 'verify-deletion'
+    ? value
+    : null;
 }
 
 function AgentMemoryProbe() {

@@ -8,6 +8,7 @@ import type {
 } from '@orot/agent-runtime';
 import { assessHealthEvidenceCoverage } from '../healthEvidence/coverage';
 import type { HealthEvidenceInventory } from '../healthEvidence/coverage';
+import { withLocalDeletionAwareRevalidation } from '../memory/deletionAwareEvidenceRevalidation';
 import {
   containsEvidenceReference,
   diseaseHypothesisSchema,
@@ -81,7 +82,13 @@ export async function runDiseaseHypothesisAnalysis(
     return { status: 'incomplete_inventory', reason: assessment.status };
   }
   const result = await runMultiAgentWorkflow(
-    { ...options, task: diseaseHypothesisTask },
+    {
+      ...options,
+      revalidateEvidence: withLocalDeletionAwareRevalidation(
+        options.revalidateEvidence,
+      ),
+      task: diseaseHypothesisTask,
+    },
     invocation,
   );
   if (

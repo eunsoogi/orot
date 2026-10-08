@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, NativeModules, StyleSheet, Text, View } from 'react-native';
 import RecordingScreen from '../../src/recording/RecordingScreen';
 import {
   cleanupSyntheticTranscriptRecording,
@@ -7,12 +7,33 @@ import {
   prepareSyntheticTranscriptRecording,
   type TranscriptEvidenceProbeService,
 } from './transcriptEvidenceProbeSupport';
+import {
+  seedTranscriptDeletionEvidence,
+  verifyTranscriptDeletionAfterRelaunch,
+} from './transcriptDeletionProbeSupport';
 
 type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
 type CorrectionStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
+function deletionVerificationSourceId(): string | null {
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
+  const value =
+    settingsManager?.settings?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID ??
+    settingsManager?.getConstants?.().settings
+      ?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID;
+  return typeof value === 'string' ? value : null;
+}
+
 export function TranscriptEvidenceProbe() {
+  const deletionVerificationId = deletionVerificationSourceId();
   const [status, setStatus] = useState<SetupStatus>('idle');
   const [recordingSourceId, setRecordingSourceId] = useState<string | null>(
     null,
@@ -25,12 +46,41 @@ export function TranscriptEvidenceProbe() {
   const [memoryStatus, setMemoryStatus] = useState('not-checked');
   const [correctionStatus, setCorrectionStatus] =
     useState<CorrectionStatus>('idle');
+  const [deletionSeedStatus, setDeletionSeedStatus] = useState('not-seeded');
+  const [deletionStatus, setDeletionStatus] = useState(
+    deletionVerificationId ? 'checking' : 'not-requested',
+  );
   const [error, setError] = useState('');
   const service: TranscriptEvidenceProbeService = useMemo(
     () =>
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
     [setCorrectionStatus, setPlayback],
   );
+  // On relaunch, wait for persisted deletion checks before opening the real recording list.
+  const showRecordingScreen = Boolean(
+    (recordingSourceId && status === 'ready') ||
+    (deletionVerificationId && deletionStatus === 'passed'),
+  );
+
+  useEffect(() => {
+    if (!deletionVerificationId) return;
+    let active = true;
+    verifyTranscriptDeletionAfterRelaunch(deletionVerificationId).then(
+      () => {
+        if (active) setDeletionStatus('passed');
+      },
+      failure => {
+        console.error(
+          'TRANSCRIPT_DELETION_RELAUNCH_VERIFICATION_FAILED',
+          failure instanceof Error ? failure.message : String(failure),
+        );
+        if (active) setDeletionStatus('failed');
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [deletionVerificationId]);
 
   async function prepare(): Promise<void> {
     setStatus('preparing');
@@ -69,8 +119,21 @@ export function TranscriptEvidenceProbe() {
     }
   }
 
+  async function seedDeletionEvidence(): Promise<void> {
+    if (!recordingSourceId) return;
+    setDeletionSeedStatus('seeding');
+    setError('');
+    try {
+      await seedTranscriptDeletionEvidence(recordingSourceId);
+      setDeletionSeedStatus('seeded');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+      setDeletionSeedStatus('failed');
+    }
+  }
+
   return (
-    <View style={recordingSourceId ? styles.recordingScreen : undefined}>
+    <View style={showRecordingScreen ? styles.recordingScreen : undefined}>
       <Button
         disabled={
           status === 'preparing' ||
@@ -89,6 +152,13 @@ export function TranscriptEvidenceProbe() {
       <Text testID="transcript-evidence-cleanup-available">
         {recordingSourceId ? 'yes' : 'no'}
       </Text>
+      <Text testID="transcript-evidence-source-id">
+        {recordingSourceId ?? ''}
+      </Text>
+      <Text testID="transcript-evidence-deletion-seed-status">
+        {deletionSeedStatus}
+      </Text>
+      <Text testID="transcript-evidence-deletion-status">{deletionStatus}</Text>
       <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
       <Text testID="transcript-evidence-correction-status">
         {correctionStatus}
@@ -99,6 +169,16 @@ export function TranscriptEvidenceProbe() {
           onPress={verifyMemoryInvalidation}
           testID="transcript-evidence-verify-memory"
           title="Verify transcript memory invalidation"
+        />
+      ) : null}
+      {recordingSourceId ? (
+        <Button
+          disabled={
+            deletionSeedStatus === 'seeding' || deletionSeedStatus === 'seeded'
+          }
+          onPress={seedDeletionEvidence}
+          testID="transcript-evidence-seed-deletion"
+          title="Seed deletion search evidence"
         />
       ) : null}
       {playback ? (
@@ -114,7 +194,7 @@ export function TranscriptEvidenceProbe() {
           title="Clean up test recording"
         />
       ) : null}
-      {recordingSourceId && status === 'ready' ? (
+      {showRecordingScreen ? (
         <RecordingScreen onBack={() => {}} transcriptService={service} />
       ) : null}
     </View>
