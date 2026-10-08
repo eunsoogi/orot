@@ -2,6 +2,7 @@ import { Memory } from 'rememori';
 import type { Embedder, RecallOptions } from 'rememori';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
+import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import {
   isAgentMemoryKind,
   isProvenance,
@@ -95,26 +96,45 @@ export class LocalAgentMemory implements AgentMemoryService {
     });
   }
 
+  forgetAll(localRecordIds: readonly string[] = []): Promise<number> {
+    return this.enqueue(async () => {
+      const result = await this.runBatch(async () =>
+        forgetAllPersistedRecords(this.storage, await this.getEngine(), localRecordIds),
+      );
+      for (const referenceId of result.referenceIds) this.removedSourceIds.add(referenceId);
+      return result.memoriesDeleted;
+    });
+  }
+
   removeSource(
     sourceId: string,
     deleteSourceRecord: () => Promise<boolean>,
+    dependentReferenceIds: readonly string[] = [],
   ): Promise<AgentMemorySourceRemovalResult> {
     return this.enqueue(async () => {
       const normalizedId = sourceId.trim();
       if (!normalizedId) throw new Error('A source identifier is required.');
-      this.removedSourceIds.add(normalizedId);
+      const references = new Set([
+        normalizedId,
+        ...dependentReferenceIds.map((referenceId) => referenceId.trim()).filter(Boolean),
+      ]);
 
       const records = await this.storage.listRecords();
       const ids = records
-        .filter((record) => provenanceFrom(record.meta)?.sourceIds.includes(normalizedId))
+        .filter((record) =>
+          provenanceFrom(record.meta)?.sourceIds.some((referenceId) => references.has(referenceId)),
+        )
         .map((record) => record.id);
+      const deletionFences = new Set([...references, ...ids]);
       const memoriesDeleted = await this.runBatch(async () => {
         const engine = await this.getEngine();
         let forgotten = 0;
         for (const id of ids) if (await engine.forget(id)) forgotten += 1;
-        await this.storage.markSourceRemoved(normalizedId);
+        // Checkpoints may cite the memory row itself, its source, or a cascaded transcript identity.
+        for (const referenceId of deletionFences) await this.storage.markSourceRemoved(referenceId);
         return forgotten;
       });
+      for (const referenceId of deletionFences) this.removedSourceIds.add(referenceId);
       const sourceDeleted = await deleteSourceRecord();
       return { sourceDeleted, memoriesDeleted };
     });

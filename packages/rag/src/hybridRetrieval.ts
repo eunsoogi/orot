@@ -86,10 +86,58 @@ export async function searchHybridEvidenceChunks(
   }
   if (!query.trim() || chunksById.size === 0) return [];
 
+  // A resumed workflow can retain chunks from before deletion; fence them before either search path.
+  // Structured provenance may be an external sample ID, so its row identity comes from the locator.
+  const identitiesByChunk = new Map<string, string[]>();
+  for (const chunk of eligibleChunks) {
+    const identities = [chunk.metadata.sourceId, ...chunk.metadata.sourceRecordIds];
+    const locator = chunk.metadata.evidenceLocator;
+    if (locator.kind === 'structured_record' && locator.recordId === chunk.metadata.evidenceId) {
+      identities.push(locator.recordId);
+    }
+    identitiesByChunk.set(chunk.id, identities);
+  }
+  const rootSourceRecordIds = [
+    ...new Set(
+      eligibleChunks
+        .filter(
+          (chunk) =>
+            chunk.metadata.evidenceLocator.kind !== 'structured_record' &&
+            chunk.metadata.sourceRecordIds.includes(chunk.metadata.sourceId),
+        )
+        .map((chunk) => chunk.metadata.sourceId),
+    ),
+  ];
+  const localRecordIds = [
+    ...new Set(
+      eligibleChunks.flatMap((chunk) => {
+        const locator = chunk.metadata.evidenceLocator;
+        return locator.kind === 'structured_record' &&
+          locator.recordId === chunk.metadata.evidenceId
+          ? [locator.recordId]
+          : [];
+      }),
+    ),
+  ];
+  const removed = await vectorStore.findRemovedEvidence(
+    [...new Set([...identitiesByChunk.values()].flat())],
+    [...chunksById.keys()],
+    rootSourceRecordIds,
+    localRecordIds,
+  );
+  const removedSourceIds = new Set(removed.sourceRecordIds);
+  const removedChunkIds = new Set(removed.chunkIds);
+  const searchableChunks = eligibleChunks.filter(
+    (chunk) =>
+      !removedChunkIds.has(chunk.id) &&
+      !(identitiesByChunk.get(chunk.id) ?? []).some((sourceId) => removedSourceIds.has(sourceId)),
+  );
+  if (searchableChunks.length === 0) return [];
+
   const candidateLimit = Math.max(limit, ranking.candidateLimit);
   const [lexicalMatches, vectorHits] = await Promise.all([
-    textStore.search(query, eligibleChunks, candidateLimit, options.signal),
-    searchEvidenceChunks(query, eligibleChunks, provider, vectorStore, candidateLimit, {
+    textStore.search(query, searchableChunks, candidateLimit, options.signal),
+    searchEvidenceChunks(query, searchableChunks, provider, vectorStore, candidateLimit, {
       signal: options.signal,
       onProgress: options.onProgress,
     }),
