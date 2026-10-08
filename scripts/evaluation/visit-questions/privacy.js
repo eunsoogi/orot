@@ -107,29 +107,31 @@ function toLangSmithExample(testCase, datasetId) {
 
 /** Keeps model and execution output to documented fields before any upload. */
 function toLangSmithOutput(result, execution) {
+  const providerMode = ['openai-api', 'test-adapter'].includes(execution.providerMode)
+    ? execution.providerMode
+    : 'unknown';
   const measuredUsage = execution.tokenUsage;
+  // Only the API adapter has response-side counters; scripted output cannot claim real usage.
   const tokenUsage =
+    providerMode === 'openai-api' &&
     measuredUsage &&
-    Number.isInteger(measuredUsage.inputTokens) &&
+    Number.isSafeInteger(measuredUsage.inputTokens) &&
     measuredUsage.inputTokens >= 0 &&
-    Number.isInteger(measuredUsage.outputTokens) &&
-    measuredUsage.outputTokens >= 0
+    Number.isSafeInteger(measuredUsage.outputTokens) &&
+    measuredUsage.outputTokens >= 0 &&
+    Number.isSafeInteger(measuredUsage.totalTokens) &&
+    measuredUsage.totalTokens >= 0 &&
+    measuredUsage.totalTokens === measuredUsage.inputTokens + measuredUsage.outputTokens
       ? {
           status: 'measured',
           inputTokens: measuredUsage.inputTokens,
           outputTokens: measuredUsage.outputTokens,
-          totalTokens:
-            Number.isInteger(measuredUsage.totalTokens) && measuredUsage.totalTokens >= 0
-              ? measuredUsage.totalTokens
-              : measuredUsage.inputTokens + measuredUsage.outputTokens,
+          totalTokens: measuredUsage.totalTokens,
         }
       : {
           status: 'unmeasured',
-          reason: 'The visit-question workflow does not expose token counts.',
+          reason: 'The selected provider did not return complete token counts.',
         };
-  const providerMode = ['real-provider', 'test-adapter'].includes(execution.providerMode)
-    ? execution.providerMode
-    : 'unknown';
   const latencyMs = Number.isFinite(execution.latencyMs)
     ? Math.max(0, Math.round(execution.latencyMs))
     : null;
