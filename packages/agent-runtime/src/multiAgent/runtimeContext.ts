@@ -17,7 +17,15 @@ export type FailureStatus =
 export type PrivateOutcome<TResult> =
   | { readonly status: 'result'; readonly value: TResult; readonly citations: EvidenceReference[] }
   | {
-      readonly status: FailureStatus;
+      readonly status: 'needs_clarification';
+      readonly reason: string;
+      /** Only task validation supplies display copy; other clarifications remain generic. */
+      readonly message?: string;
+      readonly providerErrorCode?: ProviderErrorCode;
+      readonly coverage?: EvidenceBatch['coverage'];
+    }
+  | {
+      readonly status: Exclude<FailureStatus, 'needs_clarification'>;
       readonly reason: string;
       readonly providerErrorCode?: ProviderErrorCode;
       readonly coverage?: EvidenceBatch['coverage'];
