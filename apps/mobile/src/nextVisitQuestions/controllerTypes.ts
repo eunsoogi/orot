@@ -3,6 +3,7 @@ import type {
   NextVisitEvidenceReference,
   NextVisitQuestion,
   NextVisitQuestionUpdate,
+  NextVisitQuestionsRouteState,
   NextVisitQuestionsScreenProps,
   QuestionGenerationPhase,
   SavedQuestionsSnapshot,
@@ -20,6 +21,7 @@ export interface NextVisitQuestionsController<
   readonly saveMessage: string | null;
   readonly sourceReference: TReference | null;
   readonly isReviewValid: boolean;
+  readonly hasUnsavedChanges: NextVisitQuestionsRouteState['hasUnsavedChanges'];
   generate(): Promise<void>;
   cancelGeneration(): void;
   startReview(

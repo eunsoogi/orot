@@ -31,6 +31,8 @@ export function useNextVisitQuestionsController<
   const [savedOverride, setSavedOverride] =
     useState<SavedQuestionsSnapshot<TReference> | null>(null);
   const [caveats, setCaveats] = useState<readonly EvidenceCaveat[]>([]);
+  // Generated candidates are unpersisted; saved-list reviews stay clean until an actual edit.
+  const [hasUnpersistedReview, setHasUnpersistedReview] = useState(false);
   const [generationMessage, setGenerationMessage] = useState<string | null>(
     null,
   );
@@ -77,6 +79,7 @@ export function useNextVisitQuestionsController<
     setDraftQuestions([]);
     setSavedOverride(null);
     setCaveats([]);
+    setHasUnpersistedReview(false);
     setGenerationMessage(null);
     clearSaveMessage();
     setSourceReference(null);
@@ -109,6 +112,7 @@ export function useNextVisitQuestionsController<
     const request = new AbortController();
     activeGeneration.current = request;
     setPhase('generating');
+    setHasUnpersistedReview(false);
     setGenerationMessage(null);
     clearSaveMessage();
     setCaveats([]);
@@ -135,6 +139,7 @@ export function useNextVisitQuestionsController<
           return;
         }
         setDraftQuestions(copyQuestions(outcome.questions));
+        setHasUnpersistedReview(true);
         setPhase('reviewing');
         return;
       }
@@ -174,6 +179,7 @@ export function useNextVisitQuestionsController<
     activeGeneration.current?.abort();
     activeGeneration.current = null;
     setPhase('idle');
+    setHasUnpersistedReview(false);
     setGenerationMessage(copy.generation.cancelled);
   }, []);
 
@@ -187,6 +193,7 @@ export function useNextVisitQuestionsController<
       activeGeneration.current = null;
       invalidateSave();
       setDraftQuestions(copyQuestions(questions));
+      setHasUnpersistedReview(false);
       setCaveats([...reviewCaveats]);
       setPhase('reviewing');
       setGenerationMessage(null);
@@ -198,13 +205,19 @@ export function useNextVisitQuestionsController<
   const cancelReview = useCallback(() => {
     invalidateSave();
     setDraftQuestions([]);
+    setHasUnpersistedReview(false);
     setCaveats([]);
     setPhase('idle');
     clearSaveMessage();
   }, [clearSaveMessage, invalidateSave]);
 
+  const markDraftEdited = useCallback(() => setHasUnpersistedReview(true), []);
   const { updateQuestion, moveQuestion, removeQuestion } =
-    useQuestionDraftControls<TReference>(setDraftQuestions);
+    useQuestionDraftControls<TReference>(
+      draftQuestions,
+      setDraftQuestions,
+      markDraftEdited,
+    );
 
   const isReviewValid = isValidReview(draftQuestions);
 
@@ -217,6 +230,8 @@ export function useNextVisitQuestionsController<
     saveMessage,
     sourceReference,
     isReviewValid,
+    hasUnsavedChanges:
+      (phase === 'reviewing' || phase === 'saving') && hasUnpersistedReview,
     generate,
     cancelGeneration,
     startReview,

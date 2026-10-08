@@ -33,7 +33,10 @@ export function ActionButton({
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        // Async controller work publishes its own state; native press events stay synchronous.
+        onPress();
+      }}
       style={[
         variant === 'primary' ? styles.button : styles.secondaryButton,
         disabled && styles.disabled,

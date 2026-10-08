@@ -7,6 +7,7 @@ export type {
   NextVisitEvidenceReference,
   NextVisitQuestion,
   NextVisitQuestionsScreenProps,
+  NextVisitQuestionsRouteState,
   NextVisitQuestionsTheme,
   ProviderViewState,
   SavedQuestionsSnapshot,

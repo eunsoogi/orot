@@ -164,6 +164,14 @@ export interface SaveReviewedQuestionsResult<
   readonly memoryStatus: 'saved' | 'retry_required';
 }
 
+/** Leave-guard state for the owning app route; revision is scoped to one mounted screen instance. */
+export interface NextVisitQuestionsRouteState {
+  readonly hasUnsavedChanges: boolean;
+  readonly isSaving: boolean;
+  /** Increases when this screen commits an appointment or review-state change. */
+  readonly revision: number;
+}
+
 export interface NextVisitQuestionsScreenProps<
   TReference extends NextVisitEvidenceReference,
 > {
@@ -186,4 +194,6 @@ export interface NextVisitQuestionsScreenProps<
     caveats: readonly EvidenceCaveat[],
   ) => Promise<SaveReviewedQuestionsResult<TReference>>;
   readonly onOpenSource?: (reference: TReference) => void;
+  /** Publishes committed draft state so the route can guard back navigation. */
+  readonly onRouteStateChange?: (state: NextVisitQuestionsRouteState) => void;
 }

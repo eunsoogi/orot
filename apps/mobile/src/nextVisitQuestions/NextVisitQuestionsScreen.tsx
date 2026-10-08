@@ -1,6 +1,7 @@
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { useNextVisitQuestionsController } from './controller';
+import { useRouteStatePublisher } from './useRouteStatePublisher';
 import { EvidenceCaveats } from './EvidenceCaveats';
 import {
   ActionButton,
@@ -26,6 +27,13 @@ export function NextVisitQuestionsScreen<
     props.appointment.status === 'ready'
       ? props.appointment.appointment.id
       : null;
+  useRouteStatePublisher({
+    appointmentId: currentAppointmentId,
+    phase: controller.phase,
+    draftQuestions: controller.draftQuestions,
+    hasUnsavedChanges: controller.hasUnsavedChanges,
+    onRouteStateChange: props.onRouteStateChange,
+  });
   // Saved questions, warnings, and load errors belong to one visit; ignore old
   // state while the next visit's list loads.
   const savedSnapshot =
