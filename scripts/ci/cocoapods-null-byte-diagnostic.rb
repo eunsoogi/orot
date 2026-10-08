@@ -3,24 +3,27 @@ module OrotCocoapodsNullByteDiagnostic
   COCOAPODS_VERSION = '1.17.0'
   NULL_BYTE_PATH_ERROR = 'path name contains null byte'
   TARGET_SOURCE_SUFFIX = '/cocoapods/installer/xcode/pods_project_generator/file_references_installer.rb'
-  PROJECT_SOURCE_SUFFIX = '/cocoapods/project.rb'
+  REALDIRPATH_INPUT_IVAR = :@orot_cocoapods_realdirpath_input
+  MAX_CAPTURE_DUMP_BYTES = 2048
+  MAX_CAPTURE_SCAN_BYTES = 4096
+  MAX_CAPTURED_NUL_OFFSETS = 16
 
-  # Keep CocoaPods' path grouping lexical when both file and base share a package symlink.
-  class LexicalSymlinkBasePath < Pathname
-    def realdirpath
-      cleanpath
-    end
-  end
-
-  # CocoaPods 1.17.0 canonicalizes a local pod's common path before computing relative groups.
-  module ProjectGroupPathPatch
-    def group_for_path_in_group(absolute_pathname, group, reflect_file_system_structure, base_path = nil)
-      if OrotCocoapodsNullByteDiagnostic.shared_symlink_prefix?(absolute_pathname, base_path)
-        # Pathname#realdirpath can fail at this boundary and would detach a lexical file path from its symlinked base.
-        base_path = LexicalSymlinkBasePath.new(base_path.to_s)
+  # Attach the failing input to Ruby's exception so CocoaPods can report it without replacing the error.
+  module PathnameRealdirpathDiagnostic
+    def realdirpath(...)
+      super
+    rescue ArgumentError => error
+      if error.message == NULL_BYTE_PATH_ERROR
+        begin
+          error.instance_variable_set(
+            REALDIRPATH_INPUT_IVAR,
+            OrotCocoapodsNullByteDiagnostic.capture_realdirpath_input(path),
+          )
+        rescue StandardError
+          # Evidence collection must not replace Ruby's original CocoaPods error.
+        end
       end
-
-      super(absolute_pathname, group, reflect_file_system_structure, base_path)
+      raise
     end
   end
 
@@ -54,6 +57,7 @@ module OrotCocoapodsNullByteDiagnostic
                 path,
                 base_path,
                 group,
+                error.instance_variable_get(REALDIRPATH_INPUT_IVAR),
               )
             end
             raise
@@ -78,26 +82,56 @@ module OrotCocoapodsNullByteDiagnostic
     "<unavailable:#{error.class}>"
   end
 
-  # Apply the workaround only when both clean inputs pass through the same real symlink.
-  def self.shared_symlink_prefix?(absolute_pathname, base_path)
-    return false unless absolute_pathname.is_a?(Pathname) && base_path.is_a?(Pathname)
+  # Keep logs printable and bounded while reporting byte offsets from the original string.
+  def self.capture_realdirpath_input(path)
+    return unavailable_path_capture unless path.is_a?(String)
 
-    absolute_path = absolute_pathname.to_s
-    base_string = base_path.to_s
-    return false if absolute_path.include?("\0") || base_string.include?("\0")
+    scanned_path = path.byteslice(0, MAX_CAPTURE_SCAN_BYTES)
+    nul_offsets = []
+    nul_count = 0
+    scanned_path.each_byte.with_index do |byte, index|
+      next unless byte.zero?
 
-    lexical_file = absolute_pathname.cleanpath.to_s
-    base_path.cleanpath.ascend.any? do |candidate|
-      prefix = candidate.to_s
-      shared_prefix = lexical_file == prefix || lexical_file.start_with?("#{prefix}#{File::SEPARATOR}")
-      shared_prefix && File.symlink?(prefix)
+      nul_count += 1
+      nul_offsets << index if nul_offsets.length < MAX_CAPTURED_NUL_OFFSETS
     end
-  rescue StandardError
-    false
+
+    {
+      dump: bounded_dump(path),
+      bytes: path.bytesize,
+      nul_offsets: nul_count.zero? ? 'none' : nul_offsets.join(','),
+      nul_count: nul_count,
+      scanned_bytes: scanned_path.bytesize,
+      scan_truncated: scanned_path.bytesize < path.bytesize,
+      offsets_truncated: nul_count > nul_offsets.length,
+    }
+  rescue StandardError => error
+    unavailable_path_capture(error)
+  end
+
+  def self.bounded_dump(value)
+    dumped = safe_dump(value)
+    return dumped if dumped.bytesize <= MAX_CAPTURE_DUMP_BYTES
+
+    "#{dumped.byteslice(0, MAX_CAPTURE_DUMP_BYTES)}...<truncated>"
+  end
+
+  def self.unavailable_path_capture(error = nil)
+    marker = error ? "<unavailable:#{error.class}>".dump : 'not_observed'
+    {
+      dump: marker,
+      bytes: 'unavailable',
+      nul_offsets: 'unavailable',
+      nul_count: 'unavailable',
+      scanned_bytes: 'unavailable',
+      scan_truncated: 'unavailable',
+      offsets_truncated: 'unavailable',
+    }
   end
 
   # Logging is best-effort so a diagnostic failure cannot replace CocoaPods' original exception.
-  def self.report_failure(error, pod_name, accessor_key, absolute_pathname, base_path, group)
+  def self.report_failure(error, pod_name, accessor_key, absolute_pathname, base_path, group, path_capture)
+    path_capture ||= unavailable_path_capture
     fields = [
       'OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC',
       "version=#{COCOAPODS_VERSION}",
@@ -106,6 +140,13 @@ module OrotCocoapodsNullByteDiagnostic
       "absolute_pathname=#{safe_dump(absolute_pathname)}",
       "base_path=#{safe_dump(base_path)}",
       "group_real_path=#{safe_dump(safe_group_real_path(group))}",
+      "realdirpath_input=#{path_capture[:dump]}",
+      "realdirpath_input_bytes=#{path_capture[:bytes]}",
+      "realdirpath_input_nul_offsets=#{path_capture[:nul_offsets]}",
+      "realdirpath_input_nul_count=#{path_capture[:nul_count]}",
+      "realdirpath_input_scanned_bytes=#{path_capture[:scanned_bytes]}",
+      "realdirpath_input_scan_truncated=#{path_capture[:scan_truncated]}",
+      "realdirpath_input_offsets_truncated=#{path_capture[:offsets_truncated]}",
       "error=#{safe_dump(error.message)}",
     ]
     warn(fields.join(' '))
@@ -134,24 +175,15 @@ module OrotCocoapodsNullByteDiagnostic
       next unless method&.source_location&.first&.end_with?(TARGET_SOURCE_SUFFIX)
 
       if Pod.const_defined?(:VERSION, false) && Pod::VERSION.to_s == COCOAPODS_VERSION
-        install_project_group_path_workaround
+        if defined?(Pathname) && Pathname.method_defined?(:realdirpath)
+          Pathname.prepend(PathnameRealdirpathDiagnostic) unless
+            Pathname.ancestors.include?(PathnameRealdirpathDiagnostic)
+        end
         klass.prepend(FileReferencesInstallerPatch) unless klass.ancestors.include?(FileReferencesInstallerPatch)
       end
       loader_trace.disable
     end
     loader_trace.enable
-  end
-
-  def self.install_project_group_path_workaround
-    return unless Pod.const_defined?(:Project, false)
-
-    project_class = Pod.const_get(:Project, false)
-    method = project_class.instance_method(:group_for_path_in_group)
-    return unless method.source_location&.first&.end_with?(PROJECT_SOURCE_SUFFIX)
-
-    project_class.prepend(ProjectGroupPathPatch) unless project_class.ancestors.include?(ProjectGroupPathPatch)
-  rescue NameError
-    # Preserve CocoaPods behavior if its pinned project method is unavailable.
   end
 end
 
