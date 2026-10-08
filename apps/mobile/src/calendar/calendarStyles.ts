@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import { appColors, designTokens, useAppTheme } from '../design/tokens';
+import { designTokens, useAppTheme } from '../design/tokens';
 import type { AppColorPalette } from '../design/tokens';
 
 // Keep the seven-column labels compact while full-date details still follow Dynamic Type.
@@ -177,33 +177,14 @@ function calendarStyleDefinition(colors: AppColorPalette) {
   };
 }
 
-// Keep CalendarLinkingScreen's parent-owned presentation unchanged; the month view uses themed styles.
-const calendarLinkingScreenStyles = {
-  container: {
-    flexGrow: 1,
-    gap: 14,
-    justifyContent: 'center' as const,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' as const },
-  message: { color: '#45515f', fontSize: 15 },
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  eventTitle: { color: '#17212b', fontSize: 17, fontWeight: '600' as const },
-  warning: { color: '#8a4b08', fontSize: 15 },
-  error: { color: '#a12b25', fontSize: 15 },
-};
+function createCalendarStyles(colors: AppColorPalette) {
+  return StyleSheet.create(calendarStyleDefinition(colors));
+}
 
-export const calendarStyles = StyleSheet.create({
-  ...calendarStyleDefinition(appColors.light),
-  ...calendarLinkingScreenStyles,
-});
-export type CalendarStyleSet = typeof calendarStyles;
+export type CalendarStyleSet = ReturnType<typeof createCalendarStyles>;
 
 export function useCalendarStyles(): CalendarStyleSet {
   const { colors } = useAppTheme();
-  return useMemo(
-    () => StyleSheet.create(calendarStyleDefinition(colors)),
-    [colors],
-  );
+  // The route shell and month grid must follow the same system appearance palette.
+  return useMemo(() => createCalendarStyles(colors), [colors]);
 }

@@ -2,47 +2,9 @@ import { fireEvent, render, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
-import { calendarGridTextScaleLimit, calendarStyles } from '../calendarStyles';
+import { calendarGridTextScaleLimit } from '../calendarStyles';
 
 describe('calendar month design', () => {
-  it('preserves static styles used by the unassigned calendar screen', () => {
-    expect(StyleSheet.flatten(calendarStyles.container)).toEqual({
-      flexGrow: 1,
-      gap: 14,
-      justifyContent: 'center',
-      padding: 24,
-      backgroundColor: '#f7f8fa',
-    });
-    expect(StyleSheet.flatten(calendarStyles.title)).toEqual({
-      color: '#17212b',
-      fontSize: 24,
-      fontWeight: '700',
-    });
-    expect(StyleSheet.flatten(calendarStyles.message)).toEqual({
-      color: '#45515f',
-      fontSize: 15,
-    });
-    expect(StyleSheet.flatten(calendarStyles.card)).toEqual({
-      backgroundColor: 'white',
-      borderRadius: 10,
-      gap: 8,
-      padding: 14,
-    });
-    expect(StyleSheet.flatten(calendarStyles.eventTitle)).toEqual({
-      color: '#17212b',
-      fontSize: 17,
-      fontWeight: '600',
-    });
-    expect(StyleSheet.flatten(calendarStyles.warning)).toEqual({
-      color: '#8a4b08',
-      fontSize: 15,
-    });
-    expect(StyleSheet.flatten(calendarStyles.error)).toEqual({
-      color: '#a12b25',
-      fontSize: 15,
-    });
-  });
-
   it('keeps month navigation outside the horizontal date viewport', async () => {
     const screen = await render(
       <CalendarMonthView

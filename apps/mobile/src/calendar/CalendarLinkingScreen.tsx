@@ -6,7 +6,7 @@ import { CalendarMonthView } from './CalendarMonthView';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarQueryWindow } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
-import { calendarStyles as styles } from './calendarStyles';
+import { useCalendarStyles } from './calendarStyles';
 import type { CalendarAccessState, CalendarBridge } from './types';
 import { useCalendarLinking } from './useCalendarLinking';
 
@@ -35,6 +35,8 @@ export default function CalendarLinkingScreen({
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const calendar = useCalendarLinking(repository, bridge);
+  // React Native Text does not inherit View colors, so route copy needs explicit semantic styles.
+  const styles = useCalendarStyles();
   const [queryWindow, setQueryWindow] = useState<CalendarQueryWindow | null>(
     null,
   );
@@ -75,7 +77,7 @@ export default function CalendarLinkingScreen({
       ) : null}
 
       {calendar.loadingAppointments ? (
-        <Text testID="calendar-storage-loading">
+        <Text style={styles.message} testID="calendar-storage-loading">
           {t('appointments.opening')}
         </Text>
       ) : calendar.error === t('appointments.loadError') ? (
@@ -119,12 +121,14 @@ export default function CalendarLinkingScreen({
         </Text>
       ) : null}
       {calendar.notice ? (
-        <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
+        <Text accessibilityLiveRegion="polite" style={styles.message}>
+          {calendar.notice}
+        </Text>
       ) : null}
 
       {calendar.selectedEvent ? (
         <View style={styles.card} testID="calendar-selection">
-          <Text>
+          <Text style={styles.message}>
             {calendar.linkedAppointment
               ? t('calendar.reconfirmPrompt')
               : t('calendar.confirmPrompt')}
@@ -133,7 +137,9 @@ export default function CalendarLinkingScreen({
             {calendar.selectedEvent.calendarEventSnapshot.title ||
               t('calendar.eventNoTitle')}
           </Text>
-          <Text>{formatCalendarEventRange(calendar.selectedEvent)}</Text>
+          <Text style={styles.message}>
+            {formatCalendarEventRange(calendar.selectedEvent)}
+          </Text>
           <Button
             disabled={calendar.saving}
             onPress={calendar.confirmSelectedEvent}
@@ -174,7 +180,9 @@ export default function CalendarLinkingScreen({
       ) : null}
 
       {calendar.loadingEvents ? (
-        <Text testID="calendar-loading-events">{t('calendar.loading')}</Text>
+        <Text style={styles.message} testID="calendar-loading-events">
+          {t('calendar.loading')}
+        </Text>
       ) : null}
       <CalendarMonthView
         appointmentsLoading={calendar.loadingAppointments}
