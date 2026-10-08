@@ -65,7 +65,7 @@ function TestSurface({ children, testID }: NavigationSurfaceProps) {
 }
 
 describe('shared back inputs', () => {
-  it('uses the same leave guard for button cancellation and accepted edge swipe', async () => {
+  it('uses the same operation leave guard for button and accepted edge swipe', async () => {
     const controller = createNavigationController<TestRoute>('home');
     const editor = controller.push('editor');
     if (!editor) throw new Error('Editor route was unexpectedly rejected.');
@@ -79,6 +79,8 @@ describe('shared back inputs', () => {
     const readState = jest.fn(() => ({
       hasUnsavedChanges: true,
       isRecording: false,
+      hasOngoingOperation: true,
+      ongoingOperationKind: 'account-connection' as const,
       revision: 1,
       inputRevision: 1,
     }));
@@ -98,6 +100,13 @@ describe('shared back inputs', () => {
       screen.getByRole('button', { name: '이전 화면으로 돌아가기' }),
     );
     expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        reasons: ['unsaved-changes', 'ongoing-operation'],
+        ongoingOperationKind: 'account-connection',
+      }),
+    );
     expect(controller.getSnapshot().isTransitioning).toBe(true);
     await act(async () => {
       confirmationDecisions[0]?.(false);
@@ -134,6 +143,13 @@ describe('shared back inputs', () => {
 
     expect(controller.getSnapshot().currentRoute.name).toBe('home');
     expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        reasons: ['unsaved-changes', 'ongoing-operation'],
+        ongoingOperationKind: 'account-connection',
+      }),
+    );
     expect(readState).toHaveBeenCalledTimes(3);
     expect(requestBack).toHaveBeenCalledTimes(2);
   });

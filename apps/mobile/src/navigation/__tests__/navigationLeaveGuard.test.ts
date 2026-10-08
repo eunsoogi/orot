@@ -11,6 +11,7 @@ type TestRoute = 'home' | 'details' | 'editor' | 'recording';
 interface MutableLeaveState {
   hasUnsavedChanges: boolean;
   isRecording: boolean;
+  hasOngoingOperation: boolean;
   revision: number;
   inputRevision: number;
 }
@@ -29,7 +30,7 @@ function pushRoute(
 }
 
 describe('navigation leave guard', () => {
-  it('does not prompt when there is no unsaved input or active recording', async () => {
+  it('does not prompt when there is no leave-confirmation reason', async () => {
     const confirm = jest.fn(
       async (
         _request: Pick<NavigationLeaveConfirmation<TestRoute>, 'reasons'>,
@@ -39,6 +40,7 @@ describe('navigation leave guard', () => {
       readState: () => ({
         hasUnsavedChanges: false,
         isRecording: false,
+        hasOngoingOperation: false,
         revision: 0,
         inputRevision: 0,
       }),
@@ -70,6 +72,7 @@ describe('navigation leave guard', () => {
         readState: () => ({
           hasUnsavedChanges,
           isRecording: false,
+          hasOngoingOperation: false,
           revision: 0,
           inputRevision: 0,
         }),
@@ -93,6 +96,7 @@ describe('navigation leave guard', () => {
     const state: MutableLeaveState = {
       hasUnsavedChanges: false,
       isRecording: true,
+      hasOngoingOperation: false,
       revision: 0,
       inputRevision: 0,
     };
@@ -123,6 +127,7 @@ describe('navigation leave guard', () => {
     const state: MutableLeaveState = {
       hasUnsavedChanges: false,
       isRecording: true,
+      hasOngoingOperation: false,
       revision: 0,
       inputRevision: 0,
     };
@@ -151,6 +156,7 @@ describe('navigation leave guard', () => {
     const state: MutableLeaveState = {
       hasUnsavedChanges: true,
       isRecording: true,
+      hasOngoingOperation: false,
       revision: 4,
       inputRevision: 2,
     };
@@ -183,6 +189,7 @@ describe('navigation leave guard', () => {
         readState: () => ({
           hasUnsavedChanges: false,
           isRecording: true,
+          hasOngoingOperation: false,
           revision: 0,
           inputRevision: 0,
         }),
@@ -207,6 +214,7 @@ describe('navigation leave guard', () => {
         readState: () => ({
           hasUnsavedChanges: true,
           isRecording: false,
+          hasOngoingOperation: false,
           revision,
           inputRevision: revision,
         }),

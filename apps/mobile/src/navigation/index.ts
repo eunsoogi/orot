@@ -18,6 +18,7 @@ export {
 export {
   createNavigationLeaveGuard,
   type NavigationLeaveConfirmation,
+  type NavigationLeaveOperationKind,
   type NavigationLeaveReason,
   type NavigationLeaveState,
 } from './navigationLeaveGuard';

@@ -27,5 +27,7 @@ describe('navigation Korean terms', () => {
     expect(navigationText.leaveUnsaved.message).toContain('저장되지 않은');
     expect(navigationText.leaveRecording.confirm).toContain('녹음');
     expect(navigationText.leaveRecording.cancel).toBe('계속 녹음');
+    expect(navigationText.leaveOngoingOperation.message).toContain('중단');
+    expect(navigationText.leaveOngoingOperation.confirm).toContain('나가기');
   });
 });

@@ -9,12 +9,36 @@ type LeaveCopy = {
   readonly cancel: string;
 };
 
-function copyForReasons(
-  reasons: NavigationLeaveConfirmation<string>['reasons'],
-) {
+function copyForReasons(request: NavigationLeaveConfirmation<string>) {
+  const { reasons } = request;
   const hasUnsavedChanges = reasons.includes('unsaved-changes');
   const isRecording = reasons.includes('recording');
+  const hasOngoingOperation = reasons.includes('ongoing-operation');
+  const isAccountConnection =
+    hasOngoingOperation &&
+    request.ongoingOperationKind === 'account-connection';
 
+  if (isAccountConnection && hasUnsavedChanges && isRecording) {
+    return navigationText.leaveUnsavedRecordingAndAccountConnection;
+  }
+  if (isAccountConnection && hasUnsavedChanges) {
+    return navigationText.leaveUnsavedAndAccountConnection;
+  }
+  if (isAccountConnection && isRecording) {
+    return navigationText.leaveRecordingAndAccountConnection;
+  }
+  if (isAccountConnection) return navigationText.leaveAccountConnection;
+
+  if (hasOngoingOperation && hasUnsavedChanges && isRecording) {
+    return navigationText.leaveUnsavedRecordingAndOperation;
+  }
+  if (hasOngoingOperation && hasUnsavedChanges) {
+    return navigationText.leaveUnsavedAndOperation;
+  }
+  if (hasOngoingOperation && isRecording) {
+    return navigationText.leaveRecordingAndOperation;
+  }
+  if (hasOngoingOperation) return navigationText.leaveOngoingOperation;
   if (hasUnsavedChanges && isRecording) {
     return navigationText.leaveUnsavedAndRecording;
   }
@@ -27,7 +51,7 @@ export function confirmNavigationLeave<Name extends string>(
 ): Promise<boolean> {
   if (request.reasons.length === 0) return Promise.resolve(true);
 
-  const copy: LeaveCopy = copyForReasons(request.reasons);
+  const copy: LeaveCopy = copyForReasons(request);
   return new Promise(resolve => {
     let settled = false;
     const finish = (approved: boolean) => {

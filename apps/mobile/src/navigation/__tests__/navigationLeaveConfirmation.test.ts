@@ -1,20 +1,25 @@
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
-import type { NavigationLeaveConfirmation } from '../navigationLeaveGuard';
-import type { NavigationLeaveReason } from '../navigationLeaveGuard';
+import type {
+  NavigationLeaveConfirmation,
+  NavigationLeaveOperationKind,
+  NavigationLeaveReason,
+} from '../navigationLeaveGuard';
 import { confirmNavigationLeave } from '../navigationLeaveConfirmation';
 
 type TestRoute = 'home' | 'editor';
 
 function request(
   reasons: readonly NavigationLeaveReason[],
+  ongoingOperationKind?: NavigationLeaveOperationKind,
 ): NavigationLeaveConfirmation<TestRoute> {
   return {
     intent: 'back',
     from: { key: 'route-2', name: 'editor' },
     to: { key: 'route-1', name: 'home' },
     reasons,
+    ongoingOperationKind,
   };
 }
 
@@ -67,6 +72,73 @@ describe('navigation leave confirmation', () => {
     ]);
     buttons?.[0]?.onPress?.();
     await expect(pending).resolves.toBe(false);
+  });
+
+  it('names an ongoing operation separately from the leave action', async () => {
+    const pending = confirmNavigationLeave(request(['ongoing-operation']));
+    const [title, message, rawButtons] = alert.mock.calls[0] ?? [];
+    const buttons = rawButtons as AlertButton[] | undefined;
+
+    expect(title).toBe(navigationText.leaveOngoingOperation.title);
+    expect(message).toBe(navigationText.leaveOngoingOperation.message);
+    expect(buttons?.map(button => button.text)).toEqual([
+      navigationText.leaveOngoingOperation.cancel,
+      navigationText.leaveOngoingOperation.confirm,
+    ]);
+    buttons?.[0]?.onPress?.();
+    await expect(pending).resolves.toBe(false);
+  });
+
+  it('names an account connection interruption specifically', async () => {
+    const pending = confirmNavigationLeave(
+      request(['ongoing-operation'], 'account-connection'),
+    );
+    const [title, message, rawButtons] = alert.mock.calls[0] ?? [];
+    const buttons = rawButtons as AlertButton[] | undefined;
+
+    expect(title).toBe(navigationText.leaveAccountConnection.title);
+    expect(message).toBe(navigationText.leaveAccountConnection.message);
+    expect(buttons?.map(button => button.text)).toEqual([
+      navigationText.leaveAccountConnection.cancel,
+      navigationText.leaveAccountConnection.confirm,
+    ]);
+    buttons?.[0]?.onPress?.();
+    await expect(pending).resolves.toBe(false);
+  });
+
+  it('explains discarded input and operation interruption together', async () => {
+    const pending = confirmNavigationLeave(
+      request(['unsaved-changes', 'ongoing-operation']),
+    );
+    const [title, message, rawButtons] = alert.mock.calls[0] ?? [];
+    const buttons = rawButtons as AlertButton[] | undefined;
+
+    expect(title).toBe(navigationText.leaveUnsavedAndOperation.title);
+    expect(message).toBe(navigationText.leaveUnsavedAndOperation.message);
+    expect(buttons?.[1]?.text).toBe(
+      navigationText.leaveUnsavedAndOperation.confirm,
+    );
+    buttons?.[1]?.onPress?.();
+    await expect(pending).resolves.toBe(true);
+  });
+
+  it('names a pending selection and account connection interruption together', async () => {
+    const pending = confirmNavigationLeave(
+      request(['unsaved-changes', 'ongoing-operation'], 'account-connection'),
+    );
+    const [title, message, rawButtons] = alert.mock.calls[0] ?? [];
+    const buttons = rawButtons as AlertButton[] | undefined;
+
+    expect(title).toBe(navigationText.leaveUnsavedAndAccountConnection.title);
+    expect(message).toBe(
+      navigationText.leaveUnsavedAndAccountConnection.message,
+    );
+    expect(buttons?.map(button => button.text)).toEqual([
+      navigationText.leaveUnsavedAndAccountConnection.cancel,
+      navigationText.leaveUnsavedAndAccountConnection.confirm,
+    ]);
+    buttons?.[1]?.onPress?.();
+    await expect(pending).resolves.toBe(true);
   });
 
   it('explains both consequences when an unsaved draft and recording are active', async () => {

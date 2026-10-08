@@ -59,6 +59,7 @@ describe('app navigation route adapter', () => {
       readState: () => ({
         hasUnsavedChanges: true,
         isRecording: false,
+        hasOngoingOperation: false,
         revision: 3,
         inputRevision: 3,
       }),
@@ -105,6 +106,7 @@ describe('app navigation route adapter', () => {
       readState: () => ({
         hasUnsavedChanges: false,
         isRecording: false,
+        hasOngoingOperation: false,
         revision: 0,
         inputRevision: 0,
       }),
