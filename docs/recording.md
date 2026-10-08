@@ -7,8 +7,11 @@ requested only after that acknowledgement.
 
 On a device, `AVAudioRecorder` writes AAC audio in an `.m4a` file under the
 app's Application Support `Recordings` directory. The file and directory use
-complete iOS file protection, and the recording is excluded from device backup.
-Audio remains on the device and is not uploaded to the Orot server.
+complete iOS file protection. Permanent recordings are eligible for iCloud
+device backup after the app clears and verifies the backup-exclusion attribute;
+existing recording files are migrated when that directory is prepared. Audio
+remains on the device and is not uploaded to the Orot server. See
+[iCloud backup and restore](backup.md) for the local-readiness limits.
 
 When a recording ends, its UUID, start time, and completion time are linked to
 the local record repository as an `audio_recording` source. The source is marked
@@ -21,9 +24,9 @@ that range. Engine and operating-system runtime versions remain attached as
 provenance. Corrections append user-reported revisions that retain the earlier
 revision, audio range, and engine provenance, and derived records based on an
 earlier revision are marked stale instead of being silently rewritten. If
-writing source metadata fails
-after file protection was verified, the audio remains on the device and the
-screen offers a retry. If the native module cannot verify file protection at
+writing source metadata fails after file protection and backup eligibility were
+verified, the audio remains on the device and the screen offers a retry. If the
+native module cannot verify complete file protection or backup eligibility at
 completion, it withholds the source link and does not offer that retry.
 While a verified source link is pending, the screen keeps its recording details
 available and prevents leaving or starting another recording. A failed attempt
@@ -39,8 +42,9 @@ Debug iOS Simulator builds expose a separate probe that creates a synthetic
 440 Hz tone in a `.caf` file and can simulate an audio interruption. The probe
 does not use the microphone and is not included in device or Release builds.
 The probe still requests complete file protection and verifies backup
-exclusion. If the Simulator does not report the protection attribute, the
+eligibility. If the Simulator does not report the protection attribute, the
 result is marked `unverified`; the app withholds its source-record link. This
 probe exercises recording state, duration, identity, and interruption handling,
-but does not prove device file encryption. Device and Release recording paths
-fail closed unless complete file protection is read back successfully.
+but does not prove device file encryption or iCloud backup completion. Device
+and Release recording paths fail closed unless complete file protection and
+backup eligibility are read back successfully.

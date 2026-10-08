@@ -67,16 +67,16 @@ export {
   createAppointment,
   updateAppointment,
   VisitBriefSchema,
-  VisitQuestionSchema,
 } from './visits';
+export { VisitQuestionSchema, VisitQuestionCreateSchema } from './visitQuestions';
 export type {
   CalendarAppointmentSnapshot,
   Appointment,
   AppointmentStatus,
   AppointmentUpdateInput,
   VisitBrief,
-  VisitQuestion,
 } from './visits';
+export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
 export {
   createTranscriptCorrection,
   TranscriptAudioRangeSchema,

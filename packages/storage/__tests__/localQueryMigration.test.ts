@@ -27,6 +27,6 @@ describe('bounded local query migration', () => {
     );
     expect(index.rows[0].sql).toContain("strftime('%s'");
     expect(index.rows[0].sql).not.toContain('julianday');
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(8);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(9);
   });
 });

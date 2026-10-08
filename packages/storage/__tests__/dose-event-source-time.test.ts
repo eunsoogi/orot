@@ -31,6 +31,10 @@ describe('dose-event source-time migration', () => {
       await database.execute(
         'INSERT INTO dose_events_v4 SELECT id, effective_at, recorded_at, ingested_at, payload_json FROM dose_events',
       );
+      // This fixture predates source-deletion integrity, so remove its newer trigger before the table rebuild.
+      await database.execute(
+        'DROP TRIGGER IF EXISTS source_records_delete_dose_events_dependencies',
+      );
       await database.execute('DROP TABLE dose_events');
       await database.execute('ALTER TABLE dose_events_v4 RENAME TO dose_events');
       await database.execute(
@@ -54,7 +58,7 @@ describe('dose-event source-time migration', () => {
 
       expect(await repository.get('dose_event', existingDose.id)).toEqual(existingDose);
       expect(await repository.get('dose_event', importedDose.id)).toEqual(importedDose);
-      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(8);
+      expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(9);
       expect(
         (
           await database.execute(

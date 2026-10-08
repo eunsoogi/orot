@@ -61,9 +61,57 @@ function makeProvider(): DocumentQueryEmbeddingProvider {
 function makeVectorStore(
   entries: readonly { chunkId: string; vector: number[] }[],
 ): LocalEmbeddingVectorStore {
+  const vectors = new Map(entries.map((entry) => [entry.chunkId, entry]));
+  const sourceIdsByChunk = new Map<string, readonly string[]>();
+  const removedChunkIds = new Set<string>();
+  const removedSourceIds = new Set<string>();
+
   return {
-    upsertBatch: jest.fn(async () => undefined),
-    listForModel: jest.fn(async () => entries),
+    async upsertBatch(_model, batch) {
+      if (
+        batch.some(
+          (entry) =>
+            removedChunkIds.has(entry.chunkId) ||
+            entry.sourceRecordIds.some((sourceId) => removedSourceIds.has(sourceId)),
+        )
+      ) {
+        throw new Error('Removed evidence cannot be indexed again.');
+      }
+      for (const entry of batch) {
+        vectors.set(entry.chunkId, { chunkId: entry.chunkId, vector: entry.vector });
+        sourceIdsByChunk.set(entry.chunkId, entry.sourceRecordIds);
+      }
+    },
+    async listForModel() {
+      return [...vectors.values()];
+    },
+    async deleteEvidence(sourceRecordIds, chunkIds) {
+      const sourceIds = new Set(sourceRecordIds);
+      for (const sourceRecordId of sourceIds) removedSourceIds.add(sourceRecordId);
+      const chunksToRemove = new Set([
+        ...chunkIds,
+        ...[...sourceIdsByChunk.entries()]
+          .filter(([, sources]) => sources.some((sourceId) => sourceIds.has(sourceId)))
+          .map(([chunkId]) => chunkId),
+      ]);
+      for (const chunkId of chunksToRemove) {
+        vectors.delete(chunkId);
+        sourceIdsByChunk.delete(chunkId);
+        removedChunkIds.add(chunkId);
+      }
+    },
+    async clear(sourceRecordIds = []) {
+      for (const sourceRecordId of sourceRecordIds) removedSourceIds.add(sourceRecordId);
+      for (const chunkId of vectors.keys()) removedChunkIds.add(chunkId);
+      vectors.clear();
+      sourceIdsByChunk.clear();
+    },
+    async findRemovedEvidence(sourceRecordIds, chunkIds) {
+      return {
+        sourceRecordIds: sourceRecordIds.filter((id) => removedSourceIds.has(id)),
+        chunkIds: chunkIds.filter((id) => removedChunkIds.has(id)),
+      };
+    },
   };
 }
 
