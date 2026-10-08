@@ -52,6 +52,14 @@ function validation(questionText: string, evidenceText: string) {
   return responder.validateResult({ status: 'suggestions', questions }, input);
 }
 
+function expectClarification(questionText: string, evidenceText: string) {
+  // The app message stays inside a valid task result rather than a generic runtime failure.
+  expect(validation(questionText, evidenceText)).toMatchObject({
+    status: 'valid',
+    value: { status: 'needs_clarification' },
+  });
+}
+
 describe('visit-question numeric fact validation', () => {
   it('preserves an amount and unit stored as separate structured fields', () => {
     const doseEvent = DoseEventSchema.parse({
@@ -70,9 +78,7 @@ describe('visit-question numeric fact validation', () => {
     expect(
       validation('복용량 5 mg을 진료에서 확인할까요?', structuredDose).status,
     ).toBe('valid');
-    expect(
-      validation('복용량 5 g을 진료에서 확인할까요?', structuredDose).status,
-    ).toBe('needs_clarification');
+    expectClarification('복용량 5 g을 진료에서 확인할까요?', structuredDose);
   });
 
   it('preserves units, signs, and ordered ratios while accepting source-matched values', () => {
@@ -82,21 +88,15 @@ describe('visit-question numeric fact validation', () => {
         '건강 관찰 기록: 혈압 120/80 mmHg',
       ).status,
     ).toBe('valid');
-    expect(
-      validation(
-        '혈압 80/120 mmHg를 진료에서 어떻게 확인할까요?',
-        '건강 관찰 기록: 혈압 120/80 mmHg',
-      ).status,
-    ).toBe('needs_clarification');
-    expect(
-      validation('5 g 복용을 확인하면 좋을까요?', '복용량: 5 mg').status,
-    ).toBe('needs_clarification');
-    expect(
-      validation('측정값이 9였는지 확인하면 좋을까요?', '합성 건강 기록')
-        .status,
-    ).toBe('needs_clarification');
-    expect(
-      validation('5를 복용했는지 확인하면 좋을까요?', '기록된 값: -5').status,
-    ).toBe('needs_clarification');
+    expectClarification(
+      '혈압 80/120 mmHg를 진료에서 어떻게 확인할까요?',
+      '건강 관찰 기록: 혈압 120/80 mmHg',
+    );
+    expectClarification('5 g 복용을 확인하면 좋을까요?', '복용량: 5 mg');
+    expectClarification(
+      '측정값이 9였는지 확인하면 좋을까요?',
+      '합성 건강 기록',
+    );
+    expectClarification('5를 복용했는지 확인하면 좋을까요?', '기록된 값: -5');
   });
 });

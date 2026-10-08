@@ -37,6 +37,13 @@ function readNonEmptyKoreanText(
     : null;
 }
 
+function clarification(
+  message: string,
+): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
+  // Keep app-owned copy in the task result instead of the runtime's generic failure reason.
+  return { status: 'valid', value: { status: 'needs_clarification', message } };
+}
+
 function appointmentDateFromContext(
   context: JsonValue | undefined,
 ): string | undefined {
@@ -44,7 +51,7 @@ function appointmentDateFromContext(
   return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
 }
 
-/** Validates generated fields and aliases; validator-owned clarification copy comes from the Korean catalog. */
+/** Validates generated fields and preserves app-owned clarification copy as a task result. */
 export function validateVisitQuestionTaskResult(
   value: JsonValue,
   input: VisitQuestionResponderInput,
@@ -62,11 +69,8 @@ export function validateVisitQuestionTaskResult(
     }
     const message = readNonEmptyKoreanText(result.message, 400);
     return message
-      ? { status: 'needs_clarification', message }
-      : {
-          status: 'invalid',
-          reason: 'The clarification request is invalid.',
-        };
+      ? clarification(message)
+      : { status: 'invalid', reason: 'The clarification request is invalid.' };
   }
 
   if (
@@ -79,16 +83,10 @@ export function validateVisitQuestionTaskResult(
     };
   }
   if (input.evidence.conflicts.length > 0) {
-    return {
-      status: 'needs_clarification',
-      message: t('visitQuestions.validation.conflictingRecords'),
-    };
+    return clarification(t('visitQuestions.validation.conflictingRecords'));
   }
   if (input.evidence.items.length === 0) {
-    return {
-      status: 'needs_clarification',
-      message: t('visitQuestions.validation.noEvidence'),
-    };
+    return clarification(t('visitQuestions.validation.noEvidence'));
   }
   if (
     !Array.isArray(result.questions) ||
@@ -163,10 +161,9 @@ export function validateVisitQuestionTaskResult(
         appointmentDateFromContext(input.context),
       )
     ) {
-      return {
-        status: 'needs_clarification',
-        message: t('visitQuestions.validation.unverifiedDateOrValue'),
-      };
+      return clarification(
+        t('visitQuestions.validation.unverifiedDateOrValue'),
+      );
     }
     questions.push({
       questionText,

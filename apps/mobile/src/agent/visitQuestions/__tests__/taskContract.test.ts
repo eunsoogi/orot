@@ -181,7 +181,10 @@ describe('visit question task responder', () => {
       },
     });
 
-    expect(validation.status).toBe('needs_clarification');
+    expect(validation).toMatchObject({
+      status: 'valid',
+      value: { status: 'needs_clarification' },
+    });
   });
 
   it('accepts dates and values present in cited evidence and asks when they conflict', () => {
@@ -209,7 +212,10 @@ describe('visit question task responder', () => {
       ],
     });
     const validation = responder.validateResult(unsupported, input);
-    expect(validation.status).toBe('needs_clarification');
+    expect(validation).toMatchObject({
+      status: 'valid',
+      value: { status: 'needs_clarification' },
+    });
   });
 
   it('requests clarification when no current personal or memory evidence is available', () => {
@@ -231,6 +237,9 @@ describe('visit question task responder', () => {
       },
     });
 
-    expect(validation.status).toBe('needs_clarification');
+    expect(validation).toMatchObject({
+      status: 'valid',
+      value: { status: 'needs_clarification' },
+    });
   });
 });
