@@ -26,7 +26,7 @@ export interface RestoredSavedVisitQuestions {
   readonly appointmentId: string;
   readonly questions: readonly RestoredVisitQuestion[];
   readonly caveats: readonly [];
-  /** These values are not in the persisted question/span schema and cannot be reconstructed on reload. */
+  /** Explains which source locations and generated metadata are absent from persisted questions. */
   readonly restorationNotice: string;
 }
 
@@ -69,6 +69,10 @@ export async function restoreSavedVisitQuestions(input: {
     const positionDifference = (left.position ?? 0) - (right.position ?? 0);
     return positionDifference || left.id.localeCompare(right.id);
   });
+  // Memory and structured-record rows can retain source IDs without persisting a quote span.
+  const hasQuestionWithoutSourceSpan = ordered.some(
+    row => row.evidenceSpanIds.length === 0,
+  );
   const citationCache = new Map<string, EvidenceItem>();
   const questions = await Promise.all(
     ordered.map(async row => {
@@ -111,8 +115,9 @@ export async function restoreSavedVisitQuestions(input: {
     appointmentId,
     questions,
     caveats: [],
-    restorationNotice:
-      '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
+    restorationNotice: hasQuestionWithoutSourceSpan
+      ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
+      : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
   };
 }
 

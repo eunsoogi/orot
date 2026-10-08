@@ -6,7 +6,7 @@ export type AppointmentQuestionRecord = VisitQuestion & {
   readonly position?: number;
 };
 
-/** Requires appointment scope, an explanation, stable ordering, and at least one linked source. */
+/** Validates saved-list fields; memory and structured-record sources may lack a quote span. */
 export function isValidSavedVisitQuestion(
   record: AppointmentQuestionRecord,
 ): record is AppointmentQuestionRecord & {
@@ -22,7 +22,6 @@ export function isValidSavedVisitQuestion(
     Number.isInteger(record.position) &&
     record.position !== undefined &&
     record.position >= 1 &&
-    record.position <= 5 &&
-    record.evidenceSpanIds.length > 0
+    record.position <= 5
   );
 }
