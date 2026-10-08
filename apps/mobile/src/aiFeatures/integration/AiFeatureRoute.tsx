@@ -12,6 +12,7 @@ export interface AiFeatureRouteProps extends Omit<
   AiFeatureFlowProps,
   'navigation' | 'onOpenArticle'
 > {
+  readonly initialRoute?: 'entry' | 'provider-selection';
   readonly onBack: () => void;
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
@@ -19,6 +20,7 @@ export interface AiFeatureRouteProps extends Omit<
 /** Keeps one guarded route tree mounted so provider/source overlays preserve feature state. */
 export function AiFeatureRoute({
   onBack,
+  initialRoute = 'entry',
   onOpenArticle = openEuropePmcArticle,
   renderVisitQuestions,
   serviceDependencies,
@@ -26,7 +28,8 @@ export function AiFeatureRoute({
   const [controller] = useState(() => {
     const navigation =
       createNavigationController<AiFeatureRouteName>('app-home');
-    navigation.push('entry');
+    // App home can enter provider selection directly, but still through this guarded stack.
+    navigation.push(initialRoute);
     return navigation;
   });
   const snapshot = useNavigationSnapshot(controller);

@@ -24,7 +24,8 @@ export function useVisitQuestionsLeaveGuard(
           // A pending write is not safe to abandon until the screen publishes success.
           hasUnsavedChanges: state.hasUnsavedChanges || state.isSaving,
           isRecording: false,
-          hasOngoingOperation: false,
+          // The route's generation controller aborts on unmount, after leave is confirmed.
+          hasOngoingOperation: state.isGenerating,
           revision: state.revision,
           inputRevision: 0,
         };

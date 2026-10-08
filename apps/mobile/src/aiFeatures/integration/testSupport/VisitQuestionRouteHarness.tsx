@@ -38,6 +38,7 @@ export function VisitQuestionHarness({
     onRouteStateChange({
       hasUnsavedChanges,
       isSaving: false,
+      isGenerating: false,
       revision: revision.current,
     });
   }, [hasUnsavedChanges, onRouteStateChange]);

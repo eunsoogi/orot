@@ -33,6 +33,8 @@ export interface VisitQuestionsRenderInput {
 export interface VisitQuestionsRouteState {
   readonly hasUnsavedChanges: boolean;
   readonly isSaving: boolean;
+  /** Generation is cancellable only after shared navigation confirms that this route may unmount. */
+  readonly isGenerating: boolean;
   readonly revision: number;
 }
 

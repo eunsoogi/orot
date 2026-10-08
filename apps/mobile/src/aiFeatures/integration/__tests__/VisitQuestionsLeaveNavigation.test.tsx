@@ -44,6 +44,7 @@ describe('visit questions guarded navigation', () => {
       reportRouteState?.({
         hasUnsavedChanges: true,
         isSaving: false,
+        isGenerating: false,
         revision: 1,
       });
     });
@@ -56,6 +57,7 @@ describe('visit questions guarded navigation', () => {
       reportRouteState?.({
         hasUnsavedChanges: true,
         isSaving: false,
+        isGenerating: false,
         revision: 2,
       });
     });
@@ -88,6 +90,7 @@ describe('visit questions guarded navigation', () => {
       reportRouteState?.({
         hasUnsavedChanges: true,
         isSaving: true,
+        isGenerating: false,
         revision: 1,
       });
     });
@@ -101,6 +104,7 @@ describe('visit questions guarded navigation', () => {
       reportRouteState?.({
         hasUnsavedChanges: false,
         isSaving: false,
+        isGenerating: false,
         revision: 2,
       });
     });

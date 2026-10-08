@@ -20,11 +20,11 @@ import type {
   BloodPressureObservation,
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
-import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
 import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -40,6 +40,7 @@ interface AppProps {
   loadBloodPressureObservations?: () => Promise<
     readonly BloodPressureObservation[]
   >;
+  aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
@@ -52,6 +53,7 @@ export default function App({
   importHealthObservations = importLocalCommonObservations,
   importBloodPressure = importLocalBloodPressure,
   loadBloodPressureObservations = listLocalBloodPressureObservations,
+  aiFeatureServiceDependencies,
 }: AppProps) {
   const [showAiFeatures, setShowAiFeatures] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -86,12 +88,20 @@ export default function App({
     setShowCommonObservations(true);
   }
 
-  // The AI flow owns its insets and binds all feature routes to local app services.
-  if (showAiFeatures)
+  // Both AI entry points use the same guarded route tree and local app services.
+  if (showAiFeatures || showProviderSelection)
     return (
       <AiFeatureRoute
-        onBack={() => setShowAiFeatures(false)}
+        initialRoute={showProviderSelection ? 'provider-selection' : 'entry'}
+        onBack={() => {
+          setShowAiFeatures(false);
+          setShowProviderSelection(false);
+        }}
+        onProviderSelectionCommitted={(_, provider) =>
+          setSelectedRecommendationProvider(provider.displayName)
+        }
         renderVisitQuestions={input => <NextVisitQuestionsRoute {...input} />}
+        serviceDependencies={aiFeatureServiceDependencies}
       />
     );
 
@@ -125,16 +135,6 @@ export default function App({
           loadObservations={loadBloodPressureObservations}
         />
       </View>
-    );
-  } else if (showProviderSelection) {
-    // This flow owns its root insets, so it bypasses the shared layout below.
-    return (
-      <ProviderSelectionFlow
-        onBack={() => setShowProviderSelection(false)}
-        onSelectionCommitted={(_, provider) =>
-          setSelectedRecommendationProvider(provider.displayName)
-        }
-      />
     );
   } else if (showCalendar && appointmentRepository) {
     routeContent = (

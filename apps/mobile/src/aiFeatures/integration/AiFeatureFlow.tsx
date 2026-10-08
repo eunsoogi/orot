@@ -3,6 +3,10 @@ import type { ReactElement } from 'react';
 import { Button, Text, View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
+import type {
+  ProviderSelection,
+  ProviderSelectionOption,
+} from '../../providers/selection';
 import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
 import { getAiFeatureIntegrationCopy } from './copy';
@@ -24,6 +28,11 @@ export interface AiFeatureFlowProps {
   readonly onOpenArticle: (
     publication: ExternalMedicalPublication,
   ) => void | Promise<void>;
+  /** Lets the home shortcut update its provider summary after selection is committed. */
+  readonly onProviderSelectionCommitted?: (
+    selection: ProviderSelection,
+    provider: ProviderSelectionOption['provider'],
+  ) => void;
   readonly serviceDependencies?: AiFeatureServiceDependencies;
 }
 
@@ -32,6 +41,7 @@ export function AiFeatureFlow({
   navigation,
   renderVisitQuestions,
   onOpenArticle,
+  onProviderSelectionCommitted,
   serviceDependencies,
 }: AiFeatureFlowProps) {
   const {
@@ -147,8 +157,9 @@ export function AiFeatureFlow({
               safeAreaHandledByParent
               onBack={requestBack}
               onNavigationStateChange={reportProviderNavigationState}
-              onSelectionCommitted={() => {
+              onSelectionCommitted={(selection, provider) => {
                 setSelectedAiRevision(revision => revision + 1);
+                onProviderSelectionCommitted?.(selection, provider);
                 requestBack();
               }}
             />

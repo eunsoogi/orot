@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import App from '../App';
 
-// This route test does not exercise storage, so native persistence stays unopened.
+// The home entry assertion does not exercise persistence, so native storage stays unopened.
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
 }));
@@ -9,7 +9,7 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
-// The integration test keeps backup startup native work outside this route assertion.
+// The home route assertion keeps backup startup native work outside this test.
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
