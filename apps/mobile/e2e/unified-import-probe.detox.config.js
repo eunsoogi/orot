@@ -1,8 +1,8 @@
 /** @type {Detox.DetoxConfig} */
-// Requires the lane-assigned Simulator; the probe must not erase a personal device profile.
+// Keep build output ignored and require the lane-assigned Simulator; never erase a personal profile.
 const derivedDataPath =
   process.env.OROT_UNIFIED_IMPORT_DERIVED_DATA_PATH ||
-  'ios/build-unified-import-probe';
+  'ios/DerivedData/unified-import-probe';
 const simulatorId = process.env.OROT_UNIFIED_IMPORT_SIMULATOR_UDID;
 
 if (!/^[A-Za-z0-9_./-]+$/.test(derivedDataPath)) {
@@ -31,6 +31,16 @@ module.exports = {
         derivedDataPath +
         ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/unifiedImportProbeEntry.tsx',
     },
+    // Live mode uses the embedded alternate entry; Debug AppDelegate always requests Metro's fixed `index` bundle.
+    'ios.release.unified-import-probe': {
+      type: 'ios.app',
+      binaryPath:
+        derivedDataPath + '/Build/Products/Release-iphonesimulator/Orot.app',
+      build:
+        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination "platform=iOS Simulator,id=$OROT_UNIFIED_IMPORT_SIMULATOR_UDID" -derivedDataPath ' +
+        derivedDataPath +
+        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/unifiedImportProbeEntry.tsx',
+    },
   },
   devices: {
     simulator: { type: 'ios.simulator', device: { id: simulatorId } },
@@ -39,6 +49,10 @@ module.exports = {
     'ios.sim.debug.unified-import-probe': {
       device: 'simulator',
       app: 'ios.debug.unified-import-probe',
+    },
+    'ios.sim.release.unified-import-probe': {
+      device: 'simulator',
+      app: 'ios.release.unified-import-probe',
     },
   },
 };
