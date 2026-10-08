@@ -180,3 +180,43 @@ test('teardown attempts deletion after the bounded shutdown command stalls', asy
     rmSync(harness.directory, { recursive: true, force: true });
   }
 });
+
+test('preserves Simulator inventory failures after exact cleanup succeeds', async (t) => {
+  for (const failedInventory of ['devices', 'booted']) {
+    await t.test(`${failedInventory} inventory failure`, async () => {
+      const failureStatus = 37;
+      // Fail only the selected pre-cleanup inventory; the final listing succeeds after deletion.
+      const harness = startFake(
+        teardownScript,
+        ({ logPath }) => [simulatorId, logPath],
+        [
+          'if [[ "$*" == "simctl list devices" ]]; then',
+          `  if [[ "$FAILED_INVENTORY" == "devices" && ! -f "$DELETED_SIMULATOR_MARKER" ]]; then exit ${failureStatus}; fi`,
+          `  if [[ ! -f "$DELETED_SIMULATOR_MARKER" ]]; then printf '%s\\n' '${simulatorId} (Booted)'; fi`,
+          'elif [[ "$*" == "simctl list devices booted" ]]; then',
+          `  if [[ "$FAILED_INVENTORY" == "booted" ]]; then exit ${failureStatus}; fi`,
+          `  printf '%s\\n' '${simulatorId} (Booted)'`,
+          `elif [[ "$*" == "simctl shutdown ${simulatorId}" ]]; then`,
+          '  exit 0',
+          `elif [[ "$*" == "simctl delete ${simulatorId}" ]]; then`,
+          '  touch "$DELETED_SIMULATOR_MARKER"',
+          'else',
+          '  exit 97',
+          'fi',
+        ].join('\n'),
+        { FAILED_INVENTORY: failedInventory },
+      );
+
+      try {
+        const result = await harness.closed;
+        assert.equal(result.code, failureStatus);
+        const calls = callsFrom(harness.callsPath);
+        assert.ok(calls.includes(`simctl shutdown ${simulatorId}`), calls.join('\n'));
+        assert.ok(calls.includes(`simctl delete ${simulatorId}`), calls.join('\n'));
+      } finally {
+        await stopGroup(harness.child);
+        rmSync(harness.directory, { recursive: true, force: true });
+      }
+    });
+  }
+});

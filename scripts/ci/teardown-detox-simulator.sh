@@ -66,13 +66,14 @@ run_simctl() {
   bash "$script_dir/run-detox-simctl.sh" "$simctl_timeout_ms" "$@"
 }
 
+# Preserve failed inventory statuses before flag assignments overwrite `$?`.
 all_devices=''
 if all_devices="$(run_simctl list devices 2>>"$log_path")"; then
   all_devices_listed=true
   all_devices="$(printf '%s' "$all_devices" | tr '[:lower:]' '[:upper:]')"
 else
-  all_devices_listed=false
   list_status=$?
+  all_devices_listed=false
   failure_status=$list_status
   printf 'Could not list Simulators before teardown (exit %s); exact listed targets will still be attempted.\n' "$list_status" >>"$log_path"
 fi
@@ -81,8 +82,8 @@ if booted_devices="$(run_simctl list devices booted 2>>"$log_path")"; then
   booted_devices_listed=true
   booted_devices="$(printf '%s' "$booted_devices" | tr '[:lower:]' '[:upper:]')"
 else
-  booted_devices_listed=false
   list_status=$?
+  booted_devices_listed=false
   if [[ "$failure_status" -eq 0 ]]; then failure_status="$list_status"; fi
   printf 'Could not list booted Simulators; exact target shutdowns and deletions will still be attempted.\n' >>"$log_path"
 fi
