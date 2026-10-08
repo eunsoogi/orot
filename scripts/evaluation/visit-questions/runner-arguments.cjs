@@ -3,8 +3,8 @@
 const JEST_TEST_TIMEOUT_MS = 360_000;
 
 /**
- * The three fixtures run sequentially and can make five bounded API calls total.
- * Reserve one minute beyond their 5 × 60-second request ceiling for graph teardown.
+ * The three fixture graphs run sequentially with a 45-second graph deadline each.
+ * Leave room for all three runs plus Jest and graph teardown overhead.
  */
 function buildJestArguments({ jestConfig, integrationTest }) {
   return [
