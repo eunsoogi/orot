@@ -1,11 +1,12 @@
 /* global by, device, element, waitFor */
 
-/** Keep feature-local back taps distinct from the AI route's app-level exit. */
-async function openFeatureAndReturn(entryId, screenId) {
+/** Exercise a real feature route before returning through its own back control. */
+async function openFeatureAndReturn(entryId, screenId, exerciseFeature) {
   await element(by.id(entryId)).tap();
   await waitFor(element(by.id(screenId)))
     .toBeVisible()
     .withTimeout(30000);
+  if (exerciseFeature) await exerciseFeature();
   await element(by.text('뒤로').withAncestor(by.id(screenId))).tap();
   await waitFor(element(by.id('ai-features-screen')))
     .toBeVisible()
@@ -47,18 +48,49 @@ describe('Orot mobile app', () => {
     await openFeatureAndReturn(
       'ai-feature-disease-hypotheses',
       'disease-hypotheses-screen',
+      async () => {
+        // Keychain is cleared above, so the real app must show a recoverable error before inference.
+        await element(by.id('disease-hypotheses-generate')).tap();
+        await waitFor(
+          element(
+            by.text('가능성을 정리하지 못했어요. 잠시 후 다시 시도해 주세요.'),
+          ),
+        )
+          .toBeVisible()
+          .withTimeout(30000);
+        await expect(
+          element(by.id('inference-disclosure-sheet')),
+        ).not.toExist();
+      },
     );
-    await expect(element(by.id('disease-hypotheses-generate'))).toBeVisible();
 
     await openFeatureAndReturn(
       'ai-feature-rag-conversation',
       'rag-conversation-screen',
+      async () => {
+        // Empty questions stay local and cannot start a provider request.
+        const emptyMessageSend = await element(
+          by.id('rag-conversation-send'),
+        ).getAttributes();
+        expect(emptyMessageSend.enabled).toBe(false);
+        // A non-personal probe exercises the real route without selecting or contacting a provider.
+        await element(by.id('rag-conversation-input')).typeText(
+          'orot-no-provider-check',
+        );
+        await element(by.id('rag-conversation-input')).tapReturnKey();
+        await element(by.id('rag-conversation-send')).tap();
+        await waitFor(
+          element(
+            by.text('답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'),
+          ),
+        )
+          .toBeVisible()
+          .withTimeout(30000);
+        await expect(
+          element(by.id('inference-disclosure-sheet')),
+        ).not.toExist();
+      },
     );
-    await expect(element(by.id('rag-conversation-input'))).toBeVisible();
-    const emptyMessageSend = await element(
-      by.id('rag-conversation-send'),
-    ).getAttributes();
-    expect(emptyMessageSend.enabled).toBe(false);
 
     await element(by.id('ai-features-screen')).scrollTo('bottom', 0.5, 0.7);
     await element(by.id('ai-feature-external-evidence')).tap();
