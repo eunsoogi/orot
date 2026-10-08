@@ -17,7 +17,7 @@ function git(root, ...args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
 }
 
-test('keeps Node-only transcription probe edits out of the app build fingerprint', () => {
+test('keeps Node-only Detox controls out of the app build fingerprint', () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-detox-host-only-inputs-'));
   try {
     git(root, 'init', '-q');
@@ -32,6 +32,11 @@ test('keeps Node-only transcription probe edits out of the app build fingerprint
       'apps/mobile/ios/Podfile.lock',
       'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
       'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
+      'apps/mobile/jest.config.js',
+      'apps/mobile/e2e/jest.config.js',
+      'apps/mobile/e2e/openai-provider.jest.config.js',
+      'apps/mobile/e2e/release-e2e.jest.config.js',
+      'apps/mobile/e2e/release-e2e-shards.js',
       'apps/mobile/e2e/transcription/transcriptEvidenceDetoxHelpers.js',
       'apps/mobile/src/transcription/__tests__/TranscriptEvidenceDetoxHelpers.spec.js',
       'packages/storage/src/index.ts',
@@ -44,7 +49,13 @@ test('keeps Node-only transcription probe edits out of the app build fingerprint
     git(root, 'add', '--all');
     const initial = computeDetoxCacheFingerprints(root);
 
+    // Jest reads these Node-only controls, while Metro only bundles app entry modules.
     for (const path of [
+      'apps/mobile/jest.config.js',
+      'apps/mobile/e2e/jest.config.js',
+      'apps/mobile/e2e/openai-provider.jest.config.js',
+      'apps/mobile/e2e/release-e2e.jest.config.js',
+      'apps/mobile/e2e/release-e2e-shards.js',
       'apps/mobile/e2e/transcription/transcriptEvidenceDetoxHelpers.js',
       'apps/mobile/src/transcription/__tests__/TranscriptEvidenceDetoxHelpers.spec.js',
     ]) {
