@@ -58,6 +58,7 @@ export function useRouteStatePublisher<
     onRouteStateChange?.({
       hasUnsavedChanges,
       isSaving: phase === 'saving',
+      isGenerating: phase === 'generating',
       revision: revision.current,
     });
   }, [

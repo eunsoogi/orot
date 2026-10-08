@@ -168,6 +168,8 @@ export interface SaveReviewedQuestionsResult<
 export interface NextVisitQuestionsRouteState {
   readonly hasUnsavedChanges: boolean;
   readonly isSaving: boolean;
+  /** Route unmount aborts generation, so shared navigation asks before interrupting it. */
+  readonly isGenerating: boolean;
   /** Increases when this screen commits an appointment or review-state change. */
   readonly revision: number;
 }

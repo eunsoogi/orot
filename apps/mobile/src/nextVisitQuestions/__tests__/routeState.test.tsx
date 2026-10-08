@@ -10,6 +10,46 @@ import {
 // Cold React Native test workers can need longer than Jest's five-second default.
 jest.setTimeout(15000);
 
+test('publishes active generation so the route can guard navigation', async () => {
+  let resolveGeneration!: (
+    outcome: Awaited<ReturnType<Props['onGenerate']>>,
+  ) => void;
+  const onGenerate: Props['onGenerate'] = () =>
+    new Promise(resolve => {
+      resolveGeneration = resolve;
+    });
+  const onRouteStateChange = jest.fn();
+  await render(
+    <NextVisitQuestionsScreen
+      {...makeProps({ onGenerate, onRouteStateChange })}
+    />,
+  );
+
+  const latestState = () =>
+    onRouteStateChange.mock.calls.at(-1)?.[0] as
+      | {
+          hasUnsavedChanges: boolean;
+          isSaving: boolean;
+          isGenerating?: boolean;
+        }
+      | undefined;
+
+  await fireEvent.press(screen.getByTestId('next-visit-generate'));
+  await screen.findByTestId('next-visit-generation-loading');
+  expect(latestState()?.isGenerating).toBe(true);
+
+  await act(async () => {
+    resolveGeneration({ status: 'ready', questions, caveats: [] });
+    await Promise.resolve();
+  });
+  await screen.findByTestId('next-visit-review-list');
+  expect(latestState()).toMatchObject({
+    hasUnsavedChanges: true,
+    isSaving: false,
+    isGenerating: false,
+  });
+});
+
 test('publishes generated draft and save ownership with increasing revisions', async () => {
   let resolveSave!: (
     result: Awaited<ReturnType<Props['onSaveReviewedQuestions']>>,
