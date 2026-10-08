@@ -9,6 +9,9 @@ const {
   toLangSmithExample,
 } = require('../../../scripts/evaluation/visit-questions/privacy');
 const {
+  getVisitQuestionProviderConfig,
+} = require('../../../scripts/evaluation/visit-questions/provider-config.cjs');
+const {
   evaluateVisitQuestionWithLangSmith,
 } = require('../../../scripts/evaluation/visit-questions/evaluators');
 const {
@@ -39,7 +42,12 @@ const RUBRIC_DIMENSIONS = [
 ];
 
 /** Uploads only allowlisted outputs previously produced by the local app graph. */
-async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any>, revisions: any) {
+async function uploadSyntheticResults(
+  testCases: any[],
+  outputs: Map<string, any>,
+  revisions: any,
+  providerMode: string,
+) {
   const { createRequire } = require('node:module');
   const runtimeRequire = createRequire(path.join(repoRoot, 'packages/agent-runtime/package.json'));
   const coreRequire = createRequire(runtimeRequire.resolve('@langchain/core'));
@@ -47,6 +55,13 @@ async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any
   const { Client } = coreRequire('langsmith');
   const client = new Client({ apiKey: getLangSmithApiKey(process.env) });
   const dataset = await ensureSyntheticDataset(client, FIXTURE_SEED, testCases);
+  // Mixed provider responses stay distinct from fully measured and fully unmeasured runs.
+  const tokenStatuses = [...outputs.values()].map((output) => output.execution.tokenUsage.status);
+  const tokenUsageSummary = tokenStatuses.every((status) => status === 'measured')
+    ? 'measured'
+    : tokenStatuses.every((status) => status === 'unmeasured')
+      ? 'unmeasured'
+      : 'partial';
   const experiment = await evaluate(
     async (inputs: any) => {
       const output = outputs.get(inputs.caseId);
@@ -58,13 +73,13 @@ async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any
       data: dataset.datasetId,
       evaluators: [evaluateVisitQuestionWithLangSmith],
       experimentPrefix: 'orot-visit-questions-synthetic',
-      description: 'Actual #30 workflow with a deterministic test-only provider.',
+      description: `Actual #30 workflow with the ${providerMode} evaluation provider.`,
       client,
       disableEvaluatorTracing: true,
       metadata: {
-        providerMode: 'test-adapter',
+        providerMode,
         fixtureSeed: FIXTURE_SEED,
-        tokenUsage: 'unmeasured',
+        tokenUsage: tokenUsageSummary,
         ...toLangSmithRevisionMetadata(revisions),
       },
       maxConcurrency: 1,
@@ -78,6 +93,7 @@ async function uploadSyntheticResults(testCases: any[], outputs: Map<string, any
 describe('manual synthetic visit-question graph evaluation', () => {
   it('runs the actual #30 graph and optionally uploads allowlisted results', async () => {
     disableAmbientTracing(process.env);
+    const providerConfig = getVisitQuestionProviderConfig(process.env);
     const fixture = createSyntheticVisitQuestionFixture(FIXTURE_SEED);
     const workflowSourceRoot = getWorkflowSourceRoot(repoRoot);
     const revisions = getEvaluationRevisionMetadata(repoRoot, workflowSourceRoot);
@@ -110,14 +126,14 @@ describe('manual synthetic visit-question graph evaluation', () => {
 
     const uploaded = isLangSmithUploadEnabled(process.env);
     const langSmithDataset = uploaded
-      ? await uploadSyntheticResults(fixture.cases, outputs, revisions)
+      ? await uploadSyntheticResults(fixture.cases, outputs, revisions, providerConfig.mode)
       : null;
     process.stdout.write(
       `${JSON.stringify(
         {
           evaluationStatus: 'completed',
           fixtureSeed: FIXTURE_SEED,
-          providerMode: 'test-adapter',
+          providerMode: providerConfig.mode,
           uploadedToLangSmith: uploaded,
           langSmithDataset,
           ...revisions,
@@ -141,6 +157,8 @@ describe('manual synthetic visit-question graph evaluation', () => {
       }),
     ).toBe(true);
     expect(report).toHaveLength(fixture.cases.length);
-    expect(report.every((item) => item.execution.tokenUsage.status === 'unmeasured')).toBe(true);
+    if (providerConfig.mode === 'test-adapter') {
+      expect(report.every((item) => item.execution.tokenUsage.status === 'unmeasured')).toBe(true);
+    }
   });
 });

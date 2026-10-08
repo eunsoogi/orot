@@ -8,6 +8,7 @@ const {
   getLangSmithApiKey,
   isLangSmithUploadEnabled,
 } = require('./privacy');
+const { getVisitQuestionProviderConfig } = require('./provider-config.cjs');
 const { getWorkflowSourceRoot } = require('./source-root.cjs');
 
 const repositoryRoot = path.resolve(__dirname, '../../..');
@@ -24,6 +25,8 @@ if (!require('node:fs').existsSync(workflowSource)) {
   process.exitCode = 2;
 } else {
   try {
+    // Validate both remote opt-ins before Jest loads the workflow or can start a provider call.
+    getVisitQuestionProviderConfig(process.env);
     if (isLangSmithUploadEnabled(process.env)) getLangSmithApiKey(process.env);
     const childEnvironment = disableAmbientTracing({
       ...process.env,
