@@ -14,4 +14,4 @@ All records, labels, values, and dates are synthetic. The data contain no person
 
 Run the package through the root `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` commands.
 
-The seeded visit-question fixtures and LangSmith-safe evaluators are described in [the visit-question evaluation guide](../../docs/evaluation/visit-questions.md). The manual graph runner uses only generated fixtures and the actual #30 workflow with a clearly labeled test adapter; it does not establish real-provider performance.
+The seeded visit-question fixtures and LangSmith-safe evaluators are described in [the visit-question evaluation guide](../../docs/evaluation/visit-questions.md). The manual graph runner defaults to the clearly labeled test adapter. It can select an evaluation-only OpenAI API provider after explicit synthetic remote-processing consent; this path reports only token counts returned by every real API response and does not estimate missing usage.
