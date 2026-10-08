@@ -13,3 +13,5 @@ The fixture covers encounters, transcript revisions, medication assertions and d
 All records, labels, values, and dates are synthetic. The data contain no personal health information and have not been clinically validated. They are only test inputs and expected evaluation outcomes; they must not be used as patient records, diagnoses, or treatment guidance. The seed is an ID namespace, not a way to generate clinically meaningful variation.
 
 Run the package through the root `pnpm lint`, `pnpm typecheck`, and `pnpm test:unit` commands.
+
+The seeded visit-question fixtures and LangSmith-safe evaluators are described in [the visit-question evaluation guide](../../docs/evaluation/visit-questions.md). The manual graph runner uses only generated fixtures and the actual #30 workflow with a clearly labeled test adapter; it does not establish real-provider performance.

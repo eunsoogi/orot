@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
-import type { ExecutionConsentPort } from '@orot/agent-runtime';
+import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import { readUpcomingCalendarCandidates } from './calendarEvidence';
 import { medicalAppointmentCopy as copy } from './copy.ko';
@@ -21,7 +21,6 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly repository: AppointmentRepository;
   readonly selectedProvider: ProviderSelectionOption | null;
   readonly recipient: string | null;
-  readonly consent: ExecutionConsentPort | null;
   readonly onOpenManual: () => void;
 }
 
@@ -31,9 +30,10 @@ export default function MedicalAppointmentClassificationScreen({
   repository,
   selectedProvider,
   recipient,
-  consent,
   onOpenManual,
 }: MedicalAppointmentClassificationScreenProps) {
+  // Remote batches use the same in-memory registry and prompt for each actual model request.
+  const { consent, disclosureSheet } = useInferenceConsent();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [candidates, setCandidates] = useState<CandidateReview[]>([]);
   const [accessAvailable, setAccessAvailable] = useState(false);
@@ -57,8 +57,7 @@ export default function MedicalAppointmentClassificationScreen({
 
   const providerReady =
     selectedProvider?.availability.status === 'available' &&
-    Boolean(recipient?.trim()) &&
-    consent !== null;
+    Boolean(recipient?.trim());
 
   async function loadCandidates() {
     // Candidate IDs are positional, so keep the list stable until an explicit save settles.
@@ -99,7 +98,7 @@ export default function MedicalAppointmentClassificationScreen({
   }
 
   async function classifyCandidates() {
-    if (!providerReady || !selectedProvider || !consent || !recipient) {
+    if (!providerReady || !selectedProvider || !recipient) {
       setMessage(selectedProvider ? copy.providerUnavailable : copy.noProvider);
       return;
     }
@@ -166,66 +165,69 @@ export default function MedicalAppointmentClassificationScreen({
     : '';
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text accessibilityRole="header" style={styles.title}>
-        {copy.title}
-      </Text>
-      <Text>{copy.description}</Text>
-      <Text>{copy.queryLimit}</Text>
-      <Text>{copy.incompleteCalendar}</Text>
-      {providerNotice ? <Text>{providerNotice}</Text> : null}
-      {!selectedProvider ? <Text>{copy.noProvider}</Text> : null}
-      {selectedProvider?.availability.status === 'unavailable' ? (
-        <Text>{copy.providerUnavailable}</Text>
-      ) : null}
-      {selectedProvider?.availability.status === 'available' &&
-      !providerReady ? (
-        <Text>{copy.noProvider}</Text>
-      ) : null}
-      {message ? <Text accessibilityRole="alert">{message}</Text> : null}
-      <Button
-        disabled={loading || classifying || savingId !== null}
-        onPress={loadCandidates}
-        title={loading ? copy.loading : copy.loadCalendar}
-      />
-      <Button
-        disabled={
-          !providerReady ||
-          events.length === 0 ||
-          classifying ||
-          !accessAvailable
-        }
-        onPress={classifyCandidates}
-        title={classifying ? copy.classifying : copy.classify}
-      />
-      {events.length > 0 ? (
-        <Text>
-          {copy.coverage(events.length, classifiedCount)} {completedBatches}/
-          {totalBatches}
+    <>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text accessibilityRole="header" style={styles.title}>
+          {copy.title}
         </Text>
-      ) : null}
-      {candidates.map(candidate => (
-        <MedicalAppointmentCandidateCard
-          key={candidate.candidateId}
-          candidate={candidate}
-          disabled={savingId !== null}
-          isSaved={savedIds.has(candidate.candidateId)}
-          isSaving={savingId === candidate.candidateId}
-          onSave={saveAsAppointment}
+        <Text>{copy.description}</Text>
+        <Text>{copy.queryLimit}</Text>
+        <Text>{copy.incompleteCalendar}</Text>
+        {providerNotice ? <Text>{providerNotice}</Text> : null}
+        {!selectedProvider ? <Text>{copy.noProvider}</Text> : null}
+        {selectedProvider?.availability.status === 'unavailable' ? (
+          <Text>{copy.providerUnavailable}</Text>
+        ) : null}
+        {selectedProvider?.availability.status === 'available' &&
+        !providerReady ? (
+          <Text>{copy.noProvider}</Text>
+        ) : null}
+        {message ? <Text accessibilityRole="alert">{message}</Text> : null}
+        <Button
+          disabled={loading || classifying || savingId !== null}
+          onPress={loadCandidates}
+          title={loading ? copy.loading : copy.loadCalendar}
         />
-      ))}
-      {events.length === 0 && accessAvailable ? (
-        <Text>{copy.emptyCoverage}</Text>
-      ) : null}
-      <Text>{copy.resultNotice}</Text>
-      <Button
-        onPress={onOpenManual}
-        testID="medical-appointment-manual"
-        title={copy.manual}
-      />
-    </ScrollView>
+        <Button
+          disabled={
+            !providerReady ||
+            events.length === 0 ||
+            classifying ||
+            !accessAvailable
+          }
+          onPress={classifyCandidates}
+          title={classifying ? copy.classifying : copy.classify}
+        />
+        {events.length > 0 ? (
+          <Text>
+            {copy.coverage(events.length, classifiedCount)} {completedBatches}/
+            {totalBatches}
+          </Text>
+        ) : null}
+        {candidates.map(candidate => (
+          <MedicalAppointmentCandidateCard
+            key={candidate.candidateId}
+            candidate={candidate}
+            disabled={savingId !== null}
+            isSaved={savedIds.has(candidate.candidateId)}
+            isSaving={savingId === candidate.candidateId}
+            onSave={saveAsAppointment}
+          />
+        ))}
+        {events.length === 0 && accessAvailable ? (
+          <Text>{copy.emptyCoverage}</Text>
+        ) : null}
+        <Text>{copy.resultNotice}</Text>
+        <Button
+          onPress={onOpenManual}
+          testID="medical-appointment-manual"
+          title={copy.manual}
+        />
+      </ScrollView>
+      {disclosureSheet}
+    </>
   );
 }
