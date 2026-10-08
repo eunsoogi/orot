@@ -5,6 +5,7 @@ const {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
+  scrollToSaveButton,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
@@ -120,8 +121,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       await scrollToTranscriptControl(transcriptInput);
       await transcriptInput.replaceText(correction);
       assertionStage = 'save transcript correction';
-      const saveButton = element(by.id('transcript-save-0'));
-      await scrollToTranscriptControl(saveButton, 'up');
+      const saveButton = await scrollToSaveButton('transcript-save-0');
       console.log(
         'TRANSCRIPT_EVIDENCE_SAVE_SCREENSHOT ' +
           (await device.takeScreenshot('transcript-evidence-save-visible')),

@@ -213,10 +213,18 @@ async function scrollToTranscriptControl(control, direction = 'down') {
     .scroll(100, direction, 0.5, 0.35);
 }
 
+// Save follows the multiline editor, so reveal it with Detox's down-scroll before tapping.
+async function scrollToSaveButton(testId) {
+  const saveButton = element(by.id(testId));
+  await scrollToTranscriptControl(saveButton, 'down');
+  return saveButton;
+}
+
 module.exports = {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
+  scrollToSaveButton,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,
