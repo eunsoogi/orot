@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
@@ -58,6 +58,12 @@ export function AiFeatureFlow({
   const [selectedAiRevision, setSelectedAiRevision] = useState(0);
   const [articleOpenError, setArticleOpenError] = useState(false);
   const { consent, disclosureSheet } = useInferenceConsent();
+  const selectedAiDependencies = serviceDependencies?.selectedAi;
+  // Provider refreshes follow the explicit selection revision, not render churn.
+  const resolveSelectedAiForRoute = useCallback(
+    () => resolveSelectedAi(selectedAiDependencies),
+    [selectedAiDependencies],
+  );
   const services = useMemo(
     () => createAiFeatureServices(consent, serviceDependencies),
     [consent, serviceDependencies],
@@ -121,8 +127,7 @@ export function AiFeatureFlow({
             onBack: () => setRoute('entry'),
             onOpenProviderSelection: openProviderSelection,
             onOpenSource: openSource,
-            resolveSelectedAi: () =>
-              resolveSelectedAi(serviceDependencies?.selectedAi),
+            resolveSelectedAi: resolveSelectedAiForRoute,
             selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,
           })

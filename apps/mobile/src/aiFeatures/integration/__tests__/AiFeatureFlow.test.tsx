@@ -5,8 +5,11 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { EvidenceItem } from '@orot/agent-runtime';
+import type {
+  ProviderSelection,
+  ProviderSelectionStore,
+} from '../../../providers/selection';
 import { StyleSheet, Text } from 'react-native';
-import { selectionStore } from '../featureServiceFixtures';
 import {
   VisitQuestionHarness,
   type VisitQuestionRenderInput,
@@ -64,7 +67,7 @@ test('routes all four entry actions through the integration and returns from vis
       </>
     ),
   );
-  const testSelectionStore = selectionStore(null);
+  const testSelectionStore = mutableSelectionStore();
   await render(
     <AiFeatureFlow
       renderVisitQuestions={renderVisitQuestions}
@@ -120,6 +123,23 @@ test('routes all four entry actions through the integration and returns from vis
   expect(screen.getByTestId('visit-question-draft')).toHaveTextContent(
     '수정한 질문 초안',
   );
+  const latestVisitRouteInput =
+    renderVisitQuestions.mock.calls[
+      renderVisitQuestions.mock.calls.length - 1
+    ]?.[0];
+  if (!latestVisitRouteInput)
+    throw new Error('Visit route input was not kept.');
+  await expect(
+    latestVisitRouteInput.resolveSelectedAi(),
+  ).resolves.toMatchObject({
+    status: 'ready',
+    selection: {
+      providerId: 'apple-foundation-models',
+      modelId: 'apple-foundation-models-system-default',
+    },
+    modelId: 'apple-foundation-models-system-default',
+    remoteProcessing: false,
+  });
   await fireEvent.press(screen.getByTestId('visit-question-back'));
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
@@ -204,3 +224,17 @@ test('shows an error when the selected external article cannot be opened', async
   ).toHaveTextContent('외부 문헌을 열지 못했어요. 링크를 확인해 주세요.');
   expect(onOpenArticle).toHaveBeenCalledWith(publication);
 });
+
+/** Models saved selection so the flow can resolve the committed choice again. */
+function mutableSelectionStore(): ProviderSelectionStore {
+  let selected: ProviderSelection | null = null;
+  return {
+    load: jest.fn(async () => selected),
+    save: jest.fn(async selection => {
+      selected = selection;
+    }),
+    clear: jest.fn(async () => {
+      selected = null;
+    }),
+  };
+}
