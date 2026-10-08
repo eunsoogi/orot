@@ -4,6 +4,9 @@ describe('synthetic next-visit questions screen', () => {
   it('reviews evidence-backed candidates and keeps the saved list after a canceled edit', async () => {
     await device.launchApp({ newInstance: true });
     const scroll = element(by.id('next-visit-questions-scroll'));
+    // Detox's default drag starts under the React Native warning overlay in CI.
+    const swipe = (pixels, direction) =>
+      scroll.scroll(pixels, direction, 0.5, 0.5);
     await expect(element(by.id('next-visit-probe-boundary'))).toHaveText(
       '합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음',
     );
@@ -20,7 +23,7 @@ describe('synthetic next-visit questions screen', () => {
     ).toBeVisible();
 
     await scroll.scrollTo('top');
-    await scroll.scroll(160, 'down');
+    await swipe(160, 'down');
     await element(by.id('next-visit-source-0-0')).tap();
     await expect(element(by.id('next-visit-source-content'))).toHaveText(
       '합성 기록에서 가져온 예시 문장입니다.',
@@ -28,7 +31,7 @@ describe('synthetic next-visit questions screen', () => {
     await element(by.id('next-visit-source-close')).tap();
 
     await scroll.scrollTo('top');
-    await scroll.scroll(160, 'down');
+    await swipe(160, 'down');
     await element(by.id('next-visit-question-text-0')).replaceText(
       '검토해 수정한 합성 질문',
     );
@@ -38,7 +41,7 @@ describe('synthetic next-visit questions screen', () => {
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
       .withTimeout(30000);
     await scroll.scrollTo('bottom');
-    await scroll.scroll(240, 'up');
+    await swipe(240, 'up');
     await expect(element(by.id('next-visit-saved-list'))).toBeVisible();
     await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
     await expect(
@@ -47,7 +50,7 @@ describe('synthetic next-visit questions screen', () => {
 
     await element(by.id('next-visit-saved-edit')).tap();
     await scroll.scrollTo('top');
-    await scroll.scroll(160, 'down');
+    await swipe(160, 'down');
     await element(by.id('next-visit-question-text-0')).replaceText(
       '저장되지 않은 임시 수정',
     );
@@ -60,7 +63,7 @@ describe('synthetic next-visit questions screen', () => {
 
     await element(by.id('next-visit-probe-reload-screen')).tap();
     await scroll.scrollTo('bottom');
-    await scroll.scroll(240, 'up');
+    await swipe(240, 'up');
     await expect(element(by.id('next-visit-saved-list'))).toBeVisible();
     await expect(
       element(by.id('next-visit-caveat-conflicting_records')),
