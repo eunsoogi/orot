@@ -50,6 +50,15 @@ describe('encrypted local storage', () => {
       await installFreshApp(device, resetGuard);
       await launchProbe('legacy', false);
       await expectProbeSuccess('legacy');
+      // Reopen via the appointments repository after the legacy migration process exits.
+      await device.terminateApp();
+      await device.launchApp({
+        newInstance: true,
+        launchArgs: { OROT_E2E_PROBE: 'appointments' },
+      });
+      await waitFor(element(by.id('appointments-title')))
+        .toHaveText('예약')
+        .withTimeout(30000);
     },
     freshResetTimeoutMs,
   );

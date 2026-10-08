@@ -7,7 +7,8 @@ import {
 import { removeLocalSourceWithMemory } from './removeSourceWithMemory';
 import { openLocalStorage } from '../storage/secureDatabase';
 
-export type AgentMemoryProbeMode = 'fresh' | 'restart';
+export type AgentMemoryProbeMode =
+  'fresh' | 'restart' | 'delete' | 'tombstone-restart';
 
 const sourceRecord = {
   id: 'agent-memory-synthetic-source',
@@ -97,6 +98,59 @@ export async function runAgentMemoryProbe(
         0
       ) {
         throw new Error('The superseded Korean memory remained visible.');
+      }
+    } else if (mode === 'delete') {
+      // Seed the durable removal tombstone before the backup probe's app-process restart.
+      const recalled = await memory.recall(correctedText, {
+        minSimilarity: 0.999,
+      });
+      if (recalled.length !== 1 || recalled[0]?.text !== correctedText) {
+        throw new Error(
+          'The source-linked memory was not available to delete.',
+        );
+      }
+      const deletion = await removeLocalSourceWithMemory(
+        sourceRecord.id,
+        memory,
+      );
+      if (!deletion.sourceDeleted || deletion.memoriesDeleted !== 1) {
+        throw new Error(
+          'Removing the source did not tombstone its linked memory.',
+        );
+      }
+      if (
+        (await memory.recall(correctedText, { minSimilarity: 0.999 }))
+          .length !== 0
+      ) {
+        throw new Error(
+          'A memory linked to a removed source remained visible.',
+        );
+      }
+    } else if (mode === 'tombstone-restart') {
+      // A fresh service load must honor the saved tombstone and reject stale source-linked writes.
+      const repository = await openLocalStorage();
+      const recalled = await memory.recall(correctedText, {
+        minSimilarity: 0.999,
+      });
+      if (
+        (await repository.sourceRecords.get(sourceRecord.id)) ||
+        recalled.length !== 0
+      ) {
+        throw new Error(
+          'The deleted source or its memory returned after restart.',
+        );
+      }
+      let staleWriteRejected = false;
+      try {
+        await memory.remember({ ...memoryInput, text: correctedText });
+      } catch (error) {
+        staleWriteRejected =
+          error instanceof Error && error.message.includes('already removed');
+      }
+      if (!staleWriteRejected) {
+        throw new Error(
+          'The persisted source tombstone did not reject a stale write.',
+        );
       }
     } else {
       const recalled = await memory.recall(correctedText, {
