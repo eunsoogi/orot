@@ -4,7 +4,7 @@ describe('synthetic next-visit questions screen', () => {
   it('reviews evidence-backed candidates and keeps the saved list after a canceled edit', async () => {
     await device.launchApp({ newInstance: true });
     const scroll = element(by.id('next-visit-questions-scroll'));
-    // Detox's default drag starts under the React Native warning overlay in CI.
+    // Center-origin swipes avoid the CI warning overlay and reveal lower controls.
     const swipe = (pixels, direction) =>
       scroll.scroll(pixels, direction, 0.5, 0.5);
     await expect(element(by.id('next-visit-probe-boundary'))).toHaveText(
@@ -23,7 +23,7 @@ describe('synthetic next-visit questions screen', () => {
     ).toBeVisible();
 
     await scroll.scrollTo('top');
-    await swipe(160, 'down');
+    await swipe(320, 'up');
     await element(by.id('next-visit-source-0-0')).tap();
     await expect(element(by.id('next-visit-source-content'))).toHaveText(
       '합성 기록에서 가져온 예시 문장입니다.',
@@ -31,7 +31,7 @@ describe('synthetic next-visit questions screen', () => {
     await element(by.id('next-visit-source-close')).tap();
 
     await scroll.scrollTo('top');
-    await swipe(160, 'down');
+    await swipe(320, 'up');
     await element(by.id('next-visit-question-text-0')).replaceText(
       '검토해 수정한 합성 질문',
     );
@@ -50,7 +50,7 @@ describe('synthetic next-visit questions screen', () => {
 
     await element(by.id('next-visit-saved-edit')).tap();
     await scroll.scrollTo('top');
-    await swipe(160, 'down');
+    await swipe(320, 'up');
     await element(by.id('next-visit-question-text-0')).replaceText(
       '저장되지 않은 임시 수정',
     );
