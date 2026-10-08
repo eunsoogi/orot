@@ -58,6 +58,14 @@ describe('resolveSelectedAiProvider', () => {
     if (result.status !== 'ready')
       throw new Error('Expected a ready provider.');
     expect(result.provider.id).toBe('chatgpt-plan:account-1:model-a');
+    expect(result.selection).toEqual({
+      providerId: 'chatgpt-plan:account-1:model-a',
+      modelId: 'model-a',
+    });
+    expect(result.option).toMatchObject({
+      displayName: 'Model A',
+      privacyBoundary: 'selected-context-remote',
+    });
     expect(result.modelId).toBe('model-a');
     expect(result.remoteProcessing).toBe(true);
     expect(chatGPTServices.listModels).toHaveBeenCalledWith('account-1');
@@ -94,6 +102,8 @@ describe('resolveSelectedAiProvider', () => {
 
     expect(result).toMatchObject({
       status: 'ready',
+      selection: { providerId: apple.provider.id, modelId: apple.modelId },
+      option: apple,
       provider: apple.provider,
       modelId: apple.modelId,
       remoteProcessing: false,

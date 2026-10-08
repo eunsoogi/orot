@@ -17,6 +17,9 @@ import { providerSelectionStore } from '../../providers/selection/keychainSelect
 export type SelectedAiResolution =
   | {
       readonly status: 'ready';
+      /** Preserve the exact saved choice and validated privacy boundary for the route. */
+      readonly selection: ProviderSelection;
+      readonly option: ProviderSelectionOption;
       readonly provider: LanguageModelProvider;
       readonly modelId: string;
       readonly recipient: string;
@@ -115,6 +118,8 @@ function readySelection(
   if (!selected) return { status: 'unavailable' };
   return {
     status: 'ready',
+    selection,
+    option: selected,
     provider: result.provider,
     modelId: selected.modelId,
     recipient:

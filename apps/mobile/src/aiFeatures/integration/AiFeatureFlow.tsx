@@ -12,23 +12,28 @@ import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import { getAiFeatureIntegrationCopy } from './copy';
 import { createAiFeatureServices } from './featureServices';
 import type { AiFeatureServiceDependencies } from './featureServices';
+import { resolveSelectedAiProvider as resolveSelectedAi } from './provider';
+import type { SelectedAiResolution } from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import type { AiFeatureServices } from './featureServices';
 
-type FeatureRoute =
+type FeatureScreenRoute =
   | 'entry'
   | 'visit-questions'
   | 'disease-hypotheses'
   | 'rag-conversation'
-  | 'external-evidence'
-  | 'source-detail'
-  | 'provider-selection';
+  | 'external-evidence';
+type FeatureRoute = FeatureScreenRoute | 'source-detail' | 'provider-selection';
 
 export interface AiFeatureFlowProps {
   readonly renderVisitQuestions?: (input: {
     readonly onBack: () => void;
+    readonly onOpenProviderSelection: () => void;
     /** Opens a registered local citation through the feature's source-detail route. */
     readonly onOpenSource: (reference: EvidenceItem) => void;
+    /** Re-reads the exact saved provider/model after the selection route returns. */
+    readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+    readonly selectedAiRevision: number;
     readonly loadSavedVisitQuestions: AiFeatureServices['loadSavedVisitQuestions'];
   }) => ReactElement;
   readonly onOpenArticle: (
@@ -37,7 +42,7 @@ export interface AiFeatureFlowProps {
   readonly serviceDependencies?: AiFeatureServiceDependencies;
 }
 
-/** Keeps shared navigation at the app boundary while reopening saved sources inside this feature flow. */
+/** Keeps source and provider routes over the active feature so drafts survive navigation. */
 export function AiFeatureFlow({
   renderVisitQuestions,
   onOpenArticle,
@@ -47,9 +52,10 @@ export function AiFeatureFlow({
   const [sourceReference, setSourceReference] =
     useState<EvidenceReference | null>(null);
   const [sourceReturnRoute, setSourceReturnRoute] =
-    useState<FeatureRoute>('entry');
+    useState<FeatureScreenRoute>('entry');
   const [providerReturnRoute, setProviderReturnRoute] =
-    useState<FeatureRoute>('entry');
+    useState<FeatureScreenRoute>('entry');
+  const [selectedAiRevision, setSelectedAiRevision] = useState(0);
   const [articleOpenError, setArticleOpenError] = useState(false);
   const { consent, disclosureSheet } = useInferenceConsent();
   const services = useMemo(
@@ -58,12 +64,24 @@ export function AiFeatureFlow({
   );
   const copy = getAiFeatureIntegrationCopy();
   const openProviderSelection = () => {
-    setProviderReturnRoute(route === 'provider-selection' ? 'entry' : route);
+    const returnRoute =
+      route === 'source-detail'
+        ? sourceReturnRoute
+        : route === 'provider-selection'
+          ? providerReturnRoute
+          : route;
+    setProviderReturnRoute(returnRoute);
     setRoute('provider-selection');
   };
   const openSource = (reference: EvidenceReference) => {
+    const returnRoute =
+      route === 'provider-selection'
+        ? providerReturnRoute
+        : route === 'source-detail'
+          ? sourceReturnRoute
+          : route;
     setSourceReference(reference);
-    setSourceReturnRoute(route === 'source-detail' ? sourceReturnRoute : route);
+    setSourceReturnRoute(returnRoute);
     setRoute('source-detail');
   };
   const openArticle = async (publication: ExternalMedicalPublication) => {
@@ -87,7 +105,12 @@ export function AiFeatureFlow({
   );
 
   let screen: ReactElement;
-  const screenRoute = route === 'source-detail' ? sourceReturnRoute : route;
+  const screenRoute =
+    route === 'source-detail'
+      ? sourceReturnRoute
+      : route === 'provider-selection'
+        ? providerReturnRoute
+        : route;
   switch (screenRoute) {
     case 'entry':
       screen = entryScreen;
@@ -96,7 +119,11 @@ export function AiFeatureFlow({
       screen = renderVisitQuestions
         ? renderVisitQuestions({
             onBack: () => setRoute('entry'),
+            onOpenProviderSelection: openProviderSelection,
             onOpenSource: openSource,
+            resolveSelectedAi: () =>
+              resolveSelectedAi(serviceDependencies?.selectedAi),
+            selectedAiRevision,
             loadSavedVisitQuestions: services.loadSavedVisitQuestions,
           })
         : entryScreen;
@@ -130,24 +157,11 @@ export function AiFeatureFlow({
         />
       );
       break;
-    case 'source-detail':
-      screen = entryScreen;
-      break;
-    case 'provider-selection':
-      screen = (
-        <ProviderSelectionFlow
-          selectionStore={serviceDependencies?.selectedAi?.selectionStore}
-          chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
-          onBack={() => setRoute(providerReturnRoute)}
-          onSelectionCommitted={() => setRoute(providerReturnRoute)}
-        />
-      );
-      break;
   }
 
   return (
     <View style={styles.container} testID="ai-feature-flow">
-      {route !== 'provider-selection' ? (
+      {route !== 'provider-selection' && route !== 'source-detail' ? (
         <View style={styles.providerBar}>
           <Text style={styles.providerNotice}>{copy.selectedAiNotice}</Text>
           <Button
@@ -158,11 +172,11 @@ export function AiFeatureFlow({
         </View>
       ) : null}
       <View style={styles.screen}>
-        {/* Keep feature ScrollViews bounded while the source detail covers them. */}
+        {/* Keep feature ScrollViews mounted and bounded while an overlay is active. */}
         <View
           testID="ai-feature-screen-content"
           style={
-            route === 'source-detail'
+            route === 'source-detail' || route === 'provider-selection'
               ? styles.hiddenFeatureScreen
               : styles.featureScreen
           }
@@ -175,6 +189,22 @@ export function AiFeatureFlow({
               onBack={() => setRoute(sourceReturnRoute)}
               readSource={services.readSource}
               reference={sourceReference}
+            />
+          </View>
+        ) : null}
+        {route === 'provider-selection' ? (
+          <View
+            style={styles.sourceOverlay}
+            testID="ai-feature-provider-overlay"
+          >
+            <ProviderSelectionFlow
+              selectionStore={serviceDependencies?.selectedAi?.selectionStore}
+              chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
+              onBack={() => setRoute(providerReturnRoute)}
+              onSelectionCommitted={() => {
+                setSelectedAiRevision(revision => revision + 1);
+                setRoute(providerReturnRoute);
+              }}
             />
           </View>
         ) : null}

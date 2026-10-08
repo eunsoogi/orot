@@ -5,7 +5,12 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { EvidenceItem } from '@orot/agent-runtime';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { selectionStore } from '../featureServiceFixtures';
+import {
+  VisitQuestionHarness,
+  type VisitQuestionRenderInput,
+} from '../testSupport/VisitQuestionRouteHarness';
 import { AiFeatureFlow } from '../AiFeatureFlow';
 import type { ExternalMedicalPublication } from '../../../externalMedicalEvidence/europePmc';
 
@@ -39,31 +44,34 @@ test('routes all four entry actions through the integration and returns from vis
   const renderVisitQuestions = jest.fn(
     ({
       onBack,
+      onOpenProviderSelection,
       onOpenSource: openVisitQuestionSource,
+      resolveSelectedAi,
+      selectedAiRevision,
       loadSavedVisitQuestions,
-    }: {
-      onBack: () => void;
-      onOpenSource: (source: EvidenceItem) => void;
-      loadSavedVisitQuestions: (appointmentId: string) => Promise<unknown>;
-    }) => (
-      <View>
-        <Text testID="visit-question-route">다음 진료 질문 화면</Text>
-        <Text testID="visit-question-loader">
-          {typeof loadSavedVisitQuestions}
+    }: VisitQuestionRenderInput) => (
+      <>
+        <Text testID="visit-question-provider-revision">
+          {selectedAiRevision}:{typeof resolveSelectedAi}
         </Text>
-        <Button onPress={onBack} testID="visit-question-back" title="뒤로" />
-        <Button
-          onPress={() => openVisitQuestionSource(reference)}
-          testID="visit-question-source"
-          title="근거 열기"
+        <VisitQuestionHarness
+          loadSavedVisitQuestions={loadSavedVisitQuestions}
+          onBack={onBack}
+          onOpenProviderSelection={onOpenProviderSelection}
+          onOpenSource={openVisitQuestionSource}
+          reference={reference}
         />
-      </View>
+      </>
     ),
   );
+  const testSelectionStore = selectionStore(null);
   await render(
     <AiFeatureFlow
       renderVisitQuestions={renderVisitQuestions}
       onOpenArticle={jest.fn()}
+      serviceDependencies={{
+        selectedAi: { selectionStore: testSelectionStore },
+      }}
     />,
   );
 
@@ -76,7 +84,10 @@ test('routes all four entry actions through the integration and returns from vis
   expect(renderVisitQuestions).toHaveBeenCalledWith(
     expect.objectContaining({
       onBack: expect.any(Function),
+      onOpenProviderSelection: expect.any(Function),
       onOpenSource: expect.any(Function),
+      resolveSelectedAi: expect.any(Function),
+      selectedAiRevision: 0,
       loadSavedVisitQuestions: expect.any(Function),
     }),
   );
@@ -88,6 +99,27 @@ test('routes all four entry actions through the integration and returns from vis
     await screen.findByTestId('ai-feature-source-unavailable'),
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+  await fireEvent.press(screen.getByTestId('visit-question-edit'));
+  await fireEvent.press(screen.getByTestId('visit-question-select-provider'));
+  expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
+  );
+  await fireEvent.press(screen.getByTestId('provider-option-0'));
+  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+  expect(testSelectionStore.save).toHaveBeenCalledWith({
+    providerId: 'apple-foundation-models',
+    modelId: 'apple-foundation-models-system-default',
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByTestId('visit-question-provider-revision'),
+    ).toHaveTextContent('1:function'),
+  );
+  expect(screen.getByTestId('visit-question-route')).toBeTruthy();
+  expect(screen.getByTestId('visit-question-draft')).toHaveTextContent(
+    '수정한 질문 초안',
+  );
   await fireEvent.press(screen.getByTestId('visit-question-back'));
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
