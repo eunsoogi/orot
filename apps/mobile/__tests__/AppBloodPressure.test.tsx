@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import App from '../App';
 import {
   importLocalBloodPressure,
@@ -13,6 +18,11 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
 }));
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
+}));
+
+// The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
+jest.mock('../src/backup/backupSupport', () => ({
+  prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
 
 // Detox covers this route with a synthetic HealthKit fixture; no real account is read.
@@ -52,4 +62,23 @@ test('opens the BP import screen, displays persisted source status, and returns 
 
   await fireEvent.press(screen.getByTestId('blood-pressure-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
+});
+
+test('keeps blood pressure list scrolling inside the shared safe area', async () => {
+  const loadBloodPressureObservations = jest.fn(async () => []);
+  await render(
+    <App loadBloodPressureObservations={loadBloodPressureObservations} />,
+  );
+
+  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+
+  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+  // Keep the screen-owned scroller and its action under the shared inset root.
+  const safeAreaRoot = screen.getByTestId('safe-area-root');
+  const safeAreaContents = within(safeAreaRoot);
+  expect(safeAreaRoot).toBeVisible();
+  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
+  expect(safeAreaContents.getByTestId('blood-pressure-scroll')).toBeVisible();
+  expect(safeAreaContents.getByTestId('blood-pressure-import')).toBeVisible();
+  expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });

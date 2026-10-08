@@ -9,6 +9,10 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
+// The integration test keeps backup startup native work outside this route assertion.
+jest.mock('../src/backup/backupSupport', () => ({
+  prepareBackupSupport: jest.fn(async () => 'ready'),
+}));
 
 // Native inset behavior belongs to Simulator verification, not this unit test.
 jest.mock(
@@ -22,6 +26,7 @@ test('opens the Korean AI feature menu and returns to the welcome screen', async
   expect(screen.getByTestId('open-ai-features')).toHaveTextContent(
     'AI 건강 기능 살펴보기',
   );
+  expect(screen.queryByTestId('get-started')).toBeNull();
   await fireEvent.press(screen.getByTestId('open-ai-features'));
 
   expect(screen.getByTestId('ai-features-screen')).toBeTruthy();
