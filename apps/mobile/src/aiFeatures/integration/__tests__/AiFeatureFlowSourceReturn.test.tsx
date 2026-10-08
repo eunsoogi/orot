@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { AiFeatureFlow } from '../AiFeatureFlow';
+import { AiFeatureRoute } from '../AiFeatureRoute';
 import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
 import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { getRagConversationCopy } from '../../../ragConversation/copy';
@@ -48,7 +48,8 @@ test('preserves the conversation and answer after opening and returning from its
   ) as unknown as typeof runRagConversationTurn;
 
   await render(
-    <AiFeatureFlow
+    <AiFeatureRoute
+      onBack={jest.fn()}
       onOpenArticle={jest.fn()}
       serviceDependencies={{
         selectedAi: {
@@ -115,7 +116,8 @@ test('preserves generated hypotheses after opening and returning from their cita
   ) as unknown as typeof runDiseaseHypothesisAnalysis;
 
   await render(
-    <AiFeatureFlow
+    <AiFeatureRoute
+      onBack={jest.fn()}
       onOpenArticle={jest.fn()}
       serviceDependencies={{
         selectedAi: {

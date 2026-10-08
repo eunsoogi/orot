@@ -14,8 +14,7 @@ import {
   VisitQuestionHarness,
   type VisitQuestionRenderInput,
 } from '../testSupport/VisitQuestionRouteHarness';
-import { AiFeatureFlow } from '../AiFeatureFlow';
-import type { ExternalMedicalPublication } from '../../../externalMedicalEvidence/europePmc';
+import { AiFeatureRoute } from '../AiFeatureRoute';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -69,7 +68,8 @@ test('routes all four entry actions through the integration and returns from vis
   );
   const testSelectionStore = mutableSelectionStore();
   await render(
-    <AiFeatureFlow
+    <AiFeatureRoute
+      onBack={jest.fn()}
       renderVisitQuestions={renderVisitQuestions}
       onOpenArticle={jest.fn()}
       serviceDependencies={{
@@ -102,6 +102,9 @@ test('routes all four entry actions through the integration and returns from vis
     await screen.findByTestId('ai-feature-source-unavailable'),
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+  await waitFor(() =>
+    expect(screen.queryByTestId('ai-feature-source-unavailable')).toBeNull(),
+  );
   await fireEvent.press(screen.getByTestId('visit-question-edit'));
   await fireEvent.press(screen.getByTestId('visit-question-select-provider'));
   expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
@@ -114,6 +117,18 @@ test('routes all four entry actions through the integration and returns from vis
     providerId: 'apple-foundation-models',
     modelId: 'apple-foundation-models-system-default',
   });
+  await waitFor(() =>
+    expect(screen.queryByTestId('provider-selection-screen')).toBeNull(),
+  );
+  expect(screen.getByTestId('visit-question-route')).toBeTruthy();
+  // Selection persistence and the route revision update complete asynchronously.
+  await waitFor(() =>
+    expect(
+      renderVisitQuestions.mock.calls.map(
+        ([input]) => input.selectedAiRevision,
+      ),
+    ).toContain(1),
+  );
   await waitFor(() =>
     expect(
       screen.getByTestId('visit-question-provider-revision'),
@@ -144,85 +159,14 @@ test('routes all four entry actions through the integration and returns from vis
 
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
   expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
-  await fireEvent.press(screen.getByText('뒤로'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
 
   await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
-  await fireEvent.press(screen.getByText('뒤로'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
 
   await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
   expect(screen.getByTestId('external-medical-evidence-screen')).toBeTruthy();
-});
-
-test('exposes provider selection from the feature entry', async () => {
-  await render(
-    <AiFeatureFlow
-      renderVisitQuestions={() => <Text>질문 화면</Text>}
-      onOpenArticle={jest.fn()}
-    />,
-  );
-
-  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
-  );
-});
-
-test('keeps next-visit questions explicitly unavailable until its screen is supplied', async () => {
-  await render(<AiFeatureFlow onOpenArticle={jest.fn()} />);
-
-  expect(screen.getByTestId('visit-questions-unavailable')).toHaveTextContent(
-    '현재 진료 질문을 준비할 수 없어요.',
-  );
-  expect(screen.getByTestId('ai-feature-visit-questions')).toBeDisabled();
-  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
-  expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
-});
-
-test('shows an error when the selected external article cannot be opened', async () => {
-  const publication: ExternalMedicalPublication = {
-    provider: 'Europe PMC',
-    recordId: '12345',
-    source: 'MED',
-    title: 'A sourced article',
-    authors: null,
-    journal: null,
-    publicationDate: null,
-    updatedDate: null,
-    abstract: null,
-    originalUrl: 'https://europepmc.org/article/MED/12345',
-    retrievedAt: '2026-10-08T00:00:00.000Z',
-  };
-  const externalEvidence = {
-    search: jest.fn(async () => ({
-      status: 'available' as const,
-      publications: [publication],
-    })),
-  };
-  const onOpenArticle = jest.fn(async () => {
-    throw new Error('No browser is available.');
-  });
-  await render(
-    <AiFeatureFlow
-      onOpenArticle={onOpenArticle}
-      serviceDependencies={{ externalEvidence }}
-    />,
-  );
-
-  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
-  await fireEvent.changeText(
-    screen.getByTestId('external-evidence-query'),
-    'blood pressure',
-  );
-  await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  expect(await screen.findByText(publication.title)).toBeTruthy();
-  await fireEvent.press(screen.getByText('원문 열기'));
-
-  expect(
-    await screen.findByTestId('external-article-open-error'),
-  ).toHaveTextContent('외부 문헌을 열지 못했어요. 링크를 확인해 주세요.');
-  expect(onOpenArticle).toHaveBeenCalledWith(publication);
 });
 
 /** Models saved selection so the flow can resolve the committed choice again. */

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
+import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
 import { nativeChatGPTSelectionServices } from './chatGPTServices';
 import type { ChatGPTSelectionServices } from './chatGPTServices';
 import { useChatGPTSelectionActions } from './useChatGPTSelectionActions';
@@ -23,18 +24,32 @@ import type { OpenAIAccountSummary } from '../openai';
 interface ProviderSelectionFlowProps {
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
+  readonly safeAreaHandledByParent?: boolean;
   readonly onBack: () => void;
   readonly onSelectionCommitted?: (
     selection: ProviderSelection,
     provider: ProviderSelectionOption['provider'],
   ) => void;
+  readonly onNavigationStateChange?: (
+    state: ProviderSelectionNavigationState,
+  ) => void;
+}
+
+export interface ProviderSelectionNavigationState {
+  readonly hasPendingSelection: boolean;
+  readonly isSavingSelection: boolean;
+  readonly isSigningIn: boolean;
+  readonly revision: number;
+  readonly inputRevision: number;
 }
 
 export default function ProviderSelectionFlow({
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
+  safeAreaHandledByParent = false,
   onBack,
   onSelectionCommitted,
+  onNavigationStateChange,
 }: ProviderSelectionFlowProps) {
   const [appleOption, setAppleOption] =
     useState<ProviderSelectionOption | null>(null);
@@ -125,6 +140,43 @@ export default function ProviderSelectionFlow({
     setAccounts,
     setOptions,
   });
+  const navigationStateRef = useRef<ProviderSelectionNavigationState>({
+    hasPendingSelection: false,
+    isSavingSelection: false,
+    isSigningIn: false,
+    revision: 0,
+    inputRevision: 0,
+  });
+  const publishNavigationState = useCallback(
+    (updates: Partial<Omit<ProviderSelectionNavigationState, 'revision'>>) => {
+      const current = navigationStateRef.current;
+      const next = { ...current, ...updates };
+      if (
+        current.hasPendingSelection === next.hasPendingSelection &&
+        current.isSavingSelection === next.isSavingSelection &&
+        current.isSigningIn === next.isSigningIn &&
+        current.inputRevision === next.inputRevision
+      ) {
+        return;
+      }
+
+      const updated = { ...next, revision: current.revision + 1 };
+      navigationStateRef.current = updated;
+      onNavigationStateChange?.(updated);
+    },
+    [onNavigationStateChange],
+  );
+  const reportSelectionState = useCallback(
+    (state: ProviderSelectionScreenNavigationState) => {
+      publishNavigationState(state);
+    },
+    [publishNavigationState],
+  );
+
+  // Only sign-in is canceled by the existing unmount hook; model reads and sign-out have different lifecycles.
+  useEffect(() => {
+    publishNavigationState({ isSigningIn: actions.signingIn });
+  }, [actions.signingIn, publishNavigationState]);
 
   const accountStatus = selectedAccount?.requiresSignIn
     ? providerSelectionText.chatGPTAccountSignedOut
@@ -160,6 +212,23 @@ export default function ProviderSelectionFlow({
     onCancelSignIn: chatGPTServices.cancelSignIn,
   };
 
+  const screen = (
+    <ProviderSelectionScreen
+      chatGPTSetup={chatGPTSetup}
+      onBack={onBack}
+      onNavigationStateChange={reportSelectionState}
+      onSelectionCommitted={onSelectionCommitted}
+      options={options}
+      requirements={visitRecommendationRequirements}
+      selectionStore={selectionStore}
+    />
+  );
+
+  if (safeAreaHandledByParent) {
+    // The shared AI route owns the safe-area shell, so do not nest another inset provider.
+    return <View style={styles.container}>{screen}</View>;
+  }
+
   return (
     // This route is a window-edge root, so measure system insets before laying out its controls.
     <SafeAreaProvider style={styles.container}>
@@ -167,14 +236,7 @@ export default function ProviderSelectionFlow({
         edges={['top', 'right', 'bottom', 'left']}
         style={styles.safeArea}
       >
-        <ProviderSelectionScreen
-          chatGPTSetup={chatGPTSetup}
-          onBack={onBack}
-          onSelectionCommitted={onSelectionCommitted}
-          options={options}
-          requirements={visitRecommendationRequirements}
-          selectionStore={selectionStore}
-        />
+        {screen}
       </SafeAreaView>
     </SafeAreaProvider>
   );

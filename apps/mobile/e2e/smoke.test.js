@@ -122,7 +122,8 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
-    await element(by.id('ai-feature-back')).tap();
+    // The shared route bar returns from the feature entry to the app home route.
+    await element(by.id('navigation-back')).tap();
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);

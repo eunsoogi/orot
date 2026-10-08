@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { LocalHealthEvidenceInventory } from '../../../healthEvidence/localEvidenceRepository';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import type { AiFeatureLocalData } from '../localData';
-import { AiFeatureFlow } from '../AiFeatureFlow';
+import { AiFeatureRoute } from '../AiFeatureRoute';
 import {
   apple,
   completeInventory,
@@ -31,7 +31,8 @@ test('shows the insufficient-evidence response from the integrated RAG route', a
   })) as unknown as typeof runRagConversationTurn;
 
   await render(
-    <AiFeatureFlow
+    <AiFeatureRoute
+      onBack={jest.fn()}
       onOpenArticle={jest.fn()}
       serviceDependencies={{
         selectedAi: {

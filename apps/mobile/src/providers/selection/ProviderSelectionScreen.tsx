@@ -5,6 +5,8 @@ import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
+import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
+import { useProviderSelectionNavigationState } from './providerSelectionNavigationState';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
@@ -24,6 +26,9 @@ interface ProviderSelectionScreenProps {
     selection: ProviderSelection,
     provider: ProviderSelectionOption['provider'],
   ) => void;
+  readonly onNavigationStateChange?: (
+    state: ProviderSelectionScreenNavigationState,
+  ) => void;
 }
 
 export default function ProviderSelectionScreen({
@@ -33,6 +38,7 @@ export default function ProviderSelectionScreen({
   chatGPTSetup,
   onBack,
   onSelectionCommitted,
+  onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
@@ -42,6 +48,9 @@ export default function ProviderSelectionScreen({
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const publishNavigationState = useProviderSelectionNavigationState(
+    onNavigationStateChange,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -101,17 +110,34 @@ export default function ProviderSelectionScreen({
       requirements,
     );
     if (!currentResolution.ok) return;
+    publishNavigationState({
+      hasPendingSelection: true,
+      isSavingSelection: true,
+    });
     setSaving(true);
     setSaveError(false);
+    let selectionSaved = false;
     try {
       await selectionStore.save(selection);
       setSavedSelection(selection);
       setPendingOption(null);
+      selectionSaved = true;
+      publishNavigationState(
+        { hasPendingSelection: false, isSavingSelection: false },
+        true,
+      );
+      setSaving(false);
       // Loading a saved choice never routes a provider; only explicit confirmation does.
       onSelectionCommitted?.(selection, currentResolution.provider);
     } catch {
       setSaveError(true);
     } finally {
+      if (!selectionSaved) {
+        publishNavigationState({
+          hasPendingSelection: true,
+          isSavingSelection: false,
+        });
+      }
       setSaving(false);
     }
   }
@@ -159,6 +185,10 @@ export default function ProviderSelectionScreen({
           disabled={loading || saving}
           index={index}
           onPress={() => {
+            publishNavigationState(
+              { hasPendingSelection: true, isSavingSelection: false },
+              true,
+            );
             setPendingOption(option);
             setSaveError(false);
           }}
@@ -175,7 +205,13 @@ export default function ProviderSelectionScreen({
         <ProviderSelectionConfirmation
           blockedMessage={resolutionMessage(pendingResolution)}
           canConfirm={pendingResolution?.ok === true}
-          onCancel={() => setPendingOption(null)}
+          onCancel={() => {
+            publishNavigationState(
+              { hasPendingSelection: false, isSavingSelection: false },
+              true,
+            );
+            setPendingOption(null);
+          }}
           onConfirm={confirmSelection}
           option={confirmationOption}
           saving={saving}
