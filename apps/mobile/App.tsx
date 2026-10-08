@@ -21,8 +21,8 @@ import type {
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
-import { providerSelectionText } from './src/providers/selection/text';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
+import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -137,8 +137,8 @@ export default function App({
   } else if (showCalendar) {
     scrollable = true;
     routeContent = (
-      <View style={styles.container}>
-        <Text accessibilityRole="header" style={styles.title}>
+      <View style={appRouteStyles.container}>
+        <Text accessibilityRole="header" style={appRouteStyles.title}>
           {t('calendar.title')}
         </Text>
         <Text
@@ -165,54 +165,16 @@ export default function App({
   } else {
     scrollable = true;
     routeContent = (
-      <View style={styles.container}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="welcome-title"
-        >
-          {t('app.welcome.title')}
-        </Text>
-        <Text style={styles.message}>
-          {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-        </Text>
-        {selectedRecommendationProvider ? (
-          <Text testID="selected-recommendation-provider">
-            {providerSelectionText.selectedPrefix}{' '}
-            {selectedRecommendationProvider}
-          </Text>
-        ) : null}
-        <Button
-          onPress={() => setShowProviderSelection(true)}
-          testID="open-provider-selection"
-          title={providerSelectionText.title}
-        />
-        <Button
-          onPress={() => setHasStarted(true)}
-          testID="get-started"
-          title={t('app.actions.getStarted')}
-        />
-        <Button
-          onPress={openCalendar}
-          testID="open-appointments"
-          title={t('app.actions.appointments')}
-        />
-        <Button
-          onPress={openCommonObservations}
-          testID="open-common-observations"
-          title={t('healthkit.commonObservations.open')}
-        />
-        <Button
-          onPress={() => setShowBloodPressure(true)}
-          testID="open-blood-pressure-import"
-          title={t('healthkit.bloodPressure.open')}
-        />
-        <Button
-          onPress={() => setShowRecording(true)}
-          testID="open-recording"
-          title={t('app.actions.recording')}
-        />
-      </View>
+      <WelcomeRoute
+        hasStarted={hasStarted}
+        selectedRecommendationProvider={selectedRecommendationProvider}
+        onOpenProviderSelection={() => setShowProviderSelection(true)}
+        onGetStarted={() => setHasStarted(true)}
+        onOpenAppointments={openCalendar}
+        onOpenCommonObservations={openCommonObservations}
+        onOpenBloodPressure={() => setShowBloodPressure(true)}
+        onOpenRecording={() => setShowRecording(true)}
+      />
     );
   }
 
@@ -227,24 +189,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#f7f8fa',
-  },
-  container: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  title: {
-    color: '#17212b',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#45515f',
-    fontSize: 16,
-    textAlign: 'center',
   },
 });
