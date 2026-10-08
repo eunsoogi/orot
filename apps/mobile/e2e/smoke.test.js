@@ -1,5 +1,17 @@
 /* global by, device, element, waitFor */
 
+/** Keep feature-local back taps distinct from the AI route's app-level exit. */
+async function openFeatureAndReturn(entryId, screenId) {
+  await element(by.id(entryId)).tap();
+  await waitFor(element(by.id(screenId)))
+    .toBeVisible()
+    .withTimeout(30000);
+  await element(by.text('뒤로').withAncestor(by.id(screenId))).tap();
+  await waitFor(element(by.id('ai-features-screen')))
+    .toBeVisible()
+    .withTimeout(30000);
+}
+
 describe('Orot mobile app', () => {
   beforeAll(async () => {
     await device.launchApp({
@@ -27,8 +39,53 @@ describe('Orot mobile app', () => {
     await expect(element(by.id('visit-questions-unavailable'))).toHaveText(
       '현재 진료 질문을 준비할 수 없어요.',
     );
+
+    await openFeatureAndReturn(
+      'ai-feature-disease-hypotheses',
+      'disease-hypotheses-screen',
+    );
+    await expect(element(by.id('disease-hypotheses-generate'))).toBeVisible();
+
+    await openFeatureAndReturn(
+      'ai-feature-rag-conversation',
+      'rag-conversation-screen',
+    );
+    await expect(element(by.id('rag-conversation-input'))).toBeVisible();
+    const emptyMessageSend = await element(
+      by.id('rag-conversation-send'),
+    ).getAttributes();
+    expect(emptyMessageSend.enabled).toBe(false);
+
     await element(by.id('ai-features-screen')).scrollTo('bottom', 0.5, 0.7);
-    await expect(element(by.id('ai-feature-external-evidence'))).toBeVisible();
+    await element(by.id('ai-feature-external-evidence')).tap();
+    await waitFor(element(by.id('external-medical-evidence-screen')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await expect(element(by.id('external-evidence-query'))).toBeVisible();
+    await expect(element(by.id('external-evidence-consent'))).toBeVisible();
+    // Confirm a query stays local until the separate literature-search consent is checked.
+    await element(by.id('external-evidence-query')).typeText(
+      'orot-consent-check',
+    );
+    await element(by.id('external-evidence-query')).tapReturnKey();
+    const searchBeforeConsent = await element(
+      by.id('external-evidence-search'),
+    ).getAttributes();
+    expect(searchBeforeConsent.enabled).toBe(false);
+    await element(by.id('external-evidence-consent')).tap();
+    const searchAfterConsent = await element(
+      by.id('external-evidence-search'),
+    ).getAttributes();
+    expect(searchAfterConsent.enabled).toBe(true);
+    // Do not press search: this route check must not make a real literature request.
+    await element(by.id('external-medical-evidence-screen')).scrollTo('top');
+    await element(
+      by.text('뒤로').withAncestor(by.id('external-medical-evidence-screen')),
+    ).tap();
+    await waitFor(element(by.id('ai-features-screen')))
+      .toBeVisible()
+      .withTimeout(30000);
+
     await element(by.id('ai-feature-back')).tap();
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
