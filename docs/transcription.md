@@ -65,8 +65,10 @@ the supplied bytes to a temporary file in the protected, backup-excluded Caches
 directory, checks the file attributes, converts the input to the selected
 SpeechAnalyzer-compatible format when needed, and removes source and converted
 audio after processing. Stale transcription files older than 24 hours are
-removed the next time the provider runs. Audio stays on the device and is not
-added to the local record repository by this provider.
+removed the next time the provider runs. These working copies remain excluded
+even though the separate permanent recording can be eligible under the
+[device-backup policy](backup.md). Audio stays on the device and is not added to
+the local record repository by this provider.
 
 On the iOS 27 Simulator used for the probe, Foundation returned no
 `NSFileProtectionKey` value while reporting backup exclusion. That means the
