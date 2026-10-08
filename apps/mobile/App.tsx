@@ -26,8 +26,8 @@ import {
 } from './src/healthkit/unifiedImport/HealthKitImportScreen';
 import { unifiedHealthImportCopy } from './src/healthkit/unifiedImport/copy';
 import ProviderSelectionFlow from './src/providers/selection/ProviderSelectionFlow';
-import { WelcomeHomeScreen } from './src/home/WelcomeHomeScreen';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
+import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 
 declare const require: {
   (path: './src/appointments/localRepository'): {
@@ -64,8 +64,8 @@ export default function App({
   const [hasStarted, setHasStarted] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCommonObservations, setShowCommonObservations] = useState(false);
-  const [showBloodPressure, setShowBloodPressure] = useState(false);
   const [showUnifiedImport, setShowUnifiedImport] = useState(false);
+  const [showBloodPressure, setShowBloodPressure] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
   // Keep only the selected display label in route state; selection identifiers stay in the provider store.
@@ -91,6 +91,10 @@ export default function App({
     }
   }
 
+  function openCommonObservations() {
+    setShowCommonObservations(true);
+  }
+
   let routeContent: ReactNode,
     scrollable = false;
 
@@ -112,7 +116,7 @@ export default function App({
       </View>
     );
   } else if (showUnifiedImport) {
-    // This screen owns its scroller and gathers both selected providers in one action.
+    // This screen owns its scroller and requests provider access only after selection.
     routeContent = (
       <HealthKitImportScreen
         copy={unifiedHealthImportCopy}
@@ -153,8 +157,8 @@ export default function App({
   } else if (showCalendar) {
     scrollable = true;
     routeContent = (
-      <View style={styles.container}>
-        <Text accessibilityRole="header" style={styles.title}>
+      <View style={appRouteStyles.container}>
+        <Text accessibilityRole="header" style={appRouteStyles.title}>
           {t('calendar.title')}
         </Text>
         <Text
@@ -181,16 +185,16 @@ export default function App({
   } else {
     scrollable = true;
     routeContent = (
-      <WelcomeHomeScreen
+      <WelcomeRoute
         hasStarted={hasStarted}
+        selectedRecommendationProvider={selectedRecommendationProvider}
+        onOpenProviderSelection={() => setShowProviderSelection(true)}
         onGetStarted={() => setHasStarted(true)}
         onOpenAppointments={openCalendar}
+        onOpenCommonObservations={openCommonObservations}
         onOpenBloodPressure={() => setShowBloodPressure(true)}
-        onOpenCommonObservations={() => setShowCommonObservations(true)}
-        onOpenProviderSelection={() => setShowProviderSelection(true)}
-        onOpenRecording={() => setShowRecording(true)}
         onOpenUnifiedImport={() => setShowUnifiedImport(true)}
-        selectedRecommendationProvider={selectedRecommendationProvider}
+        onOpenRecording={() => setShowRecording(true)}
       />
     );
   }
@@ -201,7 +205,7 @@ export default function App({
 }
 
 function defaultUnifiedImportCoordinator() {
-  // Defer native provider and database modules until the user opens this import route.
+  // Load native provider and database modules only when the user opens this route.
   return require('./src/healthkit/unifiedImport/localImport')
     .unifiedHealthImportCoordinator;
 }
@@ -212,19 +216,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#f7f8fa',
-  },
-  container: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  title: {
-    color: '#17212b',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
   },
 });

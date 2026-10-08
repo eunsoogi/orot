@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { providerFailure } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { AppointmentRepository } from '@orot/storage';
@@ -55,14 +55,14 @@ function selectedProvider(): ProviderSelectionOption {
 
 describe('medical appointment review fallback', () => {
   it('keeps manual candidate selection available after provider failure', async () => {
-    const selected = event();
+    const selectedEvent = event();
     const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
-      events: [selected],
+      events: [selectedEvent],
     }));
     const findEvent = jest.fn(async () => ({
       access: 'fullAccess' as const,
-      event: selected,
+      event: selectedEvent,
     }));
     const bridge: CalendarBridge = {
       requestAccessAndListUpcomingEvents,
@@ -78,21 +78,32 @@ describe('medical appointment review fallback', () => {
       cancel: jest.fn(),
     } as unknown as AppointmentRepository;
     const onOpenManual = jest.fn();
+    const providerSelection = selectedProvider();
 
     await render(
       <MedicalAppointmentClassificationScreen
         bridge={bridge}
         repository={repository}
-        selectedProvider={selectedProvider()}
+        selectedProvider={providerSelection}
         recipient="selected-account"
-        consent={{ authorize: async () => 'authorized' }}
         onOpenManual={onOpenManual}
       />,
     );
 
     await fireEvent.press(screen.getByText('캘린더 일정 불러오기'));
     expect(await screen.findByText('치과 진료')).toBeTruthy();
-    await fireEvent.press(screen.getByText('선택한 AI로 분류'));
+    // Let the resolved model workflow reach its pending consent prompt within act.
+    await act(async () => {
+      fireEvent.press(screen.getByText('선택한 AI로 분류'));
+      await new Promise<void>(resolve => setImmediate(resolve));
+    });
+    expect(
+      await screen.findByText('전송 전에 내용을 확인해 주세요'),
+    ).toBeTruthy();
+    expect(screen.getByText(/"title":"치과 진료"/u)).toBeTruthy();
+    expect(screen.queryByText(/private-calendar-id/u)).toBeNull();
+    expect(providerSelection.provider.generate).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
     expect(
       await screen.findByText(
         'AI 결과를 사용할 수 없어 분류하지 않았습니다. 직접 확인해 주세요.',
@@ -104,7 +115,7 @@ describe('medical appointment review fallback', () => {
     );
 
     expect(findEvent).toHaveBeenCalledTimes(2);
-    expect(repository.confirmCalendarEvent).toHaveBeenCalledWith(selected);
+    expect(repository.confirmCalendarEvent).toHaveBeenCalledWith(selectedEvent);
     expect(
       (await screen.findAllByText('일정을 저장했습니다.')).length,
     ).toBeGreaterThan(0);
@@ -137,7 +148,6 @@ describe('medical appointment review fallback', () => {
         repository={repository}
         selectedProvider={null}
         recipient={null}
-        consent={null}
         onOpenManual={onOpenManual}
       />,
     );

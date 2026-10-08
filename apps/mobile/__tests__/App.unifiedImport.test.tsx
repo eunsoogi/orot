@@ -11,6 +11,10 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
+// The startup recovery flow is covered separately without loading native backup modules.
+jest.mock('../src/backup/backupSupport', () => ({
+  prepareBackupSupport: jest.fn(async () => 'ready'),
+}));
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,

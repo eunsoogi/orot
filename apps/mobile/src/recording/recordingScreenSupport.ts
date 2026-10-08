@@ -5,7 +5,7 @@ import type {
   RecordingSourceRecord,
 } from './recordingTypes';
 
-// The screen's normal flow and synthetic probe share the same persisted recording snapshot.
+// Both screen flows use a complete, permanent recording eligible for device backup.
 export const idle: RecordingSnapshot = {
   status: 'idle',
   id: null,
@@ -19,7 +19,7 @@ export const completed: CompletedRecording = {
   startedAt: '2026-10-04T01:00:00.000Z',
   completedAt: '2026-10-04T01:00:12.500Z',
   fileProtection: 'complete',
-  excludedFromBackup: true,
+  excludedFromBackup: false,
 };
 
 export const savedSource: RecordingSourceRecord = {

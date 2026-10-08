@@ -1,21 +1,44 @@
 import { Button, StyleSheet, Text, View } from 'react-native';
+import BackupStatusRecovery from '../backup/BackupStatusRecovery';
 import { t } from '../i18n';
 import { providerSelectionText } from '../providers/selection/text';
 
-interface WelcomeHomeScreenProps {
-  readonly hasStarted: boolean;
-  readonly selectedRecommendationProvider: string;
-  readonly onOpenProviderSelection: () => void;
-  readonly onGetStarted: () => void;
-  readonly onOpenAppointments: () => void;
-  readonly onOpenCommonObservations: () => void;
-  readonly onOpenBloodPressure: () => void;
-  readonly onOpenUnifiedImport: () => void;
-  readonly onOpenRecording: () => void;
+interface WelcomeRouteProps {
+  hasStarted: boolean;
+  selectedRecommendationProvider: string;
+  onOpenProviderSelection: () => void;
+  onGetStarted: () => void;
+  onOpenAppointments: () => void;
+  onOpenCommonObservations: () => void;
+  onOpenBloodPressure: () => void;
+  onOpenUnifiedImport: () => void;
+  onOpenRecording: () => void;
 }
 
-/** Keeps entry points together while the unified screen owns its provider workflow. */
-export function WelcomeHomeScreen({
+// Keep startup backup recovery and explicit import actions on the welcome route.
+export const appRouteStyles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: 24,
+    backgroundColor: '#f7f8fa',
+  },
+  title: {
+    color: '#17212b',
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  message: {
+    color: '#45515f',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+});
+
+export default function WelcomeRoute({
   hasStarted,
   selectedRecommendationProvider,
   onOpenProviderSelection,
@@ -25,19 +48,21 @@ export function WelcomeHomeScreen({
   onOpenBloodPressure,
   onOpenUnifiedImport,
   onOpenRecording,
-}: WelcomeHomeScreenProps) {
+}: WelcomeRouteProps) {
   return (
-    <View style={styles.container}>
+    <View style={appRouteStyles.container}>
       <Text
         accessibilityRole="header"
-        style={styles.title}
+        style={appRouteStyles.title}
         testID="welcome-title"
       >
         {t('app.welcome.title')}
       </Text>
-      <Text style={styles.message}>
+      <Text style={appRouteStyles.message}>
         {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
       </Text>
+      {/* This route prepares local data; the app cannot verify an OS backup result. */}
+      <BackupStatusRecovery />
       {selectedRecommendationProvider ? (
         <Text testID="selected-recommendation-provider">
           {providerSelectionText.selectedPrefix}{' '}
@@ -82,25 +107,3 @@ export function WelcomeHomeScreen({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
-  },
-  title: {
-    color: '#17212b',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#45515f',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-});

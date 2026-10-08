@@ -50,10 +50,12 @@ if (e2eSuites.includes(suiteName)) {
     './apps/mobile/e2e/transcription.jest.config.js',
   );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+  // Keep the explicit inventory and case count aligned with the Release wrapper's required probes.
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
     './safe-area.test.js',
     './appointments.test.js',
+    './medicalAppointmentClassification.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
@@ -77,7 +79,7 @@ if (e2eSuites.includes(suiteName)) {
     throw new Error('e2e: OpenAI Debug Jest config must select its dedicated probe');
   }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 12],
+    ['Release', releaseConfig.testMatch, 13],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
   ].map(([configuration, testMatch, tests]) => {
