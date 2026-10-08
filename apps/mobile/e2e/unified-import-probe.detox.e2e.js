@@ -36,13 +36,15 @@ const measurementSummaryPattern = (eventKitQueryCalls = '\\d+') =>
     'u',
   );
 
+const mode =
+  process.env.OROT_UNIFIED_IMPORT_PROBE_MODE === 'live'
+    ? 'live'
+    : process.env.OROT_UNIFIED_IMPORT_PROBE_MODE === 'cancellable'
+      ? 'cancellable'
+      : 'synthetic';
+
 describe('selected HealthKit and EventKit import on iOS Simulator', () => {
-  it('completes both selected consent calls before provider queries', async () => {
-    // Live mode invokes both native consent APIs; sheet visibility needs a separate observer.
-    const mode =
-      process.env.OROT_UNIFIED_IMPORT_PROBE_MODE === 'live'
-        ? 'live'
-        : 'synthetic';
+  it('covers consent ordering and the cancellable synthetic retry path', async () => {
     await device.uninstallApp();
     await device.clearKeychain();
     await device.installApp();
@@ -65,14 +67,55 @@ describe('selected HealthKit and EventKit import on iOS Simulator', () => {
       'bodyMass',
     ];
     const selected =
-      mode === 'live' ? ['heartRate', 'steps'] : syntheticSelection;
+      mode === 'live'
+        ? ['heartRate', 'steps']
+        : mode === 'cancellable'
+          ? ['heartRate', 'steps']
+          : syntheticSelection;
     for (const feature of selected) {
       await element(by.id(`unified-import-toggle-${feature}`)).tap();
     }
-    await element(by.id('unified-import-toggle-eventKit')).tap();
+    if (mode !== 'cancellable') {
+      await element(by.id('unified-import-toggle-eventKit')).tap();
+    }
     await element(by.id('unified-import-start')).tap();
 
     const status = element(by.id('unified-import-status'));
+    if (mode === 'cancellable') {
+      const cancel = element(by.id('unified-import-cancel'));
+      const start = element(by.id('unified-import-start'));
+      const cancellationSummary = element(
+        by.id('unified-import-probe-cancellation-summary'),
+      );
+
+      await waitFor(status).toHaveText('preparingStorage').withTimeout(30000);
+      await waitFor(cancel).toExist().withTimeout(10000);
+      // The probe wrapper releases its in-memory gate only after run.cancel().
+      await cancel.tap();
+      await waitFor(status).toHaveText('cancelled').withTimeout(30000);
+      for (const feature of selected) {
+        await expect(
+          element(by.id(`unified-import-feature-status-${feature}`)),
+        ).toHaveText('cancelled');
+      }
+      await expect(cancellationSummary).toHaveText(
+        'fakeFeatureRuns=0;queryOperations=0;persistenceOperations=0;syntheticStoredRecords=0',
+      );
+
+      // A terminal cancellation releases the coordinator for this same-selection retry.
+      await start.tap();
+      await waitFor(status).toHaveText('complete').withTimeout(30000);
+      for (const feature of selected) {
+        await expect(
+          element(by.id(`unified-import-feature-status-${feature}`)),
+        ).toHaveText('complete');
+      }
+      await expect(cancellationSummary).toHaveText(
+        'fakeFeatureRuns=2;queryOperations=2;persistenceOperations=2;syntheticStoredRecords=2',
+      );
+      return;
+    }
+
     if (mode === 'live') {
       console.log('UNIFIED_IMPORT_LIVE_WAIT_FOR_SYSTEM_CONSENT');
       await waitFor(status)

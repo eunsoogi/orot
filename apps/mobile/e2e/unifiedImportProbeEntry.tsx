@@ -2,6 +2,7 @@ import '../src/agent/polyfills';
 import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, Text, View } from 'react-native';
 import { name as appName } from '../app.json';
+import type { RecordRepository } from '@orot/storage';
 import {
   openLocalAppointmentRepository,
   openLocalStorage,
@@ -17,7 +18,7 @@ import type { UnifiedImportMeasurement } from '../src/healthkit/unifiedImport/ty
 import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
 import type { CalendarEvent } from '../src/calendar/types';
 
-// Synthetic mode substitutes provider services; live mode invokes both native consent APIs.
+// Fixture-backed mode still invokes HealthKit; cancellable mode uses in-memory adapters.
 // API completion timings do not measure the visibility of either system sheet.
 
 interface SimulatorFixtureModule {
@@ -68,7 +69,72 @@ const syntheticCoordinator = createUnifiedImportCoordinator({
   }),
 });
 
-function probeMode(): 'live' | 'synthetic' {
+const cancellableProbeRuntime = {
+  holdNextStoragePreparation: true,
+  releaseStoragePreparation: null as (() => void) | null,
+  featureRuns: 0,
+  syntheticRecords: new Set<string>(),
+};
+
+const cancellableBaseCoordinator = createUnifiedImportCoordinator({
+  // This mode keeps cancellation coverage independent of HealthKit grants and records.
+  healthKit: {
+    async requestReadAuthorizations(features) {
+      return {
+        availability: 'available',
+        requestStatus: 'completed',
+        readAuthorization: 'notObservable',
+        requestedFeatures: features,
+        unsupportedFeatures: [],
+      };
+    },
+  },
+  eventKit: {
+    async requestEventAccess() {
+      return 'fullAccess';
+    },
+    async listUpcomingEvents() {
+      return { access: 'fullAccess', events: [] };
+    },
+  },
+  async openRepository() {
+    if (cancellableProbeRuntime.holdNextStoragePreparation) {
+      cancellableProbeRuntime.holdNextStoragePreparation = false;
+      // Gate before feature queries so cancellation can prove that no write starts.
+      await new Promise<void>(resolve => {
+        cancellableProbeRuntime.releaseStoragePreparation = resolve;
+      });
+    }
+    return {} as RecordRepository;
+  },
+  async confirmCalendarEvent() {},
+  async runFeature(feature, _authorization, _repository, instrumentation) {
+    cancellableProbeRuntime.featureRuns += 1;
+    await instrumentation.query(async () => undefined);
+    await instrumentation.persist(async () => {
+      // A feature marker proves retry progress without writing a record or value.
+      cancellableProbeRuntime.syntheticRecords.add(feature);
+    });
+    return { status: 'complete', importedCount: 1, deletedCount: 0 };
+  },
+});
+
+const cancellableCoordinator: ReturnType<
+  typeof createUnifiedImportCoordinator
+> = {
+  start(selection, listeners) {
+    const run = cancellableBaseCoordinator.start(selection, listeners);
+    return {
+      ...run,
+      cancel() {
+        run.cancel();
+        releaseCancellableStoragePreparation();
+      },
+    };
+  },
+};
+
+function probeMode(): 'live' | 'synthetic' | 'cancellable' {
   const settingsManager = (
     NativeModules as unknown as {
       SettingsManager?: {
@@ -80,12 +146,41 @@ function probeMode(): 'live' | 'synthetic' {
   const value =
     settingsManager?.settings?.OROT_UNIFIED_IMPORT_PROBE ??
     settingsManager?.getConstants?.().settings?.OROT_UNIFIED_IMPORT_PROBE;
-  return value === 'live' ? 'live' : 'synthetic';
+  if (value === 'live') return 'live';
+  return value === 'cancellable' ? 'cancellable' : 'synthetic';
+}
+
+function releaseCancellableStoragePreparation() {
+  const release = cancellableProbeRuntime.releaseStoragePreparation;
+  cancellableProbeRuntime.releaseStoragePreparation = null;
+  release?.();
+}
+
+function summarizeCancellableProbe(
+  measurements: readonly UnifiedImportMeasurement[],
+): string {
+  const countStarted = (
+    provider: UnifiedImportMeasurement['provider'],
+    phase: UnifiedImportMeasurement['phase'],
+  ) =>
+    measurements.filter(
+      measurement =>
+        measurement.provider === provider &&
+        measurement.phase === phase &&
+        measurement.transition === 'started',
+    ).length;
+
+  return [
+    `fakeFeatureRuns=${cancellableProbeRuntime.featureRuns}`,
+    `queryOperations=${countStarted('healthKit', 'query')}`,
+    `persistenceOperations=${countStarted('localStore', 'persistence')}`,
+    `syntheticStoredRecords=${cancellableProbeRuntime.syntheticRecords.size}`,
+  ].join(';');
 }
 
 function UnifiedImportProbe() {
   const mode = probeMode();
-  const [ready, setReady] = useState(mode === 'live');
+  const [ready, setReady] = useState(mode !== 'synthetic');
   const [error, setError] = useState(false);
   const [measurements, setMeasurements] = useState<UnifiedImportMeasurement[]>(
     [],
@@ -128,7 +223,9 @@ function UnifiedImportProbe() {
         coordinator={
           mode === 'live'
             ? unifiedHealthImportCoordinator
-            : syntheticCoordinator
+            : mode === 'cancellable'
+              ? cancellableCoordinator
+              : syntheticCoordinator
         }
         copy={unifiedImportProbeCopy}
         onMeasurement={measurement =>
@@ -141,6 +238,11 @@ function UnifiedImportProbe() {
       <Text testID="unified-import-probe-measurements">
         {summarizeUnifiedImportMeasurements(measurements)}
       </Text>
+      {mode === 'cancellable' ? (
+        <Text testID="unified-import-probe-cancellation-summary">
+          {summarizeCancellableProbe(measurements)}
+        </Text>
+      ) : null}
     </View>
   );
 }
