@@ -81,5 +81,4 @@ export const providerAccountsKo = {
   'provider.selection.chatGPTModelsUnavailable':
     'ChatGPT 모델 목록을 확인하지 못했어요. 로그인 상태와 권한을 확인해 주세요.',
   'provider.selection.chatGPTLoginCancelled': 'ChatGPT 로그인을 취소했어요.',
-  'provider.selection.back': '돌아가기',
 } as const;
