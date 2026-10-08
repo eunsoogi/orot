@@ -14,7 +14,7 @@ import { HealthKitImportScreen } from '../src/healthkit/unifiedImport/HealthKitI
 import { createUnifiedFeatureImporter } from '../src/healthkit/unifiedImport/featureImporter';
 import { summarizeUnifiedImportMeasurements } from './unifiedImportProbeMeasurements';
 import { unifiedImportProbeCopy } from './unifiedImportProbeCopy';
-import type { UnifiedImportMeasurement } from '../src/healthkit/unifiedImport/types';
+import type { UnifiedImportMeasurement as ProbeMeasurement } from '../src/healthkit/unifiedImport/types';
 import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
 import type { CalendarEvent } from '../src/calendar/types';
 
@@ -157,11 +157,11 @@ function releaseCancellableStoragePreparation() {
 }
 
 function summarizeCancellableProbe(
-  measurements: readonly UnifiedImportMeasurement[],
+  measurements: readonly ProbeMeasurement[],
 ): string {
   const countStarted = (
-    provider: UnifiedImportMeasurement['provider'],
-    phase: UnifiedImportMeasurement['phase'],
+    provider: ProbeMeasurement['provider'],
+    phase: ProbeMeasurement['phase'],
   ) =>
     measurements.filter(
       measurement =>
@@ -182,9 +182,7 @@ function UnifiedImportProbe() {
   const mode = probeMode();
   const [ready, setReady] = useState(mode !== 'synthetic');
   const [error, setError] = useState(false);
-  const [measurements, setMeasurements] = useState<UnifiedImportMeasurement[]>(
-    [],
-  );
+  const [measurements, setMeasurements] = useState<ProbeMeasurement[]>([]);
 
   useEffect(() => {
     if (mode !== 'synthetic') return undefined;
@@ -231,6 +229,7 @@ function UnifiedImportProbe() {
         onMeasurement={measurement =>
           setMeasurements(current => [...current, measurement])
         }
+        onRunStarted={() => setMeasurements([])}
       />
       <Text testID="unified-import-probe-status">
         {`probe=ready;source=${mode};systemSheets=${mode === 'live' ? 'not-captured' : 'not-observed'}`}

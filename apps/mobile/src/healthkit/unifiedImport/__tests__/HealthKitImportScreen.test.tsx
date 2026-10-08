@@ -105,6 +105,43 @@ test('requires a selected type and shows HealthKit results from one action', asy
   expect(screen.getByText('1 imported / 0 deleted')).toBeTruthy();
 });
 
+test('resets collected measurements for each accepted run', async () => {
+  const base = createTestServices();
+  const coordinator = createUnifiedImportCoordinator(base.services);
+  const measurements: unknown[] = [];
+  const onRunStarted = jest.fn(() => {
+    measurements.length = 0;
+  });
+  await render(
+    <HealthKitImportScreen
+      copy={copy}
+      coordinator={coordinator}
+      onMeasurement={measurement => measurements.push(measurement)}
+      onRunStarted={onRunStarted}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('unified-import-toggle-heartRate'));
+
+  let firstRunMeasurementCount = 0;
+  for (let runIndex = 1; runIndex <= 2; runIndex += 1) {
+    await fireEvent.press(screen.getByTestId('unified-import-start'));
+    await waitFor(() =>
+      expect(
+        base.timeline.filter(item => item === 'query:heartRate'),
+      ).toHaveLength(runIndex),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('unified-import-status')).toHaveTextContent(
+        'complete',
+      ),
+    );
+    if (runIndex === 1) firstRunMeasurementCount = measurements.length;
+  }
+
+  expect(onRunStarted).toHaveBeenCalledTimes(2);
+  expect(measurements).toHaveLength(firstRunMeasurementCount);
+});
+
 test('offers EventKit as an optional provider in the selected import flow', async () => {
   const base = createTestServices();
   const coordinator = createUnifiedImportCoordinator(base.services);

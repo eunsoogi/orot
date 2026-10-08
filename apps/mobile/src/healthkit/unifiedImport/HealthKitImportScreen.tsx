@@ -36,6 +36,7 @@ interface HealthKitImportScreenProps {
   readonly coordinator: UnifiedImportCoordinator;
   readonly onBack?: () => void;
   readonly onMeasurement?: (measurement: UnifiedImportMeasurement) => void;
+  readonly onRunStarted?: () => void;
 }
 
 /** Presents selected providers and keeps per-provider outcomes visible during sync. */
@@ -44,6 +45,7 @@ export function HealthKitImportScreen({
   coordinator,
   onBack,
   onMeasurement,
+  onRunStarted,
 }: HealthKitImportScreenProps) {
   const mounted = useRef(true);
   // A completed calendar save may publish after a later import has taken ownership.
@@ -101,6 +103,8 @@ export function HealthKitImportScreen({
     setIsRunning(true);
     const generation = ++runGeneration.current;
     try {
+      // Probe offsets restart per run, so their measurement window must restart too.
+      onRunStarted?.();
       const active = coordinator.start(selection, {
         onProgress: value => {
           if (mounted.current && runGeneration.current === generation) {
