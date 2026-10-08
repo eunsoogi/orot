@@ -11,16 +11,34 @@ module OrotCocoapodsNullByteDiagnostic
   # Attach the failing input to Ruby's exception so CocoaPods can report it without replacing the error.
   module PathnameRealdirpathDiagnostic
     def realdirpath(...)
+      # Pathname and File share this String, so retain the call-entry bytes before delegation can mutate it.
+      path_snapshot, snapshot_error = begin
+        [path.dup.freeze, nil]
+      rescue StandardError => error
+        [nil, error]
+      end
       super
     rescue ArgumentError => error
       if error.message == NULL_BYTE_PATH_ERROR
         begin
+          path_capture = if path_snapshot
+                           OrotCocoapodsNullByteDiagnostic.capture_realdirpath_input(path_snapshot)
+                         else
+                           OrotCocoapodsNullByteDiagnostic.unavailable_path_capture(snapshot_error)
+                         end
           error.instance_variable_set(
             REALDIRPATH_INPUT_IVAR,
-            OrotCocoapodsNullByteDiagnostic.capture_realdirpath_input(path),
+            path_capture,
           )
-        rescue StandardError
-          # Evidence collection must not replace Ruby's original CocoaPods error.
+        rescue StandardError => capture_error
+          begin
+            error.instance_variable_set(
+              REALDIRPATH_INPUT_IVAR,
+              OrotCocoapodsNullByteDiagnostic.unavailable_path_capture(capture_error),
+            )
+          rescue StandardError
+            # Evidence collection must not replace Ruby's original CocoaPods error.
+          end
         end
       end
       raise
