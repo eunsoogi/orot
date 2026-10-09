@@ -8,13 +8,19 @@ export type NavigationLeaveReason =
 
 export type NavigationLeaveOperationKind = 'account-connection';
 
+export type NavigationBackgroundOperationKind = 'common-observation-import';
+
 export interface NavigationLeaveState {
+  // Explicitly denies leaving when the screen's existing behavior disallows it.
+  readonly canLeave?: boolean;
   readonly hasUnsavedChanges: boolean;
   readonly isRecording: boolean;
   // Set only when the route's existing exit cleanup interrupts this operation.
   readonly hasOngoingOperation: boolean;
   // Optional kind selects precise copy without changing the shared guard reason.
   readonly ongoingOperationKind?: NavigationLeaveOperationKind;
+  // Informational work that is allowed to continue after the route is left.
+  readonly backgroundOperationKind?: NavigationBackgroundOperationKind;
   // Increment on any draft or activity change so an open prompt cannot approve stale state.
   readonly revision: number;
   // Increment for draft or transcript content changes, including finalized recording output.
@@ -42,6 +48,7 @@ export function createNavigationLeaveGuard<Name extends string>(
 ): NavigationLeaveGuard<Name> {
   return async transition => {
     const initial = options.readState();
+    if (initial.canLeave === false) return false;
     const reasons: NavigationLeaveReason[] = [];
     if (initial.hasUnsavedChanges) reasons.push('unsaved-changes');
     if (initial.isRecording) reasons.push('recording');
@@ -59,10 +66,12 @@ export function createNavigationLeaveGuard<Name extends string>(
     if (
       current.revision !== initial.revision ||
       current.inputRevision !== initial.inputRevision ||
+      current.canLeave !== initial.canLeave ||
       current.hasUnsavedChanges !== initial.hasUnsavedChanges ||
       current.isRecording !== initial.isRecording ||
       current.hasOngoingOperation !== initial.hasOngoingOperation ||
-      current.ongoingOperationKind !== initial.ongoingOperationKind
+      current.ongoingOperationKind !== initial.ongoingOperationKind ||
+      current.backgroundOperationKind !== initial.backgroundOperationKind
     ) {
       return false;
     }
@@ -78,10 +87,12 @@ export function createNavigationLeaveGuard<Name extends string>(
       const afterStop = options.readState();
       if (
         afterStop.isRecording ||
+        afterStop.canLeave === false ||
         afterStop.inputRevision !== current.inputRevision ||
         afterStop.hasUnsavedChanges !== current.hasUnsavedChanges ||
         afterStop.hasOngoingOperation !== current.hasOngoingOperation ||
-        afterStop.ongoingOperationKind !== current.ongoingOperationKind
+        afterStop.ongoingOperationKind !== current.ongoingOperationKind ||
+        afterStop.backgroundOperationKind !== current.backgroundOperationKind
       ) {
         return false;
       }

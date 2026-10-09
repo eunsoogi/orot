@@ -18,8 +18,14 @@ export {
 export {
   createNavigationLeaveGuard,
   type NavigationLeaveConfirmation,
+  type NavigationBackgroundOperationKind,
   type NavigationLeaveOperationKind,
   type NavigationLeaveReason,
   type NavigationLeaveState,
 } from './navigationLeaveGuard';
+export {
+  NavigationLeaveStateRegistrationProvider,
+  useNavigationLeaveStateRegistration,
+} from './useNavigationLeaveStateRegistration';
+export type { NavigationLeaveStateRegistration } from './useNavigationLeaveStateRegistration';
 export { useNavigationSnapshot } from './useNavigationSnapshot';

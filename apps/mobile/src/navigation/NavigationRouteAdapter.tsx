@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +11,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import { NavigationActionBar } from './NavigationActionBar';
 import { EdgeSwipeBackRegion } from './EdgeSwipeBackRegion';
+import { NavigationLeaveStateRegistrationProvider } from './useNavigationLeaveStateRegistration';
 import { createNavigationLeaveGuard } from './navigationLeaveGuard';
 import type {
   NavigationController,
@@ -65,6 +66,7 @@ export function NavigationRouteAdapter<Name extends string>({
   surface,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
+  const [, setLeaveStateVersion] = useState(0);
   const leaveStateRef = useRef(leaveState);
   const registeredLeaveState = useRef<RegisteredLeaveState<Name> | null>(null);
   leaveStateRef.current = leaveState;
@@ -82,9 +84,11 @@ export function NavigationRouteAdapter<Name extends string>({
         source,
       };
       registeredLeaveState.current = registration;
+      setLeaveStateVersion(version => version + 1);
       return () => {
         if (registeredLeaveState.current?.token === registration.token) {
           registeredLeaveState.current = null;
+          setLeaveStateVersion(version => version + 1);
         }
       };
     },
@@ -129,13 +133,28 @@ export function NavigationRouteAdapter<Name extends string>({
     }),
     [controller, registerLeaveState, snapshot.currentRoute],
   );
+  const leaveDisabled = (() => {
+    const source = getLeaveStateSource();
+    if (!source) return true;
+    try {
+      return source.readState().canLeave === false;
+    } catch {
+      return true;
+    }
+  })();
 
   useLayoutEffect(
     () => controller.registerLeaveGuard(snapshot.currentRoute.key, leaveGuard),
     [controller, leaveGuard, snapshot.currentRoute.key],
   );
 
-  const routeContent = children(actions);
+  const routeContent = (
+    <NavigationLeaveStateRegistrationProvider
+      registerLeaveState={registerLeaveState}
+    >
+      {children(actions)}
+    </NavigationLeaveStateRegistrationProvider>
+  );
   const routeIsScrollable =
     typeof scrollable === 'function'
       ? scrollable(snapshot.currentRoute)
@@ -179,6 +198,7 @@ export function NavigationRouteAdapter<Name extends string>({
           )}
           <NavigationActionBar
             controller={controller}
+            leaveDisabled={leaveDisabled}
             showHome={showHome}
             surface={surface}
           />
