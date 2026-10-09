@@ -14,16 +14,16 @@ jest.mock('../src/storage/e2eProbe', () => ({ runStorageProbe: jest.fn() }));
 jest.mock('../src/storage/secureDatabase', () => ({
   openLocalStorage: jest.fn(),
 }));
-jest.mock('./backupProbeConfig', () => ({
+jest.mock('../e2e/backupProbeConfig', () => ({
   getBackupProbeRecordingId: jest.fn(),
 }));
-jest.mock('./backupProbeNative', () => ({
+jest.mock('../e2e/backupProbeNative', () => ({
   requireNativeBackupProbe: jest.fn(),
 }));
-jest.mock('./backupProbePreparation', () => ({
+jest.mock('../e2e/backupProbePreparation', () => ({
   verifyRecordingProbeState: jest.fn(),
 }));
-jest.mock('./backupProbeRecording', () => ({
+jest.mock('../e2e/backupProbeRecording', () => ({
   createBackupProbeTranscript: jest.fn(),
 }));
 
@@ -35,8 +35,8 @@ const { runStorageProbe } = require('../src/storage/e2eProbe');
 const {
   removeSyntheticTranscriptionRecording,
 } = require('../src/recording/nativeRecordingBridge');
-const { getBackupProbeRecordingId } = require('./backupProbeConfig');
-const { recoverSnapshotProbe } = require('./backupProbeSnapshot');
+const { getBackupProbeRecordingId } = require('../e2e/backupProbeConfig');
+const { recoverSnapshotProbe } = require('../e2e/backupProbeSnapshot');
 
 afterEach(() => jest.clearAllMocks());
 
