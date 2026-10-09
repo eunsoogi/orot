@@ -61,8 +61,8 @@ describe('synthetic next-visit questions screen', () => {
       element(by.id('next-visit-caveat-conflicting_records')),
     ).toBeVisible();
 
-    // The edit control follows every saved card, so check it from the list end.
-    await scrollToEdge('bottom');
+    // Bring the list action into view without scrolling to the obscured content edge.
+    await scrollUntilVisible(element(by.id('next-visit-saved-edit')), 'down');
     await expect(element(by.id('next-visit-saved-edit'))).toBeVisible();
     await element(by.id('next-visit-saved-edit')).tap();
     await scrollToEdge('top');
