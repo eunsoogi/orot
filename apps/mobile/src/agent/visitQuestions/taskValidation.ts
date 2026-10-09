@@ -10,6 +10,10 @@ import type {
 } from './taskContract';
 
 const HANGUL = /[\uac00-\ud7a3]/u;
+const REQUESTED_DATE_PATTERNS = [
+  /(?<!\d)(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?(?!\d)/gu,
+  /(?<!\d)(?:19|20)\d{2}\s*년\s*(?:0?[1-9]|1[0-2])\s*월(?:\s*(?:0?[1-9]|[12]\d|3[01])\s*일)?/gu,
+];
 // Cover the distinct Korean imperative endings used by noun and verb action stems.
 const MEDICATION_INSTRUCTION =
   /(?:약|약물|용량|복용|투약|처방|치료).{0,20}(?:중단|시작|변경|조절|증량|감량|늘리|줄이|바꾸|끊|복용하지|투여하지|먹지)(?:하세요|하십시오|으세요|세요|으십시오|해야 합니다|해야 해요|해야 한다|해야 돼요|하셔야|셔야|으셔야|하시기 바랍니다|하지 마세요|마세요)/u;
@@ -61,6 +65,26 @@ function appointmentDateFromContext(
   return typeof value?.effectiveAt === 'string' ? value.effectiveAt : undefined;
 }
 
+function dateFactsInText(text: string): string[] {
+  return REQUESTED_DATE_PATTERNS.flatMap(pattern =>
+    [...text.matchAll(pattern)].map(([date]) => date),
+  );
+}
+
+function supportedClarificationContext(
+  input: VisitQuestionResponderInput,
+): string {
+  // Coverage gaps identify missing target dates, but never authorize measurement values.
+  return [
+    appointmentDateFromContext(input.context),
+    ...input.evidence.coverage.flatMap(coverage =>
+      coverage.gaps.flatMap(dateFactsInText),
+    ),
+  ]
+    .filter((value): value is string => value !== undefined)
+    .join(' ');
+}
+
 /** Validates generated fields and preserves only evidence-safe clarification copy as a task result. */
 export function validateVisitQuestionTaskResult(
   value: JsonValue,
@@ -88,7 +112,7 @@ export function validateVisitQuestionTaskResult(
       hasUnsupportedDateOrValue(
         message,
         input.evidence.items,
-        appointmentDateFromContext(input.context),
+        supportedClarificationContext(input),
       )
     ) {
       return clarification(

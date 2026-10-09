@@ -60,7 +60,15 @@ export async function mapVisitQuestionWorkflowResult(input: {
       SAFE_FAILURE_MESSAGE_KEYS[
         result.status as keyof typeof SAFE_FAILURE_MESSAGE_KEYS
       ] ?? SAFE_FAILURE_MESSAGE_KEYS.unavailable;
-    const message = t(messageKey);
+    const validatedClarificationMessage =
+      result.status === 'needs_clarification' &&
+      'message' in result &&
+      typeof result.message === 'string' &&
+      result.message.trim().length > 0
+        ? result.message
+        : undefined;
+    // The runtime adds message only after the task validator approves clarification copy.
+    const message = validatedClarificationMessage ?? t(messageKey);
     return {
       status:
         result.status === 'needs_clarification'
