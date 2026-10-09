@@ -67,6 +67,17 @@ test('runs the synthetic E2E profile from a focused PR workflow', () => {
   assert.match(workflow, /apps\/mobile\/e2e\/next-visit-questions\*/);
   assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbe\.tsx/);
   assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbeEntry\.tsx/);
+  // The reusable profile needs one validated fingerprint object for its cache key.
+  assert.match(workflow, /^\x20{2}detox_cache_fingerprint:\n/m);
+  assert.match(
+    workflow,
+    /build_inputs: \$\{\{ steps\.detox_cache_fingerprint\.outputs\.build_inputs \}\}/,
+  );
+  assert.match(
+    workflow,
+    /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
+  );
+  assert.match(workflow, /needs: \[detox_cache_fingerprint\]/);
   assert.match(workflow, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
   assert.match(workflow, /profile: next-visit-questions/);
   assert.match(reusableProfile, /inputs\.profile == 'next-visit-questions'/);
