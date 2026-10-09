@@ -45,6 +45,8 @@ export function useAiFeatureFlowNavigation(
     string | null
   >(null);
   const [selectedAiRevision, setSelectedAiRevision] = useState(0);
+  const [visitQuestionsStateRevision, setVisitQuestionsStateRevision] =
+    useState(0);
   const [articleOpenError, setArticleOpenError] = useState(false);
   const providerNavigationStateRef = useRef<ProviderSelectionNavigationState>(
     emptyProviderNavigationState,
@@ -158,6 +160,7 @@ export function useAiFeatureFlowNavigation(
   const reportVisitQuestionsRouteState = useCallback(
     (state: VisitQuestionsRouteState) => {
       visitQuestionsNavigationStateRef.current = state;
+      setVisitQuestionsStateRevision(revision => revision + 1);
     },
     [],
   );
@@ -170,7 +173,11 @@ export function useAiFeatureFlowNavigation(
   );
 
   useProviderSelectionLeaveGuard(navigation, providerNavigationStateRef);
-  useVisitQuestionsLeaveGuard(navigation, visitQuestionsNavigationStateRef);
+  useVisitQuestionsLeaveGuard(
+    navigation,
+    visitQuestionsNavigationStateRef,
+    visitQuestionsStateRevision,
+  );
   useAiFeatureRouteLeaveState(navigation, featureNavigationStatesRef);
   useAiFeatureStatelessRouteLeaveState(navigation);
 

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
@@ -25,6 +25,14 @@ import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
+import {
+  createNavigationController,
+  NavigationRouteAdapter,
+  useNavigationSnapshot,
+} from './src/navigation';
+
+type AppNavigationRoute =
+  'home' | 'recording' | 'common-observations' | 'blood-pressure';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -57,10 +65,11 @@ export default function App({
 }: AppProps) {
   const [showAiFeatures, setShowAiFeatures] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showCommonObservations, setShowCommonObservations] = useState(false);
-  const [showBloodPressure, setShowBloodPressure] = useState(false);
-  const [showRecording, setShowRecording] = useState(false);
   const [showProviderSelection, setShowProviderSelection] = useState(false);
+  const [appNavigation] = useState(() =>
+    createNavigationController<AppNavigationRoute>('home'),
+  );
+  const appRoute = useNavigationSnapshot(appNavigation).currentRoute;
   // Keep only the selected display label in route state; selection identifiers stay in the provider store.
   const [selectedRecommendationProvider, setSelectedRecommendationProvider] =
     useState('');
@@ -84,10 +93,6 @@ export default function App({
     }
   }
 
-  function openCommonObservations() {
-    setShowCommonObservations(true);
-  }
-
   // Both AI entry points use the same guarded route tree and local app services.
   if (showAiFeatures || showProviderSelection)
     return (
@@ -105,91 +110,101 @@ export default function App({
       />
     );
 
-  let routeContent: ReactNode,
-    scrollable = false;
-
-  if (showRecording) {
-    routeContent = <RecordingScreen onBack={() => setShowRecording(false)} />;
-  } else if (showCommonObservations) {
-    scrollable = true;
-    routeContent = (
-      <View style={styles.commonObservationsContainer}>
-        <Button
-          onPress={() => setShowCommonObservations(false)}
-          testID="common-observations-back"
-          title={t('healthkit.commonObservations.back')}
-        />
-        <CommonObservationsImportScreen
-          copy={commonObservationsCopy}
-          onImport={importHealthObservations}
-        />
-      </View>
-    );
-  } else if (showBloodPressure) {
-    // This dedicated path keeps paired readings and source-unit availability explicit.
-    routeContent = (
-      <View style={styles.commonObservationsContainer}>
-        <BloodPressureImportScreen
-          onBack={() => setShowBloodPressure(false)}
-          importBloodPressure={importBloodPressure}
-          loadObservations={loadBloodPressureObservations}
-        />
-      </View>
-    );
-  } else if (showCalendar && appointmentRepository) {
-    routeContent = (
-      <CalendarLinkingScreen
-        repository={appointmentRepository}
-        bridge={calendarBridge}
-        onBack={() => setShowCalendar(false)}
-        onOpenRecording={() => setShowRecording(true)}
-      />
-    );
-  } else if (showCalendar) {
-    scrollable = true;
-    routeContent = (
-      <View style={appRouteStyles.container}>
-        <Text accessibilityRole="header" style={appRouteStyles.title}>
-          {t('calendar.title')}
-        </Text>
-        <Text
-          accessibilityRole={appointmentError ? 'alert' : undefined}
-          testID="calendar-app-opening"
-        >
-          {appointmentError ||
-            (loadingAppointments ? t('appointments.opening') : '')}
-        </Text>
-        {appointmentError ? (
-          <Button
-            onPress={openCalendar}
-            testID="calendar-app-retry"
-            title={t('appointments.retry')}
+  // Calendar keeps its current route boundary; a recording opened there returns to it.
+  if (showCalendar && appRoute.name === 'home') {
+    if (appointmentRepository) {
+      return (
+        <SafeAreaLayout>
+          <CalendarLinkingScreen
+            repository={appointmentRepository}
+            bridge={calendarBridge}
+            onBack={() => setShowCalendar(false)}
+            onOpenRecording={() => {
+              appNavigation.push('recording');
+            }}
           />
-        ) : null}
-        <Button
-          onPress={() => setShowCalendar(false)}
-          testID="calendar-app-back"
-          title={t('calendar.back')}
-        />
-      </View>
-    );
-  } else {
-    scrollable = true;
-    routeContent = (
-      <WelcomeRoute
-        selectedRecommendationProvider={selectedRecommendationProvider}
-        onOpenProviderSelection={() => setShowProviderSelection(true)}
-        onOpenAiFeatures={() => setShowAiFeatures(true)}
-        onOpenAppointments={openCalendar}
-        onOpenCommonObservations={openCommonObservations}
-        onOpenBloodPressure={() => setShowBloodPressure(true)}
-        onOpenRecording={() => setShowRecording(true)}
-      />
+        </SafeAreaLayout>
+      );
+    }
+
+    return (
+      <SafeAreaLayout scrollable>
+        <View style={appRouteStyles.container}>
+          <Text accessibilityRole="header" style={appRouteStyles.title}>
+            {t('calendar.title')}
+          </Text>
+          <Text
+            accessibilityRole={appointmentError ? 'alert' : undefined}
+            testID="calendar-app-opening"
+          >
+            {appointmentError ||
+              (loadingAppointments ? t('appointments.opening') : '')}
+          </Text>
+          {appointmentError ? (
+            <Button
+              onPress={openCalendar}
+              testID="calendar-app-retry"
+              title={t('appointments.retry')}
+            />
+          ) : null}
+          <Button
+            onPress={() => setShowCalendar(false)}
+            testID="calendar-app-back"
+            title={t('calendar.back')}
+          />
+        </View>
+      </SafeAreaLayout>
     );
   }
 
   return (
-    <SafeAreaLayout scrollable={scrollable}>{routeContent}</SafeAreaLayout>
+    <NavigationRouteAdapter
+      controller={appNavigation}
+      scrollable={route =>
+        route.name === 'home' || route.name === 'common-observations'
+      }
+      showHome={!showCalendar}
+    >
+      {actions => {
+        switch (actions.route.name) {
+          case 'home':
+            return (
+              <WelcomeRoute
+                selectedRecommendationProvider={selectedRecommendationProvider}
+                onOpenProviderSelection={() => setShowProviderSelection(true)}
+                onOpenAiFeatures={() => setShowAiFeatures(true)}
+                onOpenAppointments={openCalendar}
+                onOpenCommonObservations={() =>
+                  actions.push('common-observations')
+                }
+                onOpenBloodPressure={() => actions.push('blood-pressure')}
+                onOpenRecording={() => actions.push('recording')}
+              />
+            );
+          case 'recording':
+            return <RecordingScreen onBack={actions.onBack} />;
+          case 'common-observations':
+            return (
+              <View style={styles.commonObservationsContainer}>
+                <CommonObservationsImportScreen
+                  copy={commonObservationsCopy}
+                  onImport={importHealthObservations}
+                />
+              </View>
+            );
+          case 'blood-pressure':
+            return (
+              <View style={styles.commonObservationsContainer}>
+                <BloodPressureImportScreen
+                  onBack={actions.onBack}
+                  importBloodPressure={importBloodPressure}
+                  loadObservations={loadBloodPressureObservations}
+                />
+              </View>
+            );
+        }
+      }}
+    </NavigationRouteAdapter>
   );
 }
 

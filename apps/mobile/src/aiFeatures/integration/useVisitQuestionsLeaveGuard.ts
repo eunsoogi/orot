@@ -11,6 +11,7 @@ import { getAiFeatureIntegrationCopy } from './copy';
 export function useVisitQuestionsLeaveGuard(
   navigation: NavigationRouteActions<AiFeatureRouteName>,
   stateRef: MutableRefObject<VisitQuestionsRouteState | null>,
+  stateRevision: number,
 ) {
   useLayoutEffect(() => {
     if (navigation.route.name !== 'visit-questions') return;
@@ -49,5 +50,6 @@ export function useVisitQuestionsLeaveGuard(
         return confirmNavigationLeave(request);
       },
     });
-  }, [navigation, stateRef]);
+    // Refresh the source so the adapter can reread Back availability.
+  }, [navigation, stateRef, stateRevision]);
 }
