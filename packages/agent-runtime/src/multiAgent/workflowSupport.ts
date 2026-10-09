@@ -198,13 +198,15 @@ export function makeGraph<TResult>(
     .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
     .addNode('invokeRevision', nodes.invokeRevision)
     .addConditionalEdges(START, route, routeMap)
-    .addEdge('prepareResponder', 'invokeResponder')
+    .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
     .addConditionalEdges('invokeResponder', route, routeMap)
-    .addEdge('prepareResearcher', 'invokeResearcher')
+    .addConditionalEdges('prepareResearcher', (state) =>
+      state.terminal ? END : 'invokeResearcher',
+    )
     .addConditionalEdges('invokeResearcher', route, routeMap)
-    .addEdge('prepareSearch', 'executeSearch')
+    .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
     .addConditionalEdges('executeSearch', route, routeMap)
-    .addEdge('prepareRevision', 'invokeRevision')
+    .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
     .addEdge('invokeRevision', END)
     .compile({ checkpointer });
 }

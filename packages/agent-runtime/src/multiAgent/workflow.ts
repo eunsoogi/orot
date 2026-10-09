@@ -1,12 +1,12 @@
 import type { JsonValue } from '@orot/model-runtime';
 import type {
-  MultiAgentCheckpointState,
   MultiAgentInvocation,
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
 } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
+import { deferEvidenceAdapter } from './modelCallFreshness';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import { checkpointFromState, nonResumableCheckpoint } from './state';
@@ -14,17 +14,36 @@ import {
   failureResult,
   initialState,
   makeGraph,
-  publicResult,
   restoreRunEvidence,
   resumeState,
   validBudget,
   validIdentity,
 } from './workflowSupport';
+import {
+  hasExplicitCheckpointSelector,
+  invokeWorkflowGraph,
+  loadPersistedGraphResume,
+  withCheckpointThreadLock,
+  withDeferredEvidenceAdapters,
+} from './workflowCheckpoint';
 
-// Coordinates graph actions and revalidates references before a durable restart resumes.
-export async function runMultiAgentWorkflow<TResult = JsonValue>(
+// Coordinates validated graph runs and restores saved evidence only after source checks pass.
+export function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
   invocation: MultiAgentInvocation = {},
+): Promise<MultiAgentRunResult<TResult>> {
+  const threadId = invocation.config?.configurable?.thread_id;
+  if (options.checkpointer && typeof threadId === 'string' && threadId.length > 0) {
+    return withCheckpointThreadLock(threadId, () =>
+      runMultiAgentWorkflowUnlocked(options, invocation),
+    );
+  }
+  return runMultiAgentWorkflowUnlocked(options, invocation);
+}
+
+async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
+  options: MultiAgentWorkflowOptions<TResult>,
+  invocation: MultiAgentInvocation,
 ): Promise<MultiAgentRunResult<TResult>> {
   if (!validIdentity(options) || !validBudget(options)) {
     return {
@@ -40,14 +59,15 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       checkpoint: checkpointFromState(initialState(options)),
     };
   }
-  if (options.checkpointer && invocation.config?.configurable?.checkpoint_id != null) {
-    // An explicit ID can select an older safe snapshot while newer work remains pending.
+  if (options.checkpointer && hasExplicitCheckpointSelector(invocation.config)) {
+    // Caller selectors can make state validation and graph resume inspect different snapshots.
     return {
       status: 'stale_evidence',
-      reason: 'A specific checkpoint cannot be selected for a persisted run.',
+      reason: 'A checkpoint selector cannot be used for a persisted run.',
       checkpoint: nonResumableCheckpoint(initialState(options)),
     };
   }
+
   const resumed = invocation.resumeFrom ? resumeState(invocation.resumeFrom, options) : undefined;
   if (invocation.resumeFrom && !resumed) {
     return {
@@ -76,59 +96,35 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
     const graph = makeGraph(context, options.checkpointer);
     let persistedGraphResume = false;
     if (options.checkpointer) {
-      // Checkpoints contain references only, so reload content from current local sources first.
-      const saved = await graph.getState(invocation.config!);
-      const savedValues = saved.values;
-      const hasSavedGraphState =
-        savedValues !== undefined &&
-        (savedValues === null ||
-          typeof savedValues !== 'object' ||
-          Array.isArray(savedValues) ||
-          Object.keys(savedValues).length > 0);
-      if (hasSavedGraphState) {
-        if (invocation.resumeFrom) {
-          stop(
-            context,
-            'A checkpoint already exists for this thread; use a fresh thread identifier.',
-            'stale_evidence',
-          );
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-        if (!savedValues || typeof savedValues !== 'object' || Array.isArray(savedValues)) {
-          stop(
-            context,
-            'The saved run cannot be safely resumed; start a fresh run.',
-            'stale_evidence',
-          );
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-        const savedState = resumeState(savedValues as MultiAgentCheckpointState, options);
-        if (!savedState) {
-          stop(
-            context,
-            'The saved run cannot be safely resumed; start a fresh run.',
-            'stale_evidence',
-          );
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-        const restored = await restoreRunEvidence(options, savedState, controller.signal);
-        if (!restored) {
-          if (controller.signal.aborted) canceled(context);
-          else
-            stop(
-              context,
-              'Saved evidence could not be restored at the same source revisions.',
-              'stale_evidence',
-            );
-          return failureResult(context.outcome!, nonResumableCheckpoint(savedState));
-        }
-        start = savedState;
-        context.currentEvidence = restored;
+      // Checkpoint channel values hold references only; restore source content after validation.
+      const persisted = await loadPersistedGraphResume(
+        options,
+        () => graph.getState(invocation.config!),
+        start,
+        controller.signal,
+        Boolean(invocation.resumeFrom),
+      );
+      if (persisted.status === 'cancelled') {
+        canceled(context);
+        return failureResult(context.outcome!, nonResumableCheckpoint(start));
+      }
+      if (persisted.status === 'stale') {
+        stop(context, persisted.reason, 'stale_evidence');
+        return failureResult(context.outcome!, nonResumableCheckpoint(persisted.state));
+      }
+      if (persisted.status === 'resumed') {
+        start = persisted.state;
+        context.currentEvidence = persisted.evidence;
         persistedGraphResume = true;
       }
     }
+
     if (invocation.resumeFrom) {
-      const restored = await restoreRunEvidence(options, start, controller.signal);
+      const restored = await restoreRunEvidence(
+        withDeferredEvidenceAdapters(options),
+        start,
+        controller.signal,
+      );
       if (!restored) {
         if (controller.signal.aborted) canceled(context);
         else
@@ -153,7 +149,9 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       const references = referencesFromBatch(options.initialEvidence);
       if (references.length > 0) {
         const freshness = await observeUntilAbort(
-          options.revalidateEvidence(references, controller.signal),
+          deferEvidenceAdapter(controller.signal, () =>
+            options.revalidateEvidence(references, controller.signal),
+          ),
           controller.signal,
         );
         if (freshness.kind === 'cancelled') canceled(context);
@@ -163,19 +161,18 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
         if (context.outcome) return failureResult(context.outcome, checkpointFromState(start));
       }
     }
+
     if (controller.signal.aborted) canceled(context);
     else {
-      // Null resumes the validated graph boundary; sync durability fences later side effects.
-      const finalState = await graph.invoke(persistedGraphResume ? null : start, {
-        ...invocation.config,
-        durability: 'sync',
-      });
-      if (!context.outcome)
-        stop(context, 'The workflow ended without a validated result.', 'invalid_output');
-      return publicResult(
-        context.outcome!,
-        context.currentEvidence.coverage,
-        checkpointFromState(finalState),
+      return await invokeWorkflowGraph(
+        (input) =>
+          graph.invoke(input, {
+            ...invocation.config,
+            durability: 'sync',
+          }),
+        persistedGraphResume ? null : start,
+        start,
+        context,
       );
     }
     return failureResult(context.outcome!, nonResumableCheckpoint(start));

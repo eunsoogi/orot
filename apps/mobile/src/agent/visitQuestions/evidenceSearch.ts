@@ -50,7 +50,10 @@ export function visitQuestionEvidenceLimits(maxEvidenceItems: number) {
   };
 }
 
-/** Runs one bounded local search; supplemental tools expose exactly one source kind. */
+/**
+ * Runs one bounded local search and forwards cancellation to abortable RAG work.
+ * Supplemental tools expose exactly one source kind.
+ */
 export async function searchVisitQuestionEvidence(input: {
   readonly query: string;
   readonly maxEvidenceItems: number;
@@ -86,6 +89,7 @@ export async function searchVisitQuestionEvidence(input: {
         limits.memoryResultLimit + 1,
         LOCAL_MEMORY_MAX_RESULTS,
       );
+      // The query port cannot abort; the outer search discards results after cancellation.
       const memory = await input.queryService.searchMemory(
         input.query,
         probeLimit,
@@ -112,16 +116,24 @@ export async function searchVisitQuestionEvidence(input: {
     const chunks = await buildChunks(input.repository);
     if (input.signal?.aborted)
       throw new Error('Evidence search was cancelled.');
-    await input.rag.index(chunks);
+    if (input.signal) {
+      await input.rag.index(chunks, { signal: input.signal });
+    } else {
+      await input.rag.index(chunks);
+    }
+    if (input.signal?.aborted)
+      throw new Error('Evidence search was cancelled.');
     if (sourceKind !== 'personal_record') {
       // Start independent on-device memory and RAG reads together after indexing.
       memoryPromise = readReviewedMemory();
     }
     const recordFilters: HybridSearchOptions = {
       filters: { recordTypes: PERSONAL_RECORD_TYPES },
+      ...(input.signal ? { signal: input.signal } : {}),
     };
     const transcriptFilters: HybridSearchOptions = {
       filters: { recordTypes: ['transcript_segment'] },
+      ...(input.signal ? { signal: input.signal } : {}),
     };
     const [recordProbe, transcriptProbe] = await Promise.all([
       input.rag.search(
