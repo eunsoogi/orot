@@ -97,6 +97,22 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   };
 }
 
+function validResumeShape(saved: MultiAgentCheckpointState): boolean {
+  // Durable channel values are input; malformed counts or an in-flight phase cannot safely route.
+  return (
+    ['task_response', 'evidence_research', 'revised_response'].includes(saved.phase) &&
+    [saved.modelCalls, saved.toolCalls, saved.researchCycles].every(
+      (value) => Number.isSafeInteger(value) && value >= 0,
+    ) &&
+    saved.terminal === false &&
+    saved.pendingOperation === undefined &&
+    (saved.evidenceNeed === undefined ||
+      ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
+        saved.evidenceNeed,
+      ))
+  );
+}
+
 export function resumeState<TResult>(
   saved: NonNullable<MultiAgentInvocation['resumeFrom']>,
   options: MultiAgentWorkflowOptions<TResult>,
@@ -104,6 +120,7 @@ export function resumeState<TResult>(
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
+    !validResumeShape(saved) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
     saved.evidenceReferences.some(
@@ -111,16 +128,13 @@ export function resumeState<TResult>(
         !isEvidenceReference(reference) ||
         !isEvidenceReferenceWithinScope(reference, options.execution.allowedScope),
     ) ||
-    saved.terminal ||
-    saved.phase === 'complete' ||
-    saved.pendingOperation ||
-    saved.phase === 'evidence_search' ||
     saved.modelCalls > options.execution.budget.maxModelCalls ||
     saved.toolCalls > options.execution.budget.maxToolCalls ||
     saved.researchCycles > options.execution.budget.maxResearchCycles ||
     saved.evidenceReferences.length > options.execution.budget.maxEvidenceItems ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
-    (saved.phase === 'task_response' && (saved.modelCalls > 0 || saved.toolCalls > 0)) ||
+    (saved.phase === 'task_response' &&
+      (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
     (saved.phase === 'revised_response' &&
       (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
     (saved.selectedToolId !== undefined &&
