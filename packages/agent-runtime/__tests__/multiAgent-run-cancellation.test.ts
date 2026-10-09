@@ -119,6 +119,38 @@ describe('multi-agent cancellation during checkpoint waits', () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it('handles a checkpoint rejection when lookup aborts before observation attaches', async () => {
+    const { languageModel, generate } = makeProvider();
+    const saver = new MemorySaver();
+    const controller = new AbortController();
+    const getTuple = jest.spyOn(saver, 'getTuple').mockImplementation(async () => {
+      controller.abort();
+      throw new Error('Checkpoint read failed after cancellation.');
+    });
+    const unhandledRejections: unknown[] = [];
+    const captureUnhandledRejection = (reason: unknown) => unhandledRejections.push(reason);
+
+    // Cancellation can settle the workflow before the started checkpoint promise rejects.
+    process.on('unhandledRejection', captureUnhandledRejection);
+    try {
+      const result = await runMultiAgentWorkflow(
+        { ...cancellationOptions(languageModel), checkpointer: saver },
+        {
+          config: { configurable: { thread_id: 'cancel-get-state-rejection' } },
+          signal: controller.signal,
+        },
+      );
+      await new Promise<void>((resolve) => setImmediate(resolve));
+
+      expect(result).toMatchObject({ status: 'cancelled', downstreamDispatchStopped: true });
+      expect(getTuple).toHaveBeenCalledTimes(1);
+      expect(generate).not.toHaveBeenCalled();
+      expect(unhandledRejections).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', captureUnhandledRejection);
+    }
+  });
+
   it('returns cancellation while the pending-operation write is still pending', async () => {
     const { languageModel, generate } = makeProvider();
     const saver = new MemorySaver();
