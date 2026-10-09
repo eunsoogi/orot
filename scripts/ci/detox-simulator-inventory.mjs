@@ -126,6 +126,8 @@ function main() {
     release: process.env.OROT_DETOX_RELEASE_SHARDING === 'true' ? 2 : 1,
     'openai-provider': 1,
     transcription: 1,
+    // Next Visit Questions uses one dedicated base and does not spawn Release workers.
+    'next-visit-questions': 1,
   };
   if (
     !baselinePath ||
@@ -136,7 +138,7 @@ function main() {
     !targetsPath
   ) {
     throw new Error(
-      'Usage: detox-simulator-inventory.mjs <baseline-json> <current-json> <test-log> <base-udid> <release|openai-provider|transcription> <targets-path>',
+      'Usage: detox-simulator-inventory.mjs <baseline-json> <current-json> <test-log> <base-udid> <release|openai-provider|transcription|next-visit-questions> <targets-path>',
     );
   }
   mkdirSync(dirname(targetsPath), { recursive: true });

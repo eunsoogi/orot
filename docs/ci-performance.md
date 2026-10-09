@@ -1014,3 +1014,24 @@ On 378767, the Release, OpenAI, and Speech app builds took 13m18s, 8m43s, and 7m
 Cache restoration was a large and variable part of the second run. The Release app archive was 28.9 MB; its cache step ran 03:34:48–03:38:53 and the log showed periods with no bytes received followed by roughly 0.6–1.0 MB/s transfer. The OpenAI archive was 37.8 MB; its cache step ran 03:30:24–03:35:52, including over three minutes before transfer progress appeared and transfer rates below 0.6 MB/s. Speech restored a 28.3 MB archive in 41 seconds. These logs establish the observed durations and transfer progress, but do not identify the service-side cause.
 
 The Release profile became active 4m38s after workflow creation, shortly after the separate Xcode 27 iOS build job ended at 03:33:37Z. This ordering is consistent with runner-capacity contention, but the Actions job readback does not expose a queue reason. The current scheduling change makes `iOS Simulator Build` wait for `Quality Linux` to finish before it becomes eligible, while `!cancelled()` keeps production/OAuth validation eligible after Linux failures and respects workflow cancellation. This candidate has not yet been hosted. No run is under ten minutes, no two-run qualifying pair exists, and `gh pr checks` reported no checks for the branch because both runs used `workflow_dispatch`. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 PR-event scheduling run 37889549806
+
+Run [37889549806](https://github.com/eunsoogi/orot/actions/runs/37889549806) passed the CI workflow on exact PR head `0cb94aa9887ad9fa11b4d96ae28f742d6fe78322`, based on `main` at `0784dca146789d4083627054f21c8279ffe77c93`. Quality Linux started at 05:38:37Z and the required `Detox iOS E2E` aggregate completed at 06:03:43Z: **25m06s**. The workflow ran 25m08s from creation at 05:38:35Z. The candidate preserves the Release, OpenAI, Speech, iOS Simulator Build, quality, profile-summary, and aggregate checks, but this cold PR-cache run does not meet the ten-minute target.
+
+| Job | Interval (UTC) | Result |
+| --- | --- | --- |
+| Quality Linux | 05:38:37–05:40:58 | passed in 2m21s |
+| Compute shared Detox cache fingerprints | 05:38:37–05:38:47 | passed in 10s |
+| iOS Simulator Build | 05:41:04–05:47:13 | passed in 6m09s, including production and standalone OAuth checks |
+| OpenAI Debug E2E | 05:38:53–05:51:44 | passed 1/1; job ran 12m51s |
+| Speech Transcription E2E | 05:38:53–06:01:01 | passed 1/1; job ran 22m08s |
+| Release E2E | 05:38:53–06:03:32 | passed 13/13; job ran 24m39s |
+| Require complete profile summaries | 06:03:34–06:03:38 | passed |
+| Detox iOS E2E | 06:03:40–06:03:43 | passed |
+
+The three profiles used build-input fingerprint prefix `6745c26c` and native-dependency fingerprint prefix `a3a84874`. App-product cache keys missed for Release, OpenAI, and Speech; the profiles rebuilt and saved their validated app products. The app-build steps took 9m16s, 5m15s, and 11m53s respectively; E2E test steps took 5m58s, 37s, and 3m39s. Profile runners remained comparable to prior samples: Release and OpenAI used macOS 27.0.1 / Xcode 27 / iOS 27, while Speech used macOS 26.6.2 / Xcode 26.2 / iOS 26.2. The next same-head PR-event run must measure cache-hot behavior before this scheduling candidate can be judged on comparable timing evidence.
+
+The separate focused Next Visit Questions workflow [37889549574](https://github.com/eunsoogi/orot/actions/runs/37889549574) ran for 16m05s. Its Detox test passed 1/1 and Simulator teardown passed, but the `Collect simulator logs` step failed closed with `Unknown Detox Simulator profile: next-visit-questions`. The shared diagnostics script and inventory mapper did not yet include this newer one-Simulator profile. A local regression test reproduced the profile rejection before the fix and passed after adding the profile to both allowlists with an expected worker count of one; the next exact-head PR run must verify that GitHub check on the authentic workflow.
+
+All run 37889549806 jobs and artifacts passed their workflow checks; artifacts are `11598572541` (Speech, 768,497 bytes), `11598276689` (iOS build, 188,102 bytes), `11598051353` (Quality Linux, 26,250 bytes), `11598048089` (Release, 477,469 bytes), and `11597662896` (OpenAI, 247,652 bytes). The run provides a functional pass but zero under-ten-minute passes. The separate Next Visit check remains unpassed on this head, and no two-run qualifying timing pair exists. Issue #74 remains open and PR #129 remains Draft.

@@ -40,8 +40,9 @@ if [[ $# -eq 6 ]]; then
   profile="$4"
   baseline_path="$5"
   target_path="$6"
+  # Next Visit uses the dedicated base only; worker Simulator cleanup remains Release-only.
   case "$profile" in
-    release | openai-provider | transcription) ;;
+    release | openai-provider | transcription | next-visit-questions) ;;
     *)
       printf 'Unknown Detox Simulator profile: %s\n' "$profile" >&2
       exit 2
