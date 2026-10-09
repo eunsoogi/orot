@@ -6,7 +6,7 @@
 
 - iOS 앱은 `apps/mobile/`에 있고, 공유 workspace 패키지는 `packages/*/`에 있습니다.
 - 제품 개요와 사용자 기능은 [`README.md`](README.md), 개발 환경과 검사 절차는 [`docs/development.md`](docs/development.md)를 기준으로 삼아야 합니다(`MUST`).
-- 품질 검사 범위와 도구 설명은 [`docs/code-quality.md`](docs/code-quality.md), 릴리즈 검증은 [`docs/releasing.md`](docs/releasing.md)를 따라야 합니다(`MUST`). 세부 절차를 이 파일에 복사하지 마세요(`MUST NOT`).
+- 품질 검사 범위와 도구 설명은 [`docs/code-quality.md`](docs/code-quality.md), 릴리즈 검증의 실제 동작은 `.github/workflows/release.yml`과 `scripts/release/`의 구현을 기준으로 확인해야 합니다(`MUST`). 세부 절차를 이 파일에 복사하지 마세요(`MUST NOT`).
 
 ## 변경과 검증
 
