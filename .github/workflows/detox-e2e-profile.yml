@@ -90,7 +90,7 @@ jobs:
         run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
       - name: Cache Detox profile app product # Include and verify Detox runtime outputs.
         id: profile_derived_data_cache
-        if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' }}
+        if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' || inputs.profile == 'next-visit-questions' }}
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:

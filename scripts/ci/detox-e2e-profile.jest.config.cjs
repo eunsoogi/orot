@@ -6,6 +6,7 @@ const profileConfigs = {
   release: 'e2e/release-e2e.jest.config.js',
   'openai-provider': 'e2e/openai-provider.jest.config.js',
   transcription: 'e2e/transcription.jest.config.js',
+  'next-visit-questions': 'e2e/next-visit-questions.jest.config.js',
 };
 const profile = process.env.OROT_DETOX_TEST_PROFILE;
 const profileConfig = profileConfigs[profile];

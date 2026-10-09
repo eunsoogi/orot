@@ -16,12 +16,14 @@ function runRunner({
   releaseStatus = '0',
   debugStatus = '0',
   transcriptionStatus = '0',
+  nextVisitStatus = '0',
   ci = '',
   resourceLog = false,
   logLevel = 'info',
   simulatorId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
   openaiSimulatorId = simulatorId,
   transcriptionSimulatorId = simulatorId,
+  nextVisitSimulatorId = simulatorId,
 } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-detox-runs-'));
   const fakePnpm = join(directory, 'pnpm');
@@ -38,6 +40,7 @@ function runRunner({
       'if [[ "$*" == *"ios.sim.release.transcription"* ]]; then exit "$TRANSCRIPTION_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
+      'if [[ "$*" == *"ios.sim.debug.next-visit-questions"* ]]; then exit "$NEXT_VISIT_STATUS"; fi',
       'exit 97',
     ].join('\n'),
     { mode: 0o755 },
@@ -58,6 +61,7 @@ function runRunner({
       RELEASE_STATUS: releaseStatus,
       DEBUG_STATUS: debugStatus,
       TRANSCRIPTION_STATUS: transcriptionStatus,
+      NEXT_VISIT_STATUS: nextVisitStatus,
       CI: ci,
       GITHUB_ACTIONS: 'false',
       OROT_DETOX_TEST_TIME_COMMAND: join(directory, 'time'),
@@ -67,6 +71,7 @@ function runRunner({
       OROT_DETOX_SIMULATOR_UDID: simulatorId,
       OROT_OPENAI_PROVIDER_SIMULATOR_UDID: openaiSimulatorId,
       OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID: transcriptionSimulatorId,
+      OROT_NEXT_VISIT_QUESTIONS_SIMULATOR_UDID: nextVisitSimulatorId,
     },
   });
   const calls = existsSync(callsPath)
@@ -160,6 +165,34 @@ test('fails closed when the transcription profile lacks its dedicated Simulator'
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /dedicated speech transcription Detox Simulator UDID/);
+  assert.deepEqual(calls, []);
+});
+
+test('runs only the Next Visit Questions probe on its dedicated Simulator', () => {
+  const simulatorId = 'F1E2D3C4-B5A6-4789-ABCD-0123456789AB';
+  const { result, calls, artifactsPath } = runRunner({
+    profile: 'next-visit-questions',
+    openaiSimulatorId: '',
+    transcriptionSimulatorId: '',
+    nextVisitSimulatorId: simulatorId,
+  });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /^profile=next-visit-questions /);
+  assert.match(calls[0], /ios\.sim\.debug\.next-visit-questions/);
+  assert.ok(calls[0].includes(join(artifactsPath, 'next-visit-questions')));
+  assert.ok(result.stdout.includes('simulator=' + simulatorId));
+});
+
+test('fails closed when Next Visit Questions lacks its dedicated Simulator', () => {
+  const { result, calls } = runRunner({
+    profile: 'next-visit-questions',
+    openaiSimulatorId: '',
+    transcriptionSimulatorId: '',
+    nextVisitSimulatorId: '',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /dedicated Next Visit Questions Detox Simulator UDID/);
   assert.deepEqual(calls, []);
 });
 
