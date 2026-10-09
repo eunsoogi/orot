@@ -37,6 +37,14 @@ export function openLocalAgentMemory(
   return service;
 }
 
+/** Reuses the active memory engine during source deletion so an equivalent new embedder cannot open a conflicting service. */
+export function openOrReuseLocalAgentMemory(
+  provider: EmbeddingProvider,
+): Promise<AgentMemoryService> {
+  if (active) return active.service;
+  return openLocalAgentMemory(provider);
+}
+
 export async function closeLocalAgentMemory(): Promise<void> {
   if (closing) {
     await closing;

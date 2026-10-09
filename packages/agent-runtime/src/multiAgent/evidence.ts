@@ -87,6 +87,17 @@ function isWithinRange(value: string | null, scope: AllowedEvidenceScope): boole
   return from !== undefined && to !== undefined && from >= 0 && to < 0;
 }
 
+// Check saved references before callbacks can read or validate sources outside the run's scope.
+export function isEvidenceReferenceWithinScope(
+  reference: EvidenceReference,
+  scope: AllowedEvidenceScope,
+): boolean {
+  return (
+    isSourceAllowed(scope, reference.sourceKind, reference.sourceId) &&
+    isWithinRange(reference.effectiveTime, scope)
+  );
+}
+
 export function validateEvidenceBatch(
   batch: EvidenceBatch,
   scope: AllowedEvidenceScope,

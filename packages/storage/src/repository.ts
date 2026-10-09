@@ -1,3 +1,5 @@
+import { RecordIdSchema } from '@orot/domain';
+import { STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
 import {
   deleteStoredRecord,
@@ -9,7 +11,17 @@ import { createSourceEvidenceRepositories } from './sourceEvidence';
 import type { EvidenceSpanRepository, SourceRecordRepository } from './sourceEvidence';
 import { createTranscriptEvidenceRepository } from './transcriptEvidence';
 import type { TranscriptEvidenceRepository } from './transcriptEvidence';
-import type { SqlDatabase, SqlTransaction } from './sql';
+import {
+  hasStoredRecordId as readStoredRecordIdPresence,
+  listAllLocalDeletionReferences as readAllLocalDeletionReferences,
+  listSourceDeletionReferences as readSourceDeletionReferences,
+  SOURCE_DELETION_TOMBSTONES_TABLE,
+} from './sourceDeletionReferences';
+import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
+
+export interface DeletedLocalDataReferences {
+  readonly sourceRecordIds: readonly string[];
+}
 
 export interface RecordWriter {
   put<K extends RecordKind>(kind: K, record: RecordMap[K]): Promise<void>;
@@ -26,6 +38,17 @@ export interface RecordRepository extends RecordWriter {
   get<K extends RecordKind>(kind: K, id: string): Promise<RecordMap[K] | null>;
   getSyncCheckpoint(key: string): Promise<SyncCheckpoint | null>;
   transaction<T>(operation: (writer: RecordWriter) => Promise<T>): Promise<T>;
+  deleteAllLocalData(
+    withinDeletionTransaction?: (
+      transaction: SqlExecutor,
+      sourceRecordIds: readonly string[],
+      localRecordIds: readonly string[],
+    ) => Promise<void>,
+  ): Promise<DeletedLocalDataReferences>;
+  listAllLocalDeletionReferences(): Promise<readonly string[]>;
+  hasStoredRecordId(recordId: string): Promise<boolean>;
+  listSourceDeletionReferences(sourceRecordId: string): Promise<readonly string[]>;
+  listDeletedSourceReferenceIds(referenceIds: readonly string[]): Promise<readonly string[]>;
 }
 
 async function readSyncCheckpoint(
@@ -106,6 +129,81 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         value = await operation(createWriter(transaction));
       });
       return value;
+    },
+    async deleteAllLocalData(withinDeletionTransaction) {
+      let deleted: DeletedLocalDataReferences = { sourceRecordIds: [] };
+      await database.transaction(async (transaction) => {
+        const sources = await listStoredRecords(transaction, 'source_record');
+        const sourceRecordIds = sources.map((source) => source.id);
+        const localRecordIds = await readAllLocalDeletionReferences(transaction);
+        // RAG receives every local identity so even unlinked structured rows stay fenced.
+        await withinDeletionTransaction?.(transaction, sourceRecordIds, localRecordIds);
+        if (localRecordIds.length > 0) {
+          await transaction.execute(
+            `INSERT OR IGNORE INTO ${SOURCE_DELETION_TOMBSTONES_TABLE} (source_id) SELECT value FROM json_each(?)`,
+            [JSON.stringify(localRecordIds)],
+          );
+        }
+        // Source cascades remove append-only transcripts only after their recording row is gone.
+        await transaction.execute('DELETE FROM source_records');
+        for (const kind of Object.keys(STORAGE_TABLES) as RecordKind[]) {
+          if (kind !== 'source_record') {
+            await transaction.execute('DELETE FROM ' + STORAGE_TABLES[kind].table);
+          }
+        }
+        await transaction.execute('DELETE FROM healthkit_sync_checkpoints');
+        await transaction.execute('DELETE FROM transcript_artifact_staleness');
+        const checkpoints = await transaction.execute(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)",
+          ['langgraph_checkpoint_writes', 'langgraph_checkpoints'],
+        );
+        for (const row of checkpoints.rows) {
+          if (row.name === 'langgraph_checkpoint_writes' || row.name === 'langgraph_checkpoints') {
+            await transaction.execute('DELETE FROM ' + row.name);
+          }
+        }
+        deleted = { sourceRecordIds };
+      });
+      return deleted;
+    },
+    async listAllLocalDeletionReferences() {
+      // Snapshot IDs in one transaction; deletion callers fence memory before clearing this store.
+      let references: readonly string[] = [];
+      await database.transaction(async (transaction) => {
+        references = await readAllLocalDeletionReferences(transaction);
+      });
+      return references;
+    },
+    hasStoredRecordId(recordId) {
+      return readStoredRecordIdPresence(database, recordId);
+    },
+    async listSourceDeletionReferences(sourceRecordId) {
+      // Read the cascade identities in one snapshot before memory is deleted.
+      let references: readonly string[] = [];
+      await database.transaction(async (transaction) => {
+        references = await readSourceDeletionReferences(transaction, sourceRecordId);
+      });
+      return references;
+    },
+    async listDeletedSourceReferenceIds(referenceIds) {
+      // Checkpoint resume must reject deleted identities without loading their former content.
+      const normalizedIds = [
+        ...new Set(referenceIds.map((referenceId) => RecordIdSchema.parse(referenceId))),
+      ].sort();
+      if (normalizedIds.length === 0) return [];
+      const result = await database.execute(
+        `SELECT removed.source_id
+         FROM ${SOURCE_DELETION_TOMBSTONES_TABLE} AS removed
+         JOIN json_each(?) AS requested ON requested.value = removed.source_id
+         ORDER BY removed.source_id`,
+        [JSON.stringify(normalizedIds)],
+      );
+      return result.rows.map((row) => {
+        if (typeof row.source_id !== 'string') {
+          throw new Error('A deleted source reference ID is invalid.');
+        }
+        return RecordIdSchema.parse(row.source_id);
+      });
     },
   };
 }

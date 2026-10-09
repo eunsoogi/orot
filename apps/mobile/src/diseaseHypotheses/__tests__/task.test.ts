@@ -1,4 +1,5 @@
 import { diseaseHypothesisTask, runDiseaseHypothesisAnalysis } from '../task';
+import * as deletionAwareRevalidation from '../../memory/deletionAwareEvidenceRevalidation';
 import {
   completeInventory,
   evidence,
@@ -6,6 +7,14 @@ import {
   reference,
   workflowOptions,
 } from '../taskTestSupport';
+
+beforeEach(() => {
+  jest
+    .spyOn(deletionAwareRevalidation, 'withLocalDeletionAwareRevalidation')
+    .mockImplementation(revalidate => revalidate);
+});
+
+afterEach(() => jest.restoreAllMocks());
 
 test('accepts grounded hypotheses with an exact current supporting reference', () => {
   const result = diseaseHypothesisTask.validateResult(
@@ -109,6 +118,9 @@ test('returns a current cited hypothesis through the public workflow wrapper', a
   expect(outcome.result.value.hypotheses[0]?.supportingEvidence).toEqual([
     reference,
   ]);
+  expect(
+    deletionAwareRevalidation.withLocalDeletionAwareRevalidation,
+  ).toHaveBeenCalled();
   expect(
     outcome.result.value.hypotheses[0]?.supportingEvidence[0],
   ).not.toHaveProperty('content');

@@ -34,6 +34,10 @@ interface NativeRecordingModule {
   removeSyntheticTranscriptionFixture?: (
     recordingId: string,
   ) => Promise<boolean>;
+  reconcileRecordingDeletions?(sourceIds: readonly string[]): Promise<void>;
+  stageRecordingDeletion?(recordingId: string): Promise<void>;
+  restoreRecordingDeletion?(recordingId: string): Promise<void>;
+  commitRecordingDeletion?(recordingId: string): Promise<void>;
   prepareSyntheticCapture?: () => Promise<boolean>;
   prepareSyntheticStartFailure?: (
     point: 'beforeFileURL' | 'afterFileCreated',
@@ -125,6 +129,47 @@ export async function removeSyntheticTranscriptionRecording(
     );
   }
   await remove(recordingId);
+}
+
+type RecordingDeletionMethod =
+  | 'reconcileRecordingDeletions'
+  | 'stageRecordingDeletion'
+  | 'restoreRecordingDeletion'
+  | 'commitRecordingDeletion';
+
+function deletionMethod<Method extends RecordingDeletionMethod>(
+  method: Method,
+): NonNullable<NativeRecordingModule[Method]> {
+  // Missing native methods fail clearly; deletion must not appear to succeed.
+  const module = requireNativeModule();
+  const operation = module[method];
+  if (!operation)
+    throw new Error('Recording deletion is unavailable in this build.');
+  return operation.bind(module) as NonNullable<NativeRecordingModule[Method]>;
+}
+
+export async function reconcileRecordingDeletions(
+  sourceIds: readonly string[],
+): Promise<void> {
+  await deletionMethod('reconcileRecordingDeletions')([...sourceIds]);
+}
+
+export async function stageRecordingDeletion(
+  recordingId: string,
+): Promise<void> {
+  await deletionMethod('stageRecordingDeletion')(recordingId);
+}
+
+export async function restoreRecordingDeletion(
+  recordingId: string,
+): Promise<void> {
+  await deletionMethod('restoreRecordingDeletion')(recordingId);
+}
+
+export async function commitRecordingDeletion(
+  recordingId: string,
+): Promise<void> {
+  await deletionMethod('commitRecordingDeletion')(recordingId);
 }
 
 export async function playSyntheticTranscriptionRange(
