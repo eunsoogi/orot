@@ -33,6 +33,20 @@ This comparison is anchored to `main` at `0784dca146789d4083627054f21c8279ffe77c
 | `packages/agent-runtime/src/multiAgent/workflow.ts` exports `runMultiAgentWorkflow`; `modelProviderGraph.ts` remains a single `generate` node. Issue #117 remains open. | Runtime roles and deterministic graph tests do not prove a user-facing handoff integrated with #30, #108, and #109; the required Release suite contains no collaborative-role E2E flow. |
 | Readiness schema v1 links only `simulatorE2E` (#42), `evaluation` (#36), `deletion` (#34), and `telemetry` (#40). Issues #34, #36, and #42 are open; #40 is closed but has no evidence comments. | The schema and validator do not include #116 or #117 and do not evaluate every #42 criterion. Required #116/#117 evidence must be checked independently before publication; `knownLimitations` cannot waive it. The four linked issue records also do not currently satisfy the required closed-issue evidence-comment checks. |
 
+### Open candidate PRs at snapshot time
+
+These issue-linked PRs were open drafts on 2026-10-09 and are not part of the pinned `main` snapshot. Their exact-head CI results are branch evidence, not integrated #42 proof.
+
+| Candidate | Exact PR head | Current checks | Remaining #42 evidence |
+| --- | --- | --- | --- |
+| [#119](https://github.com/eunsoogi/orot/pull/119) (#107 recording export) | `a13058cf98a081db094b0a8f306a2e4529a78f22` | 5/8 passed in [run 37763117111](https://github.com/eunsoogi/orot/actions/runs/37763117111); `Detox iOS E2E`, Speech Transcription Detox, and `Require complete profile summaries` failed. | Current-head transcription E2E, temporary-file cleanup, and real-device export behavior remain outstanding. |
+| [#126](https://github.com/eunsoogi/orot/pull/126) (#100/#106 import) | `db41e9bd71d67e0a083c6d3b487c80823859e1ee` | 8/8 required jobs passed in [run 37885624983](https://github.com/eunsoogi/orot/actions/runs/37885624983); a separate [Next Visit Questions E2E](https://github.com/eunsoogi/orot/actions/runs/37885624834) also passed. | The PR record still lists native HealthKit denial/cancellation recovery, consent-sheet timing, and repeated production import against iOS storage as unresolved. Its full-PR review is not current-head evidence. |
+| [#141](https://github.com/eunsoogi/orot/pull/141) (#103 design) | `cc64f5589799dc7e5d143207b8da2866b3623f01` | 8/8 passed in [run 37878721790](https://github.com/eunsoogi/orot/actions/runs/37878721790). | The candidate remains draft; issue-wide native accessibility, state, and remaining-screen evidence is incomplete. |
+| [#150](https://github.com/eunsoogi/orot/pull/150) (#109 AI features) | `86470fafd49fd3560b369d7c3941adea59bb04ba` | 8/8 passed in [run 37761070125](https://github.com/eunsoogi/orot/actions/runs/37761070125). | The PR record says the actual Next Visit Questions screen, generation, and save callbacks still await #30/#32 integration; the full #42 path remains unproved. |
+| [#152](https://github.com/eunsoogi/orot/pull/152) (#101/#110 navigation) | `442aabc40015e86dae32854c8c399f0918355875` | 8/8 passed in [run 37868788399](https://github.com/eunsoogi/orot/actions/runs/37868788399). | The PR record still awaits integrated all-screen App-route, wording, accessibility, and supported-OS checks. |
+
+At this readback, descriptions for #119, #141, #150, and #152 referenced older check states or PR heads. Use the exact live head and GitHub check results above, and refresh each owning PR's verification record before using it as current readiness evidence.
+
 The `simulatorE2E` readiness field is a legacy evidence key, not a restriction of #42 to Simulator-only verification. A required synthetic CI adapter remains separate from actual provider and iCloud results. The Release E2E suite must include the integrated synthetic scenarios when the app flow is ready, while the authentic provider and iCloud evidence stays separately identified.
 
 For workstation setup and the pinned development commands, see [Development setup](development.md).
