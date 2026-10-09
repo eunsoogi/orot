@@ -24,24 +24,68 @@ export type PersistedGraphResume<TResult> =
 
 const checkpointThreadTails = new Map<string, Promise<void>>();
 
+export type CheckpointThreadLockResult<TResult> =
+  { status: 'completed'; value: TResult } | { status: 'aborted' };
+
 /** Serializes graph runs by thread so concurrent callers cannot dispatch the same saved operation. */
 export async function withCheckpointThreadLock<TResult>(
   threadId: string,
+  signal: AbortSignal,
   operation: () => Promise<TResult>,
-): Promise<TResult> {
+): Promise<CheckpointThreadLockResult<TResult>> {
   const previous = checkpointThreadTails.get(threadId);
   let release!: () => void;
   const current = new Promise<void>((resolve) => {
     release = resolve;
   });
   checkpointThreadTails.set(threadId, current);
-  if (previous) await previous;
-  try {
-    return await operation();
-  } finally {
+  let released = false;
+  const releaseCurrent = () => {
+    if (released) return;
+    released = true;
     release();
     if (checkpointThreadTails.get(threadId) === current) checkpointThreadTails.delete(threadId);
+  };
+
+  if (previous && !(await waitForCheckpointThreadTurn(previous, signal))) {
+    // Keep this queue slot until its predecessor finishes, even though its caller has returned.
+    previous.then(releaseCurrent, releaseCurrent);
+    return { status: 'aborted' };
   }
+  if (signal.aborted) {
+    if (previous) previous.then(releaseCurrent, releaseCurrent);
+    else releaseCurrent();
+    return { status: 'aborted' };
+  }
+
+  try {
+    return { status: 'completed', value: await operation() };
+  } finally {
+    releaseCurrent();
+  }
+}
+
+async function waitForCheckpointThreadTurn(
+  previous: Promise<void>,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (signal.aborted) return false;
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (canProceed: boolean) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', onAbort);
+      resolve(canProceed && !signal.aborted);
+    };
+    const onAbort = () => finish(false);
+    signal.addEventListener('abort', onAbort, { once: true });
+    previous.then(
+      () => finish(true),
+      () => finish(true),
+    );
+    if (signal.aborted) finish(false);
+  });
 }
 
 /** Refuses caller-supplied selectors that could make inspection and invocation read different snapshots. */

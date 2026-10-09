@@ -27,6 +27,36 @@ import {
   withDeferredEvidenceAdapters,
 } from './workflowCheckpoint';
 
+interface WorkflowRunControl {
+  signal: AbortSignal;
+  timedOut: () => boolean;
+  dispose: () => void;
+}
+
+// The deadline covers both same-thread queueing and graph work, not just provider execution.
+function createWorkflowRunControl(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): WorkflowRunControl {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort();
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    timedOut: () => timedOut,
+    dispose: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener('abort', abortFromCaller);
+    },
+  };
+}
+
 // Coordinates validated graph runs and restores saved evidence only after source checks pass.
 export function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
@@ -34,9 +64,22 @@ export function runMultiAgentWorkflow<TResult = JsonValue>(
 ): Promise<MultiAgentRunResult<TResult>> {
   const threadId = invocation.config?.configurable?.thread_id;
   if (options.checkpointer && typeof threadId === 'string' && threadId.length > 0) {
-    return withCheckpointThreadLock(threadId, () =>
-      runMultiAgentWorkflowUnlocked(options, invocation),
+    if (!validIdentity(options) || !validBudget(options)) {
+      return runMultiAgentWorkflowUnlocked(options, invocation);
+    }
+    const runControl = createWorkflowRunControl(
+      invocation.signal,
+      options.execution.budget.timeoutMs,
     );
+    return withCheckpointThreadLock(threadId, runControl.signal, () =>
+      runMultiAgentWorkflowUnlocked(options, invocation, runControl),
+    )
+      .then((result) =>
+        result.status === 'completed'
+          ? result.value
+          : runMultiAgentWorkflowUnlocked(options, invocation, runControl),
+      )
+      .finally(runControl.dispose);
   }
   return runMultiAgentWorkflowUnlocked(options, invocation);
 }
@@ -44,6 +87,7 @@ export function runMultiAgentWorkflow<TResult = JsonValue>(
 async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
   invocation: MultiAgentInvocation,
+  suppliedRunControl?: WorkflowRunControl,
 ): Promise<MultiAgentRunResult<TResult>> {
   if (!validIdentity(options) || !validBudget(options)) {
     return {
@@ -77,19 +121,14 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     };
   }
   let start = resumed ?? initialState(options);
-  const controller = new AbortController();
-  let timedOut = false;
-  const abortFromCaller = () => controller.abort();
-  if (invocation.signal?.aborted) controller.abort();
-  else invocation.signal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, options.execution.budget.timeoutMs);
+  const ownsRunControl = suppliedRunControl === undefined;
+  const runControl =
+    suppliedRunControl ??
+    createWorkflowRunControl(invocation.signal, options.execution.budget.timeoutMs);
   const context: RuntimeContext<TResult> = {
     options,
-    signal: controller.signal,
-    timedOut: () => timedOut,
+    signal: runControl.signal,
+    timedOut: runControl.timedOut,
     currentEvidence: options.initialEvidence,
   };
   try {
@@ -101,7 +140,7 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
         options,
         () => graph.getState(invocation.config!),
         start,
-        controller.signal,
+        runControl.signal,
         Boolean(invocation.resumeFrom),
       );
       if (persisted.status === 'cancelled') {
@@ -123,10 +162,10 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
       const restored = await restoreRunEvidence(
         withDeferredEvidenceAdapters(options),
         start,
-        controller.signal,
+        runControl.signal,
       );
       if (!restored) {
-        if (controller.signal.aborted) canceled(context);
+        if (runControl.signal.aborted) canceled(context);
         else
           stop(
             context,
@@ -149,10 +188,10 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
       const references = referencesFromBatch(options.initialEvidence);
       if (references.length > 0) {
         const freshness = await observeUntilAbort(
-          deferEvidenceAdapter(controller.signal, () =>
-            options.revalidateEvidence(references, controller.signal),
+          deferEvidenceAdapter(runControl.signal, () =>
+            options.revalidateEvidence(references, runControl.signal),
           ),
-          controller.signal,
+          runControl.signal,
         );
         if (freshness.kind === 'cancelled') canceled(context);
         else if (freshness.kind === 'error' || !freshness.value) {
@@ -162,7 +201,7 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
       }
     }
 
-    if (controller.signal.aborted) canceled(context);
+    if (runControl.signal.aborted) canceled(context);
     else {
       return await invokeWorkflowGraph(
         (input) =>
@@ -177,11 +216,10 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     }
     return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } catch {
-    if (controller.signal.aborted) canceled(context, 'underlying_call_unconfirmed');
+    if (runControl.signal.aborted) canceled(context, 'underlying_call_unconfirmed');
     else stop(context, 'The workflow could not complete safely.', 'unavailable');
     return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } finally {
-    clearTimeout(timer);
-    invocation.signal?.removeEventListener('abort', abortFromCaller);
+    if (ownsRunControl) runControl.dispose();
   }
 }
