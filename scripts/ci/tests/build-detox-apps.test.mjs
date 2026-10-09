@@ -19,6 +19,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
   const releaseDerivedData = join(directory, 'release-derived-data');
   const debugDerivedData = join(directory, 'debug-derived-data');
   const transcriptionDerivedData = join(directory, 'transcription-derived-data');
+  const nextVisitDerivedData = join(directory, 'next-visit-derived-data');
   mkdirSync(binDirectory, { recursive: true });
   writeFileSync(
     fakePnpm,
@@ -27,6 +28,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
       'printf \'%s\\n\' "$*" >> "$BUILD_CALLS"',
       'if [[ "$*" == *"ios:pods"* ]]; then exit 0; fi',
       'if [[ "$*" == *"ios.sim.release.transcription"* ]]; then output="$OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
+      'elif [[ "$*" == *"ios.sim.debug.next-visit-questions"* ]]; then output="$OROT_NEXT_VISIT_QUESTIONS_DERIVED_DATA_PATH"; suffix="Debug-iphonesimulator"',
       'elif [[ "$*" == *"ios.sim.release"* ]]; then output="$OROT_DETOX_RELEASE_DERIVED_DATA_PATH"; suffix="Release-iphonesimulator"',
       'elif [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then output="$OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH"; suffix="Debug-iphonesimulator"',
       'else exit 97; fi',
@@ -63,6 +65,7 @@ function runBuilder(profile = 'all', { skipPods = false } = {}) {
         OROT_DETOX_RELEASE_DERIVED_DATA_PATH: releaseDerivedData,
         OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH: debugDerivedData,
         OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH: transcriptionDerivedData,
+        OROT_NEXT_VISIT_QUESTIONS_DERIVED_DATA_PATH: nextVisitDerivedData,
       },
       maxBuffer: 2_000_000,
     },
@@ -114,6 +117,16 @@ test('builds the transcription probe with its own Release app output when select
     transcription.calls.join('\n'),
     /ios\.sim\.debug\.openai-provider|ios\.sim\.release\s/,
   );
+});
+
+test('builds the Next Visit Questions probe with its isolated Debug app output', () => {
+  const nextVisit = runBuilder('next-visit-questions');
+  assert.equal(nextVisit.result.status, 0, nextVisit.result.stderr + nextVisit.result.stdout);
+  assert.equal(nextVisit.calls.length, 2);
+  assert.match(nextVisit.calls[0], /ios:pods/);
+  assert.match(nextVisit.calls[1], /next-visit-questions\.detox\.config\.js/);
+  assert.match(nextVisit.calls[1], /ios\.sim\.debug\.next-visit-questions/);
+  assert.doesNotMatch(nextVisit.calls.join('\n'), /ios\.sim\.release|openai-provider/);
 });
 
 test('can install Pods before cache preparation and skip only the duplicate install', () => {

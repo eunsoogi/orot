@@ -31,6 +31,14 @@ export const APP_PROFILES = {
     binaryPath: 'Build/Products/Release-iphonesimulator/Orot.app/Orot',
     embeddedBundlePath: 'Build/Products/Release-iphonesimulator/Orot.app/main.jsbundle',
   },
+  // Keep the synthetic screen probe isolated because it builds a separate Metro entry.
+  'next-visit-questions': {
+    derivedDataPath: 'apps/mobile/ios/build-detox-next-visit-questions',
+    configuration: 'Debug-iphonesimulator',
+    productPath: 'Build/Products/Debug-iphonesimulator/Orot.app',
+    binaryPath: 'Build/Products/Debug-iphonesimulator/Orot.app/Orot',
+    embeddedBundlePath: 'Build/Products/Debug-iphonesimulator/Orot.app/main.jsbundle',
+  },
   production: {
     derivedDataPath: 'apps/mobile/ios/build-production',
     configuration: 'Debug-iphonesimulator',
