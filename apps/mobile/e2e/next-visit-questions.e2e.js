@@ -4,7 +4,7 @@ describe('synthetic next-visit questions screen', () => {
   it('reviews evidence-backed candidates and keeps the saved list after a canceled edit', async () => {
     await device.launchApp({ newInstance: true });
     const scroll = element(by.id('next-visit-questions-scroll'));
-    // Start above the focused field so Detox can reach the scroll view while editing.
+    // Keep edge gestures in the scroll content, away from the system edge and text fields.
     const scrollToEdge = edge => scroll.scrollTo(edge, 0.5, 0.2);
     // Scroll from above the keyboard until the target is visible; card heights vary.
     const scrollUntilVisible = (target, direction) =>
@@ -61,8 +61,9 @@ describe('synthetic next-visit questions screen', () => {
       element(by.id('next-visit-caveat-conflicting_records')),
     ).toBeVisible();
 
-    // Scroll down through the saved cards to reveal their trailing edit action.
-    await scrollUntilVisible(element(by.id('next-visit-saved-edit')), 'down');
+    // The edit control follows every saved card, so check it from the list end.
+    await scrollToEdge('bottom');
+    await expect(element(by.id('next-visit-saved-edit'))).toBeVisible();
     await element(by.id('next-visit-saved-edit')).tap();
     await scrollToEdge('top');
     await scrollUntilVisible(
