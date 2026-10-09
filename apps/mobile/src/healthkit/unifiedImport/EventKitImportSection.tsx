@@ -13,6 +13,11 @@ interface EventKitImportSectionProps {
   onToggle: () => void;
 }
 
+interface SaveErrorOwner {
+  readonly run: UnifiedImportRun;
+  readonly candidateKey: string;
+}
+
 /** Shows EventKit candidates in the selected import flow and saves only a confirmed choice. */
 export function EventKitImportSection({
   selected,
@@ -25,27 +30,42 @@ export function EventKitImportSection({
     string | null
   >(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveErrorOwner, setSaveErrorOwner] = useState<SaveErrorOwner | null>(
+    null,
+  );
   const candidates = progress?.candidates ?? [];
   const selectedCandidate = candidates.find(
     event => candidateKey(event) === selectedCandidateKey,
   );
+  // A late save error is visible only while its run and candidate still own this section.
+  const saveError =
+    selected &&
+    run !== null &&
+    selectedCandidate !== undefined &&
+    saveErrorOwner !== null &&
+    saveErrorOwner.run === run &&
+    saveErrorOwner.candidateKey === candidateKey(selectedCandidate);
 
   useEffect(() => {
     if (!selected || progress === null || candidates.length === 0) {
       setSelectedCandidateKey(null);
-      setSaveError(false);
+      setSaveErrorOwner(null);
     }
   }, [candidates.length, progress, selected]);
 
   async function confirmCandidate() {
     if (!selectedCandidate || !run || saving) return;
+    const confirmationRun = run;
+    const confirmationCandidateKey = candidateKey(selectedCandidate);
     setSaving(true);
-    setSaveError(false);
+    setSaveErrorOwner(null);
     try {
-      await run.confirmCalendarEvent(selectedCandidate);
+      await confirmationRun.confirmCalendarEvent(selectedCandidate);
     } catch {
-      setSaveError(true);
+      setSaveErrorOwner({
+        run: confirmationRun,
+        candidateKey: confirmationCandidateKey,
+      });
     } finally {
       setSaving(false);
     }
@@ -102,7 +122,9 @@ export function EventKitImportSection({
           <Text>{formatCalendarEventRange(selectedCandidate)}</Text>
           <Button
             disabled={saving || !run}
-            onPress={confirmCandidate}
+            onPress={() => {
+              confirmCandidate();
+            }}
             testID="unified-import-eventkit-confirm"
             title={saving ? t('calendar.saving') : t('calendar.confirm')}
           />
