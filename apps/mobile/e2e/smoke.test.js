@@ -41,7 +41,10 @@ describe('Orot mobile app', () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
-      launchArgs: { OROT_E2E_PROBE: 'ai-feature-visit-questions' },
+      launchArgs: {
+        OROT_E2E_PROBE: 'ai-feature-visit-questions',
+        OROT_STORAGE_DIAGNOSTICS: 'enabled',
+      },
     });
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
@@ -107,17 +110,7 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
-    // Return to the ordinary App entry before checking provider and external-search boundaries.
-    await device.launchApp({
-      newInstance: true,
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-      // The normal route opts into sanitized logs for repository-open CI failures.
-      launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
-    });
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
-
+    // Only Visit Questions uses probe services; every other route keeps App's default dependencies.
     await expect(element(by.id('welcome-title'))).toHaveText(
       'Orot에 오신 걸 환영해요',
     );
