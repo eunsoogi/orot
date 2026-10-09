@@ -30,7 +30,7 @@ function step(name) {
   return start < 0 ? '' : workflow.slice(start, end < 0 ? undefined : end);
 }
 
-test('validates the profile app cache before optional native dependency preparation', () => {
+test('binds validated shared fingerprints directly before optional native dependency preparation', () => {
   const cache = workflow.indexOf('- name: Cache Detox profile app product');
   const prepare = workflow.indexOf('- name: Prepare restored Detox DerivedData cache');
   const framework = workflow.indexOf('- name: Cache Detox framework outputs');
@@ -38,13 +38,33 @@ test('validates the profile app cache before optional native dependency preparat
   const build = workflow.indexOf('- name: Build Detox iOS Simulator app');
   const tests = workflow.indexOf('- name: Run Detox iOS Simulator tests');
 
-  const fingerprintPublication = restoreAction.indexOf(
-    '- name: Publish shared Detox cache fingerprints',
-  );
   const appCacheRestore = restoreAction.indexOf('- name: Restore Detox profile app product');
 
-  // The composite restore action re-emits shared hashes before its exact cache lookup.
-  assert.ok(fingerprintPublication >= 0 && fingerprintPublication < appCacheRestore);
+  // Profile jobs use the shared workflow output directly; downstream cache checks still validate it.
+  assert.doesNotMatch(restoreAction, /Publish shared Detox cache fingerprints/);
+  assert.doesNotMatch(restoreAction, /detox-cache-fingerprint-cli\.mjs/);
+  assert.ok(appCacheRestore >= 0);
+  for (const field of [
+    'build_inputs',
+    'native_dependencies',
+    'privacy_manifest_input_sha256',
+    'cocoapods_project_input_sha256',
+  ]) {
+    assert.ok(restoreAction.includes(`value: \${{ fromJSON(inputs.fingerprints).${field} }}`));
+  }
+  assert.ok(
+    workflow.includes(
+      'EXPECTED_COCOAPODS_INPUT_HASHES_JSON: ${{ format(\'{{"privacyManifest":"{0}","projectFile":"{1}"}}\', fromJSON(inputs.fingerprints).privacy_manifest_input_sha256, fromJSON(inputs.fingerprints).cocoapods_project_input_sha256) }}',
+    ),
+  );
+  assert.match(
+    workflow,
+    /EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: \$\{\{ fromJSON\(inputs\.fingerprints\)\.build_inputs \}\}/,
+  );
+  assert.match(
+    workflow,
+    /EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: \$\{\{ fromJSON\(inputs\.fingerprints\)\.native_dependencies \}\}/,
+  );
   assert.ok(cache >= 0 && cache < prepare && prepare < framework && framework < pods);
   assert.ok(pods < build && build < tests);
   // The v10 namespace prevents restoring older caches that included all Xcode build products.

@@ -75,7 +75,7 @@ function readPrecomputedDerivedDataFingerprints() {
     return value;
   };
 
-  // The profile job re-emits these hashes locally because GITHUB_ENV is job-scoped.
+  // The CLI can republish upstream hashes to later Actions steps through GITHUB_ENV.
   return {
     buildInputs: readHash('build_inputs'),
     buildInputCount: readCount('build_input_count'),

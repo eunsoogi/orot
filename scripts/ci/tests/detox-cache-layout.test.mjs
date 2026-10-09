@@ -26,9 +26,6 @@ test('validates exact app caches before restoring optional native build inputs',
   );
   const rnCache = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
   const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const fingerprintPublication = profileAppCacheRestoreAction.indexOf(
-    '- name: Publish shared Detox cache fingerprints',
-  );
   const appCacheRestore = profileAppCacheRestoreAction.indexOf(
     '- name: Restore Detox profile app product',
   );
@@ -37,8 +34,9 @@ test('validates exact app caches before restoring optional native build inputs',
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const buildEnd = profileWorkflow.indexOf('\n      - name:', build + 1);
 
-  // The shared job hashes once; each profile republishes its values before local cache lookup.
-  assert.ok(fingerprintPublication >= 0 && fingerprintPublication < appCacheRestore);
+  // The shared hashes are passed directly into the profile cache action.
+  assert.doesNotMatch(profileAppCacheRestoreAction, /Publish shared Detox cache fingerprints/);
+  assert.ok(appCacheRestore >= 0);
   assert.ok(derivedCache >= 0);
   assert.ok(
     derivedCache < prepareCache &&

@@ -48,9 +48,6 @@ test('keys CocoaPods intermediates by pinned toolchain and dependency metadata',
 test('prepares the app cache before optional CocoaPods restores and installation', () => {
   const cacheStep = profileWorkflow.indexOf('- name: Cache Detox CocoaPods intermediates');
   const podsStep = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const fingerprintPublication = profileAppCacheRestoreAction.indexOf(
-    '- name: Publish shared Detox cache fingerprints',
-  );
   const appCacheRestore = profileAppCacheRestoreAction.indexOf(
     '- name: Restore Detox profile app product',
   );
@@ -60,8 +57,13 @@ test('prepares the app cache before optional CocoaPods restores and installation
     profileWorkflow.indexOf('\n      - name:', podsStep + 1),
   );
 
-  // Shared hashes must become job-local outputs before the profile cache is restored.
-  assert.ok(fingerprintPublication >= 0 && fingerprintPublication < appCacheRestore);
+  // Shared hashes are available from the reusable-workflow input before cache validation.
+  assert.ok(appCacheRestore >= 0);
+  assert.doesNotMatch(profileAppCacheRestoreAction, /Publish shared Detox cache fingerprints/);
+  assert.match(
+    profileWorkflow,
+    /EXPECTED_COCOAPODS_INPUT_HASHES_JSON:.*fromJSON\(inputs\.fingerprints\)/,
+  );
   assert.ok(derivedDataCache >= 0);
   assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);
   assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));

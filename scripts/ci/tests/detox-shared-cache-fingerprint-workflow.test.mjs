@@ -108,7 +108,7 @@ test('computes common app fingerprints once and shares them with every profile',
   }
 });
 
-test('re-emits shared hashes before cache validation and preserves profile cache behavior', () => {
+test('passes shared hashes directly into cache validation and preserves profile behavior', () => {
   const profileCache = workflowStep(profileWorkflow, 'Cache Detox profile app product');
   const prepareCache = workflowStep(profileWorkflow, 'Prepare restored Detox DerivedData cache');
   const manifestStep = workflowStep(profileWorkflow, 'Write Detox DerivedData cache manifest');
@@ -196,19 +196,15 @@ test('re-emits shared hashes before cache validation and preserves profile cache
   assert.match(pods, /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/);
   assert.match(buildStep, /app_reusable != 'true'/);
 
-  const publishIndex = profileCacheAction.indexOf(
-    '- name: Publish shared Detox cache fingerprints',
-  );
-  const restoreIndex = profileCacheAction.indexOf('- name: Restore Detox profile app product');
-  assert.ok(publishIndex >= 0 && publishIndex < restoreIndex);
-  assert.match(profileCacheAction, /--precomputed-derived-data-only/);
+  assert.doesNotMatch(profileCacheAction, /Publish shared Detox cache fingerprints/);
+  assert.doesNotMatch(profileCacheAction, /detox-cache-fingerprint-cli\.mjs/);
   for (const field of [
     'build_inputs',
     'native_dependencies',
     'privacy_manifest_input_sha256',
     'cocoapods_project_input_sha256',
   ]) {
-    const expectedOutput = `value: \${{ steps.detox_cache_fingerprint.outputs.${field} }}`;
+    const expectedOutput = `value: \${{ fromJSON(inputs.fingerprints).${field} }}`;
     assert.ok(profileCacheAction.includes(expectedOutput));
   }
   assert.match(profileCacheAction, /uses: actions\/cache\/restore@[0-9a-f]{40}/);
