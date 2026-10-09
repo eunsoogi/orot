@@ -36,6 +36,8 @@ describe('Orot mobile app', () => {
     await device.clearKeychain();
   });
 
+  // Keep the integrated route flow in one Release case.
+  // The observed CI path exceeded the shared 120-second default.
   it('renders AI routes and opens Calendar linking from the Korean welcome screen', async () => {
     // Keep the integrated App route deterministic without contacting a provider or reading user records.
     await device.launchApp({
@@ -221,5 +223,5 @@ describe('Orot mobile app', () => {
     await expect(element(by.id('calendar-connect'))).toHaveLabel(
       '캘린더 일정 불러오기',
     );
-  });
+  }, 180_000);
 });
