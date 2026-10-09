@@ -65,7 +65,10 @@ test('captures NUL-free input while limiting symlink recovery to exact ArgumentE
     subclassOutput,
     /realdirpath_input="[^"]*node_modules\/react-native\/ReactCommon"[\s\S]*realdirpath_input_bytes=\d+/,
   );
-  assert.match(subclassOutput, /realdirpath_input_nul_offsets=none[\s\S]*realdirpath_input_nul_count=0/);
+  assert.match(
+    subclassOutput,
+    /realdirpath_input_nul_offsets=none[\s\S]*realdirpath_input_nul_count=0/,
+  );
   assert.doesNotMatch(subclassOutput, /PNPM_SYMLINK_REALDIRPATH/);
 });
 
