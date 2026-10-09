@@ -40,6 +40,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const upload = profileWorkflow.indexOf(
     '- name: Upload Detox reports, logs, screenshots, and videos',
   );
+  const uploadStep = workflowStep('Upload Detox reports, logs, screenshots, and videos');
   const testStepStart = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
   const testStepEnd = profileWorkflow.indexOf('\n      - name:', testStepStart + 1);
   const testStep = profileWorkflow.slice(testStepStart, testStepEnd);
@@ -80,6 +81,10 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   assert.match(
     testStep,
     /OROT_DETOX_RELEASE_FRESH_SIMULATOR: \$\{\{ inputs\.profile == 'release' \}\}/,
+  );
+  assert.match(
+    uploadStep,
+    /name: ci-detox-\$\{\{ inputs\.profile \}\}[\s\S]*inputs\.release_shard/,
   );
   assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(profileWorkflow, /mdutil|Spotlight|spotlight/i);

@@ -7,6 +7,8 @@ on:
         description: The isolated Detox app configuration to build and test.
         required: true
         type: string
+      # One explicit Release wrapper runs on this dedicated Simulator.
+      release_shard: { required: false, type: string, default: '' }
       fingerprints:
         description: Shared source and build fingerprints from the profile workflow.
         required: true
@@ -224,6 +226,7 @@ jobs:
         env:
           OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
           OROT_DETOX_RELEASE_FRESH_SIMULATOR: ${{ inputs.profile == 'release' }}
+          OROT_DETOX_RELEASE_SHARD: ${{ inputs.release_shard }}
         run: OROT_DETOX_TEST_LOG_LEVEL="${{ inputs.trace_logging && 'trace' || 'info' }}" scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
 
       - name: Collect simulator logs
@@ -240,7 +243,8 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ci-detox-${{ inputs.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          # Parallel Release runners need separate artifacts so each keeps its own diagnostics.
+          name: ci-detox-${{ inputs.profile }}${{ inputs.release_shard != '' && format('-{0}', inputs.release_shard) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/detox/
           if-no-files-found: error
           retention-days: 14

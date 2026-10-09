@@ -46,9 +46,8 @@ jobs:
   detox_release_e2e:
     name: Detox Release iOS E2E
     needs: [detox_cache_fingerprint]
-    uses: ./.github/workflows/detox-e2e-profile.yml
+    uses: ./.github/workflows/detox-e2e-release.yml
     with:
-      profile: release
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}

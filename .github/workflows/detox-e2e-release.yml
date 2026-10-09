@@ -1,0 +1,87 @@
+name: Detox Release E2E
+
+on:
+  workflow_call:
+    inputs:
+      fingerprints:
+        description: Shared source and build fingerprints from the profile workflow.
+        required: true
+        type: string
+      trace_logging:
+        description: Enable Detox trace logging for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+      resource_sampling:
+        description: Collect bounded process and memory samples for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      profile:
+        description: Release profile whose two shard summaries passed validation.
+        value: ${{ jobs.detox_profile.outputs.profile }}
+      test_cases:
+        description: Validated number of passing Release E2E cases.
+        value: ${{ jobs.detox_profile.outputs.test_cases }}
+      test_suites:
+        description: Validated number of passing Release Jest suites.
+        value: ${{ jobs.detox_profile.outputs.test_suites }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Matching profile and fingerprints keep both runners on the same validated Release app cache key.
+  detox_release_ui_shard:
+    name: Release UI and storage shard
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+      release_shard: release-e2e.test.js
+      fingerprints: ${{ inputs.fingerprints }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_release_data_shard:
+    name: Release stateful-data shard
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+      release_shard: release-e2e-data.test.js
+      fingerprints: ${{ inputs.fingerprints }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_profile:
+    # Always validate both runner results so a failed or skipped shard cannot disappear.
+    name: Detox release iOS E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [detox_release_ui_shard, detox_release_data_shard]
+    if: ${{ always() }}
+    outputs:
+      profile: ${{ steps.aggregate.outputs.e2e_profile }}
+      test_cases: ${{ steps.aggregate.outputs.e2e_test_cases }}
+      test_suites: ${{ steps.aggregate.outputs.e2e_test_suites }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Require complete Release shard results
+        id: aggregate
+        env:
+          UI_RESULT: ${{ needs.detox_release_ui_shard.result }}
+          UI_PROFILE: ${{ needs.detox_release_ui_shard.outputs.profile }}
+          UI_TEST_CASES: ${{ needs.detox_release_ui_shard.outputs.test_cases }}
+          UI_TEST_SUITES: ${{ needs.detox_release_ui_shard.outputs.test_suites }}
+          DATA_RESULT: ${{ needs.detox_release_data_shard.result }}
+          DATA_PROFILE: ${{ needs.detox_release_data_shard.outputs.profile }}
+          DATA_TEST_CASES: ${{ needs.detox_release_data_shard.outputs.test_cases }}
+          DATA_TEST_SUITES: ${{ needs.detox_release_data_shard.outputs.test_suites }}
+        run: |
+          node scripts/ci/require-detox-release-shard-aggregate.mjs \
+            "$UI_RESULT" "$UI_PROFILE" "$UI_TEST_CASES" "$UI_TEST_SUITES" \
+            "$DATA_RESULT" "$DATA_PROFILE" "$DATA_TEST_CASES" "$DATA_TEST_SUITES" \
+            "$GITHUB_OUTPUT"

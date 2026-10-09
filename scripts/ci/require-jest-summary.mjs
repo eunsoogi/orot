@@ -2,7 +2,11 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readReleaseShardBlocks } from './release-jest-summary.mjs';
+import {
+  readReleaseShardBlocks,
+  resolveSelectedReleaseShard,
+  validateReleaseJestConfig,
+} from './release-jest-summary.mjs';
 
 const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
 if (!logPath || !suiteName) {
@@ -52,6 +56,11 @@ if (
 
 const releaseShardBlocks = readReleaseShardBlocks(log);
 const releaseShardingRequired = process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
+const selectedReleaseShardExpectation = resolveSelectedReleaseShard({
+  suiteName,
+  releaseShardBlocks,
+  releaseShardingRequired,
+});
 if (releaseShardingRequired && !releaseShardBlocks) {
   throw new Error('e2e-release: required Release shard summary markers are missing');
 }
@@ -76,34 +85,12 @@ if (e2eSuites.includes(suiteName)) {
   );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
   const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
-  // Keep the default wrapper and optional shard partitions exhaustive against the ordered scenario inventory.
-  const expectedReleaseSuiteFiles = [
-    './storage.test.js',
-    './smoke.test.js',
-    './safe-area.test.js',
-    './storage-migration.test.js',
-    './appointments.test.js',
-    './medicalAppointmentClassification.test.js',
-    './agentMemory.test.js',
-    './graph.test.js',
-    './checkpoint.detox.e2e.js',
-  ];
-  const flattenedReleaseShards = Object.values(releaseE2EShards).flat();
-  if (
-    JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles) ||
-    JSON.stringify(flattenedReleaseShards) !== JSON.stringify(expectedReleaseSuiteFiles)
-  ) {
-    throw new Error(
-      'e2e: Release shard manifest does not include the complete ordered test inventory',
-    );
-  }
-  const expectedReleaseWrappers = ['<rootDir>/e2e/release-e2e.test.js'];
-  if (
-    JSON.stringify(releaseConfig.testMatch) !== JSON.stringify(expectedReleaseWrappers) ||
-    releaseConfig.maxWorkers !== 1
-  ) {
-    throw new Error('e2e: Release Jest config must run the ordered inventory on one worker');
-  }
+  validateReleaseJestConfig({
+    releaseSuiteFiles,
+    releaseE2EShards,
+    releaseConfig,
+    selectedReleaseShard: selectedReleaseShardExpectation,
+  });
   if (
     JSON.stringify(debugConfig.testMatch) !==
     JSON.stringify(['<rootDir>/e2e/openai-provider.e2e.js'])
@@ -159,7 +146,11 @@ if (e2eSuites.includes(suiteName)) {
       throw new Error(`${suiteName}: summary count does not match its explicit Release shards`);
     }
   } else {
-    expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
+    expectedE2ESuites = selectedReleaseShardExpectation
+      ? [selectedReleaseShardExpectation]
+      : suiteName === 'e2e'
+        ? profiles.slice(0, 2)
+        : [expectedProfile[suiteName]];
   }
   if (testSummaries.length !== expectedE2ESuites.length) {
     if (suiteName === 'e2e') {
