@@ -1,7 +1,5 @@
 module.exports = Object.freeze([
   './smoke.test.js',
-  // Exercise the #109 screen through App navigation with synthetic route operations.
-  './ai-feature-visit-questions.e2e.js',
   // Keep the Safe Area regression cases in every required Release E2E run.
   './safe-area.test.js',
   // Keep first-use probes ahead of routes that write shared app state.

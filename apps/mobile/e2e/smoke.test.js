@@ -1,5 +1,7 @@
 /* global by, device, element, waitFor */
 
+const { expect: jestExpect } = require('@jest/globals');
+
 /** Exercise a real route and confirm only when its state guard reports local edits. */
 async function openFeatureAndReturn(
   entryId,
@@ -32,14 +34,90 @@ describe('Orot mobile app', () => {
   beforeAll(async () => {
     // Detox reinstalls between spec files, but iOS keeps Keychain items after app uninstall.
     await device.clearKeychain();
-    await device.launchApp({
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-      // The normal app route opts into sanitized logs so repository-open CI failures retain their cause.
-      launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
-    });
   });
 
-  it('renders the Korean welcome screen in English and opens Calendar linking', async () => {
+  it('renders AI routes and opens Calendar linking from the Korean welcome screen', async () => {
+    // Keep the integrated App route deterministic without contacting a provider or reading user records.
+    await device.launchApp({
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'ai-feature-visit-questions' },
+    });
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+
+    // The synthetic route operations isolate the keyboard/save assertion while preserving real App navigation.
+    await element(by.id('ai-feature-visit-questions')).tap();
+    await waitFor(element(by.id('next-visit-questions-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await expect(element(by.id('navigation-back'))).toBeVisible();
+    await expect(element(by.id('next-visit-questions-back'))).not.toExist();
+    await waitFor(element(by.id('next-visit-appointment-time')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
+
+    await expect(element(by.id('next-visit-generate'))).toBeVisible();
+    await element(by.id('next-visit-generate')).tap();
+    await waitFor(element(by.id('next-visit-review-save')))
+      .toBeVisible()
+      .withTimeout(30000);
+    const scroll = element(by.id('next-visit-questions-scroll'));
+    await scroll.scrollTo('bottom');
+    const questionInput = element(by.id('next-visit-question-text-2'));
+    await questionInput.tap();
+    await expect(questionInput).toBeFocused();
+    await waitFor(element(by.id('ai-feature-visit-questions-keyboard-visible')))
+      .toExist()
+      .withTimeout(30000);
+
+    const keyboardAttributes = await element(
+      by.id('ai-feature-visit-questions-keyboard-visible'),
+    ).getAttributes();
+    const keyboardLabel =
+      keyboardAttributes.label || keyboardAttributes.text || '';
+    const keyboardMatch =
+      /^keyboard-visible:(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/u.exec(keyboardLabel);
+    if (!keyboardMatch) {
+      throw new Error('The iOS keyboard did not provide a visible frame.');
+    }
+
+    const saveAction = element(by.id('next-visit-review-save'));
+    await expect(saveAction).toBeVisible();
+    const saveFrame = (await saveAction.getAttributes()).frame;
+    if (!saveFrame) {
+      throw new Error(
+        'Detox did not return a frame for the fixed save action.',
+      );
+    }
+    // Compare the native keyboard top and action frame in iOS screen coordinates.
+    const keyboardTop = Number(keyboardMatch[1]);
+    const keyboardHeight = Number(keyboardMatch[2]);
+    jestExpect(keyboardHeight).toBeGreaterThan(0);
+    jestExpect(saveFrame.y + saveFrame.height).toBeLessThanOrEqual(keyboardTop);
+
+    await saveAction.tap();
+    await waitFor(element(by.id('next-visit-save-message')))
+      .toHaveText('검토한 질문을 이 예약에 저장했어요.')
+      .withTimeout(30000);
+    await element(by.id('navigation-back')).tap();
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+
+    // Return to the ordinary App entry before checking provider and external-search boundaries.
+    await device.launchApp({
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      // The normal route opts into sanitized logs for repository-open CI failures.
+      launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
+    });
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+
     await expect(element(by.id('welcome-title'))).toHaveText(
       'Orot에 오신 걸 환영해요',
     );
@@ -48,17 +126,6 @@ describe('Orot mobile app', () => {
     await expect(element(by.text('건강 기록과 대화하기'))).toExist();
     await expect(element(by.text('의료 자료 찾아보기'))).toExist();
     await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
-
-    // Each home card opens its feature directly without starting inference.
-    await element(by.id('ai-feature-visit-questions')).tap();
-    await waitFor(element(by.id('next-visit-questions-scroll')))
-      .toBeVisible()
-      .withTimeout(30000);
-    await expect(element(by.id('next-visit-appointment'))).toExist();
-    await element(by.id('navigation-back')).tap();
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
 
     await openFeatureAndReturn(
       'ai-feature-disease-hypotheses',

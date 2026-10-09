@@ -58,9 +58,9 @@ async function expectKeyboardOccludesScroll(scrollFrame) {
   );
 }
 
-async function expectScrollInsideRootFrame(
+async function expectScrollInsideSafeRoot(
   scrollTestID = 'safe-area-scroll',
-  rootTestID = 'safe-area-root',
+  rootTestID = 'navigation-keyboard-avoiding-root',
 ) {
   const root = await frameFor(rootTestID);
   const scroll = await frameFor(scrollTestID);
@@ -157,7 +157,7 @@ describe('safe area routes on iOS Simulator', () => {
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expect(element(by.id('recording-start'))).toBeVisible();
-    await expectScrollInsideRootFrame(
+    await expectScrollInsideSafeRoot(
       'recording-controls-scroll',
       'navigation-keyboard-avoiding-root',
     );
@@ -183,10 +183,7 @@ describe('safe area routes on iOS Simulator', () => {
       .withTimeout(30000);
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
-    await expectScrollInsideRootFrame(
-      'blood-pressure-scroll',
-      'navigation-keyboard-avoiding-root',
-    );
+    await expectScrollInsideSafeRoot('blood-pressure-scroll');
 
     const bloodPressureScroll = element(by.id('blood-pressure-scroll'));
     await bloodPressureScroll.scrollTo('bottom');
@@ -223,7 +220,7 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('safe-area-large-text-state')))
       .toHaveLabel('large-text-enabled')
       .withTimeout(30000);
-    await expectScrollInsideRootFrame();
+    await expectScrollInsideSafeRoot('safe-area-scroll', 'safe-area-root');
 
     const input = element(by.id('safe-area-keyboard-input'));
     await input.tap();
