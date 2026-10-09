@@ -3,6 +3,8 @@ import { chmod, copyFile, mkdir, mkdtemp, readFile, rename, rm, stat } from 'nod
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { archiveExtractionPlan, hasCompletePinnedAsset, pinnedArchiveEntries } from './archive.mjs';
+import { parsePlatformArgument, selectQualityTools } from './platforms.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const versions = JSON.parse(
@@ -32,17 +34,16 @@ async function sha256(path) {
 }
 
 async function ensureAsset(name, spec, runtimeEnv) {
-  const destination = join(cache, name, spec.version);
+  const destination = join(cache, spec.cachePath);
   const executable = join(destination, spec.binary);
-  try {
-    await stat(executable);
+  if (await hasCompletePinnedAsset(spec, destination)) {
     assertVersion(executable, spec.version, runtimeEnv);
     return executable;
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
   }
 
-  const parent = join(cache, name);
+  // Remove only this tool's incomplete cache so a version directory can be atomically republished.
+  await rm(destination, { recursive: true, force: true });
+  const parent = dirname(destination);
   await mkdir(parent, { recursive: true });
   const temporary = await mkdtemp(join(parent, '.install-'));
   try {
@@ -65,14 +66,9 @@ async function ensureAsset(name, spec, runtimeEnv) {
     if (actualHash !== spec.sha256)
       throw new Error(`${name} archive SHA-256 mismatch: ${actualHash}`);
 
-    let source = archive;
-    if (spec.archive === 'zip') {
-      run('unzip', ['-q', archive, '-d', temporary]);
-      source = join(temporary, spec.binary);
-    } else if (spec.archive === 'tar.gz') {
-      run('tar', ['-xzf', archive, '-C', temporary]);
-      source = join(temporary, spec.binary);
-    }
+    const extraction = archiveExtractionPlan(spec, archive, temporary);
+    if (extraction) run(extraction.command, extraction.args);
+    const source = extraction ? join(temporary, spec.binary) : archive;
     const relative = resolve(source);
     if (!relative.startsWith(`${temporary}${sep}`))
       throw new Error(`${name} archive path escapes its install directory`);
@@ -80,7 +76,24 @@ async function ensureAsset(name, spec, runtimeEnv) {
     const staging = join(temporary, 'installed');
     const stagedExecutable = join(staging, spec.binary);
     await mkdir(dirname(stagedExecutable), { recursive: true });
-    await copyFile(source, stagedExecutable);
+    const selectedEntries = pinnedArchiveEntries(spec);
+    if (selectedEntries) {
+      // Keep only the formatter and adjacent loader path from LLVM's full SDK archive.
+      for (const entry of selectedEntries) {
+        const extractedPath = resolve(temporary, entry);
+        const stagedPath = resolve(staging, entry);
+        if (
+          !extractedPath.startsWith(`${temporary}${sep}`) ||
+          !stagedPath.startsWith(`${staging}${sep}`)
+        ) {
+          throw new Error(`${name} pinned archive path escapes its install directory`);
+        }
+        await mkdir(dirname(stagedPath), { recursive: true });
+        await copyFile(extractedPath, stagedPath);
+      }
+    } else {
+      await copyFile(source, stagedExecutable);
+    }
     await chmod(stagedExecutable, 0o755);
     assertVersion(stagedExecutable, spec.version, runtimeEnv);
     // Publish a version directory only after its binary reports the pinned release.
@@ -91,75 +104,25 @@ async function ensureAsset(name, spec, runtimeEnv) {
   }
 }
 
-async function ensureJdk(runtimeEnv) {
-  const home = join(cache, 'jdk', versions.jdk.version, 'Contents/Home');
-  const java = join(home, 'bin/java');
-  try {
-    await stat(java);
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    const parent = join(cache, 'jdk');
-    await mkdir(parent, { recursive: true });
-    const temporary = await mkdtemp(join(parent, '.install-'));
-    try {
-      const archive = join(temporary, basename(new URL(versions.jdk.url).pathname));
-      run('curl', [
-        '--fail',
-        '--location',
-        '--retry',
-        '3',
-        '--connect-timeout',
-        '30',
-        '--max-time',
-        '300',
-        versions.jdk.url,
-        '--output',
-        archive,
-      ]);
-      const actualHash = await sha256(archive);
-      if (actualHash !== versions.jdk.sha256)
-        throw new Error(`JDK archive SHA-256 mismatch: ${actualHash}`);
-      run('tar', ['-xzf', archive, '-C', temporary]);
-      const extractedHome = join(temporary, 'jdk-17.0.20.1+1/Contents/Home');
-      await stat(join(extractedHome, 'bin/java'));
-      await mkdir(dirname(home), { recursive: true });
-      await rename(extractedHome, home);
-    } finally {
-      await rm(temporary, { recursive: true, force: true });
-    }
-  }
-  const env = {
-    ...runtimeEnv,
-    JAVA_HOME: home,
-    PATH: `${join(home, 'bin')}${process.platform === 'win32' ? ';' : ':'}${runtimeEnv.PATH || ''}`,
-  };
-  const version = run(java, ['-version'], { env });
-  if (!version.includes(versions.jdk.version.split('+')[0]))
-    throw new Error(`JDK reports ${version}; expected ${versions.jdk.version}`);
-  return { home, env };
-}
-
 async function main() {
-  if (platform !== versions.platform)
-    throw new Error(`Pinned quality tools support ${versions.platform}; this host is ${platform}`);
+  const { platform: requestedPlatform, remaining } = parsePlatformArgument(process.argv.slice(2));
+  if (remaining.length > 0) throw new Error('Use only --platform all or --platform linux');
+  const selection = selectQualityTools(versions, platform, requestedPlatform);
   await mkdir(cache, { recursive: true });
-  const jdk = await ensureJdk(process.env);
-  for (const [name, spec] of Object.entries(versions.tools)) await ensureAsset(name, spec, jdk.env);
 
-  const clangFormat = run('xcrun', ['--find', 'clang-format']);
-  assertVersion(clangFormat, versions.clangFormat.version, jdk.env);
-  const env = { ...jdk.env, BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile') };
+  for (const [name, spec] of Object.entries(selection.tools)) {
+    await ensureAsset(name, spec, process.env);
+  }
+  // Podfile and Gemfile remain iOS quality surfaces and use their own locked Ruby toolchain.
+  const env = { ...process.env, BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile') };
   run('bundle', ['install', '--jobs', '4', '--retry', '3'], { env });
   const rubocop = run('bundle', ['exec', 'rubocop', '--version'], { env });
-  if (!rubocop.includes('1.91.0')) throw new Error(`RuboCop reports ${rubocop}; expected 1.91.0`);
-  const groovyPackage = JSON.parse(
-    await readFile(join(root, 'node_modules/npm-groovy-lint/package.json'), 'utf8'),
-  );
-  if (groovyPackage.version !== '18.0.0')
-    throw new Error(`npm-groovy-lint package is ${groovyPackage.version}; expected 18.0.0`);
-
-  console.log(`Pinned quality tools installed for ${platform}; JDK ${versions.jdk.version}.`);
+  if (!rubocop.includes('1.91.0')) {
+    throw new Error(`RuboCop reports ${rubocop}; expected 1.91.0`);
+  }
   console.log(`Ruby tools are locked by ${env.BUNDLE_GEMFILE}.`);
+
+  console.log(`Pinned ${requestedPlatform} quality tools installed for ${platform}.`);
 }
 
 main().catch((error) => {

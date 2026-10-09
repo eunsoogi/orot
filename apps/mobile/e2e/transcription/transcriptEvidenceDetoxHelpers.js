@@ -1,4 +1,4 @@
-/* global by, element, waitFor */
+/* global by, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const EXPLICIT_AVAILABILITY_STATES = [
@@ -166,25 +166,32 @@ async function verifyFinalNativeSpeechProbe(
   }
 }
 
-async function cleanupTranscriptEvidenceIfPresent() {
-  const cleanupState = await element(
-    by.id('transcript-evidence-cleanup-available'),
+/** Uses the caller's Detox APIs so cleanup stays in the spec's active Jest context. */
+async function cleanupTranscriptEvidenceIfPresent({
+  by: detoxBy,
+  element: detoxElement,
+  waitFor: detoxWaitFor,
+}) {
+  const cleanupState = await detoxElement(
+    detoxBy.id('transcript-evidence-cleanup-available'),
   ).getAttributes();
   if (accessibilityText(cleanupState) !== 'yes') {
     return { status: 'not-required', recordingAvailable: 'no' };
   }
 
   // The synthetic recording and its derived question must not survive a failed assertion or rerun.
-  const cleanup = element(by.id('transcript-evidence-cleanup'));
-  await waitForProbeControl(cleanup);
+  const cleanup = detoxElement(detoxBy.id('transcript-evidence-cleanup'));
+  await waitForProbeControl(cleanup, detoxWaitFor);
   await cleanup.tap();
-  const setupStatus = element(by.id('transcript-evidence-setup-status'));
-  const cleanupAvailability = element(
-    by.id('transcript-evidence-cleanup-available'),
+  const setupStatus = detoxElement(
+    detoxBy.id('transcript-evidence-setup-status'),
   );
-  await waitFor(setupStatus).toHaveText('cleaned').withTimeout(30000);
-  await waitFor(cleanupAvailability).toHaveText('no').withTimeout(30000);
-  await waitForProbeControl(setupStatus);
+  const cleanupAvailability = detoxElement(
+    detoxBy.id('transcript-evidence-cleanup-available'),
+  );
+  await detoxWaitFor(setupStatus).toHaveText('cleaned').withTimeout(30000);
+  await detoxWaitFor(cleanupAvailability).toHaveText('no').withTimeout(30000);
+  await waitForProbeControl(setupStatus, detoxWaitFor);
   const status = accessibilityText(await setupStatus.getAttributes());
   const recordingAvailable = accessibilityText(
     await cleanupAvailability.getAttributes(),
@@ -200,8 +207,8 @@ function failureDescription(failure) {
     : String(failure);
 }
 
-async function waitForProbeControl(target) {
-  await waitFor(target).toBeVisible().withTimeout(30000);
+async function waitForProbeControl(target, detoxWaitFor = waitFor) {
+  await detoxWaitFor(target).toBeVisible().withTimeout(30000);
 }
 
 // Use the recording screen's single scroll container to reveal actions while the multiline editor is open.

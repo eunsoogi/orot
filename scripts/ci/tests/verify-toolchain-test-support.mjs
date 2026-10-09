@@ -19,7 +19,7 @@ export const transcriptionSimulator = {
   isAvailable: true,
 };
 
-// Stub host tools so runner-version checks stay deterministic outside macOS CI.
+// Stub host tools so the recorded runner release and pinned-tool checks stay deterministic.
 export function runToolchainCheck(profile, { availableRuntimes, availableDevices }, args = []) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-toolchain-'));
   try {
@@ -40,12 +40,13 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
     );
     writeCommand('pnpm', "printf '12.3.4\\n'");
     writeCommand(
-      'sw_vers',
-      'printf \'%s\\n\' "${SIMULATED_MACOS_VERSION:-$EXPECTED_MACOS_VERSION}"',
+      'uname',
+      'if [[ "$1" == "-s" ]]; then printf \'%s\\n\' "${SIMULATED_UNAME_SYSTEM:-Linux}"; elif [[ "$1" == "-m" ]]; then printf \'%s\\n\' "${SIMULATED_UNAME_ARCH:-x86_64}"; else exit 97; fi',
     );
+    writeCommand('sw_vers', 'printf \'%s\\n\' "${SIMULATED_MACOS_VERSION:-27.0}"');
     writeCommand(
       'xcodebuild',
-      'printf \'Xcode %s\\nBuild version %s\\n\' "$EXPECTED_XCODE_VERSION" "${SIMULATED_XCODE_BUILD_VERSION:-test}"',
+      'printf \'Xcode %s\\nBuild version %s\\n\' "${SIMULATED_XCODE_VERSION:-$EXPECTED_XCODE_VERSION}" "${SIMULATED_XCODE_BUILD_VERSION:-test}"',
     );
     writeCommand(
       'xcrun',

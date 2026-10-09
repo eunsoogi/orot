@@ -1,77 +1,92 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
-import RecordingControls from '../../src/recording/RecordingControls';
-import { recordingExportService } from '../../src/recording/recordingExportService';
-import type { CompletedRecording } from '../../src/recording/recordingTypes';
-import {
-  armSyntheticExportCancellation,
-  getSyntheticExportResidueCount,
-  prepareSyntheticExportResidue,
-} from '../../src/recording/nativeRecordingBridge';
-import { isSyntheticTranscriptionFixtureUnchanged } from '../../src/recording/syntheticRecordingExportProbeBridge';
+import { Button, NativeModules, StyleSheet, Text, View } from 'react-native';
+import RecordingScreen from '../../src/recording/RecordingScreen';
 import {
   cleanupSyntheticTranscriptRecording,
   createTranscriptEvidenceProbeService,
   prepareSyntheticTranscriptRecording,
   type TranscriptEvidenceProbeService,
 } from './transcriptEvidenceProbeSupport';
-import { installAudioExportProbeDiagnostics } from './recordingExportProbeDiagnostics';
-import { RecordingExportAuthorizationStatus } from './RecordingExportAuthorizationStatus';
+import {
+  seedTranscriptDeletionEvidence,
+  verifyTranscriptDeletionAfterRelaunch,
+} from './transcriptDeletionProbeSupport';
 
 type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
 type CorrectionStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
+function deletionVerificationSourceId(): string | null {
+  const settingsManager = (
+    NativeModules as unknown as {
+      SettingsManager?: {
+        settings?: Record<string, unknown>;
+        getConstants?: () => { settings?: Record<string, unknown> };
+      };
+    }
+  ).SettingsManager;
+  const value =
+    settingsManager?.settings?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID ??
+    settingsManager?.getConstants?.().settings
+      ?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID;
+  return typeof value === 'string' ? value : null;
+}
+
 export function TranscriptEvidenceProbe() {
+  const deletionVerificationId = deletionVerificationSourceId();
   const [status, setStatus] = useState<SetupStatus>('idle');
-  const [syntheticRecording, setSyntheticRecording] =
-    useState<CompletedRecording | null>(null);
-  const recordingSourceId = syntheticRecording?.id ?? null;
+  const [recordingSourceId, setRecordingSourceId] = useState<string | null>(
+    null,
+  );
   const [playback, setPlayback] = useState<{
     startMs: number;
     endMs: number;
     actualStartMs: number;
   } | null>(null);
   const [memoryStatus, setMemoryStatus] = useState('not-checked');
-  const [exportResidueCount, setExportResidueCount] = useState('unknown');
-  const [exportSourceStatus, setExportSourceStatus] = useState('not-checked');
-  const [audioExportDiagnostic, setAudioExportDiagnostic] =
-    useState('not-observed');
   const [correctionStatus, setCorrectionStatus] =
     useState<CorrectionStatus>('idle');
+  const [deletionSeedStatus, setDeletionSeedStatus] = useState('not-seeded');
+  const [deletionStatus, setDeletionStatus] = useState(
+    deletionVerificationId ? 'checking' : 'not-requested',
+  );
   const [error, setError] = useState('');
   const service: TranscriptEvidenceProbeService = useMemo(
     () =>
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
     [setCorrectionStatus, setPlayback],
   );
-  // This probe-only wrapper records a safe rejection code and rethrows the original failure.
-  useEffect(
-    () =>
-      installAudioExportProbeDiagnostics(
-        recordingExportService,
-        setAudioExportDiagnostic,
-      ),
-    [setAudioExportDiagnostic],
+  // On relaunch, wait for persisted deletion checks before opening the real recording list.
+  const showRecordingScreen = Boolean(
+    (recordingSourceId && status === 'ready') ||
+    (deletionVerificationId && deletionStatus === 'passed'),
   );
-  const syntheticCompletedRecording: CompletedRecording | null =
-    syntheticRecording === null
-      ? null
-      : {
-          id: syntheticRecording.id,
-          durationMs: syntheticRecording.durationMs,
-          startedAt: syntheticRecording.startedAt,
-          completedAt: syntheticRecording.completedAt,
-          fileProtection: syntheticRecording.fileProtection,
-          excludedFromBackup: syntheticRecording.excludedFromBackup,
-        };
+
+  useEffect(() => {
+    if (!deletionVerificationId) return;
+    let active = true;
+    verifyTranscriptDeletionAfterRelaunch(deletionVerificationId).then(
+      () => {
+        if (active) setDeletionStatus('passed');
+      },
+      failure => {
+        console.error(
+          'TRANSCRIPT_DELETION_RELAUNCH_VERIFICATION_FAILED',
+          failure instanceof Error ? failure.message : String(failure),
+        );
+        if (active) setDeletionStatus('failed');
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [deletionVerificationId]);
 
   async function prepare(): Promise<void> {
     setStatus('preparing');
     setError('');
     try {
-      const recording = await prepareSyntheticTranscriptRecording();
-      setSyntheticRecording(recording);
+      setRecordingSourceId(await prepareSyntheticTranscriptRecording());
       setStatus('ready');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -84,7 +99,7 @@ export function TranscriptEvidenceProbe() {
     setStatus('cleaning');
     try {
       await cleanupSyntheticTranscriptRecording(recordingSourceId);
-      setSyntheticRecording(null);
+      setRecordingSourceId(null);
       setStatus('cleaned');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -104,38 +119,21 @@ export function TranscriptEvidenceProbe() {
     }
   }
 
-  async function prepareExportResidue(): Promise<void> {
+  async function seedDeletionEvidence(): Promise<void> {
+    if (!recordingSourceId) return;
+    setDeletionSeedStatus('seeding');
+    setError('');
     try {
-      setExportResidueCount(String(await prepareSyntheticExportResidue()));
+      await seedTranscriptDeletionEvidence(recordingSourceId);
+      setDeletionSeedStatus('seeded');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
-    }
-  }
-
-  async function refreshExportResidue(): Promise<void> {
-    try {
-      setExportResidueCount(String(await getSyntheticExportResidueCount()));
-      if (recordingSourceId) {
-        const unchanged =
-          await isSyntheticTranscriptionFixtureUnchanged(recordingSourceId);
-        setExportSourceStatus(unchanged ? 'unchanged' : 'changed-or-missing');
-      }
-    } catch (failure) {
-      setExportSourceStatus('failed');
-      setError(failure instanceof Error ? failure.message : String(failure));
-    }
-  }
-
-  async function armExportCancellation(): Promise<void> {
-    try {
-      await armSyntheticExportCancellation();
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
+      setDeletionSeedStatus('failed');
     }
   }
 
   return (
-    <View style={recordingSourceId ? styles.recordingScreen : undefined}>
+    <View style={showRecordingScreen ? styles.recordingScreen : undefined}>
       <Button
         disabled={
           status === 'preparing' ||
@@ -154,37 +152,14 @@ export function TranscriptEvidenceProbe() {
       <Text testID="transcript-evidence-cleanup-available">
         {recordingSourceId ? 'yes' : 'no'}
       </Text>
-      <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
-      {/* Simulator-only controls verify cleanup of temporary export files across a fresh app process. */}
-      <Button
-        onPress={prepareExportResidue}
-        testID="recording-export-prepare-residue"
-        title="Prepare interrupted export cleanup"
-      />
-      <Button
-        onPress={refreshExportResidue}
-        testID="recording-export-read-residue"
-        title="Read export temp files"
-      />
-      <Button
-        onPress={armExportCancellation}
-        testID="recording-export-arm-simulated-cancel"
-        title="Simulate export cancellation"
-      />
-      <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
-      <Text testID="recording-export-source-status">{exportSourceStatus}</Text>
-      <RecordingExportAuthorizationStatus recordingId={recordingSourceId} />
-      {syntheticRecording ? (
-        // This is fixture metadata only; Simulator values are not device protection evidence.
-        <Text testID="transcript-evidence-source-security">
-          fixture-protection={syntheticRecording.fileProtection}{' '}
-          backup-excluded=
-          {String(syntheticRecording.excludedFromBackup)}
-        </Text>
-      ) : null}
-      <Text testID="recording-export-probe-diagnostic">
-        {audioExportDiagnostic}
+      <Text testID="transcript-evidence-source-id">
+        {recordingSourceId ?? ''}
       </Text>
+      <Text testID="transcript-evidence-deletion-seed-status">
+        {deletionSeedStatus}
+      </Text>
+      <Text testID="transcript-evidence-deletion-status">{deletionStatus}</Text>
+      <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
       <Text testID="transcript-evidence-correction-status">
         {correctionStatus}
       </Text>
@@ -194,6 +169,16 @@ export function TranscriptEvidenceProbe() {
           onPress={verifyMemoryInvalidation}
           testID="transcript-evidence-verify-memory"
           title="Verify transcript memory invalidation"
+        />
+      ) : null}
+      {recordingSourceId ? (
+        <Button
+          disabled={
+            deletionSeedStatus === 'seeding' || deletionSeedStatus === 'seeded'
+          }
+          onPress={seedDeletionEvidence}
+          testID="transcript-evidence-seed-deletion"
+          title="Seed deletion search evidence"
         />
       ) : null}
       {playback ? (
@@ -209,40 +194,14 @@ export function TranscriptEvidenceProbe() {
           title="Clean up test recording"
         />
       ) : null}
-      {recordingSourceId &&
-      status === 'ready' &&
-      syntheticCompletedRecording ? (
-        // A completed synthetic recording drives the same controls branch as a saved user recording.
-        <RecordingControls
-          onBack={() => {}}
-          stateReady
-          status="completed"
-          durationMs={syntheticCompletedRecording.durationMs}
-          consentAcknowledged
-          onToggleConsent={() => {}}
-          busy={false}
-          onStart={() => {}}
-          onPause={() => {}}
-          onResume={() => {}}
-          onStop={() => {}}
-          lastRecording={syntheticCompletedRecording}
-          sourceSaved
-          onRetrySourceSave={() => {}}
-          error=""
-          syntheticProbeAvailable={false}
-          syntheticProbeReady={false}
-          onPrepareSyntheticProbe={() => {}}
-          onPrepareSyntheticStartFailure={() => {}}
-          onSendInterruption={() => {}}
-          probeError=""
-          transcriptService={service}
-        />
+      {showRecordingScreen ? (
+        <RecordingScreen onBack={() => {}} transcriptService={service} />
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Keep production recording controls in a bounded parent so Detox can reach export actions on short screens.
+  // Give the production screen a bounded parent so its own recording-controls scroll can reach the transcript.
   recordingScreen: { flex: 1, width: '100%' },
 });

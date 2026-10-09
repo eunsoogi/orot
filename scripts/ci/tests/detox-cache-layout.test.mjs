@@ -9,6 +9,11 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+// Keep the CocoaPods command assertions with the helper that now owns them.
+const cocoapodsInstaller = readFileSync(
+  join(repositoryRoot, 'scripts/ci/install-detox-cocoapods.sh'),
+  'utf8',
+);
 
 test('validates exact app caches before restoring optional native build inputs', () => {
   const framework = profileWorkflow.indexOf('- name: Build Detox iOS framework cache');
@@ -43,7 +48,16 @@ test('validates exact app caches before restoring optional native build inputs',
   assert.match(rnCacheStep, /orot-rn-ios-artifacts-v3-/);
   assert.match(rnCacheStep, /steps\.rn_artifact_fingerprint\.outputs\.fingerprint/);
   assert.doesNotMatch(rnCacheStep, /hashFiles\(/);
-  assert.match(profileWorkflow.slice(pods, build), /build-detox-apps\.sh pods/);
+  assert.match(
+    profileWorkflow.slice(pods, build),
+    /run: bash scripts\/ci\/install-detox-cocoapods\.sh/,
+  );
+  assert.match(cocoapodsInstaller, /scripts\/ci\/build-detox-apps\.sh pods/);
+  assert.ok(
+    cocoapodsInstaller.indexOf('verify-toolchain.sh') <
+      cocoapodsInstaller.indexOf('build-detox-apps.sh pods'),
+    'Pods installation must follow CocoaPods validation',
+  );
   assert.match(
     profileWorkflow.slice(build, buildEnd),
     /build-detox-apps\.sh "\$\{\{ inputs\.profile \}\}" --skip-pods/,

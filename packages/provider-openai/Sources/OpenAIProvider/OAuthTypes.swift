@@ -84,6 +84,20 @@ public enum ChatGPTOAuthConstants {
     public static let directPlanScope = "chatgpt.tokens.use.direct"
     public static let scopes = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
     public static let callbackPath = "/auth/callback"
+    /// Contains no OAuth result; the active authentication session uses it only to resume Orot.
+    public static let appReturnURL = URL(string: "orot://oauth/complete")!
+
+    /// Rejects any result data or URL components outside the fixed system-session callback.
+    public static func isValidAppReturnURL(_ url: URL) -> Bool {
+        url.scheme == appReturnURL.scheme
+            && url.host == appReturnURL.host
+            && url.path == appReturnURL.path
+            && url.query == nil
+            && url.fragment == nil
+            && url.user == nil
+            && url.password == nil
+            && url.port == nil
+    }
 }
 
 struct OpenIDConfiguration: Decodable, Sendable {

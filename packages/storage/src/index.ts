@@ -1,8 +1,13 @@
 export { STORAGE_TABLES, isRecordKind, parseRecord } from './contracts';
 export type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
 export { CURRENT_SCHEMA_VERSION, runMigrations } from './migrations';
-export { resolveDatabaseKey } from './key';
-export type { RandomByteSource, SecureKeyStore } from './key';
+export {
+  ExistingDatabaseFileMissingError,
+  ExistingDatabaseKeyMissingError,
+  PartialDatabaseFileSetError,
+  resolveDatabaseKey,
+} from './key';
+export type { DatabaseFileState, RandomByteSource, SecureKeyStore } from './key';
 export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
 export { createRecordRepository } from './repository';

@@ -22,10 +22,19 @@ RCT_EXTERN_METHOD(installSyntheticTranscriptionFixture : (NSString *)base64 reso
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeSyntheticTranscriptionFixture : (NSString *)recordingID resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+// Keep export and deletion declarations aligned with the Swift promise methods on RecordingModule.
 RCT_EXTERN_METHOD(shareRecordingAudio : (NSString *)recordingID resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(shareRecordingTranscript : (NSString *)text resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(reconcileRecordingDeletions : (NSArray<NSString *> *)sourceIDs resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stageRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(restoreRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(commitRecordingDeletion : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 
 #if DEBUG && TARGET_OS_SIMULATOR
 RCT_EXTERN_METHOD(prepareSyntheticCapture : (RCTPromiseResolveBlock)

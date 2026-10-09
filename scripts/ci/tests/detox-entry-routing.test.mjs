@@ -42,6 +42,12 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'graph' }), 'graph');
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'checkpoint' }), 'checkpoint');
   assert.equal(selectEntryRoute({ OROT_E2E_PROBE: 'appointments' }), 'appointments');
+  const classificationProbe = 'medical-appointment-classification';
+  assert.equal(selectEntryRoute({ OROT_E2E_PROBE: classificationProbe }), classificationProbe);
+  assert.equal(
+    selectEntryRoute({ OROT_E2E_PROBE: 'safe-area-blood-pressure' }),
+    'safe-area-blood-pressure',
+  );
   assert.throws(() => selectEntryRoute({ OROT_E2E_PROBE: 'typo' }), /Unsupported OROT_E2E_PROBE/);
   assert.throws(
     () => selectEntryRoute({ OROT_E2E_PROBE: 'graph', OROT_AGENT_MEMORY_PROBE: 'fresh' }),
@@ -83,6 +89,30 @@ test('selects the E2E-only appointments screen backed by encrypted local storage
   assert.doesNotMatch(appointmentsTest, /appointments-probe-ready/);
 });
 
+test('routes the blood-pressure Safe Area probe through App with synthetic observations', () => {
+  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
+  const probeEntry = readFileSync(
+    join(repositoryRoot, 'apps/mobile/e2e/safeAreaBloodPressureProbeEntry.tsx'),
+    'utf8',
+  );
+  const safeAreaTest = readFileSync(
+    join(repositoryRoot, 'apps/mobile/e2e/safe-area.test.js'),
+    'utf8',
+  );
+
+  assert.match(
+    router,
+    /case 'safe-area-blood-pressure':[ \t]*\n(?:[ \t]*\/\/[^\n]*\n)?[ \t]*require\('\.\/safeAreaBloodPressureProbeEntry'\)/,
+  );
+  assert.match(
+    probeEntry,
+    /<App[\s\S]*loadBloodPressureObservations=\{loadSyntheticObservations\}/,
+  );
+  assert.match(probeEntry, /Synthetic Safe Area fixture/);
+  assert.match(safeAreaTest, /OROT_E2E_PROBE: 'safe-area-blood-pressure'/);
+  assert.match(safeAreaTest, /expectScrollInsideSafeRoot\('blood-pressure-scroll'\)/);
+});
+
 test('keeps the Release smoke on Calendar linking while manual CRUD stays in its probe', () => {
   const smokeTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/smoke.test.js'), 'utf8');
 
@@ -95,14 +125,19 @@ test('keeps the Release smoke on Calendar linking while manual CRUD stays in its
 
 test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
+  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
+  assert.ok(router.includes("case 'medical-appointment-classification':"));
+  assert.ok(router.includes("require('./medicalAppointmentClassificationProbeEntry')"));
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
   assert.equal(releaseJestConfig.bail, 1);
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
+    './safe-area.test.js',
     './appointments.test.js',
+    './medicalAppointmentClassification.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',

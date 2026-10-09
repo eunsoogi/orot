@@ -16,9 +16,11 @@ requests, responses, and errors at their boundary.
 - `ProviderRegistry` stores language-model, transcription, and embedding
   providers by kind and id. `InMemoryProviderRegistry` rejects duplicate ids
   within one kind and validates advertised streaming methods.
-- `TelemetrySink` receives only provider id, operation, outcome, duration, and
-  normalized error code. Prompts, media, tool arguments, responses, and secrets
-  are not part of its event contract.
+- `TelemetrySink` receives only an allowlisted operation, outcome, duration,
+  and normalized error code. It has no provider, account, operation-run, or
+  source identifiers; prompts, media, tool arguments, responses, and secrets
+  are not part of its event contract. The external sink adapter is disabled
+  unless the caller explicitly opts in, and rejects unrecognized event fields.
 
 Provider operations use `ProviderResult<T>` for either a normalized value or a
 `ProviderError`. Adapter code should map vendor errors to the shared error

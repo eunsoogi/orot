@@ -10,7 +10,8 @@
             guard ChatGPTPlanFixtureState.shared.isActive,
                   let url = request.url,
                   url.host == "api.openai.com" else { return false }
-            return url.path == "/v1/models" || url.path == "/v1/responses"
+            // Claim every provider-host request while synthetic state is active; unknown routes return a local 404.
+            return true
         }
 
         override class func canonicalRequest(for request: URLRequest) -> URLRequest {

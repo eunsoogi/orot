@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { buildInventory, formatInventory, getPolicy, getRepositoryRoot } from './inventory.mjs';
 import { runFormat } from './format.mjs';
 import { runLint } from './lint.mjs';
+import { parsePlatformArgument, selectPlatformEntries, selectQualityTools } from './platforms.mjs';
 import { createQualityTools, requireFile } from './process.mjs';
 
 const root = getRepositoryRoot();
@@ -11,48 +12,40 @@ const versions = JSON.parse(
   await readFile(new URL('./tool-versions.json', import.meta.url), 'utf8'),
 );
 const policy = getPolicy();
-const javaHome = join(cache, 'jdk', versions.jdk.version, 'Contents/Home');
-const binaryPaths = Object.fromEntries(
-  Object.entries(versions.tools).map(([name, spec]) => [
-    name,
-    join(cache, name, spec.version, spec.binary),
-  ]),
-);
-
 const { capture } = createQualityTools(root);
 
-function qualityEnvironment() {
-  const missing = Object.values(binaryPaths).filter((path) => !path || !requireFile(path));
-  if (!requireFile(join(javaHome, 'bin/java')) || missing.length > 0) {
-    throw new Error('Pinned tools are missing; run pnpm install and pnpm quality:setup first');
+function qualityEnvironment(selection) {
+  // CI selects one platform partition; only its pinned tools should be required on that runner.
+  const binaryPaths = Object.fromEntries(
+    Object.entries(selection.tools).map(([name, spec]) => [
+      name,
+      join(cache, spec.cachePath, spec.binary),
+    ]),
+  );
+  const missing = Object.values(binaryPaths).filter((path) => !requireFile(path));
+  if (missing.length > 0) {
+    throw new Error(
+      `Pinned tools are missing; run pnpm install and pnpm quality:setup -- --platform ${selection.platform}`,
+    );
   }
-  const pathEntries = [
-    join(javaHome, 'bin'),
-    ...Object.values(binaryPaths).map((path) => dirname(path)),
-  ];
+  const pathEntries = Object.values(binaryPaths).map((path) => dirname(path));
+  // Keep the pinned Ruby bundle separate while prepending only selected tools to the inherited PATH.
   const env = {
     ...process.env,
     BUNDLE_GEMFILE: join(root, 'scripts/quality/Gemfile'),
-    JAVA_HOME: javaHome,
     PATH: [...pathEntries, process.env.PATH || ''].join(':'),
   };
   for (const [name, executable] of Object.entries(binaryPaths)) {
     const output = capture(executable, ['--version'], env);
-    if (!output.includes(versions.tools[name].version))
+    if (!output.includes(selection.tools[name].version)) {
       throw new Error(`${name} version mismatch: ${output}`);
+    }
   }
-  const java = capture(join(javaHome, 'bin/java'), ['-version'], env);
-  if (!java.includes(versions.jdk.version.split('+')[0]))
-    throw new Error(`JDK version mismatch: ${java}`);
-  const clang = capture('xcrun', ['--find', 'clang-format'], env);
-  const clangVersion = capture(clang, ['--version'], env);
-  if (!clangVersion.includes(versions.clangFormat.version))
-    throw new Error(`clang-format version mismatch: ${clangVersion}`);
   const prettier = capture('pnpm', ['exec', 'prettier', '--version'], env);
   if (prettier !== '3.9.9') throw new Error(`Prettier version mismatch: ${prettier}`);
   const eslint = capture('pnpm', ['exec', 'eslint', '--version'], env);
   if (!eslint.includes('8.57.1')) throw new Error(`ESLint version mismatch: ${eslint}`);
-  return { env, clang };
+  return { env };
 }
 
 function entriesWithout(entries, rawOptions, command) {
@@ -86,25 +79,46 @@ async function main() {
   if (!['inventory', 'lint', 'format:check', 'format:write'].includes(command)) {
     throw new Error('Use inventory, lint, format:check, or format:write');
   }
-  const entries = entriesWithout(await buildInventory(), process.argv.slice(3), command);
+  const { platform, remaining } = parsePlatformArgument(process.argv.slice(3));
+  if (command === 'inventory' && (platform !== 'all' || remaining.length > 0)) {
+    throw new Error('Run the full inventory without platform filters or path exclusions');
+  }
+  const inventory = await buildInventory();
+  const platformEntries = selectPlatformEntries(inventory, policy, platform);
+  const entries = entriesWithout(platformEntries, remaining, command);
   if (command === 'inventory') {
     console.log(formatInventory(entries));
     return;
   }
-  const { env, clang } = qualityEnvironment();
+  if (!entries.some((entry) => entry.kind === 'surface')) {
+    throw new Error(`No maintained files are selected for the ${platform} quality invocation`);
+  }
+  const selection = selectQualityTools(versions, `${process.platform}-${process.arch}`, platform);
+  const { env } = qualityEnvironment(selection);
   console.log(
-    `Checking ${entries.filter((entry) => entry.kind === 'surface').length} maintained files across ${Object.keys(policy.surfaces).length} configured surfaces.`,
+    `Checking ${entries.filter((entry) => entry.kind === 'surface').length} maintained files across ${Object.keys(policy.surfaces).length} configured surfaces on ${platform}.`,
   );
   if (command === 'lint') {
-    runLint({ entries, env, clang, binaryPaths, root });
+    const binaryPaths = Object.fromEntries(
+      Object.entries(selection.tools).map(([name, spec]) => [
+        name,
+        join(cache, spec.cachePath, spec.binary),
+      ]),
+    );
+    runLint({ entries, env, clang: binaryPaths.clangFormat, binaryPaths, root });
   } else {
+    const binaryPaths = Object.fromEntries(
+      Object.entries(selection.tools).map(([name, spec]) => [
+        name,
+        join(cache, spec.cachePath, spec.binary),
+      ]),
+    );
     await runFormat({
       entries,
       mode: command,
       env,
-      clang,
+      clang: binaryPaths.clangFormat,
       root,
-      cache,
       binaryPaths,
       policy,
     });

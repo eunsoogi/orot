@@ -11,7 +11,8 @@ export function getDetoxCacheToolchain() {
   const toolchain = {
     runnerOs: process.env.DETOX_CACHE_RUNNER_OS,
     runnerArch: process.env.DETOX_CACHE_RUNNER_ARCH,
-    macosVersion: process.env.MACOS_VERSION || process.env.EXPECTED_MACOS_VERSION,
+    // Require the observed runner release so cache identity cannot silently use a configuration pin.
+    macosVersion: process.env.MACOS_VERSION,
     nodeVersion: process.env.EXPECTED_NODE_VERSION,
     pnpmVersion: process.env.EXPECTED_PNPM_VERSION,
     rubyVersion: process.env.EXPECTED_RUBY_VERSION,

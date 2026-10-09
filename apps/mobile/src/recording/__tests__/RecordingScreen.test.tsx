@@ -215,7 +215,9 @@ test('withholds source linking when the completed file protection is unverified'
   await fireEvent.press(screen.getByTestId('recording-stop'));
 
   expect(
-    await screen.findByText(/보호 상태를 확인하지 못해 기록 연결을 보류했어요/),
+    await screen.findByText(
+      /파일 보호 또는 기기 백업 포함 여부를 확인하지 못해 기록 연결을 보류했어요/,
+    ),
   ).toBeTruthy();
   expect(screen.queryByTestId('recording-retry-save')).toBeNull();
 });

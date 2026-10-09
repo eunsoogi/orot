@@ -199,7 +199,7 @@ extension RecordingFileSecurity {
         } catch RecordingFileSecurityError.recordingNotFound {
             throw SpeechTranscriptionFailure("RECORDING_FILE_MISSING", "The saved recording file was not found.")
         } catch RecordingFileSecurityError.protectionNotApplied,
-            RecordingFileSecurityError.backupExclusionNotApplied
+            RecordingFileSecurityError.backupEligibilityNotApplied
         {
             throw SpeechTranscriptionFailure("AUDIO_STORAGE_UNPROTECTED", "The saved recording protection could not be verified.")
         } catch let failure as SpeechTranscriptionFailure {

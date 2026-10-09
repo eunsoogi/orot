@@ -1,48 +1,99 @@
 {
-  "schemaVersion": 1,
-  "platform": "darwin-arm64",
-  "jdk": {
-    "version": "17.0.20.1+1",
-    "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.20.1_1.tar.gz",
-    "sha256": "196d13ba5f10414bef7f6a05a9b3f00edacb18ebacef2b99485db9e2ee18f0e8"
-  },
+  "schemaVersion": 3,
   "tools": {
     "swiftformat": {
       "version": "0.62.1",
-      "url": "https://github.com/nicklockwood/SwiftFormat/releases/download/0.62.1/swiftformat.zip",
-      "sha256": "7cb1cb1fae04932047c7015441c543848e8e60e1572d808d080e0a1f1661114a",
-      "archive": "zip",
-      "binary": "swiftformat"
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/nicklockwood/SwiftFormat/releases/download/0.62.1/swiftformat.zip",
+          "sha256": "7cb1cb1fae04932047c7015441c543848e8e60e1572d808d080e0a1f1661114a",
+          "archive": "zip",
+          "binary": "swiftformat"
+        },
+        "linux-x64": {
+          "url": "https://github.com/nicklockwood/SwiftFormat/releases/download/0.62.1/swiftformat_linux.zip",
+          "sha256": "61ff55f3581e2144a4ad114831167102c38be853df75c1477d20b40a8e8120aa",
+          "archive": "zip",
+          "binary": "swiftformat_linux"
+        }
+      }
     },
     "shellcheck": {
       "version": "0.11.0",
-      "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.gz",
-      "sha256": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
-      "archive": "tar.gz",
-      "binary": "shellcheck-v0.11.0/shellcheck"
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.gz",
+          "sha256": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
+          "archive": "tar.gz",
+          "binary": "shellcheck-v0.11.0/shellcheck"
+        },
+        "linux-x64": {
+          "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz",
+          "sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198",
+          "archive": "tar.xz",
+          "binary": "shellcheck-v0.11.0/shellcheck"
+        }
+      }
     },
     "shfmt": {
       "version": "3.13.1",
-      "url": "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_darwin_arm64",
-      "sha256": "9680526be4a66ea1ffe988ed08af58e1400fe1e4f4aef5bd88b20bb9b3da33f8",
-      "binary": "shfmt"
-    },
-    "ktlint": {
-      "version": "1.8.0",
-      "url": "https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint",
-      "sha256": "a3fd620207d5c40da6ca789b95e7f823c54e854b7fade7f613e91096a3706d75",
-      "binary": "ktlint"
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_darwin_arm64",
+          "sha256": "9680526be4a66ea1ffe988ed08af58e1400fe1e4f4aef5bd88b20bb9b3da33f8",
+          "binary": "shfmt"
+        },
+        "linux-x64": {
+          "url": "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64",
+          "sha256": "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1",
+          "binary": "shfmt"
+        }
+      }
     },
     "actionlint": {
       "version": "1.7.12",
-      "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
-      "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
-      "archive": "tar.gz",
-      "binary": "actionlint"
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+          "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+          "archive": "tar.gz",
+          "binary": "actionlint"
+        },
+        "linux-x64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+          "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+          "archive": "tar.gz",
+          "binary": "actionlint"
+        }
+      }
+    },
+    "clangFormat": {
+      "version": "21.1.8",
+      "platform": "linux",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-macOS-ARM64.tar.xz",
+          "sha256": "b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669",
+          "archive": "tar.xz",
+          "binary": "LLVM-21.1.8-macOS-ARM64/bin/clang-format",
+          "archiveEntries": ["LLVM-21.1.8-macOS-ARM64/bin/clang-format"]
+        },
+        "linux-x64": {
+          "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-X64.tar.xz",
+          "sha256": "b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b",
+          "archive": "tar.xz",
+          "binary": "LLVM-21.1.8-Linux-X64/bin/clang-format",
+          "archiveEntries": [
+            "LLVM-21.1.8-Linux-X64/bin/clang-format",
+            "LLVM-21.1.8-Linux-X64/lib/libclang-cpp.so.21.1"
+          ]
+        }
+      }
     }
   },
-  "clangFormat": {
-    "version": "21.0.0",
-    "source": "Xcode 27.0 toolchain via xcrun"
-  }
+  "supportedHosts": ["darwin-arm64", "linux-x64"]
 }

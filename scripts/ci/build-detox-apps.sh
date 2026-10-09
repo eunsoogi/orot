@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -gt 2 ]]; then
-  printf 'Usage: %s [all|release|openai-provider|transcription|pods] [--skip-pods]\n' "$0" >&2
+  printf 'Usage: %s [all|release|openai-provider|transcription|next-visit-questions|pods] [--skip-pods]\n' "$0" >&2
   exit 2
 fi
 
@@ -11,13 +11,13 @@ skip_pods=false
 if [[ "${2:-}" == "--skip-pods" ]]; then
   skip_pods=true
 elif [[ $# -eq 2 ]]; then
-  printf 'Unknown build option: %s\nUsage: %s [all|release|openai-provider|pods] [--skip-pods]\n' "$2" "$0" >&2
+  printf 'Unknown build option: %s\nUsage: %s [all|release|openai-provider|transcription|next-visit-questions|pods] [--skip-pods]\n' "$2" "$0" >&2
   exit 2
 fi
 case "$profile" in
-  all | release | openai-provider | transcription | pods) ;;
+  all | release | openai-provider | transcription | next-visit-questions | pods) ;;
   *)
-    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider|transcription|pods] [--skip-pods]\n' "$profile" "$0" >&2
+    printf 'Unknown Detox build profile: %s\nUsage: %s [all|release|openai-provider|transcription|next-visit-questions|pods] [--skip-pods]\n' "$profile" "$0" >&2
     exit 2
     ;;
 esac
@@ -30,6 +30,7 @@ host_arch="$(uname -m)"
 release_derived_data_path="${OROT_DETOX_RELEASE_DERIVED_DATA_PATH:-ios/build-detox-release}"
 openai_derived_data_path="${OROT_OPENAI_PROVIDER_DERIVED_DATA_PATH:-ios/build-detox-openai-provider}"
 transcription_derived_data_path="${OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH:-ios/build-detox-transcription}"
+next_visit_derived_data_path="${OROT_NEXT_VISIT_QUESTIONS_DERIVED_DATA_PATH:-ios/build-detox-next-visit-questions}"
 case "$host_arch" in
   arm64 | x86_64) ;;
   *)
@@ -47,6 +48,12 @@ case "$host_arch:$node_arch" in
     ;;
 esac
 
+# Script-level tests inject a portable timer; GitHub builds keep the Darwin host timer.
+time_command=/usr/bin/time
+if [[ "${GITHUB_ACTIONS:-false}" != true && -n "${OROT_DETOX_TEST_TIME_COMMAND:-}" ]]; then
+  time_command="$OROT_DETOX_TEST_TIME_COMMAND"
+fi
+
 snapshot_host_resources() {
   local stage="$1"
   printf 'DETOX_BUILD_RESOURCES stage=%s utc=%s host_arch=%s node_arch=%s logical_cpus=%s physical_memory_bytes=%s\n' \
@@ -62,7 +69,7 @@ run_timed_stage() {
   snapshot_host_resources "${stage}-before"
   printf 'DETOX_BUILD_STAGE_START stage=%s utc=%s\n' "$stage" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   set +e
-  /usr/bin/time -l "$@"
+  "$time_command" -l "$@"
   status=$?
   set -e
   printf 'DETOX_BUILD_STAGE_END stage=%s utc=%s status=%s\n' "$stage" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$status"
@@ -102,7 +109,7 @@ fi
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   # Preserve Pods' effective project and privacy inputs before the native build consumes them.
   case "$profile" in
-    release | openai-provider | transcription)
+    release | openai-provider | transcription | next-visit-questions)
       node scripts/ci/detox-derived-data-cache.mjs verify-build-inputs "$profile"
       ;;
     *)
@@ -131,4 +138,13 @@ if [[ "$profile" == all || "$profile" == transcription ]]; then
     --config-path ./e2e/transcription.detox.config.js \
     --configuration ios.sim.release.transcription
   verify_app_architecture "$(resolve_mobile_path "$transcription_derived_data_path")/Build/Products/Release-iphonesimulator/Orot.app/Orot"
+fi
+
+if [[ "$profile" == next-visit-questions ]]; then
+  # The deterministic screen probe has its own entry point and DerivedData output.
+  OROT_NEXT_VISIT_QUESTIONS_DERIVED_DATA_PATH="$next_visit_derived_data_path" \
+    run_timed_stage next-visit-questions pnpm --filter @orot/mobile exec -- detox build \
+    --config-path ./e2e/next-visit-questions.detox.config.js \
+    --configuration ios.sim.debug.next-visit-questions
+  verify_app_architecture "$(resolve_mobile_path "$next_visit_derived_data_path")/Build/Products/Debug-iphonesimulator/Orot.app/Orot"
 fi

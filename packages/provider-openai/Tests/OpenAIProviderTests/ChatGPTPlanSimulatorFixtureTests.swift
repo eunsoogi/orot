@@ -1,8 +1,22 @@
 #if DEBUG
+    import Foundation
     @testable import OpenAIProvider
     import XCTest
 
     final class ChatGPTPlanSimulatorFixtureTests: XCTestCase {
+        func testFixtureClaimsUnknownProviderPathsInsteadOfAllowingNetworkFallback() throws {
+            ChatGPTPlanFixtureState.shared.activate(.completed)
+            defer { ChatGPTPlanFixtureState.shared.deactivate() }
+
+            let responsesURL = try XCTUnwrap(URL(string: "https://api.openai.com/v1/unexpected"))
+            let authURL = try XCTUnwrap(URL(string: "https://auth.openai.com/oauth/unexpected"))
+            let responsesRequest = URLRequest(url: responsesURL)
+            let authRequest = URLRequest(url: authURL)
+
+            XCTAssertTrue(ChatGPTPlanFixtureURLProtocol.canInit(with: responsesRequest))
+            XCTAssertTrue(ChatGPTSignOutFixtureURLProtocol.canInit(with: authRequest))
+        }
+
         func testFixtureStreamsACompletedResponseThroughTheProductionClient() async throws {
             let fixture = try ChatGPTPlanSimulatorFixture(scenario: .completed)
             defer { try? fixture.remove() }

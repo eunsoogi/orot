@@ -5,34 +5,31 @@ const {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
-  scrollToSaveButton,
-  scrollToStaleArtifactNotice,
   scrollToTranscriptControl,
-  verifyFinalNativeSpeechProbe,
-  verifyNativeSpeechProbe,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
 const {
-  captureRecordingExportFailure,
-} = require('./transcription/recordingExportDetoxHelpers');
+  runTranscriptDeletionAssertion,
+} = require('./transcription/transcriptDeletionDetoxHelpers');
+const {
+  switchToTranscriptEvidenceMode,
+} = require('./transcription/transcriptProbeModeDetoxHelpers');
 
 describe('Apple Korean on-device transcription on iOS Simulator', () => {
-  it('records native provider status and exercises synthetic transcript review', async () => {
+  it('records provider status before exercising transcript deletion', async () => {
     // Grant only speech recognition on this dedicated Simulator so the legacy API never pauses for a system alert.
     await device.launchApp({
       newInstance: true,
       permissions: { speech: 'YES' },
     });
-    // Speech can keep the Simulator run loop active; the review fixture has explicit UI states and does not need provider idleness.
+    // Speech can keep the Simulator run loop active while the provider reports its terminal result.
     await device.disableSynchronization();
-    const reportElement = element(by.id('transcription-probe-report'));
-    let nativeProbeFailure;
-    try {
-      await verifyNativeSpeechProbe(reportElement);
-    } catch (failure) {
-      // Preserve native failure evidence while still exercising and cleaning the synthetic review fixture.
-      nativeProbeFailure = failure;
-    }
+    const nativeProbeFailure = await switchToTranscriptEvidenceMode({
+      by,
+      device,
+      element,
+      waitFor,
+    });
 
     let assertionFailure;
     let assertionStage = 'open evidence setup';
@@ -47,7 +44,6 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         .whileElement(by.id('recording-controls-scroll'))
         .scroll(120, 'down', 0.5, 0.35);
       assertionStage = 'create transcript';
-      await scrollToTranscriptControl(element(by.id('transcript-create')));
       await element(by.id('transcript-create')).tap();
 
       assertionStage = 'read transcript metadata';
@@ -122,7 +118,8 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       await scrollToTranscriptControl(transcriptInput);
       await transcriptInput.replaceText(correction);
       assertionStage = 'save transcript correction';
-      const saveButton = await scrollToSaveButton('transcript-save-0');
+      const saveButton = element(by.id('transcript-save-0'));
+      await scrollToTranscriptControl(saveButton, 'up');
       console.log(
         'TRANSCRIPT_EVIDENCE_SAVE_SCREENSHOT ' +
           (await device.takeScreenshot('transcript-evidence-save-visible')),
@@ -162,7 +159,9 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         await reviewState.getAttributes(),
       );
       jestExpect(correctedReviewState).toBe('수정됨 · 다시 확인 필요');
-      const staleArtifacts = await scrollToStaleArtifactNotice();
+      const staleArtifacts = element(by.id('transcript-stale-artifacts'));
+      await waitFor(staleArtifacts).toExist().withTimeout(30000);
+      await scrollToTranscriptControl(staleArtifacts);
       await waitFor(staleArtifacts).toBeVisible().withTimeout(30000);
       const staleArtifactText = accessibilityText(
         await staleArtifacts.getAttributes(),
@@ -201,21 +200,14 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       );
     }
 
-    try {
-      // The native probe runs asynchronously while the synthetic review flow is exercised.
-      // Keep its terminal verdict inside Jest's test window and leave the cleanup attempt reachable.
-      await verifyFinalNativeSpeechProbe(reportElement, { timeoutMs: 120000 });
-    } catch (failure) {
-      nativeProbeFailure ??= failure;
-    }
-
-    // This lifecycle check restarts the app, so collect the original process's final evidence first.
-    const exportLifecycleFailure = await captureRecordingExportFailure(device);
+    // Pass the spec's Detox APIs into helpers instead of relying on global bindings.
+    const detoxApi = { by, device, element, waitFor };
+    assertionFailure ??= await runTranscriptDeletionAssertion(detoxApi);
 
     let cleanupFailure;
     let cleanupEvidence;
     try {
-      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent();
+      cleanupEvidence = await cleanupTranscriptEvidenceIfPresent(detoxApi);
     } catch (failure) {
       cleanupFailure = failure;
     }
@@ -232,7 +224,6 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       console.error('TRANSCRIPT_EVIDENCE_ASSERTION_FAILURE ' + description);
       failures.push(`Transcript assertion failed: ${description}`);
     }
-    if (exportLifecycleFailure) failures.push(exportLifecycleFailure);
     if (cleanupFailure) {
       const description = failureDescription(cleanupFailure);
       console.error('TRANSCRIPT_EVIDENCE_CLEANUP_FAILURE ' + description);

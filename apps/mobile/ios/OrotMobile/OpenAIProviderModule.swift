@@ -4,23 +4,12 @@ import React
 
 @objc(OpenAIProviderModule)
 public final class OpenAIProviderModule: RCTEventEmitter {
-    private final class RequestSlot {
-        let id: String
-        let event: (NSDictionary) -> Void
-        var task: Task<Void, Never>?
-        var cancelled = false
-        var finished = false
-        init(_ id: String, _ event: @escaping (NSDictionary) -> Void) {
-            self.id = id; self.event = event
-        }
-    }
-
-    private let lock = NSLock()
-    private var requests: [String: RequestSlot] = [:]
+    private let responseRequests = OpenAIProviderRequestRegistry()
     private let defaultClient = ChatGPTOAuthClient()
     // Synthetic fixtures are compiled only for Debug Simulators, never production builds.
     #if DEBUG && targetEnvironment(simulator)
-        private var simulatorFixture: ChatGPTPlanSimulatorFixture?
+        let fixtureLock = NSLock()
+        var simulatorFixture: ChatGPTPlanSimulatorFixture?
     #endif
 
     @objc override public static func requiresMainQueueSetup() -> Bool {
@@ -56,23 +45,35 @@ public final class OpenAIProviderModule: RCTEventEmitter {
 
     @objc(startResponse:requestId:issuedClientID:)
     public func startResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
-        let event: (NSDictionary) -> Void = { [weak self] value in
-            DispatchQueue.main.async { [weak self] in
-                self?.sendEvent(withName: "OpenAIProviderEvent", body: ["requestId": requestId, "packet": value])
-            }
+        let registration = responseRequests.register(requestId, issuedClientID: issuedClientID) {
+            [weak self] requestID, packet in
+            self?.sendEvent(
+                withName: "OpenAIProviderEvent",
+                body: ["requestId": requestID, "packet": packet],
+            )
         }
-        guard let slot = register(requestId, event) else {
-            event(["type": "failed", "error": ["kind": "invalid_request", "message": "Duplicate request id."]] as NSDictionary)
+        let slot: OpenAIProviderRequestRegistry.Slot
+        switch registration {
+        case let .accepted(value): slot = value
+        case .duplicate:
+            emitRequestFailure(requestId, kind: "invalid_request", message: "Duplicate request id.")
+            return
+        case .signingOut:
+            emitRequestFailure(
+                requestId,
+                kind: "authentication",
+                message: "ChatGPT 계정 로그아웃이 진행 중입니다.",
+            )
             return
         }
         let task = Task { [weak self] in
-            guard let self, isActive(slot) else { return }
+            guard let self, responseRequests.isActive(slot) else { return }
             do {
                 let request = try ChatGPTResponsesRequestDecoder.decode(payload)
                 let stream = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
                 var emittedToolCallIDs = Set<String>()
                 for try await packet in stream {
-                    guard isActive(slot) else { return }
+                    guard responseRequests.isActive(slot) else { return }
                     switch packet {
                     case let .textDelta(text): slot.event(["type": "text_delta", "text": text] as NSDictionary)
                     case let .toolCall(toolCall):
@@ -82,7 +83,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                         for toolCall in response.toolCalls where !emittedToolCallIDs.contains(toolCall.id) {
                             slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
                         }
-                        if finish(slot) {
+                        if responseRequests.finish(slot) {
                             slot.event([
                                 "type": "completed",
                                 "text": response.text,
@@ -93,75 +94,28 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                         return
                     }
                 }
-                if finish(slot) {
+                if responseRequests.finish(slot) {
                     slot.event(["type": "failed", "error": OpenAIProviderErrorDetails.make(ChatGPTResponsesError.interrupted)] as NSDictionary)
                 }
             } catch {
-                if finish(slot) {
+                if responseRequests.finish(slot) {
                     slot.event(["type": "failed", "error": OpenAIProviderErrorDetails.make(error)] as NSDictionary)
                 }
             }
         }
-        attach(task, slot)
+        responseRequests.attach(task, to: slot)
     }
 
     @objc(cancelResponse:)
     public func cancelResponse(_ requestId: String) {
-        lock.lock()
-        guard let slot = requests[requestId], !slot.finished else { lock.unlock(); return }
-        slot.cancelled = true
-        slot.finished = true
-        requests.removeValue(forKey: requestId)
-        let task = slot.task
-        lock.unlock()
-        task?.cancel()
+        responseRequests.cancel(requestID: requestId)?.cancel()
     }
-
-    #if DEBUG && targetEnvironment(simulator)
-        @objc(prepareSyntheticFixture:resolver:rejecter:)
-        public func prepareSyntheticFixture(_ scenario: String, resolver resolve: @escaping RCTPromiseResolveBlock,
-                                            rejecter reject: @escaping RCTPromiseRejectBlock)
-        {
-            guard let value = ChatGPTPlanSimulatorFixture.Scenario(rawValue: scenario) else {
-                reject("INVALID_FIXTURE_SCENARIO", "Unknown synthetic fixture scenario.", nil)
-                return
-            }
-            do {
-                lock.lock()
-                defer { lock.unlock() }
-                if let simulatorFixture {
-                    simulatorFixture.select(value)
-                } else {
-                    simulatorFixture = try ChatGPTPlanSimulatorFixture(scenario: value)
-                }
-                resolve(["issuedClientID": ChatGPTPlanSimulatorFixture.issuedClientID] as NSDictionary)
-            } catch {
-                reject("SYNTHETIC_FIXTURE_FAILED", error.localizedDescription, error as NSError)
-            }
-        }
-
-        @objc(removeSyntheticFixture:rejecter:)
-        public func removeSyntheticFixture(_ resolve: @escaping RCTPromiseResolveBlock,
-                                           rejecter reject: @escaping RCTPromiseRejectBlock)
-        {
-            lock.lock()
-            let fixture = simulatorFixture
-            simulatorFixture = nil
-            lock.unlock()
-            do {
-                try fixture?.remove()
-                resolve(nil)
-            } catch {
-                reject("SYNTHETIC_FIXTURE_CLEANUP_FAILED", error.localizedDescription, error as NSError)
-            }
-        }
-    #endif
 
     var activeClient: ChatGPTOAuthClient {
         #if DEBUG && targetEnvironment(simulator)
-            lock.lock()
+            fixtureLock.lock()
             let fixtureClient = simulatorFixture?.client
-            lock.unlock()
+            fixtureLock.unlock()
             if let fixtureClient {
                 return fixtureClient
             }
@@ -169,43 +123,49 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         return defaultClient
     }
 
+    #if DEBUG && targetEnvironment(simulator)
+        var activeSimulatorFixtureClient: ChatGPTOAuthClient? {
+            fixtureLock.lock()
+            defer { fixtureLock.unlock() }
+            return simulatorFixture?.client
+        }
+    #endif
+
     private static func nativeToolCall(_ toolCall: ChatGPTResponsesFunctionCall) -> [String: String] {
         ["id": toolCall.id, "name": toolCall.name, "arguments": toolCall.argumentsJSON]
     }
 
-    private func register(_ id: String, _ event: @escaping (NSDictionary) -> Void) -> RequestSlot? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard requests[id] == nil else { return nil }
-        let slot = RequestSlot(id, event)
-        requests[id] = slot
-        return slot
-    }
-
-    private func attach(_ task: Task<Void, Never>, _ slot: RequestSlot) {
-        lock.lock()
-        let cancelled = slot.cancelled || slot.finished || requests[slot.id] !== slot
-        if !cancelled {
-            slot.task = task
+    /// Invalidate account-scoped streams synchronously before credential clearing begins.
+    func beginSignOut(for issuedClientID: String) -> Bool {
+        guard let activeRequests = responseRequests.beginSignOut(for: issuedClientID) else {
+            return false
         }
-        lock.unlock()
-        if cancelled {
-            task.cancel()
+        for slot in activeRequests {
+            emitRequestFailure(
+                slot.id,
+                kind: "authentication",
+                message: "로그아웃을 시작해 진행 중인 ChatGPT 응답을 중단했어요.",
+            )
         }
-    }
-
-    private func isActive(_ slot: RequestSlot) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return requests[slot.id] === slot && !slot.cancelled && !slot.finished
-    }
-
-    private func finish(_ slot: RequestSlot) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard requests[slot.id] === slot, !slot.cancelled, !slot.finished else { return false }
-        slot.finished = true
-        requests.removeValue(forKey: slot.id)
         return true
+    }
+
+    func finishSignOut(for issuedClientID: String) {
+        responseRequests.finishSignOut(for: issuedClientID)
+    }
+
+    private func emitRequestFailure(_ requestID: String, kind: String, message: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.sendEvent(
+                withName: "OpenAIProviderEvent",
+                body: [
+                    "requestId": requestID,
+                    "packet": [
+                        "type": "failed",
+                        "error": ["kind": kind, "code": kind, "message": message],
+                    ],
+                ],
+            )
+        }
     }
 }

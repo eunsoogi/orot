@@ -25,12 +25,16 @@ export type {
   EvidenceCoverage,
   EvidenceItem,
   EvidenceNeed,
+  EvidenceSearchOutcome,
   EvidenceReference,
   EvidenceSearchRequest,
   EvidenceSearchTool,
   EvidenceSourceKind,
   EvidenceTimeRange,
   ExecutionConsentPort,
+  ExternalMedicalQueryConsentDecision,
+  ExternalMedicalQueryConsentPort,
+  ExternalMedicalQueryConsentRequest,
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
   OutboundProcessingRequest,
@@ -47,6 +51,12 @@ export type TaskResultValidation<TResult> =
   | { readonly status: 'valid'; readonly value: TResult }
   | { readonly status: 'invalid'; readonly reason: string }
   | { readonly status: 'needs_clarification'; readonly message: string };
+
+/** Task-approved result shape whose display copy may survive an evidence-coverage stop. */
+export interface TaskClarificationValue {
+  readonly status: 'needs_clarification';
+  readonly message: string;
+}
 
 export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskType: string;
@@ -66,6 +76,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly initialEvidence: EvidenceBatch;
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
+  /** Return false for any missing or tombstoned reference so resume fails before evidence restoration. */
   readonly revalidateEvidence: (
     references: readonly EvidenceReference[],
     signal: AbortSignal,
@@ -113,8 +124,16 @@ export type MultiAgentRunResult<TResult> =
       readonly checkpoint: MultiAgentCheckpointState;
     }
   | {
+      readonly status: 'needs_clarification';
+      readonly reason: string;
+      /** Task-validated display copy; generic evidence clarifications may omit it. */
+      readonly message?: string;
+      readonly providerErrorCode?: ProviderErrorCode;
+      readonly coverage?: readonly EvidenceCoverage[];
+      readonly checkpoint: MultiAgentCheckpointState;
+    }
+  | {
       readonly status:
-        | 'needs_clarification'
         | 'unavailable'
         | 'invalid_output'
         | 'budget_exceeded'

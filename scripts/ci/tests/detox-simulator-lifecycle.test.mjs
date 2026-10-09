@@ -163,6 +163,32 @@ test('fails closed when the required iOS runtime is unavailable before creating 
   assert.deepEqual(result.calls, ['simctl list runtimes --json']);
 });
 
+test('exports the dedicated Next Visit Questions Simulator identity', () => {
+  const result = runFakeXcrun(
+    prepareScript,
+    [
+      'if [[ "$*" == "simctl list runtimes --json" ]]; then',
+      '  printf \'{"runtimes":[{"name":"iOS 27.0","identifier":"com.apple.CoreSimulator.SimRuntime.iOS-27-0","isAvailable":true}]}\\n\'',
+      'elif [[ "$1 $2" == "simctl create" ]]; then',
+      '  [[ "$4" == com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro ]] || exit 82',
+      '  [[ "$5" == com.apple.CoreSimulator.SimRuntime.iOS-27-0 ]] || exit 83',
+      '  printf \'%s\\n\' "$TEST_DETOX_SIMULATOR_UDID"',
+      'elif [[ "$*" == "simctl boot ' + simulatorId + '" ]]; then',
+      '  exit 0',
+      'else',
+      '  exit 97',
+      'fi',
+    ].join('\n'),
+    (logPath, identityPath) => [logPath, identityPath, 'next-visit-questions'],
+  );
+  assert.equal(result.result.status, 0, result.result.stderr + result.log);
+  assert.equal(result.githubEnv, 'OROT_NEXT_VISIT_QUESTIONS_SIMULATOR_UDID=' + simulatorId + '\n');
+  assert.match(
+    result.calls[1],
+    /com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-18-Pro com\.apple\.CoreSimulator\.SimRuntime\.iOS-27-0/,
+  );
+});
+
 test('tears down only the dedicated Simulator and confirms it is absent', () => {
   const result = runFakeXcrun(
     teardownScript,

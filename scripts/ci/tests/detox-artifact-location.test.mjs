@@ -18,9 +18,11 @@ import { installDetoxHostSamplerStubs } from './detox-host-sampling-stubs.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const runner = join(repositoryRoot, 'scripts/ci/run-test-suite.sh');
+// Keep generated runner logs in the ignored mobile artifact root so concurrent inventory checks see only maintained files.
+const testArtifactParent = join(repositoryRoot, 'apps/mobile/artifacts');
 
 test('keeps Detox artifacts beneath the upload root across the mobile package cwd', () => {
-  const artifactParent = join(repositoryRoot, 'artifacts');
+  const artifactParent = testArtifactParent;
   const createdArtifactParent = !existsSync(artifactParent);
   mkdirSync(artifactParent, { recursive: true });
   const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-location-'));
@@ -28,6 +30,7 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
   const tempDirectory = mkdtempSync(join(tmpdir(), 'orot-detox-location-'));
   const fakePnpm = join(tempDirectory, 'pnpm');
   const capturePath = join(tempDirectory, 'resolved-paths.txt');
+  const samplerCallsPath = join(tempDirectory, 'sampler-calls.log');
 
   try {
     writeFileSync(
@@ -41,19 +44,24 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
         'if [[ "$*" == *openai-provider* ]]; then',
         "  printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
         'else',
-        "  printf 'Test Suites: 1 passed, 1 total\\nTests: 8 passed, 8 total\\n'",
+        "  printf 'Test Suites: 1 passed, 1 total\\nTests: 13 passed, 13 total\\n'",
         'fi',
       ].join('\n'),
       { mode: 0o755 },
     );
+    // Inject host sampling commands because this wrapper test does not launch a Simulator.
+    installDetoxHostSamplerStubs(tempDirectory);
 
     const result = spawnSync('bash', [runner, 'e2e', artifactRelativePath], {
       cwd: repositoryRoot,
       encoding: 'utf8',
       env: {
         ...process.env,
+        DETOX_SAMPLER_CALLS: samplerCallsPath,
         DETOX_LOCATION_CAPTURE: capturePath,
+        GITHUB_ACTIONS: 'false',
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
         OROT_DETOX_SIMULATOR_UDID: 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
         OROT_OPENAI_PROVIDER_SIMULATOR_UDID: 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE',
         PATH: [tempDirectory, process.env.PATH].join(':'),
@@ -61,6 +69,12 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
     });
 
     assert.equal(result.status, 0, result.stderr + result.stdout);
+    const samplerCalls = existsSync(samplerCallsPath) ? readFileSync(samplerCallsPath, 'utf8') : '';
+    assert.match(
+      samplerCalls,
+      /^time -l /m,
+      'the wrapper test must use the injected portable timer instead of the host timer',
+    );
     const [packageDirectory, detoxArtifactDirectory] = readFileSync(capturePath, 'utf8')
       .trim()
       .split('\n');
@@ -86,7 +100,7 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
 });
 
 test('publishes Release results with failure-only logs and no resource sample by default', () => {
-  const artifactParent = join(repositoryRoot, 'artifacts');
+  const artifactParent = testArtifactParent;
   const createdArtifactParent = !existsSync(artifactParent);
   mkdirSync(artifactParent, { recursive: true });
   const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-release-'));
@@ -108,11 +122,12 @@ test('publishes Release results with failure-only logs and no resource sample by
         'printf \'%s\\n%s\\n\' "$DETOX_RECORD_LOGS" "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_ENV_CAPTURE"',
         'printf \'%s\\n\' "${OROT_DETOX_RESOURCE_LOG_PATH:-}" > "$RESOURCE_CAPTURE"',
         'printf \'%s\\n\' "$*" > "$DETOX_COMMAND_CAPTURE"',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 8 passed, 8 total\\n'",
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 13 passed, 13 total\\n'",
         'mkdir -p "$DETOX_ARTIFACTS_LOCATION/release"',
       ].join('\n'),
       { mode: 0o755 },
     );
+    installDetoxHostSamplerStubs(tempDirectory);
     const result = spawnSync('bash', [runner, 'e2e-release', artifactRelativePath], {
       cwd: repositoryRoot,
       encoding: 'utf8',
@@ -123,9 +138,11 @@ test('publishes Release results with failure-only logs and no resource sample by
         RESOURCE_CAPTURE: resourceCapture,
         DETOX_COMMAND_CAPTURE: commandCapture,
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        GITHUB_ACTIONS: 'false',
         OROT_DETOX_SIMULATOR_UDID: simulatorId,
         OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
         OROT_DETOX_RESOURCE_SAMPLING: '',
+        OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
         PATH: [tempDirectory, process.env.PATH].join(':'),
       },
     });
@@ -133,7 +150,7 @@ test('publishes Release results with failure-only logs and no resource sample by
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.equal(
       readFileSync(summaryOutput, 'utf8'),
-      'e2e_profile=release\ne2e_test_cases=8\ne2e_test_suites=1\n',
+      'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=1\n',
     );
     assert.equal(readFileSync(envCapture, 'utf8'), 'failing\ninfo\n');
     assert.equal(readFileSync(resourceCapture, 'utf8'), '\n');
@@ -154,7 +171,7 @@ test('publishes Release results with failure-only logs and no resource sample by
 });
 
 test('allows bounded profile sampling only when explicitly requested', () => {
-  const artifactParent = join(repositoryRoot, 'artifacts');
+  const artifactParent = testArtifactParent;
   const createdArtifactParent = !existsSync(artifactParent);
   mkdirSync(artifactParent, { recursive: true });
   const artifactRoot = mkdtempSync(join(artifactParent, '.ci-detox-resource-opt-in-'));
@@ -174,7 +191,7 @@ test('allows bounded profile sampling only when explicitly requested', () => {
         'cd "$MOBILE_PACKAGE_DIRECTORY" || exit 93',
         'printf \'%s\\n%s\\n\' "$DETOX_RECORD_LOGS" "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_ENV_CAPTURE"',
         'printf \'%s\\n\' "${OROT_DETOX_RESOURCE_LOG_PATH:-}" > "$RESOURCE_CAPTURE"',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 8 passed, 8 total\\n'",
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 13 passed, 13 total\\n'",
       ].join('\n'),
       { mode: 0o755 },
     );
@@ -189,9 +206,11 @@ test('allows bounded profile sampling only when explicitly requested', () => {
         RESOURCE_CAPTURE: resourceCapture,
         DETOX_SAMPLER_CALLS: samplerCallsPath,
         MOBILE_PACKAGE_DIRECTORY: join(repositoryRoot, 'apps/mobile'),
+        GITHUB_ACTIONS: 'false',
         OROT_DETOX_SIMULATOR_UDID: simulatorId,
         OROT_OPENAI_PROVIDER_SIMULATOR_UDID: '',
         OROT_DETOX_RESOURCE_SAMPLING: 'true',
+        OROT_DETOX_TEST_TIME_COMMAND: join(tempDirectory, 'time'),
         PATH: [tempDirectory, process.env.PATH].join(':'),
       },
     });

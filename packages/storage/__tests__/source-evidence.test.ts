@@ -110,4 +110,109 @@ describe('persistent source and evidence repositories', () => {
     expect(await repository.sourceRecords.findByContentHash(hashB)).toEqual(second);
     await database.closeAsync?.();
   });
+
+  it('deletes provenance-linked records and citations with their source', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-delete-'));
+    const databasePath = join(directory, 'database.sqlite');
+    const database = createDatabase(databasePath);
+    const repository = await openEncryptedStorage(options(database));
+    const source = await repository.sourceRecords.create(sourceRecord('deleted-source', hashA));
+    const span = await repository.evidenceSpans.create(
+      evidenceSpan('deleted-span', source.id, {
+        kind: 'text_range',
+        startOffset: 0,
+        endOffset: 4,
+      }),
+    );
+    const metadata = {
+      effectiveAt: '2026-01-01T00:00:00Z',
+      recordedAt: '2026-01-01T00:00:00Z',
+      ingestedAt: '2026-01-01T00:00:00Z',
+      provenance: { origin: 'derived' as const, sourceRecordIds: [source.id] },
+      reviewState: { status: 'unreviewed' as const },
+    };
+    await repository.put('encounter', {
+      ...metadata,
+      id: 'deleted-encounter',
+      encounterKind: 'outpatient',
+      summary: 'Synthetic dependent encounter.',
+    });
+    await repository.put('visit_question', {
+      ...metadata,
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      id: 'deleted-question',
+      questionText: 'Synthetic dependent question?',
+      priority: 'routine',
+      evidenceSpanIds: [span.id],
+    });
+    await repository.put('visit_brief', {
+      ...metadata,
+      id: 'deleted-brief',
+      encounterId: 'deleted-encounter',
+      summary: 'Synthetic dependent brief.',
+      questionIds: ['deleted-question'],
+      evidenceSpanIds: [span.id],
+      medicationAssertionIds: [],
+    });
+
+    expect(await repository.sourceRecords.delete(source.id)).toBe(true);
+    expect(await repository.evidenceSpans.get(span.id)).toBeNull();
+    expect(await repository.get('encounter', 'deleted-encounter')).toBeNull();
+    expect(await repository.get('visit_question', 'deleted-question')).toBeNull();
+    expect(await repository.get('visit_brief', 'deleted-brief')).toBeNull();
+    await database.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('keeps source ID deletion fences after reopening storage', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-tombstone-'));
+    const databasePath = join(directory, 'database.sqlite');
+    const database = createDatabase(databasePath);
+    const repository = await openEncryptedStorage(options(database));
+    const source = await repository.sourceRecords.create(sourceRecord('deleted-source', hashA));
+    expect(await repository.sourceRecords.delete(source.id)).toBe(true);
+    await database.closeAsync?.();
+
+    const reopenedDatabase = createDatabase(databasePath);
+    const reopenedRepository = await openEncryptedStorage(options(reopenedDatabase));
+    await expect(
+      reopenedRepository.sourceRecords.create(sourceRecord(source.id, hashB)),
+    ).rejects.toThrow('A deleted source cannot be reimported.');
+    await expect(
+      reopenedRepository.sourceRecords.create(sourceRecord('replacement-source', hashA)),
+    ).resolves.toMatchObject({ id: 'replacement-source' });
+    expect(await reopenedRepository.sourceRecords.get(source.id)).toBeNull();
+    expect(await reopenedRepository.sourceRecords.findByContentHash(hashA)).toMatchObject({
+      id: 'replacement-source',
+    });
+    await reopenedDatabase.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('rolls back source and evidence deletion when dependent cleanup fails', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'orot-source-delete-rollback-'));
+    const database = createDatabase(join(directory, 'database.sqlite'));
+    const repository = await openEncryptedStorage(options(database));
+    const source = await repository.sourceRecords.create(sourceRecord('retained-source', hashA));
+    const span = await repository.evidenceSpans.create(
+      evidenceSpan('retained-span', source.id, {
+        kind: 'text_range',
+        startOffset: 0,
+        endOffset: 4,
+      }),
+    );
+
+    // A failed downstream cleanup must not leave the source without its evidence rows.
+    await expect(
+      repository.sourceRecords.delete(source.id, async (transaction) => {
+        await transaction.execute('DELETE FROM evidence_spans WHERE id = ?', [span.id]);
+        throw new Error('injected vector cleanup failure');
+      }),
+    ).rejects.toThrow('injected vector cleanup failure');
+
+    expect(await repository.sourceRecords.get(source.id)).not.toBeNull();
+    expect(await repository.evidenceSpans.get(span.id)).not.toBeNull();
+    await database.closeAsync?.();
+    rmSync(directory, { recursive: true, force: true });
+  });
 });

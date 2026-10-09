@@ -10,7 +10,6 @@ test('keeps full runner validation when CocoaPods verification is requested', ()
   const result = runToolchainCheck(
     {
       DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
-      EXPECTED_MACOS_VERSION: '27.0',
       EXPECTED_XCODE_VERSION: '27.0',
       EXPECTED_IOS_SIMULATOR_SDK: '27.0',
     },
@@ -22,7 +21,10 @@ test('keeps full runner validation when CocoaPods verification is requested', ()
   );
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Verified macOS 27\.0, Xcode 27\.0/);
+  assert.match(
+    result.stdout,
+    /Observed macOS release 27\.0 \(cache identity, not a gate\); verified Xcode 27\.0/,
+  );
   assert.match(result.stdout, /Verified Ruby 4\.0\.7 and CocoaPods 1\.17\.0/);
 });
 

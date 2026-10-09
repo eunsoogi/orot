@@ -19,12 +19,16 @@ import type {
   RecordingSnapshot,
 } from './recordingTypes';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
+import type { RecordingLibraryService } from './recordingLibraryService';
+import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
+import { errorMessage, sourceSaveErrorMessage } from './recordingErrors';
 
 interface RecordingScreenProps {
   onBack: () => void;
   service?: RecordingService;
   /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
   transcriptService?: TranscriptEvidenceService;
+  recordingLibraryService?: RecordingLibraryService;
 }
 
 const initialSnapshot: RecordingSnapshot = {
@@ -34,30 +38,11 @@ const initialSnapshot: RecordingSnapshot = {
   consentAcknowledged: false,
 };
 
-function errorMessage(error: unknown): string {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 'RECORDING_CONSENT_REQUIRED')
-    return t('recording.errors.consent');
-  if (code === 'RECORDING_MICROPHONE_PERMISSION_DENIED') {
-    return t('recording.errors.microphonePermission');
-  }
-  if (code === 'RECORDING_FILE_PROTECTION_FAILED') {
-    return t('recording.errors.fileProtection');
-  }
-  return t('recording.errors.generic');
-}
-
-function sourceSaveErrorMessage(error: unknown): string {
-  const code = (error as { code?: unknown } | null)?.code;
-  return code === 'RECORDING_FILE_PROTECTION_FAILED'
-    ? errorMessage(error)
-    : t('recording.errors.sourceSave');
-}
-
 export default function RecordingScreen({
   onBack,
   service = recordingService,
   transcriptService,
+  recordingLibraryService = defaultRecordingLibraryService,
 }: RecordingScreenProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [stateReady, setStateReady] = useState(false);
@@ -144,7 +129,9 @@ export default function RecordingScreen({
     try {
       const result = await service.stop();
       setLastRecording(result);
-      if (result.fileProtection === 'complete' && result.excludedFromBackup) {
+      // Keep metadata retries only after both permanent-file checks are verified.
+      const backupEligible = result.excludedFromBackup === false;
+      if (result.fileProtection === 'complete' && backupEligible) {
         setPendingRecordingRetry(service, result);
       } else {
         clearPendingRecordingRetry(service);
@@ -218,6 +205,16 @@ export default function RecordingScreen({
     }
   }
 
+  function handleRecordingSourceDeleted(sourceId: string): void {
+    if (lastRecording?.id !== sourceId) return;
+    // Clear the retry snapshot too, so a deleted file cannot return through metadata retry after remount.
+    clearPendingRecordingRetry(service);
+    setLastRecording(null);
+    setSourceSaved(false);
+    setSnapshot(initialSnapshot);
+    setConsentAcknowledged(false);
+  }
+
   return (
     <RecordingControls
       onBack={onBack}
@@ -242,6 +239,8 @@ export default function RecordingScreen({
       onSendInterruption={sendInterruption}
       probeError={probeError}
       transcriptService={transcriptService}
+      recordingLibraryService={recordingLibraryService}
+      onRecordingSourceDeleted={handleRecordingSourceDeleted}
     />
   );
 }

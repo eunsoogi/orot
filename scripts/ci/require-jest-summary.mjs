@@ -11,7 +11,13 @@ if (!logPath || !suiteName) {
 }
 
 const log = readFileSync(logPath, 'utf8').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
-const e2eSuites = ['e2e', 'e2e-release', 'e2e-openai-provider', 'e2e-transcription'];
+const e2eSuites = [
+  'e2e',
+  'e2e-release',
+  'e2e-openai-provider',
+  'e2e-transcription',
+  'e2e-next-visit-questions',
+];
 if (suiteName.startsWith('e2e') && !e2eSuites.includes(suiteName)) {
   throw new Error(`Unknown E2E summary profile: ${suiteName}`);
 }
@@ -49,10 +55,16 @@ if (e2eSuites.includes(suiteName)) {
   const transcriptionConfig = requireFromRepository(
     './apps/mobile/e2e/transcription.jest.config.js',
   );
+  const nextVisitQuestionsConfig = requireFromRepository(
+    './apps/mobile/e2e/next-visit-questions.jest.config.js',
+  );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+  // Keep the explicit inventory and case count aligned with the Release wrapper's required probes.
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
+    './safe-area.test.js',
     './appointments.test.js',
+    './medicalAppointmentClassification.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
@@ -75,10 +87,17 @@ if (e2eSuites.includes(suiteName)) {
   ) {
     throw new Error('e2e: OpenAI Debug Jest config must select its dedicated probe');
   }
+  if (
+    JSON.stringify(nextVisitQuestionsConfig.testMatch) !==
+    JSON.stringify(['<rootDir>/e2e/next-visit-questions.e2e.js'])
+  ) {
+    throw new Error('e2e: Next Visit Questions Jest config must select its dedicated probe');
+  }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 8],
+    ['Release', releaseConfig.testMatch, 13],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
+    ['Next Visit Questions', nextVisitQuestionsConfig.testMatch, 1],
   ].map(([configuration, testMatch, tests]) => {
     if (!Array.isArray(testMatch) || testMatch.length === 0) {
       throw new Error(`e2e: ${configuration} Jest config must enumerate its suites explicitly`);
@@ -89,6 +108,7 @@ if (e2eSuites.includes(suiteName)) {
     'e2e-release': profiles[0],
     'e2e-openai-provider': profiles[1],
     'e2e-transcription': profiles[2],
+    'e2e-next-visit-questions': profiles[3],
   };
   expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
   if (testSummaries.length !== expectedE2ESuites.length) {
@@ -163,6 +183,7 @@ if (githubOutputPath) {
     'e2e-release': 'release',
     'e2e-openai-provider': 'openai-provider',
     'e2e-transcription': 'transcription',
+    'e2e-next-visit-questions': 'next-visit-questions',
   }[suiteName];
   if (!profile) throw new Error(`${suiteName}: no single-profile output mapping exists`);
   appendFileSync(

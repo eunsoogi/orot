@@ -40,10 +40,7 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
     profileWorkflow,
     /DEVELOPER_DIR: \$\{\{ inputs\.profile == 'transcription' && '\/Applications\/Xcode_26\.2\.app\/Contents\/Developer' \|\| '\/Applications\/Xcode\.app\/Contents\/Developer' \}\}/,
   );
-  assert.match(
-    profileWorkflow,
-    /EXPECTED_MACOS_VERSION: \$\{\{ inputs\.profile == 'transcription' && '26' \|\| '27\.0' \}\}/,
-  );
+  assert.doesNotMatch(profileWorkflow, /EXPECTED_MACOS_VERSION/);
   assert.match(toolchainVerification, /id: verify_toolchain/);
   assert.ok(
     readinessRegressionStep,

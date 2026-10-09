@@ -20,11 +20,23 @@ switch (selectEntryRoute(launchSettings)) {
   case 'appointments':
     require('./appointmentsProbeEntry');
     break;
+  case 'medical-appointment-classification':
+    // Keep the issue-40 consent exercise on synthetic Calendar and provider data.
+    require('./medicalAppointmentClassificationProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;
   case 'checkpoint':
     require('./checkpointProbeEntry');
+    break;
+  case 'safe-area':
+    // Keep keyboard and large-text checks synthetic and free of provider permissions.
+    require('./safeAreaProbeEntry');
+    break;
+  case 'safe-area-blood-pressure':
+    // Exercise the production route with deterministic rows and no HealthKit access.
+    require('./safeAreaBloodPressureProbeEntry');
     break;
   case 'storage':
     require('./storageProbeEntry');

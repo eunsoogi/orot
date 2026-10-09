@@ -32,7 +32,8 @@ const completedRecording: CompletedRecording = {
   startedAt: '2026-10-04T01:00:00.000Z',
   completedAt: '2026-10-04T01:00:12.500Z',
   fileProtection: 'complete',
-  excludedFromBackup: true,
+  // The synthetic probe records a permanent file, which remains eligible for backup.
+  excludedFromBackup: false,
 };
 
 const savedSource: RecordingSourceRecord = {

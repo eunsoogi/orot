@@ -23,7 +23,7 @@ enum RecordingFileSecurity {
             [.protectionKey: FileProtectionType.complete],
             ofItemAtPath: url.path,
         )
-        try markExcludedFromBackup(url)
+        try RecordingBackupEligibility.prepareDirectoryAndFiles(url)
         _ = try verify(url, allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator)
         return url
     }
@@ -112,19 +112,26 @@ enum RecordingFileSecurity {
             [.protectionKey: FileProtectionType.complete],
             ofItemAtPath: url.path,
         )
-        try markExcludedFromBackup(url)
+        try RecordingBackupEligibility.markEligible(url)
         let protection = try verify(
             url,
             allowUnverifiedProtectionForSimulator: allowUnverifiedProtectionForSimulator,
         )
-        return (protection, true)
+        return (protection, false)
     }
 
-    private static func markExcludedFromBackup(_ url: URL) throws {
-        var mutableURL = url
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try mutableURL.setResourceValues(values)
+    static func prepareForDeviceBackup() throws -> Int {
+        let recordingDirectory = try directory()
+        let recordings = try FileManager.default.contentsOfDirectory(
+            at: recordingDirectory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [],
+        )
+        // Report readiness only after each permanent recording passes both local security readbacks.
+        for recording in recordings {
+            _ = try verify(recording, allowUnverifiedProtectionForSimulator: false)
+        }
+        return recordings.count
     }
 
     private static func verify(
@@ -148,10 +155,7 @@ enum RecordingFileSecurity {
             protection = "complete"
         #endif
 
-        let values = try url.resourceValues(forKeys: [.isExcludedFromBackupKey])
-        guard values.isExcludedFromBackup == true else {
-            throw RecordingFileSecurityError.backupExclusionNotApplied
-        }
+        try RecordingBackupEligibility.verify(url)
         return protection
     }
 }
@@ -162,7 +166,7 @@ enum RecordingFileSecurityError: Error {
     case recordingNotFound
     case invalidAudioFile
     case protectionNotApplied
-    case backupExclusionNotApplied
+    case backupEligibilityNotApplied
 }
 
 public extension RecordingModule {

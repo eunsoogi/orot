@@ -45,7 +45,8 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  expectedCases: 8,
+  // Release includes the Safe Area and consent-disclosure regressions; Debug adds one case.
+  expectedCases: 13,
 });
 requireProfile({
   label: 'OpenAI Debug',
@@ -57,4 +58,6 @@ requireProfile({
   expectedCases: 1,
 });
 
-console.log('9/9 tests passed across Release (8) and OpenAI Debug (1); both child jobs succeeded');
+console.log(
+  '14/14 tests passed across Release (13) and OpenAI Debug (1); both child jobs succeeded',
+);
