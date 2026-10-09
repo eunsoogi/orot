@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactElement } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
@@ -24,6 +25,7 @@ import SafeAreaLayout from './src/layout/SafeAreaLayout';
 import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import {
   createNavigationController,
@@ -49,6 +51,8 @@ interface AppProps {
     readonly BloodPressureObservation[]
   >;
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
+  /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
+  renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
 }
 
 function defaultAppointmentLoader(): Promise<AppointmentRepository> {
@@ -62,6 +66,7 @@ export default function App({
   importBloodPressure = importLocalBloodPressure,
   loadBloodPressureObservations = listLocalBloodPressureObservations,
   aiFeatureServiceDependencies,
+  renderVisitQuestions,
 }: AppProps) {
   const [showAiFeatures, setShowAiFeatures] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -105,7 +110,10 @@ export default function App({
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedRecommendationProvider(provider.displayName)
         }
-        renderVisitQuestions={input => <NextVisitQuestionsRoute {...input} />}
+        renderVisitQuestions={
+          renderVisitQuestions ??
+          (input => <NextVisitQuestionsRoute {...input} />)
+        }
         serviceDependencies={aiFeatureServiceDependencies}
       />
     );
