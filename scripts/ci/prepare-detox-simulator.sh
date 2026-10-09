@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 2 || $# -gt 3 ]]; then
-  printf 'Usage: %s <setup-log-path> <simulator-identity-path> [both|release|openai-provider|transcription]\n' "$0" >&2
+  printf 'Usage: %s <setup-log-path> <simulator-identity-path> [both|release|openai-provider|transcription|next-visit-questions]\n' "$0" >&2
   exit 2
 fi
 
@@ -10,7 +10,7 @@ log_path="$1"
 identity_path="$2"
 profile="${3:-both}"
 case "$profile" in
-  both | release | openai-provider | transcription) ;;
+  both | release | openai-provider | transcription | next-visit-questions) ;;
   *)
     printf 'Unknown Detox Simulator profile: %s\n' "$profile" >&2
     exit 2
@@ -96,6 +96,9 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   fi
   if [[ "$profile" == transcription ]]; then
     printf 'OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID=%s\n' "$simulator_udid" >>"$GITHUB_ENV"
+  fi
+  if [[ "$profile" == next-visit-questions ]]; then
+    printf 'OROT_NEXT_VISIT_QUESTIONS_SIMULATOR_UDID=%s\n' "$simulator_udid" >>"$GITHUB_ENV"
   fi
 fi
 

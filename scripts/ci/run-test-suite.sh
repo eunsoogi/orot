@@ -2,7 +2,7 @@
 set -uo pipefail
 
 if [[ $# -ne 2 ]]; then
-  printf 'Usage: %s <unit|e2e|e2e-release|e2e-openai-provider|e2e-transcription> <artifact-directory>\n' "$0" >&2
+  printf 'Usage: %s <unit|e2e|e2e-release|e2e-openai-provider|e2e-transcription|e2e-next-visit-questions> <artifact-directory>\n' "$0" >&2
   exit 2
 fi
 
@@ -79,6 +79,19 @@ case "$suite" in
     if [[ -n "$resource_log_arg" ]]; then command+=("$resource_log_arg"); fi
     command+=(bash scripts/ci/run-detox-e2e.sh transcription)
     ;;
+  e2e-next-visit-questions)
+    log_path="$artifact_dir/e2e-test.log"
+    command=(env
+      "DETOX_ARTIFACTS_LOCATION=$artifact_dir/detox"
+      DETOX_RECORD_LOGS=failing
+      DETOX_RECORD_VIDEOS=none
+      DETOX_CAPTURE_VIEW_HIERARCHY=enabled
+      DETOX_HEADLESS=true
+      "OROT_DETOX_RESOURCE_SAMPLING=$resource_sampling"
+      OROT_DETOX_RESOURCE_LOG_PATH=)
+    if [[ -n "$resource_log_arg" ]]; then command+=("$resource_log_arg"); fi
+    command+=(bash scripts/ci/run-detox-e2e.sh next-visit-questions)
+    ;;
   *)
     printf 'Unknown test suite: %s\n' "$suite" >&2
     exit 2
@@ -89,7 +102,7 @@ set +e
 scripts/ci/run-command.sh "$suite" "$log_path" -- "${command[@]}"
 command_status=$?
 summary_args=("$log_path" "$suite")
-if [[ ("$suite" == e2e-release || "$suite" == e2e-openai-provider || "$suite" == e2e-transcription) && -n "${GITHUB_OUTPUT:-}" ]]; then
+if [[ ("$suite" == e2e-release || "$suite" == e2e-openai-provider || "$suite" == e2e-transcription || "$suite" == e2e-next-visit-questions) && -n "${GITHUB_OUTPUT:-}" ]]; then
   summary_args+=("$GITHUB_OUTPUT")
 fi
 node scripts/ci/require-jest-summary.mjs "${summary_args[@]}"

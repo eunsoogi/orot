@@ -11,6 +11,14 @@ import {
 // Cold React Native test workers can need longer than Jest's five-second default.
 jest.setTimeout(15000);
 
+test('configures keyboard-aware scrolling and dismiss-on-drag', async () => {
+  await render(<NextVisitQuestionsScreen {...makeProps()} />);
+
+  const scrollProps = screen.getByTestId('next-visit-questions-scroll').props;
+  expect(scrollProps.automaticallyAdjustKeyboardInsets).toBe(true);
+  expect(scrollProps.keyboardDismissMode).toBe('on-drag');
+});
+
 test('keeps generation disabled for an unavailable provider and opens selection', async () => {
   const onOpenProviderSelection = jest.fn();
   const props = makeProps({
@@ -80,6 +88,7 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
     expect.any(AbortSignal),
   );
   expect(await screen.findByTestId('next-visit-review-list')).toBeTruthy();
+  expect(screen.getByTestId('next-visit-review-actions')).toBeTruthy();
   expect(screen.getByText('질문 1의 이유')).toBeTruthy();
   expect(
     screen.getByText(

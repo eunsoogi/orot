@@ -1,6 +1,14 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { useNextVisitQuestionsController } from './controller';
+import { QuestionReviewActions } from './QuestionReviewActions';
 import { useRouteStatePublisher } from './useRouteStatePublisher';
 import { EvidenceCaveats } from './EvidenceCaveats';
 import {
@@ -80,132 +88,147 @@ export function NextVisitQuestionsScreen<
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        testID="next-visit-questions-scroll"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.fill}
       >
-        <View>
-          <Text accessibilityRole="header" style={styles.title}>
-            {copy.title}
-          </Text>
-          <Text style={styles.introduction}>{copy.introduction}</Text>
-        </View>
-
-        <AppointmentSection
-          appointment={props.appointment}
-          onRefresh={props.onRefreshAppointment}
-          theme={props.theme}
-        />
-        <ProviderSection
-          provider={props.provider}
-          onChoose={props.onOpenProviderSelection}
-          theme={props.theme}
-        />
-
-        {!isReviewing ? (
-          <View style={styles.section}>
-            {isGenerating ? (
-              <>
-                <ActivityIndicator
-                  accessibilityLabel={copy.generation.loading}
-                  testID="next-visit-generation-loading"
-                />
-                <Text accessibilityLiveRegion="polite" style={styles.body}>
-                  {copy.generation.loading}
-                </Text>
-                <ActionButton
-                  label={copy.generation.cancel}
-                  onPress={controller.cancelGeneration}
-                  theme={props.theme}
-                  variant="secondary"
-                  testID="next-visit-generation-cancel"
-                />
-              </>
-            ) : (
-              <ActionButton
-                disabled={!canGenerate || isSaving}
-                label={
-                  controller.phase === 'error'
-                    ? copy.generation.retry
-                    : controller.phase === 'saved'
-                      ? copy.saved.generateAgain
-                      : copy.generation.action
-                }
-                onPress={controller.generate}
-                theme={props.theme}
-                testID="next-visit-generate"
-              />
-            )}
-            {controller.generationMessage ? (
-              <Text
-                accessibilityRole={
-                  controller.phase === 'error' ? 'alert' : 'text'
-                }
-                style={
-                  controller.phase === 'error' ? styles.error : styles.muted
-                }
-                testID="next-visit-generation-message"
-              >
-                {controller.generationMessage}
-              </Text>
-            ) : null}
-            {controller.phase === 'saved' &&
-            savedQuestions.length > 0 ? null : (
-              <EvidenceCaveats
-                caveats={controller.caveats}
-                theme={props.theme}
-              />
-            )}
-            {controller.saveMessage ? (
-              <Text
-                accessibilityRole={
-                  controller.phase === 'saved' ? 'text' : 'alert'
-                }
-                accessibilityLiveRegion={
-                  controller.phase === 'saved' ? 'polite' : 'none'
-                }
-                style={
-                  controller.phase === 'saved' ? styles.success : styles.error
-                }
-                testID="next-visit-save-message"
-              >
-                {controller.saveMessage}
-              </Text>
-            ) : null}
+        <ScrollView
+          // Keep the edited list scrollable, and dismiss the keyboard on drag.
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.container}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          style={styles.fill}
+          testID="next-visit-questions-scroll"
+        >
+          <View>
+            <Text accessibilityRole="header" style={styles.title}>
+              {copy.title}
+            </Text>
+            <Text style={styles.introduction}>{copy.introduction}</Text>
           </View>
-        ) : null}
 
+          <AppointmentSection
+            appointment={props.appointment}
+            onRefresh={props.onRefreshAppointment}
+            theme={props.theme}
+          />
+          <ProviderSection
+            provider={props.provider}
+            onChoose={props.onOpenProviderSelection}
+            theme={props.theme}
+          />
+
+          {!isReviewing ? (
+            <View style={styles.section}>
+              {isGenerating ? (
+                <>
+                  <ActivityIndicator
+                    accessibilityLabel={copy.generation.loading}
+                    testID="next-visit-generation-loading"
+                  />
+                  <Text accessibilityLiveRegion="polite" style={styles.body}>
+                    {copy.generation.loading}
+                  </Text>
+                  <ActionButton
+                    label={copy.generation.cancel}
+                    onPress={controller.cancelGeneration}
+                    theme={props.theme}
+                    variant="secondary"
+                    testID="next-visit-generation-cancel"
+                  />
+                </>
+              ) : (
+                <ActionButton
+                  disabled={!canGenerate || isSaving}
+                  label={
+                    controller.phase === 'error'
+                      ? copy.generation.retry
+                      : controller.phase === 'saved'
+                        ? copy.saved.generateAgain
+                        : copy.generation.action
+                  }
+                  onPress={controller.generate}
+                  theme={props.theme}
+                  testID="next-visit-generate"
+                />
+              )}
+              {controller.generationMessage ? (
+                <Text
+                  accessibilityRole={
+                    controller.phase === 'error' ? 'alert' : 'text'
+                  }
+                  style={
+                    controller.phase === 'error' ? styles.error : styles.muted
+                  }
+                  testID="next-visit-generation-message"
+                >
+                  {controller.generationMessage}
+                </Text>
+              ) : null}
+              {controller.phase === 'saved' &&
+              savedQuestions.length > 0 ? null : (
+                <EvidenceCaveats
+                  caveats={controller.caveats}
+                  theme={props.theme}
+                />
+              )}
+              {controller.saveMessage ? (
+                <Text
+                  accessibilityRole={
+                    controller.phase === 'saved' ? 'text' : 'alert'
+                  }
+                  accessibilityLiveRegion={
+                    controller.phase === 'saved' ? 'polite' : 'none'
+                  }
+                  style={
+                    controller.phase === 'saved' ? styles.success : styles.error
+                  }
+                  testID="next-visit-save-message"
+                >
+                  {controller.saveMessage}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {isReviewing ? (
+            <QuestionReviewSection
+              caveats={controller.caveats}
+              isSaving={isSaving}
+              onMove={controller.moveQuestion}
+              onOpenSource={openSource}
+              onRemove={controller.removeQuestion}
+              onUpdate={controller.updateQuestion}
+              questions={controller.draftQuestions}
+              saveMessage={controller.saveMessage}
+              theme={props.theme}
+            />
+          ) : null}
+
+          <SavedQuestionsSection
+            caveats={savedCaveats}
+            errorMessage={savedError?.message}
+            isReviewing={isReviewing}
+            onEdit={() => controller.startReview(savedQuestions, savedCaveats)}
+            onOpenSource={openSource}
+            onRetry={props.onRetrySavedQuestions}
+            questions={savedQuestions}
+            restorationNotice={savedRestorationNotice}
+            status={savedStatus}
+            theme={props.theme}
+          />
+        </ScrollView>
         {isReviewing ? (
-          <QuestionReviewSection
-            caveats={controller.caveats}
+          <QuestionReviewActions
             isReviewValid={controller.isReviewValid}
             isSaving={isSaving}
             onCancel={controller.cancelReview}
-            onMove={controller.moveQuestion}
-            onOpenSource={openSource}
-            onRemove={controller.removeQuestion}
             onSave={controller.save}
-            onUpdate={controller.updateQuestion}
-            questions={controller.draftQuestions}
-            saveMessage={controller.saveMessage}
             theme={props.theme}
           />
         ) : null}
-
-        <SavedQuestionsSection
-          caveats={savedCaveats}
-          errorMessage={savedError?.message}
-          isReviewing={isReviewing}
-          onEdit={() => controller.startReview(savedQuestions, savedCaveats)}
-          onOpenSource={openSource}
-          onRetry={props.onRetrySavedQuestions}
-          questions={savedQuestions}
-          restorationNotice={savedRestorationNotice}
-          status={savedStatus}
-          theme={props.theme}
-        />
-      </ScrollView>
+      </KeyboardAvoidingView>
       <SourceEvidenceSheet
         onClose={controller.closeSource}
         reference={controller.sourceReference}

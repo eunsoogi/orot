@@ -82,6 +82,14 @@ export function SavedQuestionsSection<
             {copy.saved.heading}
           </Text>
           <EvidenceCaveats caveats={caveats} theme={theme} />
+          {/* Keep the edit entry point reachable before the long saved-question list. */}
+          <ActionButton
+            label={copy.saved.edit}
+            onPress={onEdit}
+            theme={theme}
+            variant="secondary"
+            testID="next-visit-saved-edit"
+          />
           {questions.map((question, index) => (
             <QuestionCard
               count={questions.length}
@@ -97,13 +105,6 @@ export function SavedQuestionsSection<
               disabled={false}
             />
           ))}
-          <ActionButton
-            label={copy.saved.edit}
-            onPress={onEdit}
-            theme={theme}
-            variant="secondary"
-            testID="next-visit-saved-edit"
-          />
         </View>
       ) : status === 'ready' && !isReviewing ? (
         <Text style={styles.muted} testID="next-visit-saved-empty">

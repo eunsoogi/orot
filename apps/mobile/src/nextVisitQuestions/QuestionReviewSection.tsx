@@ -1,7 +1,6 @@
 import { Text, View } from 'react-native';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { EvidenceCaveats } from './EvidenceCaveats';
-import { ActionButton } from './NextVisitComponents';
 import { QuestionCard } from './QuestionCard';
 import { createNextVisitStyles } from './styles';
 import type {
@@ -18,7 +17,6 @@ interface QuestionReviewSectionProps<
   readonly caveats: readonly EvidenceCaveat[];
   readonly saveMessage: string | null;
   readonly isSaving: boolean;
-  readonly isReviewValid: boolean;
   readonly theme: NextVisitQuestionsTheme;
   readonly onUpdate: (
     index: number,
@@ -32,8 +30,6 @@ interface QuestionReviewSectionProps<
   readonly onMove: (index: number, offset: -1 | 1) => void;
   readonly onRemove: (index: number) => void;
   readonly onOpenSource: (reference: TReference) => void;
-  readonly onCancel: () => void;
-  readonly onSave: () => void;
 }
 
 /** Keeps caveats next to the editable list so review does not hide evidence limits. */
@@ -44,14 +40,11 @@ export function QuestionReviewSection<
   caveats,
   saveMessage,
   isSaving,
-  isReviewValid,
   theme,
   onUpdate,
   onMove,
   onRemove,
   onOpenSource,
-  onCancel,
-  onSave,
 }: QuestionReviewSectionProps<TReference>) {
   const styles = createNextVisitStyles(theme);
   return (
@@ -86,23 +79,6 @@ export function QuestionReviewSection<
           {saveMessage}
         </Text>
       ) : null}
-      <View style={styles.row}>
-        <ActionButton
-          disabled={isSaving}
-          label={copy.review.cancel}
-          onPress={onCancel}
-          theme={theme}
-          variant="secondary"
-          testID="next-visit-review-cancel"
-        />
-        <ActionButton
-          disabled={!isReviewValid || isSaving}
-          label={isSaving ? copy.review.saving : copy.review.save}
-          onPress={onSave}
-          theme={theme}
-          testID="next-visit-review-save"
-        />
-      </View>
     </View>
   );
 }
