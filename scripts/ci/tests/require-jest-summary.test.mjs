@@ -219,6 +219,26 @@ test('rejects missing summaries and zero discovered tests', () => {
   assert.match(zero.stderr, /zero tests or suites/);
 });
 
+test('requires exactly the Next Visit Questions synthetic probe case', () => {
+  const nextVisit = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
+    'e2e-next-visit-questions',
+    true,
+  );
+  assert.equal(nextVisit.status, 0, nextVisit.stderr);
+  assert.equal(
+    nextVisit.githubOutput,
+    'e2e_profile=next-visit-questions\ne2e_test_cases=1\ne2e_test_suites=1\n',
+  );
+
+  const unexpectedExtraTest = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 2 passed, 2 total\n',
+    'e2e-next-visit-questions',
+  );
+  assert.notEqual(unexpectedExtraTest.status, 0);
+  assert.match(unexpectedExtraTest.stderr, /expected 1 test cases, received 2/);
+});
+
 test('rejects skipped, pending, and todo tests even when another test passed', () => {
   for (const state of ['skipped', 'pending', 'todo']) {
     const result = runGuard(

@@ -90,6 +90,7 @@ jobs:
         run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
       - name: Cache Detox profile app product # The key retains profile-local runner and Xcode identity.
         id: profile_derived_data_cache
+        if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' || inputs.profile == 'next-visit-questions' }}
         timeout-minutes: 10
         uses: ./.github/actions/detox-profile-app-cache/restore
         with:
