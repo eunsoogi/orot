@@ -22,7 +22,7 @@ The release includes Orot's directly implemented RAG (#23–25) and the separate
 
 ### Current main snapshot
 
-This comparison is anchored to `main` at `d00fb5b25c8af1a8d0376f7c065eeb4ce9914c16` (2026-10-09). Its [main CI run](https://github.com/eunsoogi/orot/actions/runs/37875317527) completed with `Quality`, `iOS Simulator Build`, and `Detox iOS E2E` passing. Issue #42 remains open with no evidence comments. Of its 24 declared dependencies, #30, #32, #34, and #36 remain open; the other 20 are closed. Issues #99–#103, #106–#111, #113, #116, and #117 also remain open; #40, #98, #104, and #105 are closed. Closing a child issue or merging its PR does not replace #42's integrated proof.
+This comparison is anchored to `main` at `0784dca146789d4083627054f21c8279ffe77c93` (2026-10-09). Its [main CI run](https://github.com/eunsoogi/orot/actions/runs/37884338215) completed with all required checks passing, including `Quality`, `iOS Simulator Build`, and `Detox iOS E2E`. PR [#156](https://github.com/eunsoogi/orot/pull/156) merged at this commit and changed only `README.md` and `docs/agent-memory.md`; issue #111 remains open, and those documentation updates do not prove the integrated release flow. Issue #42 remains open with no evidence comments. Of its 24 declared dependencies, #30, #32, #34, and #36 remain open; the other 20 are closed. Issues #99–#103, #106–#111, #113, #116, and #117 also remain open; #40, #98, #104, and #105 are closed. Closing a child issue or merging its PR does not replace #42's integrated proof.
 
 | Current main evidence | What it proves and what remains unproved |
 | --- | --- |
