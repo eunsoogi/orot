@@ -44,6 +44,9 @@ const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
     loadAppleOption: async () => syntheticOption,
   },
 };
+// Keep this callback stable so route-state rerenders do not abort generation as a provider change.
+const resolveSyntheticSelectedAi: VisitQuestionsRenderInput['resolveSelectedAi'] =
+  () => resolveSelectedAiProvider(aiFeatureServiceDependencies.selectedAi);
 
 const syntheticAppointment: Appointment = {
   id: 'synthetic-appointment-ai-feature-e2e',
@@ -108,9 +111,7 @@ function renderVisitQuestions(input: VisitQuestionsRenderInput) {
   return (
     <NextVisitQuestionsRoute
       {...input}
-      resolveSelectedAi={() =>
-        resolveSelectedAiProvider(aiFeatureServiceDependencies.selectedAi)
-      }
+      resolveSelectedAi={resolveSyntheticSelectedAi}
       loadSavedVisitQuestions={async appointmentId => ({
         status: 'ready',
         appointmentId,
