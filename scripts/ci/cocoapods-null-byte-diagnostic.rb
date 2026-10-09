@@ -11,31 +11,37 @@ module OrotCocoapodsNullByteDiagnostic
   # Attach the failing input to Ruby's exception so CocoaPods can report it without replacing the error.
   module PathnameRealdirpathDiagnostic
     def realdirpath(...)
-      # Pathname and File share this String, so retain the call-entry bytes before delegation can mutate it.
-      path_snapshot, snapshot_error = begin
-        [path.dup.freeze, nil]
+      # Preserve call-entry bytes and the CocoaPods call site before delegation can mutate or unwind them.
+      path_snapshot, caller_location, snapshot_error = begin
+        [path.dup.freeze, caller_locations(1, 1).first, nil]
       rescue StandardError => error
-        [nil, error]
+        [nil, nil, error]
       end
       super
     rescue ArgumentError => error
-      if error.message == NULL_BYTE_PATH_ERROR
+      if error.instance_of?(ArgumentError) && error.message == NULL_BYTE_PATH_ERROR
+        fallback_path = path_snapshot &&
+                        OrotCocoapodsNullByteDiagnostic.lexical_pnpm_symlink_group_base_path(
+                          self,
+                          path_snapshot,
+                          caller_location,
+                        )
+        if fallback_path
+          OrotCocoapodsNullByteDiagnostic.report_pnpm_symlink_base_path(path_snapshot)
+          return fallback_path
+        end
         begin
           path_capture = if path_snapshot
                            OrotCocoapodsNullByteDiagnostic.capture_realdirpath_input(path_snapshot)
                          else
                            OrotCocoapodsNullByteDiagnostic.unavailable_path_capture(snapshot_error)
                          end
-          error.instance_variable_set(
-            REALDIRPATH_INPUT_IVAR,
-            path_capture,
-          )
+          error.instance_variable_set(REALDIRPATH_INPUT_IVAR, path_capture)
         rescue StandardError => capture_error
           begin
-            error.instance_variable_set(
-              REALDIRPATH_INPUT_IVAR,
-              OrotCocoapodsNullByteDiagnostic.unavailable_path_capture(capture_error),
-            )
+            unavailable_capture =
+              OrotCocoapodsNullByteDiagnostic.unavailable_path_capture(capture_error)
+            error.instance_variable_set(REALDIRPATH_INPUT_IVAR, unavailable_capture)
           rescue StandardError
             # Evidence collection must not replace Ruby's original CocoaPods error.
           end
@@ -145,6 +151,38 @@ module OrotCocoapodsNullByteDiagnostic
       scan_truncated: 'unavailable',
       offsets_truncated: 'unavailable',
     }
+  end
+
+  # CocoaPods pairs lexical file paths with this base, so retain it only after the NUL error on a pnpm alias.
+  def self.lexical_pnpm_symlink_group_base_path(receiver, path, caller_location)
+    return unless receiver.instance_of?(Pathname) && !path.include?("\0")
+    return unless caller_location&.base_label == 'group_for_path_in_group' &&
+                  caller_location.path&.end_with?('/cocoapods/project.rb')
+
+    base_path = Pathname.new(path)
+    pnpm_alias = base_path.ascend.any? do |component|
+      component.basename.to_s == 'react-native' &&
+        component.symlink? &&
+        component.readlink.each_filename.include?('.pnpm')
+    end
+    base_path.cleanpath if pnpm_alias
+  rescue StandardError
+    nil
+  end
+
+  # Record each fallback without retaining process-wide state; every emitted path stays bounded.
+  def self.report_pnpm_symlink_base_path(path)
+    warn(
+      [
+        'OROT_COCOAPODS_PNPM_SYMLINK_REALDIRPATH',
+        "version=#{COCOAPODS_VERSION}",
+        "base_path=#{bounded_dump(path)}",
+        "base_path_bytes=#{path.bytesize}",
+        'base_path_nul_count=0',
+      ].join(' '),
+    )
+  rescue StandardError
+    # Logging must not change the lexical path returned to CocoaPods.
   end
 
   # Logging is best-effort so a diagnostic failure cannot replace CocoaPods' original exception.
