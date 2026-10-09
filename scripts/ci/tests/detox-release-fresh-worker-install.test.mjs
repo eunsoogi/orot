@@ -34,13 +34,18 @@ function loadDetoxConfig({ freshSimulator = false, releaseSharding = false } = {
 
 async function runWrapperBeforeAll(wrapperName, freshSimulator, releaseSharding = false) {
   const beforeAllHooks = [];
+  const hookTimeouts = [];
   const deviceCalls = [];
   const wrapperPath = join(repositoryRoot, 'apps/mobile/e2e', wrapperName);
   const wrapperSource = readFileSync(wrapperPath, 'utf8');
+  const resetModule = requireFromRepository('./apps/mobile/e2e/storageProbeResetGuard.e2e.js');
 
   // Execute real phase hooks with Detox and Jest globals replaced by ordered call recorders.
   runInNewContext(wrapperSource, {
-    beforeAll: (hook) => beforeAllHooks.push(hook),
+    beforeAll: (hook, timeout) => {
+      beforeAllHooks.push(hook);
+      hookTimeouts.push(timeout ?? null);
+    },
     describe: (_name, callback) => callback(),
     device: {
       clearKeychain: async () => deviceCalls.push('clearKeychain'),
@@ -58,12 +63,18 @@ async function runWrapperBeforeAll(wrapperName, freshSimulator, releaseSharding 
     require: (specifier) =>
       specifier === './release-e2e-shards.js'
         ? { 'release-e2e.test.js': [], 'release-e2e-data.test.js': [] }
-        : {},
+        : specifier === './storageProbeResetGuard.e2e.js'
+          ? {
+              releasePhaseResetGuard: resetModule.createStorageResetGuard(),
+              resetHookTimeoutMs: resetModule.resetHookTimeoutMs,
+            }
+          : {},
   });
 
   const expectedHookCount = wrapperName === 'release-e2e.test.js' && !releaseSharding ? 2 : 1;
   assert.equal(beforeAllHooks.length, expectedHookCount);
   for (const hook of beforeAllHooks) await hook();
+  assert.deepEqual(hookTimeouts, Array(expectedHookCount).fill(241000));
   return deviceCalls;
 }
 

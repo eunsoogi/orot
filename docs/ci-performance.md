@@ -947,3 +947,27 @@ Release used macOS 27.0, Xcode/SDK/iOS 27.0, iPhone 18 Pro, Node 22.23.2, and pn
 The Release test step ran 00:06:37–00:18:19Z: 701s wrapper time and 694.606s Jest time. All 13 cases passed. Their durations sum to 513.480s, leaving 181.126s of Jest suite overhead. The two Safe Area cases that require startup probes each performed a default launch followed by a configured launch, with about 10.9s and 11.5s between launch-completion markers. The fresh-storage case began at 00:15:25Z and logged its app launch at 00:16:36Z, 70.5s later; the legacy-migration case began at 00:17:02Z and logged its first launch at 00:18:03Z, 61.1s later. Each case also ran `installFreshApp()` before launching. The artifact does not separate install, Keychain, and app-launch time, so those full intervals are not attributed to one command.
 
 The Release Simulator was already booted before E2E. One `app is busy` observation occurred during the blood-pressure Safe Area case; no retry was logged. The command-level resource sample reports 701.28s real time, 33.99s user, 32.41s system, and 133,595,136 bytes maximum RSS; whole-runner CPU, disk, child-process count/time, and fixture bytes were not measured. Production/OAuth, profile checks, dedicated Simulator diagnostics and deletion, summaries, aggregate, and artifact upload passed. Artifacts are `11586957766` (Release, 514,197 bytes), `11586042346` (OpenAI, 26,999 bytes), and `11586383331` (Speech, 556,666 bytes). OpenAI and Speech restored matching app products and skipped native app builds; their runner/runtime versions differ from Release. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 PR #129 run 37869216193
+
+Run [37869216193](https://github.com/eunsoogi/orot/actions/runs/37869216193) used PR head `981d2305d019e990fd2cf53da873cbb0415160bf` against base `bc00b1eff2d9a8429d11bc4b75cd6d8eba5be717`. The workflow was created at 01:19:27Z, Quality Linux started at 01:19:29Z, and the final required `Detox iOS E2E` aggregate completed at 02:07:35Z: **48m08s** from workflow creation and **48m06s** from the first required job. The run failed and is not a qualifying timing result.
+
+| Job | Interval (UTC) | Result |
+| --- | --- | --- |
+| Quality Linux | 01:19:29–01:21:43 | passed in 2m14s |
+| Compute shared Detox cache fingerprints | 01:19:29–01:19:38 | passed in 9s |
+| iOS Simulator Build | 01:29:20–01:37:33 | passed in 8m13s, including production and standalone OAuth checks |
+| Release Detox E2E | 01:20:16–01:49:39 | passed 13/13 in 29m23s |
+| OpenAI Debug E2E | 01:37:42–02:07:13 | passed 1/1 in 29m31s |
+| Speech Transcription E2E | 01:37:05–02:07:20 | failed in 30m15s |
+| Quality | 01:21:45–01:21:56 | passed in 11s |
+| Require complete profile summaries | 02:07:22–02:07:31 | failed closed because the Speech job failed |
+| Detox iOS E2E | 02:07:33–02:07:35 | failed closed because the required profile result was incomplete |
+
+Release used macOS 27.0, Xcode/SDK/iOS 27.0, iPhone 18 Pro, Node 22.23.2, and pnpm 12.3.4. Its Detox framework, React Native artifact, and CocoaPods caches hit, but the DerivedData app cache was `dependency-compatible` with `app_reusable=false` and `reason=build_inputs_changed`. The native-dependency and toolchain fingerprints matched; the cached app-input fingerprint was `df51abc734693ef21102bc6e4dcdc7f956e2dc10a9ccc686b1117a436cb858f9` and the expected fingerprint was `d66ab17548edfbc54049470b0036d2522ec9efdda2c92c04aefce08a619290ae`. The Release app build step took 12m56s.
+
+The Release E2E wrapper took 457.35s real time and Jest reported 453.382s; all 13 registered cases passed. Case durations sum to 368.902s, leaving 84.480s of Jest suite overhead. The command-level sample reports 25.10s user time, 23.62s system time, 133,890,048 bytes maximum RSS, and no swaps. These are command-level measurements, not whole-runner totals. The artifact logs show 20 app-launch completion messages and one app-busy report; they do not isolate the elapsed setup interval or that busy observation to a single operation.
+
+Speech used macOS 26.6.2, Xcode/SDK/iOS 26.2, iPhone 17 Pro, Node 22.23.2, and pnpm 12.3.4. Its sole E2E test failed because the native Korean speech probe remained `running` and did not reach a terminal result within 120,000ms. The Simulator log reported the Dictation Transcriber asset as supported and `model_installed=false`; this does not establish why the probe remained pending. The dedicated Simulator teardown and artifact upload completed. The required summary and aggregate rejected the missing Speech result rather than publishing a partial pass.
+
+After this run, the local candidate adds `apps/mobile/e2e/release-e2e-suite-files.js` to the host-only Detox inputs excluded from the production app fingerprint. The file controls Jest inventory and sharding but is not bundled by Metro; a local regression test first reproduced the cache-key drift and then passed with this exclusion. That correction was not present in run 378692 and has not yet been verified by a hosted cache classification. The run's Speech failure also remains a required-check failure until a later hosted run passes it; its cause is not inferred from this artifact. No run on this head meets the ten-minute target, and no consecutive qualifying pair exists. Issue #74 remains open and PR #129 remains Draft.

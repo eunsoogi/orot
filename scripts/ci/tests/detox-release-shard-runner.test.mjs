@@ -10,8 +10,8 @@ const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const shardRunner = join(repositoryRoot, 'scripts/ci/run-detox-release-shards.mjs');
 const profileRunner = join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh');
 const shards = [
-  ['release-e2e.test.js', 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE', 5],
-  ['release-e2e-data.test.js', '11111111-2222-4333-8444-555555555555', 8],
+  ['release-e2e.test.js', 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE', 7],
+  ['release-e2e-data.test.js', '11111111-2222-4333-8444-555555555555', 6],
 ];
 
 function makeFixture(directory, failingShard = '') {
@@ -29,7 +29,7 @@ const { appendFileSync, existsSync, writeFileSync } = require('node:fs');
 const { spawn } = require('node:child_process');
 const shard = process.env.OROT_DETOX_RELEASE_SHARD;
 const simulator = process.env.OROT_DETOX_SIMULATOR_UDID;
-const counts = { 'release-e2e.test.js': 5, 'release-e2e-data.test.js': 8 };
+const counts = { 'release-e2e.test.js': 7, 'release-e2e-data.test.js': 6 };
 appendFileSync(process.env.CALLS_PATH, shard + '\\t' + simulator + '\\n');
 appendFileSync(process.env.PIDS_PATH, String(process.pid) + '\\n');
 if (shard === process.env.FAIL_SHARD) {
@@ -135,7 +135,7 @@ test('runs both Release wrappers concurrently with their assigned Simulator and 
       result.stdout,
       /DETOX_RELEASE_SHARD_SUMMARY_START shard=release-e2e-data\.test\.js/,
     );
-    assert.match(result.stdout, /Tests: 8 passed, 8 total/);
+    assert.match(result.stdout, /Tests: 6 passed, 6 total/);
   } finally {
     stopFixtureProcesses(fixture);
     rmSync(directory, { recursive: true, force: true });

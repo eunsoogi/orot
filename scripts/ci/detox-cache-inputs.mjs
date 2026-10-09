@@ -3,9 +3,9 @@ import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
-// Detox/Jest controls run in Node; Metro bundles ENTRY_FILE and imported app modules.
+// Jest inventories and Detox controls run in Node; Metro bundles ENTRY_FILE and imported app modules.
 const HOST_ONLY_DETOX_INPUT =
-  /^(?:apps\/mobile\/e2e\/.+\.(?:test|e2e)\.js|apps\/mobile\/(?:.+\/)?(?:.+\.)?jest\.config\.js|apps\/mobile\/e2e\/release-e2e-shards\.js|apps\/mobile\/e2e\/transcription\/transcriptEvidenceDetoxHelpers\.js|apps\/mobile\/src\/transcription\/__tests__\/TranscriptEvidenceDetoxHelpers\.spec\.js)$/;
+  /^(?:apps\/mobile\/e2e\/.+\.(?:test|e2e)\.js|apps\/mobile\/(?:.+\/)?(?:.+\.)?jest\.config\.js|apps\/mobile\/e2e\/release-e2e-shards\.js|apps\/mobile\/e2e\/release-e2e-suite-files\.js|apps\/mobile\/e2e\/transcription\/transcriptEvidenceDetoxHelpers\.js|apps\/mobile\/src\/transcription\/__tests__\/TranscriptEvidenceDetoxHelpers\.spec\.js)$/;
 const GENERATED_DIRECTORY_NAMES = new Set([
   'node_modules',
   'pods',

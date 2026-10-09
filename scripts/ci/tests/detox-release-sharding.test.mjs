@@ -37,6 +37,8 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
       require: (path) => {
         if (path === './release-e2e-shards.js') return releaseShards;
         if (path === './release-e2e-suite-files.js') return releaseSuiteFiles;
+        // The shared reset guard configures phases but does not add an E2E scenario.
+        if (path === './storageProbeResetGuard.e2e.js') return {};
         loaded.push(path);
         return {};
       },

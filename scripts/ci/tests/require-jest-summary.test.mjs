@@ -152,7 +152,7 @@ test('validates every explicit Release shard before publishing the profile total
       `Tests: ${tests} passed, ${tests} total`,
       `DETOX_RELEASE_SHARD_SUMMARY_END shard=${name}`,
     ].join('\n');
-  const complete = [shard('release-e2e.test.js', 5), shard('release-e2e-data.test.js', 8)].join(
+  const complete = [shard('release-e2e.test.js', 7), shard('release-e2e-data.test.js', 6)].join(
     '\n',
   );
   const result = runGuard(complete, 'e2e-release', true, {
@@ -162,21 +162,33 @@ test('validates every explicit Release shard before publishing the profile total
   assert.match(result.stdout, /13\/13 tests passed across 2 suites in 2 Jest runs/);
   assert.equal(result.githubOutput, 'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=2\n');
 
-  const missingShard = runGuard(shard('release-e2e.test.js', 5), 'e2e-release');
+  const missingShard = runGuard(shard('release-e2e.test.js', 7), 'e2e-release');
   assert.notEqual(missingShard.status, 0);
 
   const wrongCaseCount = runGuard(
-    [shard('release-e2e.test.js', 4), shard('release-e2e-data.test.js', 9)].join('\n'),
+    [shard('release-e2e.test.js', 6), shard('release-e2e-data.test.js', 7)].join('\n'),
     'e2e-release',
   );
   assert.notEqual(wrongCaseCount.status, 0);
 
+  const stalePartition = runGuard(
+    [shard('release-e2e.test.js', 5), shard('release-e2e-data.test.js', 8)].join('\n'),
+    'e2e-release',
+    false,
+    { OROT_DETOX_RELEASE_SHARDING: 'true' },
+  );
+  assert.notEqual(stalePartition.status, 0);
+  assert.match(
+    stalePartition.stderr,
+    /Release release-e2e\.test\.js summary expected 7 test cases, received 5/,
+  );
+
   const skippedCase = runGuard(
     [
-      shard('release-e2e.test.js', 5),
-      shard('release-e2e-data.test.js', 8).replace(
-        '8 passed, 8 total',
-        '7 passed, 1 skipped, 8 total',
+      shard('release-e2e.test.js', 7),
+      shard('release-e2e-data.test.js', 6).replace(
+        '6 passed, 6 total',
+        '5 passed, 1 skipped, 6 total',
       ),
     ].join('\n'),
     'e2e-release',
