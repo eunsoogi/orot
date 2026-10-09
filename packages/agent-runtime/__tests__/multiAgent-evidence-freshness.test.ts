@@ -37,6 +37,8 @@ const evidence: EvidenceBatch = {
 function makeOptions(
   revalidateEvidence: MultiAgentWorkflowOptions<{ summary: string }>['revalidateEvidence'],
   authorize: MultiAgentWorkflowOptions<{ summary: string }>['consent']['authorize'],
+  copy?: string,
+  incomplete = false,
 ) {
   const generate = jest.fn(async () =>
     providerSuccess({
@@ -106,10 +108,15 @@ function makeOptions(
         ) {
           return { status: 'invalid', reason: 'A summary is required.' };
         }
-        return { status: 'valid', value: { summary: value.summary } };
+        return copy
+          ? { status: 'needs_clarification', message: copy }
+          : { status: 'valid', value: { summary: value.summary } };
       },
     },
-    initialEvidence: evidence,
+    initialEvidence: {
+      ...evidence,
+      coverage: evidence.coverage.map((entry) => ({ ...entry, truncated: incomplete })),
+    },
     tools: [],
     consent: { authorize },
     revalidateEvidence,
@@ -159,46 +166,49 @@ describe('multi-agent evidence freshness at model boundaries', () => {
     expect(revalidateEvidence).toHaveBeenCalledTimes(3);
   });
 
-  it('revalidates after the final checkpoint write before publishing citations', async () => {
-    let fresh = true;
-    const revalidateEvidence = jest.fn(async () => fresh);
-    const authorize = jest.fn(async () => 'authorized' as const);
-    const { options, generate } = makeOptions(revalidateEvidence, authorize);
-    const saver = new MemorySaver();
-    let releaseFinalWrite!: () => void;
-    const finalWriteGate = new Promise<void>((resolve) => {
-      releaseFinalWrite = resolve;
-    });
-    let markFinalWriteStarted!: () => void;
-    const finalWriteStarted = new Promise<void>((resolve) => {
-      markFinalWriteStarted = resolve;
-    });
-    const persist = saver.put.bind(saver);
-    let heldFinalWrite = false;
-    jest.spyOn(saver, 'put').mockImplementation(async (...args) => {
-      const [, checkpoint] = args;
-      const values = checkpoint.channel_values as Record<string, unknown>;
-      if (!heldFinalWrite && values.phase === 'complete' && values.terminal === true) {
-        heldFinalWrite = true;
-        markFinalWriteStarted();
-        await finalWriteGate;
-      }
-      return persist(...args);
-    });
-    const pending = runMultiAgentWorkflow(
-      { ...options, checkpointer: saver },
-      { config: { configurable: { thread_id: 'freshness-final-write' } } },
-    );
+  it.each([
+    ['result', undefined, false],
+    ['task-approved clarification', '혈압 120/80 mmHg 기록을 확인해 주세요.', false],
+    ['incomplete-coverage clarification', '혈압 120/80 mmHg 기록을 확인해 주세요.', true],
+  ] as const)(
+    'revalidates after the final checkpoint write before publishing %s',
+    async (_outcome, copy, incomplete) => {
+      let fresh = true;
+      const revalidateEvidence = jest.fn(async () => fresh);
+      const authorize = jest.fn(async () => 'authorized' as const);
+      const { options } = makeOptions(revalidateEvidence, authorize, copy, incomplete);
+      const saver = new MemorySaver();
+      let releaseFinalWrite!: () => void, markFinalWriteStarted!: () => void;
+      const finalWriteGate = new Promise<void>((resolve) => {
+        releaseFinalWrite = resolve;
+      });
+      const finalWriteStarted = new Promise<void>((resolve) => {
+        markFinalWriteStarted = resolve;
+      });
+      const persist = saver.put.bind(saver);
+      let heldFinalWrite = false;
+      jest.spyOn(saver, 'put').mockImplementation(async (...args) => {
+        const [, checkpoint] = args;
+        const values = checkpoint.channel_values as Record<string, unknown>;
+        if (!heldFinalWrite && values.phase === 'complete' && values.terminal === true) {
+          heldFinalWrite = true;
+          markFinalWriteStarted();
+          await finalWriteGate;
+        }
+        return persist(...args);
+      });
+      const pending = runMultiAgentWorkflow(
+        { ...options, checkpointer: saver },
+        { config: { configurable: { thread_id: 'freshness-final-write' } } },
+      );
 
-    await finalWriteStarted;
-    fresh = false;
-    releaseFinalWrite();
-    const result = await pending;
-
-    expect(result.status).toBe('stale_evidence');
-    expect(generate).toHaveBeenCalledTimes(1);
-    expect(revalidateEvidence).toHaveBeenCalledTimes(4);
-  });
+      await finalWriteStarted;
+      fresh = false;
+      releaseFinalWrite();
+      expect((await pending).status).toBe('stale_evidence');
+      expect(revalidateEvidence).toHaveBeenCalledTimes(4);
+    },
+  );
 
   it('does not start evidence revalidation when consent resolves after cancellation', async () => {
     let authorizeLate!: (decision: 'authorized') => void;

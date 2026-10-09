@@ -179,14 +179,21 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       if (!context.outcome)
         stop(context, 'The workflow ended without a validated result.', 'invalid_output');
       const finalOutcome = context.outcome!;
-      if (finalOutcome.status === 'result') {
-        // The final checkpoint write is async, so evidence may change after the model's last check.
+      if (
+        finalOutcome.status === 'result' ||
+        (finalOutcome.status === 'needs_clarification' && typeof finalOutcome.message === 'string')
+      ) {
+        // Recheck citations and task-approved clarification copy after the async final checkpoint.
         await revalidateCurrentEvidence(context, 'underlying_call_unconfirmed');
-        if (controller.signal.aborted && context.outcome?.status === 'result') {
+        if (
+          controller.signal.aborted &&
+          (context.outcome?.status === 'result' ||
+            context.outcome?.status === 'needs_clarification')
+        ) {
           canceled(context, 'underlying_call_unconfirmed');
         }
         const verifiedOutcome = context.outcome!;
-        if (verifiedOutcome.status !== 'result')
+        if (verifiedOutcome.status !== finalOutcome.status)
           return failureResult(verifiedOutcome, nonResumableCheckpoint(finalState));
       }
       return publicResult(
