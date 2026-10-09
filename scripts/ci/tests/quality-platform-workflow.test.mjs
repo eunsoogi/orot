@@ -21,6 +21,14 @@ const aggregateJob = workflow.slice(
   workflow.indexOf('  quality:'),
   workflow.indexOf('  ios-simulator-build:'),
 );
+const productionBuildJob = workflow.slice(
+  workflow.indexOf('  ios-simulator-build:'),
+  workflow.indexOf('  detox_profiles:'),
+);
+const detoxProfilesJob = workflow.slice(
+  workflow.indexOf('  detox_profiles:'),
+  workflow.indexOf('  detox_ios_e2e:'),
+);
 
 test('keeps every portable Quality check on the Linux partition', () => {
   assert.match(linuxCall, /uses: \.\/\.github\/workflows\/quality-linux\.yml/);
@@ -61,4 +69,14 @@ test('preserves the required Quality check through a fail-closed Linux aggregate
   assert.ok(aggregateJob.includes('node scripts/ci/require-quality-aggregate.mjs'));
   assert.match(workflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
   assert.match(workflow, /^\x20{2}detox_ios_e2e:\n\x20{4}name: Detox iOS E2E$/m);
+});
+
+test('gives Detox profiles first access while preserving the production check on Linux failure', () => {
+  // Keep the check eligible after a Linux failure without running it after workflow cancellation.
+  assert.doesNotMatch(detoxProfilesJob, /^\x20{4}needs:/m);
+  assert.match(
+    productionBuildJob,
+    /^\x20{2}ios-simulator-build:\n[\s\S]*?^\x20{4}needs: \[quality_linux\]$/m,
+  );
+  assert.match(productionBuildJob, /^\x20{4}if: \$\{\{ !cancelled\(\) \}\}$/m);
 });

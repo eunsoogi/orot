@@ -78,6 +78,10 @@ jobs:
 
   ios-simulator-build:
     name: iOS Simulator Build
+    # Delay this separate Xcode job so the Detox profiles can start first.
+    # !cancelled() preserves the production/OAuth check after Linux failures while honoring cancellation.
+    needs: [quality_linux]
+    if: ${{ !cancelled() }}
     runs-on: xcode-27
     timeout-minutes: 75
     steps:
