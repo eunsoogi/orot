@@ -925,3 +925,25 @@ Release, OpenAI, and Speech ran with Node 22.23.2, pnpm 12.3.4, Ruby 4.0.7, Coco
 The production app and all three profile app-product DerivedData caches missed with `derived_data_absent`. Detox framework and React Native artifact caches hit for all profiles; the Detox CocoaPods cache missed for Release and OpenAI and hit for Speech. The profile app-product cache save steps completed for Release, OpenAI, and Speech. Node and pnpm lockfile-verification caches hit. The production app build took 5m26s; the Release app build took 8m46s with a 7m57s test step; OpenAI's app build took 8m16s with a 56s test step; Speech's app build took 8m48s with a 4m43s test step. The logs show these stage durations, but do not isolate the full-workflow delay to cache restoration, runner scheduling, or Simulator execution.
 
 Dedicated Simulator preparation, diagnostics, teardown, summary validation, and artifact upload all passed. Artifacts are `11583616768` (Quality Linux), `11583759597` (iOS build), `11584901535` (OpenAI), `11584927459` (Release), and `11585525404` (Speech). Resource sampling was disabled, so CPU, peak RSS, disk, and process metrics were not collected. This run provides one functional pass, zero under-ten-minute passes, and no evidence for two consecutive qualifying runs. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-09 one-Simulator Release run 37860510902
+
+Run [37860510902](https://github.com/eunsoogi/orot/actions/runs/37860510902) passed all nine required jobs on PR head `7348d5e411d4dec6d1b8f8de53dfbf2c03568399` against base `bc00b1eff2d9a8429d11bc4b75cd6d8eba5be717`. Quality Linux started at 23:38:05Z and the required `Detox iOS E2E` aggregate completed at 00:19:15Z: **41m10s**. The workflow ran 41m12s from creation at 23:38:03Z. This is a functional pass, not a qualifying under-ten-minute run.
+
+| Job | Runner | Interval (UTC) | Result |
+| --- | --- | --- | --- |
+| Quality Linux | 1000073618 | 23:38:05–23:40:44 | passed in 2m39s |
+| Compute shared Detox cache fingerprints | 1000073616 | 23:38:05–23:38:14 | passed in 9s |
+| iOS Simulator Build | 1000073617 (`xcode-27-arm64`) | 23:38:09–23:46:13 | passed in 8m04s, including production and standalone OAuth checks |
+| OpenAI Debug E2E | 1000073619 (`xcode-27-arm64`) | 23:38:21–23:45:07 | passed 1/1 in 6m46s |
+| Speech Transcription E2E | 1000073621 (`macos-26-arm64`) | 23:38:20–23:48:13 | passed 1/1 synthetic case in 9m53s |
+| Release E2E | 1000073620 (`xcode-27-arm64`) | 23:38:24–00:19:01 | passed in 40m37s; 13/13 cases in one suite |
+| Quality | 1000073622 | 23:40:46–23:40:58 | passed in 12s |
+| Require complete profile summaries | 1000073629 | 00:19:04–00:19:10 | passed in 6s |
+| Detox iOS E2E | 1000073630 | 00:19:12–00:19:15 | passed in 3s |
+
+Release used macOS 27.0, Xcode/SDK/iOS 27.0, iPhone 18 Pro, Node 22.23.2, and pnpm 12.3.4. The app-product cache missed with `derived_data_absent`; Detox framework, React Native artifact, CocoaPods, and pnpm verification caches hit. Restoring and preparing Release DerivedData took 3m48s and 2m27s; CocoaPods installation took 2m32s; the app build took 15m55s. The profile saved its validated app product after the build. This run's macOS 27.0 cache key did not match the earlier Release product saved by run 37854558660 on macOS 27.0.1; the cache key and manifest retain the full macOS version. These runs do not show a same-key cache miss or prove cross-patch restore compatibility.
+
+The Release test step ran 00:06:37–00:18:19Z: 701s wrapper time and 694.606s Jest time. All 13 cases passed. Their durations sum to 513.480s, leaving 181.126s of Jest suite overhead. The two Safe Area cases that require startup probes each performed a default launch followed by a configured launch, with about 10.9s and 11.5s between launch-completion markers. The fresh-storage case began at 00:15:25Z and logged its app launch at 00:16:36Z, 70.5s later; the legacy-migration case began at 00:17:02Z and logged its first launch at 00:18:03Z, 61.1s later. Each case also ran `installFreshApp()` before launching. The artifact does not separate install, Keychain, and app-launch time, so those full intervals are not attributed to one command.
+
+The Release Simulator was already booted before E2E. One `app is busy` observation occurred during the blood-pressure Safe Area case; no retry was logged. The command-level resource sample reports 701.28s real time, 33.99s user, 32.41s system, and 133,595,136 bytes maximum RSS; whole-runner CPU, disk, child-process count/time, and fixture bytes were not measured. Production/OAuth, profile checks, dedicated Simulator diagnostics and deletion, summaries, aggregate, and artifact upload passed. Artifacts are `11586957766` (Release, 514,197 bytes), `11586042346` (OpenAI, 26,999 bytes), and `11586383331` (Speech, 556,666 bytes). OpenAI and Speech restored matching app products and skipped native app builds; their runner/runtime versions differ from Release. Issue #74 remains open and PR #129 remains Draft.

@@ -2,9 +2,9 @@
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
-    // Detox reinstalls between spec files, but iOS keeps Keychain items after app uninstall.
-    await device.clearKeychain();
+    // Keep the storage probe's database key when switching back to App; the Release wrapper cleared Keychain.
     await device.launchApp({
+      newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
       // The normal app route opts into sanitized logs so repository-open CI failures retain their cause.
       launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },

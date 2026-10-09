@@ -1,15 +1,7 @@
 /* global by, device, element, waitFor */
 
-const {
-  createStorageResetGuard,
-  installFreshApp,
-} = require('./storageProbeResetGuard.e2e.js');
-const resetGuard = createStorageResetGuard();
-// A hosted uninstall, Keychain clear, and install took 173s; give only reset cases a four-minute limit.
-const freshResetTimeoutMs = 240000;
-
-beforeEach(() => resetGuard.assertResetMayContinue());
-afterEach(() => resetGuard.afterTest());
+// Keep four minutes for the first probe on a clean device; hosted setup-to-launch took about 141 seconds.
+const freshInstallProbeTimeoutMs = 240000;
 
 async function expectProbeSuccess(mode) {
   await waitFor(element(by.id('storage-probe-' + mode + '-success')))
@@ -28,38 +20,19 @@ describe('encrypted local storage', () => {
   it(
     'creates encrypted source and evidence records on fresh install',
     async () => {
-      await installFreshApp(device, resetGuard);
+      // The Release wrapper installs this app on its clean Simulator before the first storage probe.
       await launchProbe('fresh', false);
       await expectProbeSuccess('fresh');
     },
-    freshResetTimeoutMs,
+    freshInstallProbeTimeoutMs,
   );
 
   it('reopens a source and its evidence span after an app process restart', async () => {
-    // Recreate records without another Simulator reset so this case stays independent of earlier test results.
+    // Recreate records in the phase-owned install so this case stays independent of earlier test results.
     await launchProbe('fresh', false);
     await expectProbeSuccess('fresh');
     await device.terminateApp();
     await launchProbe('restart', true);
     await expectProbeSuccess('restart');
   });
-
-  it(
-    'migrates the earlier test schema on fresh install',
-    async () => {
-      await installFreshApp(device, resetGuard);
-      await launchProbe('legacy', false);
-      await expectProbeSuccess('legacy');
-      // Reopen via the appointments repository after the legacy migration process exits.
-      await device.terminateApp();
-      await device.launchApp({
-        newInstance: true,
-        launchArgs: { OROT_E2E_PROBE: 'appointments' },
-      });
-      await waitFor(element(by.id('appointments-title')))
-        .toHaveText('예약')
-        .withTimeout(30000);
-    },
-    freshResetTimeoutMs,
-  );
 });

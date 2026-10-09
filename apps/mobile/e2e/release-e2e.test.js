@@ -26,7 +26,8 @@ if (selectedShard) {
   clearAndInstallFreshSimulator();
   loadReleaseShard(selectedShard);
 } else {
-  describe('Release UI probes', () => {
+  describe('Release fresh-install and UI probes', () => {
+    // Run storage creation on this clean install before UI scenarios can open the database.
     clearAndInstallFreshSimulator();
     loadReleaseShard('release-e2e.test.js');
   });

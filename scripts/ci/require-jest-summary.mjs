@@ -69,14 +69,15 @@ if (e2eSuites.includes(suiteName)) {
   const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
   // Keep the default wrapper and optional shard partitions exhaustive against the ordered scenario inventory.
   const expectedReleaseSuiteFiles = [
+    './storage.test.js',
     './smoke.test.js',
     './safe-area.test.js',
+    './storage-migration.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
-    './storage.test.js',
   ];
   const flattenedReleaseShards = Object.values(releaseE2EShards).flat();
   if (

@@ -71,21 +71,23 @@ async function expectScrollInsideSafeRoot(scrollTestID = 'safe-area-scroll') {
   ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
 }
 
-describe('safe area routes on iOS Simulator', () => {
-  beforeEach(async () => {
-    await device.launchApp({
-      newInstance: true,
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-    });
-    // Detox applies orientation through the active app session, so launch first.
-    await device.setOrientation('portrait');
+async function launchSafeAreaApp(launchOptions = {}) {
+  await device.launchApp({
+    newInstance: true,
+    languageAndLocale: { language: 'en', locale: 'en_US' },
+    ...launchOptions,
   });
+  // Apply each case's launch arguments before orientation changes the active app.
+  await device.setOrientation('portrait');
+}
 
+describe('safe area routes on iOS Simulator', () => {
   afterEach(async () => {
     await device.setOrientation('portrait');
   });
 
   it('keeps the welcome viewport inside the system insets and reaches trailing actions', async () => {
+    await launchSafeAreaApp();
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
@@ -105,6 +107,7 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('preserves the recording screen inset root and existing inner scrolling', async () => {
+    await launchSafeAreaApp();
     await waitFor(element(by.id('open-recording')))
       .toBeVisible()
       .withTimeout(30000);
@@ -119,10 +122,8 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('keeps the blood-pressure list inside the safe area and reaches its import action', async () => {
-    await device.launchApp({
-      newInstance: true,
+    await launchSafeAreaApp({
       launchArgs: { OROT_E2E_PROBE: 'safe-area-blood-pressure' },
-      languageAndLocale: { language: 'en', locale: 'en_US' },
     });
 
     await waitFor(element(by.id('welcome-title')))
@@ -158,14 +159,12 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('keeps a primary action reachable with large text and the keyboard open', async () => {
-    await device.launchApp({
-      newInstance: true,
+    await launchSafeAreaApp({
       launchArgs: {
         OROT_E2E_PROBE: 'safe-area',
         UIPreferredContentSizeCategoryName:
           'UICTContentSizeCategoryAccessibilityXXXL',
       },
-      languageAndLocale: { language: 'en', locale: 'en_US' },
     });
 
     await waitFor(element(by.id('safe-area-large-text-state')))

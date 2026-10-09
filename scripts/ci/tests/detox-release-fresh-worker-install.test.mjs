@@ -103,6 +103,26 @@ async function runManualAppointmentScenario() {
   return deviceCalls;
 }
 
+async function runSmokeSetup() {
+  const beforeAllHooks = [];
+  const deviceCalls = [];
+  const source = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/smoke.test.js'), 'utf8');
+
+  runInNewContext(source, {
+    beforeAll: (hook) => beforeAllHooks.push(hook),
+    describe: (_name, callback) => callback(),
+    device: {
+      clearKeychain: async () => deviceCalls.push({ kind: 'clearKeychain' }),
+      launchApp: async (options) =>
+        deviceCalls.push({ kind: 'launch', options: JSON.parse(JSON.stringify(options)) }),
+    },
+    it: () => {},
+  });
+
+  for (const hook of beforeAllHooks) await hook();
+  return deviceCalls;
+}
+
 test('the default Release phases reset app state while explicit fresh shards install directly', async () => {
   assert.equal(loadDetoxConfig().behavior.init.reinstallApp, true);
   assert.equal(loadDetoxConfig({ freshSimulator: true }).behavior.init.reinstallApp, false);
@@ -142,4 +162,27 @@ test('manual appointment probe avoids terminating its fresh first launch and kee
     calls.map(({ kind }) => kind),
     ['launch', 'terminate', 'launch', 'terminate', 'launch'],
   );
+});
+
+test('runs storage probes on the phase-owned clean installs without clearing their keys mid-suite', async () => {
+  const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
+  const smokeCalls = await runSmokeSetup();
+
+  // Both storage cases run before UI use, and migration runs first after the stateful phase reset.
+  assert.deepEqual(releaseShards['release-e2e.test.js'].slice(0, 3), [
+    './storage.test.js',
+    './smoke.test.js',
+    './safe-area.test.js',
+  ]);
+  assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
+  assert.deepEqual(smokeCalls, [
+    {
+      kind: 'launch',
+      options: {
+        newInstance: true,
+        languageAndLocale: { language: 'en', locale: 'en_US' },
+        launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
+      },
+    },
+  ]);
 });
