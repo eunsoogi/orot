@@ -5,6 +5,7 @@ import type { NextVisitQuestionsTheme } from './types';
 export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
   const { colors, tokens } = theme;
   return StyleSheet.create({
+    fill: { flex: 1 },
     container: {
       flexGrow: 1,
       gap: tokens.spacing.lg,
@@ -96,6 +97,14 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       backgroundColor: colors.accentSubtle,
       color: colors.accentText,
       fontSize: tokens.typography.sizes.body,
+    },
+    reviewActions: {
+      paddingHorizontal: tokens.spacing.lg,
+      paddingTop: tokens.spacing.sm,
+      paddingBottom: tokens.spacing.md,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.canvas,
     },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm },
     disabled: { opacity: 0.5 },
