@@ -5,7 +5,9 @@ import { createVisitQuestionEvidenceRevalidator } from '../../../agent/visitQues
 import { createVisitQuestionEvidenceCollection } from '../../../agent/visitQuestions/evidenceCollection';
 import {
   appointment as appointmentFixture,
+  evidenceSpan as evidenceSpanFixture,
   now,
+  sourceRecord as sourceRecordFixture,
 } from '../../../agent/visitQuestions/testing/persistenceFixtures';
 import type { AiFeatureLocalData } from '../localData';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -41,6 +43,41 @@ describe('visit-question source registration', () => {
     );
   });
 
+  it('reads linked original evidence when #30 source and record IDs collide', async () => {
+    const scenario = await sourceScenario({ withLinkedSource: true });
+    const controller = new AbortController();
+
+    const result = await scenario.registry.readSource(
+      scenario.registered,
+      controller.signal,
+    );
+    expect(result).toMatchObject({
+      status: 'available',
+      document: { sourceKind: 'personal_record' },
+    });
+    if (
+      result.status !== 'available' ||
+      result.document.sourceKind !== 'personal_record'
+    ) {
+      throw new Error('Expected the linked original source document.');
+    }
+    expect(result.document.records).toEqual(
+      expect.arrayContaining([
+        { kind: 'source_record', record: scenario.originalSource },
+        { kind: 'evidence_span', record: scenario.originalSpan },
+      ]),
+    );
+    expect(scenario.citation).toMatchObject({
+      sourceId: 'shared-id',
+      evidenceId: 'shared-id',
+      locator: { kind: 'structured_record', recordId: 'shared-id' },
+    });
+    expect(scenario.querySource).toHaveBeenCalledWith('shared-id', {
+      signal: controller.signal,
+    });
+    expect(scenario.readRecord).not.toHaveBeenCalled();
+  });
+
   it('refuses a citation after the current appointment revision changes', async () => {
     const scenario = await sourceScenario();
     scenario.setCurrentAppointment({
@@ -71,16 +108,50 @@ describe('visit-question source registration', () => {
   });
 });
 
-async function sourceScenario() {
-  let currentAppointment: Appointment | null = appointmentFixture;
+async function sourceScenario(options: { withLinkedSource?: boolean } = {}) {
+  const recordId = options.withLinkedSource
+    ? 'shared-id'
+    : appointmentFixture.id;
+  const initialAppointment: Appointment = options.withLinkedSource
+    ? {
+        ...appointmentFixture,
+        id: recordId,
+        provenance: {
+          ...appointmentFixture.provenance,
+          sourceRecordIds: [recordId],
+        },
+      }
+    : appointmentFixture;
+  const originalSource = options.withLinkedSource
+    ? {
+        ...sourceRecordFixture,
+        id: recordId,
+        title: 'Synthetic original appointment note',
+      }
+    : null;
+  const originalSpan = options.withLinkedSource
+    ? {
+        ...evidenceSpanFixture,
+        id: 'shared-span',
+        sourceRecordId: recordId,
+        provenance: {
+          ...evidenceSpanFixture.provenance,
+          sourceRecordIds: [recordId],
+        },
+        text: 'Synthetic original appointment note content',
+      }
+    : null;
+  let currentAppointment: Appointment | null = initialAppointment;
   const recordRepository = {
-    get: jest.fn(async (kind: RecordKind, id: string) =>
-      kind === 'appointment' && id === appointmentFixture.id
-        ? currentAppointment
-        : null,
-    ),
+    get: jest.fn(async (kind: RecordKind, id: string) => {
+      if (id !== recordId) return null;
+      if (kind === 'appointment') return currentAppointment;
+      if (kind === 'source_record') return originalSource;
+      if (kind === 'evidence_span') return originalSpan;
+      return null;
+    }),
   } as unknown as Pick<RecordRepository, 'get'>;
-  const initialChunk = chunkStructuredRecord('appointment', appointmentFixture);
+  const initialChunk = chunkStructuredRecord('appointment', initialAppointment);
   const collection = await createVisitQuestionEvidenceCollection({
     repository: recordRepository,
     recordHits: [
@@ -97,7 +168,7 @@ async function sourceScenario() {
     throw new Error('Expected #30 to map the appointment citation.');
 
   const revalidate = createVisitQuestionEvidenceRevalidator({
-    appointment: appointmentFixture,
+    appointment: initialAppointment,
     query: '다음 진료에서 확인할 질문',
     metadataByCitation: collection.metadataByCitation,
     queryService: {
@@ -115,17 +186,36 @@ async function sourceScenario() {
     ),
     currentTime: () => now,
   });
-  const readRecord = jest.fn(async (kind: RecordKind, id: string) =>
-    kind === 'appointment' && id === appointmentFixture.id
-      ? currentAppointment
-      : null,
-  );
+  const readRecord = jest.fn(async (kind: RecordKind, id: string) => {
+    if (id !== recordId) return null;
+    if (kind === 'appointment') return currentAppointment;
+    if (kind === 'source_record') return originalSource;
+    if (kind === 'evidence_span') return originalSpan;
+    return null;
+  });
+  const linkedSourceRows =
+    originalSource && originalSpan
+      ? [
+          { kind: 'source_record' as const, record: originalSource },
+          { kind: 'evidence_span' as const, record: originalSpan },
+          { kind: 'appointment' as const, record: initialAppointment },
+        ]
+      : null;
+  const linkedSourceKinds = [
+    'source_record',
+    'evidence_span',
+    'appointment',
+  ] as RecordKind[];
   const querySource = jest.fn(async (sourceRecordId: string) => ({
-    status: 'source_missing' as const,
+    status: linkedSourceRows
+      ? ('available' as const)
+      : ('source_missing' as const),
     sourceRecordId,
-    records: [],
-    queriedKinds: ['source_record'] as RecordKind[],
-    availableKinds: [] as RecordKind[],
+    records: linkedSourceRows ?? [],
+    queriedKinds: linkedSourceRows
+      ? linkedSourceKinds
+      : (['source_record'] as RecordKind[]),
+    availableKinds: linkedSourceRows ? linkedSourceKinds : [],
     truncatedKinds: [] as RecordKind[],
     complete: true,
   }));
@@ -144,6 +234,8 @@ async function sourceScenario() {
 
   return {
     citation,
+    originalSource,
+    originalSpan,
     registered,
     registry,
     querySource,

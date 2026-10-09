@@ -1,5 +1,8 @@
 import type { EvidenceItem } from '@orot/agent-runtime';
-import { VISIT_QUESTION_RECORD_KINDS } from '../../agent/visitQuestions/evidence';
+import {
+  localEvidenceFingerprint,
+  VISIT_QUESTION_RECORD_KINDS,
+} from '../../agent/visitQuestions/evidence';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import type { AiFeatureLocalData } from './localData';
@@ -36,11 +39,15 @@ function isStructuredRecordLocator(
   );
 }
 
-/** A record is self-anchored only when #30's source, evidence, and locator IDs agree. */
+/**
+ * #30 fingerprints linked SourceRecords; typed fallback requires its empty-list
+ * fingerprint as the provenance signal.
+ */
 function selfAnchoredStructuredRecordId(
   reference: VisitQuestionEvidenceItem,
 ): string | null {
   if (
+    reference.sourceRevision !== localEvidenceFingerprint([]) ||
     reference.sourceId !== reference.evidenceId ||
     !isStructuredRecordLocator(reference.locator) ||
     reference.locator.recordId !== reference.evidenceId
