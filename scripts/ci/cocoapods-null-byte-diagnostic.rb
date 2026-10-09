@@ -19,17 +19,17 @@ module OrotCocoapodsNullByteDiagnostic
       end
       super
     rescue ArgumentError => error
-      if error.instance_of?(ArgumentError) && error.message == NULL_BYTE_PATH_ERROR
-        fallback_path = path_snapshot &&
-                        OrotCocoapodsNullByteDiagnostic.lexical_pnpm_symlink_group_base_path(
-                          self,
-                          path_snapshot,
-                          caller_location,
-                        )
-        if fallback_path
-          OrotCocoapodsNullByteDiagnostic.report_pnpm_symlink_base_path(path_snapshot)
-          return fallback_path
+      if error.message == NULL_BYTE_PATH_ERROR
+        if error.instance_of?(ArgumentError)
+          fallback_path = OrotCocoapodsNullByteDiagnostic.lexical_pnpm_symlink_group_base_path(
+            self, path_snapshot, caller_location
+          )
+          if fallback_path
+            OrotCocoapodsNullByteDiagnostic.report_pnpm_symlink_base_path(path_snapshot)
+            return fallback_path
+          end
         end
+        # Preserve diagnostic capture for subclasses; only recovery requires Ruby's exact built-in error.
         begin
           path_capture = if path_snapshot
                            OrotCocoapodsNullByteDiagnostic.capture_realdirpath_input(path_snapshot)
