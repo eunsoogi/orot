@@ -110,6 +110,11 @@ jobs:
         timeout-minutes: 60
         run: bash scripts/ci/install-detox-cocoapods.sh
 
+      # pnpm's side-effects cache can skip Detox postinstall, while these outputs live outside the package store.
+      - name: Build Detox framework cache
+        timeout-minutes: 20
+        run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
+
       - name: Build iOS Simulator app
         timeout-minutes: 45
         run: scripts/ci/run-command.sh ios-simulator-build artifacts/detox/ios-app-build.log -- bash scripts/ci/build-ios-simulator-app.sh build

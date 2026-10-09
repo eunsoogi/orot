@@ -108,6 +108,30 @@ test('prepares uncached build provenance before installing Pods and builds both 
   );
 });
 
+// Detox's pnpm postinstall can be skipped by the side-effects cache, while its iOS outputs live outside the package tree.
+test('builds Detox runtime artifacts on every cold run and always runs Speech E2E', () => {
+  const frameworkBuild = workflowStep('Build Detox framework cache');
+  assert.match(
+    frameworkBuild,
+    /run-command\.sh detox-framework-cache artifacts\/detox\/framework-cache\.log -- pnpm --filter @orot\/mobile exec -- detox build-framework-cache/,
+  );
+  assert.match(frameworkBuild, /timeout-minutes: 20/);
+  assert.doesNotMatch(frameworkBuild, /^\s+if:/m);
+  assert.doesNotMatch(workflowStep('Run Speech transcription Detox E2E'), /^\s+if:/m);
+
+  const orderedSteps = [
+    'Install Detox CocoaPods dependencies',
+    'Build Detox framework cache',
+    'Build iOS Simulator app',
+    'Build transcription Detox app',
+    'Run Speech transcription Detox E2E',
+  ].map(workflowStepIndex);
+  assert.deepEqual(
+    orderedSteps,
+    [...orderedSteps].sort((left, right) => left - right),
+  );
+});
+
 test('always collects Simulator diagnostics, deletes the dedicated device, and uploads logs', () => {
   assert.match(workflowStep('Collect Simulator diagnostics'), /if: \$\{\{ always\(\) \}\}/);
   const teardown = workflowStep('Delete dedicated Speech Simulator');
