@@ -2,9 +2,10 @@ name: CocoaPods null-byte cold diagnostic
 
 on:
   push:
-    # Keep this trigger on the issue-owned branch and file so normal code pushes do not repeat the cold install.
+    # Keep this trigger on the issue and diagnostic PR branches so normal code pushes do not repeat the cold run.
     branches:
       - eunsoogi/issue-136-null-byte-recurrence
+      - eunsoogi/issue-136-realdirpath-entry-snapshot
     paths:
       - .github/workflows/cocoapods-null-byte-diagnostic.yml
 
@@ -19,6 +20,7 @@ env:
   EXPECTED_PNPM_VERSION: '12.3.4'
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
+  EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
   EXPECTED_XCODE_VERSION: '26.2'
   EXPECTED_IOS_SIMULATOR_SDK: '26.2'
   EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: iOS 26.2
@@ -28,10 +30,10 @@ env:
 
 jobs:
   cold-install:
-    name: CocoaPods cold diagnostic install
+    name: CocoaPods cold install, build, and Speech E2E
     # Match the macOS/Xcode profile that produced the original Speech failure.
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 180
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -57,11 +59,42 @@ jobs:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
       - name: Verify runner toolchain
+        id: verify_toolchain
         run: scripts/ci/verify-toolchain.sh
 
       - name: Install frozen workspace dependencies
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- pnpm install --frozen-lockfile
+
+      - name: Run Speech readiness regression
+        timeout-minutes: 10
+        run: scripts/ci/run-command.sh speech-readiness-regression artifacts/detox/speech-readiness-regression.log -- apps/mobile/e2e/transcription/run-readiness-regression.sh
+
+      - name: Compute stable Detox build fingerprints
+        id: detox_build_fingerprint
+        timeout-minutes: 5
+        run: scripts/ci/run-command.sh detox-build-fingerprint artifacts/detox/build-fingerprint.log -- node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
+
+      # Build wrappers verify CocoaPods outputs against source snapshots even when app caches are absent.
+      - name: Prepare production build-input snapshot
+        timeout-minutes: 5
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+        run: scripts/ci/run-command.sh production-input-snapshot artifacts/detox/production-input-snapshot.log -- node scripts/ci/detox-derived-data-cache.mjs prepare production
+
+      - name: Prepare transcription build-input snapshot
+        timeout-minutes: 5
+        env:
+          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
+          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
+          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
+        run: scripts/ci/run-command.sh transcription-input-snapshot artifacts/detox/transcription-input-snapshot.log -- node scripts/ci/detox-derived-data-cache.mjs prepare transcription
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
@@ -72,20 +105,59 @@ jobs:
       - name: Install CocoaPods
         run: scripts/ci/run-command.sh cocoapods-install artifacts/detox/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
 
-      # Deliberately omit CocoaPods and DerivedData caches so this run reaches a fresh pod install.
+      # Deliberately omit CocoaPods and app DerivedData caches so every native stage runs cold.
       - name: Install Detox CocoaPods dependencies
-        timeout-minutes: 20
+        timeout-minutes: 60
         run: bash scripts/ci/install-detox-cocoapods.sh
 
-      # Install logs can include filesystem paths; do not upload build products or Simulator data.
-      - name: Upload install logs
+      - name: Build iOS Simulator app
+        timeout-minutes: 45
+        run: scripts/ci/run-command.sh ios-simulator-build artifacts/detox/ios-app-build.log -- bash scripts/ci/build-ios-simulator-app.sh build
+
+      - name: Build transcription Detox app
+        timeout-minutes: 45
+        run: scripts/ci/run-command.sh detox-build artifacts/detox/transcription-build.log -- bash scripts/ci/build-detox-apps.sh transcription --skip-pods
+
+      - name: Install AppleSimulatorUtils
+        timeout-minutes: 15
+        run: scripts/ci/run-command.sh applesimutils-install artifacts/detox/applesimutils-install.log -- bash scripts/ci/install-applesimutils.sh
+
+      - name: Prepare dedicated Speech Simulator
+        id: prepare_speech_simulator
+        timeout-minutes: 20
+        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid transcription
+
+      - name: Wait for dedicated Speech Simulator
+        timeout-minutes: 15
+        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_speech_simulator.outputs.udid }}"
+
+      - name: Run Speech transcription Detox E2E
+        id: run_speech_e2e
+        timeout-minutes: 45
+        run: scripts/ci/run-test-suite.sh e2e-transcription artifacts/detox
+
+      - name: Collect Simulator diagnostics
+        if: ${{ always() }}
+        timeout-minutes: 5
+        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log artifacts/detox/simulator.udid
+
+      - name: Delete dedicated Speech Simulator
+        if: ${{ always() }}
+        timeout-minutes: 15
+        run: |
+          if [[ ! -s artifacts/detox/simulator.udid ]]; then
+            printf 'No dedicated Simulator ID was recorded; no device will be targeted.\n' > artifacts/detox/simulator-teardown.log
+            exit 0
+          fi
+          simulator_udid="$(cat artifacts/detox/simulator.udid)"
+          scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh "$simulator_udid" artifacts/detox/simulator-teardown-details.log
+
+      # Retain diagnostic and test output without uploading app build products or Simulator data.
+      - name: Upload cold install, build, and Speech E2E evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: cocoapods-null-byte-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            artifacts/detox/install.log
-            artifacts/detox/cocoapods-install.log
-            artifacts/detox/pods-install.log
+          path: artifacts/detox/
           if-no-files-found: ignore
           retention-days: 14
