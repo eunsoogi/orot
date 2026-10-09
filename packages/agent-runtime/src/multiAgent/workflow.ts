@@ -20,6 +20,24 @@ import {
   validIdentity,
 } from './workflowSupport';
 
+async function preservePendingCancellation<TResult>(
+  operation: Promise<unknown>,
+  context: RuntimeContext<TResult>,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    operation.then(
+      () => undefined,
+      () => undefined,
+    ),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, 0);
+    }),
+  ]);
+  if (timer) clearTimeout(timer);
+  canceled(context, 'underlying_call_unconfirmed');
+}
+
 // Coordinates two model roles around allowlisted reads while persisting metadata only.
 export async function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
@@ -104,7 +122,17 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
     else {
       const graph = makeGraph(context, options.checkpointer);
       if (options.checkpointer) {
-        const saved = await graph.getState(invocation.config!);
+        const read = await observeUntilAbort(graph.getState(invocation.config!), controller.signal);
+        if (read.kind === 'cancelled') {
+          canceled(context);
+          return failureResult(context.outcome!, nonResumableCheckpoint(start));
+        }
+        if (read.kind === 'error') throw new Error('Checkpoint state could not be read.');
+        if (controller.signal.aborted) {
+          canceled(context);
+          return failureResult(context.outcome!, nonResumableCheckpoint(start));
+        }
+        const saved = read.value;
         if (
           saved.values &&
           typeof saved.values === 'object' &&
@@ -118,8 +146,23 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
           return failureResult(context.outcome!, nonResumableCheckpoint(start));
         }
       }
+      if (controller.signal.aborted) {
+        canceled(context);
+        return failureResult(context.outcome!, nonResumableCheckpoint(start));
+      }
       // Each persisted thread is one-use; sync durability records pending work before dispatch.
-      const finalState = await graph.invoke(start, { ...invocation.config, durability: 'sync' });
+      const graphRun = graph.invoke(start, { ...invocation.config, durability: 'sync' });
+      const invocationResult = await observeUntilAbort(graphRun, controller.signal);
+      if (invocationResult.kind === 'cancelled') {
+        await preservePendingCancellation(graphRun, context);
+        return failureResult(context.outcome!, nonResumableCheckpoint(start));
+      }
+      if (invocationResult.kind === 'error') throw new Error('The workflow invocation failed.');
+      if (controller.signal.aborted) {
+        canceled(context, 'underlying_call_unconfirmed');
+        return failureResult(context.outcome!, nonResumableCheckpoint(start));
+      }
+      const finalState = invocationResult.value;
       if (!context.outcome)
         stop(context, 'The workflow ended without a validated result.', 'invalid_output');
       return publicResult(
