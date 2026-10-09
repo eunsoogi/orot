@@ -1,8 +1,62 @@
 import { createUnifiedImportCoordinator } from '../coordinator';
-import { createTestServices } from '../testSupport';
+import { createTestServices, deferred } from '../testSupport';
 import type { UnifiedFeatureOutcome } from '../types';
 
 describe('unified EventKit provider outcomes', () => {
+  it('cancels a pending EventKit request before querying and allows retry', async () => {
+    const base = createTestServices();
+    const access =
+      deferred<
+        Awaited<ReturnType<typeof base.services.eventKit.requestEventAccess>>
+      >();
+    const accessStarted = deferred<void>();
+    let authorizationAttempts = 0;
+    const requestEventAccess = jest.fn(() => {
+      authorizationAttempts += 1;
+      if (authorizationAttempts === 1) {
+        accessStarted.resolve();
+        return access.promise;
+      }
+      return Promise.resolve('fullAccess' as const);
+    });
+    const listUpcomingEvents = jest.fn(
+      base.services.eventKit.listUpcomingEvents,
+    );
+    const openRepository = jest.fn(base.services.openRepository);
+    const runFeature = jest.fn(base.services.runFeature);
+    const coordinator = createUnifiedImportCoordinator({
+      ...base.services,
+      eventKit: { requestEventAccess, listUpcomingEvents },
+      openRepository,
+      runFeature,
+    });
+    const selection = {
+      healthKitFeatures: ['heartRate'] as const,
+      eventKit: true,
+    };
+
+    const cancelledRun = coordinator.start(selection);
+    await accessStarted.promise;
+    cancelledRun.cancel();
+    // A native consent request may settle after cancellation; no provider work may follow.
+    access.resolve('fullAccess');
+
+    const cancelled = await cancelledRun.result;
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.progress.features.heartRate.status).toBe('cancelled');
+    expect(cancelled.progress.eventKit.status).toBe('cancelled');
+    expect(listUpcomingEvents).not.toHaveBeenCalled();
+    expect(openRepository).not.toHaveBeenCalled();
+    expect(runFeature).not.toHaveBeenCalled();
+
+    const retried = await coordinator.start(selection).result;
+    expect(retried.status).toBe('complete');
+    expect(requestEventAccess).toHaveBeenCalledTimes(2);
+    expect(listUpcomingEvents).toHaveBeenCalledTimes(1);
+    expect(openRepository).toHaveBeenCalledTimes(1);
+    expect(runFeature).toHaveBeenCalledTimes(1);
+  });
+
   it('supports an EventKit-only selection without opening HealthKit storage', async () => {
     const base = createTestServices();
     const healthKitRequest = jest.fn(
