@@ -86,13 +86,18 @@ describe('createAiFeatureServices local evidence integration', () => {
     const source = localData(records);
     let diseaseOptions:
       Parameters<typeof runDiseaseHypothesisAnalysis>[0] | undefined;
+    let diseaseIdentityResolver:
+      Parameters<typeof runDiseaseHypothesisAnalysis>[3] | undefined;
     let ragOptions: Parameters<typeof runRagConversationTurn>[0] | undefined;
     const diseaseRunner = jest.fn(
       async (
         options: Parameters<typeof runDiseaseHypothesisAnalysis>[0],
         inventory: Parameters<typeof runDiseaseHypothesisAnalysis>[1],
+        _invocation: Parameters<typeof runDiseaseHypothesisAnalysis>[2],
+        resolveIdentity: Parameters<typeof runDiseaseHypothesisAnalysis>[3],
       ) => {
         diseaseOptions = options;
+        diseaseIdentityResolver = resolveIdentity;
         expect(inventory).toBe(completeInventory);
         return {
           status: 'incomplete_inventory',
@@ -158,6 +163,9 @@ describe('createAiFeatureServices local evidence integration', () => {
       sourceId: records[0]?.id,
       evidenceId: records[0]?.id,
     });
+    expect(diseaseIdentityResolver?.(firstItem)).toEqual(
+      services.resolveSource(reference),
+    );
     await expect(
       services.readSource(firstItem, new AbortController().signal),
     ).resolves.toMatchObject({
@@ -178,6 +186,11 @@ describe('createAiFeatureServices local evidence integration', () => {
     );
     expect(current?.batch.items).toHaveLength(records.length);
     expect(current?.chunks).toHaveLength(records.length);
+    const ragItem = current?.batch.items[0];
+    if (!ragItem) throw new Error('Expected an aliased RAG evidence item.');
+    expect(ragOptions?.resolveLocalEvidenceIdentity?.(ragItem)).toEqual(
+      services.resolveSource(ragItem),
+    );
     expect(current?.batch.coverage.map(item => item.resultLimit)).toEqual([
       5, 5,
     ]);

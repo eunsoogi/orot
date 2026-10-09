@@ -72,7 +72,7 @@ test('keeps a running RAG turn on cancel and aborts it after confirmed leave', a
   expect(signal?.aborted).toBe(true);
 });
 
-test('guards disease analysis while loading and its completed result', async () => {
+test('aborts disease analysis after confirmed leave and ignores its late result', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let signal: AbortSignal | undefined;
   let finish!: (outcome: DiseaseHypothesisRunOutcome) => void;
@@ -105,8 +105,17 @@ test('guards disease analysis while loading and its completed result', async () 
   );
   await pressAlertButton(alert, 0);
   expect(signal?.aborted).toBe(false);
-
-  await act(async () => {
+  await fireEvent.press(route.getByTestId('navigation-back'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
+  expect(alert.mock.calls[1]?.[0]).toBe(
+    navigationText.leaveOngoingOperation.title,
+  );
+  await pressAlertButton(alert, 1);
+  await waitFor(() =>
+    expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull(),
+  );
+  expect(signal?.aborted).toBe(true);
+  await act(async () =>
     finish({
       status: 'workflow',
       result: {
@@ -127,19 +136,12 @@ test('guards disease analysis while loading and its completed result', async () 
         coverage: [],
         checkpoint: {} as never,
       },
-    });
-  });
-  await waitFor(() =>
-    expect(route.getByTestId('disease-hypotheses-results')).toBeTruthy(),
+    }),
   );
-  await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  expect(alert.mock.calls[1]?.[0]).toBe(navigationText.leaveUnsaved.title);
-  await pressAlertButton(alert, 0);
-  expect(route.getByTestId('disease-hypotheses-results')).toBeTruthy();
+  expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull();
 });
 
-test('guards external search and the returned empty-result state', async () => {
+test('aborts external search after confirmed leave and ignores its late result', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let signal: AbortSignal | undefined;
   let finish!: (
@@ -176,16 +178,18 @@ test('guards external search and the returned empty-result state', async () => {
   );
   await pressAlertButton(alert, 0);
   expect(signal?.aborted).toBe(false);
-
-  await act(async () => finish({ status: 'empty' }));
-  await waitFor(() =>
-    expect(route.getByTestId('external-evidence-empty')).toBeTruthy(),
-  );
   await fireEvent.press(route.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  expect(alert.mock.calls[1]?.[0]).toBe(navigationText.leaveUnsaved.title);
-  await pressAlertButton(alert, 0);
-  expect(route.getByTestId('external-medical-evidence-screen')).toBeTruthy();
+  expect(alert.mock.calls[1]?.[0]).toBe(
+    navigationText.leaveUnsavedAndOperation.title,
+  );
+  await pressAlertButton(alert, 1);
+  await waitFor(() =>
+    expect(route.queryByTestId('external-medical-evidence-screen')).toBeNull(),
+  );
+  expect(signal?.aborted).toBe(true);
+  await act(async () => finish({ status: 'empty' }));
+  expect(route.queryByTestId('external-medical-evidence-screen')).toBeNull();
 });
 
 function routeDependencies(

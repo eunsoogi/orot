@@ -137,9 +137,14 @@ export function createAiFeatureServices(
       const diseaseInventory = snapshot.gaps.length
         ? { ...snapshot.inventory, inventoryComplete: false }
         : snapshot.inventory;
-      return diseaseRunner(workflow, diseaseInventory, {
-        signal: operationSignal,
-      });
+      return diseaseRunner(
+        workflow,
+        diseaseInventory,
+        {
+          signal: operationSignal,
+        },
+        reference => registry.resolve(reference),
+      );
     },
     async sendRagMessage(question, previousMessages, parentSignal) {
       const normalizedQuestion = question.trim();
@@ -191,6 +196,8 @@ export function createAiFeatureServices(
               chunks: snapshot.chunks,
             }),
             rag: boundedRag.rag,
+            resolveLocalEvidenceIdentity: reference =>
+              registry.resolve(reference),
             workflow: executionOptions({
               selected,
               operationRunId: runId,
