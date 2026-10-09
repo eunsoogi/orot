@@ -31,6 +31,7 @@ function settleNavigationRequest(request: Promise<boolean>) {
 
 export interface NavigationActionBarProps<Name extends string> {
   readonly controller: NavigationController<Name>;
+  readonly leaveDisabled?: boolean;
   readonly showHome?: boolean;
   readonly safeAreaHandledByParent?: boolean;
   readonly keyboardVisible?: boolean;
@@ -40,6 +41,7 @@ export interface NavigationActionBarProps<Name extends string> {
 
 export function NavigationActionBar<Name extends string>({
   controller,
+  leaveDisabled = false,
   showHome = false,
   safeAreaHandledByParent = false,
   keyboardVisible,
@@ -63,7 +65,7 @@ export function NavigationActionBar<Name extends string>({
     };
   }, []);
 
-  const backDisabled = snapshot.isTransitioning;
+  const backDisabled = snapshot.isTransitioning || leaveDisabled;
   const canGoHome = showHome && snapshot.routes.length > 1;
   if (!snapshot.canGoBack && !canGoHome) return null;
 
