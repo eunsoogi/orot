@@ -6,13 +6,16 @@ import { useNavigationSnapshot } from '../../navigation/useNavigationSnapshot';
 import { openEuropePmcArticle } from './articleLinks';
 import { AiFeatureFlow } from './AiFeatureFlow';
 import type { AiFeatureFlowProps } from './AiFeatureFlow';
-import type { AiFeatureRouteName } from './aiFeatureNavigation';
+import type {
+  AiFeatureRouteName,
+  FeatureScreenRoute,
+} from './aiFeatureNavigation';
 
 export interface AiFeatureRouteProps extends Omit<
   AiFeatureFlowProps,
   'navigation' | 'onOpenArticle'
 > {
-  readonly initialRoute?: 'entry' | 'provider-selection';
+  readonly initialRoute?: FeatureScreenRoute | 'provider-selection';
   readonly onBack: () => void;
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
@@ -29,7 +32,7 @@ export function AiFeatureRoute({
   const [controller] = useState(() => {
     const navigation =
       createNavigationController<AiFeatureRouteName>('app-home');
-    // App home can enter provider selection directly, but still through this guarded stack.
+    // Push the chosen home destination over the internal root so Back returns to App.
     navigation.push(initialRoute);
     return navigation;
   });

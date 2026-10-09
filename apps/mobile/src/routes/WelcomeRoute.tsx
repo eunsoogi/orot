@@ -1,4 +1,5 @@
 import { Button, StyleSheet, Text, View } from 'react-native';
+import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import BackupStatusRecovery from '../backup/BackupStatusRecovery';
 import { t } from '../i18n';
 import { providerSelectionText } from '../providers/selection/text';
@@ -6,7 +7,10 @@ import { providerSelectionText } from '../providers/selection/text';
 interface WelcomeRouteProps {
   selectedRecommendationProvider: string;
   onOpenProviderSelection: () => void;
-  onOpenAiFeatures: () => void;
+  onOpenVisitQuestions: () => void;
+  onOpenDiseaseHypotheses: () => void;
+  onOpenRagConversation: () => void;
+  onOpenExternalEvidence: () => void;
   onOpenAppointments: () => void;
   onOpenCommonObservations: () => void;
   onOpenBloodPressure: () => void;
@@ -39,7 +43,10 @@ export const appRouteStyles = StyleSheet.create({
 export default function WelcomeRoute({
   selectedRecommendationProvider,
   onOpenProviderSelection,
-  onOpenAiFeatures,
+  onOpenVisitQuestions,
+  onOpenDiseaseHypotheses,
+  onOpenRagConversation,
+  onOpenExternalEvidence,
   onOpenAppointments,
   onOpenCommonObservations,
   onOpenBloodPressure,
@@ -55,6 +62,13 @@ export default function WelcomeRoute({
         {t('app.welcome.title')}
       </Text>
       <Text style={appRouteStyles.message}>{t('app.welcome.message')}</Text>
+      <FeatureEntryScreen
+        embedded
+        onOpenVisitQuestions={onOpenVisitQuestions}
+        onOpenDiseaseHypotheses={onOpenDiseaseHypotheses}
+        onOpenRagConversation={onOpenRagConversation}
+        onOpenExternalEvidence={onOpenExternalEvidence}
+      />
       {/* This route prepares local data; the app cannot verify an OS backup result. */}
       <BackupStatusRecovery />
       {selectedRecommendationProvider ? (
@@ -67,11 +81,6 @@ export default function WelcomeRoute({
         onPress={onOpenProviderSelection}
         testID="open-provider-selection"
         title={providerSelectionText.title}
-      />
-      <Button
-        onPress={onOpenAiFeatures}
-        testID="open-ai-features"
-        title={t('aiFeatures.open')}
       />
       <Button
         onPress={onOpenAppointments}

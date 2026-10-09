@@ -7,6 +7,8 @@ async function openFeatureAndReturn(
   exerciseFeature,
   confirmUnsaved = false,
 ) {
+  // Home keeps the feature cards in its shared scroll view rather than a nested list.
+  await element(by.id('navigation-route-scroll')).scroll(240, 'down', 0.5, 0.7);
   await element(by.id(entryId)).tap();
   await waitFor(element(by.id(screenId)))
     .toBeVisible()
@@ -14,7 +16,7 @@ async function openFeatureAndReturn(
   if (exerciseFeature) await exerciseFeature();
   await element(by.text('뒤로').withAncestor(by.id(screenId))).tap();
   if (confirmUnsaved) await confirmUnsavedLeave();
-  await waitFor(element(by.id('ai-features-screen')))
+  await waitFor(element(by.id('welcome-title')))
     .toBeVisible()
     .withTimeout(30000);
 }
@@ -41,27 +43,20 @@ describe('Orot mobile app', () => {
     await expect(element(by.id('welcome-title'))).toHaveText(
       'Orot에 오신 걸 환영해요',
     );
-    await expect(element(by.id('open-ai-features'))).toHaveLabel(
-      'AI 건강 기능 살펴보기',
-    );
-    await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
-
-    // Exercise the Korean home entry and return path before the Calendar probe.
-    await element(by.id('open-ai-features')).tap();
-    await waitFor(element(by.id('ai-features-screen')))
-      .toBeVisible()
-      .withTimeout(30000);
+    await expect(element(by.text('다음 진료 질문'))).toExist();
     await expect(element(by.text('질환 가능성 살펴보기'))).toExist();
     await expect(element(by.text('건강 기록과 대화하기'))).toExist();
     await expect(element(by.text('의료 자료 찾아보기'))).toExist();
-    // Exercise the app-connected route and its shared back action without starting inference.
+    await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
+
+    // Each home card opens its feature directly without starting inference.
     await element(by.id('ai-feature-visit-questions')).tap();
     await waitFor(element(by.id('next-visit-questions-scroll')))
       .toBeVisible()
       .withTimeout(30000);
     await expect(element(by.id('next-visit-appointment'))).toExist();
-    await element(by.id('next-visit-questions-back')).tap();
-    await waitFor(element(by.id('ai-features-screen')))
+    await element(by.id('navigation-back')).tap();
+    await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
 
@@ -110,7 +105,6 @@ describe('Orot mobile app', () => {
       true,
     );
 
-    await element(by.id('ai-features-screen')).scrollTo('bottom', 0.5, 0.7);
     await element(by.id('ai-feature-external-evidence')).tap();
     await waitFor(element(by.id('external-medical-evidence-screen')))
       .toBeVisible()
@@ -135,17 +129,12 @@ describe('Orot mobile app', () => {
       by.text('뒤로').withAncestor(by.id('external-medical-evidence-screen')),
     ).tap();
     await confirmUnsavedLeave();
-    await waitFor(element(by.id('ai-features-screen')))
-      .toBeVisible()
-      .withTimeout(30000);
-
-    // The shared route bar returns from the feature entry to the app home route.
-    await element(by.id('navigation-back')).tap();
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
 
-    // The home provider shortcut must enter the same adapter-backed route stack.
+    // Home controls follow the AI cards, so scroll them into view before tapping.
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await element(by.id('open-provider-selection')).tap();
     await waitFor(element(by.id('provider-selection-screen')))
       .toBeVisible()
@@ -163,6 +152,7 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await element(by.id('open-appointments')).tap();
     // Manual appointment CRUD remains isolated in the dedicated appointments probe.
     await waitFor(element(by.id('calendar-title')))

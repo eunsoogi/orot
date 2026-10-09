@@ -15,26 +15,22 @@ describe('AI visit questions through the app navigation', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('open-ai-features')).tap();
-    await waitFor(element(by.id('ai-features-screen')))
-      .toBeVisible()
-      .withTimeout(30000);
     await element(by.id('ai-feature-visit-questions')).tap();
-    await waitFor(element(by.id('next-visit-questions-route')))
+    // Check the visible content and controls; the enclosing keyboard-avoiding view is structural.
+    await waitFor(element(by.id('next-visit-questions-scroll')))
       .toBeVisible()
       .withTimeout(30000);
-    await waitFor(element(by.id('navigation-keyboard-avoiding-root')))
-      .toBeVisible()
-      .withTimeout(30000);
+    await expect(element(by.id('navigation-back'))).toBeVisible();
+    await expect(element(by.id('next-visit-questions-back'))).not.toExist();
     await waitFor(element(by.id('next-visit-appointment-time')))
       .toBeVisible()
       .withTimeout(30000);
-    await waitFor(element(by.text('합성 UI 검사 제공자')))
-      .toExist()
-      .withTimeout(30000);
+    await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
 
+    await expect(element(by.id('next-visit-generate'))).toBeVisible();
     await element(by.id('next-visit-generate')).tap();
-    await waitFor(element(by.id('next-visit-review-actions')))
+    // The save button confirms the review UI; its enclosing view is layout-only.
+    await waitFor(element(by.id('next-visit-review-save')))
       .toBeVisible()
       .withTimeout(30000);
     const scroll = element(by.id('next-visit-questions-scroll'));
@@ -74,6 +70,10 @@ describe('AI visit questions through the app navigation', () => {
     await saveAction.tap();
     await waitFor(element(by.id('next-visit-save-message')))
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
+      .withTimeout(30000);
+    await element(by.id('navigation-back')).tap();
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
       .withTimeout(30000);
   });
 });

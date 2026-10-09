@@ -118,13 +118,11 @@ describe('safe area routes on iOS Simulator', () => {
     const scroll = element(by.id('navigation-route-scroll'));
     await scroll.scrollTo('bottom');
     await expect(element(by.id('open-recording'))).toBeVisible();
-    // The shared app root spans the viewport, so validate the last tappable row against its bottom inset.
+    // AI cards and the existing app routes share this scroll; its tail holds the trailing actions.
     await expectElementAboveBottomInset(
       'open-recording',
       'navigation-keyboard-avoiding-root',
     );
-    await scroll.scrollTo('top');
-
     await element(by.id('open-common-observations')).tap();
     await waitFor(element(by.id('common-observations-import')))
       .toBeVisible()
@@ -148,6 +146,7 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('preserves the recording screen inset root and existing inner scrolling', async () => {
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await waitFor(element(by.id('open-recording')))
       .toBeVisible()
       .withTimeout(30000);
@@ -174,6 +173,7 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await element(by.id('open-blood-pressure-import')).tap();
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()

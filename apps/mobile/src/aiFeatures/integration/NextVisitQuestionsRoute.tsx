@@ -1,5 +1,4 @@
-import { Button, Text, View } from 'react-native';
-import { t } from '../../i18n';
+import { Text, View } from 'react-native';
 import { NextVisitQuestionsScreen } from '../../nextVisitQuestions';
 import { visitQuestionsRouteStyles as styles } from './NextVisitQuestionsRoute.styles';
 import type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
@@ -8,19 +7,12 @@ import { useNextVisitQuestionsRoute } from './useNextVisitQuestionsRoute';
 
 export type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
 
-/** Connects the public #32 screen to the #109 app route and local service hooks. */
+/** Connects #32 content to #109 data; the enclosing adapter owns guarded Back. */
 export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
   const route = useNextVisitQuestionsRoute(props);
 
   return (
     <View style={styles.container} testID="next-visit-questions-route">
-      <View style={styles.backRow}>
-        <Button
-          onPress={props.onBack}
-          testID="next-visit-questions-back"
-          title={t('aiFeatures.back')}
-        />
-      </View>
       <NextVisitQuestionsScreen
         appointment={route.appointment}
         onGenerate={route.onGenerate}

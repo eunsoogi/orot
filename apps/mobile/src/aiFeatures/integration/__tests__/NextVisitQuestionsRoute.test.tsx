@@ -163,6 +163,7 @@ test('renders the visit route with selected AI, generation, source, and save act
       '검토한 질문을 이 예약에 저장했어요.',
     ),
   );
-  await fireEvent.press(screen.getByTestId('next-visit-questions-back'));
-  expect(props.onBack).toHaveBeenCalledTimes(1);
+  // The enclosing NavigationRouteAdapter owns the single guarded Back action.
+  expect(screen.queryByTestId('next-visit-questions-back')).toBeNull();
+  expect(props.onBack).not.toHaveBeenCalled();
 });

@@ -24,6 +24,7 @@ import type {
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
 import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
+import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
@@ -68,9 +69,11 @@ export default function App({
   aiFeatureServiceDependencies,
   renderVisitQuestions,
 }: AppProps) {
-  const [showAiFeatures, setShowAiFeatures] = useState(false);
+  // Start the guarded AI stack at the home card's destination so each action is one tap.
+  const [aiInitialRoute, setAiInitialRoute] = useState<
+    FeatureScreenRoute | 'provider-selection' | null
+  >(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showProviderSelection, setShowProviderSelection] = useState(false);
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
@@ -98,15 +101,12 @@ export default function App({
     }
   }
 
-  // Both AI entry points use the same guarded route tree and local app services.
-  if (showAiFeatures || showProviderSelection)
+  // Feature cards and provider settings share the guarded flow and local app services.
+  if (aiInitialRoute)
     return (
       <AiFeatureRoute
-        initialRoute={showProviderSelection ? 'provider-selection' : 'entry'}
-        onBack={() => {
-          setShowAiFeatures(false);
-          setShowProviderSelection(false);
-        }}
+        initialRoute={aiInitialRoute}
+        onBack={() => setAiInitialRoute(null)}
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedRecommendationProvider(provider.displayName)
         }
@@ -179,8 +179,21 @@ export default function App({
             return (
               <WelcomeRoute
                 selectedRecommendationProvider={selectedRecommendationProvider}
-                onOpenProviderSelection={() => setShowProviderSelection(true)}
-                onOpenAiFeatures={() => setShowAiFeatures(true)}
+                onOpenProviderSelection={() =>
+                  setAiInitialRoute('provider-selection')
+                }
+                onOpenVisitQuestions={() =>
+                  setAiInitialRoute('visit-questions')
+                }
+                onOpenDiseaseHypotheses={() =>
+                  setAiInitialRoute('disease-hypotheses')
+                }
+                onOpenRagConversation={() =>
+                  setAiInitialRoute('rag-conversation')
+                }
+                onOpenExternalEvidence={() =>
+                  setAiInitialRoute('external-evidence')
+                }
                 onOpenAppointments={openCalendar}
                 onOpenCommonObservations={() =>
                   actions.push('common-observations')

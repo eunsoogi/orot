@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getAiFeatureCopy } from './copy';
 
 export interface FeatureEntryScreenProps {
+  readonly embedded?: boolean;
   readonly onOpenVisitQuestions?: () => void;
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
@@ -9,20 +10,23 @@ export interface FeatureEntryScreenProps {
 }
 
 /** Keeps feature routing at the app boundary and disables entries without an owned screen. */
-export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
+export function FeatureEntryScreen({
+  embedded = false,
+  onOpenVisitQuestions,
+  onOpenDiseaseHypotheses,
+  onOpenRagConversation,
+  onOpenExternalEvidence,
+}: FeatureEntryScreenProps) {
   const copy = getAiFeatureCopy();
   const actions = [
-    props.onOpenVisitQuestions,
-    props.onOpenDiseaseHypotheses,
-    props.onOpenRagConversation,
-    props.onOpenExternalEvidence,
+    onOpenVisitQuestions,
+    onOpenDiseaseHypotheses,
+    onOpenRagConversation,
+    onOpenExternalEvidence,
   ];
 
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      testID="ai-features-screen"
-    >
+  const content = (
+    <>
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.heading}
       </Text>
@@ -52,12 +56,31 @@ export function FeatureEntryScreen(props: FeatureEntryScreenProps) {
           </Pressable>
         </View>
       ))}
+    </>
+  );
+
+  if (embedded) {
+    // The home route owns scrolling, so embedded cards avoid a nested scroll view.
+    return (
+      <View style={styles.embedded} testID="ai-features-screen">
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      contentContainerStyle={styles.container}
+      testID="ai-features-screen"
+    >
+      {content}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
+  embedded: { alignSelf: 'stretch', gap: 12 },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   card: {
     borderColor: '#C9D4D1',
