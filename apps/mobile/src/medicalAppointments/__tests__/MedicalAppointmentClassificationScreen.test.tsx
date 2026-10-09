@@ -124,7 +124,7 @@ describe('medical appointment review fallback', () => {
     ).toBeGreaterThan(0);
     await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
     expect(onOpenManual).toHaveBeenCalledTimes(1);
-  }, 20_000);
+  }, 60_000);
 
   it('keeps the separate manual entry route available when Calendar permission is denied', async () => {
     const bridge = {

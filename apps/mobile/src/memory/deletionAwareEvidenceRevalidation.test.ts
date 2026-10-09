@@ -194,6 +194,7 @@ describe('deleted evidence checkpoint revalidation', () => {
         [reference],
         [reference],
         [reference],
+        [reference],
       ]);
       expect(resume.restoreEvidence).toHaveBeenCalledTimes(1);
       expect(resume.provider.generate).toHaveBeenCalledTimes(1);

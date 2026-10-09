@@ -6,29 +6,49 @@ import type { ExecutionConsentPort } from './contracts';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 
+/** Lets an abort stop local reads or network queries before an evidence adapter starts. */
+export function deferEvidenceAdapter<TResult>(
+  signal: AbortSignal,
+  dispatch: () => Promise<TResult>,
+): Promise<TResult> {
+  return Promise.resolve().then(() => {
+    if (signal.aborted) return new Promise<TResult>(() => {});
+    return dispatch();
+  });
+}
+
+/** Keeps evidence-backed payloads current across consent waits and provider calls. */
+export async function revalidateCurrentEvidence<TResult>(
+  context: RuntimeContext<TResult>,
+  providerStop: 'not_started' | 'underlying_call_unconfirmed',
+): Promise<boolean> {
+  const { options, signal } = context;
+  const references = referencesFromBatch(context.currentEvidence);
+  if (references.length === 0) return true;
+  if (signal.aborted) {
+    canceled(context, providerStop);
+    return false;
+  }
+
+  const revalidation = deferEvidenceAdapter(signal, () =>
+    options.revalidateEvidence(references, signal),
+  );
+  const result = await observeUntilAbort(revalidation, signal);
+  if (result.kind === 'cancelled') canceled(context, providerStop);
+  else if (result.kind !== 'value' || !result.value) {
+    stop(context, 'Evidence changed while the model request was in progress.', 'stale_evidence');
+  }
+  return result.kind === 'value' && result.value === true;
+}
+
 /** Keeps evidence-backed payloads current across consent waits and provider calls. */
 export async function callModelWithEvidenceFreshness<TResult>(
   context: RuntimeContext<TResult>,
   request: LanguageModelRequest,
 ): Promise<ModelCallOutcome | undefined> {
   const { options, signal } = context;
-  const references = referencesFromBatch(context.currentEvidence);
-  const ensureCurrent = async (providerStop: 'not_started' | 'underlying_call_unconfirmed') => {
-    if (references.length === 0) return true;
-    let revalidation: Promise<boolean>;
-    try {
-      revalidation = options.revalidateEvidence(references, signal);
-    } catch {
-      stop(context, 'Evidence freshness could not be confirmed.', 'stale_evidence');
-      return false;
-    }
-    const result = await observeUntilAbort(revalidation, signal);
-    if (result.kind === 'cancelled') canceled(context, providerStop);
-    else if (result.kind !== 'value' || !result.value) {
-      stop(context, 'Evidence changed while the model request was in progress.', 'stale_evidence');
-    }
-    return result.kind === 'value' && result.value;
-  };
+  const ensureCurrent = (providerStop: 'not_started' | 'underlying_call_unconfirmed') =>
+    revalidateCurrentEvidence(context, providerStop);
 
   let staleAfterConsent = false;
   const consent: ExecutionConsentPort = {

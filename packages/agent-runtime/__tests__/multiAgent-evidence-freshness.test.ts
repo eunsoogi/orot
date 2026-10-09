@@ -1,4 +1,5 @@
 import { providerSuccess, type LanguageModelProvider } from '@orot/model-runtime';
+import { MemorySaver } from '@langchain/langgraph/web';
 import {
   runMultiAgentWorkflow,
   type EvidenceBatch,
@@ -156,5 +157,80 @@ describe('multi-agent evidence freshness at model boundaries', () => {
     expect(result.status).toBe('stale_evidence');
     expect(generate).toHaveBeenCalledTimes(1);
     expect(revalidateEvidence).toHaveBeenCalledTimes(3);
+  });
+
+  it('revalidates after the final checkpoint write before publishing citations', async () => {
+    let fresh = true;
+    const revalidateEvidence = jest.fn(async () => fresh);
+    const authorize = jest.fn(async () => 'authorized' as const);
+    const { options, generate } = makeOptions(revalidateEvidence, authorize);
+    const saver = new MemorySaver();
+    let releaseFinalWrite!: () => void;
+    const finalWriteGate = new Promise<void>((resolve) => {
+      releaseFinalWrite = resolve;
+    });
+    let markFinalWriteStarted!: () => void;
+    const finalWriteStarted = new Promise<void>((resolve) => {
+      markFinalWriteStarted = resolve;
+    });
+    const persist = saver.put.bind(saver);
+    let heldFinalWrite = false;
+    jest.spyOn(saver, 'put').mockImplementation(async (...args) => {
+      const [, checkpoint] = args;
+      const values = checkpoint.channel_values as Record<string, unknown>;
+      if (!heldFinalWrite && values.phase === 'complete' && values.terminal === true) {
+        heldFinalWrite = true;
+        markFinalWriteStarted();
+        await finalWriteGate;
+      }
+      return persist(...args);
+    });
+    const pending = runMultiAgentWorkflow(
+      { ...options, checkpointer: saver },
+      { config: { configurable: { thread_id: 'freshness-final-write' } } },
+    );
+
+    await finalWriteStarted;
+    fresh = false;
+    releaseFinalWrite();
+    const result = await pending;
+
+    expect(result.status).toBe('stale_evidence');
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(revalidateEvidence).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not start evidence revalidation when consent resolves after cancellation', async () => {
+    let authorizeLate!: (decision: 'authorized') => void;
+    let markAuthorizationStarted!: () => void;
+    const authorization = new Promise<'authorized'>((resolve) => {
+      authorizeLate = resolve;
+    });
+    const authorizationStarted = new Promise<void>((resolve) => {
+      markAuthorizationStarted = resolve;
+    });
+    const abortedValidation = Promise.reject(new Error('Evidence lookup was aborted.'));
+    abortedValidation.catch(() => undefined);
+    const revalidateEvidence = jest.fn(
+      (_references: readonly EvidenceReference[], signal: AbortSignal): Promise<boolean> =>
+        signal.aborted ? abortedValidation : Promise.resolve(true),
+    );
+    const authorize = jest.fn(() => {
+      markAuthorizationStarted();
+      return authorization;
+    });
+    const { options, generate } = makeOptions(revalidateEvidence, authorize);
+    const controller = new AbortController();
+    const pending = runMultiAgentWorkflow(options, { signal: controller.signal });
+
+    await authorizationStarted;
+    controller.abort();
+    const result = await pending;
+    authorizeLate('authorized');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(result.status).toBe('cancelled');
+    expect(revalidateEvidence).toHaveBeenCalledTimes(1);
+    expect(generate).not.toHaveBeenCalled();
   });
 });

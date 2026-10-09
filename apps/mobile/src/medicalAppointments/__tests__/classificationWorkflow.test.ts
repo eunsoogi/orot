@@ -166,6 +166,7 @@ describe('bounded Calendar classification workflow', () => {
       ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
       'provider',
       ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
+      ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
     ];
     expect(trace).toEqual([
       ...checksForBatch(events.slice(0, 8)),

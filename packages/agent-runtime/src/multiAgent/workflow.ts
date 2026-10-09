@@ -6,6 +6,7 @@ import type {
 } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
+import { deferEvidenceAdapter, revalidateCurrentEvidence } from './modelCallFreshness';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import { checkpointFromState, nonResumableCheckpoint } from './state';
@@ -83,7 +84,17 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
   };
   try {
     if (invocation.resumeFrom) {
-      const restored = await restoreRunEvidence(options, start, controller.signal);
+      // The restore helper invokes these callbacks before it can inspect cancellation.
+      const restoreOptions: MultiAgentWorkflowOptions<TResult> = {
+        ...options,
+        revalidateEvidence: (references, signal) =>
+          deferEvidenceAdapter(signal, () => options.revalidateEvidence(references, signal)),
+        restoreEvidence: options.restoreEvidence
+          ? (references, signal) =>
+              deferEvidenceAdapter(signal, () => options.restoreEvidence!(references, signal))
+          : undefined,
+      };
+      const restored = await restoreRunEvidence(restoreOptions, start, controller.signal);
       if (!restored) {
         if (controller.signal.aborted) canceled(context);
         else
@@ -108,7 +119,9 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       const references = referencesFromBatch(options.initialEvidence);
       if (references.length > 0) {
         const freshness = await observeUntilAbort(
-          options.revalidateEvidence(references, controller.signal),
+          deferEvidenceAdapter(controller.signal, () =>
+            options.revalidateEvidence(references, controller.signal),
+          ),
           controller.signal,
         );
         if (freshness.kind === 'cancelled') canceled(context);
@@ -165,6 +178,17 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       const finalState = invocationResult.value;
       if (!context.outcome)
         stop(context, 'The workflow ended without a validated result.', 'invalid_output');
+      const finalOutcome = context.outcome!;
+      if (finalOutcome.status === 'result') {
+        // The final checkpoint write is async, so evidence may change after the model's last check.
+        await revalidateCurrentEvidence(context, 'underlying_call_unconfirmed');
+        if (controller.signal.aborted && context.outcome?.status === 'result') {
+          canceled(context, 'underlying_call_unconfirmed');
+        }
+        const verifiedOutcome = context.outcome!;
+        if (verifiedOutcome.status !== 'result')
+          return failureResult(verifiedOutcome, nonResumableCheckpoint(finalState));
+      }
       return publicResult(
         context.outcome!,
         context.currentEvidence.coverage,
