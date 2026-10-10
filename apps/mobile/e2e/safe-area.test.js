@@ -2,7 +2,10 @@
 
 // Detox reserves global expect() for UI elements, so frame numbers use Jest's matcher.
 const { expect: jestExpect } = require('@jest/globals');
-const { expectKeyboardOccludesScroll } = require('./safeAreaHelpers');
+const {
+  expectKeyboardOccludesScroll,
+  expectFloatingViewport,
+} = require('./safeAreaHelpers');
 const { openRootTab } = require('./smokeHelpers');
 
 // The default Detox simulator has a notch and Home indicator; measurements are points.
@@ -145,9 +148,13 @@ describe('safe area routes on iOS Simulator', () => {
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expect(element(by.id('recording-start'))).toBeVisible();
-    await expectScrollInsideRootFrame(
+    await expectRouteScrollTopInset(
       'recording-controls-scroll',
       'navigation-keyboard-avoiding-root',
+    );
+    await expectFloatingViewport(
+      'recording-controls-scroll',
+      'recording-start',
     );
   });
 

@@ -39,4 +39,22 @@ async function expectKeyboardOccludesScroll(scrollFrame) {
   );
 }
 
-module.exports = { expectKeyboardOccludesScroll };
+/** A floating bar overlays the viewport while leaving the current action fully reachable. */
+async function expectFloatingViewport(scrollID, actionID) {
+  const frames = [];
+  for (const id of [
+    'navigation-keyboard-avoiding-root',
+    scrollID,
+    'navigation-native-toolbar',
+    actionID,
+  ]) {
+    const { frame } = await element(by.id(id)).getAttributes();
+    if (!frame) throw new Error(`Missing native frame for ${id}.`);
+    frames.push(frame);
+  }
+  const [root, scroll, toolbar, action] = frames;
+  jestExpect(scroll.y + scroll.height).toBeCloseTo(root.y + root.height, 0);
+  jestExpect(action.y + action.height).toBeLessThanOrEqual(toolbar.y);
+}
+
+module.exports = { expectKeyboardOccludesScroll, expectFloatingViewport };

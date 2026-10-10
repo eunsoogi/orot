@@ -178,8 +178,13 @@ export function NavigationRouteAdapter<Name extends string>({
       : contentSafeAreaHandledByChild;
   const routeRootTabs =
     typeof rootTabs === 'function' ? rootTabs(snapshot.currentRoute) : rootTabs;
+  // Each destination starts at its own heading instead of inheriting another tab's scroll offset.
   const body = routeIsScrollable ? (
-    <NavigationRouteScrollView>{routeContent}</NavigationRouteScrollView>
+    <NavigationRouteScrollView
+      key={`${snapshot.currentRoute.key}:${routeRootTabs?.activeTab ?? ''}`}
+    >
+      {routeContent}
+    </NavigationRouteScrollView>
   ) : (
     <View style={styles.fill}>{routeContent}</View>
   );

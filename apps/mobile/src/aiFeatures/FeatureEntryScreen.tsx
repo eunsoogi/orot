@@ -3,6 +3,7 @@ import { getAiFeatureCopy } from './copy';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 
 export interface FeatureEntryScreenProps {
@@ -21,6 +22,7 @@ export function FeatureEntryScreen({
   onOpenRagConversation,
   onOpenExternalEvidence,
 }: FeatureEntryScreenProps) {
+  const navigationInset = useNavigationContentInset();
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -103,7 +105,7 @@ export function FeatureEntryScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="ai-features-screen"
     >
       {content}

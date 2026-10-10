@@ -18,7 +18,7 @@ async function openFeatureAndReturn(
   await aiScreen.scrollTo('top');
   await waitFor(element(by.id(entryId)))
     .toBeVisible()
-    .whileElement(aiScreen)
+    .whileElement(by.id('ai-features-screen'))
     .scroll(100, 'down', 0.5, 0.35);
   await element(by.id(entryId)).tap();
   await waitFor(element(by.id(screenId)))
