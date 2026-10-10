@@ -1,5 +1,6 @@
 import { commonObservationsKo } from './healthkitCommonObservations';
 import { bloodPressureKo } from './healthkitBloodPressure';
+import { healthkitUnifiedImportKo } from './healthkitUnifiedImport';
 import { aiFeatureCatalogsKo } from './aiFeatureCatalogs';
 import { medicalAppointmentsKo } from './medicalAppointments';
 import { backupKo } from './backupKo';
@@ -103,6 +104,7 @@ export const ko = {
   // Feature catalogs stay modular while the app uses one shared Korean lookup table.
   ...commonObservationsKo,
   ...bloodPressureKo,
+  ...healthkitUnifiedImportKo,
   ...aiFeatureCatalogsKo,
   ...medicalAppointmentsKo,
   ...providerAccountsKo,

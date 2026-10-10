@@ -39,6 +39,29 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         }
     }
 
+    @objc(requestEventAccess:rejecter:)
+    public func requestEventAccess(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter _: @escaping RCTPromiseRejectBlock,
+    ) {
+        eventQueue.async {
+            // Return consent state alone so the coordinator can finish other selected prompts before queries.
+            self.requestAccessIfNeeded { access in resolve(access) }
+        }
+    }
+
+    @objc(listUpcomingEvents:rejecter:)
+    public func listUpcomingEvents(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter _: @escaping RCTPromiseRejectBlock,
+    ) {
+        eventQueue.async {
+            let access = self.currentAccess()
+            let events = access == "fullAccess" ? self.upcomingEvents() : []
+            resolve(["access": access, "events": events] as NSDictionary)
+        }
+    }
+
     @objc(requestAccessAndListUpcomingEvents:rejecter:)
     public func requestAccessAndListUpcomingEvents(
         _ resolve: @escaping RCTPromiseResolveBlock,

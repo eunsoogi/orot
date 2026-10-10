@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -21,8 +21,10 @@ import type {
   BloodPressureObservation,
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
+import { UnifiedImportRoute } from './src/healthkit/unifiedImport/UnifiedImportRoute';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
-import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
+import WelcomeRoute from './src/routes/WelcomeRoute';
+import { CalendarOpeningRoute } from './src/routes/CalendarOpeningRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
 import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
@@ -75,6 +77,7 @@ export default function App({
     FeatureScreenRoute | 'provider-selection' | null
   >(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showUnifiedImport, setShowUnifiedImport] = useState(false);
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
@@ -101,6 +104,10 @@ export default function App({
       setLoadingAppointments(false);
     }
   }
+
+  // Keep the explicit import flow on its own safe-area root and scroller.
+  if (showUnifiedImport)
+    return <UnifiedImportRoute onBack={() => setShowUnifiedImport(false)} />;
 
   // Feature cards and provider settings share the guarded flow and local app services.
   if (aiInitialRoute)
@@ -134,32 +141,12 @@ export default function App({
     }
 
     return (
-      <SafeAreaLayout scrollable>
-        <View style={appRouteStyles.container}>
-          <Text accessibilityRole="header" style={appRouteStyles.title}>
-            {t('calendar.title')}
-          </Text>
-          <Text
-            accessibilityRole={appointmentError ? 'alert' : undefined}
-            testID="calendar-app-opening"
-          >
-            {appointmentError ||
-              (loadingAppointments ? t('appointments.opening') : '')}
-          </Text>
-          {appointmentError ? (
-            <Button
-              onPress={openCalendar}
-              testID="calendar-app-retry"
-              title={t('appointments.retry')}
-            />
-          ) : null}
-          <Button
-            onPress={() => setShowCalendar(false)}
-            testID="calendar-app-back"
-            title={t('calendar.back')}
-          />
-        </View>
-      </SafeAreaLayout>
+      <CalendarOpeningRoute
+        error={appointmentError}
+        loading={loadingAppointments}
+        onRetry={openCalendar}
+        onBack={() => setShowCalendar(false)}
+      />
     );
   }
 
@@ -198,6 +185,7 @@ export default function App({
                   actions.push('common-observations')
                 }
                 onOpenBloodPressure={() => actions.push('blood-pressure')}
+                onOpenUnifiedImport={() => setShowUnifiedImport(true)}
                 onOpenRecording={() => actions.push('recording')}
               />
             );
