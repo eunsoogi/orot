@@ -78,7 +78,7 @@ describe('AI visit questions through the app navigation', () => {
       .toExist()
       .withTimeout(30000);
     const scroll = element(by.id('next-visit-questions-scroll'));
-    await scroll.scrollTo('bottom');
+    await scroll.scrollTo('bottom', 0.5, 0.2);
     const questionInput = element(by.id('next-visit-question-text-2'));
     await questionInput.tap();
     await expect(questionInput).toBeFocused();

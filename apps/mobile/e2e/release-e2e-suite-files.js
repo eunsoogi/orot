@@ -2,6 +2,7 @@ module.exports = Object.freeze([
   './smoke.test.js',
   // Keep the Settings detail routes and their shared native Back action in Release E2E.
   './settings.detox.e2e.js',
+  './unified-import-navigation.e2e.js',
   // Verify the native toolbar backdrop and reachability at accessibility text sizes.
   './navigation-glass.e2e.js',
   // Exercise the #109 screen through App navigation with synthetic route operations.

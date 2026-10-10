@@ -1,5 +1,6 @@
 import type { RecordMap, RecordRepository } from '@orot/storage';
 import type {
+  HealthKitAuthorizationResult,
   HealthKitNativeModule,
   HealthKitSampleChangesResult,
 } from '../types';
@@ -31,11 +32,23 @@ export type BloodPressureRepository = Pick<
   'getSyncCheckpoint' | 'transaction'
 >;
 
-export interface BloodPressureSyncOptions {
-  readonly healthKit: BloodPressureHealthKitClient;
+interface BloodPressureSyncSharedOptions {
   readonly repository: BloodPressureRepository;
   readonly now: () => string;
 }
+
+/** A selected batch may pass its result; standalone screens still request one feature. */
+export type BloodPressureSyncOptions = BloodPressureSyncSharedOptions &
+  (
+    | {
+        readonly authorization: HealthKitAuthorizationResult;
+        readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'>;
+      }
+    | {
+        readonly authorization?: undefined;
+        readonly healthKit: BloodPressureHealthKitClient;
+      }
+  );
 
 export interface BloodPressureSyncResult {
   readonly status: 'completed' | 'notRun' | 'partial';

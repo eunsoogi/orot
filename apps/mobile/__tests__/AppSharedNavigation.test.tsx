@@ -69,7 +69,7 @@ test('uses the same unsaved-selection confirmation for button and edge swipe', a
   await renderApp({ importHealthObservations: jest.fn() });
 
   await openRecords();
-  await fireEvent.press(screen.getByTestId('records-health-import'));
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   expect(
     await screen.findByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();

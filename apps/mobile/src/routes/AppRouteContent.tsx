@@ -4,6 +4,7 @@ import type { Appointment } from '@orot/storage';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
+import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
 import RecordingScreen from '../recording/RecordingScreen';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -120,6 +121,7 @@ export function AppRouteContent({
             recordingState={recordingState}
             onRetry={() => refreshRecordings()}
             onOpenRecording={openRecording}
+            onOpenUnifiedImport={() => actions.push('unified-import')}
             onOpenHealthImport={() => actions.push('common-observations')}
             onOpenBloodPressure={() => actions.push('blood-pressure')}
           />
@@ -159,6 +161,10 @@ export function AppRouteContent({
   }
 
   switch (actions.route.name) {
+    case 'unified-import':
+      return (
+        <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
+      );
     case 'recording':
       return <RecordingScreen onBack={actions.onBack} />;
     case 'common-observations':

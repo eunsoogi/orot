@@ -2,6 +2,7 @@
 export type AppNavigationRoute =
   | 'home'
   | 'recording'
+  | 'unified-import'
   | 'common-observations'
   | 'blood-pressure'
   | 'appointments'

@@ -12,6 +12,7 @@ interface RecordsRouteProps {
   readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetry: () => void;
   readonly onOpenRecording: () => void;
+  readonly onOpenUnifiedImport: () => void;
   readonly onOpenHealthImport: () => void;
   readonly onOpenBloodPressure: () => void;
 }
@@ -22,6 +23,7 @@ export function RecordsRoute({
   recordingState,
   onRetry,
   onOpenRecording,
+  onOpenUnifiedImport,
   onOpenHealthImport,
   onOpenBloodPressure,
 }: RecordsRouteProps) {
@@ -50,7 +52,7 @@ export function RecordsRoute({
           title={t('records.newRecording')}
         />
         <AppButton
-          onPress={onOpenHealthImport}
+          onPress={onOpenUnifiedImport}
           testID="records-health-import"
           title={t('records.import')}
           variant="secondary"

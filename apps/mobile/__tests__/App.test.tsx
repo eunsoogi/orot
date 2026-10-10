@@ -155,7 +155,7 @@ test('requires selection and an explicit import before reading common HealthKit 
   await renderApp({ importHealthObservations });
 
   await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-health-import'));
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   expect(
     screen.getByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();
@@ -189,7 +189,7 @@ test('calls the production importer only after explicit selection', async () => 
   await renderApp();
 
   await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-health-import'));
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-bodyMass'),
   );
@@ -219,7 +219,7 @@ test('allows Back and reopening while the first import is still pending', async 
   await renderApp({ importHealthObservations });
 
   await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-health-import'));
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),
   );
@@ -227,7 +227,7 @@ test('allows Back and reopening while the first import is still pending', async 
   expect(importHealthObservations).toHaveBeenCalledTimes(1);
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await fireEvent.press(screen.getByTestId('records-health-import'));
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),
   );
