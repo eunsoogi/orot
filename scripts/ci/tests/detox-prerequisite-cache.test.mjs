@@ -57,12 +57,16 @@ test('prepares the app cache before optional CocoaPods restores and installation
     profileWorkflow.indexOf('\n      - name:', podsStep + 1),
   );
 
-  // Shared hashes are available from the reusable-workflow input before cache validation.
+  // The resolver validates shared hashes or computes a local fallback before cache validation.
   assert.ok(appCacheRestore >= 0);
   assert.doesNotMatch(profileAppCacheRestoreAction, /Publish shared Detox cache fingerprints/);
   assert.match(
     profileWorkflow,
-    /EXPECTED_COCOAPODS_INPUT_HASHES_JSON:.*fromJSON\(inputs\.fingerprints\)/,
+    /node scripts\/ci\/detox-cache-fingerprint-cli\.mjs --resolve-shared-derived-data-only/,
+  );
+  assert.match(
+    profileWorkflow,
+    /fingerprints: \$\{\{ steps\.prepare_detox_simulator\.outputs\.fingerprints \}\}/,
   );
   assert.ok(derivedDataCache >= 0);
   assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);

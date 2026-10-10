@@ -9,7 +9,7 @@ import {
 } from './detox-cache-fingerprint.mjs';
 import { computeDetoxCocoapodsCacheFingerprint } from './detox-cocoapods-cache-fingerprint.mjs';
 
-function writeGitHubOutputs(outputPath, fingerprints) {
+function writeGitHubOutputs(outputPath, fingerprints, { includeFingerprintJson = false } = {}) {
   const outputLines = [];
   if (fingerprints.buildInputs) {
     outputLines.push(`build_inputs=${fingerprints.buildInputs}`);
@@ -31,7 +31,9 @@ function writeGitHubOutputs(outputPath, fingerprints) {
   if (fingerprints.cocoapodsProjectInputHash) {
     outputLines.push(`cocoapods_project_input_sha256=${fingerprints.cocoapodsProjectInputHash}`);
   }
+  // Only the normalized resolver publishes the object consumed by profile-cache inputs.
   if (
+    includeFingerprintJson &&
     fingerprints.buildInputs &&
     fingerprints.nativeDependencies &&
     fingerprints.privacyManifestInputHash &&
@@ -210,7 +212,9 @@ function main() {
   }
 
   const fingerprints = computeFingerprints(mode);
-  writeGitHubOutputs(outputPath, fingerprints);
+  writeGitHubOutputs(outputPath, fingerprints, {
+    includeFingerprintJson: mode === '--resolve-shared-derived-data-only',
+  });
   // Capture source input hashes before Pods can rewrite its tracked integration files.
   if (mode !== '--cocoapods-cache-inputs-only') {
     writeGitHubEnvironment(process.env.GITHUB_ENV, fingerprints);
