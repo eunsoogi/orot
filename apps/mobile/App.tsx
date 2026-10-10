@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -23,7 +23,8 @@ import type {
 } from './src/healthkit/bloodPressure/types';
 import { UnifiedImportRoute } from './src/healthkit/unifiedImport/UnifiedImportRoute';
 import SafeAreaLayout from './src/layout/SafeAreaLayout';
-import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
+import WelcomeRoute from './src/routes/WelcomeRoute';
+import { CalendarOpeningRoute } from './src/routes/CalendarOpeningRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
 import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
@@ -140,32 +141,12 @@ export default function App({
     }
 
     return (
-      <SafeAreaLayout scrollable>
-        <View style={appRouteStyles.container}>
-          <Text accessibilityRole="header" style={appRouteStyles.title}>
-            {t('calendar.title')}
-          </Text>
-          <Text
-            accessibilityRole={appointmentError ? 'alert' : undefined}
-            testID="calendar-app-opening"
-          >
-            {appointmentError ||
-              (loadingAppointments ? t('appointments.opening') : '')}
-          </Text>
-          {appointmentError ? (
-            <Button
-              onPress={openCalendar}
-              testID="calendar-app-retry"
-              title={t('appointments.retry')}
-            />
-          ) : null}
-          <Button
-            onPress={() => setShowCalendar(false)}
-            testID="calendar-app-back"
-            title={t('calendar.back')}
-          />
-        </View>
-      </SafeAreaLayout>
+      <CalendarOpeningRoute
+        error={appointmentError}
+        loading={loadingAppointments}
+        onRetry={openCalendar}
+        onBack={() => setShowCalendar(false)}
+      />
     );
   }
 
