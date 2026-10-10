@@ -28,6 +28,7 @@ import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureN
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
+import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
 import {
   createNavigationController,
   NavigationRouteAdapter,
@@ -35,7 +36,7 @@ import {
 } from './src/navigation';
 
 type AppNavigationRoute =
-  'home' | 'recording' | 'common-observations' | 'blood-pressure';
+  'home' | 'recording' | 'common-observations' | 'blood-pressure' | 'medical';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -110,10 +111,7 @@ export default function App({
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedRecommendationProvider(provider.displayName)
         }
-        renderVisitQuestions={
-          renderVisitQuestions ??
-          (input => <NextVisitQuestionsRoute {...input} />)
-        }
+        renderVisitQuestions={renderVisitQuestions ?? NextVisitQuestionsRoute}
         serviceDependencies={aiFeatureServiceDependencies}
       />
     );
@@ -195,6 +193,7 @@ export default function App({
                   setAiInitialRoute('external-evidence')
                 }
                 onOpenAppointments={openCalendar}
+                onOpenMedicalAppointments={() => actions.push('medical')}
                 onOpenCommonObservations={() =>
                   actions.push('common-observations')
                 }
@@ -222,6 +221,17 @@ export default function App({
                   loadObservations={loadBloodPressureObservations}
                 />
               </View>
+            );
+          // The route keeps AI review and its local manual path together.
+          case 'medical':
+            return (
+              <MedicalAppointmentRoute
+                bridge={calendarBridge}
+                loadAppointments={loadAppointments}
+                selectedAiResolverOptions={
+                  aiFeatureServiceDependencies?.selectedAi
+                }
+              />
             );
         }
       }}

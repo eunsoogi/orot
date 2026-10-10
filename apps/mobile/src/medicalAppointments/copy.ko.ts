@@ -47,6 +47,9 @@ export const medicalAppointmentCopy = {
   get providerUnavailable() {
     return t('medicalAppointments.status.providerUnavailable');
   },
+  get providerResolving() {
+    return t('medicalAppointments.status.providerResolving');
+  },
   get noProvider() {
     return t('medicalAppointments.status.noProvider');
   },
