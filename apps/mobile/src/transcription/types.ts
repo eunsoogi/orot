@@ -25,12 +25,21 @@ export interface SpeechAvailability {
 }
 
 export interface NativeSpeechTranscriptionRequest {
+  readonly requestId: string;
   readonly audioBase64: string;
   readonly mediaType: string;
   readonly language: string;
 }
 
+export interface TranscriptionRecordingRequest {
+  readonly recordingId: string;
+  readonly language: string;
+  readonly signal?: AbortSignal;
+  readonly syntheticFixture?: boolean;
+}
+
 export interface NativeRecordingTranscriptionRequest {
+  readonly requestId: string;
   readonly recordingId: string;
   readonly language: string;
   readonly syntheticFixture?: boolean;
@@ -47,6 +56,8 @@ export interface NativeSpeechTranscriptionBridge {
   transcribe(
     request: NativeSpeechTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
+  // Production native bridge provides cancellation; lightweight injected adapters may omit it.
+  cancelTranscription?(requestId: string): void;
   transcribeRecording?(
     request: NativeRecordingTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
