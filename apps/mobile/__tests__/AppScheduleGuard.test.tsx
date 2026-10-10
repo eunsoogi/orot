@@ -72,6 +72,7 @@ test('guards a calendar draft and allows navigation after explicit save', async 
     await screen.findByTestId('calendar-candidate-selected-visit'),
   );
   expect(screen.getByTestId('schedule-open-appointments')).toBeDisabled();
+  expect(screen.getByTestId('open-medical-appointments')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('navigation-tab-home'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));

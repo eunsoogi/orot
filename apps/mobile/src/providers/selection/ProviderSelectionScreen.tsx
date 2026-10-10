@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
@@ -52,6 +53,7 @@ export default function ProviderSelectionScreen({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -166,7 +168,7 @@ export default function ProviderSelectionScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
       testID="provider-selection-screen"
     >

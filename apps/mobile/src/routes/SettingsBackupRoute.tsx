@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import BackupStatusRecovery from '../backup/BackupStatusRecovery';
@@ -17,6 +18,7 @@ export function SettingsBackupRoute({
   state,
   onPrepare,
 }: SettingsBackupRouteProps) {
+  const navigationInset = useNavigationContentInset();
   const [settingsError, setSettingsError] = useState(false);
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -36,7 +38,7 @@ export function SettingsBackupRoute({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
       testID="settings-backup-scroll"
     >

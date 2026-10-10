@@ -1,7 +1,9 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { RecordingConsentControl } from './RecordingConsentControl';
 import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
 import { recordingStatusLabel } from './recordingStatusLabel';
@@ -70,6 +72,7 @@ export default function RecordingControls({
   recordingLibraryService = defaultRecordingLibraryService,
   onRecordingSourceDeleted,
 }: RecordingControlsProps) {
+  const navigationInset = useNavigationContentInset();
   const [deletingRecording, setDeletingRecording] = useState(false);
   const controlsBusy = busy || deletingRecording;
   // The selected saved-recording detail owns the transcript editor and delete action.
@@ -95,7 +98,10 @@ export default function RecordingControls({
     // The transcript panel follows the recording controls and must remain reachable on shorter screens.
     <ScrollView
       automaticallyAdjustKeyboardInsets
-      contentContainerStyle={recordingControlStyles.container}
+      contentContainerStyle={[
+        recordingControlStyles.container,
+        navigationInset,
+      ]}
       keyboardShouldPersistTaps="handled"
       style={recordingControlStyles.scroll}
       testID="recording-controls-scroll"
@@ -123,26 +129,16 @@ export default function RecordingControls({
       <Text style={recordingControlStyles.copy}>
         {t('recording.localOnly')}
       </Text>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: consentAcknowledged }}
+      <RecordingConsentControl
+        checked={consentAcknowledged}
+        onPress={onToggleConsent}
         disabled={
           controlsBusy ||
           status === 'recording' ||
           status === 'paused' ||
           status === 'interrupted'
         }
-        onPress={onToggleConsent}
-        style={recordingControlStyles.consentRow}
-        testID="recording-consent"
-      >
-        <Text style={recordingControlStyles.checkbox}>
-          {consentAcknowledged ? '☑' : '☐'}
-        </Text>
-        <Text style={recordingControlStyles.copy}>
-          {t('recording.consent.acknowledgement')}
-        </Text>
-      </Pressable>
+      />
       <Text
         accessibilityLiveRegion="polite"
         style={recordingControlStyles.status}

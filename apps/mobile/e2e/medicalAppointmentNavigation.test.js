@@ -38,7 +38,7 @@ describe('issue 108 App navigation on iOS Simulator', () => {
     await waitFor(element(by.id('appointment-add')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('appointments-back')).tap();
+    await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('medical-appointment-manual')))
       .toBeVisible()
       .withTimeout(30000);

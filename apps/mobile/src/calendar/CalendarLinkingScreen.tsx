@@ -96,6 +96,7 @@ export default function CalendarLinkingScreen({
         ) : null}
         {onOpenMedicalAppointments ? (
           <Button
+            disabled={calendar.saving || hasUnsavedSelection}
             onPress={onOpenMedicalAppointments}
             testID="open-medical-appointments"
             title={medicalAppointmentCopy.title}

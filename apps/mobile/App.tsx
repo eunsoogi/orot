@@ -129,9 +129,12 @@ export default function App({
     >
       {/* Settings and AI use the same account services and persisted selection. */}
       {actions =>
-        actions.route.name === 'medical' ? (
+        actions.route.name === 'medical' ||
+        actions.route.name === 'medical-manual' ? (
           <MedicalAppointmentRoute
             bridge={calendarBridge}
+            manual={actions.route.name === 'medical-manual'}
+            onOpenManual={() => actions.push('medical-manual')}
             loadAppointments={loadAppointments}
             selectedAiResolverOptions={aiFeatureServiceDependencies?.selectedAi}
           />

@@ -13,12 +13,14 @@ import type { CalendarBridge } from '../calendar/types';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
-import ManualAppointmentScreen from './ManualAppointmentScreen';
+import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import MedicalAppointmentClassificationScreen from './MedicalAppointmentClassificationScreen';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 
 interface MedicalAppointmentRouteProps {
   readonly bridge: CalendarBridge;
+  readonly manual: boolean;
+  readonly onOpenManual: () => void;
   readonly loadAppointments: () => Promise<AppointmentRepository>;
   readonly selectedAiResolverOptions?: SelectedAiResolverOptions;
 }
@@ -39,6 +41,8 @@ const styles = StyleSheet.create({
 /** Boots local appointments and selected AI independently so provider failure cannot hide manual entry. */
 export default function MedicalAppointmentRoute({
   bridge,
+  manual,
+  onOpenManual,
   loadAppointments,
   selectedAiResolverOptions,
 }: MedicalAppointmentRouteProps) {
@@ -50,17 +54,6 @@ export default function MedicalAppointmentRoute({
   const [selectedAi, setSelectedAi] = useState<SelectedAiResolution | null>(
     null,
   );
-  const [manualOpen, setManualOpen] = useState(false);
-
-  // The manual page owns its return control; shared navigation becomes available after that path closes.
-  useNavigationLeaveStateRegistration({
-    canLeave: !manualOpen,
-    hasUnsavedChanges: false,
-    isRecording: false,
-    hasOngoingOperation: false,
-    revision: manualOpen ? 1 : 0,
-    inputRevision: 0,
-  } satisfies NavigationLeaveState);
 
   useEffect(() => {
     let active = true;
@@ -99,6 +92,7 @@ export default function MedicalAppointmentRoute({
   if (repositoryLoadError) {
     return (
       <View style={styles.status}>
+        <ClassificationLeaveState />
         <Text accessibilityRole="header" style={styles.title}>
           {copy.title}
         </Text>
@@ -115,6 +109,7 @@ export default function MedicalAppointmentRoute({
   if (!repository) {
     return (
       <View style={styles.status}>
+        <ClassificationLeaveState />
         <Text accessibilityRole="header" style={styles.title}>
           {copy.title}
         </Text>
@@ -123,24 +118,20 @@ export default function MedicalAppointmentRoute({
     );
   }
 
-  if (manualOpen) {
-    return (
-      <ManualAppointmentScreen
-        repository={repository}
-        onBack={() => setManualOpen(false)}
-      />
-    );
+  if (manual) {
+    return <AppointmentsScreen repository={repository} />;
   }
 
   if (!selectedAi) {
     return (
       <View style={styles.status}>
+        <ClassificationLeaveState />
         <Text accessibilityRole="header" style={styles.title}>
           {copy.title}
         </Text>
         <Text>{copy.providerResolving}</Text>
         <Button
-          onPress={() => setManualOpen(true)}
+          onPress={onOpenManual}
           testID="medical-appointment-manual"
           title={copy.manual}
         />
@@ -150,13 +141,29 @@ export default function MedicalAppointmentRoute({
 
   const resolvedAi = selectedAi.status === 'ready' ? selectedAi : null;
   return (
-    <MedicalAppointmentClassificationScreen
-      bridge={bridge}
-      repository={repository}
-      selectedProvider={resolvedAi?.option ?? null}
-      recipient={resolvedAi?.recipient ?? null}
-      selectedProviderUnavailable={selectedAi.status === 'unavailable'}
-      onOpenManual={() => setManualOpen(true)}
-    />
+    <>
+      <ClassificationLeaveState />
+      <MedicalAppointmentClassificationScreen
+        bridge={bridge}
+        repository={repository}
+        selectedProvider={resolvedAi?.option ?? null}
+        recipient={resolvedAi?.recipient ?? null}
+        selectedProviderUnavailable={selectedAi.status === 'unavailable'}
+        onOpenManual={onOpenManual}
+      />
+    </>
   );
+}
+
+/** Only the active classification route registers a clean exit; the manual editor owns its own guard. */
+function ClassificationLeaveState() {
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: 0,
+    inputRevision: 0,
+  } satisfies NavigationLeaveState);
+  return null;
 }

@@ -13,7 +13,8 @@ final class NavigationGlassSurfaceView: UIView {
 
     private let toolbar = UIToolbar()
     private var actionButtons: [UIButton] = []
-    private var buttonWidths: [NSLayoutConstraint] = []
+    private let actionGroup = UIStackView()
+    private var groupWidth: NSLayoutConstraint?
     private static let primaryTint = UIColor { traits in
         // Darken the brand tint in higher-contrast settings while retaining its hue.
         if traits.accessibilityContrast == .high {
@@ -82,28 +83,38 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     private func rebuildToolbarItems() {
-        buttonWidths = []
+        actionGroup.arrangedSubviews.forEach { $0.removeFromSuperview() }
         actionButtons = actions.compactMap(NavigationActionDescriptor.init).map(makeToolbarButton)
         guard !actionButtons.isEmpty else {
             toolbar.setItems([], animated: false)
             return
         }
 
-        // Flexible edge spaces center one shared item group; fixed spaces would split its glass background.
-        let buttonItems = actionButtons.map { UIBarButtonItem(customView: $0) }
+        // One custom item prevents UIKit from moving individual root tabs into its overflow menu.
+        actionGroup.axis = .horizontal
+        actionGroup.distribution = .fillEqually
+        actionGroup.spacing = 4
+        actionButtons.forEach(actionGroup.addArrangedSubview)
+        groupWidth?.isActive = false
+        let width = actionGroup.widthAnchor.constraint(equalToConstant: groupContentWidth)
+        width.isActive = true
+        groupWidth = width
         toolbar.setItems(
-            [.flexibleSpace()] + buttonItems + [.flexibleSpace()],
+            [.flexibleSpace(), UIBarButtonItem(customView: actionGroup), .flexibleSpace()],
             animated: false,
         )
         setNeedsLayout()
     }
 
+    private var groupContentWidth: CGFloat {
+        // Reserve the system material's outer margins; every visible native target stays at least 44 points.
+        max(CGFloat(actionButtons.count) * 44 + CGFloat(max(0, actionButtons.count - 1)) * 4,
+            bounds.width - 64)
+    }
+
     override func layoutSubviews() {
+        groupWidth?.constant = groupContentWidth
         super.layoutSubviews()
-        // Give one continuous glass group the available screen width instead of hugging small icons.
-        // UIKit adds group insets and inter-item spacing; reserve them to avoid its overflow menu.
-        let width = max(44, (bounds.width - 80) / CGFloat(max(1, buttonWidths.count)))
-        buttonWidths.forEach { $0.constant = width }
     }
 
     private func makeToolbarButton(for action: NavigationActionDescriptor) -> UIButton {
@@ -152,11 +163,9 @@ final class NavigationGlassSurfaceView: UIView {
             action.primary || action.selected ? Self.primaryTint : UIColor.label
         button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
         button.translatesAutoresizingMaskIntoConstraints = false
-        let width = button.widthAnchor.constraint(equalToConstant: 44)
-        buttonWidths.append(width)
         NSLayoutConstraint.activate([
-            width,
-            button.heightAnchor.constraint(equalToConstant: 52),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            button.heightAnchor.constraint(equalToConstant: 44),
         ])
         button.addAction(UIAction(title: action.label) { [weak self] _ in
             // Stable IDs keep UIKit input connected to the existing JS navigation handlers.

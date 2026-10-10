@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -7,6 +8,7 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 
 /** Explains existing permission boundaries and sends permission changes to iOS Settings. */
 export function SettingsPrivacyRoute() {
+  const navigationInset = useNavigationContentInset();
   const [settingsError, setSettingsError] = useState(false);
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -25,7 +27,7 @@ export function SettingsPrivacyRoute() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
     >
       <Text
