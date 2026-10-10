@@ -104,9 +104,13 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
 function validResumeShape(saved: MultiAgentCheckpointState): boolean {
   // Durable phase and evidence-need values must match a state the graph knows how to route.
   return (
-    ['task_response', 'evidence_research', 'evidence_search', 'revised_response', 'complete'].includes(
-      saved.phase,
-    ) &&
+    [
+      'task_response',
+      'evidence_research',
+      'evidence_search',
+      'revised_response',
+      'complete',
+    ].includes(saved.phase) &&
     (saved.evidenceNeed === undefined ||
       ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
         saved.evidenceNeed,
