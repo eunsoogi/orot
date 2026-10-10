@@ -32,25 +32,36 @@ async function verifyRecordingExportAuthorizationProbe({
 }
 
 // Tap the exposed dimming region to exercise UIKit user cancellation.
-async function dismissRecordingExportShareSheet({
-  by,
-  device,
-  element,
-  waitFor,
-}) {
+async function dismissRecordingExportShareSheet({ by, element, waitFor }) {
   const dismissPopup = element(by.label('dismiss popup'));
   await waitFor(dismissPopup).toExist().withTimeout(30000);
   const dismissalFrame = (await dismissPopup.getAttributes()).frame;
   jestExpect(dismissalFrame.width).toBeGreaterThan(0);
   jestExpect(dismissalFrame.height).toBeGreaterThan(0);
-  // Detox 20.51.4's XCTest bridge parses coordinates as Int(String), falling back
-  // to 100 for fractional values. Round before serialization so UIKit receives the intended tap.
+  // This probe presents a bottom-anchored popover; its upper dimming region is exposed.
   const point = {
     x: Math.round(dismissalFrame.x + dismissalFrame.width / 2),
     y: Math.round(dismissalFrame.y + dismissalFrame.height * 0.2),
   };
   console.log('RECORDING_EXPORT_AUDIO_DISMISS_TAP ' + JSON.stringify(point));
-  await device.tap(point);
+  const root = element(by.type('RCTRootComponentView'));
+  const rootFrame = (await root.getAttributes()).frame;
+  for (const frame of [dismissalFrame, rootFrame]) {
+    jestExpect(
+      ['x', 'y', 'width', 'height'].every(key => Number.isFinite(frame[key])),
+    ).toBe(true);
+  }
+  const localPoint = { x: point.x - rootFrame.x, y: point.y - rootFrame.y };
+  jestExpect(localPoint.x).toBeGreaterThanOrEqual(0);
+  jestExpect(localPoint.y).toBeGreaterThanOrEqual(0);
+  jestExpect(localPoint.x).toBeLessThan(rootFrame.width);
+  jestExpect(localPoint.y).toBeLessThan(rootFrame.height);
+  console.log('RECORDING_EXPORT_TAP_ROOT ' + JSON.stringify(rootFrame));
+  // Detox's pixel visibility check skips the transparent dimming view. Use the
+  // observed app root as the coordinate carrier; its native UITouch still uses
+  // UIWindow.hitTest, so UIKit's popover receives the outside tap and cancels.
+  // This avoids device.tap's separate XCTest runner without invoking a test hook.
+  await root.tap(localPoint);
   await waitFor(dismissPopup).not.toExist().withTimeout(30000);
 }
 
