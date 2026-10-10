@@ -81,7 +81,7 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
   const gate = jobBlock(testWorkflow, 'gate_tests');
   const expectedRubyVersion = codeWorkflow.match(/EXPECTED_RUBY_VERSION: '([^']+)'/)?.[1];
 
-  assert.ok(expectedRubyVersion, 'Linux code checks must declare the Ruby version');
+  assert.ok(expectedRubyVersion, 'Code Quality must declare the Ruby version');
   assert.ok(testWorkflow.includes(`EXPECTED_RUBY_VERSION: '${expectedRubyVersion}'`));
   assert.match(gate, /uses: ruby\/setup-ruby@[a-f0-9]{40}/);
   assert.ok(gate.includes('ruby-version: ${{ env.EXPECTED_RUBY_VERSION }}'));
@@ -99,19 +99,25 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
   assert.doesNotMatch(gate, /artifacts\/gate-tests/);
 });
 
-test('removes quality aggregate checks while preserving the production build check', () => {
-  assert.match(
-    ciWorkflow,
-    /quality_code:[\s\S]*?uses: \.\/\.github\/workflows\/quality-linux\.yml/,
-  );
-  assert.match(
-    ciWorkflow,
-    /quality_tests:[\s\S]*?uses: \.\/\.github\/workflows\/quality-linux-tests\.yml/,
-  );
-  assert.doesNotMatch(ciWorkflow, /^\x20{2}quality_linux:/m);
-  assert.doesNotMatch(ciWorkflow, /^\x20{2}quality:\n/m);
-  assert.doesNotMatch(ciWorkflow, /name: Quality Linux|name: Quality\n/);
-  assert.doesNotMatch(ciWorkflow, /require-quality-aggregate\.mjs/);
+test('exposes direct quality checks with CI event and cancellation rules', () => {
+  const directTriggers =
+    'on:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+
+  assert.match(codeWorkflow, /^name: Code Quality$/m);
+  assert.match(testWorkflow, /^name: Test Gates$/m);
+  for (const workflow of [codeWorkflow, testWorkflow]) {
+    assert.ok(workflow.includes(directTriggers));
+    assert.ok(
+      workflow.includes(
+        'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+      ),
+    );
+    assert.ok(workflow.includes('cancel-in-progress: true'));
+    assert.match(workflow, /^permissions:\n {2}contents: read/m);
+    assert.doesNotMatch(workflow, /workflow_call/);
+  }
+  assert.doesNotMatch(ciWorkflow, /quality_code:|quality_tests:/);
+  assert.doesNotMatch(ciWorkflow, /uses: \.\/\.github\/workflows\/quality-linux/);
   assert.match(ciWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
   assert.match(ciWorkflow, /runs-on: xcode-27/);
   assert.doesNotMatch(ciWorkflow, /name: Detox iOS E2E/);

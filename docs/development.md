@@ -51,7 +51,7 @@ node scripts/ci/check-loc.mjs --all
 
 The repository policy is in [`scripts/ci/loc-policy.json`](../scripts/ci/loc-policy.json). It counts physical lines, including comments and blank lines: 250 passes and 251 fails. It includes maintained application and package source, tests, scripts, and executable configuration. Documentation, lockfiles, generated/vendor/build output, binary assets, and serialized Xcode project metadata have explicit exclusion reasons. Unknown changed file types and missing Git history fail the check.
 
-GitHub Actions runs this canonical check as `Linux code checks / Source LOC policy` in workflow `CI`. Branch protection requires it directly alongside the maintained inventory, ten lint leaves, format/type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and the individual Detox E2E profile leaves. The CI wrapper jobs are not substitutes for these leaf results.
+GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Branch protection requires it alongside `Maintained file inventory`, ten `Lint / <surface>` checks, `Format check`, the type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and the individual Detox E2E profile leaves. Branch protection reads each job check directly rather than a workflow summary.
 
 ## iOS 빌드
 

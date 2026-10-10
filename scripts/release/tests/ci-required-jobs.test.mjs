@@ -17,15 +17,15 @@ test('requires every direct quality and E2E leaf check without aggregate wrapper
     'Properties',
   ];
   for (const surface of lintSurfaces) {
-    assert.ok(REQUIRED_CI_JOBS.includes(`Linux code checks / Lint / ${surface}`));
+    assert.ok(REQUIRED_CI_JOBS.includes(`Lint / ${surface}`));
   }
   for (const name of [
-    'Linux code checks / Maintained file inventory',
-    'Linux code checks / Source LOC policy',
-    'Linux code checks / Format check',
-    'Linux test checks / TypeScript typecheck',
-    'Linux test checks / Unit and component tests',
-    'Linux test checks / CI, release, and quality gate tests',
+    'Maintained file inventory',
+    'Source LOC policy',
+    'Format check',
+    'TypeScript typecheck',
+    'Unit and component tests',
+    'CI, release, and quality gate tests',
     'iOS Simulator Build',
     'Detox E2E profiles / Release shards / Release UI and storage / Detox release iOS E2E',
     'Detox E2E profiles / Release shards / Release stateful-data / Detox release iOS E2E',
@@ -36,5 +36,8 @@ test('requires every direct quality and E2E leaf check without aggregate wrapper
     assert.ok(REQUIRED_CI_JOBS.includes(name), `release policy omits ${name}`);
   }
   assert.equal(new Set(REQUIRED_CI_JOBS).size, REQUIRED_CI_JOBS.length);
-  assert.doesNotMatch(REQUIRED_CI_JOBS.join('\n'), /Quality Linux|Detox iOS E2E|Require complete/);
+  assert.doesNotMatch(
+    REQUIRED_CI_JOBS.join('\n'),
+    /Linux code checks|Linux test checks|Quality Linux|Detox iOS E2E|Require complete/,
+  );
 });

@@ -1,10 +1,19 @@
-name: Linux test checks
+name: Test Gates
 
 on:
-  workflow_call:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Keep cancellation scoped to this workflow so parallel check sets do not cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CI: 'true'
@@ -129,7 +138,7 @@ jobs:
         with:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
-      # CocoaPods diagnostic fixtures need the same Ruby version as the Linux code checks.
+      # CocoaPods diagnostic fixtures need the same Ruby version as Code Quality.
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:

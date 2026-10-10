@@ -1,10 +1,19 @@
-name: Linux code checks
+name: Code Quality
 
 on:
-  workflow_call:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Keep cancellation scoped to this workflow so parallel check sets do not cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CI: 'true'

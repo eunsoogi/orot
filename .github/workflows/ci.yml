@@ -38,14 +38,6 @@ env:
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
 
 jobs:
-  quality_code:
-    name: Linux code checks
-    uses: ./.github/workflows/quality-linux.yml
-
-  quality_tests:
-    name: Linux test checks
-    uses: ./.github/workflows/quality-linux-tests.yml
-
   ios-simulator-build:
     name: iOS Simulator Build
     # Preserve the production/OAuth build independently of Linux leaf failures.
