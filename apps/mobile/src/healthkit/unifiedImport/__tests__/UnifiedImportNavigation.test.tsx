@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -94,3 +95,59 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
   expect(confirmNavigationLeave).toHaveBeenCalledTimes(2);
   expect(runFeature).not.toHaveBeenCalled();
 });
+
+test.each(['navigation-back', 'navigation-home'])(
+  'blocks %s while a selected calendar candidate is saving and releases it after completion',
+  async navigationID => {
+    // Hold the actual coordinator persistence boundary while using the production navigation shell.
+    const save = deferred<void>();
+    const confirmCalendarEvent = jest.fn(() => save.promise);
+    const base = createTestServices({ confirmCalendarEvent });
+    const controller = createNavigationController<'records' | 'import'>(
+      'records',
+    );
+    controller.push('import');
+    await render(
+      <NavigationRouteAdapter controller={controller} showHome>
+        {actions =>
+          actions.route.name === 'import' ? (
+            <HealthKitImportScreen
+              copy={unifiedHealthImportCopy}
+              coordinator={createUnifiedImportCoordinator(base.services)}
+            />
+          ) : (
+            <Text testID="records-home">기록</Text>
+          )
+        }
+      </NavigationRouteAdapter>,
+    );
+    await fireEvent.press(screen.getByTestId('unified-import-toggle-eventKit'));
+    await fireEvent.press(screen.getByTestId('unified-import-start'));
+    await screen.findByTestId('unified-import-eventkit-select-0');
+    await fireEvent.press(
+      screen.getByTestId('unified-import-eventkit-select-0'),
+    );
+    await fireEvent.press(
+      screen.getByTestId('unified-import-eventkit-confirm'),
+    );
+    await waitFor(() => expect(confirmCalendarEvent).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByTestId('unified-import-eventkit-confirm'),
+    ).toBeDisabled();
+    expect(screen.getByTestId('navigation-back')).toBeDisabled();
+    expect(screen.getByTestId('navigation-home')).toBeDisabled();
+    const confirmationsBefore = jest.mocked(confirmNavigationLeave).mock.calls
+      .length;
+    await fireEvent.press(screen.getByTestId(navigationID));
+    expect(screen.getByTestId('unified-import-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('records-home')).toBeNull();
+    expect(confirmNavigationLeave).toHaveBeenCalledTimes(confirmationsBefore);
+    await act(async () => save.resolve());
+    await screen.findByTestId('unified-import-eventkit-confirmed');
+    expect(screen.getByTestId('navigation-back')).toBeEnabled();
+    expect(screen.getByTestId('navigation-home')).toBeEnabled();
+    await fireEvent.press(screen.getByTestId(navigationID));
+    await screen.findByTestId('records-home');
+    expect(confirmCalendarEvent).toHaveBeenCalledTimes(1);
+  },
+);
