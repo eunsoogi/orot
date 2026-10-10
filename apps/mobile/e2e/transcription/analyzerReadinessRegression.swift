@@ -44,7 +44,11 @@ struct SpeechAnalyzerReadinessRegression {
 
     @available(macOS 26.0, *)
     private static func cancelledRequestStopsBeforeAnalysis() async {
-        await expectPreparationFailure("cancelled installation request") {
+        // Cancellation has its own terminal code so it remains distinct from unavailable model assets.
+        await expectPreparationFailure(
+            "cancelled installation request",
+            expectedCode: "TRANSCRIPTION_CANCELLED",
+        ) {
             throw CancellationError()
         }
     }
@@ -79,6 +83,7 @@ struct SpeechAnalyzerReadinessRegression {
     @available(macOS 26.0, *)
     private static func expectPreparationFailure(
         _ label: String,
+        expectedCode: String = "MODEL_INSTALL_FAILED",
         prepare: () async throws -> AssetInventory.Status,
     ) async {
         let calls = AnalysisCallCounter()
@@ -89,7 +94,7 @@ struct SpeechAnalyzerReadinessRegression {
             )
             fatalError("\(label) unexpectedly started analysis")
         } catch let failure as SpeechTranscriptionFailure {
-            require(failure.code == "MODEL_INSTALL_FAILED", "\(label) lost its unavailable result")
+            require(failure.code == expectedCode, "\(label) returned an unexpected failure: \(failure.code)")
         } catch {
             fatalError("\(label) returned an unexpected error: \(error)")
         }
