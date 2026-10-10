@@ -5,6 +5,7 @@ module.exports = Object.freeze([
   // Keep first-use probes ahead of routes that write shared app state.
   './appointments.test.js',
   './medicalAppointmentClassification.test.js',
+  './medicalAppointmentNavigation.test.js',
   './agentMemory.test.js',
   './graph.test.js',
   './checkpoint.detox.e2e.js',
