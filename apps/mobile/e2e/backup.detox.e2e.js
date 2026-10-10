@@ -30,6 +30,8 @@ async function launchProbe(mode, newInstance = false, launchArgs = {}) {
     newInstance,
     launchArgs: { OROT_BACKUP_PROBE: mode, ...launchArgs },
   });
+  // Launch first so Detox can finish startup synchronization before fixture I/O starts.
+  await element(by.id('backup-probe-start')).tap();
 }
 
 describe('native backup eligibility probe on an isolated Simulator', () => {
