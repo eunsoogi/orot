@@ -5,6 +5,7 @@ import { localE5NativeBackend } from '../../rag/localE5NativeBackend';
 import { openLocalE5RagService } from '../../rag/localE5RagService';
 import { openLocalRecordQueryService } from '../localRecordQuery';
 import { prepareVisitQuestionContext } from './evidenceService';
+import { loadSecureDatabaseModule } from './secureDatabaseLoader';
 import type { VisitQuestionCandidate } from './taskContract';
 import { saveReviewedVisitQuestions } from './persistence';
 import type {
@@ -19,16 +20,23 @@ import { runVisitQuestionWorkflow } from './workflow';
 
 let localMemoryEmbedder: LocalE5EmbeddingProvider | null = null;
 
-/** Opens the existing encrypted local sources and uses one stable embedder for Rememori. */
+/**
+ * Opens encrypted local sources, reuses one Rememori embedder, and forwards
+ * caller cancellation into initial evidence preparation.
+ */
 export async function prepareUpcomingVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
+  readonly signal?: AbortSignal;
 }) {
-  const [{ openLocalStorage }, rag] = await Promise.all([
-    import('../../storage/secureDatabase'),
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
+  const [secureDatabase, rag] = await Promise.all([
+    loadSecureDatabaseModule(),
     openLocalE5RagService(),
   ]);
-  const repository = await openLocalStorage();
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
+  const repository = await secureDatabase.openLocalStorage();
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
   let memory: AgentMemoryService | undefined;
   try {
     localMemoryEmbedder ??= new LocalE5EmbeddingProvider(localE5NativeBackend);
@@ -36,6 +44,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   } catch {
     // The query layer reports unavailable memory while retaining usable local RAG evidence.
   }
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
   const queryService = await openLocalRecordQueryService(memory);
   const prepared = await prepareVisitQuestionContext({
     ...input,
@@ -73,6 +82,7 @@ export async function generateUpcomingVisitQuestionRecommendations(input: {
   ) => Promise<boolean>;
   readonly signal?: AbortSignal;
 }) {
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
   // Leave room for one bounded shared-runtime search after the initial RAG read.
   const initialEvidenceLimit = Math.min(
     input.maxEvidenceItems,

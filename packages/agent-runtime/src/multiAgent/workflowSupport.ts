@@ -77,6 +77,10 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
   );
 }
 
+function isNonNegativeSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
 export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult>): WorkflowState {
   const source = options.execution;
   return {
@@ -97,6 +101,23 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   };
 }
 
+function validResumeShape(saved: MultiAgentCheckpointState): boolean {
+  // Durable phase and evidence-need values must match a state the graph knows how to route.
+  return (
+    [
+      'task_response',
+      'evidence_research',
+      'evidence_search',
+      'revised_response',
+      'complete',
+    ].includes(saved.phase) &&
+    (saved.evidenceNeed === undefined ||
+      ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
+        saved.evidenceNeed,
+      ))
+  );
+}
+
 export function resumeState<TResult>(
   saved: NonNullable<MultiAgentInvocation['resumeFrom']>,
   options: MultiAgentWorkflowOptions<TResult>,
@@ -104,6 +125,7 @@ export function resumeState<TResult>(
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
+    !validResumeShape(saved) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
     saved.evidenceReferences.some(
@@ -115,12 +137,16 @@ export function resumeState<TResult>(
     saved.phase === 'complete' ||
     saved.pendingOperation ||
     saved.phase === 'evidence_search' ||
+    !isNonNegativeSafeInteger(saved.modelCalls) ||
+    !isNonNegativeSafeInteger(saved.toolCalls) ||
+    !isNonNegativeSafeInteger(saved.researchCycles) ||
     saved.modelCalls > options.execution.budget.maxModelCalls ||
     saved.toolCalls > options.execution.budget.maxToolCalls ||
     saved.researchCycles > options.execution.budget.maxResearchCycles ||
     saved.evidenceReferences.length > options.execution.budget.maxEvidenceItems ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
-    (saved.phase === 'task_response' && (saved.modelCalls > 0 || saved.toolCalls > 0)) ||
+    (saved.phase === 'task_response' &&
+      (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
     (saved.phase === 'revised_response' &&
       (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
     (saved.selectedToolId !== undefined &&
@@ -184,13 +210,15 @@ export function makeGraph<TResult>(
     .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
     .addNode('invokeRevision', nodes.invokeRevision)
     .addConditionalEdges(START, route, routeMap)
-    .addEdge('prepareResponder', 'invokeResponder')
+    .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
     .addConditionalEdges('invokeResponder', route, routeMap)
-    .addEdge('prepareResearcher', 'invokeResearcher')
+    .addConditionalEdges('prepareResearcher', (state) =>
+      state.terminal ? END : 'invokeResearcher',
+    )
     .addConditionalEdges('invokeResearcher', route, routeMap)
-    .addEdge('prepareSearch', 'executeSearch')
+    .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
     .addConditionalEdges('executeSearch', route, routeMap)
-    .addEdge('prepareRevision', 'invokeRevision')
+    .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
     .addEdge('invokeRevision', END)
     .compile({ checkpointer });
 }

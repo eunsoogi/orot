@@ -17,6 +17,11 @@ import { createBackupProbeTranscript } from './backupProbeRecording';
 import { verifyRecordingProbeState } from './backupProbePreparation';
 import type { BackupProbeResult } from './backupProbeTypes';
 
+function logSnapshotProbeStage(stage: string): void {
+  // Fixed stage labels help locate a stalled synthetic probe without logging record IDs or paths.
+  console.info('Backup snapshot probe stage:', stage);
+}
+
 async function persistSnapshotRelationships(recording: {
   id: string;
   startedAt: string;
@@ -71,25 +76,40 @@ async function verifySnapshotRelationships(recordingId: string) {
 
 // Persist all required snapshot records before the test copies the app container.
 export async function seedSnapshotProbe(): Promise<BackupProbeResult> {
+  logSnapshotProbeStage('seed-storage-fresh-start');
   await runStorageProbe('fresh');
+  logSnapshotProbeStage('seed-storage-fresh-complete');
+  logSnapshotProbeStage('seed-memory-fresh-start');
   await runAgentMemoryProbe('fresh');
+  logSnapshotProbeStage('seed-memory-fresh-complete');
+  logSnapshotProbeStage('seed-memory-delete-start');
   await runAgentMemoryProbe('delete');
+  logSnapshotProbeStage('seed-memory-delete-complete');
   const audio = syntheticFixture.cases[0]?.audio;
   if (!audio)
     throw new Error('The synthetic recording fixture is unavailable.');
+  logSnapshotProbeStage('seed-recording-install-start');
   const recording = await installSyntheticTranscriptionRecording(audio.base64);
+  logSnapshotProbeStage('seed-recording-install-complete');
   let snapshotReady = false;
   try {
+    logSnapshotProbeStage('seed-recording-inspect-start');
     const state =
       await requireNativeBackupProbe().inspectRecordingForBackupProbe(
         recording.id,
       );
+    logSnapshotProbeStage('seed-recording-inspect-complete');
     verifyRecordingProbeState(state);
+    logSnapshotProbeStage('seed-relationships-persist-start');
     await persistSnapshotRelationships(recording);
+    logSnapshotProbeStage('seed-relationships-persist-complete');
+    logSnapshotProbeStage('seed-key-eligibility-start');
     const keyEligible = await isDatabaseKeyBackupEligible();
+    logSnapshotProbeStage('seed-key-eligibility-complete');
     if (!keyEligible)
       throw new Error('The snapshot database key is not backup eligible.');
     snapshotReady = true;
+    logSnapshotProbeStage('seed-complete');
     return {
       evidenceScope: 'synthetic-simulator-app-container-snapshot',
       keyEligible,
@@ -105,25 +125,41 @@ export async function seedSnapshotProbe(): Promise<BackupProbeResult> {
       },
     };
   } finally {
-    if (!snapshotReady)
+    if (!snapshotReady) {
+      logSnapshotProbeStage('seed-recording-cleanup-start');
       await removeSyntheticTranscriptionRecording(recording.id);
+      logSnapshotProbeStage('seed-recording-cleanup-complete');
+    }
   }
 }
 
 // Reopen only after the harness restores the database and permanent recording into a new container.
 export async function recoverSnapshotProbe(): Promise<BackupProbeResult> {
+  logSnapshotProbeStage('recover-start');
   const recordingId = getBackupProbeRecordingId();
   if (!recordingId)
     throw new Error('The snapshot recording ID is unavailable.');
-  const keyMigration = await migrateDatabaseKeyForBackup();
-  const keyEligible = await isDatabaseKeyBackupEligible();
-  if (!keyEligible)
-    throw new Error('The restored database key is not eligible.');
-
-  await runStorageProbe('restart');
-  await runAgentMemoryProbe('tombstone-restart');
-  const recording = await verifySnapshotRelationships(recordingId);
+  // Once its ID is known, cleanup must cover every restore check below.
   try {
+    logSnapshotProbeStage('recover-key-migration-start');
+    const keyMigration = await migrateDatabaseKeyForBackup();
+    logSnapshotProbeStage('recover-key-migration-complete');
+    logSnapshotProbeStage('recover-key-eligibility-start');
+    const keyEligible = await isDatabaseKeyBackupEligible();
+    logSnapshotProbeStage('recover-key-eligibility-complete');
+    if (!keyEligible)
+      throw new Error('The restored database key is not eligible.');
+
+    logSnapshotProbeStage('recover-storage-restart-start');
+    await runStorageProbe('restart');
+    logSnapshotProbeStage('recover-storage-restart-complete');
+    logSnapshotProbeStage('recover-memory-tombstone-start');
+    await runAgentMemoryProbe('tombstone-restart');
+    logSnapshotProbeStage('recover-memory-tombstone-complete');
+    logSnapshotProbeStage('recover-relationships-verify-start');
+    const recording = await verifySnapshotRelationships(recordingId);
+    logSnapshotProbeStage('recover-relationships-verify-complete');
+    logSnapshotProbeStage('recover-complete');
     return {
       evidenceScope: 'synthetic-simulator-app-container-snapshot',
       keyMigration,
@@ -143,6 +179,8 @@ export async function recoverSnapshotProbe(): Promise<BackupProbeResult> {
       },
     };
   } finally {
+    logSnapshotProbeStage('recover-recording-cleanup-start');
     await removeSyntheticTranscriptionRecording(recordingId);
+    logSnapshotProbeStage('recover-recording-cleanup-complete');
   }
 }

@@ -198,4 +198,19 @@ describe('multi-agent resumed checkpoint persistence', () => {
     expect(restoreEvidence).not.toHaveBeenCalled();
     expect(provider.generate).not.toHaveBeenCalled();
   });
+
+  it('rejects malformed saved counters before checking evidence or calling the provider', async () => {
+    const { options: baseOptions, provider, resumeFrom } = makeRun([]);
+    const revalidateEvidence = jest.fn(async () => true);
+    const restoreEvidence = jest.fn(async () => evidence);
+    const options = { ...baseOptions, revalidateEvidence, restoreEvidence };
+    const malformed = { ...resumeFrom, modelCalls: -1 };
+
+    const result = await runMultiAgentWorkflow(options, { resumeFrom: malformed });
+
+    expect(result.status).toBe('stale_evidence');
+    expect(revalidateEvidence).not.toHaveBeenCalled();
+    expect(restoreEvidence).not.toHaveBeenCalled();
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
 });

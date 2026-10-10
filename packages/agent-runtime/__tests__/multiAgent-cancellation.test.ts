@@ -171,4 +171,37 @@ describe('multi-agent cancellation boundaries', () => {
     });
     expect(search).not.toHaveBeenCalled();
   });
+
+  it('preserves a model-budget stop across the responder-to-researcher handoff', async () => {
+    const generate = jest.fn(async () =>
+      providerSuccess({
+        text: JSON.stringify({ type: 'request_evidence', need: 'missing_coverage' }),
+        toolCalls: [],
+        finishReason: 'complete',
+      }),
+    );
+    const provider: LanguageModelProvider = {
+      kind: 'language-model',
+      id: 'selected-model',
+      displayName: 'Selected model',
+      capabilities: {
+        inputTypes: ['text'],
+        streaming: false,
+        structuredOutput: false,
+        toolCalling: false,
+      },
+      generate,
+    };
+    const options = cancellationOptions(provider);
+    const result = await runMultiAgentWorkflow({
+      ...options,
+      execution: {
+        ...options.execution,
+        budget: { ...options.execution.budget, maxModelCalls: 1 },
+      },
+    });
+
+    expect(result.status).toBe('budget_exceeded');
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
 });

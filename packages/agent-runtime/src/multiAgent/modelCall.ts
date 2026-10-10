@@ -31,7 +31,11 @@ export function observeUntilAbort<T>(
   operation: Promise<T>,
   signal: AbortSignal,
 ): Promise<ObservedOperation<T>> {
-  if (signal.aborted) return Promise.resolve({ kind: 'cancelled' });
+  if (signal.aborted) {
+    // Cancellation wins, but the already-started operation still needs a rejection handler.
+    operation.catch(() => undefined);
+    return Promise.resolve({ kind: 'cancelled' });
+  }
   return new Promise((resolve) => {
     let settled = false;
     const finish = (result: ObservedOperation<T>) => {

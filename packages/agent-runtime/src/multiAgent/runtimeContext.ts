@@ -53,6 +53,7 @@ export function canceled<TResult>(
   context: RuntimeContext<TResult>,
   providerStop: ProviderStopObservation = 'not_started',
 ): void {
+  if (context.outcome?.status === 'cancelled') return;
   context.outcome = context.timedOut()
     ? { status: 'budget_exceeded', reason: 'The run exceeded its time limit.' }
     : { status: 'cancelled', providerStop };

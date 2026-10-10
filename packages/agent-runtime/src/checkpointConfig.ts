@@ -2,9 +2,17 @@ import type { RunnableConfig } from '@langchain/core/runnables';
 import type { CheckpointTuple } from '@langchain/langgraph/web';
 
 export function readThreadId(config: RunnableConfig): string {
-  const value = config.configurable?.thread_id;
-  if ((typeof value !== 'string' && typeof value !== 'number') || String(value).length === 0) {
+  const value = normalizeThreadId(config.configurable?.thread_id);
+  if (value === undefined) {
     throw new Error('Missing thread_id in checkpoint config.');
+  }
+  return value;
+}
+
+/** Shares the saver key so equivalent numeric and string thread IDs use one lock. */
+export function normalizeThreadId(value: unknown): string | undefined {
+  if ((typeof value !== 'string' && typeof value !== 'number') || String(value).length === 0) {
+    return undefined;
   }
   return String(value);
 }
