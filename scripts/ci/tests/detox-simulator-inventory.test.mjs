@@ -11,6 +11,7 @@ const runtime = 'com.apple.CoreSimulator.SimRuntime.iOS-27-0';
 const deviceType = 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro';
 const base = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
 const cloneOne = '11111111-2222-4333-8444-555555555555';
+const cloneTwo = '22222222-3333-4444-8555-666666666666';
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const inventoryScript = join(repositoryRoot, 'scripts/ci/detox-simulator-inventory.mjs');
 
@@ -44,10 +45,11 @@ test('selects only new profile-matched Simulators for explicitly sharded workers
     [runtime]: [simulator(base), simulator('BBBBBBBB-CCCC-4DDD-8EEE-FFFFFFFFFFFF')],
   });
   const current = inventory({
-    [runtime]: [simulator(base), simulator(cloneOne)],
+    [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)],
   });
   const testLog = [
     `[release-e2e.test.js] release-e2e.test.js is assigned to ${base} (undefined)`,
+    `[release-e2e-safe-area.test.js] release-e2e-safe-area.test.js is assigned to ${cloneTwo} (undefined)`,
     `[release-e2e-data.test.js] release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
   ].join('\n');
 
@@ -58,15 +60,15 @@ test('selects only new profile-matched Simulators for explicitly sharded workers
     expectedRuntime: runtime,
     expectedDeviceType: deviceType,
     testLog,
-    expectedWorkers: 2,
+    expectedWorkers: 3,
   });
 
-  assert.deepEqual(result.targetUdids, [base, cloneOne]);
-  assert.deepEqual(result.assignedUdids, [base, cloneOne]);
+  assert.deepEqual(result.targetUdids, [base, cloneOne, cloneTwo]);
+  assert.deepEqual(result.assignedUdids, [base, cloneTwo, cloneOne]);
   assert.deepEqual(result.issues, []);
 });
 
-test('inventory command expects one default Release assignment and two only for explicit shards', () => {
+test('inventory command expects one default Release assignment and three only for explicit shards', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-inventory-mode-'));
   const baselinePath = join(directory, 'baseline.json');
   const currentPath = join(directory, 'current.json');
@@ -94,11 +96,17 @@ test('inventory command expects one default Release assignment and two only for 
 
     writeFileSync(
       currentPath,
-      JSON.stringify(inventory({ [runtime]: [simulator(base), simulator(cloneOne)] })),
+      JSON.stringify(
+        inventory({ [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)] }),
+      ),
     );
     writeFileSync(
       testLogPath,
-      `release-e2e.test.js is assigned to ${base} (undefined)\nrelease-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
+      [
+        `release-e2e.test.js is assigned to ${base} (undefined)`,
+        `release-e2e-safe-area.test.js is assigned to ${cloneTwo} (undefined)`,
+        `release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
+      ].join('\n'),
     );
     const sharded = spawnSync(
       process.execPath,
@@ -106,8 +114,12 @@ test('inventory command expects one default Release assignment and two only for 
       { encoding: 'utf8', env: { ...env, OROT_DETOX_RELEASE_SHARDING: 'true' } },
     );
     assert.equal(sharded.status, 0, sharded.stderr);
-    assert.match(sharded.stdout, /workers=2 targets=2/);
-    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [base, cloneOne]);
+    assert.match(sharded.stdout, /workers=3 targets=3/);
+    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [
+      base,
+      cloneOne,
+      cloneTwo,
+    ]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -118,19 +130,23 @@ test('fails closed on unexpected new devices and incomplete or shared worker ass
   const result = planDetoxSimulatorTargets({
     baseline: inventory({ [runtime]: [simulator(base)] }),
     current: inventory({
-      [runtime]: [simulator(base), simulator(cloneOne)],
+      [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)],
       'com.apple.CoreSimulator.SimRuntime.iOS-26-2': [simulator(unexpectedId, deviceType)],
     }),
     baseUdid: base,
     expectedRuntime: runtime,
     expectedDeviceType: deviceType,
-    testLog: `release-e2e.test.js is assigned to ${base} (undefined)\nrelease-e2e-data.test.js is assigned to ${base} (undefined)`,
-    expectedWorkers: 2,
+    testLog: [
+      `release-e2e.test.js is assigned to ${base} (undefined)`,
+      `release-e2e-safe-area.test.js is assigned to ${base} (undefined)`,
+      `release-e2e-data.test.js is assigned to ${base} (undefined)`,
+    ].join('\n'),
+    expectedWorkers: 3,
   });
 
-  assert.deepEqual(result.targetUdids, [base, cloneOne]);
+  assert.deepEqual(result.targetUdids, [base, cloneOne, cloneTwo]);
   assert.ok(result.issues.some((issue) => issue.includes(unexpectedId)));
   assert.ok(
-    result.issues.some((issue) => issue.includes('expected 2 distinct worker assignments')),
+    result.issues.some((issue) => issue.includes('expected 3 distinct worker assignments')),
   );
 });

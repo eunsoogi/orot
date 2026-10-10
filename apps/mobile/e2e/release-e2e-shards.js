@@ -1,10 +1,10 @@
-// Explicit shard runs keep fresh-storage/UI probes separate from stateful data probes.
+// Explicit shards isolate fresh-storage, Safe Area, and stateful data probes.
 module.exports = Object.freeze({
   'release-e2e.test.js': Object.freeze([
     './storage.test.js',
     './smoke.test.js',
-    './safe-area.test.js',
   ]),
+  'release-e2e-safe-area.test.js': Object.freeze(['./safe-area.test.js']),
   'release-e2e-data.test.js': Object.freeze([
     './storage-migration.test.js',
     './appointments.test.js',

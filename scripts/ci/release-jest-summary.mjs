@@ -1,6 +1,7 @@
 // CI counts are checked against actual test registrations by detox-release-shard-summary-inventory.test.mjs.
 export const releaseShardInventory = [
-  { wrapper: 'release-e2e.test.js', suites: 1, tests: 7 },
+  { wrapper: 'release-e2e.test.js', suites: 1, tests: 3 },
+  { wrapper: 'release-e2e-safe-area.test.js', suites: 1, tests: 4 },
   { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 6 },
 ];
 
@@ -47,7 +48,7 @@ export function validateReleaseJestConfig({
     './checkpoint.detox.e2e.js',
   ];
   const flattenedReleaseShards = Object.values(releaseE2EShards).flat();
-  // Keep the default and both split wrappers exhaustive against the ordered scenario inventory.
+  // Keep the default and all three split wrappers exhaustive against the ordered scenario inventory.
   if (
     JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles) ||
     JSON.stringify(flattenedReleaseShards) !== JSON.stringify(expectedReleaseSuiteFiles)
@@ -72,7 +73,7 @@ export function readReleaseShardBlocks(log) {
   if (markers.length === 0) return null;
   if (markers.length !== releaseShardInventory.length * 2) {
     throw new Error(
-      `e2e-release: expected two complete Release shard summaries, received ${markers.length} markers`,
+      `e2e-release: expected ${releaseShardInventory.length} complete Release shard summaries, received ${markers.length} markers`,
     );
   }
 

@@ -7,12 +7,16 @@ const {
   releasePhaseResetGuard,
   resetHookTimeoutMs,
 } = require('./storageProbeResetGuard.e2e.js');
+// The four Safe Area cases have their own wrapper so hosted CI can run them on a separate Simulator.
+const safeAreaSuites = require('./release-e2e-shards.js')[
+  'release-e2e-safe-area.test.js'
+];
 
 beforeAll(async () => {
   await releasePhaseResetGuard.runReset(async assertMayContinue => {
     await device.clearKeychain();
     assertMayContinue();
-    // Explicit shard runs start from a fresh device without an installed app.
+    // Isolated shard Simulators have a fresh keychain and need the cached Release app installed.
     if (hasFreshReleaseSimulator) {
       await device.installApp();
       assertMayContinue();
@@ -20,9 +24,4 @@ beforeAll(async () => {
   });
 }, resetHookTimeoutMs);
 
-// Keep first-use, data mutation, and migration probes ordered on one worker for stable storage state.
-for (const suiteFile of require('./release-e2e-shards.js')[
-  'release-e2e-data.test.js'
-]) {
-  require(suiteFile);
-}
+for (const suiteFile of safeAreaSuites) require(suiteFile);

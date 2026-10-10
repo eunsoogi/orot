@@ -31,7 +31,7 @@ run_simctl() {
 # The preceding workflow step captured the baseline; simctl requires the prepared source to be shut down before cloning.
 run_simctl shutdown "$base_udid" >>"$log_path" 2>&1
 
-# Seed the stateful data worker from the prepared base and keep UI-only probes on that base.
+# Clone isolated workers from the prepared base so each concurrent Release shard owns its app state.
 clone_worker() {
   local label="$1"
   local variable="$2"
@@ -61,15 +61,19 @@ clone_worker() {
   worker_udid="$simulator_udid"
 }
 
+clone_worker safe-area OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID
+safe_area_udid="$worker_udid"
 clone_worker data OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID
 data_udid="$worker_udid"
 
 # Record the clone identity before boot so teardown can recover from partial Simulator startup.
 {
   run_simctl boot "$base_udid"
+  run_simctl boot "$safe_area_udid"
   run_simctl boot "$data_udid"
   run_simctl bootstatus "$base_udid" -b
+  run_simctl bootstatus "$safe_area_udid" -b
   run_simctl bootstatus "$data_udid" -b
 } >>"$log_path" 2>&1
 if [[ -n "${GITHUB_ENV:-}" ]]; then printf 'OROT_DETOX_RELEASE_SHARDING=true\n' >>"$GITHUB_ENV"; fi
-printf 'Prepared the Release data worker Simulator and base Simulator.\n' >>"$log_path"
+printf 'Prepared the Release Safe Area and data worker Simulators with the base Simulator.\n' >>"$log_path"

@@ -10,7 +10,7 @@ if (
   throw new Error(`Unknown Release Detox shard: ${selectedShard}`);
 }
 
-// The default CI wrapper keeps ordered UI and stateful phases on one dedicated Simulator.
+// The default wrapper keeps UI, Safe Area, and stateful phases ordered on one Simulator.
 const testMatch = selectedShard
   ? [`<rootDir>/e2e/${selectedShard}`]
   : ['<rootDir>/e2e/release-e2e.test.js'];

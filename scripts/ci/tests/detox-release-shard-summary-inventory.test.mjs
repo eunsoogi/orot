@@ -75,7 +75,8 @@ test('Release shard summaries follow the registered cases and reject the superse
     countRegisteredTests(files),
   ]);
   assert.deepEqual(actual, [
-    ['release-e2e.test.js', 7],
+    ['release-e2e.test.js', 3],
+    ['release-e2e-safe-area.test.js', 4],
     ['release-e2e-data.test.js', 6],
   ]);
 
@@ -84,8 +85,9 @@ test('Release shard summaries follow the registered cases and reject the superse
   assert.equal(current.status, 0, current.stderr);
 
   const stale = runReleaseSummary([
-    ['release-e2e.test.js', 5],
-    ['release-e2e-data.test.js', 8],
+    ['release-e2e.test.js', 2],
+    ['release-e2e-safe-area.test.js', 4],
+    ['release-e2e-data.test.js', 7],
   ]);
   assert.notEqual(stale.status, 0);
 });

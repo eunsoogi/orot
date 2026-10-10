@@ -59,10 +59,14 @@ async function runWrapperBeforeAll(wrapperName, freshSimulator, releaseSharding 
         ...(releaseSharding ? { OROT_DETOX_RELEASE_SHARD: wrapperName } : {}),
       },
     },
-    // Each wrapper reads the partition map; default mode loads both parts inside ordered phases.
+    // Each wrapper reads the partition map; default mode loads every part inside ordered phases.
     require: (specifier) =>
       specifier === './release-e2e-shards.js'
-        ? { 'release-e2e.test.js': [], 'release-e2e-data.test.js': [] }
+        ? {
+            'release-e2e.test.js': [],
+            'release-e2e-safe-area.test.js': [],
+            'release-e2e-data.test.js': [],
+          }
         : specifier === './storageProbeResetGuard.e2e.js'
           ? {
               releasePhaseResetGuard: resetModule.createStorageResetGuard(),
@@ -152,7 +156,11 @@ test('the default Release phases reset app state while explicit fresh shards ins
     'clearKeychain',
     'installApp',
   ]);
-  for (const wrapperName of ['release-e2e.test.js', 'release-e2e-data.test.js']) {
+  for (const wrapperName of [
+    'release-e2e.test.js',
+    'release-e2e-safe-area.test.js',
+    'release-e2e-data.test.js',
+  ]) {
     assert.deepEqual(await runWrapperBeforeAll(wrapperName, false, true), [
       'clearKeychain',
       'installApp',
@@ -179,12 +187,12 @@ test('runs storage probes on the phase-owned clean installs without clearing the
   const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
   const smokeCalls = await runSmokeSetup();
 
-  // Both storage cases run before UI use, and migration runs first after the stateful phase reset.
-  assert.deepEqual(releaseShards['release-e2e.test.js'].slice(0, 3), [
+  // Storage setup stays first on the UI worker; Safe Area and migration remain isolated phases.
+  assert.deepEqual(releaseShards['release-e2e.test.js'].slice(0, 2), [
     './storage.test.js',
     './smoke.test.js',
-    './safe-area.test.js',
   ]);
+  assert.deepEqual(releaseShards['release-e2e-safe-area.test.js'], ['./safe-area.test.js']);
   assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
   assert.deepEqual(smokeCalls, [
     {

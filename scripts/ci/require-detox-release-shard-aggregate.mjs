@@ -4,9 +4,10 @@ import { appendFileSync } from 'node:fs';
 import { releaseShardInventory } from './release-jest-summary.mjs';
 
 const args = process.argv.slice(2);
-if (args.length !== 9) {
+const expectedArgumentCount = releaseShardInventory.length * 4 + 1;
+if (args.length !== expectedArgumentCount) {
   throw new Error(
-    'Usage: node require-detox-release-shard-aggregate.mjs <ui-result> <ui-profile> <ui-cases> <ui-suites> <data-result> <data-profile> <data-cases> <data-suites> <github-output-path>',
+    `Release shard aggregator expects ${releaseShardInventory.length} results and one GitHub output path`,
   );
 }
 
@@ -43,7 +44,7 @@ function requireShard({ result, profile, testCases, testSuites }, expected) {
   return { cases: Number(testCases), suites: Number(testSuites) };
 }
 
-// Publish aggregate outputs only after both independent runner summaries match the named inventory.
+// Publish outputs only after every independent runner summary matches the named inventory.
 const shardResults = releaseShardInventory.map((expected, index) => {
   const offset = index * 4;
   return requireShard(
@@ -58,9 +59,9 @@ const shardResults = releaseShardInventory.map((expected, index) => {
 });
 const totalCases = shardResults.reduce((total, shard) => total + shard.cases, 0);
 const totalSuites = shardResults.reduce((total, shard) => total + shard.suites, 0);
-if (totalCases !== 13 || totalSuites !== 2) {
+if (totalCases !== 13 || totalSuites !== 3) {
   throw new Error(
-    'Release shard aggregate must contain exactly 13 cases across 2 suites; received ' +
+    'Release shard aggregate must contain exactly 13 cases across 3 suites; received ' +
       totalCases +
       ' cases across ' +
       totalSuites +
@@ -69,9 +70,9 @@ if (totalCases !== 13 || totalSuites !== 2) {
 }
 
 appendFileSync(
-  args[8],
+  args.at(-1),
   ['e2e_profile=release', 'e2e_test_cases=' + totalCases, 'e2e_test_suites=' + totalSuites].join(
     '\n',
   ) + '\n',
 );
-console.log('13/13 Release cases passed across both shard suites');
+console.log('13/13 Release cases passed across all three shard suites');

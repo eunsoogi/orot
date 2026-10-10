@@ -30,7 +30,8 @@ function runGuard(log, shard) {
 
 test('validates one selected Release shard before publishing its runner-local counts', () => {
   for (const [shard, tests] of [
-    ['release-e2e.test.js', 7],
+    ['release-e2e.test.js', 3],
+    ['release-e2e-safe-area.test.js', 4],
     ['release-e2e-data.test.js', 6],
   ]) {
     const result = runGuard(

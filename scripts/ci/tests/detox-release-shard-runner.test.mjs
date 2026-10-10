@@ -10,7 +10,8 @@ const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const shardRunner = join(repositoryRoot, 'scripts/ci/run-detox-release-shards.mjs');
 const profileRunner = join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh');
 const shards = [
-  ['release-e2e.test.js', 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE', 7],
+  ['release-e2e.test.js', 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE', 3],
+  ['release-e2e-safe-area.test.js', '22222222-3333-4444-8555-666666666666', 4],
   ['release-e2e-data.test.js', '11111111-2222-4333-8444-555555555555', 6],
 ];
 
@@ -29,7 +30,11 @@ const { appendFileSync, existsSync, writeFileSync } = require('node:fs');
 const { spawn } = require('node:child_process');
 const shard = process.env.OROT_DETOX_RELEASE_SHARD;
 const simulator = process.env.OROT_DETOX_SIMULATOR_UDID;
-const counts = { 'release-e2e.test.js': 7, 'release-e2e-data.test.js': 6 };
+const counts = {
+  'release-e2e.test.js': 3,
+  'release-e2e-safe-area.test.js': 4,
+  'release-e2e-data.test.js': 6,
+};
 appendFileSync(process.env.CALLS_PATH, shard + '\\t' + simulator + '\\n');
 appendFileSync(process.env.PIDS_PATH, String(process.pid) + '\\n');
 if (shard === process.env.FAIL_SHARD) {
@@ -67,7 +72,8 @@ if (shard === process.env.FAIL_SHARD) {
       PATH: [bin, process.env.PATH].join(':'),
       DETOX_ARTIFACTS_LOCATION: artifactRoot,
       OROT_DETOX_SIMULATOR_UDID: shards[0][1],
-      OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID: shards[1][1],
+      OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID: shards[1][1],
+      OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID: shards[2][1],
       OROT_DETOX_RELEASE_SHARDING: 'true',
       OROT_DETOX_TEST_LOG_LEVEL: 'info',
       CALLS_PATH: callsPath,
@@ -120,7 +126,7 @@ function runProcess(command, args, env, fixture, timeoutMs = 6000) {
   });
 }
 
-test('runs both Release wrappers concurrently with their assigned Simulator and case summaries', async () => {
+test('runs all Release wrappers concurrently with their assigned Simulators and case summaries', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-shards-'));
   const fixture = makeFixture(directory);
   try {
@@ -135,6 +141,11 @@ test('runs both Release wrappers concurrently with their assigned Simulator and 
       result.stdout,
       /DETOX_RELEASE_SHARD_SUMMARY_START shard=release-e2e-data\.test\.js/,
     );
+    assert.match(
+      result.stdout,
+      /DETOX_RELEASE_SHARD_SUMMARY_START shard=release-e2e-safe-area\.test\.js/,
+    );
+    assert.match(result.stdout, /Tests: 4 passed, 4 total/);
     assert.match(result.stdout, /Tests: 6 passed, 6 total/);
   } finally {
     stopFixtureProcesses(fixture);
@@ -176,13 +187,13 @@ test('routes the Release shell runner to explicit shards and rejects incomplete 
       fixture,
     );
     assert.equal(routed.code, 0, routed.stderr + routed.stdout);
-    assert.equal(readFileSync(fixture.callsPath, 'utf8').trim().split('\n').length, 2);
+    assert.equal(readFileSync(fixture.callsPath, 'utf8').trim().split('\n').length, 3);
 
     rmSync(fixture.callsPath, { force: true });
     const incomplete = await runProcess(
       'bash',
       [profileRunner, 'release'],
-      { ...fixture.env, OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID: '' },
+      { ...fixture.env, OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID: '' },
       fixture,
     );
     assert.notEqual(incomplete.code, 0);

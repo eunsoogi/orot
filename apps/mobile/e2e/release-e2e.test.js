@@ -38,6 +38,8 @@ if (selectedShard) {
     // Run storage creation on this clean install before UI scenarios can open the database.
     clearAndInstallFreshSimulator();
     loadReleaseShard('release-e2e.test.js');
+    // Keep the local full-suite order while hosted CI can run Safe Area on its own Simulator.
+    loadReleaseShard('release-e2e-safe-area.test.js');
   });
 
   describe('Release stateful probes', () => {

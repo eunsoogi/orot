@@ -11,6 +11,7 @@ const prepareScript = join(repositoryRoot, 'scripts/ci/prepare-detox-release-wor
 const runtime = 'com.apple.CoreSimulator.SimRuntime.iOS-27-0';
 const deviceType = 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro';
 const baseId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
+const safeAreaId = '22222222-3333-4444-8555-666666666666';
 const dataId = '11111111-2222-4333-8444-555555555555';
 
 function fixture(failBoot = false) {
@@ -39,6 +40,7 @@ elif [ "$2" = clone ]; then
   fi
   case "$4" in
     *"Release data") printf '%s\\n' "$DATA_SIMULATOR_UDID" ;;
+    *"Release safe-area") printf '%s\\n' "$SAFE_AREA_SIMULATOR_UDID" ;;
     *) exit 98 ;;
   esac
 elif [ "$2" = boot ]; then
@@ -74,13 +76,14 @@ exec xcrun simctl "$@"
       // Force the shell default even when the developer process has an override.
       OROT_DETOX_SIMCTL_TIMEOUT_MS: '',
       DATA_SIMULATOR_UDID: dataId,
+      SAFE_AREA_SIMULATOR_UDID: safeAreaId,
       OROT_DETOX_SIMULATOR_UDID: baseId,
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime,
       EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: deviceType,
       GITHUB_ENV: environmentPath,
       GITHUB_RUN_ID: '700',
       GITHUB_RUN_ATTEMPT: '2',
-      FAIL_BOOT_UDID: failBoot ? dataId : '',
+      FAIL_BOOT_UDID: typeof failBoot === 'string' ? failBoot : failBoot ? dataId : '',
     },
   };
 }
@@ -93,23 +96,33 @@ function runPrepare(context) {
   );
 }
 
-test('shuts down the prepared base before cloning, then boots the base and one data worker', () => {
+test('shuts down the prepared base before cloning, then boots the base and both Release workers', () => {
   const context = fixture();
   try {
     const result = runPrepare(context);
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.equal(readFileSync(context.simulatorIdsPath, 'utf8').trim(), dataId);
+    assert.deepEqual(readFileSync(context.simulatorIdsPath, 'utf8').trim().split('\n'), [
+      safeAreaId,
+      dataId,
+    ]);
     const environment = readFileSync(context.environmentPath, 'utf8');
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID=${dataId}`));
+    assert.match(
+      environment,
+      new RegExp(`OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID=${safeAreaId}`),
+    );
     assert.match(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
     const calls = readFileSync(context.callsPath, 'utf8');
-    for (const udid of [baseId, dataId]) {
-      if (udid !== baseId) assert.match(calls, new RegExp(`simctl clone ${baseId} .*Release data`));
+    for (const udid of [baseId, safeAreaId, dataId]) {
+      if (udid !== baseId) assert.match(calls, new RegExp(`simctl clone ${baseId}`));
       assert.match(calls, new RegExp(`simctl boot ${udid}`));
       assert.match(calls, new RegExp(`simctl bootstatus ${udid} -b`));
     }
     assert.doesNotMatch(calls, /simctl create/);
     assert.deepEqual(readFileSync(context.timeoutsPath, 'utf8').trim().split('\n'), [
+      '900000',
+      '900000',
+      '900000',
       '900000',
       '900000',
       '900000',
@@ -125,15 +138,40 @@ test('shuts down the prepared base before cloning, then boots the base and one d
   }
 });
 
-test('retains the data worker identity when its Simulator boot fails', () => {
+test('retains both worker identities when a Simulator boot fails', () => {
   const context = fixture(true);
   try {
     const result = runPrepare(context);
     assert.notEqual(result.status, 0);
-    assert.equal(readFileSync(context.simulatorIdsPath, 'utf8').trim(), dataId);
+    assert.deepEqual(readFileSync(context.simulatorIdsPath, 'utf8').trim().split('\n'), [
+      safeAreaId,
+      dataId,
+    ]);
     const environment = readFileSync(context.environmentPath, 'utf8');
     assert.match(environment, new RegExp(`OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID=${dataId}`));
+    assert.match(
+      environment,
+      new RegExp(`OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID=${safeAreaId}`),
+    );
     assert.doesNotMatch(environment, /OROT_DETOX_RELEASE_SHARDING=true/);
+  } finally {
+    rmSync(context.directory, { recursive: true, force: true });
+  }
+});
+
+test('records both clone identities before a Safe Area worker boot failure', () => {
+  const context = fixture(safeAreaId);
+  try {
+    const result = runPrepare(context);
+    assert.notEqual(result.status, 0);
+    assert.deepEqual(readFileSync(context.simulatorIdsPath, 'utf8').trim().split('\n'), [
+      safeAreaId,
+      dataId,
+    ]);
+    assert.doesNotMatch(
+      readFileSync(context.environmentPath, 'utf8'),
+      /OROT_DETOX_RELEASE_SHARDING=true/,
+    );
   } finally {
     rmSync(context.directory, { recursive: true, force: true });
   }
