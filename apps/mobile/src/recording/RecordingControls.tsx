@@ -10,6 +10,7 @@ import type { CompletedRecording, RecordingStatus } from './recordingTypes';
 import { formatRecordingDuration } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
+import { useRecordingNavigationLeaveState } from './useRecordingNavigationLeaveState';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -22,7 +23,7 @@ interface RecordingControlsProps {
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
-  onStop: () => void;
+  onStop: () => Promise<void>;
   lastRecording: CompletedRecording | null;
   sourceSaved: boolean;
   onRetrySourceSave: () => void;
@@ -76,11 +77,17 @@ export default function RecordingControls({
     !sourceSaved &&
     lastRecording.fileProtection === 'complete' &&
     lastRecording.excludedFromBackup === false;
-  const canLeave =
-    stateReady &&
+  const { canLeave, hasSharedNavigation } = useRecordingNavigationLeaveState({
+    status,
+    stateReady,
+    busy: controlsBusy,
+    sourceRetryPending,
+    stopRecording: onStop,
+  });
+  const showLocalBack =
+    canLeave &&
     (status === 'idle' || status === 'completed') &&
-    !controlsBusy &&
-    !sourceRetryPending;
+    !hasSharedNavigation;
   return (
     // The transcript panel follows the recording controls and must remain reachable on shorter screens.
     <ScrollView
@@ -90,7 +97,7 @@ export default function RecordingControls({
       style={recordingControlStyles.scroll}
       testID="recording-controls-scroll"
     >
-      {canLeave ? (
+      {showLocalBack ? (
         <View style={recordingControlStyles.back}>
           <Button
             onPress={onBack}

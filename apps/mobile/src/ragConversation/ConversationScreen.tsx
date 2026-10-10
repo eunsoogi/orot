@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   Pressable,
@@ -12,6 +12,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
 import type { RagConversationOutcome } from './service';
+import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 
 interface DisplayMessage extends RagConversationMessage {
   readonly id: number;
@@ -19,16 +21,21 @@ interface DisplayMessage extends RagConversationMessage {
 }
 
 interface ConversationScreenProps {
+  readonly navigationRouteKey?: string;
+  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
   readonly onSend: (
     question: string,
     previousMessages: readonly RagConversationMessage[],
+    signal?: AbortSignal,
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
 
 /** Keeps chat history in view state only; evidence is freshly loaded by the injected turn service. */
 export function ConversationScreen({
+  navigationRouteKey,
+  onNavigationStateChange,
   onBack,
   onSend,
   onOpenSource,
@@ -39,6 +46,28 @@ export function ConversationScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const nextMessageId = useRef(0);
+  const operationController = useRef<AbortController | null>(null);
+  const inputRevision = useRef(0);
+
+  useAiFeatureScreenNavigationState(
+    navigationRouteKey,
+    {
+      hasUnsavedChanges: draft.length > 0 || messages.length > 0,
+      isRecording: false,
+      // The unmount cleanup below aborts the current request after confirmation.
+      hasOngoingOperation: busy,
+    },
+    inputRevision.current,
+    onNavigationStateChange,
+  );
+
+  useEffect(
+    () => () => {
+      operationController.current?.abort();
+      operationController.current = null;
+    },
+    [],
+  );
 
   async function send() {
     const question = draft.trim();
@@ -49,12 +78,16 @@ export function ConversationScreen({
       role: 'user' as const,
       content: question,
     };
+    inputRevision.current += 1;
     setMessages(current => [...current, userMessage]);
     setDraft('');
+    const controller = new AbortController();
+    operationController.current = controller;
     setBusy(true);
     setError('');
     try {
-      const outcome = await onSend(question, history);
+      const outcome = await onSend(question, history, controller.signal);
+      if (controller.signal.aborted) return;
       const assistantContent =
         outcome.status === 'answer'
           ? outcome.answer
@@ -63,6 +96,7 @@ export function ConversationScreen({
             : outcome.status === 'insufficient'
               ? copy.insufficient
               : copy.unavailable;
+      inputRevision.current += 1;
       setMessages(current => [
         ...current,
         {
@@ -75,9 +109,12 @@ export function ConversationScreen({
         },
       ]);
     } catch {
-      setError(copy.unavailable);
+      if (!controller.signal.aborted) setError(copy.unavailable);
     } finally {
-      setBusy(false);
+      if (operationController.current === controller) {
+        operationController.current = null;
+        setBusy(false);
+      }
     }
   }
 
@@ -118,7 +155,10 @@ export function ConversationScreen({
         accessibilityLabel={copy.placeholder}
         editable={!busy}
         maxLength={1000}
-        onChangeText={setDraft}
+        onChangeText={value => {
+          inputRevision.current += 1;
+          setDraft(value);
+        }}
         placeholder={copy.placeholder}
         testID="rag-conversation-input"
         value={draft}

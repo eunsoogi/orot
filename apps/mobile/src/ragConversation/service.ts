@@ -7,7 +7,8 @@ import type {
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
-import { withLocalDeletionAwareRevalidation } from '../memory/deletionAwareEvidenceRevalidation';
+import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
+import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
 import type {
@@ -34,6 +35,7 @@ export interface RagConversationRunOptions {
     signal: AbortSignal,
   ) => Promise<RagConversationCurrentEvidence>;
   readonly rag: Pick<LocalE5RagService, 'search'>;
+  readonly resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver;
   readonly workflow: Omit<
     MultiAgentWorkflowOptions<GroundedRagAnswer>,
     'request' | 'context' | 'task' | 'initialEvidence'
@@ -113,9 +115,13 @@ export async function runRagConversationTurn(
         ) as unknown as import('@orot/model-runtime').JsonValue,
         task: ragConversationTask,
         initialEvidence,
-        revalidateEvidence: withLocalDeletionAwareRevalidation(
-          options.workflow.revalidateEvidence,
-        ),
+        revalidateEvidence: (references, signal) =>
+          revalidateWithLocalDeletionGuard(
+            references,
+            signal,
+            options.workflow.revalidateEvidence,
+            options.resolveLocalEvidenceIdentity,
+          ),
       },
       invocation,
     );

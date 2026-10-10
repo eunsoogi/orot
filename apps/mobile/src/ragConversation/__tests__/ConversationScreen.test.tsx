@@ -49,10 +49,14 @@ test('renders a grounded answer with a source action and reports absent evidence
   expect(
     await screen.findByText('이 질문에 답할 만한 저장된 근거를 찾지 못했어요.'),
   ).toBeTruthy();
-  expect(onSend).toHaveBeenLastCalledWith('기록이 없는 질문', [
-    { role: 'user', content: '혈압 기록을 보여줘' },
-    { role: 'assistant', content: '저장된 기록을 찾았어요.' },
-  ]);
+  expect(onSend).toHaveBeenLastCalledWith(
+    '기록이 없는 질문',
+    [
+      { role: 'user', content: '혈압 기록을 보여줘' },
+      { role: 'assistant', content: '저장된 기록을 찾았어요.' },
+    ],
+    expect.any(AbortSignal),
+  );
 });
 
 test('shows loading and a recoverable response failure', async () => {

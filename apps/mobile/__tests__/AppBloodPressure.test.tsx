@@ -60,7 +60,7 @@ test('opens the BP import screen, displays persisted source status, and returns 
     await screen.findByText('새로운 혈압 기록 변경이 없어요.'),
   ).toBeTruthy();
 
-  await fireEvent.press(screen.getByTestId('blood-pressure-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
 });
 
@@ -73,12 +73,13 @@ test('keeps blood pressure list scrolling inside the shared safe area', async ()
   await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
 
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
-  // Keep the screen-owned scroller and its action under the shared inset root.
-  const safeAreaRoot = screen.getByTestId('safe-area-root');
-  const safeAreaContents = within(safeAreaRoot);
-  expect(safeAreaRoot).toBeVisible();
-  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
-  expect(safeAreaContents.getByTestId('blood-pressure-scroll')).toBeVisible();
-  expect(safeAreaContents.getByTestId('blood-pressure-import')).toBeVisible();
+  // Keep the screen-owned scroller beside the shared bottom navigation action.
+  const routeRoot = screen.getByTestId('navigation-keyboard-avoiding-root');
+  const routeContents = within(routeRoot);
+  expect(routeRoot).toBeVisible();
+  expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();
+  expect(routeContents.getByTestId('blood-pressure-scroll')).toBeVisible();
+  expect(routeContents.getByTestId('blood-pressure-import')).toBeVisible();
+  expect(screen.getByTestId('navigation-back')).toBeVisible();
   expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });

@@ -77,6 +77,10 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
   );
 }
 
+function isNonNegativeSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
 export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult>): WorkflowState {
   const source = options.execution;
   return {
@@ -98,14 +102,11 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
 }
 
 function validResumeShape(saved: MultiAgentCheckpointState): boolean {
-  // Durable channel values are input; malformed counts or an in-flight phase cannot safely route.
+  // Durable phase and evidence-need values must match a state the graph knows how to route.
   return (
-    ['task_response', 'evidence_research', 'revised_response'].includes(saved.phase) &&
-    [saved.modelCalls, saved.toolCalls, saved.researchCycles].every(
-      (value) => Number.isSafeInteger(value) && value >= 0,
+    ['task_response', 'evidence_research', 'evidence_search', 'revised_response', 'complete'].includes(
+      saved.phase,
     ) &&
-    saved.terminal === false &&
-    saved.pendingOperation === undefined &&
     (saved.evidenceNeed === undefined ||
       ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
         saved.evidenceNeed,
@@ -128,6 +129,13 @@ export function resumeState<TResult>(
         !isEvidenceReference(reference) ||
         !isEvidenceReferenceWithinScope(reference, options.execution.allowedScope),
     ) ||
+    saved.terminal ||
+    saved.phase === 'complete' ||
+    saved.pendingOperation ||
+    saved.phase === 'evidence_search' ||
+    !isNonNegativeSafeInteger(saved.modelCalls) ||
+    !isNonNegativeSafeInteger(saved.toolCalls) ||
+    !isNonNegativeSafeInteger(saved.researchCycles) ||
     saved.modelCalls > options.execution.budget.maxModelCalls ||
     saved.toolCalls > options.execution.budget.maxToolCalls ||
     saved.researchCycles > options.execution.budget.maxResearchCycles ||
