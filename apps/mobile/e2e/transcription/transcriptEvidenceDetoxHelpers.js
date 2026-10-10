@@ -1,4 +1,4 @@
-/* global by, waitFor */
+/* global by, element, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const EXPLICIT_AVAILABILITY_STATES = [
@@ -211,17 +211,36 @@ async function waitForProbeControl(target, detoxWaitFor = waitFor) {
   await detoxWaitFor(target).toBeVisible().withTimeout(30000);
 }
 
+// Use the recording screen's single scroll container to reveal actions while the multiline editor is open.
 async function scrollToTranscriptControl(control, direction = 'down') {
   await waitFor(control)
     .toBeVisible()
     .whileElement(by.id('recording-controls-scroll'))
+    // The 35% start point stays above the keyboard over this short scroll viewport.
     .scroll(100, direction, 0.5, 0.35);
+}
+
+// The stale-artifact notice precedes transcript rows, so return to earlier content after reviewing them.
+async function scrollToStaleArtifactNotice() {
+  const notice = element(by.id('transcript-stale-artifacts'));
+  await waitFor(notice).toExist().withTimeout(30000);
+  await scrollToTranscriptControl(notice, 'up');
+  return notice;
+}
+
+// Save follows the multiline editor, so reveal it with Detox's down-scroll before tapping.
+async function scrollToSaveButton(testId) {
+  const saveButton = element(by.id(testId));
+  await scrollToTranscriptControl(saveButton, 'down');
+  return saveButton;
 }
 
 module.exports = {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
+  scrollToSaveButton,
+  scrollToStaleArtifactNotice,
   scrollToTranscriptControl,
   verifyFinalNativeSpeechProbe,
   verifyNativeSpeechProbe,

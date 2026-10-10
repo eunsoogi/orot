@@ -16,7 +16,19 @@ jest.mock('../nativeRecordingBridge', () => ({
 
 test('requires an explicit consent action and completes a local source link', async () => {
   const { service } = createService();
-  await render(<RecordingScreen onBack={jest.fn()} service={service} />);
+  const transcriptService: TranscriptEvidenceService = {
+    load: jest.fn(async () => null),
+    transcribe: jest.fn(async () => []),
+    correct: jest.fn(),
+    play: jest.fn(),
+  };
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      service={service}
+      transcriptService={transcriptService}
+    />,
+  );
   expect(await screen.findByTestId('recording-status')).toHaveTextContent(
     '녹음하지 않음',
   );
@@ -70,12 +82,23 @@ test('exposes transcript review from the recording screen', async () => {
     />,
   );
 
+  await screen.findByTestId('recording-status');
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-start'));
+  await fireEvent.press(screen.getByTestId('recording-stop'));
+
   expect(await screen.findByText('전사 검토')).toBeTruthy();
+  expect(await screen.findByTestId('recording-export-audio')).toBeTruthy();
+  // The export action refreshes saved transcript state after its initial empty read.
+  expect(screen.getByTestId('recording-export-transcript')).toBeEnabled();
   expect(
     await screen.findByText('이 녹음에는 저장된 전사 내용이 없어요.'),
   ).toBeTruthy();
-  expect(screen.getByTestId('recording-controls-scroll')).toBeTruthy();
-  expect(transcriptService.load).toHaveBeenCalledWith(undefined);
+  const controlsScroll = screen.getByTestId('recording-controls-scroll');
+  expect(controlsScroll).toBeTruthy();
+  // A scroll gesture is the user's available path to dismiss the multiline editor keyboard.
+  expect(controlsScroll.props.keyboardDismissMode).toBe('on-drag');
+  expect(transcriptService.load).toHaveBeenCalledWith(completed.id);
 });
 
 test('keeps an interrupted recording paused until the user resumes it', async () => {

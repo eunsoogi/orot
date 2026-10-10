@@ -30,9 +30,13 @@
 		A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */; };
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
+		A64F0000000000000000000D /* RecordingPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000D /* RecordingPlayback.swift */; };
+		A64F00000000000000000008 /* RecordingExportShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000008 /* RecordingExportShare.swift */; };
+		A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000009 /* RecordingExportFiles.swift */; };
+		A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
-		A64F00000000000000000008 /* RecordingDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000008 /* RecordingDeletion.swift */; };
-		A64F00000000000000000009 /* RecordingDeletionPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000009 /* RecordingDeletionPaths.swift */; };
+		A64F0000000000000000000B /* RecordingDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000B /* RecordingDeletion.swift */; };
+		A64F0000000000000000000C /* RecordingDeletionPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000C /* RecordingDeletionPaths.swift */; };
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
@@ -99,9 +103,13 @@
 		B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureLifecycle.swift; path = OrotMobile/RecordingCaptureLifecycle.swift; sourceTree = "<group>"; };
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000D /* RecordingPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlayback.swift; path = OrotMobile/RecordingPlayback.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
-		B64F00000000000000000008 /* RecordingDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletion.swift; path = OrotMobile/RecordingDeletion.swift; sourceTree = "<group>"; };
-		B64F00000000000000000009 /* RecordingDeletionPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletionPaths.swift; path = OrotMobile/RecordingDeletionPaths.swift; sourceTree = "<group>"; };
+		B64F00000000000000000008 /* RecordingExportShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportShare.swift; path = OrotMobile/RecordingExportShare.swift; sourceTree = "<group>"; };
+		B64F00000000000000000009 /* RecordingExportFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportFiles.swift; path = OrotMobile/RecordingExportFiles.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportAuthorizationProbe.swift; path = OrotMobile/RecordingExportAuthorizationProbe.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000B /* RecordingDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletion.swift; path = OrotMobile/RecordingDeletion.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000C /* RecordingDeletionPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletionPaths.swift; path = OrotMobile/RecordingDeletionPaths.swift; sourceTree = "<group>"; };
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
 		C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationProbeSupport.swift; path = OrotMobile/BackupMigrationProbeSupport.swift; sourceTree = "<group>"; };
@@ -186,9 +194,13 @@
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
+				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
-				B64F00000000000000000008 /* RecordingDeletion.swift */,
-				B64F00000000000000000009 /* RecordingDeletionPaths.swift */,
+				B64F00000000000000000008 /* RecordingExportShare.swift */,
+				B64F00000000000000000009 /* RecordingExportFiles.swift */,
+				B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */,
+				B64F0000000000000000000B /* RecordingDeletion.swift */,
+				B64F0000000000000000000C /* RecordingDeletionPaths.swift */,
 				B11600000000000000000001 /* BackupMigrationModule.swift */,
 				B11600000000000000000002 /* BackupMigrationModule.m */,
 				C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */,
@@ -464,9 +476,13 @@
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
+				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
+				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
+				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
+				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,
 				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,
-				A64F00000000000000000008 /* RecordingDeletion.swift in Sources */,
-				A64F00000000000000000009 /* RecordingDeletionPaths.swift in Sources */,
+				A64F0000000000000000000B /* RecordingDeletion.swift in Sources */,
+				A64F0000000000000000000C /* RecordingDeletionPaths.swift in Sources */,
 				A11600000000000000000001 /* BackupMigrationModule.swift in Sources */,
 				A11600000000000000000002 /* BackupMigrationModule.m in Sources */,
 				D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */,
