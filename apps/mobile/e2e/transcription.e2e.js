@@ -5,9 +5,12 @@ const {
   accessibilityText,
   cleanupTranscriptEvidenceIfPresent,
   failureDescription,
+  scrollToSaveButton,
+  scrollToStaleArtifactNotice,
   scrollToTranscriptControl,
   waitForProbeControl,
 } = require('./transcription/transcriptEvidenceDetoxHelpers');
+const { runRecordingExportScenario } = require('./recordingExport.e2e');
 const {
   runTranscriptDeletionAssertion,
 } = require('./transcription/transcriptDeletionDetoxHelpers');
@@ -15,8 +18,8 @@ const {
   switchToTranscriptEvidenceMode,
 } = require('./transcription/transcriptProbeModeDetoxHelpers');
 
-describe('Apple Korean on-device transcription on iOS Simulator', () => {
-  it('records provider status before exercising transcript deletion', async () => {
+describe('Apple Korean transcription and recording export on iOS Simulator', () => {
+  it('records transcript evidence and verifies saved recording exports', async () => {
     // Grant only speech recognition on this dedicated Simulator so the legacy API never pauses for a system alert.
     await device.launchApp({
       newInstance: true,
@@ -118,8 +121,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       await scrollToTranscriptControl(transcriptInput);
       await transcriptInput.replaceText(correction);
       assertionStage = 'save transcript correction';
-      const saveButton = element(by.id('transcript-save-0'));
-      await scrollToTranscriptControl(saveButton, 'up');
+      const saveButton = await scrollToSaveButton('transcript-save-0');
       console.log(
         'TRANSCRIPT_EVIDENCE_SAVE_SCREENSHOT ' +
           (await device.takeScreenshot('transcript-evidence-save-visible')),
@@ -159,9 +161,7 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
         await reviewState.getAttributes(),
       );
       jestExpect(correctedReviewState).toBe('수정됨 · 다시 확인 필요');
-      const staleArtifacts = element(by.id('transcript-stale-artifacts'));
-      await waitFor(staleArtifacts).toExist().withTimeout(30000);
-      await scrollToTranscriptControl(staleArtifacts);
+      const staleArtifacts = await scrollToStaleArtifactNotice();
       await waitFor(staleArtifacts).toBeVisible().withTimeout(30000);
       const staleArtifactText = accessibilityText(
         await staleArtifacts.getAttributes(),
@@ -232,6 +232,15 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
       console.log(
         'TRANSCRIPT_EVIDENCE_CLEANUP_RESULT ' + JSON.stringify(cleanupEvidence),
       );
+    }
+    // Run export after transcript cleanup even on failure so both phases report in one profile case.
+    try {
+      const exportFailure = await runRecordingExportScenario(detoxApi);
+      if (exportFailure) failures.push(exportFailure);
+    } catch (failure) {
+      const description = failureDescription(failure);
+      console.error('RECORDING_EXPORT_PROBE_FAILURE ' + description);
+      failures.push(`Recording export probe failed: ${description}`);
     }
     if (failures.length > 0) {
       throw new Error(failures.join('\n'));

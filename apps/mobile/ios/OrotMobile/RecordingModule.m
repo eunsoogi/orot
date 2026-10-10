@@ -22,6 +22,11 @@ RCT_EXTERN_METHOD(installSyntheticTranscriptionFixture : (NSString *)base64 reso
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeSyntheticTranscriptionFixture : (NSString *)recordingID resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+// Keep export and deletion declarations aligned with the Swift promise methods on RecordingModule.
+RCT_EXTERN_METHOD(shareRecordingAudio : (NSString *)recordingID resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(shareRecordingTranscript : (NSString *)text resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(reconcileRecordingDeletions : (NSArray<NSString *> *)sourceIDs resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(stageRecordingDeletion : (NSString *)recordingID resolver : (
@@ -37,6 +42,20 @@ RCT_EXTERN_METHOD(prepareSyntheticCapture : (RCTPromiseResolveBlock)
 RCT_EXTERN_METHOD(prepareSyntheticStartFailure : (NSString *)point resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(simulateInterruption : (NSString *)phase resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+#endif
+
+#if TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(verifySyntheticRecordingExportAuthorization : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getSyntheticExportResidueCount : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+// The dedicated Simulator probe checks source bytes without exposing the source path or content.
+RCT_EXTERN_METHOD(isSyntheticTranscriptionFixtureUnchanged : (NSString *)recordingID resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(armSyntheticExportCancellation : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif
 

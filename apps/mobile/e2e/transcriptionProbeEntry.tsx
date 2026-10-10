@@ -1,6 +1,7 @@
 import '../src/agent/polyfills';
 import { AppRegistry, NativeModules } from 'react-native';
 import { name as appName } from '../app.json';
+import { RecordingExportProbeHarness } from './transcription/RecordingExportProbeHarness';
 import { TranscriptEvidenceProbe } from './transcription/transcriptEvidenceProbe';
 import { TranscriptionProbe } from './transcription/transcriptionProbe';
 
@@ -18,7 +19,9 @@ const configuredProbeMode =
 const probeEntry =
   configuredProbeMode === 'transcript-evidence'
     ? TranscriptEvidenceProbe
-    : TranscriptionProbe;
+    : configuredProbeMode === 'recording-export'
+      ? RecordingExportProbeHarness
+      : TranscriptionProbe;
 
-// Isolate user-facing deletion checks from background work in the native speech probe.
+// Keep transcript evidence, export lifecycle, and native speech checks on separate app routes.
 AppRegistry.registerComponent(appName, () => probeEntry);
