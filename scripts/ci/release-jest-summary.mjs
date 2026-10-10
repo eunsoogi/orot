@@ -60,7 +60,7 @@ export function validateReleaseJestConfig({
     JSON.stringify(Object.keys(releaseE2EShards)) !== JSON.stringify(expectedShardNames) ||
     flattenedReleaseShards.length !== expectedReleaseSuiteFiles.length ||
     actualShardFiles.size !== expectedReleaseSuiteFiles.length ||
-    expectedReleaseSuiteFiles.some(file => !actualShardFiles.has(file))
+    expectedReleaseSuiteFiles.some((file) => !actualShardFiles.has(file))
   ) {
     throw new Error(
       'e2e: Release shard manifest must assign every required test file exactly once',

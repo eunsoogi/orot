@@ -19,6 +19,27 @@ const releaseConfigPath = join(repositoryRoot, 'apps/mobile/e2e/release-e2e.jest
 test('Release runs the full ordered inventory in one default worker', () => {
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.equal(releaseJestConfig.maxWorkers, 1);
+  // Pin scenario order and runner ownership so cases cannot drift between Simulators.
+  assert.deepEqual(releaseShards, {
+    'release-e2e.test.js': [
+      './storage.test.js',
+      './smoke.test.js',
+      './settings.detox.e2e.js',
+      './unified-import-navigation.e2e.js',
+      './navigation-glass.e2e.js',
+      './ai-feature-visit-questions.e2e.js',
+      './safe-area.test.js',
+      './safe-area-keyboard.test.js',
+    ],
+    'release-e2e-data.test.js': [
+      './appointments.test.js',
+      './medicalAppointmentClassification.test.js',
+      './medicalAppointmentNavigation.test.js',
+      './agentMemory.test.js',
+      './graph.test.js',
+      './checkpoint.detox.e2e.js',
+    ],
+  });
   const assignedSuites = Object.values(releaseShards).flat();
   const assignedFiles = new Set(assignedSuites);
   assert.equal(assignedSuites.length, releaseSuiteFiles.length);
@@ -39,10 +60,7 @@ test('the summary validator rejects duplicate or missing shard membership', () =
 
   const withDuplicate = {
     ...releaseShards,
-    'release-e2e-data.test.js': [
-      ...releaseShards['release-e2e-data.test.js'],
-      './smoke.test.js',
-    ],
+    'release-e2e-data.test.js': [...releaseShards['release-e2e-data.test.js'], './smoke.test.js'],
   };
   assert.throws(
     () => validateReleaseJestConfig({ ...configuration, releaseE2EShards: withDuplicate }),
@@ -115,8 +133,9 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
     0,
   );
   assert.equal(
-    releaseShards['release-e2e-data.test.js'].filter((file) => file === './safe-area-keyboard.test.js')
-      .length,
+    releaseShards['release-e2e-data.test.js'].filter(
+      (file) => file === './safe-area-keyboard.test.js',
+    ).length,
     0,
   );
 });

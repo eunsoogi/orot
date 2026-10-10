@@ -11,9 +11,10 @@ const storageTestPath = path.join(repositoryRoot, 'apps/mobile/e2e/storage.test.
 const migrationTestPath = path.join(repositoryRoot, 'apps/mobile/e2e/storage-migration.test.js');
 const detoxJestConfigPath = path.join(repositoryRoot, 'apps/mobile/e2e/jest.config.js');
 const require = createRequire(import.meta.url);
-const { createStorageResetGuard, failureMessage, installFreshApp } = require(
+const storageResetGuardModule = require(
   path.join(repositoryRoot, 'apps/mobile/e2e/storageProbeResetGuard.e2e.js'),
 );
+const { createStorageResetGuard, failureMessage, installFreshApp } = storageResetGuardModule;
 
 async function registerCases(testPath) {
   const source = await readFile(testPath, 'utf8');
@@ -26,6 +27,11 @@ async function registerCases(testPath) {
     },
     it(name, body, timeout) {
       cases.push({ name, body, timeout });
+    },
+    // Register case metadata with the real helper module but never run Detox operations here.
+    require(specifier) {
+      assert.equal(specifier, './storageProbeResetGuard.e2e.js');
+      return storageResetGuardModule;
     },
   };
 

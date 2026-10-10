@@ -32,9 +32,6 @@ function countRegisteredTests(files) {
           count += 1;
         },
         process: { env: {} },
-        require() {
-          return {};
-        },
         test() {
           count += 1;
         },

@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
+const storageResetGuardModule = requireFromRepository(
+  './apps/mobile/e2e/storageProbeResetGuard.e2e.js',
+);
 const noOp = async () => {};
 
 function matcher() {
@@ -39,7 +44,7 @@ async function executeE2ECases(fileName) {
     tap: noOp,
   };
 
-  // Record actual E2E case bodies; hosted Detox remains the UI and storage oracle.
+  // Run real reset lifecycle code while stubbing geometry helpers; hosted Detox remains the UI oracle.
   runInNewContext(source, {
     afterEach: (hook) => afterEachHooks.push(hook),
     beforeEach: (hook) => beforeEachHooks.push(hook),
@@ -51,6 +56,7 @@ async function executeE2ECases(fileName) {
       launchApp: async (options) =>
         calls.push({ kind: 'launchApp', options: JSON.parse(JSON.stringify(options)) }),
       setOrientation: async (orientation) => calls.push({ kind: 'setOrientation', orientation }),
+      takeScreenshot: noOp,
       terminateApp: async () => calls.push({ kind: 'terminateApp' }),
       uninstallApp: async () => calls.push({ kind: 'uninstallApp' }),
     },
@@ -58,8 +64,17 @@ async function executeE2ECases(fileName) {
     expect: matcher,
     it: (name, body) => cases.push({ name, body }),
     require: (specifier) => {
-      assert.equal(specifier, '@jest/globals');
-      return { expect: matcher };
+      if (specifier === '@jest/globals') return { expect: matcher };
+      if (specifier === './storageProbeResetGuard.e2e.js') return storageResetGuardModule;
+      if (specifier === './safeAreaHelpers') {
+        return {
+          expectFloatingViewport: noOp,
+          expectKeyboardOccludesScroll: noOp,
+          frameOf: async () => ({ x: 0, y: 0, width: 100, height: 100 }),
+        };
+      }
+      if (specifier === './smokeHelpers') return { openRootTab: noOp };
+      throw new Error(`Unexpected E2E dependency: ${specifier}`);
     },
     waitFor: () => ({
       toBeVisible: waitMatcher,
@@ -127,8 +142,11 @@ test('storage and migration scenarios keep their clean-phase, restart, and migra
   const storage = await executeE2ECases('storage.test.js');
   const migration = await executeE2ECases('storage-migration.test.js');
 
-  assert.equal(storage.names.length, 2);
+  assert.equal(storage.names.length, 3);
   assert.deepEqual(storage.calls, [
+    { kind: 'uninstallApp' },
+    { kind: 'clearKeychain' },
+    { kind: 'installApp' },
     {
       kind: 'launchApp',
       options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'fresh' } },
@@ -141,6 +159,18 @@ test('storage and migration scenarios keep their clean-phase, restart, and migra
     {
       kind: 'launchApp',
       options: { newInstance: true, launchArgs: { OROT_STORAGE_PROBE: 'restart' } },
+    },
+    { kind: 'uninstallApp' },
+    { kind: 'clearKeychain' },
+    { kind: 'installApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'legacy' } },
+    },
+    { kind: 'terminateApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: true, launchArgs: { OROT_E2E_PROBE: 'appointments' } },
     },
   ]);
   assert.deepEqual(migration.calls, [

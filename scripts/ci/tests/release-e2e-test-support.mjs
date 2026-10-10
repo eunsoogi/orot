@@ -17,10 +17,11 @@ export async function runSmokeSetup() {
   runInNewContext(source, {
     beforeAll: (hook) => beforeAllHooks.push(hook),
     describe: (_name, callback) => callback(),
-    // This probe observes setup only, so it stubs the matcher import without invoking test assertions.
+    // This probe observes setup only; the imported UI helpers are used by cases that it does not execute.
     require: (specifier) => {
       if (specifier === './storageProbeResetGuard.e2e.js') return resetGuard;
       if (specifier === '@jest/globals') return { expect: () => {} };
+      if (specifier === './safeAreaHelpers' || specifier === './smokeHelpers') return {};
       throw new Error(`Unexpected smoke setup dependency: ${specifier}`);
     },
     device: {

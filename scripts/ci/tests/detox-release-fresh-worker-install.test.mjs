@@ -105,11 +105,17 @@ async function runManualAppointmentScenario() {
   const deviceCalls = [];
   let appointmentScenario;
   const elementHandle = {
+    getAttributes: async () => ({ frame: { x: 0, y: 100, width: 100, height: 100 } }),
     replaceText: async () => {},
     tap: async () => {},
     tapReturnKey: async () => {},
+    scrollTo: async () => {},
   };
-  const matcher = () => ({ withTimeout: async () => {} });
+  const noOp = async () => {};
+  const matcher = () => ({
+    withTimeout: noOp,
+    whileElement: () => ({ scroll: noOp }),
+  });
   const source = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'), 'utf8');
 
   // Run the actual scenario body with only Detox's native selectors replaced; hosted CI still proves Simulator behavior.
@@ -119,6 +125,7 @@ async function runManualAppointmentScenario() {
     device: {
       launchApp: async (options) => deviceCalls.push({ kind: 'launch', options }),
       terminateApp: async () => deviceCalls.push({ kind: 'terminate' }),
+      takeScreenshot: noOp,
     },
     element: () => elementHandle,
     expect: () => ({
@@ -128,6 +135,16 @@ async function runManualAppointmentScenario() {
     }),
     it: (_name, callback) => {
       appointmentScenario = callback;
+    },
+    require: (specifier) => {
+      assert.equal(specifier, '@jest/globals');
+      // Native geometry assertions are exercised by Detox; this unit test records lifecycle calls.
+      return {
+        expect: () => ({
+          toBeGreaterThanOrEqual: () => {},
+          toBeLessThanOrEqual: () => {},
+        }),
+      };
     },
     waitFor: () => ({ toBeVisible: matcher, toHaveText: matcher }),
   });

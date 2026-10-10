@@ -31,20 +31,9 @@ async function verifyRecordingExportAuthorizationProbe({
   return report;
 }
 
-// Target the presented sheet because CI reports the dimming view as invisible and non-hittable.
-function swipeDownOnRecordingExportSheet({ by, element }) {
-  return element(by.id('ShareSheet.RemoteContainerView')).swipe(
-    'down',
-    'slow',
-    0.75,
-    0.5,
-    0.08,
-  );
-}
-
 async function verifyRecordingExportLifecycle(detoxApi) {
   const { by, device, element, waitFor } = detoxApi;
-  // Transcript cancellation keeps its Simulator hook; audio cancellation uses the share-sheet swipe below.
+  // Transcript cancellation keeps its Simulator hook; audio cancellation uses the share sheet dismissal below.
   // RecordingControls mounts only after the synthetic recording and transcript fixture is ready.
   const prepareFixture = element(by.id('transcript-evidence-open'));
   await waitFor(prepareFixture).toBeVisible().withTimeout(30000);
@@ -98,9 +87,7 @@ async function verifyRecordingExportLifecycle(detoxApi) {
   await scrollToTranscriptControl(audioExport);
   await audioExport.tap();
   try {
-    const activitySheet = element(by.id('ShareSheet.RemoteContainerView'));
-    await waitFor(activitySheet).toBeVisible().withTimeout(30000);
-    // Capture the presented sheet before swiping so failure artifacts preserve its original state.
+    // Save visual and XCTest hierarchy evidence because Detox system selectors do not expose app share sheets.
     console.log(
       'RECORDING_EXPORT_AUDIO_SHARE_FRAME ' +
         (await device.takeScreenshot('recording-export-audio-share-sheet')),
@@ -111,7 +98,16 @@ async function verifyRecordingExportLifecycle(detoxApi) {
           'recording-export-audio-share-sheet',
         )),
     );
-    await swipeDownOnRecordingExportSheet({ by, element });
+    // The presented sheet covers the app scroll view, so tap the exposed dimming region to exercise UIKit cancellation.
+    const dismissPopup = element(by.label('dismiss popup'));
+    await waitFor(dismissPopup).toExist().withTimeout(30000);
+    const dismissalFrame = (await dismissPopup.getAttributes()).frame;
+    jestExpect(dismissalFrame.width).toBeGreaterThan(0);
+    jestExpect(dismissalFrame.height).toBeGreaterThan(0);
+    await device.tap({
+      x: dismissalFrame.x + dismissalFrame.width / 2,
+      y: dismissalFrame.y + dismissalFrame.height * 0.2,
+    });
     await waitFor(element(by.id('recording-export-status')))
       .toHaveText('내보내기를 취소했어요.')
       .withTimeout(30000);
@@ -145,7 +141,7 @@ async function verifyRecordingExportLifecycle(detoxApi) {
         fixture: 'synthetic',
         cancellation: {
           transcript: 'simulator hook',
-          audio: 'share sheet downward swipe',
+          audio: 'outside tap dismissal',
         },
       }),
   );
@@ -163,7 +159,9 @@ async function captureRecordingExportFailure(detoxApi) {
   if (lifecycleFailure) {
     // A failed completion assertion may leave UIKit's sheet open over the app cleanup control.
     try {
-      await swipeDownOnRecordingExportSheet(detoxApi);
+      await detoxApi
+        .element(detoxApi.by.id('recording-controls-scroll'))
+        .swipe('down', 'slow', 0.7, 0.5, 0.5);
     } catch {
       // Cleanup below remains the authoritative check if no swipe target is available.
     }

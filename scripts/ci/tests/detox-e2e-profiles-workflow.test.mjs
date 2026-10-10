@@ -59,7 +59,7 @@ test('runs every profile as an independent leaf and continues after fingerprint 
     /scripts\/ci\/run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/,
   );
   assert.match(summaryGuard, /expected exactly one profile summary/);
-  assert.match(summaryGuard, /14\]/);
+  assert.match(summaryGuard, /21\]/);
   assert.match(suiteRunner, /node scripts\/ci\/require-jest-summary\.mjs/);
 });
 

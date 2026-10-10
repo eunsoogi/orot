@@ -160,6 +160,19 @@ test('the real Smoke reset latches before a later Release phase after timeout', 
       waitFor: () => ({}),
       require(specifier) {
         if (specifier === '@jest/globals') return { expect: () => ({}) };
+        if (specifier === './safeAreaHelpers') {
+          return { expectContentAboveFloatingBar: async () => {} };
+        }
+        if (specifier === './smokeHelpers') {
+          // This test drives only the reset hook; hosted Detox owns the UI-route assertions.
+          return {
+            confirmUnsavedLeave: async () => {},
+            expectNativeNavigationAction: async () => {},
+            openFeatureAndReturn: async () => {},
+            openRootTab: async () => {},
+            tapNativeNavigationAction: async () => {},
+          };
+        }
         if (specifier === './storageProbeResetGuard.e2e.js') {
           return { releasePhaseResetGuard: resetGuard, resetHookTimeoutMs: 241000 };
         }

@@ -34,8 +34,12 @@ function registerFreshPhase(name, suiteFiles, uninstallBeforePhase) {
 
 function registerReleaseUiPhases(wrapper) {
   const suiteFiles = releaseE2EShards[wrapper];
-  const safeAreaSuites = suiteFiles.filter(suiteFile => suiteFile.startsWith('./safe-area'));
-  const uiSuites = suiteFiles.filter(suiteFile => !suiteFile.startsWith('./safe-area'));
+  const safeAreaSuites = suiteFiles.filter(suiteFile =>
+    suiteFile.startsWith('./safe-area'),
+  );
+  const uiSuites = suiteFiles.filter(
+    suiteFile => !suiteFile.startsWith('./safe-area'),
+  );
 
   registerFreshPhase('Release fresh-install and UI probes', uiSuites, false);
   // Keep the startup and keyboard Safe Area probes together after UI state has been reset.

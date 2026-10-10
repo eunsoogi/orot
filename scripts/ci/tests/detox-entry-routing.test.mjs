@@ -13,7 +13,6 @@ const selectEntryRoute = requireFromRepository(
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
-const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 const openAiDetoxConfig = requireFromRepository(
   './apps/mobile/e2e/openai-provider.detox.config.js',
@@ -129,27 +128,6 @@ test('the shared Release app config bundles the router and selects one ordered w
     './checkpoint.detox.e2e.js',
     './storage.test.js',
   ]);
-  // Storage stays first on its UI runner; both shard lists still cover each canonical inventory file once.
-  assert.deepEqual(releaseE2EShards, {
-    'release-e2e.test.js': [
-      './storage.test.js',
-      './smoke.test.js',
-      './settings.detox.e2e.js',
-      './unified-import-navigation.e2e.js',
-      './navigation-glass.e2e.js',
-      './ai-feature-visit-questions.e2e.js',
-      './safe-area.test.js',
-      './safe-area-keyboard.test.js',
-    ],
-    'release-e2e-data.test.js': [
-      './appointments.test.js',
-      './medicalAppointmentClassification.test.js',
-      './medicalAppointmentNavigation.test.js',
-      './agentMemory.test.js',
-      './graph.test.js',
-      './checkpoint.detox.e2e.js',
-    ],
-  });
   assert.deepEqual(openAiJestConfig.testMatch, ['<rootDir>/e2e/openai-provider.e2e.js']);
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');
