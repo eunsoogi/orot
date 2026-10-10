@@ -69,15 +69,14 @@ function runReleaseSummary(counts) {
   }
 }
 
-test('Release shard summaries follow the registered cases and reject the superseded split', () => {
+test('Release shard summaries follow the registered cases and reject stale partitions', () => {
   const actual = Object.entries(releaseShards).map(([wrapper, files]) => [
     wrapper,
     countRegisteredTests(files),
   ]);
   assert.deepEqual(actual, [
     ['release-e2e.test.js', 3],
-    ['release-e2e-safe-area.test.js', 4],
-    ['release-e2e-data.test.js', 6],
+    ['release-e2e-data.test.js', 10],
   ]);
 
   // Count real test registrations so moving a scenario cannot silently stale the log validator.
@@ -86,8 +85,7 @@ test('Release shard summaries follow the registered cases and reject the superse
 
   const stale = runReleaseSummary([
     ['release-e2e.test.js', 2],
-    ['release-e2e-safe-area.test.js', 4],
-    ['release-e2e-data.test.js', 7],
+    ['release-e2e-data.test.js', 11],
   ]);
   assert.notEqual(stale.status, 0);
 });

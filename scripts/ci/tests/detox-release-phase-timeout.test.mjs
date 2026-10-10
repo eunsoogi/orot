@@ -37,37 +37,54 @@ test('a timed-out phase cannot overlap a sibling reset or finish a late install'
     let clearCount = 0;
     let releaseFirstClear;
     getState().testTimeout = 1000;
-    vm.runInNewContext(fs.readFileSync(path.join(root, 'apps/mobile/e2e/release-e2e.test.js'), 'utf8'), {
-      beforeAll(hook, timeout) {
-        hookTimeouts.push(timeout ?? null);
-        circus.beforeAll(hook, 80);
-      },
-      describe: circus.describe,
-      device: {
-        async clearKeychain() {
-          clearCount += 1;
-          calls.push('clear-start-' + clearCount);
-          if (clearCount === 1) await new Promise((resolve) => { releaseFirstClear = resolve; });
-          calls.push('clear-end-' + clearCount);
+    function loadReleaseWrapper(wrapperName) {
+      vm.runInNewContext(fs.readFileSync(path.join(root, 'apps/mobile/e2e', wrapperName), 'utf8'), {
+        beforeAll(hook, timeout) {
+          hookTimeouts.push(timeout ?? null);
+          circus.beforeAll(hook, 80);
         },
-        async installApp() { calls.push('install'); },
-        async uninstallApp() { calls.push('uninstall'); },
-      },
-      process: { env: { OROT_DETOX_RELEASE_FRESH_SIMULATOR: 'true' } },
-      require(specifier) {
-        if (specifier === './release-e2e-shards.js') return wrappers;
-        if (specifier === './storageProbeResetGuard.e2e.js') {
-          return { releasePhaseResetGuard: resetGuard, resetHookTimeoutMs: 241000 };
-        }
-        circus.it(specifier, async () => {
-          calls.push('body-' + specifier);
-          if (specifier === './storage-migration.test.js') {
-            releaseFirstClear?.();
-            await new Promise((resolve) => setImmediate(resolve));
+        describe: circus.describe,
+        device: {
+          async clearKeychain() {
+            clearCount += 1;
+            calls.push('clear-start-' + clearCount);
+            if (clearCount === 1) {
+              await new Promise((resolve) => {
+                releaseFirstClear = resolve;
+              });
+            }
+            calls.push('clear-end-' + clearCount);
+          },
+          async installApp() {
+            calls.push('install');
+          },
+          async uninstallApp() {
+            calls.push('uninstall');
+          },
+        },
+        process: { env: { OROT_DETOX_RELEASE_FRESH_SIMULATOR: 'true' } },
+        require(specifier) {
+          if (specifier === './release-e2e-shards.js') return wrappers;
+          if (specifier === './storageProbeResetGuard.e2e.js') {
+            return { releasePhaseResetGuard: resetGuard, resetHookTimeoutMs: 241000 };
           }
-        });
-      },
-    });
+          if (specifier === './release-e2e-data.test.js') {
+            // Load nested phase hooks into the same Circus tree to test reset serialization end to end.
+            loadReleaseWrapper('release-e2e-data.test.js');
+            return {};
+          }
+          circus.it(specifier, async () => {
+            calls.push('body-' + specifier);
+            if (specifier === './storage-migration.test.js') {
+              releaseFirstClear?.();
+              await new Promise((resolve) => setImmediate(resolve));
+            }
+          });
+        },
+      });
+    }
+
+    loadReleaseWrapper('release-e2e.test.js');
     run().then(async (result) => {
       releaseFirstClear?.();
       await new Promise((resolve) => setImmediate(resolve));
@@ -92,7 +109,7 @@ test('a timed-out phase cannot overlap a sibling reset or finish a late install'
   const observation = JSON.parse(result.stdout);
   assert.deepEqual(
     { calls: observation.calls, hookTimeouts: observation.hookTimeouts },
-    { calls: ['clear-start-1', 'clear-end-1'], hookTimeouts: [241000, 241000] },
+    { calls: ['clear-start-1', 'clear-end-1'], hookTimeouts: [241000, 241000, 241000] },
     JSON.stringify(observation),
   );
   assert.ok(observation.failedFiles > 0);

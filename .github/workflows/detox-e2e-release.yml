@@ -19,7 +19,7 @@ on:
         default: false
     outputs:
       profile:
-        description: Release profile whose three shard summaries passed validation.
+        description: Release profile whose two shard summaries passed validation.
         value: ${{ jobs.detox_profile.outputs.profile }}
       test_cases:
         description: Validated number of passing Release E2E cases.
@@ -32,23 +32,13 @@ permissions:
   contents: read
 
 jobs:
-  # Matching profile and fingerprints keep all runners on the same validated Release app cache key.
+  # Matching profile and fingerprints keep both runners on the same validated Release app cache key.
   detox_release_ui_shard:
     name: Release UI and storage shard
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
       release_shard: release-e2e.test.js
-      fingerprints: ${{ inputs.fingerprints }}
-      trace_logging: ${{ inputs.trace_logging }}
-      resource_sampling: ${{ inputs.resource_sampling }}
-
-  detox_release_safe_area_shard:
-    name: Release Safe Area shard
-    uses: ./.github/workflows/detox-e2e-profile.yml
-    with:
-      profile: release
-      release_shard: release-e2e-safe-area.test.js
       fingerprints: ${{ inputs.fingerprints }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
@@ -68,7 +58,7 @@ jobs:
     name: Detox release iOS E2E
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [detox_release_ui_shard, detox_release_safe_area_shard, detox_release_data_shard]
+    needs: [detox_release_ui_shard, detox_release_data_shard]
     if: ${{ always() }}
     outputs:
       profile: ${{ steps.aggregate.outputs.e2e_profile }}
@@ -86,10 +76,6 @@ jobs:
           UI_PROFILE: ${{ needs.detox_release_ui_shard.outputs.profile }}
           UI_TEST_CASES: ${{ needs.detox_release_ui_shard.outputs.test_cases }}
           UI_TEST_SUITES: ${{ needs.detox_release_ui_shard.outputs.test_suites }}
-          SAFE_AREA_RESULT: ${{ needs.detox_release_safe_area_shard.result }}
-          SAFE_AREA_PROFILE: ${{ needs.detox_release_safe_area_shard.outputs.profile }}
-          SAFE_AREA_TEST_CASES: ${{ needs.detox_release_safe_area_shard.outputs.test_cases }}
-          SAFE_AREA_TEST_SUITES: ${{ needs.detox_release_safe_area_shard.outputs.test_suites }}
           DATA_RESULT: ${{ needs.detox_release_data_shard.result }}
           DATA_PROFILE: ${{ needs.detox_release_data_shard.outputs.profile }}
           DATA_TEST_CASES: ${{ needs.detox_release_data_shard.outputs.test_cases }}
@@ -97,6 +83,5 @@ jobs:
         run: |
           node scripts/ci/require-detox-release-shard-aggregate.mjs \
             "$UI_RESULT" "$UI_PROFILE" "$UI_TEST_CASES" "$UI_TEST_SUITES" \
-            "$SAFE_AREA_RESULT" "$SAFE_AREA_PROFILE" "$SAFE_AREA_TEST_CASES" "$SAFE_AREA_TEST_SUITES" \
             "$DATA_RESULT" "$DATA_PROFILE" "$DATA_TEST_CASES" "$DATA_TEST_SUITES" \
             "$GITHUB_OUTPUT"

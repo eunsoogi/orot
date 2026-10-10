@@ -24,25 +24,36 @@ test('Release runs the full ordered inventory in one default worker', () => {
 });
 
 test('the ordered Release wrapper loads every scenario once while explicit shards retain their partition', () => {
-  const wrapper = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/release-e2e.test.js'), 'utf8');
   const loadSuites = (selectedShard) => {
     const loaded = [];
-    runInNewContext(wrapper, {
-      beforeAll: () => {},
-      device: {},
-      describe: (_name, callback) => callback(),
-      process: {
-        env: selectedShard ? { OROT_DETOX_RELEASE_SHARD: selectedShard } : {},
-      },
-      require: (path) => {
-        if (path === './release-e2e-shards.js') return releaseShards;
-        if (path === './release-e2e-suite-files.js') return releaseSuiteFiles;
-        // The shared reset guard configures phases but does not add an E2E scenario.
-        if (path === './storageProbeResetGuard.e2e.js') return {};
-        loaded.push(path);
-        return {};
-      },
-    });
+
+    function loadWrapper(wrapperName) {
+      const wrapper = readFileSync(join(repositoryRoot, 'apps/mobile/e2e', wrapperName), 'utf8');
+
+      runInNewContext(wrapper, {
+        beforeAll: () => {},
+        device: {},
+        describe: (_name, callback) => callback(),
+        process: {
+          env: selectedShard ? { OROT_DETOX_RELEASE_SHARD: selectedShard } : {},
+        },
+        require: (path) => {
+          if (path === './release-e2e-shards.js') return releaseShards;
+          if (path === './release-e2e-suite-files.js') return releaseSuiteFiles;
+          // The shared reset guard configures phases but does not add an E2E scenario.
+          if (path === './storageProbeResetGuard.e2e.js') return {};
+          if (path === './release-e2e-data.test.js') {
+            // The data wrapper owns Safe Area and stateful suites on one runner in separate clean phases.
+            loadWrapper('release-e2e-data.test.js');
+            return {};
+          }
+          loaded.push(path);
+          return {};
+        },
+      });
+    }
+
+    loadWrapper('release-e2e.test.js');
     return loaded;
   };
 
@@ -51,9 +62,11 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
     loadSuites('release-e2e-data.test.js'),
     releaseShards['release-e2e-data.test.js'],
   );
-  assert.deepEqual(
-    loadSuites('release-e2e-safe-area.test.js'),
-    releaseShards['release-e2e-safe-area.test.js'],
+  assert.deepEqual(loadSuites('release-e2e.test.js'), releaseShards['release-e2e.test.js']);
+  assert.equal(
+    releaseShards['release-e2e-data.test.js'].filter((file) => file === './safe-area.test.js')
+      .length,
+    1,
   );
 });
 
@@ -77,11 +90,10 @@ test('Release shard mode selects one wrapper and one Jest worker per explicit Si
   assert.notEqual(invalid.status, 0);
 });
 
-test('routes a Release profile through three explicit Simulators', () => {
+test('routes a Release profile through two explicit Simulators', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-shard-route-'));
   const bin = join(directory, 'bin');
   const callsPath = join(directory, 'calls.log');
-  const safeAreaId = '22222222-3333-4444-8555-666666666666';
   const dataId = '11111111-2222-4333-8444-555555555555';
   const baseId = 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE';
   const pnpm = join(bin, 'pnpm');
@@ -108,7 +120,6 @@ test('routes a Release profile through three explicit Simulators', () => {
         DETOX_ARTIFACTS_LOCATION: join(directory, 'detox'),
         OROT_DETOX_SIMULATOR_UDID: baseId,
         OROT_DETOX_RELEASE_SHARDING: 'true',
-        OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID: safeAreaId,
         OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID: dataId,
         OROT_DETOX_TEST_TIME_COMMAND: timer,
         OROT_DETOX_TEST_LOG_LEVEL: 'info',
@@ -119,11 +130,7 @@ test('routes a Release profile through three explicit Simulators', () => {
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.deepEqual(
       readFileSync(callsPath, 'utf8').trim().split('\n').sort(),
-      [
-        `release-e2e.test.js\t${baseId}`,
-        `release-e2e-safe-area.test.js\t${safeAreaId}`,
-        `release-e2e-data.test.js\t${dataId}`,
-      ].sort(),
+      [`release-e2e.test.js\t${baseId}`, `release-e2e-data.test.js\t${dataId}`].sort(),
     );
     assert.match(result.stdout, /DETOX_PROFILE_END profile=release status=0/);
   } finally {

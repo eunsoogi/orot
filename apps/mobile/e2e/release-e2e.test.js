@@ -5,8 +5,6 @@ const releaseE2EShards = require('./release-e2e-shards.js');
 const hasFreshReleaseSimulator =
   process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR === 'true' ||
   process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
-const usesCombinedReleaseSimulator =
-  !selectedShard && process.env.OROT_DETOX_RELEASE_SHARDING !== 'true';
 const {
   releasePhaseResetGuard,
   resetHookTimeoutMs,
@@ -31,38 +29,21 @@ function loadReleaseShard(wrapper) {
 }
 
 if (selectedShard) {
-  clearAndInstallFreshSimulator();
-  loadReleaseShard(selectedShard);
+  if (selectedShard === 'release-e2e-data.test.js') {
+    // The data wrapper owns two clean install phases on its assigned Simulator.
+    require('./release-e2e-data.test.js');
+  } else {
+    clearAndInstallFreshSimulator();
+    loadReleaseShard(selectedShard);
+  }
 } else {
   describe('Release fresh-install and UI probes', () => {
     // Run storage creation on this clean install before UI scenarios can open the database.
     clearAndInstallFreshSimulator();
     loadReleaseShard('release-e2e.test.js');
-    // Keep the local full-suite order while hosted CI can run Safe Area on its own Simulator.
-    loadReleaseShard('release-e2e-safe-area.test.js');
   });
 
   describe('Release stateful probes', () => {
-    beforeAll(async () => {
-      await releasePhaseResetGuard.runReset(async assertMayContinue => {
-        // Recreate the stateful phase's fresh app boundary after UI probes on the shared Simulator.
-        if (usesCombinedReleaseSimulator) {
-          await device.uninstallApp();
-          assertMayContinue();
-          await device.clearKeychain();
-          assertMayContinue();
-          await device.installApp();
-          assertMayContinue();
-        } else {
-          await device.clearKeychain();
-          assertMayContinue();
-          if (hasFreshReleaseSimulator) {
-            await device.installApp();
-            assertMayContinue();
-          }
-        }
-      });
-    }, resetHookTimeoutMs);
-    loadReleaseShard('release-e2e-data.test.js');
+    require('./release-e2e-data.test.js');
   });
 }

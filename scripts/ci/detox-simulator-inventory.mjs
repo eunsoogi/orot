@@ -121,9 +121,9 @@ export function planDetoxSimulatorTargets({
 function main() {
   const [baselinePath, currentPath, testLogPath, baseUdid, profile, targetsPath] =
     process.argv.slice(2);
-  // The default Release run uses its dedicated base; explicit sharding assigns one base and two workers.
+  // The default Release run uses its dedicated base; explicit two-shard runs add one data worker.
   const profileWorkers = {
-    release: process.env.OROT_DETOX_RELEASE_SHARDING === 'true' ? 3 : 1,
+    release: process.env.OROT_DETOX_RELEASE_SHARDING === 'true' ? 2 : 1,
     'openai-provider': 1,
     transcription: 1,
     // Next Visit Questions uses one dedicated base and does not spawn Release workers.

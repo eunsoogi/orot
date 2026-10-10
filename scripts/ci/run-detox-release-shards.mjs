@@ -13,7 +13,6 @@ const requireFromRepository = createRequire(join(repositoryRoot, 'package.json')
 const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
 const simulatorVariables = {
   'release-e2e.test.js': 'OROT_DETOX_SIMULATOR_UDID',
-  'release-e2e-safe-area.test.js': 'OROT_DETOX_RELEASE_SAFE_AREA_SIMULATOR_UDID',
   'release-e2e-data.test.js': 'OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID',
 };
 const simulatorPattern = /^[A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/;

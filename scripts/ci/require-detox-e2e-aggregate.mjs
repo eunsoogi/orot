@@ -46,7 +46,7 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  // Each hosted Release runner reports one checked wrapper suite; the outer count remains exhaustive.
+  // The Release profile publishes checked totals from the UI and combined Safe Area/data wrappers.
   expectedSuites: 2,
   // Release includes the Safe Area and consent-disclosure regressions; Debug adds one case.
   expectedCases: 13,

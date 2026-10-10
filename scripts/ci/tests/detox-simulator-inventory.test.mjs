@@ -45,11 +45,10 @@ test('selects only new profile-matched Simulators for explicitly sharded workers
     [runtime]: [simulator(base), simulator('BBBBBBBB-CCCC-4DDD-8EEE-FFFFFFFFFFFF')],
   });
   const current = inventory({
-    [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)],
+    [runtime]: [simulator(base), simulator(cloneOne)],
   });
   const testLog = [
     `[release-e2e.test.js] release-e2e.test.js is assigned to ${base} (undefined)`,
-    `[release-e2e-safe-area.test.js] release-e2e-safe-area.test.js is assigned to ${cloneTwo} (undefined)`,
     `[release-e2e-data.test.js] release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
   ].join('\n');
 
@@ -60,15 +59,15 @@ test('selects only new profile-matched Simulators for explicitly sharded workers
     expectedRuntime: runtime,
     expectedDeviceType: deviceType,
     testLog,
-    expectedWorkers: 3,
+    expectedWorkers: 2,
   });
 
-  assert.deepEqual(result.targetUdids, [base, cloneOne, cloneTwo]);
-  assert.deepEqual(result.assignedUdids, [base, cloneTwo, cloneOne]);
+  assert.deepEqual(result.targetUdids, [base, cloneOne]);
+  assert.deepEqual(result.assignedUdids, [base, cloneOne]);
   assert.deepEqual(result.issues, []);
 });
 
-test('inventory command expects one default Release assignment and three only for explicit shards', () => {
+test('inventory command expects one default Release assignment and two for explicit shards', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-release-inventory-mode-'));
   const baselinePath = join(directory, 'baseline.json');
   const currentPath = join(directory, 'current.json');
@@ -96,15 +95,12 @@ test('inventory command expects one default Release assignment and three only fo
 
     writeFileSync(
       currentPath,
-      JSON.stringify(
-        inventory({ [runtime]: [simulator(base), simulator(cloneOne), simulator(cloneTwo)] }),
-      ),
+      JSON.stringify(inventory({ [runtime]: [simulator(base), simulator(cloneOne)] })),
     );
     writeFileSync(
       testLogPath,
       [
         `release-e2e.test.js is assigned to ${base} (undefined)`,
-        `release-e2e-safe-area.test.js is assigned to ${cloneTwo} (undefined)`,
         `release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
       ].join('\n'),
     );
@@ -114,12 +110,8 @@ test('inventory command expects one default Release assignment and three only fo
       { encoding: 'utf8', env: { ...env, OROT_DETOX_RELEASE_SHARDING: 'true' } },
     );
     assert.equal(sharded.status, 0, sharded.stderr);
-    assert.match(sharded.stdout, /workers=3 targets=3/);
-    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [
-      base,
-      cloneOne,
-      cloneTwo,
-    ]);
+    assert.match(sharded.stdout, /workers=2 targets=2/);
+    assert.deepEqual(readFileSync(targetsPath, 'utf8').trim().split('\n'), [base, cloneOne]);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -138,15 +130,28 @@ test('fails closed on unexpected new devices and incomplete or shared worker ass
     expectedDeviceType: deviceType,
     testLog: [
       `release-e2e.test.js is assigned to ${base} (undefined)`,
-      `release-e2e-safe-area.test.js is assigned to ${base} (undefined)`,
-      `release-e2e-data.test.js is assigned to ${base} (undefined)`,
+      `release-e2e-data.test.js is assigned to ${cloneOne} (undefined)`,
     ].join('\n'),
-    expectedWorkers: 3,
+    expectedWorkers: 2,
   });
 
   assert.deepEqual(result.targetUdids, [base, cloneOne, cloneTwo]);
   assert.ok(result.issues.some((issue) => issue.includes(unexpectedId)));
+  const sharedAssignments = planDetoxSimulatorTargets({
+    baseline: inventory({ [runtime]: [simulator(base)] }),
+    current: inventory({ [runtime]: [simulator(base), simulator(cloneOne)] }),
+    baseUdid: base,
+    expectedRuntime: runtime,
+    expectedDeviceType: deviceType,
+    testLog: [
+      `release-e2e.test.js is assigned to ${base} (undefined)`,
+      `release-e2e-data.test.js is assigned to ${base} (undefined)`,
+    ].join('\n'),
+    expectedWorkers: 2,
+  });
   assert.ok(
-    result.issues.some((issue) => issue.includes('expected 3 distinct worker assignments')),
+    sharedAssignments.issues.some((issue) =>
+      issue.includes('expected 2 distinct worker assignments, received 1'),
+    ),
   );
 });

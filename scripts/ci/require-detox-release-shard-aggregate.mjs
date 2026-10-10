@@ -59,9 +59,9 @@ const shardResults = releaseShardInventory.map((expected, index) => {
 });
 const totalCases = shardResults.reduce((total, shard) => total + shard.cases, 0);
 const totalSuites = shardResults.reduce((total, shard) => total + shard.suites, 0);
-if (totalCases !== 13 || totalSuites !== 3) {
+if (totalCases !== 13 || totalSuites !== 2) {
   throw new Error(
-    'Release shard aggregate must contain exactly 13 cases across 3 suites; received ' +
+    'Release shard aggregate must contain exactly 13 cases across 2 suites; received ' +
       totalCases +
       ' cases across ' +
       totalSuites +
@@ -75,4 +75,4 @@ appendFileSync(
     '\n',
   ) + '\n',
 );
-console.log('13/13 Release cases passed across all three shard suites');
+console.log('13/13 Release cases passed across both shard suites');

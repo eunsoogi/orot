@@ -38,27 +38,21 @@ const shard = (name, tests) =>
   ].join('\n');
 
 test('validates every Release shard before publishing the profile total', () => {
-  const complete = [
-    shard('release-e2e.test.js', 3),
-    shard('release-e2e-safe-area.test.js', 4),
-    shard('release-e2e-data.test.js', 6),
-  ].join('\n');
+  const complete = [shard('release-e2e.test.js', 3), shard('release-e2e-data.test.js', 10)].join(
+    '\n',
+  );
   const result = runGuard(complete, 'e2e-release', true, {
     OROT_DETOX_RELEASE_SHARDING: 'true',
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /13\/13 tests passed across 3 suites in 3 Jest runs/);
-  assert.equal(result.githubOutput, 'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=3\n');
+  assert.match(result.stdout, /13\/13 tests passed across 2 suites in 2 Jest runs/);
+  assert.equal(result.githubOutput, 'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=2\n');
 
   const missingShard = runGuard(shard('release-e2e.test.js', 3), 'e2e-release');
   assert.notEqual(missingShard.status, 0);
 
   const wrongCaseCount = runGuard(
-    [
-      shard('release-e2e.test.js', 2),
-      shard('release-e2e-safe-area.test.js', 4),
-      shard('release-e2e-data.test.js', 7),
-    ].join('\n'),
+    [shard('release-e2e.test.js', 2), shard('release-e2e-data.test.js', 11)].join('\n'),
     'e2e-release',
   );
   assert.notEqual(wrongCaseCount.status, 0);
@@ -68,11 +62,7 @@ test('validates every Release shard before publishing the profile total', () => 
   );
 
   const stalePartition = runGuard(
-    [
-      shard('release-e2e.test.js', 3),
-      shard('release-e2e-safe-area.test.js', 3),
-      shard('release-e2e-data.test.js', 7),
-    ].join('\n'),
+    [shard('release-e2e.test.js', 3), shard('release-e2e-data.test.js', 9)].join('\n'),
     'e2e-release',
     false,
     { OROT_DETOX_RELEASE_SHARDING: 'true' },
@@ -80,16 +70,15 @@ test('validates every Release shard before publishing the profile total', () => 
   assert.notEqual(stalePartition.status, 0);
   assert.match(
     stalePartition.stderr,
-    /Release release-e2e-safe-area\.test\.js summary expected 4 test cases, received 3/,
+    /Release release-e2e-data\.test\.js summary expected 10 test cases, received 9/,
   );
 
   const skippedCase = runGuard(
     [
       shard('release-e2e.test.js', 3),
-      shard('release-e2e-safe-area.test.js', 4),
-      shard('release-e2e-data.test.js', 6).replace(
-        '6 passed, 6 total',
-        '5 passed, 1 skipped, 6 total',
+      shard('release-e2e-data.test.js', 10).replace(
+        '10 passed, 10 total',
+        '9 passed, 1 skipped, 10 total',
       ),
     ].join('\n'),
     'e2e-release',
@@ -108,5 +97,5 @@ test('validates every Release shard before publishing the profile total', () => 
   const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
   const combined = runGuard(complete + '\n' + debug, 'e2e');
   assert.equal(combined.status, 0, combined.stderr);
-  assert.match(combined.stdout, /14\/14 tests passed across 4 suites in 4 Jest runs/);
+  assert.match(combined.stdout, /14\/14 tests passed across 3 suites in 3 Jest runs/);
 });

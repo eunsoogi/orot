@@ -1,28 +1,51 @@
-/* global beforeAll, device */
+/* global beforeAll, describe, device */
 
 const hasFreshReleaseSimulator =
   process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR === 'true' ||
   process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
+const usesCombinedReleaseSimulator =
+  !process.env.OROT_DETOX_RELEASE_SHARD &&
+  process.env.OROT_DETOX_RELEASE_SHARDING !== 'true';
 const {
   releasePhaseResetGuard,
   resetHookTimeoutMs,
 } = require('./storageProbeResetGuard.e2e.js');
 
-beforeAll(async () => {
-  await releasePhaseResetGuard.runReset(async assertMayContinue => {
-    await device.clearKeychain();
-    assertMayContinue();
-    // Explicit shard runs start from a fresh device without an installed app.
-    if (hasFreshReleaseSimulator) {
-      await device.installApp();
-      assertMayContinue();
-    }
-  });
-}, resetHookTimeoutMs);
+const releaseShards = require('./release-e2e-shards.js');
 
-// Keep first-use, data mutation, and migration probes ordered on one worker for stable storage state.
-for (const suiteFile of require('./release-e2e-shards.js')[
-  'release-e2e-data.test.js'
-]) {
-  require(suiteFile);
+function registerFreshPhase(name, suiteFiles, uninstallBeforePhase) {
+  describe(name, () => {
+    beforeAll(async () => {
+      await releasePhaseResetGuard.runReset(async assertMayContinue => {
+        if (uninstallBeforePhase) {
+          await device.uninstallApp();
+          assertMayContinue();
+        }
+        await device.clearKeychain();
+        assertMayContinue();
+        // A fresh CI worker has no app at first, while later phases must reinstall after uninstallation.
+        if (hasFreshReleaseSimulator || uninstallBeforePhase) {
+          await device.installApp();
+          assertMayContinue();
+        }
+      });
+    }, resetHookTimeoutMs);
+
+    for (const suiteFile of suiteFiles) require(suiteFile);
+  });
 }
+
+const statefulSuites = releaseShards['release-e2e-data.test.js'].filter(
+  suiteFile => suiteFile !== './safe-area.test.js',
+);
+const safeAreaSuites = releaseShards['release-e2e-data.test.js'].filter(
+  suiteFile => suiteFile === './safe-area.test.js',
+);
+
+// Safe Area startup probes run before stateful data tests and hand off a clean app installation.
+registerFreshPhase(
+  'Release Safe Area probes',
+  safeAreaSuites,
+  usesCombinedReleaseSimulator,
+);
+registerFreshPhase('Release stateful data probes', statefulSuites, true);

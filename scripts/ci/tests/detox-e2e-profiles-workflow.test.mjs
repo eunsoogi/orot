@@ -46,7 +46,7 @@ test('runs all three isolated profiles and validates their summaries before retu
   assert.match(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
 });
 
-test('keeps the Release check name while running its complete split on three isolated runners', () => {
+test('keeps the Release check name while running its complete split on two isolated runners', () => {
   assert.match(
     profilesWorkflow,
     /detox_release_e2e:[\s\S]*?name: Detox Release iOS E2E[\s\S]*?uses: \.\/\.github\/workflows\/detox-e2e-release\.yml/,
@@ -57,21 +57,18 @@ test('keeps the Release check name while running its complete split on three iso
   );
   assert.match(
     releaseWorkflow,
-    /detox_release_safe_area_shard:[\s\S]*?release_shard: release-e2e-safe-area\.test\.js/,
-  );
-  assert.match(
-    releaseWorkflow,
     /detox_release_data_shard:[\s\S]*?release_shard: release-e2e-data\.test\.js/,
   );
   assert.match(
     releaseWorkflow,
-    /detox_profile:[\s\S]*?name: Detox release iOS E2E[\s\S]*?needs: \[detox_release_ui_shard, detox_release_safe_area_shard, detox_release_data_shard\][\s\S]*?if: \$\{\{ always\(\) \}\}/,
+    /detox_profile:[\s\S]*?name: Detox release iOS E2E[\s\S]*?needs: \[detox_release_ui_shard, detox_release_data_shard\][\s\S]*?if: \$\{\{ always\(\) \}\}/,
   );
+  assert.doesNotMatch(releaseWorkflow, /detox_release_safe_area_shard/);
   assert.match(releaseWorkflow, /require-detox-release-shard-aggregate\.mjs/);
   assert.match(profileWorkflow, /release_shard: \{ required: false, type: string, default: '' \}/);
   assert.match(profileWorkflow, /OROT_DETOX_RELEASE_SHARD: \$\{\{ inputs\.release_shard \}\}/);
   assert.equal(
     [...releaseWorkflow.matchAll(/fingerprints: \$\{\{ inputs\.fingerprints \}\}/g)].length,
-    3,
+    2,
   );
 });

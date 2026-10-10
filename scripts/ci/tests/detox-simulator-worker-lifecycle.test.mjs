@@ -70,7 +70,6 @@ test('captures diagnostics for every Simulator assigned to explicitly sharded Re
       testLog,
       [
         `release-e2e.test.js is assigned to ${base} (undefined)`,
-        `release-e2e-safe-area.test.js is assigned to ${workerTwo} (undefined)`,
         `release-e2e-data.test.js is assigned to ${workerOne} (undefined)`,
       ].join('\n'),
     );
@@ -80,7 +79,7 @@ test('captures diagnostics for every Simulator assigned to explicitly sharded Re
       [testLog, outputLog, identityPath, 'release', baselinePath, targetPath],
       [
         'if [[ "$*" == "simctl list devices --json" ]]; then',
-        `  printf '%s\\n' '${inventory([base, unrelated, workerOne, workerTwo])}'`,
+        `  printf '%s\\n' '${inventory([base, unrelated, workerOne])}'`,
         'elif [[ "$1 $2" == "simctl spawn" ]]; then',
         '  printf "captured %s\\n" "$3"',
         'else',
@@ -91,20 +90,16 @@ test('captures diagnostics for every Simulator assigned to explicitly sharded Re
     );
 
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.deepEqual(readFileSync(targetPath, 'utf8').trim().split('\n'), [
-      base,
-      workerOne,
-      workerTwo,
-    ]);
+    assert.deepEqual(readFileSync(targetPath, 'utf8').trim().split('\n'), [base, workerOne]);
     assert.match(readFileSync(outputLog, 'utf8'), new RegExp(`captured ${base}`));
-    for (const worker of [workerOne, workerTwo]) {
+    for (const worker of [workerOne]) {
       assert.match(
         readFileSync(join(artifacts, 'simulator-workers', `${worker}.log`), 'utf8'),
         new RegExp(`captured ${worker}`),
       );
     }
     const calls = readFileSync(join(directory, 'xcrun-calls.log'), 'utf8');
-    for (const simulator of [base, workerOne, workerTwo]) {
+    for (const simulator of [base, workerOne]) {
       assert.match(calls, new RegExp(`simctl spawn ${simulator} log show`));
     }
     assert.doesNotMatch(calls, new RegExp(`simctl spawn ${unrelated} log show`));
@@ -135,7 +130,6 @@ test('fails closed on an unclassified Simulator in an explicitly sharded Release
       testLog,
       [
         `release-e2e.test.js is assigned to ${base} (undefined)`,
-        `release-e2e-safe-area.test.js is assigned to ${workerTwo} (undefined)`,
         `release-e2e-data.test.js is assigned to ${workerOne} (undefined)`,
       ].join('\n'),
     );
@@ -211,17 +205,17 @@ test('deletes only the dedicated base and worker Simulators listed for this prof
   try {
     mkdirSync(artifacts, { recursive: true });
     mkdirSync(deleted, { recursive: true });
-    writeFileSync(targetsPath, `${base}\n${workerOne}\n${workerTwo}\n`);
+    writeFileSync(targetsPath, `${base}\n${workerOne}\n`);
     const result = runWithFakeXcrun(
       directory,
       teardownScript,
       [base, logPath, targetsPath],
       [
         'if [[ "$*" == "simctl list devices" ]]; then',
-        `  for id in ${base} ${workerOne} ${workerTwo}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
+        `  for id in ${base} ${workerOne}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
         `  printf '%s (Shutdown)\\n' '${unrelated}'`,
         'elif [[ "$*" == "simctl list devices booted" ]]; then',
-        `  for id in ${base} ${workerOne} ${workerTwo}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
+        `  for id in ${base} ${workerOne}; do [[ -f "$DELETED/$id" ]] || printf '%s (Booted)\\n' "$id"; done`,
         'elif [[ "$1 $2" == "simctl shutdown" ]]; then',
         '  exit 0',
         'elif [[ "$1 $2" == "simctl delete" ]]; then',
@@ -235,14 +229,14 @@ test('deletes only the dedicated base and worker Simulators listed for this prof
 
     assert.equal(result.status, 0, result.stderr + result.stdout);
     const calls = readFileSync(join(directory, 'xcrun-calls.log'), 'utf8');
-    for (const simulator of [base, workerOne, workerTwo]) {
+    for (const simulator of [base, workerOne]) {
       assert.match(calls, new RegExp(`simctl shutdown ${simulator}`));
       assert.match(calls, new RegExp(`simctl delete ${simulator}`));
     }
     assert.doesNotMatch(calls, new RegExp(`simctl delete ${unrelated}`));
     assert.match(
       readFileSync(logPath, 'utf8'),
-      new RegExp(`Deleted dedicated Simulator ${base} and 2 worker Simulators`),
+      new RegExp(`Deleted dedicated Simulator ${base} and 1 worker Simulator`),
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
