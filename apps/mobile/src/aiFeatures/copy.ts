@@ -4,6 +4,7 @@ import { t } from '../i18n';
 export function getAiFeatureCopy() {
   return {
     heading: t('aiFeatures.heading'),
+    visitQuestionsUnavailable: t('aiFeatures.visitQuestions.unavailable'),
     features: [
       {
         id: 'visit-questions',

@@ -124,16 +124,33 @@ function input(
 describe('bounded Calendar classification workflow', () => {
   it('sends at most eight items per runtime call, binds remote consent, and preserves every class', async () => {
     const events = Array.from({ length: 9 }, (_, index) => event(index));
-    const generate = jest.fn(async (request: LanguageModelRequest) =>
-      workflowResponse(request),
-    );
-    const authorize = jest.fn(async () => 'authorized' as const);
+    const trace: string[] = [];
+    const generate = jest.fn(async (request: LanguageModelRequest) => {
+      trace.push('provider');
+      return workflowResponse(request);
+    });
+    const authorize = jest.fn(async () => {
+      trace.push('consent');
+      return 'authorized' as const;
+    });
     const progress: number[] = [];
     const options = input(events, {
       provider: makeProvider(generate),
       consent: { authorize },
       onProgress: value => progress.push(value.completedBatches),
     });
+    jest
+      .spyOn(options.bridge, 'findEvent')
+      .mockImplementation(async identifier => {
+        trace.push(`lookup:${identifier}`);
+        return {
+          access: 'fullAccess' as const,
+          event:
+            events.find(
+              value => value.calendarEventIdentifier === identifier,
+            ) ?? null,
+        };
+      });
 
     const result = await classifyCalendarEvents(options);
 
@@ -143,7 +160,18 @@ describe('bounded Calendar classification workflow', () => {
     expect(result.candidates[1]?.classification).toBe('uncertain');
     expect(generate).toHaveBeenCalledTimes(2);
     expect(authorize).toHaveBeenCalledTimes(2);
-    expect(options.bridge.findEvent).toHaveBeenCalledTimes(9);
+    const checksForBatch = (batch: readonly CalendarEvent[]) => [
+      ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
+      'consent',
+      ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
+      'provider',
+      ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
+      ...batch.map(value => `lookup:${value.calendarEventIdentifier}`),
+    ];
+    expect(trace).toEqual([
+      ...checksForBatch(events.slice(0, 8)),
+      ...checksForBatch(events.slice(8)),
+    ]);
     expect(progress).toEqual([1, 2]);
     for (const [request] of generate.mock.calls) {
       expect(request.messages).toHaveLength(3);

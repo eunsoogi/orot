@@ -52,6 +52,12 @@ export type TaskResultValidation<TResult> =
   | { readonly status: 'invalid'; readonly reason: string }
   | { readonly status: 'needs_clarification'; readonly message: string };
 
+/** Task-approved result shape whose display copy may survive an evidence-coverage stop. */
+export interface TaskClarificationValue {
+  readonly status: 'needs_clarification';
+  readonly message: string;
+}
+
 export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskType: string;
   readonly taskVersion: string;
@@ -118,8 +124,16 @@ export type MultiAgentRunResult<TResult> =
       readonly checkpoint: MultiAgentCheckpointState;
     }
   | {
+      readonly status: 'needs_clarification';
+      readonly reason: string;
+      /** Task-validated display copy; generic evidence clarifications may omit it. */
+      readonly message?: string;
+      readonly providerErrorCode?: ProviderErrorCode;
+      readonly coverage?: readonly EvidenceCoverage[];
+      readonly checkpoint: MultiAgentCheckpointState;
+    }
+  | {
       readonly status:
-        | 'needs_clarification'
         | 'unavailable'
         | 'invalid_output'
         | 'budget_exceeded'

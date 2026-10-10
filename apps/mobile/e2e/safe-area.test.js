@@ -58,8 +58,11 @@ async function expectKeyboardOccludesScroll(scrollFrame) {
   );
 }
 
-async function expectScrollInsideSafeRoot(scrollTestID = 'safe-area-scroll') {
-  const root = await frameFor('safe-area-root');
+async function expectScrollInsideSafeRoot(
+  scrollTestID = 'safe-area-scroll',
+  rootTestID = 'navigation-keyboard-avoiding-root',
+) {
+  const root = await frameFor(rootTestID);
   const scroll = await frameFor(scrollTestID);
 
   // Require meaningful edge clearance so a 1-point padding regression fails.
@@ -68,6 +71,24 @@ async function expectScrollInsideSafeRoot(scrollTestID = 'safe-area-scroll') {
   );
   jestExpect(
     root.y + root.height - scroll.y - scroll.height,
+  ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
+}
+
+async function expectRouteScrollTopInset(scrollTestID, rootTestID) {
+  const root = await frameFor(rootTestID);
+  const scroll = await frameFor(scrollTestID);
+
+  jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
+    MINIMUM_TOP_SAFE_AREA_POINTS,
+  );
+}
+
+async function expectElementAboveBottomInset(elementTestID, rootTestID) {
+  const root = await frameFor(rootTestID);
+  const target = await frameFor(elementTestID);
+
+  jestExpect(
+    root.y + root.height - target.y - target.height,
   ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
 }
 
@@ -85,26 +106,47 @@ describe('safe area routes on iOS Simulator', () => {
     await device.setOrientation('portrait');
   });
 
-  it('keeps the welcome viewport inside the system insets and reaches trailing actions', async () => {
+  it('keeps home content within the system insets and reaches trailing actions', async () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await expectScrollInsideSafeRoot();
+    await expectRouteScrollTopInset(
+      'navigation-route-scroll',
+      'navigation-keyboard-avoiding-root',
+    );
 
-    const scroll = element(by.id('safe-area-scroll'));
+    const scroll = element(by.id('navigation-route-scroll'));
     await scroll.scrollTo('bottom');
     await expect(element(by.id('open-recording'))).toBeVisible();
-    await scroll.scrollTo('top');
-
+    // AI cards and the existing app routes share this scroll; its tail holds the trailing actions.
+    await expectElementAboveBottomInset(
+      'open-recording',
+      'navigation-keyboard-avoiding-root',
+    );
     await element(by.id('open-common-observations')).tap();
     await waitFor(element(by.id('common-observations-import')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('safe-area-scroll')).scrollTo('bottom');
-    await expect(element(by.id('common-observations-import'))).toBeVisible();
+    // Select a category so the trailing import action is enabled during the inset check.
+    await element(by.id('common-observations-toggle-heartRate')).tap();
+    await expectRouteScrollTopInset(
+      'navigation-route-scroll',
+      'navigation-keyboard-avoiding-root',
+    );
+    const commonObservationsScroll = element(by.id('navigation-route-scroll'));
+    await commonObservationsScroll.scrollTo('bottom');
+    const importAction = element(by.id('common-observations-import'));
+    await expect(importAction).toBeVisible();
+    const importAttributes = await importAction.getAttributes();
+    jestExpect(importAttributes.enabled).toBe(true);
+    await expectElementAboveBottomInset(
+      'common-observations-import',
+      'navigation-keyboard-avoiding-root',
+    );
   });
 
   it('preserves the recording screen inset root and existing inner scrolling', async () => {
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await waitFor(element(by.id('open-recording')))
       .toBeVisible()
       .withTimeout(30000);
@@ -113,9 +155,12 @@ describe('safe area routes on iOS Simulator', () => {
       .toBeVisible()
       .withTimeout(30000);
 
-    await expect(element(by.id('safe-area-root'))).toBeVisible();
-    await expect(element(by.id('safe-area-scroll'))).not.toExist();
+    await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expect(element(by.id('recording-start'))).toBeVisible();
+    await expectScrollInsideSafeRoot(
+      'recording-controls-scroll',
+      'navigation-keyboard-avoiding-root',
+    );
   });
 
   it('keeps the blood-pressure list inside the safe area and reaches its import action', async () => {
@@ -128,6 +173,7 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
     await element(by.id('open-blood-pressure-import')).tap();
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()
@@ -136,8 +182,7 @@ describe('safe area routes on iOS Simulator', () => {
       .toExist()
       .withTimeout(30000);
 
-    await expect(element(by.id('safe-area-root'))).toBeVisible();
-    await expect(element(by.id('safe-area-scroll'))).not.toExist();
+    await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expectScrollInsideSafeRoot('blood-pressure-scroll');
 
     const bloodPressureScroll = element(by.id('blood-pressure-scroll'));
@@ -149,6 +194,10 @@ describe('safe area routes on iOS Simulator', () => {
 
     const importAction = element(by.id('blood-pressure-import'));
     await expect(importAction).toBeVisible();
+    await expectElementAboveBottomInset(
+      'blood-pressure-import',
+      'navigation-keyboard-avoiding-root',
+    );
     // Detox exposes enabled through attributes; keep this check before tapping.
     jestExpect((await importAction.getAttributes()).enabled).toBe(true);
     await importAction.tap();
@@ -171,7 +220,7 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('safe-area-large-text-state')))
       .toHaveLabel('large-text-enabled')
       .withTimeout(30000);
-    await expectScrollInsideSafeRoot();
+    await expectScrollInsideSafeRoot('safe-area-scroll', 'safe-area-root');
 
     const input = element(by.id('safe-area-keyboard-input'));
     await input.tap();

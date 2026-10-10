@@ -8,6 +8,8 @@ import type {
 } from '@orot/agent-runtime';
 import { assessHealthEvidenceCoverage } from '../healthEvidence/coverage';
 import type { HealthEvidenceInventory } from '../healthEvidence/coverage';
+import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
+import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import {
   containsEvidenceReference,
   diseaseHypothesisSchema,
@@ -75,13 +77,24 @@ export async function runDiseaseHypothesisAnalysis(
   options: Omit<MultiAgentWorkflowOptions<DiseaseHypothesisAnalysis>, 'task'>,
   inventory: HealthEvidenceInventory,
   invocation?: MultiAgentInvocation,
+  resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver,
 ): Promise<DiseaseHypothesisRunOutcome> {
   const assessment = assessHealthEvidenceCoverage(inventory);
   if (assessment.status !== 'complete') {
     return { status: 'incomplete_inventory', reason: assessment.status };
   }
   const result = await runMultiAgentWorkflow(
-    { ...options, task: diseaseHypothesisTask },
+    {
+      ...options,
+      revalidateEvidence: (references, signal) =>
+        revalidateWithLocalDeletionGuard(
+          references,
+          signal,
+          options.revalidateEvidence,
+          resolveLocalEvidenceIdentity,
+        ),
+      task: diseaseHypothesisTask,
+    },
     invocation,
   );
   if (

@@ -21,6 +21,13 @@ describe('Detox entry routing', () => {
     ).toBe('safe-area-blood-pressure');
   });
 
+  it('opens the integrated visit-questions route through its explicit E2E selector', () => {
+    // This selector is the only entry to the synthetic App-navigation fixture.
+    expect(
+      selectEntryRoute({ OROT_E2E_PROBE: 'ai-feature-visit-questions' }),
+    ).toBe('ai-feature-visit-questions');
+  });
+
   it('rejects unknown and conflicting test-only selectors', () => {
     expect(() => selectEntryRoute({ OROT_E2E_PROBE: 'unknown' })).toThrow(
       'Unsupported OROT_E2E_PROBE value',

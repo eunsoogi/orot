@@ -1,5 +1,10 @@
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
-import type { TaskResponderContract, TaskResponderInput } from './contracts';
+import type {
+  TaskClarificationValue,
+  TaskResponderContract,
+  TaskResponderInput,
+  TaskResultValidation,
+} from './contracts';
 import { hasIncompleteCoverage, referencesFromBatch } from './evidence';
 import {
   canonicalJson,
@@ -61,9 +66,18 @@ export function consumeResponderResponse<TResult>(
     };
   }
   if (hasIncompleteCoverage(input.evidence)) {
+    let taskClarificationMessage: string | undefined;
+    try {
+      const validation = context.options.task.validateResult(decoded.value as JsonValue, input);
+      taskClarificationMessage = clarificationMessageFromValidation(validation);
+    } catch {
+      // A validator failure cannot make incomplete evidence sufficient.
+    }
     context.outcome = {
       status: 'needs_clarification',
       reason: 'The available evidence has gaps, conflicts, truncation, or no coverage.',
+      // Incomplete coverage still blocks results; only task-approved resolution copy may pass.
+      ...(taskClarificationMessage ? { message: taskClarificationMessage } : {}),
       coverage: input.evidence.coverage,
     };
     return completeState();
@@ -91,6 +105,8 @@ export function consumeResponderResponse<TResult>(
     context.outcome = {
       status: 'needs_clarification',
       reason: 'The task requires clarification before it can return a result.',
+      // Keep task-approved copy distinct from generic runtime failure reasons.
+      message: validation.message,
       coverage: input.evidence.coverage,
     };
     return completeState();
@@ -127,5 +143,26 @@ function outputExceedsLimit(response: LanguageModelResponse, maxPayloadBytes: nu
 export function requireTaskContract<TResult>(contract: TaskResponderContract<TResult>): boolean {
   return Boolean(
     contract.taskType.trim() && contract.taskVersion.trim() && contract.systemPrompt.trim(),
+  );
+}
+
+/** Projects copy only from an explicit clarification result returned by task validation. */
+function clarificationMessageFromValidation(
+  validation: TaskResultValidation<unknown>,
+): string | undefined {
+  if (validation.status === 'needs_clarification') return validation.message;
+  if (validation.status !== 'valid' || !isTaskClarificationValue(validation.value))
+    return undefined;
+  return validation.value.message;
+}
+
+/** Some task result unions carry their validated clarification as a normal valid value. */
+function isTaskClarificationValue(value: unknown): value is TaskClarificationValue {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.status === 'needs_clarification' &&
+    typeof candidate.message === 'string' &&
+    candidate.message.trim().length > 0
   );
 }

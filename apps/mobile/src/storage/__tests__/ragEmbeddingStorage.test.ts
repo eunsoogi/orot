@@ -28,7 +28,7 @@ describe('SQLCipher RAG embedding storage', () => {
     const embedding = vector(0.75);
 
     await storage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
-      { chunkId: 'chunk-1', vector: embedding },
+      { chunkId: 'chunk-1', vector: embedding, sourceRecordIds: ['source-1'] },
     ]);
 
     const models = await database.execute(
@@ -51,7 +51,7 @@ describe('SQLCipher RAG embedding storage', () => {
   it('rejects a revision whose persisted model hashes differ from the requested identity', async () => {
     const storage = new SqlCipherRagEmbeddingStorage(database);
     await storage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
-      { chunkId: 'chunk-1', vector: vector(1) },
+      { chunkId: 'chunk-1', vector: vector(1), sourceRecordIds: ['source-1'] },
     ]);
 
     await expect(
@@ -88,8 +88,16 @@ describe('SQLCipher RAG embedding storage', () => {
       storage.upsertBatch(
         LOCAL_EMBEDDING_IDENTITY,
         [
-          { chunkId: 'chunk-1', vector: vector(1) },
-          { chunkId: 'chunk-2', vector: vector(0.5) },
+          {
+            chunkId: 'chunk-1',
+            vector: vector(1),
+            sourceRecordIds: ['source-1'],
+          },
+          {
+            chunkId: 'chunk-2',
+            vector: vector(0.5),
+            sourceRecordIds: ['source-2'],
+          },
         ],
         controller.signal,
       ),
@@ -105,7 +113,13 @@ describe('SQLCipher RAG embedding storage', () => {
     await expect(
       storage.upsertBatch(
         LOCAL_EMBEDDING_IDENTITY,
-        [{ chunkId: 'chunk-1', vector: vector(1) }],
+        [
+          {
+            chunkId: 'chunk-1',
+            vector: vector(1),
+            sourceRecordIds: ['source-1'],
+          },
+        ],
         controller.signal,
       ),
     ).rejects.toHaveProperty('name', 'AbortError');

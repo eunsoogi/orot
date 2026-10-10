@@ -31,6 +31,8 @@
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
+		A64F00000000000000000008 /* RecordingDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000008 /* RecordingDeletion.swift */; };
+		A64F00000000000000000009 /* RecordingDeletionPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000009 /* RecordingDeletionPaths.swift */; };
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
@@ -39,6 +41,8 @@
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
 		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
+		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
+		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		E16A00000000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000016 /* HealthKit.framework */; };
 		E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000011 /* HealthKitBoundary.swift */; };
@@ -96,6 +100,8 @@
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
+		B64F00000000000000000008 /* RecordingDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletion.swift; path = OrotMobile/RecordingDeletion.swift; sourceTree = "<group>"; };
+		B64F00000000000000000009 /* RecordingDeletionPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletionPaths.swift; path = OrotMobile/RecordingDeletionPaths.swift; sourceTree = "<group>"; };
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
 		C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationProbeSupport.swift; path = OrotMobile/BackupMigrationProbeSupport.swift; sourceTree = "<group>"; };
@@ -130,6 +136,8 @@
 		F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = LocalE5SentencePieceTokenizer.mm; path = OrotMobile/LocalE5SentencePieceTokenizer.mm; sourceTree = "<group>"; };
 		F24E00000000000000000019 /* LocalE5SentencePieceTokenizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LocalE5SentencePieceTokenizer.h; path = OrotMobile/LocalE5SentencePieceTokenizer.h; sourceTree = "<group>"; };
 		F24E0000000000000000001A /* OrotMobile-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "OrotMobile-Bridging-Header.h"; path = "OrotMobile/OrotMobile-Bridging-Header.h"; sourceTree = "<group>"; };
+		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
+		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
+				C1011000C1011000C1011001 /* Navigation */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				B62F00000000000000000001 /* AppleFoundationModelsModule.swift */,
 				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
@@ -178,6 +187,8 @@
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
+				B64F00000000000000000008 /* RecordingDeletion.swift */,
+				B64F00000000000000000009 /* RecordingDeletionPaths.swift */,
 				B11600000000000000000001 /* BackupMigrationModule.swift */,
 				B11600000000000000000002 /* BackupMigrationModule.m */,
 				C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */,
@@ -209,6 +220,15 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 			);
 			name = OrotMobile;
+			sourceTree = "<group>";
+		};
+		C1011000C1011000C1011001 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
+				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
+			);
+			path = Navigation;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
@@ -418,6 +438,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
+				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
@@ -443,6 +465,8 @@
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */,
+				A64F00000000000000000008 /* RecordingDeletion.swift in Sources */,
+				A64F00000000000000000009 /* RecordingDeletionPaths.swift in Sources */,
 				A11600000000000000000001 /* BackupMigrationModule.swift in Sources */,
 				A11600000000000000000002 /* BackupMigrationModule.m in Sources */,
 				D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */,

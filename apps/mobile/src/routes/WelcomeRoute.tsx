@@ -1,13 +1,16 @@
 import { Button, StyleSheet, Text, View } from 'react-native';
+import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import BackupStatusRecovery from '../backup/BackupStatusRecovery';
 import { t } from '../i18n';
 import { providerSelectionText } from '../providers/selection/text';
 
 interface WelcomeRouteProps {
-  hasStarted: boolean;
   selectedRecommendationProvider: string;
   onOpenProviderSelection: () => void;
-  onGetStarted: () => void;
+  onOpenVisitQuestions: () => void;
+  onOpenDiseaseHypotheses: () => void;
+  onOpenRagConversation: () => void;
+  onOpenExternalEvidence: () => void;
   onOpenAppointments: () => void;
   onOpenCommonObservations: () => void;
   onOpenBloodPressure: () => void;
@@ -39,10 +42,12 @@ export const appRouteStyles = StyleSheet.create({
 });
 
 export default function WelcomeRoute({
-  hasStarted,
   selectedRecommendationProvider,
   onOpenProviderSelection,
-  onGetStarted,
+  onOpenVisitQuestions,
+  onOpenDiseaseHypotheses,
+  onOpenRagConversation,
+  onOpenExternalEvidence,
   onOpenAppointments,
   onOpenCommonObservations,
   onOpenBloodPressure,
@@ -58,9 +63,14 @@ export default function WelcomeRoute({
       >
         {t('app.welcome.title')}
       </Text>
-      <Text style={appRouteStyles.message}>
-        {hasStarted ? t('app.welcome.started') : t('app.welcome.message')}
-      </Text>
+      <Text style={appRouteStyles.message}>{t('app.welcome.message')}</Text>
+      <FeatureEntryScreen
+        embedded
+        onOpenVisitQuestions={onOpenVisitQuestions}
+        onOpenDiseaseHypotheses={onOpenDiseaseHypotheses}
+        onOpenRagConversation={onOpenRagConversation}
+        onOpenExternalEvidence={onOpenExternalEvidence}
+      />
       {/* This route prepares local data; the app cannot verify an OS backup result. */}
       <BackupStatusRecovery />
       {selectedRecommendationProvider ? (
@@ -73,11 +83,6 @@ export default function WelcomeRoute({
         onPress={onOpenProviderSelection}
         testID="open-provider-selection"
         title={providerSelectionText.title}
-      />
-      <Button
-        onPress={onGetStarted}
-        testID="get-started"
-        title={t('app.actions.getStarted')}
       />
       <Button
         onPress={onOpenAppointments}

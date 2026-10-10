@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigationLeaveStateRegistration } from '../../navigation';
+import type { NavigationLeaveState } from '../../navigation';
 import {
   commonObservationFeatures,
   type CommonObservationFeature,
@@ -65,6 +67,20 @@ export function CommonObservationsImportScreen({
   const [deletedCount, setDeletedCount] = useState<number | null>(null);
   const [unsupportedCount, setUnsupportedCount] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [inputRevision, setInputRevision] = useState(0);
+
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: !isImporting && status === 'idle' && selected.size > 0,
+    isRecording: false,
+    hasOngoingOperation: false,
+    backgroundOperationKind: isImporting
+      ? 'common-observation-import'
+      : undefined,
+    revision,
+    inputRevision,
+  } satisfies NavigationLeaveState);
 
   function toggleFeature(feature: CommonObservationFeature) {
     setSelected(current => {
@@ -77,6 +93,8 @@ export function CommonObservationsImportScreen({
     setImportedCount(null);
     setDeletedCount(null);
     setUnsupportedCount(null);
+    setRevision(current => current + 1);
+    setInputRevision(current => current + 1);
   }
 
   async function startImport() {
@@ -90,6 +108,7 @@ export function CommonObservationsImportScreen({
     setDeletedCount(null);
     setUnsupportedCount(null);
     setIsImporting(true);
+    setRevision(current => current + 1);
     try {
       const result = await onImport(features);
       setStatus(result.status);
@@ -100,6 +119,7 @@ export function CommonObservationsImportScreen({
       setStatus('failed');
     } finally {
       setIsImporting(false);
+      setRevision(current => current + 1);
     }
   }
 
