@@ -107,7 +107,12 @@ test('cleans the restored fixture when storage restart probing fails', async () 
       return error;
     },
   );
-  await cleanupStarted;
+  // If cleanup regresses, fail on early recovery instead of waiting for Jest's timeout.
+  const cleanupOrRecovery = await Promise.race([
+    cleanupStarted.then(() => 'cleanup-started'),
+    recovery.then(() => 'recovery-settled'),
+  ]);
+  expect(cleanupOrRecovery).toBe('cleanup-started');
   expect(runStorageProbe).toHaveBeenCalledWith('restart');
   expect(removeSyntheticTranscriptionRecording).toHaveBeenCalledWith(
     recordingId,
