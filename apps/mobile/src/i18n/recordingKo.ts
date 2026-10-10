@@ -68,6 +68,20 @@ export const recordingKo = {
   'recording.transcript.history': '이전 버전 {revision}: {text}',
   'recording.transcript.staleArtifacts':
     '수정으로 관련 파생 자료 {count}개가 다시 확인 대기 상태예요.',
+  // Keep export labels with recording strings after the Korean catalog was split by feature.
+  'recording.export.title': '녹음 내보내기',
+  'recording.export.audio': '원본 음성 내보내기',
+  'recording.export.transcript': '최신 전사 텍스트 내보내기',
+  'recording.export.emptyTranscript': '아직 내보낼 전사 내용이 없어요.',
+  'recording.export.error.load': '전사 정보를 불러오지 못했어요.',
+  'recording.export.error.missingAudio': '녹음 원본 파일을 찾을 수 없어요.',
+  'recording.export.error.emptyTranscript': '저장된 전사 내용이 없어요.',
+  'recording.export.error.cleanup':
+    '공유는 진행됐을 수 있지만 임시 파일을 정리하지 못했어요. 앱을 다시 시작한 뒤 다시 시도해 주세요.',
+  'recording.export.error.share':
+    '파일을 내보내지 못했어요. 다시 시도해 주세요.',
+  'recording.export.status.completed': '파일을 공유하거나 저장했어요.',
+  'recording.export.status.cancelled': '내보내기를 취소했어요.',
   'recording.library.title': '저장된 녹음',
   'recording.library.loading': '녹음 목록을 불러오는 중…',
   'recording.library.loadError': '녹음 목록을 불러오지 못했어요.',

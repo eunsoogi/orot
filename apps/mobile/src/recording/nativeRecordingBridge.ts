@@ -1,49 +1,24 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter } from 'react-native';
 import type {
   CompletedRecording,
   RecordingPlaybackRange,
   RecordingSnapshot,
 } from './recordingTypes';
+import {
+  getNativeRecordingModule,
+  requireNativeModule,
+  type NativeRecordingModule,
+  type SyntheticTranscriptionRecording,
+} from './recordingNativeModule';
 
-interface SyntheticTranscriptionRecording {
-  readonly id: string;
-  readonly durationMs: number;
-  readonly startedAt: string;
-  readonly completedAt: string;
-  readonly fileProtection: 'complete' | 'unverified' | 'unknown';
-  readonly excludedFromBackup: boolean;
-}
-
-interface NativeRecordingModule {
-  addListener(eventType: string): void;
-  removeListeners(count: number): void;
-  getState(): Promise<RecordingSnapshot>;
-  startRecording(consentAcknowledged: boolean): Promise<RecordingSnapshot>;
-  pauseRecording(): Promise<RecordingSnapshot>;
-  resumeRecording(): Promise<RecordingSnapshot>;
-  stopRecording(): Promise<CompletedRecording>;
-  playRecordingRange?(
-    recordingId: string,
-    startMs: number,
-    endMs: number,
-    syntheticFixture: boolean,
-  ): Promise<RecordingPlaybackRange>;
-  installSyntheticTranscriptionFixture?: (
-    audioBase64: string,
-  ) => Promise<SyntheticTranscriptionRecording>;
-  removeSyntheticTranscriptionFixture?: (
-    recordingId: string,
-  ) => Promise<boolean>;
-  reconcileRecordingDeletions?(sourceIds: readonly string[]): Promise<void>;
-  stageRecordingDeletion?(recordingId: string): Promise<void>;
-  restoreRecordingDeletion?(recordingId: string): Promise<void>;
-  commitRecordingDeletion?(recordingId: string): Promise<void>;
-  prepareSyntheticCapture?: () => Promise<boolean>;
-  prepareSyntheticStartFailure?: (
-    point: 'beforeFileURL' | 'afterFileCreated',
-  ) => Promise<void>;
-  simulateInterruption?: (phase: 'began' | 'ended') => Promise<void>;
-}
+export type { RecordingExportResult } from './recordingNativeModule';
+export {
+  armSyntheticExportCancellation,
+  getSyntheticExportResidueCount,
+  prepareSyntheticExportResidue,
+  shareRecordingAudio,
+  shareRecordingTranscript,
+} from './recordingExportNativeBridge';
 
 export interface RecordingBridge {
   getState(): Promise<RecordingSnapshot>;
@@ -57,21 +32,6 @@ export interface RecordingBridge {
     startMs: number,
     endMs: number,
   ): Promise<RecordingPlaybackRange>;
-}
-
-function requireNativeModule(): NativeRecordingModule {
-  const module = NativeModules.RecordingModule as
-    NativeRecordingModule | undefined;
-  if (!module) {
-    const error = new Error(
-      'The iOS recording module is unavailable.',
-    ) as Error & {
-      code?: string;
-    };
-    error.code = 'RECORDING_UNAVAILABLE';
-    throw error;
-  }
-  return module;
 }
 
 export const nativeRecordingBridge: RecordingBridge = {
@@ -185,8 +145,7 @@ export async function playSyntheticTranscriptionRange(
 }
 
 export function isSyntheticRecordingProbeAvailable(): boolean {
-  const module = NativeModules.RecordingModule as
-    NativeRecordingModule | undefined;
+  const module = getNativeRecordingModule();
   return (
     __DEV__ &&
     module?.prepareSyntheticCapture !== undefined &&

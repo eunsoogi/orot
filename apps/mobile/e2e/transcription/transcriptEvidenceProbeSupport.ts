@@ -188,7 +188,7 @@ export function createTranscriptEvidenceProbeService(
   };
 }
 
-export async function prepareSyntheticTranscriptRecording(): Promise<string> {
+export async function prepareSyntheticTranscriptRecording() {
   const sample = fixture.cases[0];
   if (!sample) throw new Error('The synthetic speech fixture is empty.');
   const recording = await installSyntheticTranscriptionRecording(
@@ -209,7 +209,7 @@ export async function prepareSyntheticTranscriptRecording(): Promise<string> {
     };
     const repository = await openLocalStorage();
     await repository.put('source_record', source);
-    return recording.id;
+    return recording;
   } catch (error) {
     recordingDurations.delete(recording.id);
     await removeSyntheticTranscriptionRecording(recording.id);

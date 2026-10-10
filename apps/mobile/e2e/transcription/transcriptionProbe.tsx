@@ -4,8 +4,8 @@ import {
   AppleOnDeviceSpeechProvider,
   appleSpeechTranscriptionNativeBridge,
   ON_DEVICE_SPEECH_PROVIDER_ID,
-  type NativeSpeechTranscriptionBridge,
 } from '../../src/transcription';
+import { createSyntheticFixtureNativeBridge } from '../../src/transcription/testSupport/syntheticFixtureBridge';
 import { evaluateSyntheticSpeech } from '../../src/transcription/accuracyEvaluation';
 import { decodeAudioBase64 } from '../../src/transcription/base64';
 import TranscriptionProbeView from './TranscriptionProbeView';
@@ -61,18 +61,10 @@ export interface TranscriptionProbeReport {
 }
 
 const fixture = syntheticFixture as SyntheticTranscriptionFixture;
-const fixtureNativeBridge: NativeSpeechTranscriptionBridge = {
-  getAvailability(language) {
-    return appleSpeechTranscriptionNativeBridge.getAvailability(language);
-  },
-  transcribe(request) {
-    const markedRequest = {
-      ...request,
-      syntheticFixture: fixture.provenance.synthetic,
-    };
-    return appleSpeechTranscriptionNativeBridge.transcribe(markedRequest);
-  },
-};
+const fixtureNativeBridge = createSyntheticFixtureNativeBridge(
+  appleSpeechTranscriptionNativeBridge,
+  fixture.provenance.synthetic,
+);
 const fixtureSpeechProvider = new AppleOnDeviceSpeechProvider(
   fixtureNativeBridge,
 );

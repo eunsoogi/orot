@@ -3,19 +3,21 @@ import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { RecordingConsentControl } from './RecordingConsentControl';
 import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
-import { recordingStatusLabel } from './recordingStatusLabel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from './RecordingLibraryPanel';
 import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
 import type { RecordingLibraryService } from './recordingLibraryService';
-import type { CompletedRecording, RecordingStatus } from './recordingTypes';
-import { formatRecordingDuration } from './recordingTypes';
+import {
+  formatRecordingDuration,
+  type CompletedRecording,
+  type RecordingStatus,
+} from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
 import { useRecordingNavigationLeaveState } from './useRecordingNavigationLeaveState';
+import RecordingSessionPanel from './RecordingSessionPanel';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -102,6 +104,8 @@ export default function RecordingControls({
         recordingControlStyles.container,
         navigationInset,
       ]}
+      // Dragging dismisses the transcript keyboard so row actions remain reachable.
+      keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       style={recordingControlStyles.scroll}
       testID="recording-controls-scroll"
@@ -116,75 +120,18 @@ export default function RecordingControls({
           />
         </View>
       ) : null}
-      <Text
-        accessibilityRole="header"
-        style={recordingControlStyles.title}
-        testID="recording-title"
-      >
-        {t('recording.title')}
-      </Text>
-      <Text style={recordingControlStyles.copy}>
-        {t('recording.consent.description')}
-      </Text>
-      <Text style={recordingControlStyles.copy}>
-        {t('recording.localOnly')}
-      </Text>
-      <RecordingConsentControl
-        checked={consentAcknowledged}
-        onPress={onToggleConsent}
-        disabled={
-          controlsBusy ||
-          status === 'recording' ||
-          status === 'paused' ||
-          status === 'interrupted'
-        }
+      <RecordingSessionPanel
+        status={status}
+        durationMs={durationMs}
+        consentAcknowledged={consentAcknowledged}
+        onToggleConsent={onToggleConsent}
+        controlsBusy={controlsBusy}
+        sourceRetryPending={sourceRetryPending}
+        onStart={onStart}
+        onPause={onPause}
+        onResume={onResume}
+        onStop={onStop}
       />
-      <Text
-        accessibilityLiveRegion="polite"
-        style={recordingControlStyles.status}
-        testID="recording-status"
-      >
-        {recordingStatusLabel(status)}
-      </Text>
-      <Text style={recordingControlStyles.duration} testID="recording-duration">
-        {t('recording.duration', {
-          duration: formatRecordingDuration(durationMs),
-        })}
-      </Text>
-      {status === 'idle' || status === 'completed' ? (
-        <Button
-          disabled={!consentAcknowledged || controlsBusy || sourceRetryPending}
-          onPress={onStart}
-          testID="recording-start"
-          title={t('recording.start')}
-        />
-      ) : null}
-      {status === 'recording' ? (
-        <Button
-          disabled={controlsBusy}
-          onPress={onPause}
-          testID="recording-pause"
-          title={t('recording.pause')}
-        />
-      ) : null}
-      {status === 'paused' || status === 'interrupted' ? (
-        <Button
-          disabled={controlsBusy}
-          onPress={onResume}
-          testID="recording-resume"
-          title={t('recording.resume')}
-        />
-      ) : null}
-      {status === 'recording' ||
-      status === 'paused' ||
-      status === 'interrupted' ? (
-        <Button
-          disabled={controlsBusy}
-          onPress={onStop}
-          testID="recording-stop"
-          title={t('recording.stop')}
-        />
-      ) : null}
       {lastRecording ? (
         <View style={recordingControlStyles.result} testID="recording-result">
           <Text accessibilityRole="alert" style={recordingControlStyles.status}>
@@ -217,6 +164,9 @@ export default function RecordingControls({
       {showRecordingLibrary ? (
         <RecordingLibraryPanel
           actionsDisabled={busy}
+          fallbackExportSourceId={
+            lastRecording && sourceSaved ? lastRecording.id : null
+          }
           onBusyChange={setDeletingRecording}
           onSourceDeleted={onRecordingSourceDeleted}
           service={recordingLibraryService}
