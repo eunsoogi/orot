@@ -48,6 +48,9 @@ export const medicalAppointmentsKo = {
     '캘린더 읽기 권한을 사용할 수 없습니다. 직접 일정을 입력할 수 있습니다.',
   'medicalAppointments.status.providerUnavailable':
     '선택된 AI를 사용할 수 없습니다. 수동으로 일정을 확인할 수 있습니다.',
+  // Provider lookup can finish asynchronously; manual entry remains available meanwhile.
+  'medicalAppointments.status.providerResolving':
+    '선택한 AI를 확인하고 있어요.',
   'medicalAppointments.status.noProvider':
     'AI를 분류에 사용하려면 선택한 제공자와 실행 정보가 필요합니다.',
   'medicalAppointments.status.emptyCoverage':
