@@ -1,23 +1,16 @@
-/* global by, device, element, waitFor, describe, it */
-
 const {
   captureRecordingExportFailure,
 } = require('./transcription/recordingExportDetoxHelpers');
 
-describe('Saved recording audio and transcript export on iOS Simulator', () => {
-  // Give the system share-sheet flow its own four-minute deadline.
-  it('preserves the source and removes temporary export files after cancellation', async () => {
-    // Use an isolated probe route so native Speech latency cannot consume the export test deadline.
-    await device.launchApp({
-      newInstance: true,
-      launchArgs: { OROT_TRANSCRIPTION_PROBE_MODE: 'recording-export' },
-    });
-    const failure = await captureRecordingExportFailure({
-      by,
-      device,
-      element,
-      waitFor,
-    });
-    if (failure) throw new Error(failure);
-  }, 240000);
-});
+// Keep this as a second phase of the transcription profile's single Jest case;
+// its shared CI summary and aggregate deliberately require one case per suite.
+async function runRecordingExportScenario(detoxApi) {
+  // A fresh probe route keeps export lifecycle checks independent of Speech readiness.
+  await detoxApi.device.launchApp({
+    newInstance: true,
+    launchArgs: { OROT_TRANSCRIPTION_PROBE_MODE: 'recording-export' },
+  });
+  return captureRecordingExportFailure(detoxApi);
+}
+
+module.exports = { runRecordingExportScenario };
