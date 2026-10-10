@@ -1,4 +1,4 @@
-export type NavigationIntent = 'back' | 'home';
+export type NavigationIntent = 'back' | 'home' | 'tab';
 
 export interface NavigationRoute<Name extends string> {
   readonly key: string;
@@ -33,6 +33,7 @@ export interface NavigationController<Name extends string> {
   ) => () => void;
   requestBack: () => Promise<boolean>;
   requestHome: () => Promise<boolean>;
+  requestTabSwitch: () => Promise<boolean>;
 }
 
 function createRoute<Name extends string>(
@@ -119,6 +120,26 @@ export function createNavigationController<Name extends string>(
     }
   }
 
+  async function requestTabSwitch(): Promise<boolean> {
+    if (isTransitioning) return false;
+    const from = routes[routes.length - 1];
+    const root = routes[0];
+    if (!from || !root) return false;
+
+    isTransitioning = true;
+    publish();
+    try {
+      const guard = leaveGuards.get(from.key);
+      if (!guard) return false;
+      return await guard({ intent: 'tab', from, to: root });
+    } catch {
+      return false;
+    } finally {
+      isTransitioning = false;
+      publish();
+    }
+  }
+
   return {
     getSnapshot: () => snapshot,
     subscribe: listener => {
@@ -136,5 +157,6 @@ export function createNavigationController<Name extends string>(
     },
     requestBack: () => requestLeave('back'),
     requestHome: () => requestLeave('home'),
+    requestTabSwitch,
   };
 }

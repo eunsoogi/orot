@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { AppSymbol } from '../layout/AppSymbol';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { EvidenceCaveats } from './EvidenceCaveats';
 import { ActionButton } from './NextVisitComponents';
@@ -18,6 +19,7 @@ export function SavedQuestionsSection<
   caveats,
   errorMessage,
   isReviewing,
+  hasSharedAction = false,
   onEdit,
   onOpenSource,
   onRetry,
@@ -29,6 +31,7 @@ export function SavedQuestionsSection<
   readonly caveats: readonly EvidenceCaveat[];
   readonly errorMessage?: string;
   readonly isReviewing: boolean;
+  readonly hasSharedAction?: boolean;
   readonly onEdit: () => void;
   readonly onOpenSource: (reference: TReference) => void;
   readonly onRetry: () => void;
@@ -78,18 +81,30 @@ export function SavedQuestionsSection<
         </View>
       ) : questions.length > 0 && !isReviewing ? (
         <View style={styles.section} testID="next-visit-saved-list">
-          <Text accessibilityRole="header" style={styles.sectionHeading}>
-            {copy.saved.heading}
-          </Text>
-          <EvidenceCaveats caveats={caveats} theme={theme} />
-          {/* Keep the edit entry point reachable before the long saved-question list. */}
-          <ActionButton
-            label={copy.saved.edit}
-            onPress={onEdit}
-            theme={theme}
-            variant="secondary"
-            testID="next-visit-saved-edit"
-          />
+          <View style={styles.savedHeading}>
+            <Text accessibilityRole="header" style={styles.sectionHeading}>
+              {copy.saved.heading}
+            </Text>
+            <Text style={styles.muted}>{questions.length}개</Text>
+            <View style={styles.savedStatus}>
+              <AppSymbol
+                name="checkmark.circle.fill"
+                size={18}
+                color={theme.colors.success}
+              />
+              <Text style={styles.savedStatusText}>{copy.saved.status}</Text>
+            </View>
+          </View>
+          {/* Standalone consumers retain an edit action when no route shell owns it. */}
+          {!hasSharedAction ? (
+            <ActionButton
+              label={copy.saved.edit}
+              onPress={onEdit}
+              theme={theme}
+              variant="secondary"
+              testID="next-visit-saved-edit"
+            />
+          ) : null}
           {questions.map((question, index) => (
             <QuestionCard
               count={questions.length}
@@ -105,6 +120,7 @@ export function SavedQuestionsSection<
               disabled={false}
             />
           ))}
+          <EvidenceCaveats caveats={caveats} theme={theme} />
         </View>
       ) : status === 'ready' && !isReviewing ? (
         <Text style={styles.muted} testID="next-visit-saved-empty">

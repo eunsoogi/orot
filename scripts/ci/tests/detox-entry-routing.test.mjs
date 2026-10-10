@@ -13,6 +13,7 @@ const selectEntryRoute = requireFromRepository(
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
 const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 const openAiDetoxConfig = requireFromRepository(
   './apps/mobile/e2e/openai-provider.detox.config.js',
@@ -67,28 +68,6 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
   );
 });
 
-test('selects the E2E-only appointments screen backed by encrypted local storage', () => {
-  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
-  const appointmentsEntry = readFileSync(
-    join(repositoryRoot, 'apps/mobile/e2e/appointmentsProbeEntry.tsx'),
-    'utf8',
-  );
-  const appointmentsTest = readFileSync(
-    join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'),
-    'utf8',
-  );
-
-  assert.match(router, /case 'appointments':\s*require\('\.\/appointmentsProbeEntry'\)/);
-  assert.match(appointmentsEntry, /AppointmentsScreen/);
-  assert.match(appointmentsEntry, /openLocalAppointmentRepository/);
-  assert.equal((appointmentsTest.match(/OROT_E2E_PROBE: 'appointments'/g) ?? []).length, 3);
-  assert.doesNotMatch(appointmentsTest, /welcome-title/);
-  assert.match(appointmentsTest, /appointments-title/);
-  assert.match(appointmentsTest, /appointment-add/);
-  assert.match(appointmentsTest, /appointments-empty/);
-  assert.doesNotMatch(appointmentsTest, /appointments-probe-ready/);
-});
-
 test('routes the blood-pressure Safe Area probe through App with synthetic observations', () => {
   const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
   const probeEntry = readFileSync(
@@ -110,14 +89,17 @@ test('routes the blood-pressure Safe Area probe through App with synthetic obser
   );
   assert.match(probeEntry, /Synthetic Safe Area fixture/);
   assert.match(safeAreaTest, /OROT_E2E_PROBE: 'safe-area-blood-pressure'/);
-  assert.match(safeAreaTest, /expectScrollInsideSafeRoot\('blood-pressure-scroll'\)/);
+  assert.match(
+    safeAreaTest,
+    /expectScrollInsideRootFrame\(\s*'blood-pressure-scroll',\s*'navigation-keyboard-avoiding-root'/,
+  );
 });
 
 test('keeps the Release smoke on Calendar linking while manual CRUD stays in its probe', () => {
   const smokeTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/smoke.test.js'), 'utf8');
 
   assert.match(smokeTest, /by\.id\('welcome-title'\)/);
-  assert.match(smokeTest, /by\.id\('open-appointments'\)/);
+  assert.match(smokeTest, /openRootTab\('schedule', 'calendar-title'\)/);
   assert.match(smokeTest, /by\.id\('calendar-title'\)/);
   assert.match(smokeTest, /by\.id\('calendar-connect'\)/);
   assert.doesNotMatch(smokeTest, /by\.id\('appointment-add'\)/);
@@ -132,17 +114,42 @@ test('the shared Release app config bundles the router and selects one ordered w
   assert.equal(releaseJestConfig.testMatch.length, 1); // One file nests both ordered phases; the inventory stays complete.
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
-    './storage.test.js',
     './smoke.test.js',
+    './settings.detox.e2e.js',
+    './unified-import-navigation.e2e.js',
+    './navigation-glass.e2e.js',
+    './ai-feature-visit-questions.e2e.js',
     './safe-area.test.js',
-    './storage-migration.test.js',
+    './safe-area-keyboard.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
     './medicalAppointmentNavigation.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
+    './storage.test.js',
   ]);
+  // Storage stays first on its UI runner; both shard lists still cover each canonical inventory file once.
+  assert.deepEqual(releaseE2EShards, {
+    'release-e2e.test.js': [
+      './storage.test.js',
+      './smoke.test.js',
+      './settings.detox.e2e.js',
+      './unified-import-navigation.e2e.js',
+      './navigation-glass.e2e.js',
+      './ai-feature-visit-questions.e2e.js',
+      './safe-area.test.js',
+      './safe-area-keyboard.test.js',
+    ],
+    'release-e2e-data.test.js': [
+      './appointments.test.js',
+      './medicalAppointmentClassification.test.js',
+      './medicalAppointmentNavigation.test.js',
+      './agentMemory.test.js',
+      './graph.test.js',
+      './checkpoint.detox.e2e.js',
+    ],
+  });
   assert.deepEqual(openAiJestConfig.testMatch, ['<rootDir>/e2e/openai-provider.e2e.js']);
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');

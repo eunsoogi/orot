@@ -1,6 +1,10 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
-import { Button, ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from './RecordingLibraryPanel';
 import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
@@ -70,6 +74,7 @@ export default function RecordingControls({
   recordingLibraryService = defaultRecordingLibraryService,
   onRecordingSourceDeleted,
 }: RecordingControlsProps) {
+  const navigationInset = useNavigationContentInset();
   const [deletingRecording, setDeletingRecording] = useState(false);
   const controlsBusy = busy || deletingRecording;
   // The selected saved-recording detail owns the transcript editor and delete action.
@@ -95,8 +100,11 @@ export default function RecordingControls({
     // The transcript panel follows the recording controls and must remain reachable on shorter screens.
     <ScrollView
       automaticallyAdjustKeyboardInsets
-      contentContainerStyle={recordingControlStyles.container}
-      // Dragging is the user's way to dismiss the transcript editor keyboard and reach row actions.
+      contentContainerStyle={[
+        recordingControlStyles.container,
+        navigationInset,
+      ]}
+      // Dragging dismisses the transcript keyboard so row actions remain reachable.
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       style={recordingControlStyles.scroll}
@@ -105,9 +113,10 @@ export default function RecordingControls({
       {showLocalBack ? (
         <View style={recordingControlStyles.back}>
           <Button
+            accessibilityLabel={navigationText.back.accessibilityLabel}
             onPress={onBack}
             testID="recording-back"
-            title={t('recording.back')}
+            title={navigationText.back.label}
           />
         </View>
       ) : null}

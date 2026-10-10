@@ -3,7 +3,6 @@ import { t } from '../i18n';
 /** Resolves UI copy for the current render and localizes the citation label around its ID. */
 export function getRagConversationCopy() {
   return {
-    back: t('aiFeatures.back'),
     title: t('ragConversation.title'),
     description: t('ragConversation.description'),
     placeholder: t('ragConversation.placeholder'),

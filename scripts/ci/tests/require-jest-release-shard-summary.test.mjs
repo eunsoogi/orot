@@ -29,10 +29,10 @@ function runGuard(log, shard) {
 }
 
 test('validates one selected Release shard before publishing its runner-local counts', () => {
-  // The integrated medical-appointment navigation probe brings the data shard to seven cases.
+  // Counts bind each direct runner output to its registered UI or stateful-data scenarios.
   for (const [shard, tests] of [
-    ['release-e2e.test.js', 7],
-    ['release-e2e-data.test.js', 7],
+    ['release-e2e.test.js', 15],
+    ['release-e2e-data.test.js', 6],
   ]) {
     const result = runGuard(
       'Test Suites: 1 passed, 1 total\nTests: ' + tests + ' passed, ' + tests + ' total\n',
@@ -46,15 +46,23 @@ test('validates one selected Release shard before publishing its runner-local co
   }
 
   const wrongCount = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 6 passed, 6 total\n',
-    'release-e2e-data.test.js',
+    'Test Suites: 1 passed, 1 total\nTests: 14 passed, 14 total\n',
+    'release-e2e.test.js',
   );
   assert.notEqual(wrongCount.status, 0);
-  assert.match(wrongCount.stderr, /expected 7 test cases, received 6/);
+  assert.match(wrongCount.stderr, /expected 15 test cases, received 14/);
   assert.equal(wrongCount.githubOutput, '');
 
+  const incompleteDataShard = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 5 passed, 5 total\n',
+    'release-e2e-data.test.js',
+  );
+  assert.notEqual(incompleteDataShard.status, 0);
+  assert.match(incompleteDataShard.stderr, /expected 6 test cases, received 5/);
+  assert.equal(incompleteDataShard.githubOutput, '');
+
   const invalidShard = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 15 passed, 15 total\n',
     'release-e2e-typo.test.js',
   );
   assert.notEqual(invalidShard.status, 0);

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useColorScheme } from 'react-native';
+import { createNextVisitQuestionsTheme } from '../src/aiFeatures/integration/nextVisitQuestionsRoutePresentation';
+import { NextVisitProbeShell } from './nextVisitProbeShell';
 import type { Appointment } from '@orot/domain';
 import {
   NextVisitQuestionsScreen,
@@ -51,36 +53,9 @@ const candidates: readonly NextVisitQuestion[] = [
   },
 ];
 
-const theme: Props['theme'] = {
-  colors: {
-    canvas: '#ffffff',
-    surface: '#ffffff',
-    surfaceSubtle: '#f5f5f5',
-    text: '#111111',
-    textMuted: '#555555',
-    border: '#cccccc',
-    accent: '#234567',
-    onAccent: '#ffffff',
-    accentSubtle: '#e5edf5',
-    accentText: '#234567',
-    warning: '#704800',
-    warningSurface: '#fff4d6',
-    danger: '#8a1c1c',
-    dangerSurface: '#fde8e8',
-  },
-  tokens: {
-    spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
-    radii: { control: 10, card: 16 },
-    typography: {
-      sizes: { caption: 13, body: 16, heading: 20, title: 26 },
-      weights: { regular: '400', medium: '500', semibold: '600', bold: '700' },
-    },
-    minTouchTarget: 44,
-  },
-};
-
 /** Uses deterministic in-memory adapters; it never contacts a provider or reads real records. */
 export function NextVisitQuestionsProbe() {
+  const theme = createNextVisitQuestionsTheme(useColorScheme() === 'dark');
   const [savedQuestions, setSavedQuestions] = useState<
     readonly NextVisitQuestion[]
   >([]);
@@ -133,59 +108,45 @@ export function NextVisitQuestionsProbe() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text testID="next-visit-probe-boundary">
-        합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음
-      </Text>
-      <Text testID="next-visit-probe-adapter-status">{adapterStatus}</Text>
-      {adapterStatus === 'synthetic-generating' ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => generationResolver.current?.()}
-          testID="next-visit-probe-complete-generation"
-        >
-          <Text>합성 질문 생성 완료</Text>
-        </Pressable>
-      ) : null}
-      {savedQuestions.length > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setScreenRevision(revision => revision + 1)}
-          testID="next-visit-probe-reload-screen"
-        >
-          <Text>합성 저장 목록 다시 불러오기</Text>
-        </Pressable>
-      ) : null}
-      <NextVisitQuestionsScreen
-        // Preserve only the synthetic adapter state while rechecking screen rehydration.
-        key={screenRevision}
-        appointment={{ status: 'ready', appointment }}
-        provider={{
-          status: 'available',
-          selection: {
-            providerId: 'synthetic-provider',
-            modelId: 'fixture-model',
-          },
-          displayName: '합성 제공자',
-          privacyBoundary: 'on-device',
-        }}
-        savedQuestions={{
-          status: 'ready',
-          appointmentId: appointment.id,
-          questions: savedQuestions,
-          caveats: savedCaveats,
-        }}
-        onOpenProviderSelection={() => setAdapterStatus('synthetic-selection')}
-        onRefreshAppointment={() =>
-          setAdapterStatus('synthetic-calendar-refresh')
-        }
-        onRetrySavedQuestions={() => setAdapterStatus('synthetic-reload')}
-        onGenerate={onGenerate}
-        onSaveReviewedQuestions={onSaveReviewedQuestions}
-        theme={theme}
-      />
-    </View>
+    <NextVisitProbeShell
+      adapterStatus={adapterStatus}
+      canReload={savedQuestions.length > 0}
+      onComplete={() => generationResolver.current?.()}
+      onReload={() => setScreenRevision(revision => revision + 1)}
+    >
+      {onRouteStateChange => (
+        <NextVisitQuestionsScreen
+          // Preserve only the synthetic adapter state while rechecking screen rehydration.
+          key={screenRevision}
+          appointment={{ status: 'ready', appointment }}
+          provider={{
+            status: 'available',
+            selection: {
+              providerId: 'synthetic-provider',
+              modelId: 'fixture-model',
+            },
+            displayName: '합성 제공자',
+            privacyBoundary: 'on-device',
+          }}
+          savedQuestions={{
+            status: 'ready',
+            appointmentId: appointment.id,
+            questions: savedQuestions,
+            caveats: savedCaveats,
+          }}
+          onOpenProviderSelection={() =>
+            setAdapterStatus('synthetic-selection')
+          }
+          onRefreshAppointment={() =>
+            setAdapterStatus('synthetic-calendar-refresh')
+          }
+          onRetrySavedQuestions={() => setAdapterStatus('synthetic-reload')}
+          onGenerate={onGenerate}
+          onSaveReviewedQuestions={onSaveReviewedQuestions}
+          theme={theme}
+          onRouteStateChange={onRouteStateChange}
+        />
+      )}
+    </NextVisitProbeShell>
   );
 }
-
-const styles = StyleSheet.create({ container: { flex: 1 } });

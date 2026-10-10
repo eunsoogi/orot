@@ -1,7 +1,7 @@
 // CI counts are checked against actual test registrations by detox-release-shard-summary-inventory.test.mjs.
 export const releaseShardInventory = [
-  { wrapper: 'release-e2e.test.js', suites: 1, tests: 7 },
-  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 7 },
+  { wrapper: 'release-e2e.test.js', suites: 1, tests: 15 },
+  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 6 },
 ];
 
 export function resolveSelectedReleaseShard({
@@ -36,25 +36,34 @@ export function validateReleaseJestConfig({
   selectedReleaseShard,
 }) {
   const expectedReleaseSuiteFiles = [
-    './storage.test.js',
     './smoke.test.js',
+    './settings.detox.e2e.js',
+    './unified-import-navigation.e2e.js',
+    './navigation-glass.e2e.js',
+    './ai-feature-visit-questions.e2e.js',
     './safe-area.test.js',
-    './storage-migration.test.js',
+    './safe-area-keyboard.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
     './medicalAppointmentNavigation.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
+    './storage.test.js',
   ];
   const flattenedReleaseShards = Object.values(releaseE2EShards).flat();
-  // Keep the default and both split wrappers exhaustive against the ordered scenario inventory.
+  const expectedShardNames = releaseShardInventory.map(({ wrapper }) => wrapper);
+  const actualShardFiles = new Set(flattenedReleaseShards);
+  // The manifest keeps main's canonical order while the UI shard deliberately schedules storage first.
   if (
     JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles) ||
-    JSON.stringify(flattenedReleaseShards) !== JSON.stringify(expectedReleaseSuiteFiles)
+    JSON.stringify(Object.keys(releaseE2EShards)) !== JSON.stringify(expectedShardNames) ||
+    flattenedReleaseShards.length !== expectedReleaseSuiteFiles.length ||
+    actualShardFiles.size !== expectedReleaseSuiteFiles.length ||
+    expectedReleaseSuiteFiles.some(file => !actualShardFiles.has(file))
   ) {
     throw new Error(
-      'e2e: Release shard manifest does not include the complete ordered test inventory',
+      'e2e: Release shard manifest must assign every required test file exactly once',
     );
   }
   const expectedReleaseWrapper =

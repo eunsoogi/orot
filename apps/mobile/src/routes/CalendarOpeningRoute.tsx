@@ -1,6 +1,7 @@
 import { Button, Text, View } from 'react-native';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { appRouteStyles } from './WelcomeRoute';
 
 interface CalendarOpeningRouteProps {
@@ -39,7 +40,7 @@ export function CalendarOpeningRoute({
         <Button
           onPress={onBack}
           testID="calendar-app-back"
-          title={t('calendar.back')}
+          title={navigationText.back.label}
         />
       </View>
     </SafeAreaLayout>

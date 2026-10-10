@@ -1,6 +1,7 @@
+import { AppButton as Button } from '../../layout/AppButton';
 import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';
-import { Button, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -81,7 +82,9 @@ export function AiFeatureFlow({
   }, [navigation]);
   return (
     <View style={styles.container} testID="ai-feature-flow">
-      {!providerSelectionOpen && !sourceDetailOpen ? (
+      {!providerSelectionOpen &&
+      !sourceDetailOpen &&
+      screenRoute !== 'visit-questions' ? (
         <View style={styles.providerBar}>
           <Text style={styles.providerNotice}>{copy.selectedAiNotice}</Text>
           <Button
@@ -90,6 +93,11 @@ export function AiFeatureFlow({
             title={copy.selectAi}
           />
         </View>
+      ) : null}
+      {articleOpenError ? (
+        <Text accessibilityRole="alert" testID="external-article-open-error">
+          {copy.articleOpenError}
+        </Text>
       ) : null}
       <View style={styles.screen}>
         {/* Keep feature ScrollViews mounted and bounded while an overlay is active. */}
@@ -152,6 +160,7 @@ export function AiFeatureFlow({
           >
             <ProviderSelectionFlow
               key={navigation.route.key}
+              navigationRouteKey={navigation.route.key}
               selectionStore={serviceDependencies?.selectedAi?.selectionStore}
               chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
               safeAreaHandledByParent
@@ -166,11 +175,6 @@ export function AiFeatureFlow({
           </View>
         ) : null}
       </View>
-      {articleOpenError ? (
-        <Text accessibilityRole="alert" testID="external-article-open-error">
-          {copy.articleOpenError}
-        </Text>
-      ) : null}
       {disclosureSheet}
     </View>
   );

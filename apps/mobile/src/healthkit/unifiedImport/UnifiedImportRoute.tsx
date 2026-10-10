@@ -9,18 +9,25 @@ declare const require: (path: './localImport') => {
 
 interface UnifiedImportRouteProps {
   readonly onBack: () => void;
+  readonly safeAreaHandledByParent?: boolean;
 }
 
 /** Keeps native provider and storage modules behind explicit user entry. */
-export function UnifiedImportRoute({ onBack }: UnifiedImportRouteProps) {
-  // This screen owns its scroller and requests provider access only after selection.
-  return (
-    <SafeAreaLayout>
-      <HealthKitImportScreen
-        copy={unifiedHealthImportCopy}
-        coordinator={require('./localImport').unifiedHealthImportCoordinator}
-        onBack={onBack}
-      />
-    </SafeAreaLayout>
+export function UnifiedImportRoute({
+  onBack,
+  safeAreaHandledByParent = false,
+}: UnifiedImportRouteProps) {
+  // Native services remain lazy; the app shell owns safe area and Glass when embedded.
+  const screen = (
+    <HealthKitImportScreen
+      copy={unifiedHealthImportCopy}
+      coordinator={require('./localImport').unifiedHealthImportCoordinator}
+      onBack={onBack}
+    />
+  );
+  return safeAreaHandledByParent ? (
+    screen
+  ) : (
+    <SafeAreaLayout>{screen}</SafeAreaLayout>
   );
 }

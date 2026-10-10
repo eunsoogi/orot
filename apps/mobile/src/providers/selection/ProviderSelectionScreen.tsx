@@ -1,9 +1,16 @@
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { AppButton as Button } from '../../layout/AppButton';
+import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
 import ProviderSelectionConfirmation from './ProviderSelectionConfirmation';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
+import {
+  providerSelectionScreenStyles as styles,
+  resolutionMessage,
+} from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -13,11 +20,13 @@ import type {
   ProviderSelection,
   ProviderSelectionOption,
   ProviderSelectionRequirements,
-  ProviderSelectionResolution,
   ProviderSelectionStore,
 } from './types';
 
 interface ProviderSelectionScreenProps {
+  readonly screenTitle?: string;
+  readonly screenIntroduction?: string;
+  readonly navigationRouteKey?: string;
   readonly options: readonly ProviderSelectionOption[];
   readonly requirements: ProviderSelectionRequirements;
   readonly selectionStore: ProviderSelectionStore;
@@ -33,6 +42,9 @@ interface ProviderSelectionScreenProps {
 }
 
 export default function ProviderSelectionScreen({
+  screenTitle,
+  screenIntroduction,
+  navigationRouteKey,
   options,
   requirements,
   selectionStore,
@@ -41,6 +53,7 @@ export default function ProviderSelectionScreen({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -155,11 +168,11 @@ export default function ProviderSelectionScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
       testID="provider-selection-screen"
     >
-      {onBack ? (
+      {onBack && !navigationRouteKey ? (
         <Button
           accessibilityLabel={navigationText.back.accessibilityLabel}
           onPress={onBack}
@@ -167,14 +180,16 @@ export default function ProviderSelectionScreen({
           title={navigationText.back.label}
         />
       ) : null}
+      {/* Settings and AI share the same selection state but enter with different context. */}
       <Text accessibilityRole="header" style={styles.title}>
-        {providerSelectionText.title}
+        {screenTitle ?? providerSelectionText.title}
       </Text>
       <Text style={styles.introduction}>
-        {providerSelectionText.introduction}
+        {screenIntroduction ?? providerSelectionText.introduction}
       </Text>
       <Text
         accessibilityRole={loadError || saveError ? 'alert' : undefined}
+        style={loadError || saveError ? styles.error : undefined}
         testID="provider-selection-current"
       >
         {saveError ? providerSelectionText.storageSaveError : selectionMessage}
@@ -222,26 +237,3 @@ export default function ProviderSelectionScreen({
     </ScrollView>
   );
 }
-
-function resolutionMessage(
-  resolution: ProviderSelectionResolution | null,
-): string | null {
-  if (!resolution || resolution.ok) return null;
-  switch (resolution.reason) {
-    case 'provider-unavailable':
-      return resolution.message ?? providerSelectionText.unavailableProvider;
-    case 'missing-capability':
-      return providerSelectionText.unsupportedCapabilities;
-    case 'selection-required':
-    case 'selection-unavailable':
-      return providerSelectionText.unavailableSelection;
-  }
-}
-
-const styles = StyleSheet.create({
-  scrollView: { flex: 1 },
-  // Account rows and disclosures must remain scrollable in short viewports.
-  container: { flexGrow: 1, gap: 12, padding: 24, backgroundColor: '#f7f8fa' },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  introduction: { color: '#45515f', fontSize: 15 },
-});

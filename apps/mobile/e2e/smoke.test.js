@@ -1,38 +1,18 @@
 /* global beforeAll, by, device, element, waitFor */
 
+const { expectContentAboveFloatingBar } = require('./safeAreaHelpers');
 const { expect: jestExpect } = require('@jest/globals');
+const {
+  expectNativeNavigationAction,
+  openFeatureAndReturn,
+  confirmUnsavedLeave,
+  openRootTab,
+  tapNativeNavigationAction,
+} = require('./smokeHelpers');
 const {
   releasePhaseResetGuard,
   resetHookTimeoutMs,
 } = require('./storageProbeResetGuard.e2e.js');
-
-/** Exercise a real route and confirm only when its state guard reports local edits. */
-async function openFeatureAndReturn(
-  entryId,
-  screenId,
-  exerciseFeature,
-  confirmUnsaved = false,
-) {
-  // Home keeps the feature cards in its shared scroll view rather than a nested list.
-  await element(by.id('navigation-route-scroll')).scroll(240, 'down', 0.5, 0.7);
-  await element(by.id(entryId)).tap();
-  await waitFor(element(by.id(screenId)))
-    .toBeVisible()
-    .withTimeout(30000);
-  if (exerciseFeature) await exerciseFeature();
-  await element(by.text('뒤로').withAncestor(by.id(screenId))).tap();
-  if (confirmUnsaved) await confirmUnsavedLeave();
-  await waitFor(element(by.id('welcome-title')))
-    .toBeVisible()
-    .withTimeout(30000);
-}
-
-async function confirmUnsavedLeave() {
-  await waitFor(element(by.text('내용 버리고 나가기')))
-    .toBeVisible()
-    .withTimeout(5000);
-  await element(by.text('내용 버리고 나가기')).tap();
-}
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
@@ -49,7 +29,7 @@ describe('Orot mobile app', () => {
 
   // Keep the integrated route flow in one Release case.
   // The observed CI path exceeded the shared 120-second default.
-  it('renders AI routes and opens Calendar linking from the Korean welcome screen', async () => {
+  it('opens AI routes and Calendar linking from their root tabs', async () => {
     // Keep the integrated App route deterministic without contacting a provider or reading user records.
     await device.launchApp({
       newInstance: true,
@@ -63,25 +43,52 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'home-empty-recordings',
+    );
+    await openRootTab('records', 'records-title');
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'records-open-blood-pressure',
+    );
+    await element(by.id('navigation-route-scroll')).scrollTo('top', 0.5, 0.2);
+    await element(by.id('records-new-recording')).tap();
+    await waitFor(element(by.id('recording-controls-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await tapNativeNavigationAction('navigation-back');
+    await waitFor(element(by.id('records-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+
+    await openRootTab('ai', 'ai-features-screen');
+    await expectContentAboveFloatingBar(
+      'ai-features-screen',
+      'ai-feature-external-evidence',
+    );
+    await element(by.id('ai-features-screen')).scrollTo('top', 0.5, 0.2);
     // The synthetic route operations isolate the keyboard/save assertion while preserving real App navigation.
     await element(by.id('ai-feature-visit-questions')).tap();
     await waitFor(element(by.id('next-visit-questions-scroll')))
       .toBeVisible()
       .withTimeout(30000);
-    await expect(element(by.id('navigation-back'))).toBeVisible();
+    await expectNativeNavigationAction('navigation-back');
     await expect(element(by.id('next-visit-questions-back'))).not.toExist();
     await waitFor(element(by.id('next-visit-appointment-time')))
       .toBeVisible()
       .withTimeout(30000);
-    await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
+    await expect(
+      element(by.text('선택한 AI · 합성 UI 검사 제공자')),
+    ).toBeVisible();
 
-    await expect(element(by.id('next-visit-generate'))).toBeVisible();
-    await element(by.id('next-visit-generate')).tap();
+    await expectNativeNavigationAction('next-visit-generate');
+    await tapNativeNavigationAction('next-visit-generate');
     await waitFor(element(by.id('next-visit-review-save')))
-      .toBeVisible()
+      .toExist()
       .withTimeout(30000);
     const scroll = element(by.id('next-visit-questions-scroll'));
-    await scroll.scrollTo('bottom');
+    await scroll.scrollTo('bottom', 0.5, 0.2);
     const questionInput = element(by.id('next-visit-question-text-2'));
     await questionInput.tap();
     await expect(questionInput).toBeFocused();
@@ -101,7 +108,7 @@ describe('Orot mobile app', () => {
     }
 
     const saveAction = element(by.id('next-visit-review-save'));
-    await expect(saveAction).toBeVisible();
+    await expectNativeNavigationAction('next-visit-review-save');
     const saveFrame = (await saveAction.getAttributes()).frame;
     if (!saveFrame) {
       throw new Error(
@@ -114,24 +121,24 @@ describe('Orot mobile app', () => {
     jestExpect(keyboardHeight).toBeGreaterThan(0);
     jestExpect(saveFrame.y + saveFrame.height).toBeLessThanOrEqual(keyboardTop);
 
-    await saveAction.tap();
+    await tapNativeNavigationAction('next-visit-review-save');
     await waitFor(element(by.id('next-visit-save-message')))
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
       .withTimeout(30000);
-    await element(by.id('navigation-back')).tap();
-    await waitFor(element(by.id('welcome-title')))
+    await tapNativeNavigationAction('navigation-back');
+    await waitFor(element(by.id('ai-features-screen')))
       .toBeVisible()
       .withTimeout(30000);
 
     // Only Visit Questions uses probe services; every other route keeps App's default dependencies.
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
+    await expect(element(by.id('ai-features-screen'))).toBeVisible();
     await expect(element(by.text('다음 진료 질문'))).toExist();
-    await expect(element(by.text('질환 가능성 살펴보기'))).toExist();
-    await expect(element(by.text('건강 기록과 대화하기'))).toExist();
-    await expect(element(by.text('의료 자료 찾아보기'))).toExist();
-    await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
+    await expect(element(by.text('증상 정리'))).toExist();
+    await expect(element(by.text('기록과 대화'))).toExist();
+    await expect(element(by.text('의학 자료 찾기'))).toExist();
+    await expect(element(by.id('navigation-tab-schedule'))).toHaveLabel(
+      '일정 탭',
+    );
 
     await openFeatureAndReturn(
       'ai-feature-disease-hypotheses',
@@ -197,39 +204,38 @@ describe('Orot mobile app', () => {
       element(by.text('검색어 전송에 동의한 뒤 검색할 수 있어요.')),
     ).not.toExist();
     // Do not press search: this route check must not make a real literature request.
-    await element(by.id('external-medical-evidence-screen')).scrollTo('top');
-    await element(
-      by.text('뒤로').withAncestor(by.id('external-medical-evidence-screen')),
-    ).tap();
+    await element(by.id('external-medical-evidence-screen')).scrollTo(
+      'top',
+      0.5,
+      0.2,
+    );
+    await tapNativeNavigationAction('navigation-back');
     await confirmUnsavedLeave();
-    await waitFor(element(by.id('welcome-title')))
+    await waitFor(element(by.id('ai-features-screen')))
       .toBeVisible()
       .withTimeout(30000);
 
-    // Home controls follow the AI cards, so scroll them into view before tapping.
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
-    await element(by.id('open-provider-selection')).tap();
+    await openRootTab('settings', 'settings-title');
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'settings-app-info',
+    );
+    await element(by.id('navigation-route-scroll')).scrollTo('top', 0.5, 0.2);
+    await element(by.id('settings-open-provider')).tap();
     await waitFor(element(by.id('provider-selection-screen')))
       .toBeVisible()
       .withTimeout(30000);
-    // The provider route's screen-level back control shares navigation's Korean names.
-    await expect(
-      element(by.text('뒤로').withAncestor(by.id('provider-selection-screen'))),
-    ).toBeVisible();
-    await expect(element(by.id('provider-selection-back'))).toHaveLabel(
-      '이전 화면으로 돌아가기',
-    );
-    await expect(element(by.id('navigation-back'))).toBeVisible();
-    await element(by.id('navigation-back')).tap();
-    await waitFor(element(by.id('welcome-title')))
+    await expectNativeNavigationAction('navigation-back');
+    await tapNativeNavigationAction('navigation-back');
+    await waitFor(element(by.id('settings-title')))
       .toBeVisible()
       .withTimeout(30000);
 
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
-    await element(by.id('open-appointments')).tap();
-    // Manual appointment CRUD remains isolated in the dedicated appointments probe.
+    await openRootTab('schedule', 'calendar-title');
+    // Appointment management remains a detail route within the Schedule section.
+    await expect(element(by.id('schedule-open-appointments'))).toBeVisible();
     await waitFor(element(by.id('calendar-title')))
-      .toHaveText('캘린더 연결')
+      .toHaveText('일정')
       .withTimeout(30000);
     await expect(element(by.id('calendar-connect'))).toHaveLabel(
       '캘린더 일정 불러오기',

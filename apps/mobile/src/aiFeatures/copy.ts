@@ -4,6 +4,8 @@ import { t } from '../i18n';
 export function getAiFeatureCopy() {
   return {
     heading: t('aiFeatures.heading'),
+    subtitle: t('aiFeatures.subtitle'),
+    disclaimer: t('aiFeatures.disclaimer'),
     visitQuestionsUnavailable: t('aiFeatures.visitQuestions.unavailable'),
     features: [
       {

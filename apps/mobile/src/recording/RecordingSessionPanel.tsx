@@ -1,4 +1,6 @@
-import { Button, Pressable, Text } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { RecordingConsentControl } from './RecordingConsentControl';
 import { t } from '../i18n';
 import { recordingStatusLabel } from './recordingStatusLabel';
 import {
@@ -35,7 +37,11 @@ export default function RecordingSessionPanel({
 }: RecordingSessionPanelProps) {
   return (
     <>
-      <Text accessibilityRole="header" style={recordingControlStyles.title}>
+      <Text
+        accessibilityRole="header"
+        style={recordingControlStyles.title}
+        testID="recording-title"
+      >
         {t('recording.title')}
       </Text>
       <Text style={recordingControlStyles.copy}>
@@ -44,26 +50,16 @@ export default function RecordingSessionPanel({
       <Text style={recordingControlStyles.copy}>
         {t('recording.localOnly')}
       </Text>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: consentAcknowledged }}
+      <RecordingConsentControl
+        checked={consentAcknowledged}
+        onPress={onToggleConsent}
         disabled={
           controlsBusy ||
           status === 'recording' ||
           status === 'paused' ||
           status === 'interrupted'
         }
-        onPress={onToggleConsent}
-        style={recordingControlStyles.consentRow}
-        testID="recording-consent"
-      >
-        <Text style={recordingControlStyles.checkbox}>
-          {consentAcknowledged ? '☑' : '☐'}
-        </Text>
-        <Text style={recordingControlStyles.copy}>
-          {t('recording.consent.acknowledgement')}
-        </Text>
-      </Pressable>
+      />
       <Text
         accessibilityLiveRegion="polite"
         style={recordingControlStyles.status}

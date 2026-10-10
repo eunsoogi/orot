@@ -1,10 +1,15 @@
 module.exports = Object.freeze([
-  // Storage probes start on each phase's clean app before other cases open or mutate its database.
-  './storage.test.js',
   './smoke.test.js',
+  // Keep the Settings detail routes and their shared native Back action in Release E2E.
+  './settings.detox.e2e.js',
+  './unified-import-navigation.e2e.js',
+  // Verify the native toolbar backdrop and reachability at accessibility text sizes.
+  './navigation-glass.e2e.js',
+  // Exercise the #109 screen through App navigation with synthetic route operations.
+  './ai-feature-visit-questions.e2e.js',
   // Keep the Safe Area regression cases in every required Release E2E run.
   './safe-area.test.js',
-  './storage-migration.test.js',
+  './safe-area-keyboard.test.js',
   // Keep first-use probes ahead of routes that write shared app state.
   './appointments.test.js',
   './medicalAppointmentClassification.test.js',
@@ -12,4 +17,6 @@ module.exports = Object.freeze([
   './agentMemory.test.js',
   './graph.test.js',
   './checkpoint.detox.e2e.js',
+  // The integrated storage probe owns schema migration, so the standalone migration wrapper is not counted twice.
+  './storage.test.js',
 ]);

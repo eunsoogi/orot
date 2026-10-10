@@ -7,8 +7,10 @@ import {
 } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
+import type { ComponentProps } from 'react';
 import App from '../App';
 import { navigationText } from '../src/i18n/navigation';
+import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -27,29 +29,47 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('routes recording from home through the shared button and edge swipe', async () => {
-  await render(<App />);
+async function renderApp(props: ComponentProps<typeof App> = {}) {
+  const store = createAppointmentStore();
+  await render(
+    <App
+      loadAppointments={async () => store.repository}
+      loadRecordings={async () => []}
+      {...props}
+    />,
+  );
+}
 
-  await fireEvent.press(screen.getByTestId('open-recording'));
+async function openRecords() {
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
+}
+
+test('routes recording from Records through the shared button and edge swipe', async () => {
+  await renderApp();
+
+  await openRecords();
+  await fireEvent.press(screen.getByTestId('records-new-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('recording-back')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 
-  await fireEvent.press(screen.getByTestId('open-recording'));
+  await fireEvent.press(screen.getByTestId('records-new-recording'));
   await waitFor(() =>
     expect(screen.getByTestId('navigation-back')).toBeTruthy(),
   );
   await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
 test('uses the same unsaved-selection confirmation for button and edge swipe', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-  await render(<App importHealthObservations={jest.fn()} />);
+  await renderApp({ importHealthObservations: jest.fn() });
 
-  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await openRecords();
+  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
   expect(
     await screen.findByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();
@@ -72,18 +92,19 @@ test('uses the same unsaved-selection confirmation for button and edge swipe', a
   expect(alert.mock.calls[1]?.[0]).toBe(navigationText.leaveUnsaved.title);
   expect(alert.mock.calls[1]?.[1]).toBe(navigationText.leaveUnsaved.message);
   await pressAlertButton(alert, 1);
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
 test('routes blood pressure through the shared back action', async () => {
-  await render(<App loadBloodPressureObservations={async () => []} />);
+  await renderApp({ loadBloodPressureObservations: async () => [] });
 
-  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+  await openRecords();
+  await fireEvent.press(screen.getByTestId('records-open-blood-pressure'));
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('blood-pressure-back')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
 async function pressAlertButton(alert: jest.SpyInstance, index: number) {

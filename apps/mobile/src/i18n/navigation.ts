@@ -16,6 +16,10 @@ export const navigationText = {
     label: '홈',
     accessibilityLabel: '홈 화면으로 이동',
   },
+  recording: {
+    label: '녹음',
+    accessibilityLabel: '녹음 화면으로 이동',
+  },
   leaveUnsaved: {
     title: '저장하지 않은 내용이 있어요',
     message: '화면을 나가면 저장되지 않은 입력이 사라져요.',

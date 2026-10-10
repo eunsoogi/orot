@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 import { ExternalMedicalEvidenceScreen } from '../ExternalMedicalEvidenceScreen';
+import { getExternalMedicalEvidenceCopy } from '../copy';
 import type {
   EuropePmcMedicalEvidenceService,
   ExternalMedicalPublication,
@@ -34,10 +37,29 @@ test('requires query consent and presents provenance and dates', async () => {
       onOpenArticle={onOpenArticle}
     />,
   );
-  await fireEvent.changeText(
-    screen.getByTestId('external-evidence-query'),
-    'sleep and blood pressure',
+  const description = screen.getByText(
+    getExternalMedicalEvidenceCopy().description,
   );
+  const queryInput = screen.getByTestId('external-evidence-query');
+  expect(StyleSheet.flatten(description.props.style).color).toBe(
+    appColors.text,
+  );
+  expect(queryInput.props.placeholderTextColor).toBe(appColors.secondary);
+  expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
+    backgroundColor: appColors.surface,
+    color: appColors.text,
+  });
+  await fireEvent(queryInput, 'focus');
+  expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
+    borderColor: appColors.primaryText,
+    borderWidth: 2,
+  });
+  await fireEvent(queryInput, 'blur');
+  expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
+    borderColor: appColors.secondary,
+    borderWidth: 1,
+  });
+  await fireEvent.changeText(queryInput, 'sleep and blood pressure');
   expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
   expect(service.search).not.toHaveBeenCalled();
 
@@ -106,6 +128,9 @@ test('shows loading and empty-result states', async () => {
   await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(screen.getByTestId('external-evidence-loading')).toBeTruthy();
+  expect(
+    screen.getByTestId('external-evidence-search').props.accessibilityState,
+  ).toMatchObject({ busy: true, disabled: true });
   resolve({ status: 'empty' });
   expect(await screen.findByTestId('external-evidence-empty')).toBeTruthy();
 });

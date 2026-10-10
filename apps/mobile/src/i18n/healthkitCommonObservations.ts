@@ -6,7 +6,6 @@ export const commonObservationsKo = {
     '가져올 심박수, 걸음 수, 체중 기록을 직접 선택해 주세요.',
   'healthkit.commonObservations.localOnly':
     '선택한 기록만 이 기기의 암호화된 저장소에 보관하고 외부로 전송하지 않아요.',
-  'healthkit.commonObservations.back': '뒤로',
   'healthkit.commonObservations.import': '선택한 기록 가져오기',
   'healthkit.commonObservations.heartRate': '심박수',
   'healthkit.commonObservations.steps': '걸음 수',

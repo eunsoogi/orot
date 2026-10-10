@@ -46,10 +46,9 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  // The Release profile publishes checked totals from the UI and combined Safe Area/data wrappers.
+  // The Release parent publishes the two individually checked runner summaries.
   expectedSuites: 2,
-  // Release includes the App navigation, Safe Area, and consent-disclosure regressions.
-  expectedCases: 14,
+  expectedCases: 21,
 });
 requireProfile({
   label: 'OpenAI Debug',
@@ -63,5 +62,5 @@ requireProfile({
 });
 
 console.log(
-  '15/15 tests passed across Release (14) and OpenAI Debug (1); both child jobs succeeded',
+  '22/22 tests passed across Release (21) and OpenAI Debug (1); both child jobs succeeded',
 );

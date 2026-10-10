@@ -1,7 +1,9 @@
 /* global by, device, element, waitFor, describe, it */
 
+const { openRootTab, tapNativeNavigationAction } = require('./smokeHelpers');
+
 describe('issue 108 App navigation on iOS Simulator', () => {
-  it('opens the manual page and returns through classification to Home', async () => {
+  it('opens the manual page and returns through classification and Schedule to Home', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -13,7 +15,7 @@ describe('issue 108 App navigation on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
+    await openRootTab('schedule', 'calendar-title');
     await waitFor(element(by.id('open-medical-appointments')))
       .toBeVisible()
       .withTimeout(30000);
@@ -36,19 +38,16 @@ describe('issue 108 App navigation on iOS Simulator', () => {
     await waitFor(element(by.id('appointment-add')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('appointments-back')).tap();
+    await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('medical-appointment-manual')))
       .toBeVisible()
       .withTimeout(30000);
 
-    await element(by.id('navigation-back')).tap();
-    await waitFor(element(by.id('navigation-route-scroll')))
+    await tapNativeNavigationAction('navigation-back');
+    await waitFor(element(by.id('calendar-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('navigation-route-scroll')).scrollTo('top');
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
+    await openRootTab('home', 'welcome-title');
     console.log(
       'ISSUE_108_APP_NAVIGATION_SIMULATOR: HomeToClassification=verified; classificationToManual=verified; manualToClassification=verified; classificationToHome=verified; savedSelection=synthetic; inference=not-run; realProvider=unverified',
     );

@@ -44,7 +44,7 @@ function requireShard({ result, profile, testCases, testSuites }, expected) {
   return { cases: Number(testCases), suites: Number(testSuites) };
 }
 
-// Publish outputs only after every independent runner summary matches the named inventory.
+// Publish outputs only after both isolated runners match their current case counts.
 const shardResults = releaseShardInventory.map((expected, index) => {
   const offset = index * 4;
   return requireShard(
@@ -59,9 +59,9 @@ const shardResults = releaseShardInventory.map((expected, index) => {
 });
 const totalCases = shardResults.reduce((total, shard) => total + shard.cases, 0);
 const totalSuites = shardResults.reduce((total, shard) => total + shard.suites, 0);
-if (totalCases !== 14 || totalSuites !== 2) {
+if (totalCases !== 21 || totalSuites !== 2) {
   throw new Error(
-    'Release shard aggregate must contain exactly 14 cases across 2 suites; received ' +
+    'Release shard aggregate must contain exactly 21 cases across 2 suites; received ' +
       totalCases +
       ' cases across ' +
       totalSuites +
@@ -75,4 +75,4 @@ appendFileSync(
     '\n',
   ) + '\n',
 );
-console.log('14/14 Release cases passed across both shard suites');
+console.log('21/21 Release cases passed across both shard suites');

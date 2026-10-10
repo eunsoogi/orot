@@ -47,6 +47,9 @@ test('shows loading and opens the source citation for a result', async () => {
   );
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(screen.getByTestId('disease-hypotheses-loading')).toBeTruthy();
+  expect(
+    screen.getByTestId('disease-hypotheses-generate').props.accessibilityState,
+  ).toMatchObject({ busy: true, disabled: true });
   resolve({
     status: 'workflow',
     result: {

@@ -38,8 +38,8 @@ function runReleaseSuite(logLevel) {
         '#!/usr/bin/env bash',
         'printf \'%s\\n\' "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_LOG_LEVEL_CAPTURE"',
         ': > "$DETOX_PNPM_INVOKED"',
-        '# The Release wrappers include both seven-case shards in the complete scenario inventory.',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 14 passed, 14 total\\n'",
+        '# The unsharded Release wrapper discovers the complete 21-case inventory.',
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 21 passed, 21 total\\n'",
       ].join('\n'),
       { mode: 0o755 },
     );

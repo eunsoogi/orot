@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { ProviderSelectionFlowShell } from './ProviderSelectionFlowShell';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
 import { nativeChatGPTSelectionServices } from './chatGPTServices';
@@ -22,6 +21,10 @@ import type {
 import type { OpenAIAccountSummary } from '../openai';
 
 interface ProviderSelectionFlowProps {
+  // Settings keeps the same guarded actions while exposing an account-specific entry.
+  readonly screenTitle?: string;
+  readonly screenIntroduction?: string;
+  readonly navigationRouteKey?: string;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
   readonly safeAreaHandledByParent?: boolean;
@@ -44,6 +47,9 @@ export interface ProviderSelectionNavigationState {
 }
 
 export default function ProviderSelectionFlow({
+  screenTitle,
+  screenIntroduction,
+  navigationRouteKey,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
   safeAreaHandledByParent = false,
@@ -214,6 +220,9 @@ export default function ProviderSelectionFlow({
 
   const screen = (
     <ProviderSelectionScreen
+      navigationRouteKey={navigationRouteKey}
+      screenTitle={screenTitle}
+      screenIntroduction={screenIntroduction}
       chatGPTSetup={chatGPTSetup}
       onBack={onBack}
       onNavigationStateChange={reportSelectionState}
@@ -224,25 +233,11 @@ export default function ProviderSelectionFlow({
     />
   );
 
-  if (safeAreaHandledByParent) {
-    // The shared AI route owns the safe-area shell, so do not nest another inset provider.
-    return <View style={styles.container}>{screen}</View>;
-  }
-
   return (
-    // This route is a window-edge root, so measure system insets before laying out its controls.
-    <SafeAreaProvider style={styles.container}>
-      <SafeAreaView
-        edges={['top', 'right', 'bottom', 'left']}
-        style={styles.safeArea}
-      >
-        {screen}
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <ProviderSelectionFlowShell
+      safeAreaHandledByParent={safeAreaHandledByParent}
+    >
+      {screen}
+    </ProviderSelectionFlowShell>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f8fa' },
-  safeArea: { flex: 1 },
-});

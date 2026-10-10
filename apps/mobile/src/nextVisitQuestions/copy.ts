@@ -2,9 +2,10 @@ import type { EvidenceCaveat } from './types';
 
 // This screen keeps its Korean copy local because the shared catalog is owned by another task.
 export const nextVisitQuestionsCopy = {
-  title: '다음 진료 준비',
-  introduction:
-    '확인된 다음 예약과 현재 자료에서 진료 때 확인할 질문 후보를 정리합니다. 진단이나 치료 지시가 아니며, 저장 전 내용을 직접 검토해 주세요.',
+  title: '다음 진료 질문',
+  introduction: '진료 전에 궁금한 점을 정리해요.',
+  clinicalNotice:
+    '이 질문은 진단이 아니며, 의학적 판단을 대신하지 않아요. 정확한 답변은 의료진과 상담하세요.',
   appointment: {
     heading: '다음 확정 예약',
     none: '다가오는 확정 캘린더 예약을 찾지 못했어요.',
@@ -30,7 +31,7 @@ export const nextVisitQuestionsCopy = {
     remote: '선택한 자료가 선택한 외부 제공자에게 전달될 수 있어요.',
   },
   generation: {
-    action: '질문 추천 받기',
+    action: '질문 만들기',
     loading: '현재 자료를 확인하고 질문 후보를 만들고 있어요.',
     cancel: '생성 취소',
     retry: '다시 시도',
@@ -49,7 +50,8 @@ export const nextVisitQuestionsCopy = {
       '선택한 AI가 바뀌어 질문 생성을 멈췄어요. 새 선택으로 다시 시도해 주세요.',
   },
   review: {
-    heading: '추천 질문 검토',
+    heading: '질문 편집',
+    saveHint: '수정한 질문을 이 진료에 저장해요.',
     helper: '질문과 근거를 확인하고, 필요하면 수정한 뒤 저장해 주세요.',
     questionLabel: (number: number) => `질문 ${number}`,
     rationaleLabel: (number: number) => `질문 ${number}의 이유`,
@@ -62,7 +64,7 @@ export const nextVisitQuestionsCopy = {
     important: '중요',
     empty: '저장할 질문을 한 개 이상 남겨 주세요.',
     cancel: '검토 취소',
-    save: '검토한 질문 저장',
+    save: '변경 저장',
     saving: '저장 중…',
     saveError: '질문을 저장하지 못했어요. 수정 내용은 남아 있어요.',
     saved: '검토한 질문을 이 예약에 저장했어요.',
@@ -71,11 +73,13 @@ export const nextVisitQuestionsCopy = {
   },
   saved: {
     heading: '저장된 질문',
+    introduction: '진료 때 물어볼 내용을 모아뒀어요.',
+    status: '저장됨',
     loading: '저장된 질문을 불러오고 있어요.',
     error: '저장된 질문을 불러오지 못했어요.',
     empty: '아직 검토해 저장한 질문이 없어요.',
     retry: '저장된 질문 다시 불러오기',
-    edit: '저장된 질문 다시 검토',
+    edit: '질문 편집',
     generateAgain: '새 질문 추천 받기',
   },
   evidence: {

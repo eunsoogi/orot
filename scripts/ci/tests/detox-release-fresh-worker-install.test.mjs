@@ -9,6 +9,7 @@ import { runSmokeSetup } from './release-e2e-test-support.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
+const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
 
 function loadDetoxConfig({ freshSimulator = false, releaseSharding = false } = {}) {
   const previousFreshSimulator = process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR;
@@ -69,19 +70,7 @@ async function runWrapperBeforeAll(
       },
       // Each wrapper reads the partition map; default mode loads all phases in order.
       require: (specifier) => {
-        if (specifier === './release-e2e-shards.js') {
-          return {
-            'release-e2e.test.js': ['./storage.test.js', './smoke.test.js', './safe-area.test.js'],
-            'release-e2e-data.test.js': [
-              './storage-migration.test.js',
-              './appointments.test.js',
-              './medicalAppointmentClassification.test.js',
-              './agentMemory.test.js',
-              './graph.test.js',
-              './checkpoint.detox.e2e.js',
-            ],
-          };
-        }
+        if (specifier === './release-e2e-shards.js') return releaseShards;
         if (specifier === './storageProbeResetGuard.e2e.js') {
           return {
             releasePhaseResetGuard: resetModule.createStorageResetGuard(),
@@ -219,13 +208,16 @@ test('resets Smoke app data before clearing its Keychain key inside the combined
   const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
   const smokeCalls = await runSmokeSetup();
 
-  // Safe Area stays fresh on the UI worker, while stateful data starts on the second worker.
+  // Both Safe Area probes stay fresh on the UI worker, while first-use data starts on its own worker.
   assert.deepEqual(releaseShards['release-e2e.test.js'].slice(0, 2), [
     './storage.test.js',
     './smoke.test.js',
   ]);
-  assert.equal(releaseShards['release-e2e.test.js'][2], './safe-area.test.js');
-  assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
+  assert.deepEqual(releaseShards['release-e2e.test.js'].slice(-2), [
+    './safe-area.test.js',
+    './safe-area-keyboard.test.js',
+  ]);
+  assert.equal(releaseShards['release-e2e-data.test.js'][0], './appointments.test.js');
   assert.deepEqual(smokeCalls, [
     { kind: 'uninstallApp' },
     { kind: 'clearKeychain' },

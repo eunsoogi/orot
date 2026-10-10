@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
+import { validateReleaseJestConfig } from '../release-jest-summary.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
@@ -19,8 +20,43 @@ test('Release runs the full ordered inventory in one default worker', () => {
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.equal(releaseJestConfig.maxWorkers, 1);
   const assignedSuites = Object.values(releaseShards).flat();
-  assert.deepEqual(assignedSuites, releaseSuiteFiles);
+  const assignedFiles = new Set(assignedSuites);
+  assert.equal(assignedSuites.length, releaseSuiteFiles.length);
+  assert.deepEqual([...assignedFiles].sort(), [...releaseSuiteFiles].sort());
   assert.equal(new Set(assignedSuites).size, releaseSuiteFiles.length);
+});
+
+test('the summary validator rejects duplicate or missing shard membership', () => {
+  const configuration = {
+    releaseSuiteFiles,
+    releaseConfig: releaseJestConfig,
+    selectedReleaseShard: null,
+  };
+  // Reject stale partitions before an E2E summary can hide a missing or repeated file.
+  assert.doesNotThrow(() =>
+    validateReleaseJestConfig({ ...configuration, releaseE2EShards: releaseShards }),
+  );
+
+  const withDuplicate = {
+    ...releaseShards,
+    'release-e2e-data.test.js': [
+      ...releaseShards['release-e2e-data.test.js'],
+      './smoke.test.js',
+    ],
+  };
+  assert.throws(
+    () => validateReleaseJestConfig({ ...configuration, releaseE2EShards: withDuplicate }),
+    /assign every required test file exactly once/,
+  );
+
+  const withMissingFile = {
+    ...releaseShards,
+    'release-e2e-data.test.js': releaseShards['release-e2e-data.test.js'].slice(1),
+  };
+  assert.throws(
+    () => validateReleaseJestConfig({ ...configuration, releaseE2EShards: withMissingFile }),
+    /assign every required test file exactly once/,
+  );
 });
 
 test('the ordered Release wrapper loads every scenario once while explicit shards retain their partition', () => {
@@ -43,7 +79,7 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
           // The shared reset guard configures phases but does not add an E2E scenario.
           if (path === './storageProbeResetGuard.e2e.js') return {};
           if (path === './release-e2e-data.test.js') {
-            // The data wrapper owns Safe Area and stateful suites on one runner in separate clean phases.
+            // Stateful first-use probes remain grouped on their own clean Simulator.
             loadWrapper('release-e2e-data.test.js');
             return {};
           }
@@ -57,7 +93,8 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
     return loaded;
   };
 
-  assert.deepEqual(loadSuites(), releaseSuiteFiles);
+  // The UI runner moves storage first and keeps both Safe Area files in their clean phase.
+  assert.deepEqual(loadSuites(), Object.values(releaseShards).flat());
   assert.deepEqual(
     loadSuites('release-e2e-data.test.js'),
     releaseShards['release-e2e-data.test.js'],
@@ -68,7 +105,17 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
     1,
   );
   assert.equal(
+    releaseShards['release-e2e.test.js'].filter((file) => file === './safe-area-keyboard.test.js')
+      .length,
+    1,
+  );
+  assert.equal(
     releaseShards['release-e2e-data.test.js'].filter((file) => file === './safe-area.test.js')
+      .length,
+    0,
+  );
+  assert.equal(
+    releaseShards['release-e2e-data.test.js'].filter((file) => file === './safe-area-keyboard.test.js')
       .length,
     0,
   );

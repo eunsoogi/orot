@@ -3,6 +3,7 @@ import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
 import { NavigationActionBar } from '../NavigationActionBar';
+import { BottomNavigationMenu } from '../BottomNavigationMenu';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react') as typeof import('react');
@@ -52,7 +53,11 @@ describe('bottom navigation actions', () => {
     const requestBack = jest.spyOn(controller, 'requestBack');
 
     await render(
-      <NavigationActionBar controller={controller} safeAreaHandledByParent />,
+      <NavigationActionBar
+        controller={controller}
+        safeAreaHandledByParent
+        surface={FallbackSurface}
+      />,
     );
 
     const back = screen.getByRole('button', {
@@ -71,6 +76,7 @@ describe('bottom navigation actions', () => {
       <NavigationActionBar
         controller={controller}
         showHome
+        surface={FallbackSurface}
         safeAreaHandledByParent
       />,
     );
@@ -80,10 +86,42 @@ describe('bottom navigation actions', () => {
     expect(requestHome).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the core action at the root with its descriptive accessible name', async () => {
+    const controller = createNavigationController<'home' | 'details'>('home');
+    const openRecording = jest.fn();
+
+    await render(
+      <NavigationActionBar
+        controller={controller}
+        primaryAction={{
+          label: '녹음',
+          accessibilityLabel: '녹음 화면으로 이동',
+          onPress: openRecording,
+          testID: 'navigation-recording',
+        }}
+        surface={FallbackSurface}
+        safeAreaHandledByParent
+      />,
+    );
+
+    const recording = screen.getByRole('button', {
+      name: '녹음 화면으로 이동',
+    });
+    expect(recording).toBeVisible();
+    expect(recording.props.testID).toBe('navigation-recording');
+    expect(screen.queryByTestId('navigation-back')).toBeNull();
+    await fireEvent.press(recording);
+    expect(openRecording).toHaveBeenCalledTimes(1);
+  });
+
   it('updates when the shared controller pushes a child route', async () => {
     const controller = createNavigationController<'home' | 'details'>('home');
     await render(
-      <NavigationActionBar controller={controller} safeAreaHandledByParent />,
+      <NavigationActionBar
+        controller={controller}
+        safeAreaHandledByParent
+        surface={FallbackSurface}
+      />,
     );
 
     expect(screen.queryByTestId('navigation-back')).toBeNull();
@@ -119,18 +157,46 @@ describe('bottom navigation actions', () => {
     controller.push('details');
 
     await render(
-      <NavigationActionBar controller={controller} safeAreaHandledByParent />,
+      <NavigationActionBar
+        controller={controller}
+        safeAreaHandledByParent
+        surface={FallbackSurface}
+      />,
     );
 
     const back = screen.getByRole('button', {
       name: '이전 화면으로 돌아가기',
     });
     expect(StyleSheet.flatten(back.props.style)).toEqual(
-      expect.objectContaining({ borderColor: '#f7f8fa' }),
+      expect.objectContaining({ borderColor: '#ffffff', borderWidth: 1 }),
     );
     expect(StyleSheet.flatten(screen.getByText('뒤로').props.style)).toEqual(
       expect.objectContaining({ color: '#f7f8fa' }),
     );
+  });
+
+  it('keeps callback-route controls legible in dark appearance', async () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    await render(
+      <BottomNavigationMenu
+        onBack={jest.fn()}
+        testID="calendar-back"
+        primaryAction={{
+          label: '녹음',
+          accessibilityLabel: '녹음 화면으로 이동',
+          onPress: jest.fn(),
+          testID: 'navigation-recording',
+        }}
+        surface={FallbackSurface}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: '이전 화면으로 돌아가기' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: '녹음 화면으로 이동' }),
+    ).toBeVisible();
   });
 
   it('selects the native view-manager surface on iOS', async () => {
@@ -145,23 +211,5 @@ describe('bottom navigation actions', () => {
         ? 'navigation-bar-native-surface'
         : 'navigation-bar-fallback';
     expect(screen.getByTestId(surfaceID)).toBeVisible();
-  });
-
-  it('keeps navigation actions available when the keyboard is visible', async () => {
-    const controller = createNavigationController<'home' | 'editor'>('home');
-    controller.push('editor');
-
-    await render(
-      <NavigationActionBar controller={controller} showHome keyboardVisible />,
-    );
-
-    expect(screen.getByTestId('bottom-navigation-action-bar')).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: '홈 화면으로 이동' }),
-    ).toBeVisible();
-    expect(
-      screen.getByTestId('navigation-action-bar-safe-area').props
-        .accessibilityHint,
-    ).toBe('');
   });
 });

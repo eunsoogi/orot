@@ -1,13 +1,16 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Button,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { navigationText } from '../i18n/navigation';
+import { appColors } from '../layout/appColors';
 import { getExternalMedicalEvidenceCopy } from './copy';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -41,8 +44,10 @@ export function ExternalMedicalEvidenceScreen({
   service,
   onOpenArticle,
 }: ExternalMedicalEvidenceScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const copy = getExternalMedicalEvidenceCopy();
   const [query, setQuery] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
   const [consented, setConsented] = useState(false);
   const [state, setState] = useState<SearchState>({ status: 'idle' });
   const operationController = useRef<AbortController | null>(null);
@@ -100,10 +105,16 @@ export function ExternalMedicalEvidenceScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="external-medical-evidence-screen"
     >
-      <Button onPress={onBack} title={copy.back} />
+      {navigationRouteKey ? null : (
+        <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          title={navigationText.back.label}
+        />
+      )}
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -117,6 +128,10 @@ export function ExternalMedicalEvidenceScreen({
           setQuery(value);
         }}
         placeholder={copy.placeholder}
+        placeholderTextColor={appColors.secondary}
+        onFocus={() => setInputFocused(true)}
+        onBlur={() => setInputFocused(false)}
+        style={[styles.input, inputFocused && styles.inputFocused]}
         testID="external-evidence-query"
         value={query}
       />
@@ -135,6 +150,7 @@ export function ExternalMedicalEvidenceScreen({
       </Pressable>
       <Button
         disabled={!consented || !query.trim() || state.status === 'loading'}
+        accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
           search().catch(() => setState({ status: 'unavailable' }));
         }}
@@ -149,7 +165,9 @@ export function ExternalMedicalEvidenceScreen({
         <Text testID="external-evidence-empty">{copy.empty}</Text>
       ) : null}
       {state.status === 'unavailable' ? (
-        <Text accessibilityRole="alert">{copy.unavailable}</Text>
+        <Text accessibilityRole="alert" style={styles.error}>
+          {copy.unavailable}
+        </Text>
       ) : null}
       {state.status === 'available'
         ? state.publications.map(publication => (
@@ -190,8 +208,20 @@ export function ExternalMedicalEvidenceScreen({
 const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   heading: { fontSize: 22, fontWeight: '700' },
+  input: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.secondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: appColors.text,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+  error: { color: appColors.danger },
+  // Focus remains visible for keyboard users in both system appearances.
+  inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
   card: {
-    borderColor: '#C9D4D1',
+    borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,
     gap: 8,

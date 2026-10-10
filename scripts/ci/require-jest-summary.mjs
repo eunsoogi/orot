@@ -104,7 +104,7 @@ if (e2eSuites.includes(suiteName)) {
     throw new Error('e2e: Next Visit Questions Jest config must select its dedicated probe');
   }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 14],
+    ['Release', releaseConfig.testMatch, 21],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
     ['Next Visit Questions', nextVisitQuestionsConfig.testMatch, 1],

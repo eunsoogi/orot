@@ -3,7 +3,6 @@ import { t } from '../i18n';
 /** Keeps labels localized while passing publication metadata as display data. */
 export function getExternalMedicalEvidenceCopy() {
   return {
-    back: t('aiFeatures.back'),
     title: t('externalMedicalEvidence.title'),
     description: t('externalMedicalEvidence.description'),
     placeholder: t('externalMedicalEvidence.placeholder'),
