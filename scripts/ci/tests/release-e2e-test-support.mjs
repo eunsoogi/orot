@@ -22,7 +22,9 @@ export async function runSmokeSetup() {
       return { expect: () => {} };
     },
     device: {
+      uninstallApp: async () => deviceCalls.push({ kind: 'uninstallApp' }),
       clearKeychain: async () => deviceCalls.push({ kind: 'clearKeychain' }),
+      installApp: async () => deviceCalls.push({ kind: 'installApp' }),
       launchApp: async (options) =>
         deviceCalls.push({ kind: 'launch', options: JSON.parse(JSON.stringify(options)) }),
     },

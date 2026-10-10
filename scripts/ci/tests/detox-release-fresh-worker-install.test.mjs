@@ -215,7 +215,7 @@ test('manual appointment probe avoids terminating its fresh first launch and kee
   );
 });
 
-test('runs storage probes on the phase-owned clean installs without clearing their keys mid-suite', async () => {
+test('resets Smoke app data before clearing its Keychain key inside the combined Release phase', async () => {
   const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
   const smokeCalls = await runSmokeSetup();
 
@@ -226,5 +226,9 @@ test('runs storage probes on the phase-owned clean installs without clearing the
   ]);
   assert.equal(releaseShards['release-e2e.test.js'][2], './safe-area.test.js');
   assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
-  assert.deepEqual(smokeCalls, [{ kind: 'clearKeychain' }]);
+  assert.deepEqual(smokeCalls, [
+    { kind: 'uninstallApp' },
+    { kind: 'clearKeychain' },
+    { kind: 'installApp' },
+  ]);
 });

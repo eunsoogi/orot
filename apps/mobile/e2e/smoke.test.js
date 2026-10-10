@@ -32,8 +32,10 @@ async function confirmUnsavedLeave() {
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
-    // Detox reinstalls between spec files, but iOS keeps Keychain items after app uninstall.
+    // Release phases combine specs in one Jest file, so reset encrypted app data with its Keychain key.
+    await device.uninstallApp();
     await device.clearKeychain();
+    await device.installApp();
   });
 
   // Keep the integrated route flow in one Release case.
