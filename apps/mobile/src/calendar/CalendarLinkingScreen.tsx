@@ -9,7 +9,9 @@ import { formatCalendarEventRange } from './dateTime';
 import { calendarQueryWindow } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
 import { calendarStyles as styles } from './calendarStyles';
-import type { CalendarAccessState, CalendarBridge } from './types';
+import type { CalendarBridge } from './types';
+import { calendarAccessMessage as accessMessage } from './calendarAccessMessage';
+import { medicalAppointmentCopy } from '../medicalAppointments/copy.ko';
 import { useCalendarLinking } from './useCalendarLinking';
 import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
 import { navigationText } from '../i18n/navigation';
@@ -23,18 +25,11 @@ interface CalendarLinkingScreenProps {
   bridge: CalendarBridge;
   heading?: string;
   onOpenAppointments?: () => void;
+  onOpenMedicalAppointments?: () => void;
   onAppointmentsChanged?: () => void;
   onBack?: () => void;
   onHome?: () => void;
   onOpenRecording?: () => void;
-}
-
-function accessMessage(access: CalendarAccessState | null): string {
-  if (access === 'denied') return t('calendar.accessDenied');
-  if (access === 'restricted') return t('calendar.accessRestricted');
-  if (access === 'writeOnly') return t('calendar.fullAccessRequired');
-  if (access === 'notDetermined') return t('calendar.tryAgainAfterPermission');
-  return '';
 }
 
 export default function CalendarLinkingScreen({
@@ -42,6 +37,7 @@ export default function CalendarLinkingScreen({
   bridge,
   heading = t('calendar.title'),
   onOpenAppointments,
+  onOpenMedicalAppointments,
   onAppointmentsChanged,
   onBack,
   onHome,
@@ -96,6 +92,13 @@ export default function CalendarLinkingScreen({
             onPress={onOpenAppointments}
             testID="schedule-open-appointments"
             title={t('schedule.manageAppointments')}
+          />
+        ) : null}
+        {onOpenMedicalAppointments ? (
+          <Button
+            onPress={onOpenMedicalAppointments}
+            testID="open-medical-appointments"
+            title={medicalAppointmentCopy.title}
           />
         ) : null}
         <Text style={styles.message}>{t('calendar.description')}</Text>

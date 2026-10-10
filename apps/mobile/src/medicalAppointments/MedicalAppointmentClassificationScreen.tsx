@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 import type { AppointmentRepository } from '@orot/storage';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
@@ -12,8 +15,12 @@ import { MedicalAppointmentCandidateCard } from './MedicalAppointmentCandidateCa
 import { saveCalendarCandidate } from './saveCalendarCandidate';
 
 const styles = StyleSheet.create({
-  content: { gap: 12, padding: 20 },
-  title: { fontSize: 24, fontWeight: '700' },
+  content: {
+    gap: 12,
+    padding: 24,
+    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + 34,
+  },
+  title: { fontSize: 30, fontWeight: '700' },
 });
 
 interface MedicalAppointmentClassificationScreenProps {
@@ -21,6 +28,8 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly repository: AppointmentRepository;
   readonly selectedProvider: ProviderSelectionOption | null;
   readonly recipient: string | null;
+  /** A failed saved-provider lookup differs from a user who has not selected one yet. */
+  readonly selectedProviderUnavailable?: boolean;
   readonly onOpenManual: () => void;
 }
 
@@ -30,6 +39,7 @@ export default function MedicalAppointmentClassificationScreen({
   repository,
   selectedProvider,
   recipient,
+  selectedProviderUnavailable = false,
   onOpenManual,
 }: MedicalAppointmentClassificationScreenProps) {
   // Remote batches use the same in-memory registry and prompt for each actual model request.
@@ -177,7 +187,12 @@ export default function MedicalAppointmentClassificationScreen({
         <Text>{copy.queryLimit}</Text>
         <Text>{copy.incompleteCalendar}</Text>
         {providerNotice ? <Text>{providerNotice}</Text> : null}
-        {!selectedProvider ? <Text>{copy.noProvider}</Text> : null}
+        {!selectedProvider && !selectedProviderUnavailable ? (
+          <Text>{copy.noProvider}</Text>
+        ) : null}
+        {selectedProviderUnavailable ? (
+          <Text>{copy.providerUnavailable}</Text>
+        ) : null}
         {selectedProvider?.availability.status === 'unavailable' ? (
           <Text>{copy.providerUnavailable}</Text>
         ) : null}

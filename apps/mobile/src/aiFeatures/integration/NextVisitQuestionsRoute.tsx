@@ -2,6 +2,7 @@ import { View, useColorScheme } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { useMemo } from 'react';
 import { NextVisitQuestionsScreen } from '../../nextVisitQuestions';
+import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { visitQuestionsRouteStyles as styles } from './NextVisitQuestionsRoute.styles';
 import type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
 import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
@@ -43,4 +44,9 @@ export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
       ) : null}
     </View>
   );
+}
+
+// The flow invokes render callbacks directly; return an element so route hooks keep a component owner.
+export function renderVisitQuestionsRoute(input: VisitQuestionsRenderInput) {
+  return <NextVisitQuestionsRoute {...input} />;
 }

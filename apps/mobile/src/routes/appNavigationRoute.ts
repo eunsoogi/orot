@@ -5,6 +5,7 @@ export type AppNavigationRoute =
   | 'common-observations'
   | 'blood-pressure'
   | 'appointments'
+  | 'medical'
   | 'settings-accounts'
   | 'settings-backup'
   | 'settings-privacy';

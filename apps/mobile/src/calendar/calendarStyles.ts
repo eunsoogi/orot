@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 import { appColors } from '../layout/appColors';
 
 export const calendarStyles = StyleSheet.create({
@@ -8,6 +9,7 @@ export const calendarStyles = StyleSheet.create({
     gap: 14,
     justifyContent: 'flex-start',
     padding: 24,
+    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + 34,
     backgroundColor: appColors.background,
   },
   title: { color: appColors.text, fontSize: 24, fontWeight: '700' },

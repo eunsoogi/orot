@@ -14,6 +14,7 @@ interface ScheduleRouteProps {
   readonly bridge: CalendarBridge;
   readonly onRetry: () => void;
   readonly onOpenAppointments: () => void;
+  readonly onOpenMedicalAppointments: () => void;
   readonly onAppointmentsChanged: () => void;
 }
 
@@ -24,6 +25,7 @@ export function ScheduleRoute({
   bridge,
   onRetry,
   onOpenAppointments,
+  onOpenMedicalAppointments,
   onAppointmentsChanged,
 }: ScheduleRouteProps) {
   useNavigationLeaveStateRegistration({
@@ -41,6 +43,7 @@ export function ScheduleRoute({
         bridge={bridge}
         heading={t('schedule.title')}
         onOpenAppointments={onOpenAppointments}
+        onOpenMedicalAppointments={onOpenMedicalAppointments}
         onAppointmentsChanged={onAppointmentsChanged}
         repository={appointmentRepository}
       />

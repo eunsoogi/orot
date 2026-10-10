@@ -18,7 +18,8 @@ import type {
 } from './src/healthkit/bloodPressure/types';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
-import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import {
@@ -106,10 +107,7 @@ export default function App({
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedProvider(provider.displayName)
         }
-        renderVisitQuestions={
-          renderVisitQuestions ??
-          (input => <NextVisitQuestionsRoute {...input} />)
-        }
+        renderVisitQuestions={renderVisitQuestions ?? renderVisitQuestionsRoute}
         serviceDependencies={aiFeatureServiceDependencies}
       />
     );
@@ -130,37 +128,47 @@ export default function App({
       rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
     >
       {/* Settings and AI use the same account services and persisted selection. */}
-      {actions => (
-        <AppRouteContent
-          actions={actions}
-          activeTab={activeTab}
-          selectTab={setActiveTab}
-          appointmentRepository={homeData.appointmentRepository}
-          backupPreparationState={backupPreparation.state}
-          retryBackupPreparation={backupPreparation.retry}
-          appointmentState={homeData.appointmentState}
-          nextAppointment={homeData.nextAppointment}
-          recordings={homeData.recordings}
-          recordingState={homeData.recordingState}
-          refreshAppointments={homeData.refreshAppointments}
-          refreshRecordings={homeData.refreshRecordings}
-          calendarBridge={calendarBridge}
-          selectedProvider={selectedProvider}
-          serviceDependencies={aiFeatureServiceDependencies}
-          onProviderSelectionCommitted={(_, provider) =>
-            setSelectedProvider(provider.displayName)
-          }
-          openProviderSettings={() => setAiInitialRoute('provider-selection')}
-          openVisitQuestions={() => setAiInitialRoute('visit-questions')}
-          openDiseaseHypotheses={() => setAiInitialRoute('disease-hypotheses')}
-          openRagConversation={() => setAiInitialRoute('rag-conversation')}
-          openExternalEvidence={() => setAiInitialRoute('external-evidence')}
-          openRecording={openRecording}
-          importHealthObservations={importHealthObservations}
-          importBloodPressure={importBloodPressure}
-          loadBloodPressureObservations={loadBloodPressureObservations}
-        />
-      )}
+      {actions =>
+        actions.route.name === 'medical' ? (
+          <MedicalAppointmentRoute
+            bridge={calendarBridge}
+            loadAppointments={loadAppointments}
+            selectedAiResolverOptions={aiFeatureServiceDependencies?.selectedAi}
+          />
+        ) : (
+          <AppRouteContent
+            actions={actions}
+            activeTab={activeTab}
+            selectTab={setActiveTab}
+            appointmentRepository={homeData.appointmentRepository}
+            backupPreparationState={backupPreparation.state}
+            retryBackupPreparation={backupPreparation.retry}
+            appointmentState={homeData.appointmentState}
+            nextAppointment={homeData.nextAppointment}
+            recordings={homeData.recordings}
+            recordingState={homeData.recordingState}
+            refreshAppointments={homeData.refreshAppointments}
+            refreshRecordings={homeData.refreshRecordings}
+            calendarBridge={calendarBridge}
+            selectedProvider={selectedProvider}
+            serviceDependencies={aiFeatureServiceDependencies}
+            onProviderSelectionCommitted={(_, provider) =>
+              setSelectedProvider(provider.displayName)
+            }
+            openProviderSettings={() => setAiInitialRoute('provider-selection')}
+            openVisitQuestions={() => setAiInitialRoute('visit-questions')}
+            openDiseaseHypotheses={() =>
+              setAiInitialRoute('disease-hypotheses')
+            }
+            openRagConversation={() => setAiInitialRoute('rag-conversation')}
+            openExternalEvidence={() => setAiInitialRoute('external-evidence')}
+            openRecording={openRecording}
+            importHealthObservations={importHealthObservations}
+            importBloodPressure={importBloodPressure}
+            loadBloodPressureObservations={loadBloodPressureObservations}
+          />
+        )
+      }
     </NavigationRouteAdapter>
   );
 }

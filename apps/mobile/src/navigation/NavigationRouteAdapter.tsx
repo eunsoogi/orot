@@ -210,14 +210,11 @@ export function NavigationRouteAdapter<Name extends string>({
           {routeContentSafeAreaHandledByChild ? (
             <View style={styles.fill}>{gestureRegion}</View>
           ) : (
-            <SafeAreaView
-              edges={['top', 'right', 'bottom', 'left']}
-              style={styles.fill}
-            >
+            <SafeAreaView edges={['top', 'right', 'left']} style={styles.fill}>
               {gestureRegion}
             </SafeAreaView>
           )}
-          {/* The clear native buttons let route content move behind the glass surface. */}
+          {/* Only the floating controls own a bottom safe-area inset; the viewport continues underneath. */}
           <View
             pointerEvents="box-none"
             style={styles.actionBarOverlay}

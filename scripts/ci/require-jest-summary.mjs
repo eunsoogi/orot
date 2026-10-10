@@ -65,6 +65,7 @@ if (e2eSuites.includes(suiteName)) {
     './safe-area.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
+    './medicalAppointmentNavigation.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',
@@ -94,7 +95,7 @@ if (e2eSuites.includes(suiteName)) {
     throw new Error('e2e: Next Visit Questions Jest config must select its dedicated probe');
   }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 13],
+    ['Release', releaseConfig.testMatch, 14],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
     ['Next Visit Questions', nextVisitQuestionsConfig.testMatch, 1],

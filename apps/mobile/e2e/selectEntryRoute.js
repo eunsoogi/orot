@@ -10,6 +10,7 @@ function selectEntryRoute(settings) {
     if (
       probe !== 'appointments' &&
       probe !== 'medical-appointment-classification' &&
+      probe !== 'medical-appointment-app-navigation' &&
       probe !== 'graph' &&
       probe !== 'checkpoint' &&
       probe !== 'safe-area' &&

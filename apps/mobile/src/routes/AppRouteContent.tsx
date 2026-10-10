@@ -134,6 +134,7 @@ export function AppRouteContent({
             bridge={calendarBridge}
             onRetry={() => refreshAppointments()}
             onOpenAppointments={() => actions.push('appointments')}
+            onOpenMedicalAppointments={() => actions.push('medical')}
             onAppointmentsChanged={() => refreshAppointments()}
           />
         );

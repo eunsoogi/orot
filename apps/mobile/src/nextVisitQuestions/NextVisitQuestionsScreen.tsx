@@ -44,8 +44,17 @@ export function NextVisitQuestionsScreen<
     hasUnsavedChanges: controller.hasUnsavedChanges,
     onRouteStateChange: props.onRouteStateChange,
   });
-  const { savedQuestions, savedCaveats, savedError, savedStatus, savedRestorationNotice } =
-    savedVisitPresentation(currentAppointmentId, props.savedQuestions, controller.savedOverride);
+  const {
+    savedQuestions,
+    savedCaveats,
+    savedError,
+    savedStatus,
+    savedRestorationNotice,
+  } = savedVisitPresentation(
+    currentAppointmentId,
+    props.savedQuestions,
+    controller.savedOverride,
+  );
   const canGenerate =
     props.appointment.status === 'ready' &&
     props.provider.status === 'available';

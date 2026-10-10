@@ -16,6 +16,7 @@ jest.mock('react-native-safe-area-context', () => {
     require('react-native') as typeof import('react-native');
 
   return {
+    useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 34 }),
     SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     SafeAreaView: ({
@@ -127,7 +128,7 @@ describe('app navigation route adapter', () => {
       </NavigationRouteAdapter>,
     );
 
-    expect(screen.getAllByA11yHint('top,right,bottom,left')).toHaveLength(1);
+    expect(screen.getAllByA11yHint('top,right,left')).toHaveLength(1);
 
     await act(async () => {
       controller.push('editor');
@@ -149,6 +150,8 @@ describe('app navigation route adapter', () => {
       </NavigationRouteAdapter>,
     );
 
+    expect(screen.queryAllByA11yHint('top,right,bottom,left')).toHaveLength(0);
+    expect(screen.getAllByA11yHint('top,right,left')).toHaveLength(1);
     const scrollView = screen.getByTestId('navigation-route-scroll');
     const actionBarOverlay = screen.getByTestId(
       'navigation-action-bar-overlay',
@@ -157,7 +160,7 @@ describe('app navigation route adapter', () => {
       expect.objectContaining({ position: 'absolute', bottom: 0 }),
     );
     expect(StyleSheet.flatten(scrollView.props.contentContainerStyle)).toEqual(
-      expect.objectContaining({ flexGrow: 1, paddingBottom: 84 }),
+      expect.objectContaining({ flexGrow: 1, paddingBottom: 118 }),
     );
     expect(screen.getByTestId('navigation-back')).toBeVisible();
     expect(scrollView).toBeVisible();
