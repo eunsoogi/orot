@@ -54,6 +54,8 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
         </View>
         {editable ? (
           <TextInput
+            // UIKit can retain attributed text colors across appearance changes; draft state stays in the controller.
+            key={`question-${theme.colors.text}`}
             accessibilityLabel={copy.review.questionLabel(number)}
             editable={!disabled}
             multiline
@@ -65,6 +67,19 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
         ) : (
           <Text style={styles.questionText}>{question.questionText}</Text>
         )}
+        {editable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`질문 ${number} 세부 수정`}
+            accessibilityState={{ expanded: detailsOpen, disabled }}
+            disabled={disabled}
+            onPress={() => setDetailsOpen(open => !open)}
+            style={styles.detailToggle}
+            testID={`next-visit-question-details-${index}`}
+          >
+            <AppSymbol name="pencil" size={18} color={theme.colors.textMuted} />
+          </Pressable>
+        ) : null}
         {editable ? (
           <Pressable
             accessibilityRole="checkbox"
@@ -98,22 +113,6 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           </Pressable>
         ) : null}
       </View>
-      {editable ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: detailsOpen }}
-          onPress={() => setDetailsOpen(open => !open)}
-          style={styles.detailToggle}
-          testID={`next-visit-question-details-${index}`}
-        >
-          <AppSymbol
-            name="slider.horizontal.3"
-            size={16}
-            color={theme.colors.textMuted}
-          />
-          <Text style={styles.sourceText}>세부 수정</Text>
-        </Pressable>
-      ) : null}
       {editable && detailsOpen ? (
         <View style={styles.actions}>
           <ActionButton
@@ -149,6 +148,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             {copy.review.rationaleLabel(number)}
           </Text>
           <TextInput
+            key={`rationale-${theme.colors.text}`}
             accessibilityLabel={copy.review.rationaleLabel(number)}
             editable={!disabled}
             multiline
@@ -169,7 +169,11 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           testID={`next-visit-source-${index}-${citationIndex}`}
         >
           <AppSymbol name="doc.text" color={theme.colors.textMuted} />
-          <Text style={styles.openSource}>{copy.evidence.open}</Text>
+          <Text style={styles.openSource}>
+            {question.citations.length === 1
+              ? '근거 1개 보기'
+              : `${copy.evidence.open} ${citationIndex + 1}`}
+          </Text>
           <AppSymbol
             name="chevron.right"
             size={14}

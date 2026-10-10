@@ -1,4 +1,9 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { appointmentFor, event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
@@ -36,6 +41,12 @@ describe('calendar month view', () => {
         calendar.getByTestId('calendar-day-2035-06-02').props.style,
       ).minWidth,
     ).toBe(44);
+    // Month actions must remain reachable without horizontally scrolling the 308pt grid.
+    const dateScroller = within(
+      calendar.getByTestId('calendar-date-grid-scroll'),
+    );
+    expect(dateScroller.queryByTestId('calendar-next-month')).toBeNull();
+    expect(dateScroller.queryByTestId('calendar-previous-month')).toBeNull();
   });
 
   it('shows multiple events and marks the stored visit on its date', async () => {

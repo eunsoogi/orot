@@ -9,6 +9,10 @@ import {
 import { navigationText } from '../i18n/navigation';
 import { appColors } from '../layout/appColors';
 import {
+  NAVIGATION_ACTION_TOP_PADDING,
+  NAVIGATION_ACTION_BOTTOM_PADDING,
+} from './navigationLayout';
+import {
   NavigationGlassSurface,
   type NavigationGlassAction,
   type NavigationGlassActionEventHandler,
@@ -197,7 +201,8 @@ const styles = StyleSheet.create({
   container: {
     flexShrink: 0,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingTop: NAVIGATION_ACTION_TOP_PADDING,
+    paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
   },
   actions: { flexDirection: 'row', gap: 8 },
   action: {

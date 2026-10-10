@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, type ButtonProps } from 'react-native';
 import { appColors } from './appColors';
 
-/** Product buttons retain native button semantics while allowing multiline accessible labels. */
+/** Product buttons retain async accessibility state and allow multiline accessible labels. */
 export function AppButton({
   title,
   color,
@@ -10,6 +10,7 @@ export function AppButton({
   testID,
   accessibilityLabel,
   accessibilityHint,
+  accessibilityState,
   variant = 'primary',
 }: ButtonProps & { readonly variant?: 'primary' | 'secondary' }) {
   return (
@@ -17,7 +18,10 @@ export function AppButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: Boolean(disabled) }}
+      accessibilityState={{
+        ...accessibilityState,
+        disabled: Boolean(disabled),
+      }}
       disabled={disabled}
       onPress={onPress}
       style={[

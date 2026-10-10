@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -35,6 +36,7 @@ export function EvidenceSourceDetailScreen({
   onBack,
   readSource,
 }: EvidenceSourceDetailScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
 
@@ -71,7 +73,7 @@ export function EvidenceSourceDetailScreen({
     state.status === 'available' ? presentEvidenceSource(state.document) : [];
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="ai-feature-source-detail"
     >
       {/* Integrated routes use the shared bottom menu; standalone probes retain local Back. */}

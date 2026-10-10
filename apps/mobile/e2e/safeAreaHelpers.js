@@ -66,7 +66,19 @@ async function expectFloatingViewport(scrollID, actionID) {
   jestExpect(action.y + action.height).toBeLessThanOrEqual(toolbar.y);
 }
 
+/** The last content remains completely above the floating bar after scrolling to the end. */
+async function expectContentAboveFloatingBar(scrollID, contentID) {
+  await element(by.id(scrollID)).scrollTo('bottom', 0.5, 0.2);
+  const content = await frameOf(element(by.id(contentID)), contentID);
+  const toolbar = await frameOf(
+    element(by.id('navigation-native-toolbar')),
+    'floating toolbar',
+  );
+  jestExpect(content.y + content.height).toBeLessThanOrEqual(toolbar.y - 16);
+}
+
 module.exports = {
+  expectContentAboveFloatingBar,
   expectKeyboardOccludesScroll,
   expectFloatingViewport,
   frameOf,

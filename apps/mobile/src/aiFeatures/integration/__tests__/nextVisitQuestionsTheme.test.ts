@@ -22,6 +22,9 @@ describe('next visit questions appearance theme', () => {
 
     for (const theme of [light, dark]) {
       expect(
+        contrastRatio(theme.colors.success, theme.colors.canvas),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
         contrastRatio(theme.colors.text, theme.colors.canvas),
       ).toBeGreaterThanOrEqual(4.5);
       expect(

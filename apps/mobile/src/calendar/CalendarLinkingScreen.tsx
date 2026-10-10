@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
@@ -43,6 +44,7 @@ export default function CalendarLinkingScreen({
   onHome,
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const calendar = useCalendarLinking(repository, bridge);
   const [queryWindow, setQueryWindow] = useState<CalendarQueryWindow | null>(
     null,
@@ -76,7 +78,7 @@ export default function CalendarLinkingScreen({
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, navigationInset]}
         testID="calendar-screen"
       >
         <Text

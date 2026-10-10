@@ -7,6 +7,7 @@ import type { NextVisitEvidenceReference } from './types';
 export function useNextVisitPrimaryAction<T extends NextVisitEvidenceReference>(
   controller: NextVisitQuestionsController<T>,
   canGenerate: boolean,
+  editSaved: (() => void) | null,
 ) {
   // Keep the draft visible while persistence is in flight so the user can still verify what is being retained.
   const isReviewing =
@@ -25,7 +26,9 @@ export function useNextVisitPrimaryAction<T extends NextVisitEvidenceReference>(
       : copy.review.save
     : isGenerating
       ? copy.generation.cancel
-      : generateLabel;
+      : editSaved
+        ? copy.saved.edit
+        : generateLabel;
   // The app shell owns the same action beside Back/Home; isolated consumers retain their local controls.
   const hasSharedAction = useNavigationPrimaryAction({
     label: primaryLabel,
@@ -34,15 +37,17 @@ export function useNextVisitPrimaryAction<T extends NextVisitEvidenceReference>(
       ? 'next-visit-review-save'
       : isGenerating
         ? 'next-visit-generation-cancel'
-        : 'next-visit-generate',
+        : editSaved
+          ? 'next-visit-saved-edit'
+          : 'next-visit-generate',
     disabled: isReviewing
       ? !controller.isReviewValid || isSaving
-      : !isGenerating && !canGenerate,
+      : !isGenerating && !editSaved && !canGenerate,
     onPress: isReviewing
       ? controller.save
       : isGenerating
         ? controller.cancelGeneration
-        : controller.generate,
+        : (editSaved ?? controller.generate),
   });
 
   return {

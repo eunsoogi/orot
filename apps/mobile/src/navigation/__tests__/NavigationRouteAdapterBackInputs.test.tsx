@@ -14,6 +14,12 @@ jest.mock('react-native-safe-area-context', () => {
     require('react-native') as typeof import('react-native');
 
   return {
+    SafeAreaInsetsContext: React.createContext({
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 34,
+    }),
     useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 34 }),
     SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),

@@ -47,6 +47,16 @@ test('renders a grounded answer with a source action and reports absent evidence
     color: appColors.text,
   });
 
+  await fireEvent(conversationInput, 'focus');
+  expect(StyleSheet.flatten(conversationInput.props.style)).toMatchObject({
+    borderColor: appColors.primaryText,
+    borderWidth: 2,
+  });
+  await fireEvent(conversationInput, 'blur');
+  expect(StyleSheet.flatten(conversationInput.props.style)).toMatchObject({
+    borderColor: appColors.secondary,
+    borderWidth: 1,
+  });
   await fireEvent.changeText(conversationInput, '혈압 기록을 보여줘');
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByText('저장된 기록을 찾았어요.')).toBeTruthy();
@@ -92,6 +102,9 @@ test('shows loading and a recoverable response failure', async () => {
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(screen.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-send').props.accessibilityState,
+  ).toMatchObject({ busy: true, disabled: true });
   resolve({ status: 'unavailable' });
   expect(await screen.findByText(/답변을 만들지 못했어요/)).toBeTruthy();
 });

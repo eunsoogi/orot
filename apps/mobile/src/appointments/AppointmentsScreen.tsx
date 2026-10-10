@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
@@ -24,6 +25,7 @@ export default function AppointmentsScreen({
   repository,
   onAppointmentsChanged,
 }: AppointmentsScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinicLabel, setClinicLabel] = useState('');
   const [date, setDate] = useState('');
@@ -151,7 +153,7 @@ export default function AppointmentsScreen({
     <ScrollView
       // Starting an edit replaces the list and resets its potentially distant scroll offset.
       key={formOpen ? 'editor' : 'list'}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
       style={styles.scroll}

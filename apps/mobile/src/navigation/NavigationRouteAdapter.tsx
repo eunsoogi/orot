@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationViewport } from './NavigationViewport';
 import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import { NavigationActionBar } from './NavigationActionBar';
 import { NavigationRouteScrollView } from './NavigationRouteScrollView';
@@ -211,23 +212,12 @@ export function NavigationRouteAdapter<Name extends string>({
         style={styles.fill}
         testID="navigation-keyboard-avoiding-root"
       >
-        <View style={styles.fill}>
-          {routeContentSafeAreaHandledByChild ? (
-            <View style={styles.fill}>{gestureRegion}</View>
-          ) : (
-            <SafeAreaView edges={['top', 'right', 'left']} style={styles.fill}>
-              {gestureRegion}
-            </SafeAreaView>
-          )}
-          {/* Only the floating controls own a bottom safe-area inset; the viewport continues underneath. */}
-          <View
-            pointerEvents="box-none"
-            style={styles.actionBarOverlay}
-            testID="navigation-action-bar-overlay"
-          >
-            {actionBar}
-          </View>
-        </View>
+        <NavigationViewport
+          actionBar={actionBar}
+          childHandlesSafeArea={routeContentSafeAreaHandledByChild}
+        >
+          {gestureRegion}
+        </NavigationViewport>
       </KeyboardAvoidingView>
     </SafeAreaProvider>
   );
@@ -235,11 +225,4 @@ export function NavigationRouteAdapter<Name extends string>({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: appColors.background },
-  actionBarOverlay: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    zIndex: 1,
-  },
 });

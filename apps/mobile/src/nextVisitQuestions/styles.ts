@@ -11,8 +11,6 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       flexGrow: 1,
       gap: tokens.spacing.lg,
       padding: 24,
-      // Keep the final questions scrollable above the route's absolute glass action bar.
-      paddingBottom: tokens.spacing.lg + BOTTOM_NAVIGATION_CONTENT_INSET,
       backgroundColor: colors.canvas,
     },
     title: {
@@ -73,6 +71,13 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       fontSize: tokens.typography.sizes.body,
       fontWeight: tokens.typography.weights.medium,
     },
+    linkButton: {
+      minHeight: tokens.minTouchTarget,
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+    },
     warning: {
       padding: tokens.spacing.md,
       borderRadius: tokens.radii.control,
@@ -90,11 +95,40 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       lineHeight: tokens.typography.sizes.body * 1.45,
     },
     success: {
-      padding: tokens.spacing.md,
-      borderRadius: tokens.radii.control,
-      backgroundColor: colors.accentSubtle,
       color: colors.accentText,
       fontSize: tokens.typography.sizes.body,
+    },
+    caveatBox: {
+      flexDirection: 'row',
+      gap: 8,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: colors.warningSurface,
+    },
+    caveatContent: { flex: 1, gap: 4 },
+    caveatText: {
+      color: colors.warning,
+      fontSize: tokens.typography.sizes.caption,
+      lineHeight: tokens.typography.sizes.caption * 1.5,
+    },
+    savedHeading: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+    },
+    savedStatus: {
+      marginLeft: 'auto',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    savedStatusText: {
+      color: colors.success,
+      fontSize: tokens.typography.sizes.caption,
     },
     reviewActions: {
       paddingHorizontal: tokens.spacing.lg,

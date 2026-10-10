@@ -1,5 +1,6 @@
 /* global by, describe, device, element, expect, it, waitFor */
 
+const { expectContentAboveFloatingBar } = require('./safeAreaHelpers');
 const { openRootTab, tapNativeNavigationAction } = require('./smokeHelpers');
 
 describe('Settings navigation', () => {
@@ -39,6 +40,10 @@ describe('Settings navigation', () => {
       .whileElement(by.id('settings-backup-scroll'))
       .scroll(100, 'down', 0.5, 0.4);
     await expect(element(by.id('backup-open-system-settings'))).toBeVisible();
+    await expectContentAboveFloatingBar(
+      'settings-backup-scroll',
+      'backup-open-system-settings',
+    );
     await device.takeScreenshot('settings-backup-light');
     await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('settings-title')))
@@ -53,6 +58,10 @@ describe('Settings navigation', () => {
     await expect(element(by.text('음성 인식'))).toExist();
     await expect(element(by.text('건강 앱'))).toExist();
     await expect(element(by.text('캘린더'))).toExist();
+    await expectContentAboveFloatingBar(
+      'settings-privacy-scroll',
+      'privacy-open-system-settings',
+    );
     await expect(element(by.id('privacy-open-system-settings'))).toBeVisible();
     await device.takeScreenshot('settings-privacy-light');
     await tapNativeNavigationAction('navigation-back');

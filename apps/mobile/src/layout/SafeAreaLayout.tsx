@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
+import {
+  BOTTOM_NAVIGATION_CONTENT_INSET,
+  NAVIGATION_CONTENT_GAP,
+} from '../navigation/navigationLayout';
 import { appColors } from './appColors';
 
 interface SafeAreaLayoutProps {
@@ -43,6 +46,6 @@ const styles = StyleSheet.create({
   fill: { backgroundColor: appColors.background, flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET,
+    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + NAVIGATION_CONTENT_GAP,
   },
 });

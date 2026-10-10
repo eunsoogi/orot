@@ -43,6 +43,7 @@ export interface NextVisitQuestionsTheme {
     readonly accentText: string;
     readonly warning: string;
     readonly warningSurface: string;
+    readonly success: string;
     readonly danger: string;
     readonly dangerSurface: string;
   };

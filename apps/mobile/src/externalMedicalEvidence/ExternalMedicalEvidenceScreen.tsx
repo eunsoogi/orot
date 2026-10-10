@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
@@ -43,8 +44,10 @@ export function ExternalMedicalEvidenceScreen({
   service,
   onOpenArticle,
 }: ExternalMedicalEvidenceScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const copy = getExternalMedicalEvidenceCopy();
   const [query, setQuery] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
   const [consented, setConsented] = useState(false);
   const [state, setState] = useState<SearchState>({ status: 'idle' });
   const operationController = useRef<AbortController | null>(null);
@@ -102,7 +105,7 @@ export function ExternalMedicalEvidenceScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="external-medical-evidence-screen"
     >
       {navigationRouteKey ? null : (
@@ -126,7 +129,9 @@ export function ExternalMedicalEvidenceScreen({
         }}
         placeholder={copy.placeholder}
         placeholderTextColor={appColors.secondary}
-        style={styles.input}
+        onFocus={() => setInputFocused(true)}
+        onBlur={() => setInputFocused(false)}
+        style={[styles.input, inputFocused && styles.inputFocused]}
         testID="external-evidence-query"
         value={query}
       />
@@ -145,6 +150,7 @@ export function ExternalMedicalEvidenceScreen({
       </Pressable>
       <Button
         disabled={!consented || !query.trim() || state.status === 'loading'}
+        accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
           search().catch(() => setState({ status: 'unavailable' }));
         }}
@@ -204,7 +210,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700' },
   input: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
+    borderColor: appColors.secondary,
     borderRadius: 12,
     borderWidth: 1,
     color: appColors.text,
@@ -212,6 +218,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   error: { color: appColors.danger },
+  // Focus remains visible for keyboard users in both system appearances.
+  inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
   card: {
     borderColor: appColors.border,
     borderRadius: 14,

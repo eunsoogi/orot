@@ -26,9 +26,9 @@ export function createNextVisitQuestionsTheme(
 
   return {
     colors: {
-      canvas: palette.background,
+      canvas: isDarkAppearance ? palette.background : palette.surface,
       surface: palette.surface,
-      surfaceSubtle: palette.background,
+      surfaceSubtle: isDarkAppearance ? palette.surface : palette.background,
       text: palette.text,
       textMuted: palette.secondary,
       border: palette.border,
@@ -38,6 +38,7 @@ export function createNextVisitQuestionsTheme(
       accentText: palette.primaryText,
       warning: isDarkAppearance ? '#ffd89e' : '#704800',
       warningSurface: isDarkAppearance ? '#3a2d18' : '#fff4d6',
+      success: isDarkAppearance ? '#70d795' : '#237a46',
       danger: isDarkAppearance ? '#ffb4ab' : '#8a1c1c',
       dangerSurface: isDarkAppearance ? '#48211f' : '#fde8e8',
     },

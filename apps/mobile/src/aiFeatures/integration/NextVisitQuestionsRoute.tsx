@@ -21,6 +21,14 @@ export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
 
   return (
     <View style={styles.container} testID="next-visit-questions-route">
+      {route.saveNotice ? (
+        <Text
+          accessibilityRole="alert"
+          style={[styles.saveNotice, { color: theme.colors.danger }]}
+        >
+          {route.saveNotice}
+        </Text>
+      ) : null}
       <NextVisitQuestionsScreen
         appointment={route.appointment}
         onGenerate={route.onGenerate}
@@ -34,14 +42,6 @@ export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
         savedQuestions={route.savedQuestions}
         theme={theme}
       />
-      {route.saveNotice ? (
-        <Text
-          accessibilityRole="alert"
-          style={[styles.saveNotice, { color: theme.colors.danger }]}
-        >
-          {route.saveNotice}
-        </Text>
-      ) : null}
     </View>
   );
 }

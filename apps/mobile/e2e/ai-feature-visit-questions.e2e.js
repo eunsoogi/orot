@@ -67,7 +67,9 @@ describe('AI visit questions through the app navigation', () => {
     await waitFor(element(by.id('next-visit-appointment-time')))
       .toBeVisible()
       .withTimeout(30000);
-    await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
+    await expect(element(by.id('next-visit-provider-select'))).toHaveLabel(
+      'AI 선택 또는 변경, 합성 UI 검사 제공자',
+    );
 
     await expectNativeNavigationAction('next-visit-generate');
     await tapNativeNavigationAction('next-visit-generate');

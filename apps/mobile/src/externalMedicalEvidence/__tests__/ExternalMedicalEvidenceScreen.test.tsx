@@ -49,6 +49,16 @@ test('requires query consent and presents provenance and dates', async () => {
     backgroundColor: appColors.surface,
     color: appColors.text,
   });
+  await fireEvent(queryInput, 'focus');
+  expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
+    borderColor: appColors.primaryText,
+    borderWidth: 2,
+  });
+  await fireEvent(queryInput, 'blur');
+  expect(StyleSheet.flatten(queryInput.props.style)).toMatchObject({
+    borderColor: appColors.secondary,
+    borderWidth: 1,
+  });
   await fireEvent.changeText(queryInput, 'sleep and blood pressure');
   expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
   expect(service.search).not.toHaveBeenCalled();
@@ -118,6 +128,9 @@ test('shows loading and empty-result states', async () => {
   await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(screen.getByTestId('external-evidence-loading')).toBeTruthy();
+  expect(
+    screen.getByTestId('external-evidence-search').props.accessibilityState,
+  ).toMatchObject({ busy: true, disabled: true });
   resolve({ status: 'empty' });
   expect(await screen.findByTestId('external-evidence-empty')).toBeTruthy();
 });

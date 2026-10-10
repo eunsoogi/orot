@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { AppointmentRepository } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -51,30 +52,32 @@ export function ScheduleRoute({
   }
 
   return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('schedule.title')}
-      </Text>
-      <Text style={styles.message}>
-        {appointmentState === 'loading'
-          ? t('appointments.opening')
-          : t('appointments.openError')}
-      </Text>
-      {appointmentState === 'failed' ? (
-        <AppButton
-          onPress={onRetry}
-          testID="schedule-retry"
-          title={t('appointments.retry')}
-        />
-      ) : null}
-    </View>
+    <NavigationRouteScrollView>
+      <View style={styles.container}>
+        <Text accessibilityRole="header" style={styles.title}>
+          {t('schedule.title')}
+        </Text>
+        <Text style={styles.message}>
+          {appointmentState === 'loading'
+            ? t('appointments.opening')
+            : t('appointments.openError')}
+        </Text>
+        {appointmentState === 'failed' ? (
+          <AppButton
+            onPress={onRetry}
+            testID="schedule-retry"
+            title={t('appointments.retry')}
+          />
+        ) : null}
+      </View>
+    </NavigationRouteScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: appColors.background,
-    flex: 1,
+    flexGrow: 1,
     gap: 12,
     paddingHorizontal: 24,
     paddingTop: 24,

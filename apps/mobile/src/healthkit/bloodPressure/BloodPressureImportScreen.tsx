@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
 import { useCallback, useEffect, useState } from 'react';
@@ -5,7 +6,6 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import type { NavigationLeaveState } from '../../navigation';
 import { navigationText } from '../../i18n/navigation';
-import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../../navigation/navigationLayout';
 import { t } from '../../i18n';
 import { appColors } from '../../layout/appColors';
 import type {
@@ -35,6 +35,7 @@ export function BloodPressureImportScreen({
   importBloodPressure,
   loadObservations,
 }: BloodPressureImportScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [observations, setObservations] = useState<
     readonly BloodPressureObservation[]
   >([]);
@@ -88,7 +89,7 @@ export function BloodPressureImportScreen({
   const componentCounts = new Map<BloodPressureComponent, number>();
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="blood-pressure-scroll"
     >
       <View style={styles.topBar}>
@@ -230,7 +231,6 @@ const styles = StyleSheet.create({
   container: {
     gap: 12,
     padding: 20,
-    paddingBottom: 20 + BOTTOM_NAVIGATION_CONTENT_INSET,
   },
   topBar: {
     alignItems: 'center',

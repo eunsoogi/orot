@@ -94,6 +94,11 @@ export function AiFeatureFlow({
           />
         </View>
       ) : null}
+      {articleOpenError ? (
+        <Text accessibilityRole="alert" testID="external-article-open-error">
+          {copy.articleOpenError}
+        </Text>
+      ) : null}
       <View style={styles.screen}>
         {/* Keep feature ScrollViews mounted and bounded while an overlay is active. */}
         <View
@@ -170,11 +175,6 @@ export function AiFeatureFlow({
           </View>
         ) : null}
       </View>
-      {articleOpenError ? (
-        <Text accessibilityRole="alert" testID="external-article-open-error">
-          {copy.articleOpenError}
-        </Text>
-      ) : null}
       {disclosureSheet}
     </View>
   );

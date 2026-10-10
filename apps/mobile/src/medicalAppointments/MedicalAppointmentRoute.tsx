@@ -1,3 +1,4 @@
+import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
@@ -27,7 +28,7 @@ interface MedicalAppointmentRouteProps {
 
 const styles = StyleSheet.create({
   status: {
-    flex: 1,
+    flexGrow: 1,
     // Loading and recoverable errors follow the same top-aligned route shell as the working screen.
     alignItems: 'stretch',
     justifyContent: 'flex-start',
@@ -91,30 +92,34 @@ export default function MedicalAppointmentRoute({
 
   if (repositoryLoadError) {
     return (
-      <View style={styles.status}>
-        <ClassificationLeaveState />
-        <Text accessibilityRole="header" style={styles.title}>
-          {copy.title}
-        </Text>
-        <Text accessibilityRole="alert">{t('appointments.openError')}</Text>
-        <Button
-          onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
-          testID="medical-appointments-retry"
-          title={t('appointments.retry')}
-        />
-      </View>
+      <NavigationRouteScrollView>
+        <View style={styles.status}>
+          <ClassificationLeaveState />
+          <Text accessibilityRole="header" style={styles.title}>
+            {copy.title}
+          </Text>
+          <Text accessibilityRole="alert">{t('appointments.openError')}</Text>
+          <Button
+            onPress={() => setRepositoryLoadAttempt(attempt => attempt + 1)}
+            testID="medical-appointments-retry"
+            title={t('appointments.retry')}
+          />
+        </View>
+      </NavigationRouteScrollView>
     );
   }
 
   if (!repository) {
     return (
-      <View style={styles.status}>
-        <ClassificationLeaveState />
-        <Text accessibilityRole="header" style={styles.title}>
-          {copy.title}
-        </Text>
-        <Text>{t('appointments.opening')}</Text>
-      </View>
+      <NavigationRouteScrollView>
+        <View style={styles.status}>
+          <ClassificationLeaveState />
+          <Text accessibilityRole="header" style={styles.title}>
+            {copy.title}
+          </Text>
+          <Text>{t('appointments.opening')}</Text>
+        </View>
+      </NavigationRouteScrollView>
     );
   }
 
@@ -124,18 +129,20 @@ export default function MedicalAppointmentRoute({
 
   if (!selectedAi) {
     return (
-      <View style={styles.status}>
-        <ClassificationLeaveState />
-        <Text accessibilityRole="header" style={styles.title}>
-          {copy.title}
-        </Text>
-        <Text>{copy.providerResolving}</Text>
-        <Button
-          onPress={onOpenManual}
-          testID="medical-appointment-manual"
-          title={copy.manual}
-        />
-      </View>
+      <NavigationRouteScrollView>
+        <View style={styles.status}>
+          <ClassificationLeaveState />
+          <Text accessibilityRole="header" style={styles.title}>
+            {copy.title}
+          </Text>
+          <Text>{copy.providerResolving}</Text>
+          <Button
+            onPress={onOpenManual}
+            testID="medical-appointment-manual"
+            title={copy.manual}
+          />
+        </View>
+      </NavigationRouteScrollView>
     );
   }
 

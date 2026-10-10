@@ -54,15 +54,22 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    const root = await element(
+      by.id('navigation-keyboard-avoiding-root'),
+    ).getAttributes();
     const recent = await element(by.id('home-open-records')).getAttributes();
     const toolbar = await element(
       by.id('navigation-native-toolbar'),
     ).getAttributes();
-    if (!recent.frame || !toolbar.frame)
+    if (!recent.frame || !toolbar.frame || !root.frame)
       throw new Error('Missing Home content or toolbar frame.');
     jestExpect(recent.frame.y + recent.frame.height).toBeLessThanOrEqual(
       toolbar.frame.y,
     );
+    // The iPhone simulator's 34pt home area is the only space below the toolbar.
+    jestExpect(
+      root.frame.y + root.frame.height - toolbar.frame.y - toolbar.frame.height,
+    ).toBeLessThanOrEqual(34);
     await device.takeScreenshot('home-native-glass');
     await openRootTab('records', 'records-title');
     await expect(element(by.id('records-new-recording'))).toBeVisible();

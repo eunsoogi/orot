@@ -16,7 +16,10 @@ import {
   projectCalendarMonthEvents,
 } from './calendarMonthEvents';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
-import { CalendarMonthHeader } from './CalendarMonthHeader';
+import {
+  CalendarMonthHeader,
+  CalendarWeekdayHeader,
+} from './CalendarMonthHeader';
 import {
   CalendarDayCell,
   CalendarMonthEventRow,
@@ -141,6 +144,12 @@ export function CalendarMonthView({
 
   return (
     <View style={styles.calendarMonth} testID="calendar-month-view">
+      {/* Month controls stay in the viewport even when the 44pt date columns overflow. */}
+      <CalendarMonthHeader
+        year={visibleMonth.year}
+        month={visibleMonth.month}
+        onMoveMonth={moveMonth}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -151,11 +160,7 @@ export function CalendarMonthView({
           style={styles.calendarDateGridContent}
           testID="calendar-date-grid-content"
         >
-          <CalendarMonthHeader
-            year={visibleMonth.year}
-            month={visibleMonth.month}
-            onMoveMonth={moveMonth}
-          />
+          <CalendarWeekdayHeader />
           <View style={styles.calendarGrid} testID="calendar-date-grid">
             {gridDays.map(day => {
               const dayEvents = eventsForDay(day.dateKey);

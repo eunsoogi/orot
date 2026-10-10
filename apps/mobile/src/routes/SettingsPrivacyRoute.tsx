@@ -27,6 +27,7 @@ export function SettingsPrivacyRoute() {
 
   return (
     <ScrollView
+      testID="settings-privacy-scroll"
       contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
     >

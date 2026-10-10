@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BOTTOM_NAVIGATION_CONTENT_INSET } from './navigationLayout';
+import { useNavigationContentInset } from './useNavigationContentInset';
 
 /** Lets route content fill its viewport and scroll behind the shared glass actions. */
 export function NavigationRouteScrollView({
@@ -9,14 +8,11 @@ export function NavigationRouteScrollView({
 }: {
   readonly children: ReactNode;
 }) {
-  const { bottom } = useSafeAreaInsets();
+  const navigationInset = useNavigationContentInset();
   return (
     <ScrollView
       automaticallyAdjustKeyboardInsets
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + bottom },
-      ]}
+      contentContainerStyle={[styles.content, navigationInset]}
       keyboardShouldPersistTaps="handled"
       style={styles.fill}
       testID="navigation-route-scroll"

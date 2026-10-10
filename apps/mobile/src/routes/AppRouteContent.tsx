@@ -2,11 +2,9 @@ import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
-import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { AppRootTab } from '../navigation/rootTabs';
-import { AppButton } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
+import { RouteLoadError } from './RouteLoadError';
 import RecordingScreen from '../recording/RecordingScreen';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import type { CommonObservationsImportResult } from '../healthkit/commonObservations/CommonObservationsImportScreen';
@@ -209,36 +207,6 @@ export function AppRouteContent({
         />
       );
   }
-}
-
-function RouteLoadError({
-  title,
-  message,
-  onRetry,
-}: {
-  readonly title: string;
-  readonly message: string;
-  readonly onRetry: () => void | Promise<unknown>;
-}) {
-  useNavigationLeaveStateRegistration({
-    canLeave: true,
-    hasUnsavedChanges: false,
-    isRecording: false,
-    hasOngoingOperation: false,
-    revision: 0,
-    inputRevision: 0,
-  });
-  return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header">{title}</Text>
-      <Text accessibilityRole="alert">{message}</Text>
-      <AppButton
-        onPress={onRetry}
-        testID="route-load-retry"
-        title={t('appointments.retry')}
-      />
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({

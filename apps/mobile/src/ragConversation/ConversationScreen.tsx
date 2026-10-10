@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
@@ -42,8 +43,10 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
 }: ConversationScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const copy = getRagConversationCopy();
   const [draft, setDraft] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
   const [messages, setMessages] = useState<readonly DisplayMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -122,7 +125,7 @@ export function ConversationScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="rag-conversation-screen"
     >
       {navigationRouteKey ? null : (
@@ -173,12 +176,15 @@ export function ConversationScreen({
         }}
         placeholder={copy.placeholder}
         placeholderTextColor={appColors.secondary}
-        style={styles.input}
+        onFocus={() => setInputFocused(true)}
+        onBlur={() => setInputFocused(false)}
+        style={[styles.input, inputFocused && styles.inputFocused]}
         testID="rag-conversation-input"
         value={draft}
       />
       <Button
         disabled={busy || !draft.trim()}
+        accessibilityState={{ busy }}
         onPress={() => {
           send().catch(() => setError(copy.unavailable));
         }}
@@ -194,7 +200,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700' },
   input: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
+    borderColor: appColors.secondary,
     borderRadius: 12,
     borderWidth: 1,
     color: appColors.text,
@@ -209,6 +215,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   role: { fontWeight: '700' },
+  // Focus remains visible for keyboard users in both system appearances.
+  inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
   error: { color: appColors.danger },
   source: {
     color: appColors.primaryText,

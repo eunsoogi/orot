@@ -34,11 +34,10 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       backgroundColor: colors.accentSubtle,
     },
     detailToggle: {
-      flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'center',
       minHeight: 44,
-      alignSelf: 'flex-end',
+      minWidth: 44,
     },
     inputGroup: { gap: tokens.spacing.xs },
     inputLabel: {
@@ -101,7 +100,7 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: tokens.spacing.xs,
-      padding: tokens.spacing.md,
+      paddingVertical: tokens.spacing.xs,
       borderTopWidth: 1,
       borderColor: colors.border,
     },

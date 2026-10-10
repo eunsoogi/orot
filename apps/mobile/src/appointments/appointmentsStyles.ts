@@ -1,13 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
-import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 
 const styles = StyleSheet.create({
   container: {
     gap: 16,
     padding: 20,
-    // The integrated route overlays its native toolbar; the final form action must scroll above it.
-    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + 20,
     backgroundColor: appColors.background,
     flexGrow: 1,
   },

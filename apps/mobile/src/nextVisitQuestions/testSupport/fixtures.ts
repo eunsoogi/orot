@@ -62,6 +62,7 @@ export const theme: Props['theme'] = {
     accentText: '#234567',
     warning: '#704800',
     warningSurface: '#fff4d6',
+    success: '#237a46',
     danger: '#8a1c1c',
     dangerSurface: '#fde8e8',
   },

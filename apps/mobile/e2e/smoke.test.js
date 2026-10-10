@@ -1,44 +1,14 @@
 /* global by, device, element, waitFor */
 
+const { expectContentAboveFloatingBar } = require('./safeAreaHelpers');
 const { expect: jestExpect } = require('@jest/globals');
 const {
   expectNativeNavigationAction,
+  openFeatureAndReturn,
+  confirmUnsavedLeave,
   openRootTab,
   tapNativeNavigationAction,
 } = require('./smokeHelpers');
-
-/** Exercise a real route and confirm only when its state guard reports local edits. */
-async function openFeatureAndReturn(
-  entryId,
-  screenId,
-  exerciseFeature,
-  confirmUnsaved = false,
-) {
-  const aiScreen = element(by.id('ai-features-screen'));
-  await aiScreen.scrollTo('top');
-  await waitFor(element(by.id(entryId)))
-    .toBeVisible()
-    .whileElement(by.id('ai-features-screen'))
-    .scroll(100, 'down', 0.5, 0.35);
-  await element(by.id(entryId)).tap();
-  await waitFor(element(by.id(screenId)))
-    .toBeVisible()
-    .withTimeout(30000);
-  if (exerciseFeature) await exerciseFeature();
-  // Integrated feature routes expose Back through the shared native toolbar.
-  await tapNativeNavigationAction('navigation-back');
-  if (confirmUnsaved) await confirmUnsavedLeave();
-  await waitFor(element(by.id('ai-features-screen')))
-    .toBeVisible()
-    .withTimeout(30000);
-}
-
-async function confirmUnsavedLeave() {
-  await waitFor(element(by.text('내용 버리고 나가기')))
-    .toBeVisible()
-    .withTimeout(5000);
-  await element(by.text('내용 버리고 나가기')).tap();
-}
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
@@ -62,7 +32,16 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'home-empty-recordings',
+    );
     await openRootTab('records', 'records-title');
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'records-open-blood-pressure',
+    );
+    await element(by.id('navigation-route-scroll')).scrollTo('top', 0.5, 0.2);
     await element(by.id('records-new-recording')).tap();
     await waitFor(element(by.id('recording-controls-scroll')))
       .toBeVisible()
@@ -73,6 +52,11 @@ describe('Orot mobile app', () => {
       .withTimeout(30000);
 
     await openRootTab('ai', 'ai-features-screen');
+    await expectContentAboveFloatingBar(
+      'ai-features-screen',
+      'ai-feature-external-evidence',
+    );
+    await element(by.id('ai-features-screen')).scrollTo('top', 0.5, 0.2);
     // The synthetic route operations isolate the keyboard/save assertion while preserving real App navigation.
     await element(by.id('ai-feature-visit-questions')).tap();
     await waitFor(element(by.id('next-visit-questions-scroll')))
@@ -83,7 +67,9 @@ describe('Orot mobile app', () => {
     await waitFor(element(by.id('next-visit-appointment-time')))
       .toBeVisible()
       .withTimeout(30000);
-    await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
+    await expect(
+      element(by.text('선택한 AI · 합성 UI 검사 제공자')),
+    ).toBeVisible();
 
     await expectNativeNavigationAction('next-visit-generate');
     await tapNativeNavigationAction('next-visit-generate');
@@ -91,7 +77,7 @@ describe('Orot mobile app', () => {
       .toExist()
       .withTimeout(30000);
     const scroll = element(by.id('next-visit-questions-scroll'));
-    await scroll.scrollTo('bottom');
+    await scroll.scrollTo('bottom', 0.5, 0.2);
     const questionInput = element(by.id('next-visit-question-text-2'));
     await questionInput.tap();
     await expect(questionInput).toBeFocused();
@@ -207,7 +193,11 @@ describe('Orot mobile app', () => {
       element(by.text('검색어 전송에 동의한 뒤 검색할 수 있어요.')),
     ).not.toExist();
     // Do not press search: this route check must not make a real literature request.
-    await element(by.id('external-medical-evidence-screen')).scrollTo('top');
+    await element(by.id('external-medical-evidence-screen')).scrollTo(
+      'top',
+      0.5,
+      0.2,
+    );
     await tapNativeNavigationAction('navigation-back');
     await confirmUnsavedLeave();
     await waitFor(element(by.id('ai-features-screen')))
@@ -215,6 +205,11 @@ describe('Orot mobile app', () => {
       .withTimeout(30000);
 
     await openRootTab('settings', 'settings-title');
+    await expectContentAboveFloatingBar(
+      'navigation-route-scroll',
+      'settings-app-info',
+    );
+    await element(by.id('navigation-route-scroll')).scrollTo('top', 0.5, 0.2);
     await element(by.id('settings-open-provider')).tap();
     await waitFor(element(by.id('provider-selection-screen')))
       .toBeVisible()

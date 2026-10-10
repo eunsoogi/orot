@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
@@ -62,6 +63,7 @@ export function DiseaseHypothesesScreen({
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const copy = getDiseaseHypothesisCopy();
   const [state, setState] = useState<ScreenState>({ status: 'idle' });
   const operationController = useRef<AbortController | null>(null);
@@ -112,7 +114,7 @@ export function DiseaseHypothesesScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="disease-hypotheses-screen"
     >
       {navigationRouteKey ? null : (
@@ -128,6 +130,7 @@ export function DiseaseHypothesesScreen({
       <Text>{copy.explanation}</Text>
       <Button
         disabled={state.status === 'loading'}
+        accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
           generate().catch(() => setState({ status: 'error' }));
         }}

@@ -1,26 +1,27 @@
 /* global by, device, element, expect, waitFor */
 
-/** Holds shared Detox navigation helpers outside the line-limited smoke spec. */
+/** Exercise a real route and confirm only when its state guard reports local edits. */
 async function openFeatureAndReturn(
   entryId,
   screenId,
   exerciseFeature,
   confirmUnsaved = false,
 ) {
-  // Home keeps the feature cards in its shared scroll view rather than a nested list.
-  await element(by.id('navigation-route-scroll')).scroll(240, 'down', 0.5, 0.7);
+  const aiScreen = element(by.id('ai-features-screen'));
+  await aiScreen.scrollTo('top');
+  await waitFor(element(by.id(entryId)))
+    .toBeVisible()
+    .whileElement(by.id('ai-features-screen'))
+    .scroll(100, 'down', 0.5, 0.35);
   await element(by.id(entryId)).tap();
   await waitFor(element(by.id(screenId)))
     .toBeVisible()
     .withTimeout(30000);
   if (exerciseFeature) await exerciseFeature();
-  // The shared route shell renders navigation outside the screen-specific subtree.
-  await expect(element(by.id('navigation-back'))).toHaveLabel(
-    '이전 화면으로 돌아가기',
-  );
+  // Integrated feature routes expose Back through the shared native toolbar.
   await tapNativeNavigationAction('navigation-back');
   if (confirmUnsaved) await confirmUnsavedLeave();
-  await waitFor(element(by.id('welcome-title')))
+  await waitFor(element(by.id('ai-features-screen')))
     .toBeVisible()
     .withTimeout(30000);
 }

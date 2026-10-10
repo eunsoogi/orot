@@ -19,7 +19,10 @@ import {
   createNativeNavigationBindings,
   settleNavigationRequest,
 } from './nativeNavigationActions';
-import { NAVIGATION_ACTION_VERTICAL_PADDING } from './navigationLayout';
+import {
+  NAVIGATION_ACTION_TOP_PADDING,
+  NAVIGATION_ACTION_BOTTOM_PADDING,
+} from './navigationLayout';
 import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
 import { RootTabActions } from './RootTabActions';
@@ -181,7 +184,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     backgroundColor: 'transparent',
     paddingHorizontal: 12,
-    paddingVertical: NAVIGATION_ACTION_VERTICAL_PADDING,
+    paddingTop: NAVIGATION_ACTION_TOP_PADDING,
+    paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
   },
   actions: {
     flexDirection: 'row',

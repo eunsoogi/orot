@@ -1,8 +1,8 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 import type { AppointmentRepository } from '@orot/storage';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
@@ -18,7 +18,6 @@ const styles = StyleSheet.create({
   content: {
     gap: 12,
     padding: 24,
-    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET + 34,
   },
   title: { fontSize: 30, fontWeight: '700' },
 });
@@ -43,6 +42,7 @@ export default function MedicalAppointmentClassificationScreen({
   onOpenManual,
 }: MedicalAppointmentClassificationScreenProps) {
   // Remote batches use the same in-memory registry and prompt for each actual model request.
+  const navigationInset = useNavigationContentInset();
   const { consent, disclosureSheet } = useInferenceConsent();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [candidates, setCandidates] = useState<CandidateReview[]>([]);
@@ -177,7 +177,7 @@ export default function MedicalAppointmentClassificationScreen({
   return (
     <>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, navigationInset]}
         keyboardShouldPersistTaps="handled"
       >
         <Text accessibilityRole="header" style={styles.title}>

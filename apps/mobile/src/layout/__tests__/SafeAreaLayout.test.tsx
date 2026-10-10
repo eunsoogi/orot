@@ -54,7 +54,7 @@ test('configures keyboard-aware scrolling for overflowing route content', async 
   expect(scroll.props.automaticallyAdjustKeyboardInsets).toBe(true);
   expect(scroll.props.contentContainerStyle).toMatchObject({
     flexGrow: 1,
-    paddingBottom: 84,
+    paddingBottom: 74,
   });
   expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
   expect(getByTestId('route-content')).toBeVisible();

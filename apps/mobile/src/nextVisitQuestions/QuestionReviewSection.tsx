@@ -49,7 +49,6 @@ export function QuestionReviewSection<
   const styles = createNextVisitStyles(theme);
   return (
     <View style={styles.section} testID="next-visit-review-list">
-      <EvidenceCaveats caveats={caveats} theme={theme} />
       {questions.length === 0 ? (
         <Text style={styles.warning}>{copy.review.empty}</Text>
       ) : (
@@ -69,6 +68,8 @@ export function QuestionReviewSection<
           />
         ))
       )}
+      <EvidenceCaveats caveats={caveats} theme={theme} />
+      <Text style={styles.muted}>{copy.review.saveHint}</Text>
       <Text style={styles.muted}>{copy.clinicalNotice}</Text>
       {saveMessage ? (
         <Text accessibilityRole="alert" style={styles.error}>
