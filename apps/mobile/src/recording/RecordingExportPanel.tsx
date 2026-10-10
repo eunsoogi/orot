@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, Text, View } from 'react-native';
 import { t } from '../i18n';
 import {
@@ -55,6 +55,18 @@ export default function RecordingExportPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ExportError | null>(null);
   const [status, setStatus] = useState<'completed' | 'cancelled' | null>(null);
+  const selectionRevision = useRef(0);
+  const previousSourceId = useRef(recordingSourceId);
+
+  useLayoutEffect(() => {
+    if (previousSourceId.current === recordingSourceId) return;
+    previousSourceId.current = recordingSourceId;
+    // Native sharing can outlive a row selection. Clear feedback before paint and
+    // ignore that share's late result.
+    selectionRevision.current += 1;
+    setError(null);
+    setStatus(null);
+  }, [recordingSourceId]);
 
   useEffect(() => {
     let active = true;
@@ -81,37 +93,50 @@ export default function RecordingExportPanel({
 
   async function shareAudio(): Promise<void> {
     // Audio export reads the saved file directly and must stay available if transcript lookup fails.
+    const requestRevision = selectionRevision.current;
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
-      setStatus(await exportService.shareAudio(recordingSourceId));
+      const result = await exportService.shareAudio(recordingSourceId);
+      if (requestRevision === selectionRevision.current) {
+        setStatus(result);
+      }
     } catch (reason) {
-      setError(shareError(reason));
+      if (requestRevision === selectionRevision.current) {
+        setError(shareError(reason));
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function shareTranscript(): Promise<void> {
+    const requestRevision = selectionRevision.current;
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
       const current = await transcriptService.load(recordingSourceId);
+      if (requestRevision !== selectionRevision.current) return;
       if (!current) {
         setError('emptyTranscript');
         return;
       }
       setView(current);
       const text = formatTranscriptExport(current);
-      setStatus(await exportService.shareTranscript(text));
+      const result = await exportService.shareTranscript(text);
+      if (requestRevision === selectionRevision.current) {
+        setStatus(result);
+      }
     } catch (reason) {
-      setError(
-        reason instanceof EmptyRecordingTranscriptError
-          ? 'emptyTranscript'
-          : shareError(reason),
-      );
+      if (requestRevision === selectionRevision.current) {
+        setError(
+          reason instanceof EmptyRecordingTranscriptError
+            ? 'emptyTranscript'
+            : shareError(reason),
+        );
+      }
     } finally {
       setBusy(false);
     }
