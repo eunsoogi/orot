@@ -13,7 +13,7 @@ import type {
 } from '../HealthKitImportScreen';
 import { HealthKitImportScreen } from '../HealthKitImportScreen';
 import { createTestServices, deferred } from '../testSupport';
-import type { UnifiedImportRun } from '../types';
+import type { UnifiedImportMeasurement, UnifiedImportRun } from '../types';
 
 const copy: HealthKitImportScreenCopy = {
   title: '가져오기',
@@ -101,4 +101,105 @@ test('late confirmation progress cannot replace a newer run status', async () =>
     secondQuery.resolve({ access: 'fullAccess', events: [base.calendarEvent] });
     await runs[1].result;
   });
+});
+
+test('late save measurements stay with the import run that started them', async () => {
+  const base = createTestServices();
+  const secondQuery =
+    deferred<
+      Awaited<ReturnType<typeof base.services.eventKit.listUpcomingEvents>>
+    >();
+  const confirmations = [deferred<void>(), deferred<void>()];
+  let confirmationIndex = 0;
+  const confirmCalendarEvent = jest.fn(
+    () => confirmations[confirmationIndex++].promise,
+  );
+  let queryCount = 0;
+  const coordinator = createUnifiedImportCoordinator({
+    ...base.services,
+    eventKit: {
+      requestEventAccess: base.services.eventKit.requestEventAccess,
+      listUpcomingEvents: jest.fn(() => {
+        queryCount += 1;
+        return queryCount === 1
+          ? base.services.eventKit.listUpcomingEvents()
+          : secondQuery.promise;
+      }),
+    },
+    confirmCalendarEvent,
+  });
+  const runs: UnifiedImportRun[] = [];
+  const measurements: UnifiedImportMeasurement[] = [];
+  const screenCoordinator: UnifiedImportCoordinator = {
+    start: (selection, listeners) => {
+      const run = coordinator.start(selection, listeners);
+      runs.push(run);
+      return run;
+    },
+  };
+  await render(
+    <HealthKitImportScreen
+      copy={copy}
+      coordinator={screenCoordinator}
+      onMeasurement={measurement => measurements.push(measurement)}
+      onRunStarted={() => {
+        measurements.length = 0;
+      }}
+    />,
+  );
+
+  await fireEvent.press(screen.getByTestId('unified-import-toggle-eventKit'));
+  await fireEvent.press(screen.getByTestId('unified-import-start'));
+  expect(
+    await screen.findByTestId('unified-import-eventkit-candidate-0'),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-select-0'));
+  const oldConfirmation = runs[0].confirmCalendarEvent(base.calendarEvent);
+
+  await fireEvent.press(screen.getByTestId('unified-import-start'));
+  await waitFor(() =>
+    expect(screen.getByTestId('unified-import-status')).toHaveTextContent(
+      'queryingEventKit',
+    ),
+  );
+  await act(async () => {
+    secondQuery.resolve({ access: 'fullAccess', events: [base.calendarEvent] });
+    await runs[1].result;
+  });
+  await fireEvent.press(screen.getByTestId('unified-import-eventkit-select-0'));
+  const currentConfirmation = runs[1].confirmCalendarEvent(base.calendarEvent);
+  expect(measurements).toContainEqual(
+    expect.objectContaining({
+      provider: 'localStore',
+      sourceProvider: 'eventKit',
+      phase: 'persistence',
+      transition: 'started',
+    }),
+  );
+
+  await act(async () => {
+    confirmations[0].resolve();
+    await oldConfirmation;
+  });
+  expect(
+    measurements.filter(
+      measurement =>
+        measurement.sourceProvider === 'eventKit' &&
+        measurement.phase === 'persistence' &&
+        measurement.transition === 'finished',
+    ),
+  ).toHaveLength(0);
+
+  await act(async () => {
+    confirmations[1].resolve();
+    await currentConfirmation;
+  });
+  expect(
+    measurements.filter(
+      measurement =>
+        measurement.sourceProvider === 'eventKit' &&
+        measurement.phase === 'persistence' &&
+        measurement.transition === 'finished',
+    ),
+  ).toHaveLength(1);
 });

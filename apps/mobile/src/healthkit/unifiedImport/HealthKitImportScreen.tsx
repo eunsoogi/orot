@@ -102,16 +102,16 @@ export function HealthKitImportScreen({
     setRun(null);
     setIsRunning(true);
     const generation = ++runGeneration.current;
+    const isCurrentRun = () =>
+      mounted.current && runGeneration.current === generation;
     try {
-      // Probe offsets restart per run, so their measurement window must restart too.
+      // Probe offsets reset per run, so old callbacks must not contaminate measurements.
       onRunStarted?.();
       const active = coordinator.start(selection, {
-        onProgress: value => {
-          if (mounted.current && runGeneration.current === generation) {
-            setProgress(value);
-          }
-        },
-        ...(onMeasurement ? { onMeasurement } : {}),
+        onProgress: value => isCurrentRun() && setProgress(value),
+        ...(onMeasurement
+          ? { onMeasurement: value => isCurrentRun() && onMeasurement(value) }
+          : {}),
       });
       setRun(active);
       active.result.then(result => {
