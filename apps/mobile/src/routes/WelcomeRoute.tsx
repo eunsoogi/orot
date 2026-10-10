@@ -16,10 +16,11 @@ interface WelcomeRouteProps {
   onOpenMedicalAppointments: () => void;
   onOpenCommonObservations: () => void;
   onOpenBloodPressure: () => void;
+  onOpenUnifiedImport: () => void;
   onOpenRecording: () => void;
 }
 
-// Share entry and calendar error-page styling while keeping welcome-only content in its route.
+// Keep startup backup recovery and explicit import actions on the welcome route.
 export const appRouteStyles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -53,6 +54,7 @@ export default function WelcomeRoute({
   onOpenMedicalAppointments,
   onOpenCommonObservations,
   onOpenBloodPressure,
+  onOpenUnifiedImport,
   onOpenRecording,
 }: WelcomeRouteProps) {
   return (
@@ -105,6 +107,11 @@ export default function WelcomeRoute({
         onPress={onOpenBloodPressure}
         testID="open-blood-pressure-import"
         title={t('healthkit.bloodPressure.open')}
+      />
+      <Button
+        onPress={onOpenUnifiedImport}
+        testID="open-unified-health-import"
+        title={t('healthkit.unifiedImport.open')}
       />
       <Button
         onPress={onOpenRecording}

@@ -2,6 +2,10 @@
 #import <React/RCTEventEmitter.h>
 
 @interface RCT_EXTERN_MODULE (EventKitCalendarModule, RCTEventEmitter)
+RCT_EXTERN_METHOD(requestEventAccess : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listUpcomingEvents : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(requestAccessAndListUpcomingEvents : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(findEvent : (NSString *)calendarEventIdentifier occurrenceDate : (
