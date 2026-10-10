@@ -8,7 +8,7 @@ test('collects required leaves from separate main-push workflows for the exact s
   const workflowRuns = [
     {
       id: 102,
-      path: '.github/workflows/quality-linux.yml',
+      path: '.github/workflows/code-quality.yml',
       event: 'push',
       head_branch: 'main',
       head_sha: sourceSha,
@@ -30,21 +30,21 @@ test('collects required leaves from separate main-push workflows for the exact s
     },
     {
       id: 104,
-      path: '.github/workflows/quality-linux.yml',
+      path: '.github/workflows/code-quality.yml',
       event: 'pull_request',
       head_branch: 'main',
       head_sha: sourceSha,
     },
     {
       id: 105,
-      path: '.github/workflows/quality-linux.yml',
+      path: '.github/workflows/code-quality.yml',
       event: 'push',
       head_branch: 'main',
       head_sha: 'b'.repeat(40),
     },
     {
       id: 106,
-      path: '.github/workflows/quality-linux.yml',
+      path: '.github/workflows/code-quality.yml',
       event: 'push',
       head_branch: 'release',
       head_sha: sourceSha,

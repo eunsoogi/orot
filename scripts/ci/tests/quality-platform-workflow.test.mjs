@@ -6,7 +6,7 @@ import test from 'node:test';
 const readRepositoryFile = (path) =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
 const e2eWorkflow = readRepositoryFile('.github/workflows/e2e-test.yml');
-const codeWorkflow = readRepositoryFile('.github/workflows/quality-linux.yml');
+const codeWorkflow = readRepositoryFile('.github/workflows/code-quality.yml');
 const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
 const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
@@ -135,7 +135,7 @@ test('uses singular workflow names and matching paths with direct checks and can
     assert.doesNotMatch(workflow, /workflow_call/);
   }
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
-  assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/quality-linux/);
+  assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   assert.match(e2eWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
   assert.match(e2eWorkflow, /runs-on: xcode-27/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);

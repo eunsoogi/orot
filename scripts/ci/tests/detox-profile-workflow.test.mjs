@@ -15,7 +15,7 @@ const profilesWorkflow = readFileSync(
 );
 const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/e2e-test.yml'), 'utf8');
 const qualityWorkflow = readFileSync(
-  join(repositoryRoot, '.github/workflows/quality-linux.yml'),
+  join(repositoryRoot, '.github/workflows/code-quality.yml'),
   'utf8',
 );
 const runner = readFileSync(join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh'), 'utf8');
