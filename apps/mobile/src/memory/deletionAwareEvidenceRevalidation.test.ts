@@ -184,11 +184,18 @@ describe('deleted evidence checkpoint revalidation', () => {
         effectiveTime: manualRecord.effectiveAt,
         reviewState: 'unreviewed',
       };
-      const revalidate = jest.fn(async () => true);
+      const revalidate = jest.fn(
+        async (_references: readonly EvidenceReference[]) => true,
+      );
       const resume = createDeletionResume(reference, revalidate);
 
       await expect(resume.run()).resolves.toMatchObject({ status: 'result' });
-      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect(revalidate.mock.calls.map(([references]) => references)).toEqual([
+        [reference],
+        [reference],
+        [reference],
+        [reference],
+      ]);
       expect(resume.restoreEvidence).toHaveBeenCalledTimes(1);
       expect(resume.provider.generate).toHaveBeenCalledTimes(1);
     } finally {

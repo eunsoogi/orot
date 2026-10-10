@@ -226,14 +226,5 @@ test('runs storage probes on the phase-owned clean installs without clearing the
   ]);
   assert.equal(releaseShards['release-e2e.test.js'][2], './safe-area.test.js');
   assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
-  assert.deepEqual(smokeCalls, [
-    {
-      kind: 'launch',
-      options: {
-        newInstance: true,
-        languageAndLocale: { language: 'en', locale: 'en_US' },
-        launchArgs: { OROT_STORAGE_DIAGNOSTICS: 'enabled' },
-      },
-    },
-  ]);
+  assert.deepEqual(smokeCalls, [{ kind: 'clearKeychain' }]);
 });

@@ -1,7 +1,8 @@
 import type { JsonObject, LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import { isSourceAllowed } from './evidence';
-import { callModel } from './modelCall';
+import type { ModelCallOutcome } from './modelCall';
+import { callModelWithEvidenceFreshness } from './modelCallFreshness';
 import { buildResearchRequest, buildTaskRequest } from './requests';
 import { decodeResearchPlan, consumeResponderResponse } from './responses';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
@@ -68,13 +69,16 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       canceled(context);
       return completeState();
     }
-    if (
-      !state.evidenceNeed ||
-      options.tools.length === 0 ||
-      state.researchCycles >= state.budget.maxResearchCycles ||
-      state.modelCalls >= state.budget.maxModelCalls
-    ) {
+    if (!state.evidenceNeed || options.tools.length === 0) {
       stop(context, 'No bounded evidence search is available for this request.');
+      return completeState();
+    }
+    if (state.researchCycles >= state.budget.maxResearchCycles) {
+      stop(context, 'The evidence research cycle budget was exhausted.', 'budget_exceeded');
+      return completeState();
+    }
+    if (state.modelCalls >= state.budget.maxModelCalls) {
+      stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
     return {
@@ -102,13 +106,8 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       options.tools,
       state.budget,
     );
-    const outcome = await callModel(
-      options.provider,
-      request,
-      options.execution,
-      options.consent,
-      context.signal,
-    );
+    const outcome = await callModelWithEvidenceFreshness(context, request);
+    if (!outcome) return completeState();
     if (outcome.status !== 'response') return finishModelFailure(outcome);
     const plan = decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
     const tool = plan && options.tools.find((candidate) => candidate.id === plan.toolId);
@@ -188,18 +187,13 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
     input: TaskResponderInput,
     revised: boolean,
   ) {
-    const outcome = await callModel(
-      options.provider,
-      request,
-      options.execution,
-      options.consent,
-      context.signal,
-    );
+    const outcome = await callModelWithEvidenceFreshness(context, request);
+    if (!outcome) return completeState();
     if (outcome.status !== 'response') return finishModelFailure(outcome);
     return consumeResponderResponse(context, state, outcome.response, input, revised);
   }
 
-  function finishModelFailure(outcome: Awaited<ReturnType<typeof callModel>>) {
+  function finishModelFailure(outcome: ModelCallOutcome) {
     if (outcome.status === 'cancelled') canceled(context, outcome.providerStop);
     else if (outcome.status === 'consent_required') {
       stop(

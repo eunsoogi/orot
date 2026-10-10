@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
-// Keep the smoke launch contract observable without starting a native Simulator.
+// Keep Smoke's suite-level setup observable without starting a native Simulator.
 export async function runSmokeSetup() {
   const beforeAllHooks = [];
   const deviceCalls = [];
@@ -14,6 +14,13 @@ export async function runSmokeSetup() {
   runInNewContext(source, {
     beforeAll: (hook) => beforeAllHooks.push(hook),
     describe: (_name, callback) => callback(),
+    // This probe observes setup only, so it stubs the matcher import without invoking test assertions.
+    require: (specifier) => {
+      if (specifier !== '@jest/globals') {
+        throw new Error(`Unexpected smoke setup dependency: ${specifier}`);
+      }
+      return { expect: () => {} };
+    },
     device: {
       clearKeychain: async () => deviceCalls.push({ kind: 'clearKeychain' }),
       launchApp: async (options) =>

@@ -55,14 +55,10 @@ test('restores the welcome entry and opens Calendar linking from appointments', 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent(
     'Orot에 오신 걸 환영해요',
   );
-  expect(screen.getByTestId('safe-area-root')).toBeVisible();
-  expect(screen.getByTestId('safe-area-scroll')).toBeVisible();
-  expect(screen.getByTestId('get-started')).toHaveTextContent('시작하기');
+  expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
+  expect(screen.getByTestId('navigation-route-scroll')).toBeVisible();
   expect(screen.getByTestId('open-appointments')).toHaveTextContent('예약');
   expect(loadAppointments).not.toHaveBeenCalled();
-
-  await fireEvent.press(screen.getByTestId('get-started'));
-  expect(screen.getByText('이제 시작할 수 있어요.')).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('open-appointments'));
   expect(screen.getByRole('header', { name: '캘린더 연결' })).toBeTruthy();
@@ -98,12 +94,13 @@ test('keeps consent-gated recording reachable from Calendar linking', async () =
   await fireEvent.press(screen.getByTestId('open-appointments'));
   await fireEvent.press(screen.getByTestId('open-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
-  expect(screen.getByTestId('safe-area-root')).toBeVisible();
-  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
+  expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
+  expect(screen.getByTestId('navigation-back')).toBeVisible();
+  expect(screen.queryByTestId('recording-back')).toBeNull();
   expect(screen.getByText(/녹음 전에/)).toBeTruthy();
   expect(screen.getByTestId('recording-start')).toBeDisabled();
 
-  await fireEvent.press(screen.getByTestId('recording-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('캘린더 연결');
 });
 
@@ -141,7 +138,7 @@ test('requires selection and an explicit import before reading common HealthKit 
   expect(
     screen.getByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();
-  expect(screen.getByTestId('safe-area-scroll')).toBeVisible();
+  expect(screen.getByTestId('navigation-route-scroll')).toBeVisible();
   expect(screen.getByTestId('common-observations-import')).toBeDisabled();
   expect(importHealthObservations).not.toHaveBeenCalled();
 
@@ -155,7 +152,7 @@ test('requires selection and an explicit import before reading common HealthKit 
       '선택한 기록의 변경을 가져왔어요. 1개 저장, 0개 삭제, 0개 미지원',
     ),
   ).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('common-observations-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
 });
 
@@ -206,7 +203,7 @@ test('allows Back and reopening while the first import is still pending', async 
   await fireEvent.press(screen.getByTestId('common-observations-import'));
   expect(importHealthObservations).toHaveBeenCalledTimes(1);
 
-  await fireEvent.press(screen.getByTestId('common-observations-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   await fireEvent.press(screen.getByTestId('open-common-observations'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),

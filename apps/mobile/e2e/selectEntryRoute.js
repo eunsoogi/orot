@@ -5,6 +5,7 @@ function selectEntryRoute(settings) {
     settings && typeof settings === 'object' ? settings : {};
 
   if (owns(launchSettings, 'OROT_E2E_PROBE')) {
+    // Only an explicit Detox launch argument may opt into a synthetic app entry.
     const probe = launchSettings.OROT_E2E_PROBE;
     if (
       probe !== 'appointments' &&
@@ -12,7 +13,8 @@ function selectEntryRoute(settings) {
       probe !== 'graph' &&
       probe !== 'checkpoint' &&
       probe !== 'safe-area' &&
-      probe !== 'safe-area-blood-pressure'
+      probe !== 'safe-area-blood-pressure' &&
+      probe !== 'ai-feature-visit-questions'
     ) {
       throw new Error('Unsupported OROT_E2E_PROBE value');
     }

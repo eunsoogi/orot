@@ -77,6 +77,10 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
   );
 }
 
+function isNonNegativeSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
 export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult>): WorkflowState {
   const source = options.execution;
   return {
@@ -115,6 +119,9 @@ export function resumeState<TResult>(
     saved.phase === 'complete' ||
     saved.pendingOperation ||
     saved.phase === 'evidence_search' ||
+    !isNonNegativeSafeInteger(saved.modelCalls) ||
+    !isNonNegativeSafeInteger(saved.toolCalls) ||
+    !isNonNegativeSafeInteger(saved.researchCycles) ||
     saved.modelCalls > options.execution.budget.maxModelCalls ||
     saved.toolCalls > options.execution.budget.maxToolCalls ||
     saved.researchCycles > options.execution.budget.maxResearchCycles ||
@@ -184,13 +191,15 @@ export function makeGraph<TResult>(
     .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
     .addNode('invokeRevision', nodes.invokeRevision)
     .addConditionalEdges(START, route, routeMap)
-    .addEdge('prepareResponder', 'invokeResponder')
+    .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
     .addConditionalEdges('invokeResponder', route, routeMap)
-    .addEdge('prepareResearcher', 'invokeResearcher')
+    .addConditionalEdges('prepareResearcher', (state) =>
+      state.terminal ? END : 'invokeResearcher',
+    )
     .addConditionalEdges('invokeResearcher', route, routeMap)
-    .addEdge('prepareSearch', 'executeSearch')
+    .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
     .addConditionalEdges('executeSearch', route, routeMap)
-    .addEdge('prepareRevision', 'invokeRevision')
+    .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
     .addEdge('invokeRevision', END)
     .compile({ checkpointer });
 }

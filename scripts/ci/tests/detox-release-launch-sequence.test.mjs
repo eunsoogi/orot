@@ -78,40 +78,47 @@ async function executeE2ECases(fileName) {
   return { calls, names: cases.map(({ name }) => name) };
 }
 
-test('each Safe Area scenario launches the app once with its required startup configuration', async () => {
+test('Safe Area applies common setup before each case and relaunches probe cases with startup arguments', async () => {
   const { calls, names } = await executeE2ECases('safe-area.test.js');
 
   assert.equal(names.length, 4);
+  const commonLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+    },
+  };
+  const bloodPressureProbeLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'safe-area-blood-pressure' },
+    },
+  };
+  const largeTextProbeLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: {
+        OROT_E2E_PROBE: 'safe-area',
+        UIPreferredContentSizeCategoryName: 'UICTContentSizeCategoryAccessibilityXXXL',
+      },
+    },
+  };
+
+  // The shared hook starts every case; probe cases restart only to set process launch arguments.
   assert.deepEqual(
     calls.filter(({ kind }) => kind === 'launchApp'),
     [
-      {
-        kind: 'launchApp',
-        options: { newInstance: true, languageAndLocale: { language: 'en', locale: 'en_US' } },
-      },
-      {
-        kind: 'launchApp',
-        options: { newInstance: true, languageAndLocale: { language: 'en', locale: 'en_US' } },
-      },
-      {
-        kind: 'launchApp',
-        options: {
-          newInstance: true,
-          languageAndLocale: { language: 'en', locale: 'en_US' },
-          launchArgs: { OROT_E2E_PROBE: 'safe-area-blood-pressure' },
-        },
-      },
-      {
-        kind: 'launchApp',
-        options: {
-          newInstance: true,
-          languageAndLocale: { language: 'en', locale: 'en_US' },
-          launchArgs: {
-            OROT_E2E_PROBE: 'safe-area',
-            UIPreferredContentSizeCategoryName: 'UICTContentSizeCategoryAccessibilityXXXL',
-          },
-        },
-      },
+      commonLaunch,
+      commonLaunch,
+      commonLaunch,
+      bloodPressureProbeLaunch,
+      commonLaunch,
+      largeTextProbeLaunch,
     ],
   );
 });
