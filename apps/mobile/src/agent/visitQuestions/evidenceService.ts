@@ -20,6 +20,7 @@ import {
 type VisitQuestionRagPort = Pick<LocalE5RagService, 'index' | 'search'>;
 
 export type VisitQuestionContextResult =
+  | { readonly status: 'cancelled' }
   | { readonly status: 'no_confirmed_upcoming_appointment' }
   | {
       readonly status: 'ready';
@@ -70,7 +71,7 @@ function buildVisitContext(appointment: Appointment) {
   return { context, query };
 }
 
-/** Loads only current local appointment, RAG, transcript, and reviewed-memory evidence. */
+/** Loads appointment evidence and returns cancellation before exposing context. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
@@ -79,15 +80,26 @@ export async function prepareVisitQuestionContext(input: {
   readonly rag: VisitQuestionRagPort;
   readonly buildChunks?: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
+  readonly signal?: AbortSignal;
 }): Promise<VisitQuestionContextResult> {
   if (!Number.isFinite(Date.parse(input.now))) {
     throw new Error(
       'Visit-question preparation needs a valid current timestamp.',
     );
   }
-  const result = await input.queryService.queryNextConfirmedCalendarAppointment(
-    input.now,
-  );
+  if (input.signal?.aborted) return { status: 'cancelled' };
+  let result: Awaited<
+    ReturnType<VisitQuestionQueryPort['queryNextConfirmedCalendarAppointment']>
+  >;
+  try {
+    result = await input.queryService.queryNextConfirmedCalendarAppointment(
+      input.now,
+    );
+  } catch (error) {
+    if (input.signal?.aborted) return { status: 'cancelled' };
+    throw error;
+  }
+  if (input.signal?.aborted) return { status: 'cancelled' };
   if (result.status !== 'available' || result.appointment === null) {
     return { status: 'no_confirmed_upcoming_appointment' };
   }
@@ -109,14 +121,23 @@ export async function prepareVisitQuestionContext(input: {
 
   const { context, query } = buildVisitContext(appointment);
   const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
-  const initialEvidence = await searchVisitQuestionEvidence({
-    query,
-    maxEvidenceItems: input.maxEvidenceItems,
-    queryService: input.queryService,
-    repository: input.repository,
-    rag: input.rag,
-    buildChunks,
-  });
+  let initialEvidence: VisitQuestionEvidenceCollection;
+  try {
+    initialEvidence = await searchVisitQuestionEvidence({
+      query,
+      maxEvidenceItems: input.maxEvidenceItems,
+      queryService: input.queryService,
+      repository: input.repository,
+      rag: input.rag,
+      buildChunks,
+      signal: input.signal,
+    });
+  } catch (error) {
+    // RAG adapters may reject when their caller-owned signal aborts an operation.
+    if (input.signal?.aborted) return { status: 'cancelled' };
+    throw error;
+  }
+  if (input.signal?.aborted) return { status: 'cancelled' };
   // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
   const evidence = { ...initialEvidence, metadataByCitation };
