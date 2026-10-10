@@ -41,4 +41,8 @@ switch (selectEntryRoute(launchSettings)) {
   case 'storage':
     require('./storageProbeEntry');
     break;
+  case 'ai-feature-visit-questions':
+    // Keep the production App navigation and inject synthetic operations only for the UI proof.
+    require('./aiFeatureVisitQuestionsProbeEntry');
+    break;
 }
