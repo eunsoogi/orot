@@ -144,6 +144,14 @@ it('opens classification with the saved AI and reaches the separate manual page'
   );
   await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
   expect(await screen.findByTestId('appointment-add')).toBeTruthy();
+  expect(screen.getByTestId('navigation-back')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('appointments-back'));
+  expect(
+    await screen.findByText(medicalAppointmentCopy.localNotice),
+  ).toBeTruthy();
+  expect(screen.getByTestId('navigation-back')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
   expect(loadSelection).toHaveBeenCalledTimes(1);
 });
 
@@ -172,10 +180,18 @@ it('keeps manual entry available while the saved AI lookup is pending', async ()
 
   await fireEvent.press(screen.getByTestId('open-medical-appointments'));
   await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+  expect(screen.getByTestId('navigation-back')).toBeEnabled();
   await fireEvent.press(
     await screen.findByTestId('medical-appointment-manual'),
   );
   expect(await screen.findByTestId('appointment-add')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('appointments-back'));
+  expect(
+    await screen.findByText(medicalAppointmentCopy.providerResolving),
+  ).toBeTruthy();
+  expect(screen.getByTestId('navigation-back')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
 
   await act(async () => failSelection(new Error('AI selection unavailable')));
 });
@@ -202,4 +218,11 @@ it('shows the manual fallback when the saved provider lookup fails', async () =>
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
   expect(await screen.findByTestId('appointment-add')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('appointments-back'));
+  expect(
+    await screen.findByText(medicalAppointmentCopy.providerUnavailable),
+  ).toBeTruthy();
+  expect(screen.getByTestId('navigation-back')).toBeEnabled();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
 });

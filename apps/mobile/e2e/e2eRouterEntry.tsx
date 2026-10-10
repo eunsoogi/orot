@@ -24,6 +24,10 @@ switch (selectEntryRoute(launchSettings)) {
     // Keep the issue-40 consent exercise on synthetic Calendar and provider data.
     require('./medicalAppointmentClassificationProbeEntry');
     break;
+  case 'medical-appointment-app-navigation':
+    // Exercise #108 through App with deterministic local fixtures and no provider inference.
+    require('./medicalAppointmentNavigationProbeEntry');
+    break;
   case 'graph':
     require('./graphProbeEntry');
     break;

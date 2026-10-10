@@ -25,7 +25,7 @@ import SafeAreaLayout from './src/layout/SafeAreaLayout';
 import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
-import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
@@ -111,7 +111,7 @@ export default function App({
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedRecommendationProvider(provider.displayName)
         }
-        renderVisitQuestions={renderVisitQuestions ?? NextVisitQuestionsRoute}
+        renderVisitQuestions={renderVisitQuestions ?? renderVisitQuestionsRoute}
         serviceDependencies={aiFeatureServiceDependencies}
       />
     );

@@ -11,6 +11,14 @@ describe('Detox entry routing', () => {
     );
   });
 
+  it('opens #108 through the production App navigation only by explicit E2E selection', () => {
+    expect(
+      selectEntryRoute({
+        OROT_E2E_PROBE: 'medical-appointment-app-navigation',
+      }),
+    ).toBe('medical-appointment-app-navigation');
+  });
+
   it('opens the safe-area keyboard fixture through its test-only selector', () => {
     expect(selectEntryRoute({ OROT_E2E_PROBE: 'safe-area' })).toBe('safe-area');
   });

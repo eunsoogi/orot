@@ -8,6 +8,8 @@ import type {
 } from '../aiFeatures/integration/provider';
 import type { CalendarBridge } from '../calendar/types';
 import { t } from '../i18n';
+import { useNavigationLeaveStateRegistration } from '../navigation';
+import type { NavigationLeaveState } from '../navigation';
 import ManualAppointmentScreen from './ManualAppointmentScreen';
 import MedicalAppointmentClassificationScreen from './MedicalAppointmentClassificationScreen';
 import { medicalAppointmentCopy as copy } from './copy.ko';
@@ -44,6 +46,16 @@ export default function MedicalAppointmentRoute({
     null,
   );
   const [manualOpen, setManualOpen] = useState(false);
+
+  // The manual page owns its return control; shared navigation becomes available after that path closes.
+  useNavigationLeaveStateRegistration({
+    canLeave: !manualOpen,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: manualOpen ? 1 : 0,
+    inputRevision: 0,
+  } satisfies NavigationLeaveState);
 
   useEffect(() => {
     let active = true;
