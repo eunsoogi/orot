@@ -77,6 +77,28 @@ test('keeps formatting, typecheck, unit tests, and policy tests as independent L
   }
 });
 
+test('pins the policy-test Ruby runtime and keeps its logs outside checkout inventory', () => {
+  const gate = jobBlock(testWorkflow, 'gate_tests');
+  const expectedRubyVersion = codeWorkflow.match(/EXPECTED_RUBY_VERSION: '([^']+)'/)?.[1];
+
+  assert.ok(expectedRubyVersion, 'Linux code checks must declare the Ruby version');
+  assert.ok(testWorkflow.includes(`EXPECTED_RUBY_VERSION: '${expectedRubyVersion}'`));
+  assert.match(gate, /uses: ruby\/setup-ruby@[a-f0-9]{40}/);
+  assert.ok(gate.includes('ruby-version: ${{ env.EXPECTED_RUBY_VERSION }}'));
+  assert.ok(
+    gate.includes(
+      'run: scripts/ci/run-command.sh install "$RUNNER_TEMP/orot-gate-tests/install.log" -- pnpm install --frozen-lockfile',
+    ),
+  );
+  assert.ok(
+    gate.includes(
+      'run: scripts/ci/run-command.sh gate-tests "$RUNNER_TEMP/orot-gate-tests/gate-tests.log" -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs',
+    ),
+  );
+  assert.ok(gate.includes('path: ${{ runner.temp }}/orot-gate-tests/'));
+  assert.doesNotMatch(gate, /artifacts\/gate-tests/);
+});
+
 test('removes quality aggregate checks while preserving the production build check', () => {
   assert.match(
     ciWorkflow,
