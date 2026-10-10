@@ -21,6 +21,8 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly repository: AppointmentRepository;
   readonly selectedProvider: ProviderSelectionOption | null;
   readonly recipient: string | null;
+  /** A failed saved-provider lookup differs from a user who has not selected one yet. */
+  readonly selectedProviderUnavailable?: boolean;
   readonly onOpenManual: () => void;
 }
 
@@ -30,6 +32,7 @@ export default function MedicalAppointmentClassificationScreen({
   repository,
   selectedProvider,
   recipient,
+  selectedProviderUnavailable = false,
   onOpenManual,
 }: MedicalAppointmentClassificationScreenProps) {
   // Remote batches use the same in-memory registry and prompt for each actual model request.
@@ -177,7 +180,12 @@ export default function MedicalAppointmentClassificationScreen({
         <Text>{copy.queryLimit}</Text>
         <Text>{copy.incompleteCalendar}</Text>
         {providerNotice ? <Text>{providerNotice}</Text> : null}
-        {!selectedProvider ? <Text>{copy.noProvider}</Text> : null}
+        {!selectedProvider && !selectedProviderUnavailable ? (
+          <Text>{copy.noProvider}</Text>
+        ) : null}
+        {selectedProviderUnavailable ? (
+          <Text>{copy.providerUnavailable}</Text>
+        ) : null}
         {selectedProvider?.availability.status === 'unavailable' ? (
           <Text>{copy.providerUnavailable}</Text>
         ) : null}

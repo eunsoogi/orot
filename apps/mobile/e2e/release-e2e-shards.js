@@ -9,6 +9,7 @@ module.exports = Object.freeze({
     './storage-migration.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
+    './medicalAppointmentNavigation.test.js',
     './agentMemory.test.js',
     './graph.test.js',
     './checkpoint.detox.e2e.js',

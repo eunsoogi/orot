@@ -9,9 +9,10 @@ import test from 'node:test';
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const shardRunner = join(repositoryRoot, 'scripts/ci/run-detox-release-shards.mjs');
 const profileRunner = join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh');
+// The data shard includes the integrated medical-appointment navigation case.
 const shards = [
   ['release-e2e.test.js', 'A1B2C3D4-E5F6-47A8-9012-3456789ABCDE', 7],
-  ['release-e2e-data.test.js', '11111111-2222-4333-8444-555555555555', 6],
+  ['release-e2e-data.test.js', '11111111-2222-4333-8444-555555555555', 7],
 ];
 
 function makeFixture(directory, failingShard = '') {
@@ -31,7 +32,7 @@ const shard = process.env.OROT_DETOX_RELEASE_SHARD;
 const simulator = process.env.OROT_DETOX_SIMULATOR_UDID;
 const counts = {
   'release-e2e.test.js': 7,
-  'release-e2e-data.test.js': 6,
+  'release-e2e-data.test.js': 7,
 };
 appendFileSync(process.env.CALLS_PATH, shard + '\\t' + simulator + '\\n');
 appendFileSync(process.env.PIDS_PATH, String(process.pid) + '\\n');
@@ -138,7 +139,7 @@ test('runs both Release wrappers concurrently with their assigned Simulators and
       result.stdout,
       /DETOX_RELEASE_SHARD_SUMMARY_START shard=release-e2e-data\.test\.js/,
     );
-    assert.match(result.stdout, /Tests: 6 passed, 6 total/);
+    assert.match(result.stdout, /Tests: 7 passed, 7 total/);
     assert.doesNotMatch(result.stdout, /release-e2e-safe-area\.test\.js/);
   } finally {
     stopFixtureProcesses(fixture);

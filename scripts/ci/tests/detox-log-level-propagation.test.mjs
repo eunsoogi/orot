@@ -38,8 +38,8 @@ function runReleaseSuite(logLevel) {
         '#!/usr/bin/env bash',
         'printf \'%s\\n\' "${OROT_DETOX_TEST_LOG_LEVEL:-info}" > "$DETOX_LOG_LEVEL_CAPTURE"',
         ': > "$DETOX_PNPM_INVOKED"',
-        '# The default Release wrapper is one Jest file containing both ordered phases.',
-        "printf 'Test Suites: 1 passed, 1 total\\nTests: 13 passed, 13 total\\n'",
+        '# The Release wrappers include both seven-case shards in the complete scenario inventory.',
+        "printf 'Test Suites: 1 passed, 1 total\\nTests: 14 passed, 14 total\\n'",
       ].join('\n'),
       { mode: 0o755 },
     );

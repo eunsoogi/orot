@@ -12,6 +12,7 @@ const selectEntryRoute = requireFromRepository(
 ).selectEntryRoute;
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
+const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 const openAiDetoxConfig = requireFromRepository(
   './apps/mobile/e2e/openai-provider.detox.config.js',
@@ -124,14 +125,24 @@ test('keeps the Release smoke on Calendar linking while manual CRUD stays in its
 
 test('the shared Release app config bundles the router and selects one ordered wrapper', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
-  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
-  assert.ok(router.includes("case 'medical-appointment-classification':"));
-  assert.ok(router.includes("require('./medicalAppointmentClassificationProbeEntry')"));
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
   assert.equal(releaseJestConfig.bail, 1);
   assert.equal(releaseJestConfig.testMatch.length, 1); // One file nests both ordered phases; the inventory stays complete.
+  assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
+  assert.deepEqual(releaseSuiteFiles, [
+    './storage.test.js',
+    './smoke.test.js',
+    './safe-area.test.js',
+    './storage-migration.test.js',
+    './appointments.test.js',
+    './medicalAppointmentClassification.test.js',
+    './medicalAppointmentNavigation.test.js',
+    './agentMemory.test.js',
+    './graph.test.js',
+    './checkpoint.detox.e2e.js',
+  ]);
   assert.deepEqual(openAiJestConfig.testMatch, ['<rootDir>/e2e/openai-provider.e2e.js']);
   assert.deepEqual(releaseJestConfig.testPathIgnorePatterns, []);
   assert.equal(releaseJestConfig.rootDir, '..');

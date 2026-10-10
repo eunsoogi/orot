@@ -13,6 +13,7 @@ jest.mock('../nativeRecordingBridge', () => ({
   simulateRecordingInterruption: jest.fn(),
 }));
 
+// Two screen mounts and the async retry path need more than Jest's 5-second default.
 test('keeps a backup-eligible recording retryable after metadata storage fails', async () => {
   const { service } = createService();
   const eligibleRecording = { ...completed, excludedFromBackup: false };
@@ -42,4 +43,4 @@ test('keeps a backup-eligible recording retryable after metadata storage fails',
   expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
   expect(screen.getByTestId('recording-back')).toBeTruthy();
   expect(service.saveSource).toHaveBeenNthCalledWith(2, eligibleRecording);
-});
+}, 10000);

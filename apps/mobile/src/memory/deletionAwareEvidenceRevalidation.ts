@@ -36,6 +36,9 @@ export function withLocalDeletionAwareRevalidation(
   revalidate: EvidenceRevalidator,
 ): EvidenceRevalidator {
   return async (references, signal) => {
+    // Do not open protected local stores when the caller has already cancelled this run.
+    if (signal.aborted) return false;
+
     const personalRecords = references.filter(
       reference => reference.sourceKind === 'personal_record',
     );
@@ -48,7 +51,9 @@ export function withLocalDeletionAwareRevalidation(
       const { openLocalStorage } =
         require('../storage/secureDatabase') as typeof import('../storage/secureDatabase');
       const repository = await openLocalStorage();
+      if (signal.aborted) return false;
       for (const reference of personalRecords) {
+        if (signal.aborted) return false;
         const ids = [
           reference.sourceId,
           reference.evidenceId,
@@ -61,33 +66,38 @@ export function withLocalDeletionAwareRevalidation(
           normalizedIds.push(parsed.data);
         }
         const uniqueIds = [...new Set(normalizedIds)];
-        if (
-          (await repository.listDeletedSourceReferenceIds(uniqueIds)).length > 0
-        )
-          return false;
+        const deletedIds =
+          await repository.listDeletedSourceReferenceIds(uniqueIds);
+        if (signal.aborted || deletedIds.length > 0) return false;
         const sourceId = uniqueIds[0]!;
         const source = await repository.get('source_record', sourceId);
+        if (signal.aborted) return false;
         // Structured evidence uses its persisted row key when provenance names an external sample.
         if (!source) {
           const recordId = structuredRecordIdentity(reference);
-          if (!recordId || !(await repository.hasStoredRecordId(recordId)))
-            return false;
+          if (!recordId) return false;
+          const recordExists = await repository.hasStoredRecordId(recordId);
+          if (signal.aborted || !recordExists) return false;
           continue;
         }
         const liveReferences = new Set(
           await repository.listSourceDeletionReferences(sourceId),
         );
+        if (signal.aborted) return false;
         if (uniqueIds.some(id => !liveReferences.has(id))) return false;
       }
     }
 
     if (reviewedMemories.length > 0) {
+      if (signal.aborted) return false;
       const { openLocalAgentMemoryDatabase } =
         require('../storage/secureDatabase') as typeof import('../storage/secureDatabase');
       const database = await openLocalAgentMemoryDatabase();
+      if (signal.aborted) return false;
       const removedIds = new Set(
         await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds(),
       );
+      if (signal.aborted) return false;
       const referencedIds = reviewedMemories.flatMap(reference => [
         reference.sourceId,
         reference.evidenceId,
@@ -97,6 +107,7 @@ export function withLocalDeletionAwareRevalidation(
     }
 
     // The caller remains responsible for comparing current source and evidence revisions.
+    if (signal.aborted) return false;
     return revalidate(references, signal);
   };
 }

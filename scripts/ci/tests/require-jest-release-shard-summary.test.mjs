@@ -29,9 +29,10 @@ function runGuard(log, shard) {
 }
 
 test('validates one selected Release shard before publishing its runner-local counts', () => {
+  // The integrated medical-appointment navigation probe brings the data shard to seven cases.
   for (const [shard, tests] of [
     ['release-e2e.test.js', 7],
-    ['release-e2e-data.test.js', 6],
+    ['release-e2e-data.test.js', 7],
   ]) {
     const result = runGuard(
       'Test Suites: 1 passed, 1 total\nTests: ' + tests + ' passed, ' + tests + ' total\n',
@@ -45,11 +46,11 @@ test('validates one selected Release shard before publishing its runner-local co
   }
 
   const wrongCount = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 7 passed, 7 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 6 passed, 6 total\n',
     'release-e2e-data.test.js',
   );
   assert.notEqual(wrongCount.status, 0);
-  assert.match(wrongCount.stderr, /expected 6 test cases, received 7/);
+  assert.match(wrongCount.stderr, /expected 7 test cases, received 6/);
   assert.equal(wrongCount.githubOutput, '');
 
   const invalidShard = runGuard(

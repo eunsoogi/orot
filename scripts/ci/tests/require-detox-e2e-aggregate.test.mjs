@@ -44,11 +44,11 @@ test('accepts actual two-shard Release output and OpenAI Debug with the complete
     '1',
     'success',
     'release',
-    '6',
+    '7',
     '1',
   ]);
   assert.equal(release.status, 0, release.stderr);
-  assert.equal(release.githubOutput, 'e2e_profile=release\ne2e_test_cases=13\ne2e_test_suites=2\n');
+  assert.equal(release.githubOutput, 'e2e_profile=release\ne2e_test_cases=14\ne2e_test_suites=2\n');
   const releaseOutput = Object.fromEntries(
     release.githubOutput
       .trim()
@@ -66,7 +66,7 @@ test('accepts actual two-shard Release output and OpenAI Debug with the complete
     '1',
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /14\/14 tests passed across Release \(13\) and OpenAI Debug \(1\)/);
+  assert.match(result.stdout, /15\/15 tests passed across Release \(14\) and OpenAI Debug \(1\)/);
 });
 
 test('fails closed when either child job failed, was canceled, skipped, or is missing', () => {
@@ -74,7 +74,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedRelease = runAggregate([
       result,
       'release',
-      '13',
+      '14',
       '2',
       'success',
       'openai-provider',
@@ -86,7 +86,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedDebug = runAggregate([
       'success',
       'release',
-      '13',
+      '14',
       '2',
       result,
       'openai-provider',
@@ -101,11 +101,11 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
   }
 });
 
-test('rejects the former three-suite Release output after moving Safe Area into the data shard', () => {
+test('rejects three-suite Release output after moving Safe Area into its required shard', () => {
   const result = runAggregate([
     'success',
     'release',
-    '13',
+    '14',
     '3',
     'success',
     'openai-provider',
@@ -118,17 +118,17 @@ test('rejects the former three-suite Release output after moving Safe Area into 
 
 test('fails closed when a profile, test count, or configured suite count is absent or incorrect', () => {
   for (const values of [
-    ['success', '', '13', '2', 'success', 'openai-provider', '1', '1'],
-    ['success', 'openai-provider', '13', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', '', '14', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'openai-provider', '14', '2', 'success', 'openai-provider', '1', '1'],
     ['success', 'release', '', '2', 'success', 'openai-provider', '1', '1'],
-    // The former inventory must fail after adding the consent-disclosure regression.
-    ['success', 'release', '12', '2', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '14', '2', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '13', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '13', '0', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '13', '3', 'success', 'release', '1', '1'],
-    ['success', 'release', '13', '2', 'success', 'openai-provider', '0', '1'],
-    ['success', 'release', '13', '2', 'success', 'openai-provider', '1', '0'],
+    // The 13-case inventory must fail after adding the App navigation probe.
+    ['success', 'release', '13', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '15', '2', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '14', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '14', '0', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '14', '3', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '14', '2', 'success', 'openai-provider', '0', '1'],
+    ['success', 'release', '14', '2', 'success', 'openai-provider', '1', '0'],
   ]) {
     assert.notEqual(runAggregate(values).status, 0, `accepted ${JSON.stringify(values)}`);
   }
