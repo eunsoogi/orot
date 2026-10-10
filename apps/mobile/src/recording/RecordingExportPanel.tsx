@@ -20,7 +20,8 @@ interface RecordingExportPanelProps {
   exportService?: RecordingExportService;
 }
 
-type ExportError = 'load' | 'missingAudio' | 'emptyTranscript' | 'share';
+type ExportError =
+  'load' | 'missingAudio' | 'emptyTranscript' | 'cleanup' | 'share';
 
 function exportErrorLabel(error: ExportError): string {
   switch (error) {
@@ -30,6 +31,8 @@ function exportErrorLabel(error: ExportError): string {
       return t('recording.export.error.missingAudio');
     case 'emptyTranscript':
       return t('recording.export.error.emptyTranscript');
+    case 'cleanup':
+      return t('recording.export.error.cleanup');
     case 'share':
       return t('recording.export.error.share');
   }
@@ -37,6 +40,8 @@ function exportErrorLabel(error: ExportError): string {
 
 function shareError(error: unknown): ExportError {
   const code = (error as { code?: unknown } | null)?.code;
+  // Cleanup failures keep the native export slot occupied, so both paths need the same recovery guidance.
+  if (code === 'RECORDING_EXPORT_CLEANUP_FAILED') return 'cleanup';
   return code === 'RECORDING_EXPORT_SOURCE_MISSING' ? 'missingAudio' : 'share';
 }
 
@@ -105,7 +110,7 @@ export default function RecordingExportPanel({
       setError(
         reason instanceof EmptyRecordingTranscriptError
           ? 'emptyTranscript'
-          : 'share',
+          : shareError(reason),
       );
     } finally {
       setBusy(false);

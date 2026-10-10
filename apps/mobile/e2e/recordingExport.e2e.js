@@ -5,6 +5,7 @@ const {
 } = require('./transcription/recordingExportDetoxHelpers');
 
 describe('Saved recording audio and transcript export on iOS Simulator', () => {
+  // Give the system share-sheet flow its own four-minute deadline.
   it('preserves the source and removes temporary export files after cancellation', async () => {
     // Use an isolated probe route so native Speech latency cannot consume the export test deadline.
     await device.launchApp({

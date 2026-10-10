@@ -5,6 +5,6 @@ module.exports = {
     '<rootDir>/e2e/recordingExport.e2e.js',
   ],
   testPathIgnorePatterns: [],
-  // Speech and export scenarios own separate test deadlines despite sharing the same Simulator profile.
+  // Preserve the longer native-speech window while export keeps its own shorter limit.
   testTimeout: 600000,
 };

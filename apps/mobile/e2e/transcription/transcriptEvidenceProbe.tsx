@@ -86,7 +86,9 @@ export function TranscriptEvidenceProbe() {
     setStatus('preparing');
     setError('');
     try {
-      setRecordingSourceId(await prepareSyntheticTranscriptRecording());
+      // Cleanup and recording queries use the fixture's stable source ID.
+      const recording = await prepareSyntheticTranscriptRecording();
+      setRecordingSourceId(recording.id);
       setStatus('ready');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));

@@ -26,6 +26,14 @@ public extension RecordingModule {
                 reject("RECORDING_EXPORT_SOURCE_MISSING", "The protected recording file is missing.", nil)
             } catch RecordingExportFailure.busy {
                 reject("RECORDING_EXPORT_BUSY", "Another recording export is still open.", nil)
+            } catch RecordingExportFailure.backupExclusionNotApplied {
+                reject(
+                    "RECORDING_EXPORT_BACKUP_EXCLUSION_NOT_APPLIED",
+                    "The temporary export could not be excluded from backup.",
+                    nil,
+                )
+            } catch RecordingExportFailure.cleanupFailed {
+                reject("RECORDING_EXPORT_CLEANUP_FAILED", "The temporary export could not be removed.", nil)
             } catch {
                 #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
                     // Keep production verification unchanged while exposing only fixed categories to the Simulator probe.
@@ -38,10 +46,11 @@ public extension RecordingModule {
                                 nil,
                             )
                             return
-                        case .backupExclusionNotApplied:
+                        // Permanent recordings stay backup-eligible; only temporary export copies are excluded.
+                        case .backupEligibilityNotApplied:
                             reject(
-                                "RECORDING_EXPORT_BACKUP_EXCLUSION_NOT_APPLIED",
-                                "The source recording backup exclusion could not be verified.",
+                                "RECORDING_EXPORT_BACKUP_ELIGIBILITY_NOT_APPLIED",
+                                "The source recording could not be verified as eligible for backup.",
                                 nil,
                             )
                             return
@@ -78,6 +87,14 @@ public extension RecordingModule {
                 reject("RECORDING_EXPORT_TRANSCRIPT_EMPTY", "There is no transcript text to export.", nil)
             } catch RecordingExportFailure.busy {
                 reject("RECORDING_EXPORT_BUSY", "Another recording export is still open.", nil)
+            } catch RecordingExportFailure.backupExclusionNotApplied {
+                reject(
+                    "RECORDING_EXPORT_BACKUP_EXCLUSION_NOT_APPLIED",
+                    "The temporary export could not be excluded from backup.",
+                    nil,
+                )
+            } catch RecordingExportFailure.cleanupFailed {
+                reject("RECORDING_EXPORT_CLEANUP_FAILED", "The temporary export could not be removed.", nil)
             } catch {
                 reject("RECORDING_EXPORT_FAILED", "The transcript could not be prepared for export.", error as NSError)
             }
@@ -92,7 +109,7 @@ public extension RecordingModule {
     ) {
         DispatchQueue.main.async {
             guard let presenter = Self.activePresenter() else {
-                RecordingExportFiles.finish(operation.directory)
+                guard self.finishExport(operation, reject: reject) else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
                 return
             }
@@ -102,7 +119,7 @@ public extension RecordingModule {
             )
             // UIKit distinguishes a user cancel from an activity failure; always remove the temporary copy after dismissal.
             let completeExport: (Bool, Error?) -> Void = { completed, error in
-                RecordingExportFiles.finish(operation.directory)
+                guard self.finishExport(operation, reject: reject) else { return }
                 if let error {
                     reject("RECORDING_EXPORT_FAILED", "The selected export activity failed.", error as NSError)
                     return
@@ -124,7 +141,7 @@ public extension RecordingModule {
             }
             presenter.present(activity, animated: true) {
                 guard activity.presentingViewController === presenter else {
-                    RecordingExportFiles.finish(operation.directory)
+                    guard self.finishExport(operation, reject: reject) else { return }
                     reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
                     return
                 }
@@ -138,6 +155,20 @@ public extension RecordingModule {
                     }
                 }
             }
+        }
+    }
+
+    /// Reports cleanup failure before resolving the share result, since a leftover copy may contain private recording data.
+    private func finishExport(
+        _ operation: RecordingExportOperation,
+        reject: @escaping RCTPromiseRejectBlock,
+    ) -> Bool {
+        do {
+            try RecordingExportFiles.finish(operation.directory)
+            return true
+        } catch {
+            reject("RECORDING_EXPORT_CLEANUP_FAILED", "The temporary export could not be removed.", nil)
+            return false
         }
     }
 

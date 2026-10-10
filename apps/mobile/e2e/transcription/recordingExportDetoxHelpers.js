@@ -1,5 +1,3 @@
-/* global by, element, waitFor */
-
 const { expect: jestExpect } = require('@jest/globals');
 const {
   accessibilityText,
@@ -8,8 +6,13 @@ const {
   scrollToTranscriptControl,
 } = require('./transcriptEvidenceDetoxHelpers');
 
+// Detox handles are injected by the active spec so cleanup uses its running test session.
 // These checks exercise only the registered synthetic fixture and Simulator share-sheet cleanup.
-async function verifyRecordingExportAuthorizationProbe({ by, element, waitFor }) {
+async function verifyRecordingExportAuthorizationProbe({
+  by,
+  element,
+  waitFor,
+}) {
   const reportElement = element(by.id('recording-export-authorization-probe'));
   await waitFor(reportElement).not.toHaveText('pending').withTimeout(30000);
   const report = JSON.parse(
@@ -31,7 +34,15 @@ async function verifyRecordingExportAuthorizationProbe({ by, element, waitFor })
 async function verifyRecordingExportLifecycle(detoxApi) {
   const { by, device, element, waitFor } = detoxApi;
   // Transcript cancellation keeps its Simulator hook; audio cancellation uses a user swipe below.
+  // RecordingControls mounts only after the synthetic recording and transcript fixture is ready.
+  const prepareFixture = element(by.id('transcript-evidence-open'));
+  await waitFor(prepareFixture).toBeVisible().withTimeout(30000);
+  await prepareFixture.tap();
+  await waitFor(element(by.id('transcript-evidence-setup-status')))
+    .toHaveText('ready')
+    .withTimeout(30000);
   const transcriptExport = element(by.id('recording-export-transcript'));
+  await waitFor(transcriptExport).toExist().withTimeout(30000);
   await scrollToTranscriptControl(transcriptExport);
   await waitFor(element(by.id('recording-export-arm-simulated-cancel')))
     .toBeVisible()
@@ -75,10 +86,16 @@ async function verifyRecordingExportLifecycle(detoxApi) {
   await scrollToTranscriptControl(audioExport);
   await audioExport.tap();
   try {
-    // Keep a real post-tap frame for inspection; Detox's system matchers do not expose app share sheets.
+    // Save visual and XCTest hierarchy evidence because Detox system selectors do not expose app share sheets.
     console.log(
       'RECORDING_EXPORT_AUDIO_SHARE_FRAME ' +
         (await device.takeScreenshot('recording-export-audio-share-sheet')),
+    );
+    console.log(
+      'RECORDING_EXPORT_AUDIO_SHARE_HIERARCHY ' +
+        (await device.captureViewHierarchy(
+          'recording-export-audio-share-sheet',
+        )),
     );
     // The native completion status below proves UIKit reported dismissal after this user-like gesture.
     await element(by.id('recording-controls-scroll')).swipe(
@@ -139,13 +156,9 @@ async function captureRecordingExportFailure(detoxApi) {
   if (lifecycleFailure) {
     // A failed completion assertion may leave UIKit's sheet open over the app cleanup control.
     try {
-      await detoxApi.element(detoxApi.by.id('recording-controls-scroll')).swipe(
-        'down',
-        'slow',
-        0.7,
-        0.5,
-        0.5,
-      );
+      await detoxApi
+        .element(detoxApi.by.id('recording-controls-scroll'))
+        .swipe('down', 'slow', 0.7, 0.5, 0.5);
     } catch {
       // Cleanup below remains the authoritative check if no swipe target is available.
     }

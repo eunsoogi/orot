@@ -30,6 +30,7 @@
 		A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */; };
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
+		A64F0000000000000000000D /* RecordingPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000D /* RecordingPlayback.swift */; };
 		A64F00000000000000000008 /* RecordingExportShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000008 /* RecordingExportShare.swift */; };
 		A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000009 /* RecordingExportFiles.swift */; };
 		A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift */; };
@@ -100,6 +101,7 @@
 		B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureLifecycle.swift; path = OrotMobile/RecordingCaptureLifecycle.swift; sourceTree = "<group>"; };
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000D /* RecordingPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlayback.swift; path = OrotMobile/RecordingPlayback.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
 		B64F00000000000000000008 /* RecordingExportShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportShare.swift; path = OrotMobile/RecordingExportShare.swift; sourceTree = "<group>"; };
 		B64F00000000000000000009 /* RecordingExportFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingExportFiles.swift; path = OrotMobile/RecordingExportFiles.swift; sourceTree = "<group>"; };
@@ -187,6 +189,7 @@
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
+				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
@@ -457,6 +460,7 @@
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
+				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
 				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,

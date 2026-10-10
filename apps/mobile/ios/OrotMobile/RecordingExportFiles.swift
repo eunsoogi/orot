@@ -8,6 +8,8 @@ struct RecordingExportOperation {
 enum RecordingExportFailure: Error {
     case busy
     case emptyTranscript
+    case backupExclusionNotApplied
+    case cleanupFailed
 }
 
 enum RecordingExportFiles {
@@ -61,6 +63,14 @@ enum RecordingExportFiles {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try mutableURL.setResourceValues(values)
+        try verifyBackupExclusion(url)
+    }
+
+    private static func verifyBackupExclusion(_ url: URL) throws {
+        let values = try url.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        guard values.isExcludedFromBackup == true else {
+            throw RecordingExportFailure.backupExclusionNotApplied
+        }
     }
 
     /// Only the registered dedicated Simulator fixture may use the unverified-metadata probe path.
@@ -82,7 +92,7 @@ enum RecordingExportFiles {
             try protectTemporaryFile(file)
             return RecordingExportOperation(directory: directory, file: file)
         } catch {
-            finish(directory)
+            try finish(directory)
             throw error
         }
     }
@@ -102,21 +112,58 @@ enum RecordingExportFiles {
             try protectTemporaryFile(file)
             return RecordingExportOperation(directory: directory, file: file)
         } catch {
-            finish(directory)
+            try finish(directory)
             throw error
         }
     }
 
-    static func finish(_ directory: URL) {
+    /// Removes the temporary copy before releasing its slot, so failed cleanup stays retryable.
+    static func finish(_ directory: URL) throws {
+        do {
+            try FileManager.default.removeItem(at: directory)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // A missing export directory already satisfies the cleanup postcondition.
+        } catch {
+            throw RecordingExportFailure.cleanupFailed
+        }
+
         lock.lock()
         if activeDirectory == directory {
             activeDirectory = nil
         }
         lock.unlock()
-        try? FileManager.default.removeItem(at: directory)
     }
 
     #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+        /// Checks the temporary export boundary; permanent recordings have a different backup policy.
+        static func temporaryBackupExclusionIsMandatory() -> Bool {
+            let directory = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true,
+                )
+                defer { try? FileManager.default.removeItem(at: directory) }
+                let file = directory.appendingPathComponent("probe.txt")
+                try Data("synthetic export backup probe".utf8).write(to: file, options: [.atomic])
+                try protectTemporaryFile(file)
+
+                // A temporary export must reject becoming backup-eligible even though the source recording remains eligible.
+                var mutableFile = file
+                var values = URLResourceValues()
+                values.isExcludedFromBackup = false
+                try mutableFile.setResourceValues(values)
+                do {
+                    try verifyBackupExclusion(file)
+                    return false
+                } catch RecordingExportFailure.backupExclusionNotApplied {
+                    return true
+                }
+            } catch {
+                return false
+            }
+        }
+
         static func prepareSyntheticResidue() throws {
             lock.lock()
             defer { lock.unlock() }

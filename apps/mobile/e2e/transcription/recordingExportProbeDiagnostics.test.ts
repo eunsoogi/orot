@@ -36,6 +36,7 @@ test('reports only the safe stage and rejection code while preserving the error'
 test.each([
   'RECORDING_EXPORT_PROTECTION_NOT_APPLIED',
   'RECORDING_EXPORT_BACKUP_EXCLUSION_NOT_APPLIED',
+  'RECORDING_EXPORT_BACKUP_ELIGIBILITY_NOT_APPLIED',
 ])('reports the known Simulator file-security category %s', code => {
   expect(formatAudioExportProbeDiagnostic({ code })).toBe(
     `stage=audio-share-promise code=${code}`,

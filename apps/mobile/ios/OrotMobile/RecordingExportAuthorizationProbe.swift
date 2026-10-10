@@ -17,13 +17,14 @@
                 registeredFixtureAllowed = false
             }
 
+            // A missing source or failed security readback is the expected fail-closed outcome.
             let missingIDRejected: Bool
             do {
                 _ = try simulatorProbeAudioExportSourceURL(id: UUID().uuidString.lowercased())
                 missingIDRejected = false
             } catch RecordingFileSecurityError.recordingNotFound,
                 RecordingFileSecurityError.protectionNotApplied,
-                RecordingFileSecurityError.backupExclusionNotApplied
+                RecordingFileSecurityError.backupEligibilityNotApplied
             {
                 missingIDRejected = true
             } catch {
@@ -73,12 +74,13 @@
             }
         }
 
+        /// A protection or backup-eligibility failure proves an unregistered fixture stayed on the strict path.
         private static func strictFallbackIsEnforced(for id: String) -> Bool {
             let probeURL: URL
             do {
                 probeURL = try simulatorProbeAudioExportSourceURL(id: id)
             } catch RecordingFileSecurityError.protectionNotApplied,
-                RecordingFileSecurityError.backupExclusionNotApplied
+                RecordingFileSecurityError.backupEligibilityNotApplied
             {
                 return true
             } catch {
@@ -95,29 +97,8 @@
         }
 
         private static func backupExclusionIsMandatory() -> Bool {
-            let id = UUID().uuidString.lowercased()
-            guard let url = try? fileURL(
-                id: id,
-                extension: "m4a",
-                allowUnverifiedProtectionForSimulator: true,
-            ) else {
-                return false
-            }
-            defer { try? FileManager.default.removeItem(at: url) }
-
-            do {
-                try Data("synthetic backup guard probe".utf8).write(to: url, options: [.atomic])
-                var mutableURL = url
-                var values = URLResourceValues()
-                values.isExcludedFromBackup = false
-                try mutableURL.setResourceValues(values)
-                _ = try existingFileURL(id: id, allowUnverifiedProtectionForSimulator: true)
-                return false
-            } catch RecordingFileSecurityError.backupExclusionNotApplied {
-                return true
-            } catch {
-                return false
-            }
+            // Permanent recordings must be backup-eligible; only their temporary export copies are excluded.
+            RecordingExportFiles.temporaryBackupExclusionIsMandatory()
         }
     }
 

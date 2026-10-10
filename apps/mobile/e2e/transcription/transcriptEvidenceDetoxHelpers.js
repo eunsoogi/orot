@@ -1,4 +1,4 @@
-/* global by, waitFor */
+/* global by, element, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
 const EXPLICIT_AVAILABILITY_STATES = [
