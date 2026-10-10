@@ -129,6 +129,20 @@ export function nativeError(error: unknown): ProviderError {
       retryable: false,
     };
   }
+  if (code === 'TRANSCRIPTION_CANCELLED') {
+    return {
+      code: 'provider_unavailable',
+      message: 'TRANSCRIPTION_CANCELLED: ' + detail,
+      retryable: false,
+    };
+  }
+  if (code === 'TRANSCRIPTION_TIMEOUT') {
+    return {
+      code: 'provider_unavailable',
+      message: 'TRANSCRIPTION_TIMEOUT: ' + detail,
+      retryable: true,
+    };
+  }
   if (code === 'INVALID_AUDIO') {
     return {
       code: 'invalid_request',

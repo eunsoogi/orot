@@ -41,14 +41,14 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
         recordingDurationMs: transcript.recordingDurationMs,
       },
     });
-    expect(native.availabilityCalls).toEqual(['ko-KR']);
-    expect(native.requests).toEqual([
-      {
-        audioBase64: 'TWFu',
-        mediaType: 'audio/mp4',
-        language: 'ko-KR',
-      },
-    ]);
+    expect(native.availabilityCalls).toEqual([]);
+    expect(native.requests).toHaveLength(1);
+    expect(native.requests[0]).toMatchObject({
+      requestId: expect.any(String),
+      audioBase64: 'TWFu',
+      mediaType: 'audio/mp4',
+      language: 'ko-KR',
+    });
   });
 
   it('normalizes Korean regional tags to the tested Korean locale', async () => {
@@ -57,7 +57,7 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
 
     await provider.transcribe(transcriptionRequest({ language: 'KO-kr' }));
 
-    expect(native.availabilityCalls).toEqual(['ko-KR']);
+    expect(native.availabilityCalls).toEqual([]);
     expect(native.requests[0].language).toBe('ko-KR');
   });
 
@@ -71,10 +71,13 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
         language: 'ko',
       }),
     ).resolves.toMatchObject({ ok: true, value: transcript });
-    expect(native.availabilityCalls).toEqual(['ko-KR']);
-    expect(native.recordingRequests).toEqual([
-      { recordingId: 'recording-1', language: 'ko-KR' },
-    ]);
+    expect(native.availabilityCalls).toEqual([]);
+    expect(native.recordingRequests).toHaveLength(1);
+    expect(native.recordingRequests[0]).toMatchObject({
+      requestId: expect.any(String),
+      recordingId: 'recording-1',
+      language: 'ko-KR',
+    });
     expect(native.requests).toHaveLength(0);
   });
 
@@ -141,7 +144,7 @@ describe('AppleOnDeviceSpeechProvider availability and contract', () => {
         ok: false,
         error: { code, message: expect.stringContaining(message), retryable },
       });
-      expect(native.requests).toHaveLength(0);
+      expect(native.requests).toHaveLength(1);
     },
   );
 

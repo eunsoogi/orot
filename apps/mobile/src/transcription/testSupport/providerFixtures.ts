@@ -1,5 +1,6 @@
 import type { TranscriptionRequest } from '@orot/model-runtime';
 import {
+  type NativeRecordingTranscriptionRequest,
   type NativeSpeechTranscriptionBridge,
   type NativeSpeechTranscriptionRequest,
   type NativeSpeechTranscriptionResponse,
@@ -27,11 +28,8 @@ export class FakeNativeSpeechBridge implements NativeSpeechTranscriptionBridge {
   error?: Error & { code?: string };
   availabilityCalls: string[] = [];
   requests: NativeSpeechTranscriptionRequest[] = [];
-  recordingRequests: Array<{
-    recordingId: string;
-    language: string;
-    syntheticFixture?: boolean;
-  }> = [];
+  cancelledRequests: string[] = [];
+  recordingRequests: NativeRecordingTranscriptionRequest[] = [];
 
   async getAvailability(language: string): Promise<SpeechAvailability> {
     this.availabilityCalls.push(language);
@@ -48,17 +46,38 @@ export class FakeNativeSpeechBridge implements NativeSpeechTranscriptionBridge {
   ): Promise<NativeSpeechTranscriptionResponse> {
     this.requests.push(nativeRequest);
     if (this.error) throw this.error;
+    const statusErrorCodes: Partial<Record<SpeechAvailabilityStatus, string>> =
+      {
+        unsupported_language: 'UNSUPPORTED_LANGUAGE',
+        unsupported_device: 'UNSUPPORTED_DEVICE',
+        model_unavailable: 'MODEL_UNAVAILABLE',
+        permission_denied: 'PERMISSION_DENIED',
+        permission_restricted: 'PERMISSION_RESTRICTED',
+        recognizer_unavailable: 'RECOGNIZER_UNAVAILABLE',
+      };
+    const code = statusErrorCodes[this.status];
+    if (code) {
+      const failure = new Error(
+        `The native speech engine reported ${this.status}.`,
+      ) as Error & {
+        code: string;
+      };
+      failure.code = code;
+      throw failure;
+    }
     return this.response;
   }
 
-  async transcribeRecording(request: {
-    recordingId: string;
-    language: string;
-    syntheticFixture?: boolean;
-  }): Promise<NativeSpeechTranscriptionResponse> {
+  async transcribeRecording(
+    request: NativeRecordingTranscriptionRequest,
+  ): Promise<NativeSpeechTranscriptionResponse> {
     this.recordingRequests.push(request);
     if (this.error) throw this.error;
     return this.response;
+  }
+
+  cancelTranscription(requestId: string): void {
+    this.cancelledRequests.push(requestId);
   }
 }
 
