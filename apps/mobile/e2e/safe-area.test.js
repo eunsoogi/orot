@@ -2,6 +2,7 @@
 
 // Detox reserves global expect() for UI elements, so frame numbers use Jest's matcher.
 const { expect: jestExpect } = require('@jest/globals');
+const { expectKeyboardOccludesScroll } = require('./safeAreaHelpers');
 
 // The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
@@ -199,5 +200,43 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('blood-pressure-status')))
       .toHaveText('새로운 혈압 기록 변경이 없어요.')
       .withTimeout(30000);
+  });
+
+  it('keeps a primary action reachable with large text and the keyboard open', async () => {
+    await device.launchApp({
+      newInstance: true,
+      launchArgs: {
+        OROT_E2E_PROBE: 'safe-area',
+        UIPreferredContentSizeCategoryName:
+          'UICTContentSizeCategoryAccessibilityXXXL',
+      },
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+    });
+
+    await waitFor(element(by.id('safe-area-large-text-state')))
+      .toHaveLabel('큰 글자 사용 중')
+      .withTimeout(30000);
+    await expectScrollInsideRootFrame('safe-area-scroll', 'safe-area-root');
+
+    const input = element(by.id('safe-area-keyboard-input'));
+    await input.tap();
+    await expect(input).toBeFocused();
+    await waitFor(element(by.id('safe-area-keyboard-visible')))
+      .toExist()
+      .withTimeout(30000);
+
+    const scrollFrame = await frameFor('safe-area-scroll');
+    await expectKeyboardOccludesScroll(scrollFrame);
+
+    const keyboardAction = element(by.id('safe-area-keyboard-action'));
+    await expect(keyboardAction).not.toBeVisible();
+    await element(by.id('safe-area-scroll')).scrollTo('bottom');
+    await expect(keyboardAction).toBeVisible();
+    await expectKeyboardOccludesScroll(scrollFrame);
+    await keyboardAction.tap();
+    await expect(
+      element(by.id('safe-area-keyboard-action-done')),
+    ).toBeVisible();
+    await expectKeyboardOccludesScroll(scrollFrame);
   });
 });

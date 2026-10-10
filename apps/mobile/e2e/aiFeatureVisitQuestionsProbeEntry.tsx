@@ -6,6 +6,7 @@ import { InMemoryFakeLanguageModelProvider } from '@orot/model-runtime';
 import App from '../App';
 import { name as appName } from '../app.json';
 import { NextVisitQuestionsRoute } from '../src/aiFeatures/integration/NextVisitQuestionsRoute';
+import { resolveSelectedAiProvider } from '../src/aiFeatures/integration/provider';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { VisitQuestionRouteOperations } from '../src/aiFeatures/integration/visitQuestionsRouteOperations';
@@ -16,7 +17,7 @@ import type {
 } from '../src/providers/selection/types';
 import type { NextVisitQuestion } from '../src/nextVisitQuestions/types';
 
-// This entry keeps the normal App and NavigationRouteAdapter path while using only synthetic visit data.
+// Keep production App navigation while limiting synthetic provider and route data to visit questions.
 const syntheticProvider = new InMemoryFakeLanguageModelProvider({
   id: 'synthetic-ai-feature-e2e',
   displayName: '합성 UI 검사 제공자',
@@ -43,6 +44,9 @@ const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
     loadAppleOption: async () => syntheticOption,
   },
 };
+// Keep this callback stable so route-state rerenders do not abort generation as a provider change.
+const resolveSyntheticSelectedAi: VisitQuestionsRenderInput['resolveSelectedAi'] =
+  () => resolveSelectedAiProvider(aiFeatureServiceDependencies.selectedAi);
 
 const syntheticAppointment: Appointment = {
   id: 'synthetic-appointment-ai-feature-e2e',
@@ -107,6 +111,7 @@ function renderVisitQuestions(input: VisitQuestionsRenderInput) {
   return (
     <NextVisitQuestionsRoute
       {...input}
+      resolveSelectedAi={resolveSyntheticSelectedAi}
       loadSavedVisitQuestions={async appointmentId => ({
         status: 'ready',
         appointmentId,
@@ -148,10 +153,7 @@ function AiFeatureVisitQuestionsProbeEntry() {
 
   return (
     <View style={styles.container}>
-      <App
-        aiFeatureServiceDependencies={aiFeatureServiceDependencies}
-        renderVisitQuestions={renderVisitQuestions}
-      />
+      <App renderVisitQuestions={renderVisitQuestions} />
       <View pointerEvents="none" style={styles.keyboardMarker}>
         <Text
           accessible

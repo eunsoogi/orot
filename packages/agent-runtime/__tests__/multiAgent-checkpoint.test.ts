@@ -120,6 +120,53 @@ describe('multi-agent checkpoint boundaries', () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['modelCalls', -1],
+    ['toolCalls', -1],
+    ['researchCycles', -1],
+    ['modelCalls', 0.5],
+  ] as const)(
+    'rejects malformed resume counter %s=%s before provider dispatch',
+    async (field, value) => {
+      const generate = jest.fn(async () =>
+        providerSuccess({ text: '{}', toolCalls: [], finishReason: 'complete' }),
+      );
+      const provider: LanguageModelProvider = {
+        kind: 'language-model',
+        id: 'selected-model',
+        displayName: 'Selected model',
+        capabilities: {
+          inputTypes: ['text'],
+          streaming: false,
+          structuredOutput: false,
+          toolCalling: false,
+        },
+        generate,
+      };
+      const options = checkpointOptions(provider);
+      const resumeFrom: MultiAgentCheckpointState = {
+        operationRunId: options.execution.operationRunId,
+        providerId: options.execution.providerId,
+        modelId: options.execution.modelId,
+        allowedScope: options.execution.allowedScope,
+        budget: options.execution.budget,
+        phase: 'task_response',
+        modelCalls: 0,
+        toolCalls: 0,
+        researchCycles: 0,
+        evidenceReferences: [],
+        pendingOperation: undefined,
+        terminal: false,
+      };
+      resumeFrom[field] = value;
+
+      const result = await runMultiAgentWorkflow(options, { resumeFrom });
+
+      expect(generate).not.toHaveBeenCalled();
+      expect(result.status).toBe('stale_evidence');
+    },
+  );
+
   it('waits for the pending-operation checkpoint and rejects replay after its write fails', async () => {
     const events: string[] = [];
     const generate = jest.fn(async () => {
