@@ -97,6 +97,8 @@ async function fillAppointment(clinic, date, time, note) {
 }
 
 describe('manual appointments', () => {
+  // A fresh CI simulator pays for one cold launch and two restarts; the full flow took about 151 seconds.
+  // Keep a 180-second budget local to this persistence scenario instead of widening the whole suite.
   it('creates, edits, and cancels an appointment that survives process restarts', async () => {
     await device.launchApp({
       // The runner installs a fresh app before this scenario; the explicit terminations below cover actual restarts.
@@ -160,5 +162,5 @@ describe('manual appointments', () => {
     await expectTextVisible('취소됨');
     await tapAppointmentsBack();
     await expectVisible('welcome-title');
-  });
+  }, 180_000);
 });
