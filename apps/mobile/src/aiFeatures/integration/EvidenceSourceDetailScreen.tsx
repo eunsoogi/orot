@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { t } from '../../i18n';
+import { AppButton } from '../../layout/AppButton';
+import { AppText as Text } from '../../layout/AppText';
+import { appColors } from '../../layout/appColors';
+import { navigationText } from '../../i18n/navigation';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { presentEvidenceSource } from './evidenceSourcePresentation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
@@ -70,11 +74,15 @@ export function EvidenceSourceDetailScreen({
       contentContainerStyle={styles.container}
       testID="ai-feature-source-detail"
     >
-      <Button
-        onPress={onBack}
-        testID="ai-feature-source-back"
-        title={t('aiFeatures.back')}
-      />
+      {/* Integrated routes use the shared bottom menu; standalone probes retain local Back. */}
+      {navigationRouteKey ? null : (
+        <AppButton
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          testID="ai-feature-source-back"
+          title={navigationText.back.label}
+        />
+      )}
       <Text accessibilityRole="header" style={styles.heading}>
         {t('aiFeatures.source.title')}
       </Text>
@@ -84,12 +92,20 @@ export function EvidenceSourceDetailScreen({
         </Text>
       ) : null}
       {state.status === 'missing' ? (
-        <Text accessibilityRole="alert" testID="ai-feature-source-missing">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="ai-feature-source-missing"
+        >
           {t('aiFeatures.source.missing')}
         </Text>
       ) : null}
       {state.status === 'changed' ? (
-        <Text accessibilityRole="alert" testID="ai-feature-source-changed">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="ai-feature-source-changed"
+        >
           {t('aiFeatures.source.changed')}
         </Text>
       ) : null}
@@ -97,11 +113,12 @@ export function EvidenceSourceDetailScreen({
         <View>
           <Text
             accessibilityRole="alert"
+            style={styles.error}
             testID="ai-feature-source-unavailable"
           >
             {t('aiFeatures.source.unavailable')}
           </Text>
-          <Button
+          <AppButton
             onPress={() => setAttempt(value => value + 1)}
             testID="ai-feature-source-retry"
             title={t('appointments.retry')}
@@ -131,14 +148,16 @@ const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   heading: { fontSize: 22, fontWeight: '700' },
   section: {
-    borderColor: '#C9D4D1',
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,
     gap: 10,
     padding: 16,
   },
   title: { fontSize: 17, fontWeight: '700' },
+  error: { color: appColors.danger },
   row: { gap: 2 },
-  label: { color: '#45524F', fontSize: 13, fontWeight: '600' },
-  value: { color: '#17212B', fontSize: 15, lineHeight: 21 },
+  label: { color: appColors.secondary, fontSize: 13, fontWeight: '600' },
+  value: { color: appColors.text, fontSize: 15, lineHeight: 21 },
 });

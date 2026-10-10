@@ -1,4 +1,6 @@
-import { Button, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
 import { formatDateTime, t, type TranslationKey } from '../i18n';
 import styles from './appointmentsStyles';

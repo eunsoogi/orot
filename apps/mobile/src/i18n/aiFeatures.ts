@@ -1,7 +1,6 @@
 /** Korean catalog entries for app-owned AI feature cards and shared navigation. */
 export const aiFeaturesKo = {
   'aiFeatures.heading': '건강 기록으로 할 수 있는 일',
-  'aiFeatures.back': '뒤로',
   'aiFeatures.open': 'AI 건강 기능 살펴보기',
   'aiFeatures.visitQuestions.title': '다음 진료 질문',
   'aiFeatures.visitQuestions.description':

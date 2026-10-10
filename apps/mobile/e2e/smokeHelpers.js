@@ -1,0 +1,86 @@
+/* global by, device, element, expect, waitFor */
+
+/** Holds shared Detox navigation helpers outside the line-limited smoke spec. */
+async function openFeatureAndReturn(
+  entryId,
+  screenId,
+  exerciseFeature,
+  confirmUnsaved = false,
+) {
+  // Home keeps the feature cards in its shared scroll view rather than a nested list.
+  await element(by.id('navigation-route-scroll')).scroll(240, 'down', 0.5, 0.7);
+  await element(by.id(entryId)).tap();
+  await waitFor(element(by.id(screenId)))
+    .toBeVisible()
+    .withTimeout(30000);
+  if (exerciseFeature) await exerciseFeature();
+  // The shared route shell renders navigation outside the screen-specific subtree.
+  await expect(element(by.id('navigation-back'))).toHaveLabel(
+    '이전 화면으로 돌아가기',
+  );
+  await tapNativeNavigationAction('navigation-back');
+  if (confirmUnsaved) await confirmUnsavedLeave();
+  await waitFor(element(by.id('welcome-title')))
+    .toBeVisible()
+    .withTimeout(30000);
+}
+
+async function confirmUnsavedLeave() {
+  await waitFor(element(by.text('내용 버리고 나가기')))
+    .toBeVisible()
+    .withTimeout(5000);
+  await element(by.text('내용 버리고 나가기')).tap();
+}
+
+async function tapNativeNavigationAction(testID) {
+  const action = element(by.id(testID));
+  const toolbar = element(by.id('navigation-native-toolbar'));
+  const attributes = await action.getAttributes();
+  const toolbarAttributes = await toolbar.getAttributes();
+  const hierarchyXml = await device.generateViewHierarchyXml(true);
+  const { frame } = attributes;
+  const toolbarFrame = toolbarAttributes.frame;
+  const actionNode = hierarchyXml
+    .split('\n')
+    .find(line => line.includes(`id="${testID}"`));
+  const actionVisibleInHierarchy = actionNode?.includes('visibility="visible"');
+
+  // iOS 27 reports visible native toolbar children as hidden in XCUI attributes; verify the UIKit node and parent instead.
+  if (
+    !actionVisibleInHierarchy ||
+    !toolbarAttributes.visible ||
+    !toolbarAttributes.hittable ||
+    !frame ||
+    frame.width < 44 ||
+    frame.height < 44 ||
+    !toolbarFrame
+  ) {
+    throw new Error(
+      `Native navigation action ${testID} must be visible in UIKit, inside a visible and hittable toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
+    );
+  }
+
+  // Tap the measured button center through the toolbar because XCUI misreports the child's activation point.
+  await toolbar.tap({
+    x: frame.x + frame.width / 2 - toolbarFrame.x,
+    y: frame.y + frame.height / 2 - toolbarFrame.y,
+  });
+}
+
+async function scrollHomeActionIntoView(testID) {
+  const scrollID = 'navigation-route-scroll';
+  const target = element(by.id(testID));
+  await element(by.id(scrollID)).scrollTo('top');
+  // Home action positions vary with content size, so scroll only until the requested row appears.
+  await waitFor(target)
+    .toBeVisible()
+    .whileElement(by.id(scrollID))
+    .scroll(100, 'down', 0.5, 0.35);
+}
+
+module.exports = {
+  confirmUnsavedLeave,
+  openFeatureAndReturn,
+  scrollHomeActionIntoView,
+  tapNativeNavigationAction,
+};

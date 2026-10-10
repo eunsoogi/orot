@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import {
   Keyboard,
@@ -11,31 +11,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { navigationText } from '../i18n/navigation';
-import { NavigationGlassSurface } from './NavigationGlassSurface';
+import {
+  NavigationGlassSurface,
+  type NavigationGlassSurfaceProps,
+} from './NavigationGlassSurface';
 import type { NavigationController } from './navigationController';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
+import {
+  createNativeNavigationBindings,
+  settleNavigationRequest,
+} from './nativeNavigationActions';
+import { appColors } from '../layout/appColors';
+import { NAVIGATION_ACTION_VERTICAL_PADDING } from './navigationLayout';
 
-export interface NavigationSurfaceProps {
-  readonly children: ReactNode;
-  readonly testID: string;
-}
-
+export type NavigationSurfaceProps = NavigationGlassSurfaceProps;
 export type NavigationSurface = ComponentType<NavigationSurfaceProps>;
 
-function settleNavigationRequest(request: Promise<boolean>) {
-  request.then(
-    () => undefined,
-    () => undefined,
-  );
+export interface NavigationPrimaryAction {
+  readonly label: string;
+  readonly accessibilityLabel: string;
+  readonly onPress: () => void | Promise<unknown>;
+  readonly testID: string;
+  readonly disabled?: boolean;
 }
 
 export interface NavigationActionBarProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveDisabled?: boolean;
   readonly showHome?: boolean;
+  readonly primaryAction?: NavigationPrimaryAction;
   readonly safeAreaHandledByParent?: boolean;
   readonly keyboardVisible?: boolean;
-  // A native glass surface can be supplied after its platform bridge is registered.
+  // Tests can inject a fallback surface to exercise the non-native controls.
   readonly surface?: NavigationSurface;
 }
 
@@ -43,6 +50,7 @@ export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
   showHome = false,
+  primaryAction,
   safeAreaHandledByParent = false,
   keyboardVisible,
   surface: Surface = NavigationGlassSurface,
@@ -67,55 +75,58 @@ export function NavigationActionBar<Name extends string>({
 
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
   const canGoHome = showHome && snapshot.routes.length > 1;
-  if (!snapshot.canGoBack && !canGoHome) return null;
+  if (!snapshot.canGoBack && !canGoHome && !primaryAction) return null;
+
+  const nativeBindings = createNativeNavigationBindings({
+    controller,
+    snapshot,
+    backDisabled,
+    canGoHome,
+    primaryAction,
+  });
 
   const actions = (
     <View style={styles.actions} testID="bottom-navigation-action-bar">
       {snapshot.canGoBack ? (
-        <Pressable
+        <NavigationActionButton
           accessibilityLabel={navigationText.back.accessibilityLabel}
-          accessibilityRole="button"
           disabled={backDisabled}
-          onPress={() => {
-            settleNavigationRequest(controller.requestBack());
-          }}
-          style={[
-            styles.action,
-            isDarkAppearance && styles.darkAction,
-            backDisabled && styles.disabled,
-          ]}
+          isDarkAppearance={isDarkAppearance}
+          label={navigationText.back.label}
+          onPress={() => settleNavigationRequest(controller.requestBack())}
           testID="navigation-back"
-        >
-          <Text style={[styles.label, isDarkAppearance && styles.darkLabel]}>
-            {navigationText.back.label}
-          </Text>
-        </Pressable>
+        />
       ) : null}
       {canGoHome ? (
-        <Pressable
+        <NavigationActionButton
           accessibilityLabel={navigationText.home.accessibilityLabel}
-          accessibilityRole="button"
           disabled={backDisabled}
-          onPress={() => {
-            settleNavigationRequest(controller.requestHome());
-          }}
-          style={[
-            styles.action,
-            isDarkAppearance && styles.darkAction,
-            backDisabled && styles.disabled,
-          ]}
+          isDarkAppearance={isDarkAppearance}
+          label={navigationText.home.label}
+          onPress={() => settleNavigationRequest(controller.requestHome())}
           testID="navigation-home"
-        >
-          <Text style={[styles.label, isDarkAppearance && styles.darkLabel]}>
-            {navigationText.home.label}
-          </Text>
-        </Pressable>
+        />
+      ) : null}
+      {primaryAction ? (
+        <NavigationActionButton
+          accessibilityLabel={primaryAction.accessibilityLabel}
+          disabled={backDisabled || primaryAction.disabled === true}
+          isDarkAppearance={isDarkAppearance}
+          label={primaryAction.label}
+          onPress={() =>
+            settleNavigationRequest(Promise.resolve(primaryAction.onPress()))
+          }
+          primary
+          testID={primaryAction.testID}
+        />
       ) : null}
     </View>
   );
 
   const surface = (
     <Surface
+      actions={nativeBindings.actions}
+      onAction={nativeBindings.onAction}
       testID={
         Surface === NavigationGlassSurface && Platform.OS === 'ios'
           ? 'navigation-bar-native-surface'
@@ -126,12 +137,15 @@ export function NavigationActionBar<Name extends string>({
     </Surface>
   );
 
-  // Keep the bar in normal layout flow beside the screen scroller, never over its last row.
+  // Keep the inset here so the overlay reserves the system home area exactly once.
   return safeAreaHandledByParent ? (
-    <View style={styles.safeArea}>{surface}</View>
+    <View pointerEvents="box-none" style={styles.safeArea}>
+      {surface}
+    </View>
   ) : (
     <SafeAreaView
       edges={isKeyboardVisible ? [] : ['bottom']}
+      pointerEvents="box-none"
       style={styles.safeArea}
       testID="navigation-action-bar-safe-area"
     >
@@ -140,29 +154,86 @@ export function NavigationActionBar<Name extends string>({
   );
 }
 
+function NavigationActionButton({
+  accessibilityLabel,
+  disabled,
+  isDarkAppearance,
+  label,
+  onPress,
+  primary = false,
+  testID,
+}: {
+  readonly accessibilityLabel: string;
+  readonly disabled: boolean;
+  readonly isDarkAppearance: boolean;
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly primary?: boolean;
+  readonly testID: string;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.action,
+        isDarkAppearance && !primary && styles.darkAction,
+        primary && styles.primaryAction,
+        disabled && styles.disabled,
+      ]}
+      testID={testID}
+    >
+      <Text
+        style={[
+          styles.label,
+          isDarkAppearance && !primary && styles.darkLabel,
+          primary && styles.primaryLabel,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: { flexShrink: 0 },
+  safeArea: {
+    flexShrink: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingVertical: NAVIGATION_ACTION_VERTICAL_PADDING,
+  },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    justifyContent: 'space-evenly',
+    gap: 8,
   },
   action: {
     alignItems: 'center',
-    borderColor: '#34434e',
-    borderRadius: 18,
+    borderColor: appColors.border,
+    borderRadius: 24,
     borderWidth: 1,
+    flex: 1,
     justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 88,
-    paddingHorizontal: 16,
+    minHeight: 50,
+    minWidth: 72,
+    paddingHorizontal: 8,
   },
-  darkAction: { borderColor: '#f7f8fa' },
+  darkAction: { borderColor: '#ffffff' },
+  primaryAction: {
+    backgroundColor: appColors.primaryAction,
+    borderColor: appColors.primaryAction,
+  },
   disabled: { opacity: 0.55 },
   label: {
-    color: '#12212b',
-    fontSize: 16,
+    color: appColors.primaryText,
+    fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
   },
   darkLabel: { color: '#f7f8fa' },
+  primaryLabel: { color: appColors.onPrimary },
 });

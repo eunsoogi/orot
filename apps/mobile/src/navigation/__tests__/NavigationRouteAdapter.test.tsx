@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useLayoutEffect } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
@@ -127,16 +127,40 @@ describe('app navigation route adapter', () => {
       </NavigationRouteAdapter>,
     );
 
-    expect(screen.getAllByA11yHint('top,right,left')).toHaveLength(1);
+    expect(screen.getAllByA11yHint('top,right,bottom,left')).toHaveLength(1);
 
     await act(async () => {
       controller.push('editor');
     });
 
-    expect(screen.queryAllByA11yHint('top,right,left')).toHaveLength(0);
+    expect(screen.queryAllByA11yHint('top,right,bottom,left')).toHaveLength(0);
     expect(childOwnsInsets).toHaveBeenLastCalledWith(
       expect.objectContaining({ name: 'editor' }),
     );
+  });
+
+  it('overlays the shared action bar on a scroll viewport that fills the route', async () => {
+    const controller = createNavigationController<TestRoute>('home');
+    controller.push('editor');
+
+    await render(
+      <NavigationRouteAdapter controller={controller} scrollable showHome>
+        {({ route }) => <Text>{route.name}</Text>}
+      </NavigationRouteAdapter>,
+    );
+
+    const scrollView = screen.getByTestId('navigation-route-scroll');
+    const actionBarOverlay = screen.getByTestId(
+      'navigation-action-bar-overlay',
+    );
+    expect(StyleSheet.flatten(actionBarOverlay.props.style)).toEqual(
+      expect.objectContaining({ position: 'absolute', bottom: 0 }),
+    );
+    expect(StyleSheet.flatten(scrollView.props.contentContainerStyle)).toEqual(
+      expect.objectContaining({ flexGrow: 1, paddingBottom: 84 }),
+    );
+    expect(screen.getByTestId('navigation-back')).toBeVisible();
+    expect(scrollView).toBeVisible();
   });
 
   it('keeps the action bar in a keyboard-avoiding root instead of removing it', async () => {
@@ -153,5 +177,6 @@ describe('app navigation route adapter', () => {
       screen.getByTestId('navigation-keyboard-avoiding-root'),
     ).toBeVisible();
     expect(screen.getByTestId('navigation-back')).toBeVisible();
+    expect(screen.getByTestId('navigation-action-bar-overlay')).toBeVisible();
   });
 });

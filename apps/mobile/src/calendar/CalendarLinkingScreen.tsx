@@ -1,5 +1,7 @@
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
-import { Button, ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { CalendarMonthView } from './CalendarMonthView';
@@ -9,6 +11,8 @@ import type { CalendarQueryWindow } from './calendarMonth';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarAccessState, CalendarBridge } from './types';
 import { useCalendarLinking } from './useCalendarLinking';
+import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
+import { navigationText } from '../i18n/navigation';
 
 // EventKit's current query returns at most 100 upcoming events.
 const CALENDAR_QUERY_RESULT_LIMIT = 100;
@@ -17,6 +21,7 @@ interface CalendarLinkingScreenProps {
   repository: AppointmentRepository;
   bridge: CalendarBridge;
   onBack?: () => void;
+  onHome?: () => void;
   onOpenRecording?: () => void;
 }
 
@@ -32,6 +37,7 @@ export default function CalendarLinkingScreen({
   repository,
   bridge,
   onBack,
+  onHome,
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const calendar = useCalendarLinking(repository, bridge);
@@ -46,147 +52,156 @@ export default function CalendarLinkingScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      testID="calendar-screen"
-    >
-      {onBack ? (
-        <Button
-          onPress={onBack}
-          testID="calendar-back"
-          title={t('calendar.back')}
-        />
-      ) : null}
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="calendar-title"
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        testID="calendar-screen"
       >
-        {t('calendar.title')}
-      </Text>
-      <Text style={styles.message}>{t('calendar.description')}</Text>
-      <Text style={styles.message}>{t('calendar.permissionExplanation')}</Text>
-      {onOpenRecording ? (
-        <Button
-          onPress={onOpenRecording}
-          testID="open-recording"
-          title={t('app.actions.recording')}
-        />
-      ) : null}
-
-      {calendar.loadingAppointments ? (
-        <Text testID="calendar-storage-loading">
-          {t('appointments.opening')}
+        <Text
+          accessibilityRole="header"
+          style={styles.title}
+          testID="calendar-title"
+        >
+          {t('calendar.title')}
         </Text>
-      ) : calendar.error === t('appointments.loadError') ? (
-        <Button
-          onPress={calendar.reloadAppointments}
-          title={t('appointments.retry')}
-        />
-      ) : null}
-
-      {calendar.pendingChange?.kind === 'changed' ? (
-        <View style={styles.card} testID="calendar-change-warning">
-          <Text style={styles.warning}>{t('calendar.eventChanged')}</Text>
+        <Text style={styles.message}>{t('calendar.description')}</Text>
+        <Text style={styles.message}>
+          {t('calendar.permissionExplanation')}
+        </Text>
+        {calendar.loadingAppointments ? (
+          <Text testID="calendar-storage-loading">
+            {t('appointments.opening')}
+          </Text>
+        ) : calendar.error === t('appointments.loadError') ? (
           <Button
-            onPress={calendar.reviewChangedEvent}
-            testID="calendar-review-change"
-            title={t('calendar.reviewChange')}
+            onPress={calendar.reloadAppointments}
+            title={t('appointments.retry')}
           />
-        </View>
-      ) : null}
-      {calendar.pendingChange?.kind === 'missing' ? (
-        <View style={styles.card} testID="calendar-missing-warning">
-          <Text style={styles.warning}>{t('calendar.eventMissing')}</Text>
-        </View>
-      ) : null}
-      {calendar.access && calendar.access !== 'fullAccess' ? (
-        <Text
-          accessibilityRole="alert"
-          style={styles.error}
-          testID="calendar-access-state"
-        >
-          {accessMessage(calendar.access)}
-        </Text>
-      ) : null}
-      {calendar.error ? (
-        <Text
-          accessibilityRole="alert"
-          style={styles.error}
-          testID="calendar-error"
-        >
-          {calendar.error}
-        </Text>
-      ) : null}
-      {calendar.notice ? (
-        <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
-      ) : null}
+        ) : null}
 
-      {calendar.selectedEvent ? (
-        <View style={styles.card} testID="calendar-selection">
-          <Text>
-            {calendar.linkedAppointment
-              ? t('calendar.reconfirmPrompt')
-              : t('calendar.confirmPrompt')}
+        {calendar.pendingChange?.kind === 'changed' ? (
+          <View style={styles.card} testID="calendar-change-warning">
+            <Text style={styles.warning}>{t('calendar.eventChanged')}</Text>
+            <Button
+              onPress={calendar.reviewChangedEvent}
+              testID="calendar-review-change"
+              title={t('calendar.reviewChange')}
+            />
+          </View>
+        ) : null}
+        {calendar.pendingChange?.kind === 'missing' ? (
+          <View style={styles.card} testID="calendar-missing-warning">
+            <Text style={styles.warning}>{t('calendar.eventMissing')}</Text>
+          </View>
+        ) : null}
+        {calendar.access && calendar.access !== 'fullAccess' ? (
+          <Text
+            accessibilityRole="alert"
+            style={styles.error}
+            testID="calendar-access-state"
+          >
+            {accessMessage(calendar.access)}
           </Text>
-          <Text style={styles.eventTitle}>
-            {calendar.selectedEvent.calendarEventSnapshot.title ||
-              t('calendar.eventNoTitle')}
+        ) : null}
+        {calendar.error ? (
+          <Text
+            accessibilityRole="alert"
+            style={styles.error}
+            testID="calendar-error"
+          >
+            {calendar.error}
           </Text>
-          <Text>{formatCalendarEventRange(calendar.selectedEvent)}</Text>
+        ) : null}
+        {calendar.notice ? (
+          <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
+        ) : null}
+
+        {calendar.selectedEvent ? (
+          <View style={styles.card} testID="calendar-selection">
+            <Text>
+              {calendar.linkedAppointment
+                ? t('calendar.reconfirmPrompt')
+                : t('calendar.confirmPrompt')}
+            </Text>
+            <Text style={styles.eventTitle}>
+              {calendar.selectedEvent.calendarEventSnapshot.title ||
+                t('calendar.eventNoTitle')}
+            </Text>
+            <Text>{formatCalendarEventRange(calendar.selectedEvent)}</Text>
+            <Button
+              disabled={calendar.saving}
+              onPress={calendar.confirmSelectedEvent}
+              testID="calendar-confirm-selected"
+              title={
+                calendar.saving
+                  ? t('calendar.saving')
+                  : t(
+                      calendar.linkedAppointment
+                        ? 'calendar.reconfirm'
+                        : 'calendar.confirm',
+                    )
+              }
+            />
+            <Button
+              disabled={calendar.saving}
+              onPress={calendar.clearSelection}
+              title={t('calendar.cancelSelection')}
+            />
+          </View>
+        ) : null}
+
+        {!calendar.selectedEvent ? (
           <Button
-            disabled={calendar.saving}
-            onPress={calendar.confirmSelectedEvent}
-            testID="calendar-confirm-selected"
+            disabled={calendar.loadingEvents || calendar.loadingAppointments}
+            onPress={loadUpcomingEvents}
+            testID="calendar-connect"
             title={
-              calendar.saving
-                ? t('calendar.saving')
+              calendar.loadingEvents
+                ? t('calendar.loading')
                 : t(
                     calendar.linkedAppointment
-                      ? 'calendar.reconfirm'
-                      : 'calendar.confirm',
+                      ? 'calendar.chooseAnother'
+                      : 'calendar.connect',
                   )
             }
           />
-          <Button
-            disabled={calendar.saving}
-            onPress={calendar.clearSelection}
-            title={t('calendar.cancelSelection')}
-          />
-        </View>
-      ) : null}
+        ) : null}
 
-      {!calendar.selectedEvent ? (
-        <Button
-          disabled={calendar.loadingEvents || calendar.loadingAppointments}
-          onPress={loadUpcomingEvents}
-          testID="calendar-connect"
-          title={
-            calendar.loadingEvents
-              ? t('calendar.loading')
-              : t(
-                  calendar.linkedAppointment
-                    ? 'calendar.chooseAnother'
-                    : 'calendar.connect',
-                )
+        {calendar.loadingEvents ? (
+          <Text testID="calendar-loading-events">{t('calendar.loading')}</Text>
+        ) : null}
+        <CalendarMonthView
+          appointmentsLoading={calendar.loadingAppointments}
+          candidatesLoaded={calendar.hasLoadedCandidates}
+          events={calendar.events}
+          linkedAppointment={calendar.nextVisitAppointment}
+          onSelectEvent={calendar.selectEvent}
+          queryWindow={queryWindow}
+          resultsMayBeIncomplete={
+            calendar.events.length >= CALENDAR_QUERY_RESULT_LIMIT
           }
         />
+      </ScrollView>
+      {/* Keep route controls outside the calendar scroller and inside its safe area. */}
+      {onBack ? (
+        <BottomNavigationMenu
+          onBack={onBack}
+          onHome={onHome}
+          primaryAction={
+            onOpenRecording
+              ? {
+                  label: navigationText.recording.label,
+                  accessibilityLabel:
+                    navigationText.recording.accessibilityLabel,
+                  onPress: onOpenRecording,
+                  testID: 'navigation-recording',
+                }
+              : undefined
+          }
+          testID="calendar-back"
+          disabled={calendar.saving}
+        />
       ) : null}
-
-      {calendar.loadingEvents ? (
-        <Text testID="calendar-loading-events">{t('calendar.loading')}</Text>
-      ) : null}
-      <CalendarMonthView
-        appointmentsLoading={calendar.loadingAppointments}
-        candidatesLoaded={calendar.hasLoadedCandidates}
-        events={calendar.events}
-        linkedAppointment={calendar.nextVisitAppointment}
-        onSelectEvent={calendar.selectEvent}
-        queryWindow={queryWindow}
-        resultsMayBeIncomplete={
-          calendar.events.length >= CALENDAR_QUERY_RESULT_LIMIT
-        }
-      />
-    </ScrollView>
+    </View>
   );
 }

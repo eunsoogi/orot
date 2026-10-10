@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 
 /** Keeps transient overlays above the mounted feature destination. */
 export const styles = StyleSheet.create({
@@ -11,12 +12,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  providerNotice: { color: '#45524F', flex: 1, fontSize: 12 },
+  providerNotice: { color: appColors.secondary, flex: 1, fontSize: 12 },
   screen: { flex: 1 },
   featureScreen: { flex: 1 },
   hiddenFeatureScreen: { display: 'none', flex: 1 },
   sourceOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'white',
+    backgroundColor: appColors.surface,
   },
 });

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 import type { NextVisitQuestionsTheme } from './types';
 
 /** Screen spacing and colors come from the app theme so this feature adds no local palette. */
@@ -10,6 +11,8 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       flexGrow: 1,
       gap: tokens.spacing.lg,
       padding: tokens.spacing.lg,
+      // Keep the final questions scrollable above the route's absolute glass action bar.
+      paddingBottom: tokens.spacing.lg + BOTTOM_NAVIGATION_CONTENT_INSET,
       backgroundColor: colors.canvas,
     },
     title: {
@@ -102,6 +105,8 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       paddingHorizontal: tokens.spacing.lg,
       paddingTop: tokens.spacing.sm,
       paddingBottom: tokens.spacing.md,
+      // This fixed footer sits above the parent's bottom navigation, including while the keyboard resizes the route.
+      marginBottom: BOTTOM_NAVIGATION_CONTENT_INSET,
       borderTopWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.canvas,

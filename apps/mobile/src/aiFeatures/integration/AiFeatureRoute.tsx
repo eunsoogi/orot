@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
+import { navigationText } from '../../i18n/navigation';
 import type { NavigationLeaveStateSource } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import { useNavigationSnapshot } from '../../navigation/useNavigationSnapshot';
@@ -17,12 +18,14 @@ export interface AiFeatureRouteProps extends Omit<
 > {
   readonly initialRoute?: FeatureScreenRoute | 'provider-selection';
   readonly onBack: () => void;
+  readonly onOpenRecording?: () => void;
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
 
 /** Keeps one guarded route tree mounted so provider/source overlays preserve feature state. */
 export function AiFeatureRoute({
   onBack,
+  onOpenRecording,
   initialRoute = 'entry',
   onOpenArticle = openEuropePmcArticle,
   renderVisitQuestions,
@@ -65,7 +68,24 @@ export function AiFeatureRoute({
   }, [onBack, snapshot.currentRoute.name]);
 
   return (
-    <NavigationRouteAdapter controller={controller} leaveState={rootLeaveState}>
+    <NavigationRouteAdapter
+      controller={controller}
+      leaveState={rootLeaveState}
+      showHome
+      primaryAction={
+        snapshot.currentRoute.name !== 'app-home' && onOpenRecording
+          ? {
+              label: navigationText.recording.label,
+              accessibilityLabel: navigationText.recording.accessibilityLabel,
+              testID: 'navigation-recording',
+              // Route through the existing leave guard before switching features.
+              onPress: async () => {
+                if (await controller.requestHome()) onOpenRecording();
+              },
+            }
+          : undefined
+      }
+    >
       {navigation =>
         navigation.route.name === 'app-home' ? null : (
           <AiFeatureFlow

@@ -7,12 +7,7 @@ test('localizes appointment list errors and retry', async () => {
   store.list
     .mockRejectedValueOnce(new Error('database unavailable'))
     .mockResolvedValueOnce([]);
-  await render(
-    <AppointmentsScreen
-      repository={store.repository}
-      onBack={() => undefined}
-    />,
-  );
+  await render(<AppointmentsScreen repository={store.repository} />);
 
   expect(await screen.findByTestId('appointment-error')).toHaveTextContent(
     '예약을 불러오지 못했어요. 다시 시도해 주세요.',
@@ -25,12 +20,7 @@ test('localizes appointment list errors and retry', async () => {
 
 test('shows localized validation messages without storing invalid input', async () => {
   const store = createAppointmentStore();
-  await render(
-    <AppointmentsScreen
-      repository={store.repository}
-      onBack={() => undefined}
-    />,
-  );
+  await render(<AppointmentsScreen repository={store.repository} />);
 
   await screen.findByTestId('appointments-empty');
   await fireEvent.press(screen.getByTestId('appointment-add'));
@@ -66,12 +56,7 @@ test('shows localized validation messages without storing invalid input', async 
 test('localizes appointment save and cancel failures without changing status enums', async () => {
   const store = createAppointmentStore();
   store.create.mockRejectedValueOnce(new Error('write unavailable'));
-  await render(
-    <AppointmentsScreen
-      repository={store.repository}
-      onBack={() => undefined}
-    />,
-  );
+  await render(<AppointmentsScreen repository={store.repository} />);
 
   await screen.findByTestId('appointments-empty');
   await fireEvent.press(screen.getByTestId('appointment-add'));

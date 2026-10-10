@@ -1,32 +1,46 @@
 import { StyleSheet } from 'react-native';
+import { appColors } from '../layout/appColors';
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 16,
     padding: 20,
-    backgroundColor: '#f7f8fa',
-    minHeight: '100%',
+    backgroundColor: appColors.background,
+    flexGrow: 1,
   },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  message: { color: '#45515f', fontSize: 15 },
-  card: { backgroundColor: 'white', borderRadius: 10, gap: 8, padding: 14 },
-  clinic: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16 },
-  form: { backgroundColor: 'white', borderRadius: 10, gap: 10, padding: 14 },
-  formTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  input: {
-    borderColor: '#a8b3bf',
-    borderRadius: 8,
+  scroll: { flex: 1 },
+  title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  message: { color: appColors.secondary, fontSize: 15 },
+  error: { color: appColors.danger },
+  card: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 10,
+    gap: 10,
+    padding: 16,
+  },
+  clinic: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  actions: { flexDirection: 'row', justifyContent: 'flex-start', gap: 16 },
+  form: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
+  formTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  input: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: appColors.text,
+    padding: 12,
   },
   note: { minHeight: 48 },
-  hint: { color: '#45515f', fontSize: 13 },
+  hint: { color: appColors.secondary, fontSize: 13 },
 });
 
 export default styles;

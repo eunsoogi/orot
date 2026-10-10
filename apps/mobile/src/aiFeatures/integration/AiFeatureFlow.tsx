@@ -1,6 +1,7 @@
+import { AppButton as Button } from '../../layout/AppButton';
 import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';
-import { Button, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -152,6 +153,7 @@ export function AiFeatureFlow({
           >
             <ProviderSelectionFlow
               key={navigation.route.key}
+              navigationRouteKey={navigation.route.key}
               selectionStore={serviceDependencies?.selectedAi?.selectionStore}
               chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
               safeAreaHandledByParent

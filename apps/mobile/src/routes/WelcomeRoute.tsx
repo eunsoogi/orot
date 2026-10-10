@@ -1,8 +1,10 @@
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import BackupStatusRecovery from '../backup/BackupStatusRecovery';
 import { t } from '../i18n';
 import { providerSelectionText } from '../providers/selection/text';
+import { appColors } from '../layout/appColors';
+import { useNavigationLeaveStateRegistration } from '../navigation';
 
 interface WelcomeRouteProps {
   selectedRecommendationProvider: string;
@@ -17,26 +19,26 @@ interface WelcomeRouteProps {
   onOpenRecording: () => void;
 }
 
-// Share entry and calendar error-page styling while keeping welcome-only content in its route.
+// Content grows downward so the first action stays visible on a compact phone.
 export const appRouteStyles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 24,
-    backgroundColor: '#f7f8fa',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
+    backgroundColor: appColors.background,
   },
   title: {
-    color: '#17212b',
-    fontSize: 24,
+    color: appColors.text,
+    fontSize: 30,
     fontWeight: '700',
-    textAlign: 'center',
   },
   message: {
-    color: '#45515f',
+    color: appColors.secondary,
     fontSize: 16,
-    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 12,
   },
 });
 
@@ -52,6 +54,16 @@ export default function WelcomeRoute({
   onOpenBloodPressure,
   onOpenRecording,
 }: WelcomeRouteProps) {
+  // Home has no draft to protect, so its shared core action remains available.
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: 0,
+    inputRevision: 0,
+  });
+
   return (
     <View style={appRouteStyles.container}>
       <Text
@@ -69,39 +81,90 @@ export default function WelcomeRoute({
         onOpenRagConversation={onOpenRagConversation}
         onOpenExternalEvidence={onOpenExternalEvidence}
       />
-      {/* This route prepares local data; the app cannot verify an OS backup result. */}
-      <BackupStatusRecovery />
       {selectedRecommendationProvider ? (
         <Text testID="selected-recommendation-provider">
           {providerSelectionText.selectedPrefix}{' '}
           {selectedRecommendationProvider}
         </Text>
       ) : null}
-      <Button
+      <HomeAction
         onPress={onOpenProviderSelection}
         testID="open-provider-selection"
         title={providerSelectionText.title}
       />
-      <Button
+      <HomeAction
         onPress={onOpenAppointments}
         testID="open-appointments"
         title={t('app.actions.appointments')}
       />
-      <Button
+      <HomeAction
         onPress={onOpenCommonObservations}
         testID="open-common-observations"
         title={t('healthkit.commonObservations.open')}
       />
-      <Button
+      <HomeAction
         onPress={onOpenBloodPressure}
         testID="open-blood-pressure-import"
         title={t('healthkit.bloodPressure.open')}
       />
-      <Button
+      <HomeAction
         onPress={onOpenRecording}
         testID="open-recording"
         title={t('app.actions.recording')}
       />
+      {/* Backup preparation is a secondary setting, separate from everyday record actions. */}
+      <View style={homeStyles.backup}>
+        <BackupStatusRecovery />
+      </View>
     </View>
   );
 }
+
+function HomeAction({
+  onPress,
+  testID,
+  title,
+}: {
+  onPress: () => void;
+  testID: string;
+  title: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={homeStyles.action}
+      testID={testID}
+    >
+      <Text style={homeStyles.label}>{title}</Text>
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={homeStyles.chevron}
+      >
+        ›
+      </Text>
+    </Pressable>
+  );
+}
+
+const homeStyles = StyleSheet.create({
+  action: {
+    backgroundColor: appColors.surface,
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  label: { color: appColors.text, fontSize: 17, fontWeight: '600', flex: 1 },
+  chevron: { color: appColors.secondary, fontSize: 24 },
+  backup: {
+    backgroundColor: appColors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 12,
+  },
+});

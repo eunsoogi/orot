@@ -1,32 +1,11 @@
 /* global by, device, element, waitFor */
 
-/** Exercise a real route and confirm only when its state guard reports local edits. */
-async function openFeatureAndReturn(
-  entryId,
-  screenId,
-  exerciseFeature,
-  confirmUnsaved = false,
-) {
-  // Home keeps the feature cards in its shared scroll view rather than a nested list.
-  await element(by.id('navigation-route-scroll')).scroll(240, 'down', 0.5, 0.7);
-  await element(by.id(entryId)).tap();
-  await waitFor(element(by.id(screenId)))
-    .toBeVisible()
-    .withTimeout(30000);
-  if (exerciseFeature) await exerciseFeature();
-  await element(by.text('뒤로').withAncestor(by.id(screenId))).tap();
-  if (confirmUnsaved) await confirmUnsavedLeave();
-  await waitFor(element(by.id('welcome-title')))
-    .toBeVisible()
-    .withTimeout(30000);
-}
-
-async function confirmUnsavedLeave() {
-  await waitFor(element(by.text('내용 버리고 나가기')))
-    .toBeVisible()
-    .withTimeout(5000);
-  await element(by.text('내용 버리고 나가기')).tap();
-}
+const {
+  confirmUnsavedLeave,
+  openFeatureAndReturn,
+  scrollHomeActionIntoView,
+  tapNativeNavigationAction,
+} = require('./smokeHelpers');
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
@@ -40,22 +19,74 @@ describe('Orot mobile app', () => {
   });
 
   it('renders the Korean welcome screen in English and opens Calendar linking', async () => {
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
+    await expect(element(by.id('welcome-title'))).toHaveText('오롯');
     await expect(element(by.text('다음 진료 질문'))).toExist();
     await expect(element(by.text('질환 가능성 살펴보기'))).toExist();
     await expect(element(by.text('건강 기록과 대화하기'))).toExist();
     await expect(element(by.text('의료 자료 찾아보기'))).toExist();
     await expect(element(by.id('open-appointments'))).toHaveLabel('예약');
 
+    // The bottom core action remains independently reachable from the home cards.
+    await expect(element(by.id('navigation-recording'))).toHaveLabel(
+      '녹음 화면으로 이동',
+    );
+    await tapNativeNavigationAction('navigation-recording');
+    await waitFor(element(by.id('recording-controls-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    // Start above the fixed toolbar overlay while scrolling expanded consent copy.
+    await element(by.id('recording-controls-scroll')).scrollTo(
+      'bottom',
+      0.5,
+      0.5,
+    );
+    await waitFor(element(by.id('recording-start')))
+      .toBeVisible()
+      .withTimeout(30000);
+    // Exercise the native Home control before checking edge-swipe back.
+    await tapNativeNavigationAction('navigation-home');
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await tapNativeNavigationAction('navigation-recording');
+    await waitFor(element(by.id('recording-controls-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    // Keep the gesture inside the visible scroll viewport above the toolbar.
+    await element(by.id('recording-controls-scroll')).scrollTo(
+      'bottom',
+      0.5,
+      0.5,
+    );
+    await waitFor(element(by.id('recording-start')))
+      .toBeVisible()
+      .withTimeout(30000);
+    // Start within the app's left-edge guard to verify its real back gesture.
+    await element(by.id('edge-swipe-back-region')).swipe(
+      'right',
+      'slow',
+      0.8,
+      0.02,
+      0.5,
+    );
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+
     // Each home card opens its feature directly without starting inference.
+    // Accessibility text can move the first card below the initial scroll viewport.
+    await element(by.id('navigation-route-scroll')).scroll(
+      240,
+      'down',
+      0.5,
+      0.7,
+    );
     await element(by.id('ai-feature-visit-questions')).tap();
     await waitFor(element(by.id('next-visit-questions-scroll')))
       .toBeVisible()
       .withTimeout(30000);
     await expect(element(by.id('next-visit-appointment'))).toExist();
-    await element(by.id('navigation-back')).tap();
+    await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
@@ -105,6 +136,13 @@ describe('Orot mobile app', () => {
       true,
     );
 
+    // The final AI card starts below the shared scroll viewport after route returns.
+    await element(by.id('navigation-route-scroll')).scroll(
+      240,
+      'down',
+      0.5,
+      0.7,
+    );
     await element(by.id('ai-feature-external-evidence')).tap();
     await waitFor(element(by.id('external-medical-evidence-screen')))
       .toBeVisible()
@@ -125,34 +163,29 @@ describe('Orot mobile app', () => {
     ).not.toExist();
     // Do not press search: this route check must not make a real literature request.
     await element(by.id('external-medical-evidence-screen')).scrollTo('top');
-    await element(
-      by.text('뒤로').withAncestor(by.id('external-medical-evidence-screen')),
-    ).tap();
+    // Return through the same shared bottom action used by the other feature routes.
+    await tapNativeNavigationAction('navigation-back');
     await confirmUnsavedLeave();
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
 
-    // Home controls follow the AI cards, so scroll them into view before tapping.
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
+    await scrollHomeActionIntoView('open-provider-selection');
     await element(by.id('open-provider-selection')).tap();
     await waitFor(element(by.id('provider-selection-screen')))
       .toBeVisible()
       .withTimeout(30000);
-    // The provider route's screen-level back control shares navigation's Korean names.
-    await expect(
-      element(by.text('뒤로').withAncestor(by.id('provider-selection-screen'))),
-    ).toBeVisible();
-    await expect(element(by.id('provider-selection-back'))).toHaveLabel(
+    // The integrated route has one shared Back control outside its scroller.
+    await expect(element(by.id('provider-selection-back'))).not.toExist();
+    await expect(element(by.id('navigation-back'))).toHaveLabel(
       '이전 화면으로 돌아가기',
     );
-    await expect(element(by.id('navigation-back'))).toBeVisible();
-    await element(by.id('navigation-back')).tap();
+    await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
 
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
+    await scrollHomeActionIntoView('open-appointments');
     await element(by.id('open-appointments')).tap();
     // Manual appointment CRUD remains isolated in the dedicated appointments probe.
     await waitFor(element(by.id('calendar-title')))

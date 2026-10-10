@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 import { ConversationScreen } from '../ConversationScreen';
+import { getRagConversationCopy } from '../copy';
 import type { RagConversationOutcome } from '../service';
 
 const reference = {
@@ -31,11 +34,20 @@ test('renders a grounded answer with a source action and reports absent evidence
       onOpenSource={onOpenSource}
     />,
   );
-
-  await fireEvent.changeText(
-    screen.getByTestId('rag-conversation-input'),
-    '혈압 기록을 보여줘',
+  const description = screen.getByText(getRagConversationCopy().description);
+  const conversationInput = screen.getByTestId('rag-conversation-input');
+  expect(StyleSheet.flatten(description.props.style).color).toBe(
+    appColors.text,
   );
+  expect(conversationInput.props.placeholderTextColor).toBe(
+    appColors.secondary,
+  );
+  expect(StyleSheet.flatten(conversationInput.props.style)).toMatchObject({
+    backgroundColor: appColors.surface,
+    color: appColors.text,
+  });
+
+  await fireEvent.changeText(conversationInput, '혈압 기록을 보여줘');
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByText('저장된 기록을 찾았어요.')).toBeTruthy();
   await fireEvent.press(screen.getByText(/원문 근거 열기/));

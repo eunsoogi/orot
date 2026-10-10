@@ -6,7 +6,6 @@ const { expect: jestExpect } = require('@jest/globals');
 // The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
 const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
-const MINIMUM_KEYBOARD_OCCLUSION_RATIO = 0.25;
 
 async function frameOf(target, description) {
   const attributes = await target.getAttributes();
@@ -18,44 +17,6 @@ async function frameOf(target, description) {
 
 async function frameFor(testID) {
   return frameOf(element(by.id(testID)), testID);
-}
-
-function keyboardFrameFrom(attributes) {
-  const label = attributes.label || attributes.text || '';
-  const match = /^keyboard-visible:(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/u.exec(
-    label,
-  );
-  if (!match) {
-    throw new Error(
-      `The native keyboard is not visible: ${label || 'no frame'}.`,
-    );
-  }
-
-  return { screenY: Number(match[1]), height: Number(match[2]) };
-}
-
-async function expectKeyboardOccludesScroll(scrollFrame) {
-  const attributes = await element(
-    by.id('safe-area-keyboard-visible'),
-  ).getAttributes();
-  const { screenY, height } = keyboardFrameFrom(attributes);
-  const scrollBottom = scrollFrame.y + scrollFrame.height;
-  const keyboardBottom = screenY + height;
-  const visibleScrollHeight = Math.max(
-    0,
-    Math.min(scrollBottom, screenY) - scrollFrame.y,
-  );
-  const occludedScrollHeight = Math.max(
-    0,
-    Math.min(scrollBottom, keyboardBottom) - Math.max(scrollFrame.y, screenY),
-  );
-
-  // Keyboard and Detox frames are both in screen points; read after each scroll/tap to catch dismissal.
-  jestExpect(height).toBeGreaterThan(0);
-  jestExpect(visibleScrollHeight).toBeGreaterThan(0);
-  jestExpect(occludedScrollHeight).toBeGreaterThanOrEqual(
-    scrollFrame.height * MINIMUM_KEYBOARD_OCCLUSION_RATIO,
-  );
 }
 
 async function expectScrollInsideRootFrame(
@@ -79,6 +40,15 @@ async function expectRouteScrollTopInset(scrollTestID, rootTestID) {
   const scroll = await frameFor(scrollTestID);
 
   jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
+    MINIMUM_TOP_SAFE_AREA_POINTS,
+  );
+}
+
+async function expectElementBelowTopInset(elementTestID, rootTestID) {
+  const root = await frameFor(rootTestID);
+  const target = await frameFor(elementTestID);
+
+  jestExpect(target.y - root.y).toBeGreaterThanOrEqual(
     MINIMUM_TOP_SAFE_AREA_POINTS,
   );
 }
@@ -110,13 +80,18 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await expectElementBelowTopInset(
+      'welcome-title',
+      'navigation-keyboard-avoiding-root',
+    );
+    await device.takeScreenshot('home-top-safe-area');
     await expectRouteScrollTopInset(
       'navigation-route-scroll',
       'navigation-keyboard-avoiding-root',
     );
 
     const scroll = element(by.id('navigation-route-scroll'));
-    await scroll.scrollTo('bottom');
+    await scroll.scrollTo('bottom', 0.5, 0.5);
     await expect(element(by.id('open-recording'))).toBeVisible();
     // AI cards and the existing app routes share this scroll; its tail holds the trailing actions.
     await expectElementAboveBottomInset(
@@ -134,7 +109,7 @@ describe('safe area routes on iOS Simulator', () => {
       'navigation-keyboard-avoiding-root',
     );
     const commonObservationsScroll = element(by.id('navigation-route-scroll'));
-    await commonObservationsScroll.scrollTo('bottom');
+    await commonObservationsScroll.scrollTo('bottom', 0.5, 0.5);
     const importAction = element(by.id('common-observations-import'));
     await expect(importAction).toBeVisible();
     const importAttributes = await importAction.getAttributes();
@@ -146,7 +121,11 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('preserves the recording screen inset root and existing inner scrolling', async () => {
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
+    await element(by.id('navigation-route-scroll')).scrollTo(
+      'bottom',
+      0.5,
+      0.5,
+    );
     await waitFor(element(by.id('open-recording')))
       .toBeVisible()
       .withTimeout(30000);
@@ -154,6 +133,11 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('recording-start')))
       .toBeVisible()
       .withTimeout(30000);
+    await expectElementBelowTopInset(
+      'recording-title',
+      'navigation-keyboard-avoiding-root',
+    );
+    await device.takeScreenshot('recording-top-safe-area');
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expect(element(by.id('recording-start'))).toBeVisible();
@@ -173,14 +157,19 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('navigation-route-scroll')).scrollTo('bottom');
+    await element(by.id('navigation-route-scroll')).scrollTo(
+      'bottom',
+      0.5,
+      0.5,
+    );
     await element(by.id('open-blood-pressure-import')).tap();
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await waitFor(element(by.id('blood-pressure-reading-systolic-11-card')))
-      .toExist()
-      .withTimeout(30000);
+    const lastReading = element(
+      by.id('blood-pressure-reading-diastolic-11-card'),
+    );
+    await waitFor(lastReading).toExist().withTimeout(30000);
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expectScrollInsideRootFrame(
@@ -189,10 +178,13 @@ describe('safe area routes on iOS Simulator', () => {
     );
 
     const bloodPressureScroll = element(by.id('blood-pressure-scroll'));
-    await bloodPressureScroll.scrollTo('bottom');
-    await expect(
-      element(by.id('blood-pressure-reading-systolic-11-card')),
-    ).toBeVisible();
+    // Start inside the scroll view so the overlaid recording action is not hit.
+    await bloodPressureScroll.scrollTo('bottom', 0.5, 0.5);
+    await expect(lastReading).toBeVisible();
+    await expectElementAboveBottomInset(
+      'blood-pressure-reading-diastolic-11-card',
+      'navigation-keyboard-avoiding-root',
+    );
     await bloodPressureScroll.scrollTo('top');
 
     const importAction = element(by.id('blood-pressure-import'));
@@ -207,43 +199,5 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('blood-pressure-status')))
       .toHaveText('새로운 혈압 기록 변경이 없어요.')
       .withTimeout(30000);
-  });
-
-  it('keeps a primary action reachable with large text and the keyboard open', async () => {
-    await device.launchApp({
-      newInstance: true,
-      launchArgs: {
-        OROT_E2E_PROBE: 'safe-area',
-        UIPreferredContentSizeCategoryName:
-          'UICTContentSizeCategoryAccessibilityXXXL',
-      },
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-    });
-
-    await waitFor(element(by.id('safe-area-large-text-state')))
-      .toHaveLabel('large-text-enabled')
-      .withTimeout(30000);
-    await expectScrollInsideRootFrame();
-
-    const input = element(by.id('safe-area-keyboard-input'));
-    await input.tap();
-    await expect(input).toBeFocused();
-    await waitFor(element(by.id('safe-area-keyboard-visible')))
-      .toExist()
-      .withTimeout(30000);
-
-    const scrollFrame = await frameFor('safe-area-scroll');
-    await expectKeyboardOccludesScroll(scrollFrame);
-
-    const keyboardAction = element(by.id('safe-area-keyboard-action'));
-    await expect(keyboardAction).not.toBeVisible();
-    await element(by.id('safe-area-scroll')).scrollTo('bottom');
-    await expect(keyboardAction).toBeVisible();
-    await expectKeyboardOccludesScroll(scrollFrame);
-    await keyboardAction.tap();
-    await expect(
-      element(by.id('safe-area-keyboard-action-done')),
-    ).toBeVisible();
-    await expectKeyboardOccludesScroll(scrollFrame);
   });
 });

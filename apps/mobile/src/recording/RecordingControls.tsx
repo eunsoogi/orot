@@ -1,6 +1,9 @@
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
-import { Button, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { recordingStatusLabel } from './recordingStatusLabel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from './RecordingLibraryPanel';
@@ -100,13 +103,18 @@ export default function RecordingControls({
       {showLocalBack ? (
         <View style={recordingControlStyles.back}>
           <Button
+            accessibilityLabel={navigationText.back.accessibilityLabel}
             onPress={onBack}
             testID="recording-back"
-            title={t('recording.back')}
+            title={navigationText.back.label}
           />
         </View>
       ) : null}
-      <Text accessibilityRole="header" style={recordingControlStyles.title}>
+      <Text
+        accessibilityRole="header"
+        style={recordingControlStyles.title}
+        testID="recording-title"
+      >
         {t('recording.title')}
       </Text>
       <Text style={recordingControlStyles.copy}>

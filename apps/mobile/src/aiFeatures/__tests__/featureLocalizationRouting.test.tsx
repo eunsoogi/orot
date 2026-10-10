@@ -8,6 +8,7 @@ jest.mock('../../i18n', () => ({
 
 import { render } from '@testing-library/react-native';
 import { t } from '../../i18n';
+import { navigationText } from '../../i18n/navigation';
 import { FeatureEntryScreen } from '../FeatureEntryScreen';
 import { DiseaseHypothesesScreen } from '../../diseaseHypotheses/DiseaseHypothesesScreen';
 import { getDiseaseHypothesisCopy } from '../../diseaseHypotheses/copy';
@@ -21,6 +22,7 @@ const translated = jest.mocked(t);
 const featureScreens = [
   {
     name: 'feature entry',
+    expectBackButton: false,
     element: (
       <FeatureEntryScreen
         onOpenVisitQuestions={jest.fn()}
@@ -48,6 +50,7 @@ const featureScreens = [
   },
   {
     name: 'disease hypotheses',
+    expectBackButton: true,
     element: (
       <DiseaseHypothesesScreen
         onBack={jest.fn()}
@@ -59,7 +62,6 @@ const featureScreens = [
       />
     ),
     expectedKeys: [
-      'aiFeatures.back',
       'diseaseHypotheses.title',
       'diseaseHypotheses.explanation',
       'diseaseHypotheses.generate',
@@ -77,6 +79,7 @@ const featureScreens = [
   },
   {
     name: 'RAG conversation',
+    expectBackButton: true,
     element: (
       <ConversationScreen
         onBack={jest.fn()}
@@ -85,7 +88,6 @@ const featureScreens = [
       />
     ),
     expectedKeys: [
-      'aiFeatures.back',
       'ragConversation.title',
       'ragConversation.description',
       'ragConversation.placeholder',
@@ -99,6 +101,7 @@ const featureScreens = [
   },
   {
     name: 'external medical evidence',
+    expectBackButton: true,
     element: (
       <ExternalMedicalEvidenceScreen
         onBack={jest.fn()}
@@ -107,7 +110,6 @@ const featureScreens = [
       />
     ),
     expectedKeys: [
-      'aiFeatures.back',
       'externalMedicalEvidence.title',
       'externalMedicalEvidence.description',
       'externalMedicalEvidence.placeholder',
@@ -126,9 +128,19 @@ const featureScreens = [
 
 test.each(featureScreens)(
   '$name routes every owned label through t()',
-  async ({ element, expectedKeys }) => {
+  async ({ element, expectedKeys, expectBackButton }) => {
     translated.mockClear();
-    await render(element);
+    const { getByRole, queryByRole } = await render(element);
+
+    if (expectBackButton) {
+      expect(
+        getByRole('button', { name: navigationText.back.accessibilityLabel }),
+      ).toBeTruthy();
+    } else {
+      expect(
+        queryByRole('button', { name: navigationText.back.accessibilityLabel }),
+      ).toBeNull();
+    }
 
     // Enumerating each catalog prevents new app-owned literals from bypassing t().
     expect(

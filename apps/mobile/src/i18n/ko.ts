@@ -8,15 +8,14 @@ import { providerAccountsKo } from './providerAccounts';
 
 export const ko = {
   ...backupKo,
-  'app.welcome.title': 'Orot에 오신 걸 환영해요',
-  'app.welcome.message': 'Orot의 첫걸음이에요.',
+  'app.welcome.title': '오롯',
+  'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',
   'app.welcome.started': '이제 시작할 수 있어요.',
   'app.actions.getStarted': '시작하기',
   'app.actions.appointments': '예약',
   'app.actions.recording': '상담 녹음',
   ...recordingKo,
   'appointments.title': '예약',
-  'appointments.back': '뒤로',
   'appointments.opening': '예약 정보를 준비하고 있어요…',
   'appointments.openError': '예약을 열지 못했어요. 다시 시도해 주세요.',
   'appointments.retry': '다시 시도',
@@ -58,10 +57,9 @@ export const ko = {
   'calendar.description':
     '예정된 일정은 이 기기에서만 확인해요. 외래 일정은 직접 선택하고 확인해 주세요.',
   'calendar.permissionExplanation':
-    'iOS는 일정을 읽을 때 캘린더 전체 접근(읽기 및 쓰기)을 요구해요. Orot는 선택한 일정 정보만 이 기기에 저장하고, 캘린더를 수정하거나 삭제하지 않아요.',
+    'iOS는 일정을 읽을 때 캘린더 전체 접근(읽기 및 쓰기)을 요구해요. 오롯 앱은 선택한 일정 정보만 이 기기에 저장하고, 캘린더를 수정하거나 삭제하지 않아요.',
   'calendar.connect': '캘린더 일정 불러오기',
   'calendar.chooseAnother': '다른 일정 선택',
-  'calendar.back': '뒤로',
   'calendar.loading': '캘린더 일정을 확인하고 있어요…',
   'calendar.empty': '조회된 일정이 없어요.',
   'calendar.emptyQueryNote':
@@ -71,7 +69,7 @@ export const ko = {
   'calendar.resultsMayBeIncomplete':
     '일정이 많아 일부 날짜의 일정이 표시되지 않았을 수 있어요.',
   'calendar.candidateHint':
-    '목록의 일정은 모두 후보예요. Orot가 의료 일정으로 판단하지 않아요.',
+    '목록의 일정은 모두 후보예요. 오롯 앱은 의료 일정으로 판단하지 않아요.',
   'calendar.selectEvent': '이 일정 선택',
   'calendar.confirmPrompt': '이 일정을 다음 외래 방문으로 확인할까요?',
   'calendar.reconfirmPrompt': '변경된 일정 정보를 확인한 뒤 다시 저장할까요?',

@@ -1,13 +1,15 @@
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Button,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { navigationText } from '../i18n/navigation';
+import { appColors } from '../layout/appColors';
 import { getExternalMedicalEvidenceCopy } from './copy';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -103,7 +105,13 @@ export function ExternalMedicalEvidenceScreen({
       contentContainerStyle={styles.container}
       testID="external-medical-evidence-screen"
     >
-      <Button onPress={onBack} title={copy.back} />
+      {navigationRouteKey ? null : (
+        <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          title={navigationText.back.label}
+        />
+      )}
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -117,6 +125,8 @@ export function ExternalMedicalEvidenceScreen({
           setQuery(value);
         }}
         placeholder={copy.placeholder}
+        placeholderTextColor={appColors.secondary}
+        style={styles.input}
         testID="external-evidence-query"
         value={query}
       />
@@ -149,7 +159,9 @@ export function ExternalMedicalEvidenceScreen({
         <Text testID="external-evidence-empty">{copy.empty}</Text>
       ) : null}
       {state.status === 'unavailable' ? (
-        <Text accessibilityRole="alert">{copy.unavailable}</Text>
+        <Text accessibilityRole="alert" style={styles.error}>
+          {copy.unavailable}
+        </Text>
       ) : null}
       {state.status === 'available'
         ? state.publications.map(publication => (
@@ -190,8 +202,18 @@ export function ExternalMedicalEvidenceScreen({
 const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   heading: { fontSize: 22, fontWeight: '700' },
+  input: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: appColors.text,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+  error: { color: appColors.danger },
   card: {
-    borderColor: '#C9D4D1',
+    borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,
     gap: 8,

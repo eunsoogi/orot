@@ -1,5 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { getAiFeatureCopy } from './copy';
+import { appColors } from '../layout/appColors';
+import { AppText as Text } from '../layout/AppText';
 
 export interface FeatureEntryScreenProps {
   readonly embedded?: boolean;
@@ -39,6 +41,7 @@ export function FeatureEntryScreen({
           {feature.id === 'visit-questions' && !actions[index] ? (
             <Text
               accessibilityRole="alert"
+              style={styles.unavailable}
               testID="visit-questions-unavailable"
             >
               {copy.visitQuestionsUnavailable}
@@ -79,18 +82,31 @@ export function FeatureEntryScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
+  container: { gap: 12, padding: 20, backgroundColor: appColors.background },
   embedded: { alignSelf: 'stretch', gap: 12 },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  card: {
-    borderColor: '#C9D4D1',
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
+  heading: {
+    color: appColors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
   },
-  title: { fontSize: 17, fontWeight: '700' },
-  description: { color: '#45524F', fontSize: 14, lineHeight: 20 },
-  action: { alignSelf: 'flex-start', paddingVertical: 8 },
-  actionText: { color: '#174F45', fontSize: 15, fontWeight: '700' },
+  card: {
+    backgroundColor: appColors.surface,
+    borderRadius: 24,
+    gap: 10,
+    padding: 22,
+  },
+  title: { color: appColors.text, fontSize: 20, fontWeight: '700' },
+  description: { color: appColors.secondary, fontSize: 15, lineHeight: 23 },
+  unavailable: { color: appColors.danger },
+  action: {
+    backgroundColor: appColors.primarySoft,
+    borderRadius: 14,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  actionText: { color: appColors.primaryText, fontSize: 16, fontWeight: '600' },
 });

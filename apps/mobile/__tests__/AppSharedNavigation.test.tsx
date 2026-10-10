@@ -27,6 +27,37 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
+test('opens recording from the shared bottom action on the home route', async () => {
+  await render(<App />);
+
+  const recording = screen.getByRole('button', {
+    name: navigationText.recording.accessibilityLabel,
+  });
+  expect(recording.props.testID).toBe('navigation-recording');
+  await fireEvent.press(recording);
+
+  expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
+  expect(screen.getByTestId('navigation-back')).toBeVisible();
+});
+
+test('routes provider selection through shared button and edge swipe', async () => {
+  await render(<App />);
+  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+  await waitFor(() =>
+    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
+  );
+  expect(screen.getByTestId('navigation-back')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+
+  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+  await waitFor(() =>
+    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
+  );
+  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
+  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
+});
+
 test('routes recording from home through the shared button and edge swipe', async () => {
   await render(<App />);
 

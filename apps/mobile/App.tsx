@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
-import CalendarLinkingScreen from './src/calendar/CalendarLinkingScreen';
+import { appColors } from './src/layout/appColors';
+import { CalendarAppRoute } from './src/calendar/CalendarAppRoute';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
 import RecordingScreen from './src/recording/RecordingScreen';
@@ -21,11 +22,11 @@ import type {
   BloodPressureObservation,
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
-import SafeAreaLayout from './src/layout/SafeAreaLayout';
-import WelcomeRoute, { appRouteStyles } from './src/routes/WelcomeRoute';
+import WelcomeRoute from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
+import { navigationText } from './src/i18n/navigation';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import {
@@ -101,12 +102,22 @@ export default function App({
     }
   }
 
+  async function openRecordingFromNavigation() {
+    // Return through the active route guard before replacing a feature with recording.
+    if (appNavigation.getSnapshot().currentRoute.name !== 'home') {
+      const returnedHome = await appNavigation.requestHome();
+      if (!returnedHome) return;
+    }
+    appNavigation.push('recording');
+  }
+
   // Feature cards and provider settings share the guarded flow and local app services.
   if (aiInitialRoute)
     return (
       <AiFeatureRoute
         initialRoute={aiInitialRoute}
         onBack={() => setAiInitialRoute(null)}
+        onOpenRecording={() => appNavigation.push('recording')}
         onProviderSelectionCommitted={(_, provider) =>
           setSelectedRecommendationProvider(provider.displayName)
         }
@@ -120,48 +131,18 @@ export default function App({
 
   // Calendar keeps its current route boundary; a recording opened there returns to it.
   if (showCalendar && appRoute.name === 'home') {
-    if (appointmentRepository) {
-      return (
-        <SafeAreaLayout>
-          <CalendarLinkingScreen
-            repository={appointmentRepository}
-            bridge={calendarBridge}
-            onBack={() => setShowCalendar(false)}
-            onOpenRecording={() => {
-              appNavigation.push('recording');
-            }}
-          />
-        </SafeAreaLayout>
-      );
-    }
-
     return (
-      <SafeAreaLayout scrollable>
-        <View style={appRouteStyles.container}>
-          <Text accessibilityRole="header" style={appRouteStyles.title}>
-            {t('calendar.title')}
-          </Text>
-          <Text
-            accessibilityRole={appointmentError ? 'alert' : undefined}
-            testID="calendar-app-opening"
-          >
-            {appointmentError ||
-              (loadingAppointments ? t('appointments.opening') : '')}
-          </Text>
-          {appointmentError ? (
-            <Button
-              onPress={openCalendar}
-              testID="calendar-app-retry"
-              title={t('appointments.retry')}
-            />
-          ) : null}
-          <Button
-            onPress={() => setShowCalendar(false)}
-            testID="calendar-app-back"
-            title={t('calendar.back')}
-          />
-        </View>
-      </SafeAreaLayout>
+      <CalendarAppRoute
+        appointmentRepository={appointmentRepository}
+        bridge={calendarBridge}
+        appointmentError={appointmentError}
+        loadingAppointments={loadingAppointments}
+        onBack={() => setShowCalendar(false)}
+        onOpenCalendar={openCalendar}
+        onOpenRecording={() => {
+          appNavigation.push('recording');
+        }}
+      />
     );
   }
 
@@ -172,6 +153,16 @@ export default function App({
         route.name === 'home' || route.name === 'common-observations'
       }
       showHome={!showCalendar}
+      primaryAction={
+        appRoute.name === 'recording'
+          ? undefined
+          : {
+              label: navigationText.recording.label,
+              accessibilityLabel: navigationText.recording.accessibilityLabel,
+              testID: 'navigation-recording',
+              onPress: openRecordingFromNavigation,
+            }
+      }
     >
       {actions => {
         switch (actions.route.name) {
@@ -230,10 +221,11 @@ export default function App({
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   commonObservationsContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#f7f8fa',
+    backgroundColor: appColors.background,
   },
 });

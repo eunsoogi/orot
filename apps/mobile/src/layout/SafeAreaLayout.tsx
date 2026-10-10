@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
+import { appColors } from './appColors';
 
 interface SafeAreaLayoutProps {
   children: ReactNode;
   scrollable?: boolean;
 }
 
-// Non-provider routes share one inset owner; screens with their own scroller keep it.
+// Standalone routes share one safe-area owner, appearance-matched backdrop, and optional scroller.
 export default function SafeAreaLayout({
   children,
   scrollable = false,
@@ -38,6 +40,9 @@ export default function SafeAreaLayout({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
+  fill: { backgroundColor: appColors.background, flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: BOTTOM_NAVIGATION_CONTENT_INSET,
+  },
 });

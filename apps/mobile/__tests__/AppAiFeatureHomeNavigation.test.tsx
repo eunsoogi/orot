@@ -92,3 +92,24 @@ test('shows four explained AI actions on the welcome screen and opens each route
     );
   }
 }, 30_000);
+
+test('opens recording from an AI route after leaving its guarded navigator', async () => {
+  await render(
+    <App
+      renderVisitQuestions={input => (
+        <VisitQuestionsHomeRouteProbe {...input} />
+      )}
+    />,
+  );
+
+  await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
+  expect(await screen.findByTestId('disease-hypotheses-screen')).toBeTruthy();
+
+  // The AI flow owns a separate navigator, so return to App before opening recording.
+  await fireEvent.press(screen.getByTestId('navigation-recording'));
+
+  expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.queryByTestId('ai-feature-flow')).toBeNull(),
+  );
+});

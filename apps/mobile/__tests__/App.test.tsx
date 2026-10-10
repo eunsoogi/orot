@@ -52,12 +52,10 @@ test('restores the welcome entry and opens Calendar linking from appointments', 
     <App loadAppointments={loadAppointments} calendarBridge={bridge} />,
   );
 
-  expect(screen.getByTestId('welcome-title')).toHaveTextContent(
-    'Orot에 오신 걸 환영해요',
-  );
+  expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
   expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
   expect(screen.getByTestId('navigation-route-scroll')).toBeVisible();
-  expect(screen.getByTestId('open-appointments')).toHaveTextContent('예약');
+  expect(screen.getByText('예약')).toBeTruthy();
   expect(loadAppointments).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('open-appointments'));
@@ -83,7 +81,7 @@ test('opens provider selection from the welcome screen', async () => {
   // Provider selection keeps its own inset container instead of nesting the App shell.
   expect(screen.queryByTestId('safe-area-root')).toBeNull();
   expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('provider-selection-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('welcome-title')).toBeTruthy();
 });
 
@@ -92,7 +90,7 @@ test('keeps consent-gated recording reachable from Calendar linking', async () =
   await render(<App loadAppointments={async () => store.repository} />);
 
   await fireEvent.press(screen.getByTestId('open-appointments'));
-  await fireEvent.press(screen.getByTestId('open-recording'));
+  await fireEvent.press(screen.getByTestId('navigation-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
   expect(screen.getByTestId('navigation-back')).toBeVisible();

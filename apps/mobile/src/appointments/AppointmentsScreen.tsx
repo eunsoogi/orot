@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, Text, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import AppointmentCard from './AppointmentCard';
 import AppointmentForm from './AppointmentForm';
@@ -13,12 +15,10 @@ import {
 
 interface AppointmentsScreenProps {
   repository: AppointmentRepository;
-  onBack: () => void;
 }
 
 export default function AppointmentsScreen({
   repository,
-  onBack,
 }: AppointmentsScreenProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinicLabel, setClinicLabel] = useState('');
@@ -126,26 +126,24 @@ export default function AppointmentsScreen({
     <ScrollView
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
+      style={styles.scroll}
       testID="appointments-scroll"
     >
-      <View style={styles.topBar}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="appointments-title"
-        >
-          {t('appointments.title')}
-        </Text>
-        <Button
-          onPress={onBack}
-          testID="appointments-back"
-          title={t('appointments.back')}
-        />
-      </View>
+      <Text
+        accessibilityRole="header"
+        style={styles.title}
+        testID="appointments-title"
+      >
+        {t('appointments.title')}
+      </Text>
       <Text style={styles.message}>{t('appointments.description')}</Text>
       {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
       {error ? (
-        <Text accessibilityRole="alert" testID="appointment-error">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="appointment-error"
+        >
           {error}
         </Text>
       ) : null}

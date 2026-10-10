@@ -8,7 +8,6 @@ import {
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import { navigationText } from '../src/i18n/navigation';
-import { providerSelectionText } from '../src/providers/selection/text';
 import {
   apple,
   localData,
@@ -46,25 +45,8 @@ jest.mock('../src/providers/selection/options', () => {
 
 afterEach(() => jest.restoreAllMocks());
 
-test('routes the welcome provider shortcut through shared button and edge swipe', async () => {
-  await render(<App />);
-  await fireEvent.press(screen.getByTestId('open-provider-selection'));
-  await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
-  );
-  expect(screen.getByTestId('navigation-back')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
-
-  await fireEvent.press(screen.getByTestId('open-provider-selection'));
-  await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
-  );
-  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
-  await waitFor(() => expect(screen.getByTestId('welcome-title')).toBeTruthy());
-});
-
-test('updates the welcome provider summary after a committed selection', async () => {
+test('guards the bottom recording action while a provider choice is pending', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const store = selectionStore(null);
   await render(
     <App aiFeatureServiceDependencies={providerDependencies(store)} />,
@@ -75,15 +57,13 @@ test('updates the welcome provider summary after a committed selection', async (
     expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
   );
   await fireEvent.press(screen.getByTestId('provider-option-0'));
-  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+  await fireEvent.press(screen.getByTestId('navigation-recording'));
 
-  await waitFor(() =>
-    expect(
-      screen.getByText(
-        `${providerSelectionText.selectedPrefix} ${apple.provider.displayName}`,
-      ),
-    ).toBeTruthy(),
-  );
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
+  await pressAlertButton(alert, 0);
+  expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
+  expect(store.save).not.toHaveBeenCalled();
 });
 
 test('guards a pending provider choice through button and edge-swipe back', async () => {

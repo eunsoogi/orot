@@ -1,9 +1,15 @@
+import { AppButton as Button } from '../../layout/AppButton';
+import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
 import ProviderSelectionConfirmation from './ProviderSelectionConfirmation';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
+import {
+  providerSelectionScreenStyles as styles,
+  resolutionMessage,
+} from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -13,11 +19,11 @@ import type {
   ProviderSelection,
   ProviderSelectionOption,
   ProviderSelectionRequirements,
-  ProviderSelectionResolution,
   ProviderSelectionStore,
 } from './types';
 
 interface ProviderSelectionScreenProps {
+  readonly navigationRouteKey?: string;
   readonly options: readonly ProviderSelectionOption[];
   readonly requirements: ProviderSelectionRequirements;
   readonly selectionStore: ProviderSelectionStore;
@@ -33,6 +39,7 @@ interface ProviderSelectionScreenProps {
 }
 
 export default function ProviderSelectionScreen({
+  navigationRouteKey,
   options,
   requirements,
   selectionStore,
@@ -159,7 +166,7 @@ export default function ProviderSelectionScreen({
       style={styles.scrollView}
       testID="provider-selection-screen"
     >
-      {onBack ? (
+      {onBack && !navigationRouteKey ? (
         <Button
           accessibilityLabel={navigationText.back.accessibilityLabel}
           onPress={onBack}
@@ -175,6 +182,7 @@ export default function ProviderSelectionScreen({
       </Text>
       <Text
         accessibilityRole={loadError || saveError ? 'alert' : undefined}
+        style={loadError || saveError ? styles.error : undefined}
         testID="provider-selection-current"
       >
         {saveError ? providerSelectionText.storageSaveError : selectionMessage}
@@ -222,26 +230,3 @@ export default function ProviderSelectionScreen({
     </ScrollView>
   );
 }
-
-function resolutionMessage(
-  resolution: ProviderSelectionResolution | null,
-): string | null {
-  if (!resolution || resolution.ok) return null;
-  switch (resolution.reason) {
-    case 'provider-unavailable':
-      return resolution.message ?? providerSelectionText.unavailableProvider;
-    case 'missing-capability':
-      return providerSelectionText.unsupportedCapabilities;
-    case 'selection-required':
-    case 'selection-unavailable':
-      return providerSelectionText.unavailableSelection;
-  }
-}
-
-const styles = StyleSheet.create({
-  scrollView: { flex: 1 },
-  // Account rows and disclosures must remain scrollable in short viewports.
-  container: { flexGrow: 1, gap: 12, padding: 24, backgroundColor: '#f7f8fa' },
-  title: { color: '#17212b', fontSize: 24, fontWeight: '700' },
-  introduction: { color: '#45515f', fontSize: 15 },
-});

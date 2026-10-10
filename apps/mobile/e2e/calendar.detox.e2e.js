@@ -13,15 +13,32 @@ describe('Calendar appointment confirmation with a synthetic-only provider', () 
       launchArgs: { OROT_CALENDAR_PROBE: 'synthetic' },
     });
 
-    await expect(element(by.id('welcome-title'))).toHaveText(
-      'Orot에 오신 걸 환영해요',
-    );
+    await expect(element(by.id('welcome-title'))).toHaveText('오롯');
     await expect(element(by.id('calendar-connect'))).not.toExist();
     await element(by.id('open-appointments')).tap();
 
     await waitFor(element(by.id('calendar-connect')))
       .toBeVisible()
       .withTimeout(30000);
+    const safeAreaRoot = await element(by.id('safe-area-root')).getAttributes();
+    const calendarScroll = await element(
+      by.id('calendar-screen'),
+    ).getAttributes();
+    const calendarTitle = await element(
+      by.id('calendar-title'),
+    ).getAttributes();
+    for (const [description, attributes] of [
+      ['calendar scroll', calendarScroll],
+      ['calendar title', calendarTitle],
+    ]) {
+      if (!attributes.frame || !safeAreaRoot.frame) {
+        throw new Error(`Missing safe-area frame for ${description}.`);
+      }
+      if (attributes.frame.y - safeAreaRoot.frame.y < 44) {
+        throw new Error(`${description} overlaps the top system safe area.`);
+      }
+    }
+    await device.takeScreenshot('calendar-top-safe-area');
     await expect(element(by.id('appointment-add'))).not.toExist();
     await element(by.id('calendar-connect')).tap();
 

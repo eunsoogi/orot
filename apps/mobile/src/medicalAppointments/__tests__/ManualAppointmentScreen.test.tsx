@@ -1,6 +1,31 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import ManualAppointmentScreen from '../ManualAppointmentScreen';
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
+
+  return {
+    SafeAreaProvider: ({
+      children,
+      style,
+    }: {
+      children?: ReactNode;
+      style?: object;
+    }) => React.createElement(View, { style }, children),
+    SafeAreaView: ({
+      children,
+      style,
+      testID,
+    }: {
+      children?: ReactNode;
+      style?: object;
+      testID?: string;
+    }) => React.createElement(View, { style, testID }, children),
+  };
+});
 
 const existing: Appointment = {
   id: 'manual-appointment-1',
@@ -26,6 +51,22 @@ function repository(appointments: Appointment[] = []) {
 }
 
 describe('independent manual appointment page', () => {
+  it('keeps Back in the shared bottom menu inside the route safe area', async () => {
+    const onBack = jest.fn();
+    await render(
+      <ManualAppointmentScreen repository={repository()} onBack={onBack} />,
+    );
+
+    const toolbar = screen.getByTestId('navigation-bar-native-surface');
+    expect(screen.getByTestId('safe-area-root')).toBeTruthy();
+    expect(toolbar.props.actions).toEqual([
+      expect.objectContaining({ id: 'back', testID: 'appointments-back' }),
+    ]);
+    expect(screen.queryByTestId('appointments-top-back')).toBeNull();
+    await fireEvent.press(screen.getByTestId('appointments-back'));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('creates a local appointment without Calendar or AI services', async () => {
     const appointments = repository();
     const onBack = jest.fn();

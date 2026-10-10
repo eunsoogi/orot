@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import { NavigationActionBar } from './NavigationActionBar';
+import { NavigationRouteScrollView } from './NavigationRouteScrollView';
 import { EdgeSwipeBackRegion } from './EdgeSwipeBackRegion';
 import { NavigationLeaveStateRegistrationProvider } from './useNavigationLeaveStateRegistration';
 import { createNavigationLeaveGuard } from './navigationLeaveGuard';
@@ -19,6 +14,7 @@ import type {
 } from './navigationController';
 import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
 import type { NavigationSurface } from './NavigationActionBar';
+import type { NavigationPrimaryAction } from './NavigationActionBar';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
 
 export interface NavigationRouteActions<Name extends string> {
@@ -50,6 +46,7 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
   readonly scrollable?: boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly showHome?: boolean;
+  readonly primaryAction?: NavigationPrimaryAction;
   readonly contentSafeAreaHandledByChild?:
     boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly surface?: NavigationSurface;
@@ -62,6 +59,7 @@ export function NavigationRouteAdapter<Name extends string>({
   children,
   scrollable = false,
   showHome = false,
+  primaryAction,
   contentSafeAreaHandledByChild = false,
   surface,
 }: NavigationRouteAdapterProps<Name>) {
@@ -164,20 +162,21 @@ export function NavigationRouteAdapter<Name extends string>({
       ? contentSafeAreaHandledByChild(snapshot.currentRoute)
       : contentSafeAreaHandledByChild;
   const body = routeIsScrollable ? (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
-      style={styles.fill}
-      testID="navigation-route-scroll"
-    >
-      {routeContent}
-    </ScrollView>
+    <NavigationRouteScrollView>{routeContent}</NavigationRouteScrollView>
   ) : (
     <View style={styles.fill}>{routeContent}</View>
   );
   const gestureRegion = (
     <EdgeSwipeBackRegion controller={controller}>{body}</EdgeSwipeBackRegion>
+  );
+  const actionBar = (
+    <NavigationActionBar
+      controller={controller}
+      leaveDisabled={leaveDisabled}
+      showHome={showHome}
+      primaryAction={primaryAction}
+      surface={surface}
+    />
   );
 
   return (
@@ -192,16 +191,21 @@ export function NavigationRouteAdapter<Name extends string>({
           {routeContentSafeAreaHandledByChild ? (
             <View style={styles.fill}>{gestureRegion}</View>
           ) : (
-            <SafeAreaView edges={['top', 'right', 'left']} style={styles.fill}>
+            <SafeAreaView
+              edges={['top', 'right', 'bottom', 'left']}
+              style={styles.fill}
+            >
               {gestureRegion}
             </SafeAreaView>
           )}
-          <NavigationActionBar
-            controller={controller}
-            leaveDisabled={leaveDisabled}
-            showHome={showHome}
-            surface={surface}
-          />
+          {/* The clear native buttons let route content move behind the glass surface. */}
+          <View
+            pointerEvents="box-none"
+            style={styles.actionBarOverlay}
+            testID="navigation-action-bar-overlay"
+          >
+            {actionBar}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaProvider>
@@ -210,5 +214,11 @@ export function NavigationRouteAdapter<Name extends string>({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
+  actionBarOverlay: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
+  },
 });

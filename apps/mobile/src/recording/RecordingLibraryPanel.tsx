@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { Button, View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';

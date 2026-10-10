@@ -1,8 +1,13 @@
+import { AppButton as Button } from '../../layout/AppButton';
+import { AppText as Text } from '../../layout/AppText';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import type { NavigationLeaveState } from '../../navigation';
+import { navigationText } from '../../i18n/navigation';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../../navigation/navigationLayout';
 import { t } from '../../i18n';
+import { appColors } from '../../layout/appColors';
 import type {
   BloodPressureComponent,
   BloodPressureObservation,
@@ -96,10 +101,11 @@ export function BloodPressureImportScreen({
         </Text>
         {hasSharedNavigation ? null : (
           <Button
+            accessibilityLabel={navigationText.back.accessibilityLabel}
             disabled={isImporting}
             onPress={onBack}
             testID="blood-pressure-back"
-            title={t('healthkit.bloodPressure.back')}
+            title={navigationText.back.label}
           />
         )}
       </View>
@@ -127,7 +133,11 @@ export function BloodPressureImportScreen({
       ) : null}
       {loadState === 'failed' ? (
         <View>
-          <Text accessibilityRole="alert" testID="blood-pressure-load-error">
+          <Text
+            accessibilityRole="alert"
+            style={styles.error}
+            testID="blood-pressure-load-error"
+          >
             {t('healthkit.bloodPressure.loadError')}
           </Text>
           <Button
@@ -217,12 +227,24 @@ function toImportStatus(result: BloodPressureSyncResult): ImportStatus {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
+  container: {
+    gap: 12,
+    padding: 20,
+    paddingBottom: 20 + BOTTOM_NAVIGATION_CONTENT_INSET,
+  },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   title: { fontSize: 22, fontWeight: '700' },
-  reading: { borderWidth: 1, gap: 6, padding: 12 },
+  error: { color: appColors.danger },
+  reading: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
 });

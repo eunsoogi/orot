@@ -1,13 +1,15 @@
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Button,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { navigationText } from '../i18n/navigation';
+import { appColors } from '../layout/appColors';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
@@ -123,7 +125,13 @@ export function ConversationScreen({
       contentContainerStyle={styles.container}
       testID="rag-conversation-screen"
     >
-      <Button onPress={onBack} title={copy.back} />
+      {navigationRouteKey ? null : (
+        <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          title={navigationText.back.label}
+        />
+      )}
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
@@ -131,7 +139,7 @@ export function ConversationScreen({
       {messages.map(message => (
         <View key={message.id} style={styles.message}>
           <Text style={styles.role}>
-            {message.role === 'user' ? copy.speakerUser : 'Orot'}
+            {message.role === 'user' ? copy.speakerUser : '오롯'}
           </Text>
           <Text>{message.content}</Text>
           {message.citations?.map(reference => (
@@ -150,7 +158,11 @@ export function ConversationScreen({
       {busy ? (
         <Text testID="rag-conversation-loading">{copy.loading}</Text>
       ) : null}
-      {error ? <Text accessibilityRole="alert">{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
       <TextInput
         accessibilityLabel={copy.placeholder}
         editable={!busy}
@@ -160,6 +172,8 @@ export function ConversationScreen({
           setDraft(value);
         }}
         placeholder={copy.placeholder}
+        placeholderTextColor={appColors.secondary}
+        style={styles.input}
         testID="rag-conversation-input"
         value={draft}
       />
@@ -178,13 +192,27 @@ export function ConversationScreen({
 const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   heading: { fontSize: 22, fontWeight: '700' },
+  input: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: appColors.text,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
   message: {
-    borderColor: '#C9D4D1',
+    borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 1,
     gap: 6,
     padding: 12,
   },
   role: { fontWeight: '700' },
-  source: { color: '#174F45', fontWeight: '700', paddingVertical: 4 },
+  error: { color: appColors.danger },
+  source: {
+    color: appColors.primaryText,
+    fontWeight: '700',
+    paddingVertical: 4,
+  },
 });

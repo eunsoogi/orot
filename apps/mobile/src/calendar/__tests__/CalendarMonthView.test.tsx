@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { appointmentFor, event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
 import { calendarEventDayRange } from '../calendarMonth';
@@ -8,6 +9,35 @@ function queryWindow(start: string, end: string) {
 }
 
 describe('calendar month view', () => {
+  it('preserves a 44pt date target in a horizontally scrollable seven-column region', async () => {
+    const calendar = await render(
+      <CalendarMonthView
+        appointmentsLoading={false}
+        candidatesLoaded={false}
+        events={[]}
+        initialDate={new Date(2035, 5, 2)}
+        linkedAppointment={null}
+        onSelectEvent={jest.fn()}
+        queryWindow={null}
+        resultsMayBeIncomplete={false}
+      />,
+    );
+
+    expect(
+      calendar.getByTestId('calendar-date-grid-scroll').props.horizontal,
+    ).toBe(true);
+    expect(
+      StyleSheet.flatten(
+        calendar.getByTestId('calendar-date-grid-content').props.style,
+      ).minWidth,
+    ).toBe(308);
+    expect(
+      StyleSheet.flatten(
+        calendar.getByTestId('calendar-day-2035-06-02').props.style,
+      ).minWidth,
+    ).toBe(44);
+  });
+
   it('shows multiple events and marks the stored visit on its date', async () => {
     const visit = event('clinic', '2035-06-02T00:00:00.000Z');
     const meeting = event('meeting', '2035-06-02T02:00:00.000Z');

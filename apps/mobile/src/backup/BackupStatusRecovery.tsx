@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
 import { t } from '../i18n';
 import { prepareBackupSupport } from './backupSupport';
 import type { BackupSupportState } from './backupSupport';
