@@ -5,20 +5,13 @@ const { expect: jestExpect } = require('@jest/globals');
 const {
   expectKeyboardOccludesScroll,
   expectFloatingViewport,
+  frameOf,
 } = require('./safeAreaHelpers');
 const { openRootTab } = require('./smokeHelpers');
 
 // The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
 const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
-
-async function frameOf(target, description) {
-  const attributes = await target.getAttributes();
-  if (!attributes.frame) {
-    throw new Error(`Detox did not return a frame for ${description}.`);
-  }
-  return attributes.frame;
-}
 
 async function frameFor(testID) {
   return frameOf(element(by.id(testID)), testID);

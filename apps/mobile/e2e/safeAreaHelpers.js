@@ -3,6 +3,15 @@
 const { expect: jestExpect } = require('@jest/globals');
 const MINIMUM_KEYBOARD_OCCLUSION_RATIO = 0.25;
 
+/** Reads UIKit screen coordinates and rejects missing measurement evidence. */
+async function frameOf(target, description) {
+  const attributes = await target.getAttributes();
+  if (!attributes.frame) {
+    throw new Error(`Detox did not return a frame for ${description}.`);
+  }
+  return attributes.frame;
+}
+
 /** Confirms the visible keyboard overlaps the scroll viewport without hiding all content. */
 async function expectKeyboardOccludesScroll(scrollFrame) {
   const attributes = await element(
@@ -57,4 +66,8 @@ async function expectFloatingViewport(scrollID, actionID) {
   jestExpect(action.y + action.height).toBeLessThanOrEqual(toolbar.y);
 }
 
-module.exports = { expectKeyboardOccludesScroll, expectFloatingViewport };
+module.exports = {
+  expectKeyboardOccludesScroll,
+  expectFloatingViewport,
+  frameOf,
+};
