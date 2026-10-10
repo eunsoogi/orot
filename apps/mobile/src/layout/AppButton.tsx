@@ -10,7 +10,8 @@ export function AppButton({
   testID,
   accessibilityLabel,
   accessibilityHint,
-}: ButtonProps) {
+  variant = 'primary',
+}: ButtonProps & { readonly variant?: 'primary' | 'secondary' }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -21,12 +22,17 @@ export function AppButton({
       onPress={onPress}
       style={[
         styles.button,
+        variant === 'secondary' && styles.secondary,
         color ? { backgroundColor: color } : null,
         disabled && styles.disabled,
       ]}
       testID={testID}
     >
-      <Text style={styles.label}>{title}</Text>
+      <Text
+        style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}
+      >
+        {title}
+      </Text>
     </Pressable>
   );
 }
@@ -49,4 +55,11 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   disabled: { opacity: 0.45 },
+  // Secondary actions keep the same touch target while letting grouped rows stay quiet.
+  secondary: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderWidth: 1,
+  },
+  secondaryLabel: { color: appColors.primaryText },
 });

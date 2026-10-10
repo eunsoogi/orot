@@ -1,5 +1,14 @@
 export const backupKo = {
-  // These strings describe local restore preparation, not an OS backup result.
+  // These strings describe local preparation only; iOS remains authoritative for cloud backup state.
+  'backup.pageTitle': '백업과 복구',
+  'backup.pageDescription': '기록 보관과 복구 상태를 확인해요.',
+  'backup.localPreparation': '로컬 백업 준비',
+  'backup.recoveryStatus': '복구 상태',
+  'backup.recoveryNotChecked': '확인 전',
+  'backup.icloudGuidance':
+    'iCloud 백업 완료 여부는 iOS 설정에서 확인해 주세요.',
+  'backup.openSettings': 'iOS 설정 안내',
+  'backup.prepare': '백업 준비',
   'backup.title': 'iCloud 기기 백업 준비',
   'backup.description':
     '암호화된 오롯 기록과 상담 녹음이 기기 백업에 포함될 수 있도록 준비해요. 앱은 실제 백업 완료 여부를 확인할 수 없어요.',
@@ -11,5 +20,4 @@ export const backupKo = {
   'backup.status.unavailable':
     '백업 준비 상태를 확인하지 못했어요. 기기를 잠금 해제한 뒤 다시 시도하고, iCloud 저장 공간은 설정에서 확인해 주세요.',
   'backup.settingsPath': '설정 > 사용자 이름 > iCloud > iCloud 백업',
-  'backup.retry': '다시 확인',
 } as const;

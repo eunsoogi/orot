@@ -20,6 +20,9 @@ export interface NavigationGlassAction {
   readonly systemImageName?: string;
   readonly disabled?: boolean;
   readonly primary?: boolean;
+  readonly selected?: boolean;
+  readonly showsTitleWithSystemImage?: boolean;
+  readonly titleBelowImage?: boolean;
 }
 
 export interface NavigationGlassActionEvent {
@@ -83,7 +86,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     height: NAVIGATION_SURFACE_HEIGHT,
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
   },
   fallback: {
     backgroundColor: '#ffffff',

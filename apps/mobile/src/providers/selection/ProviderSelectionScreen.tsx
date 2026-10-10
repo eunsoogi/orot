@@ -23,6 +23,8 @@ import type {
 } from './types';
 
 interface ProviderSelectionScreenProps {
+  readonly screenTitle?: string;
+  readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
   readonly options: readonly ProviderSelectionOption[];
   readonly requirements: ProviderSelectionRequirements;
@@ -39,6 +41,8 @@ interface ProviderSelectionScreenProps {
 }
 
 export default function ProviderSelectionScreen({
+  screenTitle,
+  screenIntroduction,
   navigationRouteKey,
   options,
   requirements,
@@ -174,11 +178,12 @@ export default function ProviderSelectionScreen({
           title={navigationText.back.label}
         />
       ) : null}
+      {/* Settings and AI share the same selection state but enter with different context. */}
       <Text accessibilityRole="header" style={styles.title}>
-        {providerSelectionText.title}
+        {screenTitle ?? providerSelectionText.title}
       </Text>
       <Text style={styles.introduction}>
-        {providerSelectionText.introduction}
+        {screenIntroduction ?? providerSelectionText.introduction}
       </Text>
       <Text
         accessibilityRole={loadError || saveError ? 'alert' : undefined}

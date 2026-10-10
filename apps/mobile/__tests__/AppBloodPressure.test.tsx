@@ -4,6 +4,7 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
+import type { ComponentProps } from 'react';
 import App from '../App';
 import {
   importLocalBloodPressure,
@@ -11,6 +12,7 @@ import {
 } from '../src/healthkit/bloodPressure/importLocal';
 import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
 import { correlation } from '../src/healthkit/bloodPressure/testSupport';
+import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
@@ -31,6 +33,22 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
+async function renderApp(props: ComponentProps<typeof App> = {}) {
+  const store = createAppointmentStore();
+  await render(
+    <App
+      loadAppointments={async () => store.repository}
+      loadRecordings={async () => []}
+      {...props}
+    />,
+  );
+}
+
+async function openBloodPressure() {
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-open-blood-pressure'));
+}
+
 test('opens the BP import screen, displays persisted source status, and returns home', async () => {
   const observations = mapBloodPressureCorrelation(
     correlation('app-screen-correlation'),
@@ -46,9 +64,9 @@ test('opens the BP import screen, displays persisted source status, and returns 
     deleted: 0,
     cursorAdvanced: false,
   });
-  await render(<App />);
+  await renderApp();
 
-  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+  await openBloodPressure();
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
   expect(await screen.findByText('수축기 120 mmHg')).toBeTruthy();
   expect(screen.getAllByText('원본 정보 제공 안 됨')).toHaveLength(2);
@@ -61,16 +79,14 @@ test('opens the BP import screen, displays persisted source status, and returns 
   ).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('welcome-title')).toBeTruthy();
+  expect(screen.getByTestId('records-title')).toBeTruthy();
 });
 
 test('keeps blood pressure list scrolling inside the shared safe area', async () => {
   const loadBloodPressureObservations = jest.fn(async () => []);
-  await render(
-    <App loadBloodPressureObservations={loadBloodPressureObservations} />,
-  );
+  await renderApp({ loadBloodPressureObservations });
 
-  await fireEvent.press(screen.getByTestId('open-blood-pressure-import'));
+  await openBloodPressure();
 
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
   // Keep the screen-owned scroller beside the shared bottom navigation action.

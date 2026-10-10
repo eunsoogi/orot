@@ -32,7 +32,10 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
                 accessible: true,
                 accessibilityLabel: action.accessibilityLabel,
                 accessibilityRole: 'button',
-                accessibilityState: { disabled: action.disabled === true },
+                accessibilityState: {
+                  disabled: action.disabled === true,
+                  ...(action.selected === true ? { selected: true } : {}),
+                },
                 disabled: action.disabled === true,
                 key: action.id,
                 onPress: () => onAction?.({ nativeEvent: { id: action.id } }),

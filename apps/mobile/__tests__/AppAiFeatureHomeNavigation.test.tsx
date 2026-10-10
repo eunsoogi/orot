@@ -24,7 +24,7 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-const homeFeatureRoutes = [
+const aiFeatureRoutes = [
   ['ai-feature-visit-questions', 'home-visit-questions-screen'],
   ['ai-feature-disease-hypotheses', 'disease-hypotheses-screen'],
   ['ai-feature-rag-conversation', 'rag-conversation-screen'],
@@ -47,7 +47,7 @@ function VisitQuestionsHomeRouteProbe({
   return <Text testID="home-visit-questions-screen">다음 진료 질문 화면</Text>;
 }
 
-test('shows four explained AI actions on the welcome screen and opens each route directly', async () => {
+test('shows four explained AI actions on the AI tab and opens each route directly', async () => {
   // Keep App and its shared navigator mounted to verify one-tap home routing.
   await render(
     <App
@@ -57,43 +57,28 @@ test('shows four explained AI actions on the welcome screen and opens each route
     />,
   );
 
+  await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
   expect(screen.getByText('다음 진료 질문')).toBeTruthy();
-  expect(screen.getByText('질환 가능성 살펴보기')).toBeTruthy();
-  expect(screen.getByText('건강 기록과 대화하기')).toBeTruthy();
-  expect(screen.getByText('의료 자료 찾아보기')).toBeTruthy();
-  expect(
-    screen.getByText(
-      '건강 기록과 녹음, 다음 예약, 기억을 바탕으로 진료 때 물어볼 내용을 준비해요.',
-    ),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(
-      '앱에 있는 근거와 반대 근거, 불확실한 점과 더 필요한 정보를 함께 확인해요.',
-    ),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(
-      '저장된 건강 기록을 찾아 답하고, 답의 근거가 된 원문으로 이동해요.',
-    ),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(
-      '직접 입력한 검색어로 외부 의료 문헌을 찾아 출처와 날짜를 확인해요.',
-    ),
-  ).toBeTruthy();
+  expect(screen.getByText('증상 정리')).toBeTruthy();
+  expect(screen.getByText('기록과 대화')).toBeTruthy();
+  expect(screen.getByText('의학 자료 찾기')).toBeTruthy();
+  expect(screen.getByText('궁금한 점을 정리해요.')).toBeTruthy();
+  expect(screen.getByText('지금 느끼는 증상을 정리해요.')).toBeTruthy();
+  expect(screen.getByText('내 기록을 바탕으로 질문해요.')).toBeTruthy();
+  expect(screen.getByText('의학 자료를 찾아보세요.')).toBeTruthy();
   expect(screen.queryByTestId('open-ai-features')).toBeNull();
 
-  for (const [actionId, routeId] of homeFeatureRoutes) {
+  for (const [actionId, routeId] of aiFeatureRoutes) {
     await fireEvent.press(screen.getByTestId(actionId));
     expect(await screen.findByTestId(routeId)).toBeTruthy();
     await fireEvent.press(screen.getByTestId('navigation-back'));
     await waitFor(() =>
-      expect(screen.getByTestId('welcome-title')).toBeTruthy(),
+      expect(screen.getByTestId('ai-features-screen')).toBeTruthy(),
     );
   }
 }, 30_000);
 
-test('opens recording from an AI route after leaving its guarded navigator', async () => {
+test('keeps recording under Records when leaving an AI route', async () => {
   await render(
     <App
       renderVisitQuestions={input => (
@@ -102,11 +87,14 @@ test('opens recording from an AI route after leaving its guarded navigator', asy
     />,
   );
 
+  await fireEvent.press(screen.getByTestId('navigation-tab-ai'));
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
   expect(await screen.findByTestId('disease-hypotheses-screen')).toBeTruthy();
 
-  // The AI flow owns a separate navigator, so return to App before opening recording.
-  await fireEvent.press(screen.getByTestId('navigation-recording'));
+  expect(screen.queryByTestId('navigation-recording')).toBeNull();
+  await fireEvent.press(screen.getByTestId('navigation-home'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-new-recording'));
 
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   await waitFor(() =>

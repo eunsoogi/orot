@@ -3,6 +3,7 @@
 // Detox reserves global expect() for UI elements, so frame numbers use Jest's matcher.
 const { expect: jestExpect } = require('@jest/globals');
 const { expectKeyboardOccludesScroll } = require('./safeAreaHelpers');
+const { openRootTab } = require('./smokeHelpers');
 
 // The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
@@ -77,7 +78,7 @@ describe('safe area routes on iOS Simulator', () => {
     await device.setOrientation('portrait');
   });
 
-  it('keeps home content within the system insets and reaches trailing actions', async () => {
+  it('keeps Home and Records within the system insets and reaches Health imports', async () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
@@ -91,15 +92,23 @@ describe('safe area routes on iOS Simulator', () => {
       'navigation-keyboard-avoiding-root',
     );
 
-    const scroll = element(by.id('navigation-route-scroll'));
-    await scroll.scrollTo('bottom', 0.5, 0.5);
-    await expect(element(by.id('open-recording'))).toBeVisible();
-    // AI cards and the existing app routes share this scroll; its tail holds the trailing actions.
-    await expectElementAboveBottomInset(
-      'open-recording',
+    await openRootTab('records', 'records-title');
+    await expectElementBelowTopInset(
+      'records-title',
       'navigation-keyboard-avoiding-root',
     );
-    await element(by.id('open-common-observations')).tap();
+    await device.takeScreenshot('records-top-safe-area');
+    const recordsScroll = element(by.id('navigation-route-scroll'));
+    await recordsScroll.scrollTo('bottom', 0.5, 0.5);
+    const commonObservationsAction = element(
+      by.id('records-open-common-observations'),
+    );
+    await expect(commonObservationsAction).toBeVisible();
+    await expectElementAboveBottomInset(
+      'records-open-common-observations',
+      'navigation-keyboard-avoiding-root',
+    );
+    await commonObservationsAction.tap();
     await waitFor(element(by.id('common-observations-import')))
       .toBeVisible()
       .withTimeout(30000);
@@ -122,15 +131,9 @@ describe('safe area routes on iOS Simulator', () => {
   });
 
   it('preserves the recording screen inset root and existing inner scrolling', async () => {
-    await element(by.id('navigation-route-scroll')).scrollTo(
-      'bottom',
-      0.5,
-      0.5,
-    );
-    await waitFor(element(by.id('open-recording')))
-      .toBeVisible()
-      .withTimeout(30000);
-    await element(by.id('open-recording')).tap();
+    await openRootTab('records', 'records-title');
+    await expect(element(by.id('records-new-recording'))).toBeVisible();
+    await element(by.id('records-new-recording')).tap();
     await waitFor(element(by.id('recording-start')))
       .toBeVisible()
       .withTimeout(30000);
@@ -158,12 +161,13 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await openRootTab('records', 'records-title');
     await element(by.id('navigation-route-scroll')).scrollTo(
       'bottom',
       0.5,
       0.5,
     );
-    await element(by.id('open-blood-pressure-import')).tap();
+    await element(by.id('records-open-blood-pressure')).tap();
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()
       .withTimeout(30000);

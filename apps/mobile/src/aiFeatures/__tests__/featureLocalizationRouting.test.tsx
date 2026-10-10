@@ -33,6 +33,8 @@ const featureScreens = [
     ),
     expectedKeys: [
       'aiFeatures.heading',
+      'aiFeatures.subtitle',
+      'aiFeatures.disclaimer',
       'aiFeatures.visitQuestions.title',
       'aiFeatures.visitQuestions.description',
       'aiFeatures.visitQuestions.action',

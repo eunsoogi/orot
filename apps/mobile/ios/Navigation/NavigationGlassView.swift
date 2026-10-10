@@ -13,6 +13,7 @@ final class NavigationGlassSurfaceView: UIView {
 
     private let toolbar = UIToolbar()
     private var actionButtons: [UIButton] = []
+    private var buttonWidths: [NSLayoutConstraint] = []
     private static let primaryTint = UIColor { traits in
         // Darken the brand tint in higher-contrast settings while retaining its hue.
         if traits.accessibilityContrast == .high {
@@ -81,6 +82,7 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     private func rebuildToolbarItems() {
+        buttonWidths = []
         actionButtons = actions.compactMap(NavigationActionDescriptor.init).map(makeToolbarButton)
         guard !actionButtons.isEmpty else {
             toolbar.setItems([], animated: false)
@@ -93,6 +95,15 @@ final class NavigationGlassSurfaceView: UIView {
             [.flexibleSpace()] + buttonItems + [.flexibleSpace()],
             animated: false,
         )
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Give one continuous glass group the available screen width instead of hugging small icons.
+        // UIKit adds group insets and inter-item spacing; reserve them to avoid its overflow menu.
+        let width = max(44, (bounds.width - 80) / CGFloat(max(1, buttonWidths.count)))
+        buttonWidths.forEach { $0.constant = width }
     }
 
     private func makeToolbarButton(for action: NavigationActionDescriptor) -> UIButton {
@@ -103,7 +114,10 @@ final class NavigationGlassSurfaceView: UIView {
         } else {
             action.primary ? .filled() : .plain()
         }
-        configuration.title = action.systemImageName == nil ? action.label : nil
+        configuration.title =
+            action.systemImageName == nil || action.showsTitleWithSystemImage
+                ? action.label
+                : nil
         if let name = action.systemImageName {
             configuration.image = UIImage(
                 systemName: name,
@@ -113,24 +127,36 @@ final class NavigationGlassSurfaceView: UIView {
                 ),
             )
         }
-        configuration.imagePlacement = .leading
-        configuration.imagePadding = 6
-        // Keep the visible control itself at least 44 points high for reliable touch and AX frames.
+        configuration.imagePlacement = action.titleBelowImage ? .top : .leading
+        configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
+        if action.showsTitleWithSystemImage {
+            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                var updated = attributes
+                updated.font = .systemFont(ofSize: action.titleBelowImage ? 10 : 14, weight: .medium)
+                return updated
+            }
+        }
+        // The five tab targets share the glass background and retain a 44-point hit area.
         configuration.contentInsets = NSDirectionalEdgeInsets(
-            top: 12,
-            leading: 12,
-            bottom: 12,
-            trailing: 12,
+            top: action.showsTitleWithSystemImage ? 5 : 12,
+            leading: action.showsTitleWithSystemImage ? 5 : 12,
+            bottom: action.showsTitleWithSystemImage ? 5 : 12,
+            trailing: action.showsTitleWithSystemImage ? 5 : 12,
         )
+        configuration.baseForegroundColor = action.primary ? .white : action.selected ? Self.primaryTint : .label
         button.configuration = configuration
         button.accessibilityLabel = action.accessibilityLabel
         button.accessibilityIdentifier = action.testID
         button.isEnabled = !action.disabled
-        button.tintColor = action.primary ? Self.primaryTint : UIColor.label
+        button.tintColor =
+            action.primary || action.selected ? Self.primaryTint : UIColor.label
+        button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
         button.translatesAutoresizingMaskIntoConstraints = false
+        let width = button.widthAnchor.constraint(equalToConstant: 44)
+        buttonWidths.append(width)
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            width,
+            button.heightAnchor.constraint(equalToConstant: 52),
         ])
         button.addAction(UIAction(title: action.label) { [weak self] _ in
             // Stable IDs keep UIKit input connected to the existing JS navigation handlers.
@@ -149,6 +175,9 @@ private struct NavigationActionDescriptor {
     let systemImageName: String?
     let disabled: Bool
     let primary: Bool
+    let selected: Bool
+    let showsTitleWithSystemImage: Bool
+    let titleBelowImage: Bool
 
     init?(_ value: Any) {
         guard
@@ -168,6 +197,9 @@ private struct NavigationActionDescriptor {
         systemImageName = payload["systemImageName"] as? String
         disabled = payload["disabled"] as? Bool ?? false
         primary = payload["primary"] as? Bool ?? false
+        selected = payload["selected"] as? Bool ?? false
+        showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
+        titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
     }
 }
 

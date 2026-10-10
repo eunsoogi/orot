@@ -1,6 +1,7 @@
 /* global by, describe, device, element, expect, it, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
+const { openRootTab } = require('./smokeHelpers');
 
 async function scrollRouteToBottom() {
   // Scroll the route viewport independently of its fixed bottom action bar.
@@ -26,8 +27,8 @@ async function tapNativeNavigationAction(testID) {
     !toolbarAttributes.visible ||
     !toolbarAttributes.hittable ||
     !frame ||
-    frame.width < 44 ||
-    frame.height < 44 ||
+    frame.width + 0.001 < 44 ||
+    frame.height + 0.001 < 44 ||
     !toolbarFrame
   ) {
     throw new Error(
@@ -44,7 +45,7 @@ async function tapNativeNavigationAction(testID) {
 
 describe('native navigation glass', () => {
   // Diagnostics can cover controls, so leave them off; tap the visible roof instead of the hollow glyph center.
-  it('keeps scrolling Home content clear of native controls and reaches the last action', async () => {
+  it('keeps Home content clear of native controls and opens Records from the tab bar', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -53,19 +54,20 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    await element(by.id('navigation-route-scroll')).scroll(
-      360,
-      'down',
-      0.5,
-      0.7,
+    const recent = await element(by.id('home-open-records')).getAttributes();
+    const toolbar = await element(
+      by.id('navigation-native-toolbar'),
+    ).getAttributes();
+    if (!recent.frame || !toolbar.frame)
+      throw new Error('Missing Home content or toolbar frame.');
+    jestExpect(recent.frame.y + recent.frame.height).toBeLessThanOrEqual(
+      toolbar.frame.y,
     );
-    // The native toolbar remains visible as content moves in its own viewport.
-    await device.takeScreenshot('home-scrolled-native-glass');
-
-    await scrollRouteToBottom();
-    await expect(element(by.id('open-recording'))).toBeVisible();
-    await device.takeScreenshot('home-last-action-above-native-glass');
-    await element(by.id('open-recording')).tap();
+    await device.takeScreenshot('home-native-glass');
+    await openRootTab('records', 'records-title');
+    await expect(element(by.id('records-new-recording'))).toBeVisible();
+    await device.takeScreenshot('records-native-glass-tab');
+    await element(by.id('records-new-recording')).tap();
     await waitFor(element(by.id('recording-controls-scroll')))
       .toBeVisible()
       .withTimeout(30000);
@@ -79,7 +81,7 @@ describe('native navigation glass', () => {
     await device.takeScreenshot('home-after-native-home-action');
   });
 
-  it('keeps the Home navigation action reachable with XXXL text', async () => {
+  it('keeps root tabs and recording actions reachable with XXXL text', async () => {
     await device.launchApp({
       newInstance: true,
       launchArgs: {
@@ -92,12 +94,13 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    // The native recording action remains available while the large Home content scrolls independently.
-    await device.takeScreenshot('home-xxxl-native-glass');
-    await expect(element(by.id('navigation-recording'))).toHaveLabel(
-      '녹음 화면으로 이동',
-    );
-    await tapNativeNavigationAction('navigation-recording');
+    // Large text creates real overflow; verify scrolling here rather than assuming it at normal size.
+    await scrollRouteToBottom();
+    await expect(element(by.id('home-empty-recordings'))).toBeVisible();
+    await device.takeScreenshot('home-xxxl-native-glass-tabs');
+    await openRootTab('records', 'records-title');
+    await expect(element(by.id('records-new-recording'))).toBeVisible();
+    await element(by.id('records-new-recording')).tap();
 
     await waitFor(element(by.id('recording-controls-scroll')))
       .toBeVisible()
@@ -118,7 +121,7 @@ describe('native navigation glass', () => {
       .withTimeout(30000);
   });
 
-  it('shows native back and Home glass actions on a feature route', async () => {
+  it('shows native back and Home glass actions on a feature route opened from AI', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -127,10 +130,11 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
-    const scroll = element(by.id('navigation-route-scroll'));
+    await openRootTab('ai', 'ai-features-screen');
+    const scroll = element(by.id('ai-features-screen'));
     const featureAction = element(by.id('ai-feature-visit-questions'));
     await scroll.scrollTo('top');
-    // The home card position depends on available vertical space and text sizing.
+    // The AI row position depends on available vertical space and text sizing.
     await waitFor(featureAction)
       .toBeVisible()
       .whileElement(by.id('navigation-route-scroll'))
@@ -146,7 +150,7 @@ describe('native navigation glass', () => {
     const routeScroll = await element(
       by.id('next-visit-questions-scroll'),
     ).getAttributes();
-    const routeTitle = await element(by.text('다음 진료 준비')).getAttributes();
+    const routeTitle = await element(by.text('다음 진료 질문')).getAttributes();
     for (const [description, attributes] of [
       ['feature scroll', routeScroll],
       ['feature title', routeTitle],

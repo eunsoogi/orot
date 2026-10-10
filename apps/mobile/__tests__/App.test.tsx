@@ -1,5 +1,12 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { AppointmentRepository } from '@orot/storage';
+import type { ComponentProps } from 'react';
 import App from '../App';
 import type { CalendarBridge } from '../src/calendar/types';
 import type { CommonObservationsImportResult } from '../src/healthkit/commonObservations/CommonObservationsImportScreen';
@@ -14,13 +21,9 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
-
-// The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
-
-// Unit tests omit native window insets; Detox verifies the actual simulator layout.
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -40,57 +43,82 @@ function createCalendarBridge(): CalendarBridge {
   };
 }
 
+async function renderApp(props: ComponentProps<typeof App> = {}) {
+  const fallbackStore = createAppointmentStore();
+  await render(
+    <App
+      loadAppointments={async () => fallbackStore.repository}
+      loadRecordings={async () => []}
+      {...props}
+    />,
+  );
+}
+
+async function selectTab(tab: string) {
+  await fireEvent.press(screen.getByTestId(`navigation-tab-${tab}`));
+  await waitFor(() =>
+    expect(screen.getByTestId(`navigation-tab-${tab}`)).toBeVisible(),
+  );
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('restores the welcome entry and opens Calendar linking from appointments', async () => {
+test('keeps Home compact and groups calendar and appointment management under Schedule', async () => {
   const store = createAppointmentStore();
   const bridge = createCalendarBridge();
   const loadAppointments = jest.fn(async () => store.repository);
-  await render(
-    <App loadAppointments={loadAppointments} calendarBridge={bridge} />,
-  );
+  await renderApp({ loadAppointments, calendarBridge: bridge });
 
   expect(screen.getByTestId('welcome-title')).toHaveTextContent('오롯');
-  expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
-  expect(screen.getByTestId('navigation-route-scroll')).toBeVisible();
-  expect(screen.getByText('예약')).toBeTruthy();
-  expect(loadAppointments).not.toHaveBeenCalled();
+  expect(screen.getByText('오늘도 나를 위한 기록')).toBeTruthy();
+  expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
+  expect(screen.queryByTestId('settings-open-provider')).toBeNull();
+  expect(
+    screen.getByTestId('navigation-tab-home').props.accessibilityState,
+  ).toEqual(expect.objectContaining({ selected: true }));
+  await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(1));
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
-  expect(screen.getByRole('header', { name: '캘린더 연결' })).toBeTruthy();
+  await selectTab('schedule');
+  expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
   expect(screen.getByTestId('calendar-connect')).toHaveTextContent(
     '캘린더 일정 불러오기',
   );
-  expect(screen.getByTestId('safe-area-root')).toBeVisible();
-  expect(screen.queryByTestId('safe-area-scroll')).toBeNull();
-  expect(screen.getByText(/캘린더 전체 접근\(읽기 및 쓰기\)/u)).toBeTruthy();
-  expect(screen.queryByTestId('appointment-add')).toBeNull();
+  expect(screen.getByTestId('schedule-open-appointments')).toBeTruthy();
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
+
+  await fireEvent.press(screen.getByTestId('schedule-open-appointments'));
+  expect(screen.getByRole('header', { name: '예약' })).toBeTruthy();
+  expect(screen.queryByTestId('navigation-tab-schedule')).toBeNull();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
 });
 
-test('opens provider selection from the welcome screen', async () => {
-  await render(<App />);
+test('opens provider settings from Settings and returns there on Back', async () => {
+  await renderApp();
 
-  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+  await selectTab('settings');
+  expect(screen.getByTestId('settings-title')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('settings-open-provider'));
 
   expect(
     await screen.findByRole('header', { name: '추천에 사용할 AI 선택' }),
   ).toBeTruthy();
-  // Provider selection keeps its own inset container instead of nesting the App shell.
-  expect(screen.queryByTestId('safe-area-root')).toBeNull();
   expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('welcome-title')).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+  );
+  expect(screen.getByTestId('navigation-tab-settings')).toBeVisible();
 });
 
-test('keeps consent-gated recording reachable from Calendar linking', async () => {
-  const store = createAppointmentStore();
-  await render(<App loadAppointments={async () => store.repository} />);
+test('keeps consent-gated recording reachable from Records', async () => {
+  await renderApp();
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
-  await fireEvent.press(screen.getByTestId('navigation-recording'));
+  await selectTab('records');
+  expect(screen.getByTestId('records-title')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('records-new-recording'));
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
   expect(screen.getByTestId('navigation-back')).toBeVisible();
@@ -99,28 +127,22 @@ test('keeps consent-gated recording reachable from Calendar linking', async () =
   expect(screen.getByTestId('recording-start')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('calendar-title')).toHaveTextContent('캘린더 연결');
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
-test('keeps Calendar linking available when local appointment storage needs a retry', async () => {
+test('recovers the Schedule root after appointment storage needs a retry', async () => {
   const store = createAppointmentStore();
   const loadAppointments = jest
     .fn<Promise<AppointmentRepository>, []>()
     .mockRejectedValueOnce(new Error('storage unavailable'))
     .mockResolvedValueOnce(store.repository);
-  const bridge = createCalendarBridge();
-  await render(
-    <App loadAppointments={loadAppointments} calendarBridge={bridge} />,
-  );
+  await renderApp({ loadAppointments, calendarBridge: createCalendarBridge() });
 
-  await fireEvent.press(screen.getByTestId('open-appointments'));
-  expect(await screen.findByTestId('calendar-app-opening')).toHaveTextContent(
-    '예약을 열지 못했어요. 다시 시도해 주세요.',
-  );
-  await fireEvent.press(screen.getByTestId('calendar-app-retry'));
-
+  await selectTab('schedule');
+  expect(await screen.findByTestId('schedule-retry')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('schedule-retry'));
   expect(await screen.findByTestId('calendar-connect')).toBeTruthy();
-  expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
+  expect(loadAppointments).toHaveBeenCalledTimes(2);
 });
 
 test('requires selection and an explicit import before reading common HealthKit types', async () => {
@@ -130,9 +152,10 @@ test('requires selection and an explicit import before reading common HealthKit 
     deletedCount: 0,
     unsupportedCount: 0,
   });
-  await render(<App importHealthObservations={importHealthObservations} />);
+  await renderApp({ importHealthObservations });
 
-  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await selectTab('records');
+  await fireEvent.press(screen.getByTestId('records-health-import'));
   expect(
     screen.getByRole('header', { name: '건강 기록 가져오기' }),
   ).toBeTruthy();
@@ -151,7 +174,7 @@ test('requires selection and an explicit import before reading common HealthKit 
     ),
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('welcome-title')).toBeTruthy();
+  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
 test('calls the production importer only after explicit selection', async () => {
@@ -163,9 +186,10 @@ test('calls the production importer only after explicit selection', async () => 
     unsupportedCount: 0,
     cursorAdvanced: true,
   });
-  await render(<App />);
+  await renderApp();
 
-  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await selectTab('records');
+  await fireEvent.press(screen.getByTestId('records-health-import'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-bodyMass'),
   );
@@ -192,9 +216,10 @@ test('allows Back and reopening while the first import is still pending', async 
     >()
     .mockReturnValueOnce(firstImport)
     .mockReturnValueOnce(secondImport);
-  await render(<App importHealthObservations={importHealthObservations} />);
+  await renderApp({ importHealthObservations });
 
-  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await selectTab('records');
+  await fireEvent.press(screen.getByTestId('records-health-import'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),
   );
@@ -202,7 +227,7 @@ test('allows Back and reopening while the first import is still pending', async 
   expect(importHealthObservations).toHaveBeenCalledTimes(1);
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await fireEvent.press(screen.getByTestId('open-common-observations'));
+  await fireEvent.press(screen.getByTestId('records-health-import'));
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),
   );

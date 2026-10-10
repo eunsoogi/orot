@@ -32,7 +32,15 @@ async function confirmUnsavedLeave() {
   await element(by.text('내용 버리고 나가기')).tap();
 }
 
-async function tapNativeNavigationAction(testID) {
+/** Opens a native root tab and waits for its first real route marker. */
+async function openRootTab(tabId, screenID) {
+  await tapNativeNavigationAction(`navigation-tab-${tabId}`);
+  await waitFor(element(by.id(screenID)))
+    .toBeVisible()
+    .withTimeout(30000);
+}
+
+async function expectNativeNavigationAction(testID) {
   const action = element(by.id(testID));
   const toolbar = element(by.id('navigation-native-toolbar'));
   const attributes = await action.getAttributes();
@@ -51,14 +59,31 @@ async function tapNativeNavigationAction(testID) {
     !toolbarAttributes.visible ||
     !toolbarAttributes.hittable ||
     !frame ||
-    frame.width < 44 ||
-    frame.height < 44 ||
+    frame.width + 0.001 < 44 ||
+    frame.height + 0.001 < 44 ||
     !toolbarFrame
   ) {
     throw new Error(
       `Native navigation action ${testID} must be visible in UIKit, inside a visible and hittable toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
     );
   }
+
+  if (
+    frame.x < toolbarFrame.x ||
+    frame.y < toolbarFrame.y ||
+    frame.x + frame.width > toolbarFrame.x + toolbarFrame.width + 1 ||
+    frame.y + frame.height > toolbarFrame.y + toolbarFrame.height + 1
+  ) {
+    throw new Error(
+      `Native navigation action ${testID} extends outside its toolbar.`,
+    );
+  }
+  return { toolbar, frame, toolbarFrame };
+}
+
+async function tapNativeNavigationAction(testID) {
+  const { toolbar, frame, toolbarFrame } =
+    await expectNativeNavigationAction(testID);
 
   // Tap the measured button center through the toolbar because XCUI misreports the child's activation point.
   await toolbar.tap({
@@ -79,7 +104,9 @@ async function scrollHomeActionIntoView(testID) {
 }
 
 module.exports = {
+  expectNativeNavigationAction,
   confirmUnsavedLeave,
+  openRootTab,
   openFeatureAndReturn,
   scrollHomeActionIntoView,
   tapNativeNavigationAction,

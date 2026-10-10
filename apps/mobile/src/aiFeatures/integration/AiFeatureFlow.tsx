@@ -82,7 +82,9 @@ export function AiFeatureFlow({
   }, [navigation]);
   return (
     <View style={styles.container} testID="ai-feature-flow">
-      {!providerSelectionOpen && !sourceDetailOpen ? (
+      {!providerSelectionOpen &&
+      !sourceDetailOpen &&
+      screenRoute !== 'visit-questions' ? (
         <View style={styles.providerBar}>
           <Text style={styles.providerNotice}>{copy.selectedAiNotice}</Text>
           <Button

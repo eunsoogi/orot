@@ -8,9 +8,9 @@ import type { SelectedAiResolution } from './provider';
 
 const nextVisitQuestionsTokens: NextVisitQuestionsTheme['tokens'] = {
   spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 },
-  radii: { control: 16, card: 24 },
+  radii: { control: 12, card: 12 },
   typography: {
-    sizes: { caption: 13, body: 16, heading: 20, title: 26 },
+    sizes: { caption: 13, body: 16, heading: 17, title: 30 },
     weights: { regular: '400', medium: '500', semibold: '600', bold: '700' },
   },
   minTouchTarget: 44,
@@ -28,13 +28,13 @@ export function createNextVisitQuestionsTheme(
     colors: {
       canvas: palette.background,
       surface: palette.surface,
-      surfaceSubtle: isDarkAppearance ? '#252d36' : '#f3f6f5',
+      surfaceSubtle: palette.background,
       text: palette.text,
-      textMuted: isDarkAppearance ? palette.secondary : '#45524f',
-      border: isDarkAppearance ? '#64707d' : '#c9d4d1',
+      textMuted: palette.secondary,
+      border: palette.border,
       accent: palette.primaryAction,
       onAccent: palette.onPrimary,
-      accentSubtle: isDarkAppearance ? palette.primarySoft : '#e5efec',
+      accentSubtle: palette.primarySoft,
       accentText: palette.primaryText,
       warning: isDarkAppearance ? '#ffd89e' : '#704800',
       warningSurface: isDarkAppearance ? '#3a2d18' : '#fff4d6',

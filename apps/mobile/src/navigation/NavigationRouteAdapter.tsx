@@ -16,6 +16,12 @@ import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
 import type { NavigationSurface } from './NavigationActionBar';
 import type { NavigationPrimaryAction } from './NavigationActionBar';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
+import type { NavigationRootTabs } from './rootTabs';
+import { appColors } from '../layout/appColors';
+import {
+  NavigationPrimaryActionContext,
+  useNavigationPrimaryActionHost,
+} from './useNavigationPrimaryAction';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -46,10 +52,14 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
   readonly scrollable?: boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly showHome?: boolean;
+  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly contentSafeAreaHandledByChild?:
     boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly surface?: NavigationSurface;
+  readonly rootTabs?:
+    | NavigationRootTabs
+    | ((route: NavigationRoute<Name>) => NavigationRootTabs | undefined);
 }
 
 /** Binds the active app route, its real leave state, and both shared back inputs. */
@@ -59,11 +69,14 @@ export function NavigationRouteAdapter<Name extends string>({
   children,
   scrollable = false,
   showHome = false,
+  homeAction,
   primaryAction,
   contentSafeAreaHandledByChild = false,
   surface,
+  rootTabs,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
+  const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
   const leaveStateRef = useRef(leaveState);
   const registeredLeaveState = useRef<RegisteredLeaveState<Name> | null>(null);
@@ -150,7 +163,9 @@ export function NavigationRouteAdapter<Name extends string>({
     <NavigationLeaveStateRegistrationProvider
       registerLeaveState={registerLeaveState}
     >
-      {children(actions)}
+      <NavigationPrimaryActionContext.Provider value={primary.host}>
+        {children(actions)}
+      </NavigationPrimaryActionContext.Provider>
     </NavigationLeaveStateRegistrationProvider>
   );
   const routeIsScrollable =
@@ -161,6 +176,8 @@ export function NavigationRouteAdapter<Name extends string>({
     typeof contentSafeAreaHandledByChild === 'function'
       ? contentSafeAreaHandledByChild(snapshot.currentRoute)
       : contentSafeAreaHandledByChild;
+  const routeRootTabs =
+    typeof rootTabs === 'function' ? rootTabs(snapshot.currentRoute) : rootTabs;
   const body = routeIsScrollable ? (
     <NavigationRouteScrollView>{routeContent}</NavigationRouteScrollView>
   ) : (
@@ -174,7 +191,9 @@ export function NavigationRouteAdapter<Name extends string>({
       controller={controller}
       leaveDisabled={leaveDisabled}
       showHome={showHome}
-      primaryAction={primaryAction}
+      homeAction={homeAction}
+      primaryAction={primary.action ?? primaryAction}
+      rootTabs={routeRootTabs}
       surface={surface}
     />
   );
@@ -213,7 +232,7 @@ export function NavigationRouteAdapter<Name extends string>({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  fill: { flex: 1, backgroundColor: appColors.background },
   actionBarOverlay: {
     bottom: 0,
     left: 0,

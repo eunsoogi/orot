@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { AppSymbol } from '../layout/AppSymbol';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type {
   NextVisitEvidenceReference,
@@ -42,60 +44,105 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
 }: QuestionCardProps<TReference>) {
   const styles = createQuestionCardStyles(theme);
   const number = index + 1;
-  const priorityLabel =
-    question.priority === 'important'
-      ? copy.review.important
-      : copy.review.routine;
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
     <View style={styles.card} testID={`next-visit-question-${index}`}>
       <View style={styles.headingRow}>
-        <Text accessibilityRole="header" style={styles.heading}>
-          {copy.review.questionLabel(number)}
-        </Text>
+        <View style={styles.numberBadge}>
+          <Text style={styles.heading}>{number}</Text>
+        </View>
         {editable ? (
-          <View style={styles.actions}>
-            <ActionButton
-              accessibilityLabel={copy.review.moveUp(number)}
-              disabled={disabled || index === 0}
-              onPress={() => onMove(-1)}
-              theme={theme}
-              testID={`next-visit-question-up-${index}`}
-              title="↑"
+          <TextInput
+            accessibilityLabel={copy.review.questionLabel(number)}
+            editable={!disabled}
+            multiline
+            onChangeText={questionText => onUpdate({ questionText })}
+            style={styles.questionInput}
+            testID={`next-visit-question-text-${index}`}
+            value={question.questionText}
+          />
+        ) : (
+          <Text style={styles.questionText}>{question.questionText}</Text>
+        )}
+        {editable ? (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel={
+              question.priority === 'important'
+                ? copy.review.markRoutine
+                : copy.review.markImportant
+            }
+            accessibilityState={{
+              checked: question.priority === 'important',
+              disabled,
+            }}
+            disabled={disabled}
+            testID={`next-visit-question-priority-${index}`}
+            onPress={() =>
+              onUpdate({
+                priority:
+                  question.priority === 'important' ? 'routine' : 'important',
+              })
+            }
+            style={styles.priority}
+          >
+            <AppSymbol
+              name={
+                question.priority === 'important'
+                  ? 'checkmark.square.fill'
+                  : 'square'
+              }
+              color={theme.colors.accentText}
             />
-            <ActionButton
-              accessibilityLabel={copy.review.moveDown(number)}
-              disabled={disabled || index === count - 1}
-              onPress={() => onMove(1)}
-              theme={theme}
-              testID={`next-visit-question-down-${index}`}
-              title="↓"
-            />
-            <ActionButton
-              accessibilityLabel={copy.review.remove(number)}
-              disabled={disabled}
-              onPress={onRemove}
-              theme={theme}
-              testID={`next-visit-question-remove-${index}`}
-              title="삭제"
-            />
-          </View>
+          </Pressable>
         ) : null}
       </View>
       {editable ? (
-        <TextInput
-          accessibilityLabel={copy.review.questionLabel(number)}
-          editable={!disabled}
-          multiline
-          onChangeText={questionText => onUpdate({ questionText })}
-          style={styles.questionInput}
-          testID={`next-visit-question-text-${index}`}
-          value={question.questionText}
-        />
-      ) : (
-        <Text style={styles.questionText}>{question.questionText}</Text>
-      )}
-      {editable ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: detailsOpen }}
+          onPress={() => setDetailsOpen(open => !open)}
+          style={styles.detailToggle}
+          testID={`next-visit-question-details-${index}`}
+        >
+          <AppSymbol
+            name="slider.horizontal.3"
+            size={16}
+            color={theme.colors.textMuted}
+          />
+          <Text style={styles.sourceText}>세부 수정</Text>
+        </Pressable>
+      ) : null}
+      {editable && detailsOpen ? (
+        <View style={styles.actions}>
+          <ActionButton
+            accessibilityLabel={copy.review.moveUp(number)}
+            disabled={disabled || index === 0}
+            onPress={() => onMove(-1)}
+            theme={theme}
+            testID={`next-visit-question-up-${index}`}
+            title="위로"
+          />
+          <ActionButton
+            accessibilityLabel={copy.review.moveDown(number)}
+            disabled={disabled || index === count - 1}
+            onPress={() => onMove(1)}
+            theme={theme}
+            testID={`next-visit-question-down-${index}`}
+            title="아래로"
+          />
+          <ActionButton
+            accessibilityLabel={copy.review.remove(number)}
+            disabled={disabled}
+            onPress={onRemove}
+            theme={theme}
+            testID={`next-visit-question-remove-${index}`}
+            title="삭제"
+          />
+        </View>
+      ) : null}
+      {editable && detailsOpen ? (
         <View style={styles.inputGroup}>
           {/* Keep the editable rationale field understandable without relying on VoiceOver alone. */}
           <Text style={styles.inputLabel}>
@@ -111,36 +158,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             value={question.rationale}
           />
         </View>
-      ) : (
-        <Text style={styles.rationale}>{question.rationale}</Text>
-      )}
-      {editable ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{
-            selected: question.priority === 'important',
-            disabled,
-          }}
-          disabled={disabled}
-          onPress={() =>
-            onUpdate({
-              priority:
-                question.priority === 'important' ? 'routine' : 'important',
-            })
-          }
-          style={[styles.priority, disabled && styles.disabled]}
-          testID={`next-visit-question-priority-${index}`}
-        >
-          <Text style={styles.actionText}>
-            {question.priority === 'important'
-              ? copy.review.markRoutine
-              : copy.review.markImportant}
-          </Text>
-        </Pressable>
-      ) : (
-        <Text style={styles.priorityLabel}>{priorityLabel}</Text>
-      )}
-      <Text style={styles.evidenceHeading}>근거</Text>
+      ) : null}
       {question.citations.map((reference, citationIndex) => (
         <Pressable
           accessibilityRole="button"
@@ -150,16 +168,13 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           style={[styles.sourceButton, disabled && styles.disabled]}
           testID={`next-visit-source-${index}-${citationIndex}`}
         >
-          <Text style={styles.sourceText}>
-            {sourceLabel(reference.sourceKind)}
-            {reference.effectiveTime
-              ? ` · ${formatSourceTime(reference.effectiveTime)}`
-              : ''}
-          </Text>
-          <Text numberOfLines={3} style={styles.sourceContent}>
-            {reference.content}
-          </Text>
+          <AppSymbol name="doc.text" color={theme.colors.textMuted} />
           <Text style={styles.openSource}>{copy.evidence.open}</Text>
+          <AppSymbol
+            name="chevron.right"
+            size={14}
+            color={theme.colors.textMuted}
+          />
         </Pressable>
       ))}
     </View>
@@ -195,25 +210,4 @@ function ActionButton({
       <Text style={styles.actionText}>{title}</Text>
     </Pressable>
   );
-}
-
-function sourceLabel(kind: NextVisitEvidenceReference['sourceKind']): string {
-  switch (kind) {
-    case 'personal_record':
-      return copy.evidence.personalRecord;
-    case 'reviewed_memory':
-      return copy.evidence.reviewedMemory;
-    case 'external_medical':
-      return copy.evidence.externalMedical;
-  }
-}
-
-function formatSourceTime(value: string): string {
-  const instant = new Date(value);
-  if (!Number.isFinite(instant.getTime())) return copy.evidence.noDate;
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(instant);
 }

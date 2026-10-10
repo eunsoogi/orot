@@ -10,7 +10,7 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
     container: {
       flexGrow: 1,
       gap: tokens.spacing.lg,
-      padding: tokens.spacing.lg,
+      padding: 24,
       // Keep the final questions scrollable above the route's absolute glass action bar.
       paddingBottom: tokens.spacing.lg + BOTTOM_NAVIGATION_CONTENT_INSET,
       backgroundColor: colors.canvas,
@@ -27,11 +27,6 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
     },
     section: {
       gap: tokens.spacing.md,
-      padding: tokens.spacing.lg,
-      borderRadius: tokens.radii.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
     },
     sectionHeading: {
       color: colors.text,

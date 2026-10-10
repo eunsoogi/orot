@@ -20,6 +20,8 @@ import { QuestionReviewSection } from './QuestionReviewSection';
 import { SavedQuestionsSection } from './SavedQuestionsSection';
 import { SourceEvidenceSheet } from './SourceEvidenceSheet';
 import { createNextVisitStyles } from './styles';
+import { savedVisitPresentation } from './savedVisitPresentation';
+import { useNextVisitPrimaryAction } from './useNextVisitPrimaryAction';
 import type {
   NextVisitEvidenceReference,
   NextVisitQuestionsScreenProps,
@@ -42,44 +44,18 @@ export function NextVisitQuestionsScreen<
     hasUnsavedChanges: controller.hasUnsavedChanges,
     onRouteStateChange: props.onRouteStateChange,
   });
-  // Saved questions, warnings, and load errors belong to one visit; ignore old
-  // state while the next visit's list loads.
-  const savedSnapshot =
-    controller.savedOverride?.appointmentId === currentAppointmentId
-      ? controller.savedOverride
-      : props.savedQuestions.status === 'ready' &&
-          props.savedQuestions.appointmentId === currentAppointmentId
-        ? props.savedQuestions
-        : null;
-  const savedError =
-    props.savedQuestions.status === 'error' &&
-    props.savedQuestions.appointmentId === currentAppointmentId
-      ? props.savedQuestions
-      : null;
-  const savedQuestions = savedSnapshot?.questions ?? [];
-  const savedCaveats = savedSnapshot?.caveats ?? [];
-  const savedStatus =
-    currentAppointmentId === null
-      ? 'hidden'
-      : savedSnapshot
-        ? 'ready'
-        : savedError
-          ? 'error'
-          : 'loading';
-  const savedRestorationNotice =
-    savedStatus === 'ready' &&
-    props.savedQuestions.status === 'ready' &&
-    props.savedQuestions.appointmentId === currentAppointmentId
-      ? props.savedQuestions.restorationNotice
-      : undefined;
+  const { savedQuestions, savedCaveats, savedError, savedStatus, savedRestorationNotice } =
+    savedVisitPresentation(currentAppointmentId, props.savedQuestions, controller.savedOverride);
   const canGenerate =
     props.appointment.status === 'ready' &&
     props.provider.status === 'available';
-  // Keep the draft visible while persistence is in flight so the user can still verify what is being retained.
-  const isReviewing =
-    controller.phase === 'reviewing' || controller.phase === 'saving';
-  const isGenerating = controller.phase === 'generating';
-  const isSaving = controller.phase === 'saving';
+  const {
+    isReviewing,
+    isGenerating,
+    isSaving,
+    generateLabel,
+    hasSharedAction,
+  } = useNextVisitPrimaryAction(controller, canGenerate);
 
   const openSource = (reference: TReference) => {
     controller.openSource(reference);
@@ -103,21 +79,27 @@ export function NextVisitQuestionsScreen<
         >
           <View>
             <Text accessibilityRole="header" style={styles.title}>
-              {copy.title}
+              {isReviewing ? copy.review.heading : copy.title}
             </Text>
-            <Text style={styles.introduction}>{copy.introduction}</Text>
+            <Text style={styles.introduction}>
+              {isReviewing ? copy.review.helper : copy.introduction}
+            </Text>
           </View>
 
-          <AppointmentSection
-            appointment={props.appointment}
-            onRefresh={props.onRefreshAppointment}
-            theme={props.theme}
-          />
-          <ProviderSection
-            provider={props.provider}
-            onChoose={props.onOpenProviderSelection}
-            theme={props.theme}
-          />
+          {!isReviewing ? (
+            <AppointmentSection
+              appointment={props.appointment}
+              onRefresh={props.onRefreshAppointment}
+              theme={props.theme}
+            />
+          ) : null}
+          {!isReviewing ? (
+            <ProviderSection
+              provider={props.provider}
+              onChoose={props.onOpenProviderSelection}
+              theme={props.theme}
+            />
+          ) : null}
 
           {!isReviewing ? (
             <View style={styles.section}>
@@ -130,29 +112,25 @@ export function NextVisitQuestionsScreen<
                   <Text accessibilityLiveRegion="polite" style={styles.body}>
                     {copy.generation.loading}
                   </Text>
-                  <ActionButton
-                    label={copy.generation.cancel}
-                    onPress={controller.cancelGeneration}
-                    theme={props.theme}
-                    variant="secondary"
-                    testID="next-visit-generation-cancel"
-                  />
+                  {!hasSharedAction ? (
+                    <ActionButton
+                      label={copy.generation.cancel}
+                      onPress={controller.cancelGeneration}
+                      theme={props.theme}
+                      variant="secondary"
+                      testID="next-visit-generation-cancel"
+                    />
+                  ) : null}
                 </>
-              ) : (
+              ) : !hasSharedAction ? (
                 <ActionButton
                   disabled={!canGenerate || isSaving}
-                  label={
-                    controller.phase === 'error'
-                      ? copy.generation.retry
-                      : controller.phase === 'saved'
-                        ? copy.saved.generateAgain
-                        : copy.generation.action
-                  }
+                  label={generateLabel}
                   onPress={controller.generate}
                   theme={props.theme}
                   testID="next-visit-generate"
                 />
-              )}
+              ) : null}
               {controller.generationMessage ? (
                 <Text
                   accessibilityRole={
@@ -192,6 +170,16 @@ export function NextVisitQuestionsScreen<
             </View>
           ) : null}
 
+          {isReviewing && hasSharedAction ? (
+            <ActionButton
+              disabled={isSaving}
+              label={copy.review.cancel}
+              onPress={controller.cancelReview}
+              theme={props.theme}
+              variant="secondary"
+              testID="next-visit-review-cancel"
+            />
+          ) : null}
           {isReviewing ? (
             <QuestionReviewSection
               caveats={controller.caveats}
@@ -219,7 +207,7 @@ export function NextVisitQuestionsScreen<
             theme={props.theme}
           />
         </ScrollView>
-        {isReviewing ? (
+        {isReviewing && !hasSharedAction ? (
           <QuestionReviewActions
             isReviewValid={controller.isReviewValid}
             isSaving={isSaving}

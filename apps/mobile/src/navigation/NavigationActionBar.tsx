@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   Keyboard,
   Platform,
-  Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   View,
 } from 'react-native';
@@ -21,8 +19,10 @@ import {
   createNativeNavigationBindings,
   settleNavigationRequest,
 } from './nativeNavigationActions';
-import { appColors } from '../layout/appColors';
 import { NAVIGATION_ACTION_VERTICAL_PADDING } from './navigationLayout';
+import type { NavigationRootTabs } from './rootTabs';
+import { NavigationActionButton } from './NavigationActionButton';
+import { RootTabActions } from './RootTabActions';
 
 export type NavigationSurfaceProps = NavigationGlassSurfaceProps;
 export type NavigationSurface = ComponentType<NavigationSurfaceProps>;
@@ -39,21 +39,25 @@ export interface NavigationActionBarProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveDisabled?: boolean;
   readonly showHome?: boolean;
+  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly safeAreaHandledByParent?: boolean;
   readonly keyboardVisible?: boolean;
   // Tests can inject a fallback surface to exercise the non-native controls.
   readonly surface?: NavigationSurface;
+  readonly rootTabs?: NavigationRootTabs;
 }
 
 export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
   showHome = false,
+  homeAction,
   primaryAction,
   safeAreaHandledByParent = false,
   keyboardVisible,
   surface: Surface = NavigationGlassSurface,
+  rootTabs,
 }: NavigationActionBarProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
   const isDarkAppearance = useColorScheme() === 'dark';
@@ -75,19 +79,33 @@ export function NavigationActionBar<Name extends string>({
 
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
   const canGoHome = showHome && snapshot.routes.length > 1;
-  if (!snapshot.canGoBack && !canGoHome && !primaryAction) return null;
+  if (!snapshot.canGoBack && !canGoHome && !primaryAction && !rootTabs) {
+    return null;
+  }
 
   const nativeBindings = createNativeNavigationBindings({
     controller,
     snapshot,
     backDisabled,
     canGoHome,
+    homeAction,
     primaryAction,
+    rootTabs,
   });
 
   const actions = (
-    <View style={styles.actions} testID="bottom-navigation-action-bar">
-      {snapshot.canGoBack ? (
+    <View
+      style={rootTabs ? styles.rootTabs : styles.actions}
+      testID="bottom-navigation-action-bar"
+    >
+      {rootTabs ? (
+        <RootTabActions
+          controller={controller}
+          disabled={backDisabled}
+          rootTabs={rootTabs}
+        />
+      ) : null}
+      {snapshot.canGoBack && !rootTabs ? (
         <NavigationActionButton
           accessibilityLabel={navigationText.back.accessibilityLabel}
           disabled={backDisabled}
@@ -97,17 +115,21 @@ export function NavigationActionBar<Name extends string>({
           testID="navigation-back"
         />
       ) : null}
-      {canGoHome ? (
+      {canGoHome && !rootTabs ? (
         <NavigationActionButton
           accessibilityLabel={navigationText.home.accessibilityLabel}
           disabled={backDisabled}
           isDarkAppearance={isDarkAppearance}
           label={navigationText.home.label}
-          onPress={() => settleNavigationRequest(controller.requestHome())}
+          onPress={() =>
+            settleNavigationRequest(
+              Promise.resolve(homeAction?.() ?? controller.requestHome()),
+            )
+          }
           testID="navigation-home"
         />
       ) : null}
-      {primaryAction ? (
+      {primaryAction && !rootTabs ? (
         <NavigationActionButton
           accessibilityLabel={primaryAction.accessibilityLabel}
           disabled={backDisabled || primaryAction.disabled === true}
@@ -154,56 +176,11 @@ export function NavigationActionBar<Name extends string>({
   );
 }
 
-function NavigationActionButton({
-  accessibilityLabel,
-  disabled,
-  isDarkAppearance,
-  label,
-  onPress,
-  primary = false,
-  testID,
-}: {
-  readonly accessibilityLabel: string;
-  readonly disabled: boolean;
-  readonly isDarkAppearance: boolean;
-  readonly label: string;
-  readonly onPress: () => void;
-  readonly primary?: boolean;
-  readonly testID: string;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[
-        styles.action,
-        isDarkAppearance && !primary && styles.darkAction,
-        primary && styles.primaryAction,
-        disabled && styles.disabled,
-      ]}
-      testID={testID}
-    >
-      <Text
-        style={[
-          styles.label,
-          isDarkAppearance && !primary && styles.darkLabel,
-          primary && styles.primaryLabel,
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   safeArea: {
     flexShrink: 0,
     backgroundColor: 'transparent',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: NAVIGATION_ACTION_VERTICAL_PADDING,
   },
   actions: {
@@ -211,29 +188,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     gap: 8,
   },
-  action: {
+  rootTabs: {
     alignItems: 'center',
-    borderColor: appColors.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 50,
-    minWidth: 72,
-    paddingHorizontal: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
-  darkAction: { borderColor: '#ffffff' },
-  primaryAction: {
-    backgroundColor: appColors.primaryAction,
-    borderColor: appColors.primaryAction,
-  },
-  disabled: { opacity: 0.55 },
-  label: {
-    color: appColors.primaryText,
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  darkLabel: { color: '#f7f8fa' },
-  primaryLabel: { color: appColors.onPrimary },
 });

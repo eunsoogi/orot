@@ -5,7 +5,8 @@ export const recordingControlStyles = StyleSheet.create({
   scroll: { flex: 1 },
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
+    // Route content starts below the safe area; only individual controls center their contents.
+    justifyContent: 'flex-start',
     gap: 16,
     padding: 24,
     backgroundColor: appColors.background,

@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
-import { appColors } from './src/layout/appColors';
-import { CalendarAppRoute } from './src/calendar/CalendarAppRoute';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
-import RecordingScreen from './src/recording/RecordingScreen';
-import { t } from './src/i18n';
-import { CommonObservationsImportScreen } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
-import { commonObservationsCopy } from './src/healthkit/commonObservations/copy';
-import type { CommonObservationsImportResult as CommonObservationsScreenResult } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
-import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
+import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
+import type { RecordingSourceRecord } from './src/recording/recordingTypes';
 import { importLocalCommonObservations } from './src/healthkit/commonObservations/importLocal';
-import { BloodPressureImportScreen } from './src/healthkit/bloodPressure/BloodPressureImportScreen';
+import type { CommonObservationsImportResult } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
+import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
 import {
   importLocalBloodPressure,
   listLocalBloodPressureObservations,
@@ -22,21 +16,20 @@ import type {
   BloodPressureObservation,
   BloodPressureSyncResult,
 } from './src/healthkit/bloodPressure/types';
-import WelcomeRoute from './src/routes/WelcomeRoute';
 import { AiFeatureRoute } from './src/aiFeatures/integration';
 import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
 import { NextVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
-import { navigationText } from './src/i18n/navigation';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
 import type { AiFeatureServiceDependencies } from './src/aiFeatures/integration/featureServices';
 import {
   createNavigationController,
   NavigationRouteAdapter,
-  useNavigationSnapshot,
 } from './src/navigation';
-
-type AppNavigationRoute =
-  'home' | 'recording' | 'common-observations' | 'blood-pressure';
+import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
+import type { AppNavigationRoute } from './src/routes/AppRouteContent';
+import { AppRouteContent } from './src/routes/AppRouteContent';
+import { useAppHomeData } from './src/routes/useAppHomeData';
+import { useBackupPreparation } from './src/backup/useBackupPreparation';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -44,10 +37,11 @@ declare const require: (path: string) => {
 
 interface AppProps {
   loadAppointments?: () => Promise<AppointmentRepository>;
+  loadRecordings?: () => Promise<readonly RecordingSourceRecord[]>;
   calendarBridge?: CalendarBridge;
   importHealthObservations?: (
     features: readonly CommonObservationFeature[],
-  ) => Promise<CommonObservationsScreenResult>;
+  ) => Promise<CommonObservationsImportResult>;
   importBloodPressure?: () => Promise<BloodPressureSyncResult>;
   loadBloodPressureObservations?: () => Promise<
     readonly BloodPressureObservation[]
@@ -61,8 +55,13 @@ function defaultAppointmentLoader(): Promise<AppointmentRepository> {
   return require('./src/appointments/localRepository').openLocalAppointmentRepository();
 }
 
+function defaultRecordingLoader(): Promise<readonly RecordingSourceRecord[]> {
+  return loadRecordingSummaries();
+}
+
 export default function App({
   loadAppointments = defaultAppointmentLoader,
+  loadRecordings = defaultRecordingLoader,
   calendarBridge = eventKitCalendarBridge,
   importHealthObservations = importLocalCommonObservations,
   importBloodPressure = importLocalBloodPressure,
@@ -70,56 +69,42 @@ export default function App({
   aiFeatureServiceDependencies,
   renderVisitQuestions,
 }: AppProps) {
-  // Start the guarded AI stack at the home card's destination so each action is one tap.
   const [aiInitialRoute, setAiInitialRoute] = useState<
     FeatureScreenRoute | 'provider-selection' | null
   >(null);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [activeTab, setActiveTab] = useState<AppRootTab>('home');
+  const [selectedProvider, setSelectedProvider] = useState('');
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
-  const appRoute = useNavigationSnapshot(appNavigation).currentRoute;
-  // Keep only the selected display label in route state; selection identifiers stay in the provider store.
-  const [selectedRecommendationProvider, setSelectedRecommendationProvider] =
-    useState('');
-  const [appointmentRepository, setAppointmentRepository] =
-    useState<AppointmentRepository | null>(null);
-  const [loadingAppointments, setLoadingAppointments] = useState(false);
-  const [appointmentError, setAppointmentError] = useState('');
+  const homeData = useAppHomeData(loadAppointments, loadRecordings);
+  const backupPreparation = useBackupPreparation();
 
-  async function openCalendar() {
-    setShowCalendar(true);
-    setAppointmentError('');
-    if (appointmentRepository) return;
-
-    setLoadingAppointments(true);
-    try {
-      setAppointmentRepository(await loadAppointments());
-    } catch {
-      setAppointmentError(t('appointments.openError'));
-    } finally {
-      setLoadingAppointments(false);
-    }
-  }
-
-  async function openRecordingFromNavigation() {
-    // Return through the active route guard before replacing a feature with recording.
-    if (appNavigation.getSnapshot().currentRoute.name !== 'home') {
-      const returnedHome = await appNavigation.requestHome();
-      if (!returnedHome) return;
-    }
+  function openRecording() {
+    setActiveTab('records');
     appNavigation.push('recording');
   }
 
-  // Feature cards and provider settings share the guarded flow and local app services.
-  if (aiInitialRoute)
+  const rootTabs: NavigationRootTabs = {
+    activeTab,
+    onSelect: setActiveTab,
+  };
+
+  if (aiInitialRoute) {
     return (
       <AiFeatureRoute
         initialRoute={aiInitialRoute}
         onBack={() => setAiInitialRoute(null)}
-        onOpenRecording={() => appNavigation.push('recording')}
+        onHome={() => {
+          setAiInitialRoute(null);
+          setActiveTab('home');
+        }}
+        onOpenRecording={() => {
+          setAiInitialRoute(null);
+          openRecording();
+        }}
         onProviderSelectionCommitted={(_, provider) =>
-          setSelectedRecommendationProvider(provider.displayName)
+          setSelectedProvider(provider.displayName)
         }
         renderVisitQuestions={
           renderVisitQuestions ??
@@ -128,104 +113,54 @@ export default function App({
         serviceDependencies={aiFeatureServiceDependencies}
       />
     );
-
-  // Calendar keeps its current route boundary; a recording opened there returns to it.
-  if (showCalendar && appRoute.name === 'home') {
-    return (
-      <CalendarAppRoute
-        appointmentRepository={appointmentRepository}
-        bridge={calendarBridge}
-        appointmentError={appointmentError}
-        loadingAppointments={loadingAppointments}
-        onBack={() => setShowCalendar(false)}
-        onOpenCalendar={openCalendar}
-        onOpenRecording={() => {
-          appNavigation.push('recording');
-        }}
-      />
-    );
   }
 
   return (
     <NavigationRouteAdapter
       controller={appNavigation}
       scrollable={route =>
-        route.name === 'home' || route.name === 'common-observations'
+        route.name === 'common-observations' ||
+        (route.name === 'home' &&
+          ['home', 'records', 'settings'].includes(activeTab))
       }
-      showHome={!showCalendar}
-      primaryAction={
-        appRoute.name === 'recording'
-          ? undefined
-          : {
-              label: navigationText.recording.label,
-              accessibilityLabel: navigationText.recording.accessibilityLabel,
-              testID: 'navigation-recording',
-              onPress: openRecordingFromNavigation,
-            }
-      }
-    >
-      {actions => {
-        switch (actions.route.name) {
-          case 'home':
-            return (
-              <WelcomeRoute
-                selectedRecommendationProvider={selectedRecommendationProvider}
-                onOpenProviderSelection={() =>
-                  setAiInitialRoute('provider-selection')
-                }
-                onOpenVisitQuestions={() =>
-                  setAiInitialRoute('visit-questions')
-                }
-                onOpenDiseaseHypotheses={() =>
-                  setAiInitialRoute('disease-hypotheses')
-                }
-                onOpenRagConversation={() =>
-                  setAiInitialRoute('rag-conversation')
-                }
-                onOpenExternalEvidence={() =>
-                  setAiInitialRoute('external-evidence')
-                }
-                onOpenAppointments={openCalendar}
-                onOpenCommonObservations={() =>
-                  actions.push('common-observations')
-                }
-                onOpenBloodPressure={() => actions.push('blood-pressure')}
-                onOpenRecording={() => actions.push('recording')}
-              />
-            );
-          case 'recording':
-            return <RecordingScreen onBack={actions.onBack} />;
-          case 'common-observations':
-            return (
-              <View style={styles.commonObservationsContainer}>
-                <CommonObservationsImportScreen
-                  copy={commonObservationsCopy}
-                  onImport={importHealthObservations}
-                />
-              </View>
-            );
-          case 'blood-pressure':
-            return (
-              <View style={styles.commonObservationsContainer}>
-                <BloodPressureImportScreen
-                  onBack={actions.onBack}
-                  importBloodPressure={importBloodPressure}
-                  loadObservations={loadBloodPressureObservations}
-                />
-              </View>
-            );
-        }
+      showHome
+      homeAction={async () => {
+        if (await appNavigation.requestHome()) setActiveTab('home');
       }}
+      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+    >
+      {/* Settings and AI use the same account services and persisted selection. */}
+      {actions => (
+        <AppRouteContent
+          actions={actions}
+          activeTab={activeTab}
+          selectTab={setActiveTab}
+          appointmentRepository={homeData.appointmentRepository}
+          backupPreparationState={backupPreparation.state}
+          retryBackupPreparation={backupPreparation.retry}
+          appointmentState={homeData.appointmentState}
+          nextAppointment={homeData.nextAppointment}
+          recordings={homeData.recordings}
+          recordingState={homeData.recordingState}
+          refreshAppointments={homeData.refreshAppointments}
+          refreshRecordings={homeData.refreshRecordings}
+          calendarBridge={calendarBridge}
+          selectedProvider={selectedProvider}
+          serviceDependencies={aiFeatureServiceDependencies}
+          onProviderSelectionCommitted={(_, provider) =>
+            setSelectedProvider(provider.displayName)
+          }
+          openProviderSettings={() => setAiInitialRoute('provider-selection')}
+          openVisitQuestions={() => setAiInitialRoute('visit-questions')}
+          openDiseaseHypotheses={() => setAiInitialRoute('disease-hypotheses')}
+          openRagConversation={() => setAiInitialRoute('rag-conversation')}
+          openExternalEvidence={() => setAiInitialRoute('external-evidence')}
+          openRecording={openRecording}
+          importHealthObservations={importHealthObservations}
+          importBloodPressure={importBloodPressure}
+          loadBloodPressureObservations={loadBloodPressureObservations}
+        />
+      )}
     </NavigationRouteAdapter>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  commonObservationsContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: appColors.background,
-  },
-});

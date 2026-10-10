@@ -11,8 +11,8 @@ import {
   selectionStore,
 } from '../src/aiFeatures/integration/featureServiceFixtures';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
-import { providerSelectionText } from '../src/providers/selection/text';
 import App from '../App';
+import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
 // Keep native routes deterministic while this test follows a committed provider choice.
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
@@ -39,7 +39,7 @@ jest.mock('../src/providers/selection/options', () => {
   };
 });
 
-test('updates the welcome provider summary after a committed selection', async () => {
+test('updates the Settings provider summary after a committed selection', async () => {
   const store = selectionStore(null);
   const dependencies: AiFeatureServiceDependencies = {
     selectedAi: {
@@ -48,9 +48,17 @@ test('updates the welcome provider summary after a committed selection', async (
     },
     loadLocalData: async () => localData([memoryRecord(1)]).data,
   };
-  await render(<App aiFeatureServiceDependencies={dependencies} />);
+  const appointmentStore = createAppointmentStore();
+  await render(
+    <App
+      loadAppointments={async () => appointmentStore.repository}
+      loadRecordings={async () => []}
+      aiFeatureServiceDependencies={dependencies}
+    />,
+  );
 
-  await fireEvent.press(screen.getByTestId('open-provider-selection'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
+  await fireEvent.press(screen.getByTestId('settings-open-provider'));
   await waitFor(() =>
     expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
   );
@@ -58,10 +66,7 @@ test('updates the welcome provider summary after a committed selection', async (
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
 
   await waitFor(() =>
-    expect(
-      screen.getByText(
-        `${providerSelectionText.selectedPrefix} ${apple.provider.displayName}`,
-      ),
-    ).toBeTruthy(),
+    expect(screen.getByText(apple.provider.displayName)).toBeTruthy(),
   );
+  expect(screen.getByText(apple.provider.displayName)).toBeTruthy();
 });

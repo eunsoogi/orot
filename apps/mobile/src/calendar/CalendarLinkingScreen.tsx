@@ -1,6 +1,6 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
@@ -13,6 +13,7 @@ import type { CalendarAccessState, CalendarBridge } from './types';
 import { useCalendarLinking } from './useCalendarLinking';
 import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
 import { navigationText } from '../i18n/navigation';
+import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
 // EventKit's current query returns at most 100 upcoming events.
 const CALENDAR_QUERY_RESULT_LIMIT = 100;
@@ -20,6 +21,9 @@ const CALENDAR_QUERY_RESULT_LIMIT = 100;
 interface CalendarLinkingScreenProps {
   repository: AppointmentRepository;
   bridge: CalendarBridge;
+  heading?: string;
+  onOpenAppointments?: () => void;
+  onAppointmentsChanged?: () => void;
   onBack?: () => void;
   onHome?: () => void;
   onOpenRecording?: () => void;
@@ -36,6 +40,9 @@ function accessMessage(access: CalendarAccessState | null): string {
 export default function CalendarLinkingScreen({
   repository,
   bridge,
+  heading = t('calendar.title'),
+  onOpenAppointments,
+  onAppointmentsChanged,
   onBack,
   onHome,
   onOpenRecording,
@@ -44,6 +51,25 @@ export default function CalendarLinkingScreen({
   const [queryWindow, setQueryWindow] = useState<CalendarQueryWindow | null>(
     null,
   );
+  const selectedEventIdentifier =
+    calendar.selectedEvent?.calendarEventIdentifier ?? null;
+  const lastNotice = useRef('');
+  const hasUnsavedSelection = useCalendarNavigationLeaveState({
+    saving: calendar.saving,
+    selectedEventIdentifier,
+    notice: calendar.notice,
+  });
+
+  useEffect(() => {
+    // Candidate events stay local until confirmation persists them as appointments.
+    if (
+      calendar.notice === t('calendar.confirmed') &&
+      lastNotice.current !== calendar.notice
+    ) {
+      onAppointmentsChanged?.();
+    }
+    lastNotice.current = calendar.notice;
+  }, [calendar.notice, onAppointmentsChanged]);
 
   async function loadUpcomingEvents() {
     // Empty-day copy is only valid inside the native bridge's one-year query window.
@@ -62,8 +88,16 @@ export default function CalendarLinkingScreen({
           style={styles.title}
           testID="calendar-title"
         >
-          {t('calendar.title')}
+          {heading}
         </Text>
+        {onOpenAppointments ? (
+          <Button
+            disabled={calendar.saving || hasUnsavedSelection}
+            onPress={onOpenAppointments}
+            testID="schedule-open-appointments"
+            title={t('schedule.manageAppointments')}
+          />
+        ) : null}
         <Text style={styles.message}>{t('calendar.description')}</Text>
         <Text style={styles.message}>
           {t('calendar.permissionExplanation')}

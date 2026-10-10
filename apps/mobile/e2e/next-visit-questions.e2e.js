@@ -20,7 +20,7 @@ describe('synthetic next-visit questions screen', () => {
     await expect(element(by.id('next-visit-generation-loading'))).toBeVisible();
     await element(by.id('next-visit-probe-complete-generation')).tap();
     // The list can exceed the viewport, so wait on its visible heading.
-    await waitFor(element(by.text('추천 질문 검토')))
+    await waitFor(element(by.text('질문 확인')))
       .toBeVisible()
       .withTimeout(30000);
     await expect(

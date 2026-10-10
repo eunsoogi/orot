@@ -12,6 +12,7 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
+		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
@@ -38,8 +39,6 @@
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
 		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
-		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
-		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
 		E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */; };
@@ -84,6 +83,7 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OrotMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
+		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
@@ -140,8 +140,6 @@
 		F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = LocalE5SentencePieceTokenizer.mm; path = OrotMobile/LocalE5SentencePieceTokenizer.mm; sourceTree = "<group>"; };
 		F24E00000000000000000019 /* LocalE5SentencePieceTokenizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LocalE5SentencePieceTokenizer.h; path = OrotMobile/LocalE5SentencePieceTokenizer.h; sourceTree = "<group>"; };
 		F24E0000000000000000001A /* OrotMobile-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "OrotMobile-Bridging-Header.h"; path = "OrotMobile/OrotMobile-Bridging-Header.h"; sourceTree = "<group>"; };
-		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
-		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -226,15 +224,6 @@
 			name = OrotMobile;
 			sourceTree = "<group>";
 		};
-		C1011000C1011000C1011001 /* Navigation */ = {
-			isa = PBXGroup;
-			children = (
-				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
-				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
-			);
-			path = Navigation;
-			sourceTree = "<group>";
-		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -287,6 +276,7 @@
 			isa = PBXGroup;
 			children = (
 				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
+				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
 			);
 			path = Navigation;
@@ -452,6 +442,7 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
+				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,

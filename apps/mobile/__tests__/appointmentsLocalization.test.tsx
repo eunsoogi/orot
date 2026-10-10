@@ -2,6 +2,31 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import AppointmentsScreen from '../src/appointments/AppointmentsScreen';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
+test('opens editing without the list above the form and restores the list on cancel', async () => {
+  const store = createAppointmentStore();
+  await store.create({
+    clinicLabel: 'Cardiology clinic',
+    effectiveAt: '2027-06-02T09:45:00Z',
+  });
+  await render(<AppointmentsScreen repository={store.repository} />);
+  await screen.findByTestId('appointment-status-manual-1');
+  await fireEvent.press(screen.getByText('수정'));
+
+  // A separate editing surface keeps existing cards from pushing inputs below the keyboard.
+  expect(screen.queryByTestId('appointment-status-manual-1')).toBeNull();
+  expect(screen.getByTestId('appointment-clinic-input')).toHaveDisplayValue(
+    'Cardiology clinic',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('appointment-clinic-input'),
+    'Draft',
+  );
+  await fireEvent.press(screen.getByTestId('appointment-form-cancel'));
+  expect(await screen.findByText('Cardiology clinic')).toBeTruthy();
+  expect(screen.queryByTestId('appointment-clinic-input')).toBeNull();
+  expect(store.update).not.toHaveBeenCalled();
+});
+
 test('localizes appointment list errors and retry', async () => {
   const store = createAppointmentStore();
   store.list

@@ -73,13 +73,26 @@ async function expectEmptyAppointments() {
 }
 
 async function fillAppointment(clinic, date, time, note) {
-  await element(by.id('appointment-clinic-input')).replaceText(clinic);
-  await element(by.id('appointment-date-input')).replaceText(date);
-  await element(by.id('appointment-time-input')).replaceText(time);
-  if (note) await element(by.id('appointment-note-input')).replaceText(note);
-  await element(
-    by.id(note ? 'appointment-note-input' : 'appointment-time-input'),
-  ).tapReturnKey();
+  // Follow the visible form as a user would while the keyboard reduces its viewport.
+  for (const [field, value] of [
+    ['clinic', clinic],
+    ['date', date],
+    ['time', time],
+    ['note', note],
+  ]) {
+    const input = element(by.id(`appointment-${field}-input`));
+    await waitFor(input)
+      .toBeVisible()
+      .whileElement(by.id('appointments-scroll'))
+      .scroll(100, 'down', 0.5, 0.4);
+    await input.replaceText(value);
+  }
+  await device.takeScreenshot('appointment-editor-keyboard');
+  await element(by.id('appointment-note-input')).tapReturnKey();
+  await waitFor(element(by.id('appointment-save')))
+    .toBeVisible()
+    .whileElement(by.id('appointments-scroll'))
+    .scroll(100, 'down', 0.5, 0.4);
   await element(by.id('appointment-save')).tap();
 }
 

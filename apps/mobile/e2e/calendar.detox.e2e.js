@@ -1,6 +1,8 @@
 /* global by, device, element, expect, waitFor, describe, it, beforeAll */
 
-describe('Calendar appointment confirmation with a synthetic-only provider', () => {
+const { tapNativeNavigationAction } = require('./smokeHelpers');
+
+describe('Schedule appointment confirmation with a synthetic-only provider', () => {
   beforeAll(async () => {
     await device.uninstallApp();
     await device.clearKeychain();
@@ -15,11 +17,13 @@ describe('Calendar appointment confirmation with a synthetic-only provider', () 
 
     await expect(element(by.id('welcome-title'))).toHaveText('오롯');
     await expect(element(by.id('calendar-connect'))).not.toExist();
-    await element(by.id('open-appointments')).tap();
+    await tapNativeNavigationAction('navigation-tab-schedule');
 
-    await waitFor(element(by.id('calendar-connect')))
+    await waitFor(element(by.id('calendar-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await expect(element(by.id('calendar-title'))).toHaveText('일정');
+    await expect(element(by.id('calendar-connect'))).toBeVisible();
     const safeAreaRoot = await element(by.id('safe-area-root')).getAttributes();
     const calendarScroll = await element(
       by.id('calendar-screen'),

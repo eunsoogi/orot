@@ -79,6 +79,21 @@ describe('navigation controller', () => {
     expect(controller.getSnapshot().routes).toHaveLength(1);
   });
 
+  it('checks the active root route guard before switching root tabs', async () => {
+    const controller = makeController();
+    const root = controller.getSnapshot().currentRoute;
+    const guard = jest.fn(async () => true);
+    controller.registerLeaveGuard(root.key, guard);
+
+    await expect(controller.requestTabSwitch()).resolves.toBe(true);
+    expect(guard).toHaveBeenCalledWith({
+      intent: 'tab',
+      from: root,
+      to: root,
+    });
+    expect(controller.getSnapshot().routes).toEqual([root]);
+  });
+
   it('does not allow route changes while a leave decision is pending', async () => {
     const controller = makeController();
     const child = pushRoute(controller, 'details');

@@ -1,5 +1,7 @@
 import { navigationText } from '../i18n/navigation';
 import type { NavigationPrimaryAction } from './NavigationActionBar';
+import { rootTabItems } from './rootTabs';
+import type { NavigationRootTabs } from './rootTabs';
 import type {
   NavigationGlassAction,
   NavigationGlassActionEventHandler,
@@ -15,13 +17,17 @@ export function createNativeNavigationBindings<Name extends string>({
   snapshot,
   backDisabled,
   canGoHome,
+  homeAction,
   primaryAction,
+  rootTabs,
 }: {
   readonly controller: NavigationController<Name>;
   readonly snapshot: NavigationSnapshot<Name>;
   readonly backDisabled: boolean;
   readonly canGoHome: boolean;
+  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
+  readonly rootTabs?: NavigationRootTabs;
 }): {
   readonly actions: readonly NavigationGlassAction[];
   readonly onAction: NavigationGlassActionEventHandler;
@@ -34,6 +40,7 @@ export function createNativeNavigationBindings<Name extends string>({
       accessibilityLabel: navigationText.back.accessibilityLabel,
       testID: 'navigation-back',
       systemImageName: 'chevron.backward',
+      showsTitleWithSystemImage: true,
       disabled: backDisabled,
     });
   }
@@ -44,6 +51,8 @@ export function createNativeNavigationBindings<Name extends string>({
       accessibilityLabel: navigationText.home.accessibilityLabel,
       testID: 'navigation-home',
       systemImageName: 'house',
+      showsTitleWithSystemImage: true,
+      titleBelowImage: true,
       disabled: backDisabled,
     });
   }
@@ -57,6 +66,24 @@ export function createNativeNavigationBindings<Name extends string>({
       primary: true,
     });
   }
+  if (rootTabs) {
+    rootTabItems.forEach(item =>
+      actions.push({
+        id: `tab-${item.id}`,
+        label: item.label,
+        accessibilityLabel: item.accessibilityLabel,
+        testID: item.testID,
+        systemImageName:
+          rootTabs.activeTab === item.id
+            ? item.selectedSystemImageName
+            : item.systemImageName,
+        disabled: backDisabled,
+        selected: rootTabs.activeTab === item.id,
+        showsTitleWithSystemImage: true,
+        titleBelowImage: true,
+      }),
+    );
+  }
 
   const onAction: NavigationGlassActionEventHandler = ({ nativeEvent }) => {
     if (nativeEvent.id === 'back' && snapshot.canGoBack && !backDisabled) {
@@ -64,7 +91,9 @@ export function createNativeNavigationBindings<Name extends string>({
       return;
     }
     if (nativeEvent.id === 'home' && canGoHome && !backDisabled) {
-      settleNavigationRequest(controller.requestHome());
+      settleNavigationRequest(
+        Promise.resolve(homeAction?.() ?? controller.requestHome()),
+      );
       return;
     }
     if (
@@ -74,6 +103,15 @@ export function createNativeNavigationBindings<Name extends string>({
       !primaryAction.disabled
     ) {
       settleNavigationRequest(Promise.resolve(primaryAction.onPress()));
+      return;
+    }
+    const tab = rootTabItems.find(item => `tab-${item.id}` === nativeEvent.id);
+    if (tab && rootTabs && rootTabs.activeTab !== tab.id && !backDisabled) {
+      settleNavigationRequest(
+        controller
+          .requestTabSwitch()
+          .then(allowed => (allowed ? rootTabs.onSelect(tab.id) : undefined)),
+      );
     }
   };
 

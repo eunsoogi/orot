@@ -21,6 +21,9 @@ import type {
 import type { OpenAIAccountSummary } from '../openai';
 
 interface ProviderSelectionFlowProps {
+  // Settings keeps the same guarded actions while exposing an account-specific entry.
+  readonly screenTitle?: string;
+  readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
@@ -44,6 +47,8 @@ export interface ProviderSelectionNavigationState {
 }
 
 export default function ProviderSelectionFlow({
+  screenTitle,
+  screenIntroduction,
   navigationRouteKey,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
@@ -216,6 +221,8 @@ export default function ProviderSelectionFlow({
   const screen = (
     <ProviderSelectionScreen
       navigationRouteKey={navigationRouteKey}
+      screenTitle={screenTitle}
+      screenIntroduction={screenIntroduction}
       chatGPTSetup={chatGPTSetup}
       onBack={onBack}
       onNavigationStateChange={reportSelectionState}

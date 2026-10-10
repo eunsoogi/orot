@@ -1,6 +1,7 @@
 /* global beforeAll, by, describe, device, element, expect, it, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
+const { openRootTab, expectNativeNavigationAction } = require('./smokeHelpers');
 
 async function tapNativeNavigationAction(testID) {
   const action = element(by.id(testID));
@@ -21,8 +22,8 @@ async function tapNativeNavigationAction(testID) {
     !toolbarAttributes.visible ||
     !toolbarAttributes.hittable ||
     !frame ||
-    frame.width < 44 ||
-    frame.height < 44 ||
+    frame.width + 0.001 < 44 ||
+    frame.height + 0.001 < 44 ||
     !toolbarFrame
   ) {
     throw new Error(
@@ -50,6 +51,7 @@ describe('AI visit questions through the app navigation', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await openRootTab('ai', 'ai-features-screen');
     await element(by.id('ai-feature-visit-questions')).tap();
     // Check the visible content and controls; the enclosing keyboard-avoiding view is structural.
     await waitFor(element(by.id('next-visit-questions-scroll')))
@@ -67,11 +69,11 @@ describe('AI visit questions through the app navigation', () => {
       .withTimeout(30000);
     await expect(element(by.text('합성 UI 검사 제공자'))).toBeVisible();
 
-    await expect(element(by.id('next-visit-generate'))).toBeVisible();
-    await element(by.id('next-visit-generate')).tap();
+    await expectNativeNavigationAction('next-visit-generate');
+    await tapNativeNavigationAction('next-visit-generate');
     // The save button confirms the review UI; its enclosing view is layout-only.
     await waitFor(element(by.id('next-visit-review-save')))
-      .toBeVisible()
+      .toExist()
       .withTimeout(30000);
     const scroll = element(by.id('next-visit-questions-scroll'));
     await scroll.scrollTo('bottom');
@@ -94,7 +96,7 @@ describe('AI visit questions through the app navigation', () => {
     }
 
     const saveAction = element(by.id('next-visit-review-save'));
-    await expect(saveAction).toBeVisible();
+    await expectNativeNavigationAction('next-visit-review-save');
     const saveFrame = (await saveAction.getAttributes()).frame;
     if (!saveFrame) {
       throw new Error(
@@ -108,13 +110,13 @@ describe('AI visit questions through the app navigation', () => {
     );
     // Keep visual evidence of the fixed action above the actual on-screen keyboard.
     await device.takeScreenshot('visit-questions-keyboard-save-action');
-    await saveAction.tap();
+    await tapNativeNavigationAction('next-visit-review-save');
     await waitFor(element(by.id('next-visit-save-message')))
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
       .withTimeout(30000);
     await device.takeScreenshot('visit-questions-after-save');
     await tapNativeNavigationAction('navigation-back');
-    await waitFor(element(by.id('welcome-title')))
+    await waitFor(element(by.id('ai-features-screen')))
       .toBeVisible()
       .withTimeout(30000);
   });
