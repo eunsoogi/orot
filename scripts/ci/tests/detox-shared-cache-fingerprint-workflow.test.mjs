@@ -112,7 +112,7 @@ test('computes common app fingerprints once and shares them with every profile',
   assert.doesNotMatch(profilesWorkflow, /Require complete profile summaries/);
 });
 
-test('passes shared hashes directly into cache validation and preserves profile behavior', () => {
+test('passes resolved fingerprints into cache validation and preserves profile behavior', () => {
   const profileCache = workflowStep(profileWorkflow, 'Cache Detox profile app product');
   const prepareCache = workflowStep(profileWorkflow, 'Prepare restored Detox DerivedData cache');
   const manifestStep = workflowStep(profileWorkflow, 'Write Detox DerivedData cache manifest');
@@ -135,12 +135,18 @@ test('passes shared hashes directly into cache validation and preserves profile 
     /fingerprints:\n\s+description: Shared source and build fingerprints from the profile workflow\.\n\s+required: true\n\s+type: string/,
   );
   assert.doesNotMatch(profileWorkflow, /detox-cache-fingerprint-cli\.mjs --derived-data-only/);
-  assert.match(profileCache, /fingerprints: \$\{\{ inputs\.fingerprints \}\}/);
   assert.match(
     profileCache,
-    /native-\$\{\{ fromJSON\(inputs\.fingerprints\)\.native_dependencies \}\}/,
+    /fingerprints: \$\{\{ steps\.prepare_detox_simulator\.outputs\.fingerprints \}\}/,
   );
-  assert.match(profileCache, /build-\$\{\{ fromJSON\(inputs\.fingerprints\)\.build_inputs \}\}/);
+  assert.match(
+    profileCache,
+    /native-\$\{\{ steps\.prepare_detox_simulator\.outputs\.native_dependencies \}\}/,
+  );
+  assert.match(
+    profileCache,
+    /build-\$\{\{ steps\.prepare_detox_simulator\.outputs\.build_inputs \}\}/,
+  );
   assert.equal(profileCache.match(/orot-detox-app-product-v10-/g)?.length, 2);
   assert.match(profileCache, /runner\.os/);
   assert.match(profileCache, /runner\.arch/);

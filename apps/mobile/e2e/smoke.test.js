@@ -1,6 +1,10 @@
-/* global by, device, element, waitFor */
+/* global beforeAll, by, device, element, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
+const {
+  releasePhaseResetGuard,
+  resetHookTimeoutMs,
+} = require('./storageProbeResetGuard.e2e.js');
 
 /** Exercise a real route and confirm only when its state guard reports local edits. */
 async function openFeatureAndReturn(
@@ -32,11 +36,16 @@ async function confirmUnsavedLeave() {
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
-    // Release phases combine specs in one Jest file, so reset encrypted app data with its Keychain key.
-    await device.uninstallApp();
-    await device.clearKeychain();
-    await device.installApp();
-  });
+    // Share the phase latch so a late uninstall cannot overlap the next Release reset.
+    await releasePhaseResetGuard.runReset(async assertMayContinue => {
+      await device.uninstallApp();
+      assertMayContinue();
+      await device.clearKeychain();
+      assertMayContinue();
+      await device.installApp();
+      assertMayContinue();
+    });
+  }, resetHookTimeoutMs);
 
   // Keep the integrated route flow in one Release case.
   // The observed CI path exceeded the shared 120-second default.

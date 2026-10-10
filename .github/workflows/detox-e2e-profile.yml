@@ -36,10 +36,6 @@ permissions:
 env:
   CI: 'true'
   TZ: UTC
-  # Preserve pre-CocoaPods hashes for validation after generated Xcode files are rewritten.
-  EXPECTED_COCOAPODS_INPUT_HASHES_JSON: ${{ format('{{"privacyManifest":"{0}","projectFile":"{1}"}}', fromJSON(inputs.fingerprints).privacy_manifest_input_sha256, fromJSON(inputs.fingerprints).cocoapods_project_input_sha256) }}
-  EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ fromJSON(inputs.fingerprints).build_inputs }}
-  EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ fromJSON(inputs.fingerprints).native_dependencies }}
   DEVELOPER_DIR: ${{ inputs.profile == 'transcription' && '/Applications/Xcode_26.2.app/Contents/Developer' || '/Applications/Xcode.app/Contents/Developer' }}
   EXPECTED_NODE_VERSION: '22.23.2'
   EXPECTED_PNPM_VERSION: '12.3.4'
@@ -90,10 +86,14 @@ jobs:
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"
-      - name: Prepare dedicated Detox Simulator # Boot overlaps cache prep; probes and cleanup always run.
+      - name: Prepare dedicated Detox Simulator # Resolve source hashes before cache lookup and CocoaPods rewriting.
         id: prepare_detox_simulator
         timeout-minutes: 15
-        run: scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
+        env:
+          DETOX_SHARED_FINGERPRINTS_JSON: ${{ inputs.fingerprints }}
+        run: |
+          scripts/ci/run-command.sh detox-simulator-prepare artifacts/detox/simulator-prepare.log -- bash scripts/ci/prepare-detox-simulator.sh artifacts/detox/simulator-setup.log artifacts/detox/simulator.udid "${{ inputs.profile }}"
+          node scripts/ci/detox-cache-fingerprint-cli.mjs --resolve-shared-derived-data-only
       - name: Cache Detox profile app product # The key retains profile-local runner and Xcode identity.
         id: profile_derived_data_cache
         if: ${{ inputs.profile == 'release' || inputs.profile == 'openai-provider' || inputs.profile == 'transcription' || inputs.profile == 'next-visit-questions' }}
@@ -101,10 +101,10 @@ jobs:
         uses: ./.github/actions/detox-profile-app-cache/restore
         with:
           profile: ${{ inputs.profile }}
-          fingerprints: ${{ inputs.fingerprints }}
-          key: orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ fromJSON(inputs.fingerprints).native_dependencies }}-build-${{ fromJSON(inputs.fingerprints).build_inputs }}
+          fingerprints: ${{ steps.prepare_detox_simulator.outputs.fingerprints }}
+          key: orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.prepare_detox_simulator.outputs.native_dependencies }}-build-${{ steps.prepare_detox_simulator.outputs.build_inputs }}
           restore_keys: |
-            orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ fromJSON(inputs.fingerprints).native_dependencies }}-
+            orot-detox-app-product-v10-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-${{ inputs.profile }}${{ env.DETOX_CACHE_RUNTIME_SUFFIX }}-native-${{ steps.prepare_detox_simulator.outputs.native_dependencies }}-
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
         timeout-minutes: 5

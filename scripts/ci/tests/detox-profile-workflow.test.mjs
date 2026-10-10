@@ -41,6 +41,10 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const rubySetup = profileWorkflow.indexOf('- name: Set up Ruby');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const prepare = profileWorkflow.indexOf('- name: Prepare dedicated Detox Simulator');
+  const fingerprintResolver = profileWorkflow.indexOf(
+    'node scripts/ci/detox-cache-fingerprint-cli.mjs --resolve-shared-derived-data-only',
+  );
+  const cacheRestore = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const boot = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
   const tests = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
   const diagnostics = profileWorkflow.indexOf('- name: Collect simulator logs');
@@ -63,6 +67,8 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
       nodeSetup < toolchain &&
       toolchain < installIndex &&
       installIndex < prepare &&
+      prepare < fingerprintResolver &&
+      fingerprintResolver < cacheRestore &&
       prepare < rubySetup &&
       rubySetup < pods &&
       pods < simulatorUtilities &&
@@ -76,6 +82,11 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
+  assert.match(prepareStep, /DETOX_SHARED_FINGERPRINTS_JSON: \$\{\{ inputs\.fingerprints \}\}/);
+  assert.match(
+    profileWorkflow,
+    /fingerprints: \$\{\{ steps\.prepare_detox_simulator\.outputs\.fingerprints \}\}/,
+  );
   assert.match(bootStep, /simulator-baseline\.json/);
   assert.equal(profileWorkflow.includes('- name: Prepare Release worker Simulators'), false);
   assert.match(

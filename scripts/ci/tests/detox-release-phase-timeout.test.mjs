@@ -114,3 +114,97 @@ test('a timed-out phase cannot overlap a sibling reset or finish a late install'
   );
   assert.ok(observation.failedFiles > 0);
 });
+
+test('the real Smoke reset latches before a later Release phase after timeout', () => {
+  const script = String.raw`
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const vm = require('node:vm');
+    const root = ${JSON.stringify(repositoryRoot)};
+    const circusDirectory = ${JSON.stringify(circusDirectory)};
+    const requireFromRepository = require('node:module').createRequire(path.join(root, 'package.json'));
+    const circus = require(path.join(circusDirectory, 'index.js'));
+    const { getState } = require(path.join(circusDirectory, 'state.js'));
+    const run = require(path.join(circusDirectory, 'run.js')).default;
+    const resetGuard = requireFromRepository('./apps/mobile/e2e/storageProbeResetGuard.e2e.js')
+      .createStorageResetGuard({ timeoutMs: 20 });
+    const calls = [];
+    const hookTimeouts = [];
+    let releaseUninstall;
+    getState().testTimeout = 1000;
+    const fakeDevice = {
+      async uninstallApp() {
+        calls.push('uninstall-start');
+        await new Promise((resolve) => {
+          releaseUninstall = () => {
+            calls.push('uninstall-finished');
+            resolve();
+          };
+        });
+      },
+      async clearKeychain() { calls.push('clear-keychain'); },
+      async installApp() { calls.push('install'); },
+    };
+
+    vm.runInNewContext(fs.readFileSync(path.join(root, 'apps/mobile/e2e/smoke.test.js'), 'utf8'), {
+      beforeAll(hook, timeout) {
+        hookTimeouts.push(timeout ?? null);
+        circus.beforeAll(hook, 80);
+      },
+      by: {},
+      describe: circus.describe,
+      device: fakeDevice,
+      element: () => ({}),
+      expect: () => ({}),
+      it: circus.it,
+      waitFor: () => ({}),
+      require(specifier) {
+        if (specifier === '@jest/globals') return { expect: () => ({}) };
+        if (specifier === './storageProbeResetGuard.e2e.js') {
+          return { releasePhaseResetGuard: resetGuard, resetHookTimeoutMs: 241000 };
+        }
+        throw new Error('Unexpected Smoke dependency: ' + specifier);
+      },
+    });
+
+    // A failed sibling beforeAll continues to this phase, which must see the same reset latch.
+    circus.describe('Later Release phase', () => {
+      circus.beforeAll(async () => {
+        await resetGuard.runReset(async assertMayContinue => {
+          calls.push('later-reset-start');
+          await fakeDevice.uninstallApp();
+          assertMayContinue();
+        });
+      }, 80);
+      circus.it('does not start its probe', () => {});
+    });
+
+    run().then(async (result) => {
+      releaseUninstall?.();
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      process.stdout.write(JSON.stringify({
+        calls,
+        hookTimeouts,
+        failedFiles: result.testResults.filter((file) => file.errors.length > 0).length,
+      }));
+    }).catch((error) => {
+      process.stderr.write(String(error.stack || error));
+      process.exitCode = 1;
+    });
+  `;
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    timeout: 6000,
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const observation = JSON.parse(result.stdout);
+  assert.deepEqual(
+    { calls: observation.calls, hookTimeouts: observation.hookTimeouts },
+    { calls: ['uninstall-start', 'uninstall-finished'], hookTimeouts: [241000] },
+    JSON.stringify(observation),
+  );
+  assert.ok(observation.failedFiles > 0);
+});
