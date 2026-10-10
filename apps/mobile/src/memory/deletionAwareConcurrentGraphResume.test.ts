@@ -88,7 +88,7 @@ describe('deletion-aware concurrent graph resume', () => {
         effectiveTime: span.effectiveAt,
         reviewState: 'unreviewed',
       };
-      const threadId = 'concurrent-resume-run';
+      const threadId = '42';
       jest.mocked(openLocalStorage).mockResolvedValue(repository);
       await persistGraphResumeBoundary(database, reference, threadId);
 
@@ -144,11 +144,17 @@ describe('deletion-aware concurrent graph resume', () => {
         async () => evidenceFor(reference),
         threadId,
       );
-      const config = { configurable: { thread_id: threadId } };
+      // The saver normalizes numeric and string IDs to one key, so both callers target this thread.
+      const numericConfig = { configurable: { thread_id: 42 } };
+      const stringConfig = { configurable: { thread_id: threadId } };
 
-      const firstResume = runMultiAgentWorkflow(firstOptions, { config });
+      const firstResume = runMultiAgentWorkflow(firstOptions, {
+        config: numericConfig,
+      });
       await firstValidationStarted.promise;
-      const secondResume = runMultiAgentWorkflow(secondOptions, { config });
+      const secondResume = runMultiAgentWorkflow(secondOptions, {
+        config: stringConfig,
+      });
       await settlesWithin(secondProviderStarted.promise, 500);
       releaseFirstValidation.resolve(undefined);
       await settlesWithin(secondProviderStarted.promise, 500);

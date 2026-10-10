@@ -1,4 +1,5 @@
 import type { JsonValue } from '@orot/model-runtime';
+import { normalizeThreadId } from '../checkpointConfig';
 import type {
   MultiAgentInvocation,
   MultiAgentRunResult,
@@ -62,8 +63,8 @@ export function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
   invocation: MultiAgentInvocation = {},
 ): Promise<MultiAgentRunResult<TResult>> {
-  const threadId = invocation.config?.configurable?.thread_id;
-  if (options.checkpointer && typeof threadId === 'string' && threadId.length > 0) {
+  const threadId = normalizeThreadId(invocation.config?.configurable?.thread_id);
+  if (options.checkpointer && threadId !== undefined) {
     if (!validIdentity(options) || !validBudget(options)) {
       return runMultiAgentWorkflowUnlocked(options, invocation);
     }
@@ -96,7 +97,10 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
       checkpoint: checkpointFromState(initialState(options)),
     };
   }
-  if (options.checkpointer && !invocation.config?.configurable?.thread_id) {
+  if (
+    options.checkpointer &&
+    normalizeThreadId(invocation.config?.configurable?.thread_id) === undefined
+  ) {
     return {
       status: 'invalid_output',
       reason: 'A checkpoint thread identifier is required.',
