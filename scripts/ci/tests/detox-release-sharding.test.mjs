@@ -64,9 +64,13 @@ test('the ordered Release wrapper loads every scenario once while explicit shard
   );
   assert.deepEqual(loadSuites('release-e2e.test.js'), releaseShards['release-e2e.test.js']);
   assert.equal(
+    releaseShards['release-e2e.test.js'].filter((file) => file === './safe-area.test.js').length,
+    1,
+  );
+  assert.equal(
     releaseShards['release-e2e-data.test.js'].filter((file) => file === './safe-area.test.js')
       .length,
-    1,
+    0,
   );
 });
 

@@ -10,38 +10,53 @@ const {
   resetHookTimeoutMs,
 } = require('./storageProbeResetGuard.e2e.js');
 
-function clearAndInstallFreshSimulator() {
-  return beforeAll(async () => {
-    await releasePhaseResetGuard.runReset(async assertMayContinue => {
-      await device.clearKeychain();
-      assertMayContinue();
-      // Fresh CI devices have no app to uninstall, so install the built app directly.
-      if (hasFreshReleaseSimulator) {
-        await device.installApp();
+function registerFreshPhase(name, suiteFiles, uninstallBeforePhase) {
+  describe(name, () => {
+    beforeAll(async () => {
+      await releasePhaseResetGuard.runReset(async assertMayContinue => {
+        if (uninstallBeforePhase) {
+          await device.uninstallApp();
+          assertMayContinue();
+        }
+        await device.clearKeychain();
         assertMayContinue();
-      }
-    });
-  }, resetHookTimeoutMs);
+        // Dedicated CI Simulators start empty; combined local runs reinstall only at later phase boundaries.
+        if (hasFreshReleaseSimulator || uninstallBeforePhase) {
+          await device.installApp();
+          assertMayContinue();
+        }
+      });
+    }, resetHookTimeoutMs);
+
+    for (const suiteFile of suiteFiles) require(suiteFile);
+  });
 }
 
-function loadReleaseShard(wrapper) {
-  for (const suiteFile of releaseE2EShards[wrapper]) require(suiteFile);
+function registerReleaseUiPhases(wrapper) {
+  const suiteFiles = releaseE2EShards[wrapper];
+  const safeAreaSuites = suiteFiles.filter(
+    suiteFile => suiteFile === './safe-area.test.js',
+  );
+  const uiSuites = suiteFiles.filter(
+    suiteFile => suiteFile !== './safe-area.test.js',
+  );
+
+  registerFreshPhase('Release fresh-install and UI probes', uiSuites, false);
+  // Safe Area startup probes stay isolated from storage/UI state on the same assigned Simulator.
+  if (safeAreaSuites.length > 0) {
+    registerFreshPhase('Release Safe Area probes', safeAreaSuites, true);
+  }
 }
 
 if (selectedShard) {
   if (selectedShard === 'release-e2e-data.test.js') {
-    // The data wrapper owns two clean install phases on its assigned Simulator.
+    // Stateful data cases use the other dedicated Simulator and keep their local combined-run reset.
     require('./release-e2e-data.test.js');
   } else {
-    clearAndInstallFreshSimulator();
-    loadReleaseShard(selectedShard);
+    registerReleaseUiPhases(selectedShard);
   }
 } else {
-  describe('Release fresh-install and UI probes', () => {
-    // Run storage creation on this clean install before UI scenarios can open the database.
-    clearAndInstallFreshSimulator();
-    loadReleaseShard('release-e2e.test.js');
-  });
+  registerReleaseUiPhases('release-e2e.test.js');
 
   describe('Release stateful probes', () => {
     require('./release-e2e-data.test.js');

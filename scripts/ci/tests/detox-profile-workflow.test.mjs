@@ -15,6 +15,10 @@ const profilesWorkflow = readFileSync(
 );
 const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
 const runner = readFileSync(join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh'), 'utf8');
+const profileDependencySetup = readFileSync(
+  join(repositoryRoot, 'scripts/ci/install-detox-profile-dependencies.sh'),
+  'utf8',
+);
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
   const end = profileWorkflow.indexOf('\n      - name:', start + 1);
@@ -63,7 +67,8 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
       boot > build &&
       tests > boot,
   );
-  assert.match(install, /pnpm install --frozen-lockfile/);
+  assert.match(install, /scripts\/ci\/install-detox-profile-dependencies\.sh/);
+  assert.match(profileDependencySetup, /pnpm install --frozen-lockfile/);
   assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);

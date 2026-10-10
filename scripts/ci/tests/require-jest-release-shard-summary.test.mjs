@@ -30,8 +30,8 @@ function runGuard(log, shard) {
 
 test('validates one selected Release shard before publishing its runner-local counts', () => {
   for (const [shard, tests] of [
-    ['release-e2e.test.js', 3],
-    ['release-e2e-data.test.js', 10],
+    ['release-e2e.test.js', 7],
+    ['release-e2e-data.test.js', 6],
   ]) {
     const result = runGuard(
       'Test Suites: 1 passed, 1 total\nTests: ' + tests + ' passed, ' + tests + ' total\n',
@@ -49,7 +49,7 @@ test('validates one selected Release shard before publishing its runner-local co
     'release-e2e-data.test.js',
   );
   assert.notEqual(wrongCount.status, 0);
-  assert.match(wrongCount.stderr, /expected 10 test cases, received 7/);
+  assert.match(wrongCount.stderr, /expected 6 test cases, received 7/);
   assert.equal(wrongCount.githubOutput, '');
 
   const invalidShard = runGuard(

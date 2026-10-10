@@ -5,6 +5,7 @@ import {
   computeDetoxCacheFingerprints,
   computeDetoxDerivedDataFingerprints,
   computeDetoxReactNativeArtifactFingerprint,
+  listChangedDetoxBuildInputs,
 } from './detox-cache-fingerprint.mjs';
 import { computeDetoxCocoapodsCacheFingerprint } from './detox-cocoapods-cache-fingerprint.mjs';
 
@@ -110,11 +111,17 @@ function main() {
       '--cocoapods-cache-inputs-only',
       '--derived-data-only',
       '--precomputed-derived-data-only',
+      '--changed-build-inputs',
     ].includes(mode)
   ) {
     throw new Error(
-      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--cocoapods-cache-inputs-only|--derived-data-only|--precomputed-derived-data-only]',
+      'Usage: detox-cache-fingerprint-cli.mjs [--react-native-artifacts-only|--cocoapods-cache-inputs-only|--derived-data-only|--precomputed-derived-data-only|--changed-build-inputs]',
     );
+  }
+  if (mode === '--changed-build-inputs') {
+    // Emit the same post-install drift list so profile preparation can overlap it with cache restore.
+    process.stdout.write(`${JSON.stringify(listChangedDetoxBuildInputs())}\n`);
+    return;
   }
   const outputPath = process.env.GITHUB_OUTPUT;
   if (!outputPath)

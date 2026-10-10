@@ -40,11 +40,11 @@ test('accepts actual two-shard Release output and OpenAI Debug with the complete
   const release = runReleaseShardAggregate([
     'success',
     'release',
-    '3',
+    '7',
     '1',
     'success',
     'release',
-    '10',
+    '6',
     '1',
   ]);
   assert.equal(release.status, 0, release.stderr);

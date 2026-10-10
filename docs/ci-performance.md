@@ -1100,3 +1100,19 @@ PR-event run [38014155698](https://github.com/eunsoogi/orot/actions/runs/3801415
 The Safe Area runner began 7m19s after the Quality Linux start, while the other two Release runners began within 24 seconds of it. Its cache restore and cache preparation occupied 5m21s. The four Safe Area case times summed to 87.952s; CPU, peak RSS, disk use, child-process count/time, and fixture bytes were not measured. The logs establish a late start and additional restore/preparation work on this attempt, but do not establish their service-side cause or prove that a third runner alone caused the full 17m32s duration.
 
 The local candidate rebalances to two Release runners: the UI/storage wrapper keeps three cases, and the existing data wrapper runs the four Safe Area cases before its six stateful cases. It uninstalls the app, clears Keychain, and reinstalls between those phases; the default local Release wrapper uses the same clean phase boundary. The aggregate keeps all 13 cases, two checked shard summaries, the existing Simulator diagnostics and cleanup, and the required check names. Focused wrapper, reset, Simulator routing, and fail-closed aggregate tests pass locally. This two-runner candidate has not run in hosted CI, so its wall time, cache effect, and resource use remain unmeasured; no speedup is claimed. The earlier 11m13s warm baseline and this failed 17m32s three-runner run do not form a qualifying pair. Issue #74 remains open and PR #129 remains Draft.
+
+## 2026-10-10 PR #129 two-runner timing miss and next rebalance
+
+PR-event run [38018825726](https://github.com/eunsoogi/orot/actions/runs/38018825726) passed every required job on head `490b27c7a359575ce7fda61d91f642aa4eb0fcf6`, but missed the target. Quality Linux started at 02:57:10Z and the fail-closed `Detox iOS E2E` aggregate ended at 03:11:59Z: **14m49s**. The run passed 13 Release cases across the two existing wrappers, OpenAI and Speech E2E, the production/OAuth Simulator build, profile summaries, Simulator diagnostics, and cleanup. This successful run does not count toward the under-ten-minute pair.
+
+| Required job or Release shard | Interval (UTC) | Cache restore | Cache preparation | Jest tests | Result |
+| --- | --- | ---: | ---: | ---: | --- |
+| Quality Linux | 02:57:10–02:59:49 | — | — | — | passed |
+| Release UI and storage | 02:57:29–03:04:19 | 2m21s | 1m38s | 1m08s | 3/3 passed |
+| Release stateful data | 02:57:32–03:11:35 | 2m39s | 3m02s | 6m11s | 10/10 passed |
+| Release profile aggregate | 03:11:38–03:11:46 | — | — | 13 cases / 2 suites | passed |
+| Required Detox aggregate | 03:11:57–03:11:59 | — | — | — | passed |
+
+The stateful-data cache preparation spent about 1m43s listing changed Detox build inputs before it selected the shared fingerprint. The exact app-product cache was already restored, and cache invalidation plus all test summaries passed. The 14m03s data job was the critical Release path; its four Safe Area cases and six stateful-data cases were on the same Simulator worker and ran in separate fresh app phases.
+
+The next local candidate keeps the two existing Release workers and the two-summary aggregate. It moves Safe Area to the UI/storage worker, keeps a fresh uninstall, Keychain clear, and reinstall before those probes, and leaves the six stateful-data cases on their own worker. The expected inventory becomes 7 UI/storage cases and 6 stateful-data cases, still 13 cases across two suites. A background step starts the same post-install build-input drift scan before Simulator and app-cache preparation; the cache helper accepts only a complete JSON result and retains the original synchronous scan when the result is missing, malformed, or unsuccessful. This candidate has not run in hosted CI, so its duration and cache behavior remain unmeasured. Issue #74 remains open and PR #129 remains Draft.

@@ -71,9 +71,8 @@ async function runWrapperBeforeAll(
       require: (specifier) => {
         if (specifier === './release-e2e-shards.js') {
           return {
-            'release-e2e.test.js': ['./storage.test.js', './smoke.test.js'],
+            'release-e2e.test.js': ['./storage.test.js', './smoke.test.js', './safe-area.test.js'],
             'release-e2e-data.test.js': [
-              './safe-area.test.js',
               './storage-migration.test.js',
               './appointments.test.js',
               './medicalAppointmentClassification.test.js',
@@ -101,10 +100,12 @@ async function runWrapperBeforeAll(
 
   const expectedHookCount =
     releaseSharding && selectedShard === 'release-e2e-data.test.js'
-      ? 2
-      : wrapperName === 'release-e2e.test.js' && !releaseSharding
-        ? 3
-        : 1;
+      ? 1
+      : releaseSharding && selectedShard === 'release-e2e.test.js'
+        ? 2
+        : wrapperName === 'release-e2e.test.js' && !releaseSharding
+          ? 3
+          : 1;
   assert.equal(beforeAllHooks.length, expectedHookCount);
   for (const hook of beforeAllHooks) await hook();
   assert.deepEqual(hookTimeouts, Array(expectedHookCount).fill(241000));
@@ -174,28 +175,28 @@ test('the default Release phases reset app state while explicit fresh shards ins
   assert.deepEqual(await runWrapperBeforeAll('release-e2e.test.js', false, true), [
     'clearKeychain',
     'installApp',
-  ]);
-  assert.deepEqual(await runWrapperBeforeAll('release-e2e-data.test.js', false, true), [
+    'uninstallApp',
     'clearKeychain',
     'installApp',
-    'uninstallApp',
+  ]);
+  assert.deepEqual(await runWrapperBeforeAll('release-e2e-data.test.js', false, true), [
     'clearKeychain',
     'installApp',
   ]);
   assert.deepEqual(await runWrapperBeforeAll('release-e2e.test.js', true, true), [
     'clearKeychain',
     'installApp',
-  ]);
-  assert.deepEqual(await runWrapperBeforeAll('release-e2e-data.test.js', true, true), [
+    'uninstallApp',
     'clearKeychain',
     'installApp',
-    'uninstallApp',
+  ]);
+  assert.deepEqual(await runWrapperBeforeAll('release-e2e-data.test.js', true, true), [
     'clearKeychain',
     'installApp',
   ]);
   assert.deepEqual(
     await runWrapperBeforeAll('release-e2e.test.js', true, true, 'release-e2e-data.test.js'),
-    ['clearKeychain', 'installApp', 'uninstallApp', 'clearKeychain', 'installApp'],
+    ['clearKeychain', 'installApp'],
   );
 });
 
@@ -218,13 +219,13 @@ test('runs storage probes on the phase-owned clean installs without clearing the
   const releaseShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
   const smokeCalls = await runSmokeSetup();
 
-  // Safe Area and stateful probes share one worker but keep a fresh app boundary between phases.
+  // Safe Area stays fresh on the UI worker, while stateful data starts on the second worker.
   assert.deepEqual(releaseShards['release-e2e.test.js'].slice(0, 2), [
     './storage.test.js',
     './smoke.test.js',
   ]);
-  assert.equal(releaseShards['release-e2e-data.test.js'][0], './safe-area.test.js');
-  assert.equal(releaseShards['release-e2e-data.test.js'][1], './storage-migration.test.js');
+  assert.equal(releaseShards['release-e2e.test.js'][2], './safe-area.test.js');
+  assert.equal(releaseShards['release-e2e-data.test.js'][0], './storage-migration.test.js');
   assert.deepEqual(smokeCalls, [
     {
       kind: 'launch',

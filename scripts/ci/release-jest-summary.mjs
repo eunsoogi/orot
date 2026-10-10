@@ -1,7 +1,7 @@
 // CI counts are checked against actual test registrations by detox-release-shard-summary-inventory.test.mjs.
 export const releaseShardInventory = [
-  { wrapper: 'release-e2e.test.js', suites: 1, tests: 3 },
-  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 10 },
+  { wrapper: 'release-e2e.test.js', suites: 1, tests: 7 },
+  { wrapper: 'release-e2e-data.test.js', suites: 1, tests: 6 },
 ];
 
 export function resolveSelectedReleaseShard({

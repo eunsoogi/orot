@@ -75,8 +75,8 @@ test('Release shard summaries follow the registered cases and reject stale parti
     countRegisteredTests(files),
   ]);
   assert.deepEqual(actual, [
-    ['release-e2e.test.js', 3],
-    ['release-e2e-data.test.js', 10],
+    ['release-e2e.test.js', 7],
+    ['release-e2e-data.test.js', 6],
   ]);
 
   // Count real test registrations so moving a scenario cannot silently stale the log validator.
@@ -84,8 +84,8 @@ test('Release shard summaries follow the registered cases and reject stale parti
   assert.equal(current.status, 0, current.stderr);
 
   const stale = runReleaseSummary([
-    ['release-e2e.test.js', 2],
-    ['release-e2e-data.test.js', 11],
+    ['release-e2e.test.js', 6],
+    ['release-e2e-data.test.js', 7],
   ]);
   assert.notEqual(stale.status, 0);
 });

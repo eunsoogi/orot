@@ -1,11 +1,11 @@
-// Keep the Safe Area probes on a second fresh app phase while reusing the data worker Simulator.
+// Balance the Release workers while keeping Safe Area and stateful probes on fresh app phases.
 module.exports = Object.freeze({
   'release-e2e.test.js': Object.freeze([
     './storage.test.js',
     './smoke.test.js',
+    './safe-area.test.js',
   ]),
   'release-e2e-data.test.js': Object.freeze([
-    './safe-area.test.js',
     './storage-migration.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',

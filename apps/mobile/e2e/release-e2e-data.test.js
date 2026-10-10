@@ -35,17 +35,9 @@ function registerFreshPhase(name, suiteFiles, uninstallBeforePhase) {
   });
 }
 
-const statefulSuites = releaseShards['release-e2e-data.test.js'].filter(
-  suiteFile => suiteFile !== './safe-area.test.js',
-);
-const safeAreaSuites = releaseShards['release-e2e-data.test.js'].filter(
-  suiteFile => suiteFile === './safe-area.test.js',
-);
-
-// Safe Area startup probes run before stateful data tests and hand off a clean app installation.
+// The data worker starts with one fresh stateful phase; local combined runs still reinstall after UI phases.
 registerFreshPhase(
-  'Release Safe Area probes',
-  safeAreaSuites,
+  'Release stateful data probes',
+  releaseShards['release-e2e-data.test.js'],
   usesCombinedReleaseSimulator,
 );
-registerFreshPhase('Release stateful data probes', statefulSuites, true);

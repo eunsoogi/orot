@@ -89,7 +89,7 @@ jobs:
         run: scripts/ci/verify-toolchain.sh
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
-        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- bash -euc 'pnpm install --frozen-lockfile; [[ "${{ inputs.profile }}" != transcription ]] || scripts/ci/run-command.sh speech-readiness-regression artifacts/detox/speech-readiness-regression.log -- apps/mobile/e2e/transcription/run-readiness-regression.sh'
+        run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"
       - name: Prepare dedicated Detox Simulator # Boot overlaps cache prep; probes and cleanup always run.
         id: prepare_detox_simulator
         timeout-minutes: 15
