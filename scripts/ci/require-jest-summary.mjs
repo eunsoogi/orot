@@ -2,6 +2,11 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  readReleaseShardBlocks,
+  resolveSelectedReleaseShard,
+  validateReleaseJestConfig,
+} from './release-jest-summary.mjs';
 
 const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
 if (!logPath || !suiteName) {
@@ -24,8 +29,10 @@ if (suiteName.startsWith('e2e') && !e2eSuites.includes(suiteName)) {
 if (githubOutputPath && suiteName === 'e2e') {
   throw new Error('e2e: GitHub outputs require a single E2E profile summary');
 }
-const testSummaries = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
-const suiteSummaries = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
+const testSummaryMatches = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)];
+const suiteSummaryMatches = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)];
+const testSummaries = testSummaryMatches.map((match) => match[1]);
+const suiteSummaries = suiteSummaryMatches.map((match) => match[1]);
 
 function count(summary, label) {
   const match = summary.match(new RegExp(`(\\d+) ${label}\\b`, 'i'));
@@ -46,6 +53,24 @@ if (
     `${suiteName}: Jest did not produce a matching test and suite summary for every run`,
   );
 }
+
+const releaseShardBlocks = readReleaseShardBlocks(log);
+const releaseShardingRequired = process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
+const selectedReleaseShardExpectation = resolveSelectedReleaseShard({
+  suiteName,
+  releaseShardBlocks,
+  releaseShardingRequired,
+});
+if (releaseShardingRequired && !releaseShardBlocks) {
+  throw new Error('e2e-release: required Release shard summary markers are missing');
+}
+if (releaseShardBlocks && !['e2e', 'e2e-release'].includes(suiteName)) {
+  throw new Error(`${suiteName}: Release shard summaries appeared in another profile`);
+}
+if (releaseShardingRequired && !['e2e', 'e2e-release'].includes(suiteName)) {
+  throw new Error(`${suiteName}: Release sharding is not valid for this E2E profile`);
+}
+
 let expectedE2ESuites;
 if (e2eSuites.includes(suiteName)) {
   const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -59,34 +84,13 @@ if (e2eSuites.includes(suiteName)) {
     './apps/mobile/e2e/next-visit-questions.jest.config.js',
   );
   const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
-  // Keep the explicit inventory and case count aligned with the Release wrapper's required probes.
-  const expectedReleaseSuiteFiles = [
-    './smoke.test.js',
-    './settings.detox.e2e.js',
-    './unified-import-navigation.e2e.js',
-    './navigation-glass.e2e.js',
-    './ai-feature-visit-questions.e2e.js',
-    './safe-area.test.js',
-    './safe-area-keyboard.test.js',
-    './appointments.test.js',
-    './medicalAppointmentClassification.test.js',
-    './medicalAppointmentNavigation.test.js',
-    './agentMemory.test.js',
-    './graph.test.js',
-    './checkpoint.detox.e2e.js',
-    './storage.test.js',
-  ];
-  if (JSON.stringify(releaseSuiteFiles) !== JSON.stringify(expectedReleaseSuiteFiles)) {
-    throw new Error(
-      'e2e: Release suite manifest does not include the complete required test inventory',
-    );
-  }
-  if (
-    JSON.stringify(releaseConfig.testMatch) !==
-    JSON.stringify(['<rootDir>/e2e/release-e2e.test.js'])
-  ) {
-    throw new Error('e2e: Release Jest config must select the explicit suite-inventory wrapper');
-  }
+  const releaseE2EShards = requireFromRepository('./apps/mobile/e2e/release-e2e-shards.js');
+  validateReleaseJestConfig({
+    releaseSuiteFiles,
+    releaseE2EShards,
+    releaseConfig,
+    selectedReleaseShard: selectedReleaseShardExpectation,
+  });
   if (
     JSON.stringify(debugConfig.testMatch) !==
     JSON.stringify(['<rootDir>/e2e/openai-provider.e2e.js'])
@@ -116,7 +120,38 @@ if (e2eSuites.includes(suiteName)) {
     'e2e-transcription': profiles[2],
     'e2e-next-visit-questions': profiles[3],
   };
-  expectedE2ESuites = suiteName === 'e2e' ? profiles.slice(0, 2) : [expectedProfile[suiteName]];
+  if (releaseShardBlocks) {
+    const blockRanges = releaseShardBlocks.map(({ start, end }) => ({ start, end }));
+    const unmarkedTests = testSummaryMatches.filter(
+      (match) => !blockRanges.some(({ start, end }) => match.index >= start && match.index < end),
+    );
+    const unmarkedSuites = suiteSummaryMatches.filter(
+      (match) => !blockRanges.some(({ start, end }) => match.index >= start && match.index < end),
+    );
+    const expectedUnmarkedSummaries = suiteName === 'e2e' ? 1 : 0;
+    if (
+      unmarkedTests.length !== expectedUnmarkedSummaries ||
+      unmarkedSuites.length !== expectedUnmarkedSummaries ||
+      (suiteName === 'e2e' &&
+        (unmarkedTests[0]?.index <= releaseShardBlocks.at(-1).end ||
+          unmarkedSuites[0]?.index <= releaseShardBlocks.at(-1).end))
+    ) {
+      throw new Error(`${suiteName}: expected one OpenAI Debug summary after all Release shards`);
+    }
+    expectedE2ESuites = [
+      ...releaseShardBlocks.map(({ expected }) => expected),
+      ...(suiteName === 'e2e' ? [profiles[1]] : []),
+    ];
+    if (testSummaries.length !== expectedE2ESuites.length) {
+      throw new Error(`${suiteName}: summary count does not match its explicit Release shards`);
+    }
+  } else {
+    expectedE2ESuites = selectedReleaseShardExpectation
+      ? [selectedReleaseShardExpectation]
+      : suiteName === 'e2e'
+        ? profiles.slice(0, 2)
+        : [expectedProfile[suiteName]];
+  }
   if (testSummaries.length !== expectedE2ESuites.length) {
     if (suiteName === 'e2e') {
       throw new Error(

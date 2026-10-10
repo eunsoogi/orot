@@ -87,6 +87,14 @@ function readExpectedFingerprints() {
   return fingerprints;
 }
 
+export function readExpectedDetoxCacheFingerprints() {
+  // Local cache checks may omit both job-scoped values and use the full source scan instead.
+  const hasBuildInputs = process.env[EXPECTED_BUILD_FINGERPRINT_ENV] !== undefined;
+  const hasNativeDependencies = process.env[EXPECTED_NATIVE_FINGERPRINT_ENV] !== undefined;
+  if (!hasBuildInputs && !hasNativeDependencies) return null;
+  return readExpectedFingerprints();
+}
+
 function assertFingerprintsEqual(actual, expected, stage) {
   const changed = ['buildInputs', 'nativeDependencies'].filter(
     (name) => actual[name] !== expected[name],

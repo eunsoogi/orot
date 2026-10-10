@@ -12,11 +12,11 @@ const selectEntryRoute = requireFromRepository(
 ).selectEntryRoute;
 const mobileConfig = requireFromRepository('./apps/mobile/.detoxrc.js');
 const releaseJestConfig = requireFromRepository('./apps/mobile/e2e/release-e2e.jest.config.js');
+const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 const openAiJestConfig = requireFromRepository('./apps/mobile/e2e/openai-provider.jest.config.js');
 const openAiDetoxConfig = requireFromRepository(
   './apps/mobile/e2e/openai-provider.detox.config.js',
 );
-const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
 const { createStorageResetGuard, failureMessage } = requireFromRepository(
   './apps/mobile/e2e/storageProbeResetGuard.e2e.js',
 );
@@ -104,12 +104,13 @@ test('keeps the Release smoke on Calendar linking while manual CRUD stays in its
   assert.doesNotMatch(smokeTest, /by\.id\('appointment-add'\)/);
 });
 
-test('the shared Release app config bundles the router and explicitly selects every existing Release suite', () => {
+test('the shared Release app config bundles the router and selects one ordered wrapper', () => {
   const buildCommand = mobileConfig.apps['ios.release'].build;
   assert.match(buildCommand, /ENTRY_FILE=e2e\/e2eRouterEntry\.tsx/);
   assert.equal(mobileConfig.testRunner.args.config, 'e2e/release-e2e.jest.config.js');
   assert.equal(mobileConfig.behavior.init.reinstallApp, true);
   assert.equal(releaseJestConfig.bail, 1);
+  assert.equal(releaseJestConfig.testMatch.length, 1); // One file nests both ordered phases; the inventory stays complete.
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',

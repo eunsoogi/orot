@@ -152,7 +152,7 @@ export function createFixtureRepository() {
   const root = mkdtempSync(join(tmpdir(), 'orot-detox-derived-data-cache-'));
   git(root, 'init', '-q');
   for (const path of [
-    '.github/workflows/ci.yml',
+    '.github/workflows/e2e-test.yml',
     '.github/workflows/detox-e2e-profile.yml',
     '.npmrc',
     'package.json',

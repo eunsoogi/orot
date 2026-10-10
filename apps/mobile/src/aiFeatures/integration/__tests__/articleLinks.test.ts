@@ -41,6 +41,8 @@ describe('Europe PMC article links', () => {
         'https://europepmc.org/article/MED/12345?next=https://attacker.test',
       ),
     ).toBe(false);
+    // Keep a script-protocol URL as the negative input for this security regression.
+    // eslint-disable-next-line no-script-url -- The sanitizer must reject script protocols.
     expect(isSafeEuropePmcArticleUrl('javascript:alert(1)')).toBe(false);
   });
 

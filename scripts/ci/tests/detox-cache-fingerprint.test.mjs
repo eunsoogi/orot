@@ -27,7 +27,7 @@ test('keeps CocoaPods source inputs fingerprinted across generated integration c
   try {
     git(root, 'init', '-q');
     for (const path of [
-      '.github/workflows/ci.yml',
+      '.github/workflows/e2e-test.yml',
       '.github/workflows/detox-e2e-profile.yml',
       '.npmrc',
       'package.json',
@@ -121,7 +121,7 @@ test('keeps CocoaPods source inputs fingerprinted across generated integration c
     });
     assert.equal(
       readFileSync(outputPath, 'utf8'),
-      `build_inputs=${initial.buildInputs}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
+      `build_inputs=${initial.buildInputs}\nbuild_input_count=${initial.buildInputCount}\nreact_native_artifacts=${initial.reactNativeArtifacts}\nnative_dependencies=${initial.nativeDependencies}\nnative_dependency_input_count=${initial.nativeDependencyInputCount}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
     );
     assert.equal(
       readFileSync(environmentPath, 'utf8'),
@@ -137,7 +137,7 @@ test('keeps CocoaPods source inputs fingerprinted across generated integration c
       [
         '--derived-data-only',
         join(root, 'derived-data-output.txt'),
-        `build_inputs=${initial.buildInputs}\nnative_dependencies=${initial.nativeDependencies}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
+        `build_inputs=${initial.buildInputs}\nbuild_input_count=${initial.buildInputCount}\nnative_dependencies=${initial.nativeDependencies}\nnative_dependency_input_count=${initial.nativeDependencyInputCount}\nprivacy_manifest_input_sha256=${initial.privacyManifestInputHash}\ncocoapods_project_input_sha256=${initial.cocoapodsProjectInputHash}\n`,
       ],
     ]) {
       execFileSync('node', [fingerprintScriptPath, mode], {

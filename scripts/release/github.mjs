@@ -73,6 +73,56 @@ function getEvidenceContext(repo, readiness) {
   return { evidenceComments, candidateApproval: { pull, review } };
 }
 
+function listWorkflowRunsForSourcePushes(repo, sourceSha) {
+  const workflowRuns = [];
+  const pageSize = 100;
+  let page = 1;
+
+  while (page <= 10) {
+    const response = ghJson(
+      `repos/${repo}/actions/runs?head_sha=${sourceSha}&branch=main&event=push&per_page=${pageSize}&page=${page}`,
+    );
+    const pageRuns = Array.isArray(response.workflow_runs) ? response.workflow_runs : [];
+    workflowRuns.push(...pageRuns);
+
+    const totalCount = Number(response.total_count);
+    if (Number.isSafeInteger(totalCount) && workflowRuns.length >= totalCount) return workflowRuns;
+    if (pageRuns.length === 0 || page === 10) {
+      throw new Error('GitHub returned an incomplete workflow run list for the source commit');
+    }
+    page += 1;
+  }
+
+  throw new Error('GitHub workflow run listing exceeded the supported 1,000-run limit');
+}
+
+// Required leaf checks now span separate push workflows; bind their jobs to the exact release source.
+export function collectJobsForMainPushes(sourceSha, workflowRuns, primaryCiRun, readJobs) {
+  const runs = [...workflowRuns];
+  if (primaryCiRun && !runs.some((run) => String(run.id) === String(primaryCiRun.id))) {
+    runs.push(primaryCiRun);
+  }
+
+  const seenRunIds = new Set();
+  const jobs = [];
+  for (const run of runs) {
+    if (
+      run.event !== 'push' ||
+      run.head_branch !== 'main' ||
+      run.head_sha?.toLowerCase() !== sourceSha.toLowerCase()
+    ) {
+      continue;
+    }
+
+    const runId = String(run.id ?? '');
+    if (!runId || seenRunIds.has(runId)) continue;
+    seenRunIds.add(runId);
+    const runJobs = readJobs(run.id);
+    if (Array.isArray(runJobs)) jobs.push(...runJobs);
+  }
+  return jobs;
+}
+
 export function collectReleaseContext(env = process.env) {
   const repo = env.GITHUB_REPOSITORY;
   if (repo !== 'eunsoogi/orot') throw new Error('release workflow is restricted to eunsoogi/orot');
@@ -86,8 +136,11 @@ export function collectReleaseContext(env = process.env) {
 
   const readiness = parseReadiness(env.OROT_READINESS_EVIDENCE_JSON);
   const ciRun = ghJson(`repos/${repo}/actions/runs/${ciRunId}`);
-  const ciJobsResponse = ghJson(`repos/${repo}/actions/runs/${ciRunId}/jobs?per_page=100`);
-  const ciJobs = Array.isArray(ciJobsResponse.jobs) ? ciJobsResponse.jobs : [];
+  const sourceWorkflowRuns = listWorkflowRunsForSourcePushes(repo, sourceSha);
+  const ciJobs = collectJobsForMainPushes(sourceSha, sourceWorkflowRuns, ciRun, (runId) => {
+    const response = ghJson(`repos/${repo}/actions/runs/${runId}/jobs?per_page=100`);
+    return Array.isArray(response.jobs) ? response.jobs : [];
+  });
   const release = ghJson(`repos/${repo}/releases/tags/${tag}`, true);
   const evidence = getEvidenceContext(repo, readiness);
   const mainContainsSource =

@@ -1,4 +1,4 @@
-/* global by, device, element, expect, waitFor */
+/* global by, device, element, waitFor */
 
 /** Exercise a real route and confirm only when its state guard reports local edits. */
 async function openFeatureAndReturn(

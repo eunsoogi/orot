@@ -8,7 +8,7 @@ import test from 'node:test';
 
 const guardScript = fileURLToPath(new URL('../require-jest-summary.mjs', import.meta.url));
 
-function runGuard(log, suiteName = 'unit', emitGithubOutputs = false) {
+function runGuard(log, suiteName = 'unit', emitGithubOutputs = false, extraEnv = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-jest-summary-'));
   const logPath = join(directory, 'jest.log');
   const outputPath = join(directory, 'github-output');
@@ -17,7 +17,7 @@ function runGuard(log, suiteName = 'unit', emitGithubOutputs = false) {
     const result = spawnSync(
       process.execPath,
       [guardScript, logPath, suiteName, ...(emitGithubOutputs ? [outputPath] : [])],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', env: { ...process.env, ...extraEnv } },
     );
     return {
       ...result,

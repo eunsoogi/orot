@@ -18,58 +18,70 @@ permissions:
   contents: read
 
 jobs:
-  detox_release_e2e:
-    name: Detox Release iOS E2E
-    uses: ./.github/workflows/detox-e2e-profile.yml
-    with:
-      profile: release
-      trace_logging: ${{ inputs.trace_logging }}
-      resource_sampling: ${{ inputs.resource_sampling }}
-
-  detox_openai_provider_e2e:
-    name: Detox OpenAI Debug iOS E2E
-    uses: ./.github/workflows/detox-e2e-profile.yml
-    with:
-      profile: openai-provider
-      trace_logging: ${{ inputs.trace_logging }}
-      resource_sampling: ${{ inputs.resource_sampling }}
-
-  detox_transcription_e2e:
-    name: Detox Speech Transcription iOS E2E
-    uses: ./.github/workflows/detox-e2e-profile.yml
-    with:
-      profile: transcription
-      trace_logging: ${{ inputs.trace_logging }}
-      resource_sampling: ${{ inputs.resource_sampling }}
-
-  validate_detox_profiles:
-    name: Require complete profile summaries
+  # Fingerprinting improves cache reuse; each profile has a synchronous fallback when it fails.
+  detox_cache_fingerprint:
+    name: Compute shared Detox cache fingerprints
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [detox_release_e2e, detox_openai_provider_e2e, detox_transcription_e2e]
-    if: ${{ always() }}
+    outputs:
+      build_inputs: ${{ steps.detox_cache_fingerprint.outputs.build_inputs }}
+      build_input_count: ${{ steps.detox_cache_fingerprint.outputs.build_input_count }}
+      native_dependencies: ${{ steps.detox_cache_fingerprint.outputs.native_dependencies }}
+      native_dependency_input_count: ${{ steps.detox_cache_fingerprint.outputs.native_dependency_input_count }}
+      privacy_manifest_input_sha256: ${{ steps.detox_cache_fingerprint.outputs.privacy_manifest_input_sha256 }}
+      cocoapods_project_input_sha256: ${{ steps.detox_cache_fingerprint.outputs.cocoapods_project_input_sha256 }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Require all profile results and test counts
-        env:
-          RELEASE_JOB_RESULT: ${{ needs.detox_release_e2e.result }}
-          RELEASE_PROFILE: ${{ needs.detox_release_e2e.outputs.profile }}
-          RELEASE_TEST_CASES: ${{ needs.detox_release_e2e.outputs.test_cases }}
-          RELEASE_TEST_SUITES: ${{ needs.detox_release_e2e.outputs.test_suites }}
-          OPENAI_JOB_RESULT: ${{ needs.detox_openai_provider_e2e.result }}
-          OPENAI_PROFILE: ${{ needs.detox_openai_provider_e2e.outputs.profile }}
-          OPENAI_TEST_CASES: ${{ needs.detox_openai_provider_e2e.outputs.test_cases }}
-          OPENAI_TEST_SUITES: ${{ needs.detox_openai_provider_e2e.outputs.test_suites }}
-          TRANSCRIPTION_JOB_RESULT: ${{ needs.detox_transcription_e2e.result }}
-          TRANSCRIPTION_PROFILE: ${{ needs.detox_transcription_e2e.outputs.profile }}
-          TRANSCRIPTION_TEST_CASES: ${{ needs.detox_transcription_e2e.outputs.test_cases }}
-          TRANSCRIPTION_TEST_SUITES: ${{ needs.detox_transcription_e2e.outputs.test_suites }}
-        run: |
-          node scripts/ci/require-detox-e2e-aggregate.mjs \
-            "$RELEASE_JOB_RESULT" "$RELEASE_PROFILE" "$RELEASE_TEST_CASES" "$RELEASE_TEST_SUITES" \
-            "$OPENAI_JOB_RESULT" "$OPENAI_PROFILE" "$OPENAI_TEST_CASES" "$OPENAI_TEST_SUITES"
-          node scripts/ci/require-detox-transcription-aggregate.mjs \
-            "$TRANSCRIPTION_JOB_RESULT" "$TRANSCRIPTION_PROFILE" "$TRANSCRIPTION_TEST_CASES" "$TRANSCRIPTION_TEST_SUITES"
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - name: Compute shared Detox cache fingerprints
+        id: detox_cache_fingerprint
+        run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
+
+  detox_release_e2e:
+    name: Release shards
+    needs: [detox_cache_fingerprint]
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/detox-e2e-release.yml
+    with:
+      fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_openai_provider_e2e:
+    name: OpenAI Debug E2E
+    needs: [detox_cache_fingerprint]
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: openai-provider
+      fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_transcription_e2e:
+    name: Speech Transcription E2E
+    needs: [detox_cache_fingerprint]
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: transcription
+      fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_next_visit_e2e:
+    name: Next Visit Questions E2E
+    needs: [detox_cache_fingerprint]
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: next-visit-questions
+      fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}

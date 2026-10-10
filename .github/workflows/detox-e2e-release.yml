@@ -1,0 +1,44 @@
+name: Release shards
+
+on:
+  workflow_call:
+    inputs:
+      fingerprints:
+        description: Shared source and build fingerprints from the profile workflow.
+        required: true
+        type: string
+      trace_logging:
+        description: Enable Detox trace logging for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+      resource_sampling:
+        description: Collect bounded process and memory samples for manual diagnostics.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Each leaf runs its own scenario guard and preserves diagnostics before Simulator cleanup.
+  detox_release_ui_shard:
+    name: Release UI and storage
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+      release_shard: release-e2e.test.js
+      fingerprints: ${{ inputs.fingerprints }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}
+
+  detox_release_data_shard:
+    name: Release stateful-data
+    uses: ./.github/workflows/detox-e2e-profile.yml
+    with:
+      profile: release
+      release_shard: release-e2e-data.test.js
+      fingerprints: ${{ inputs.fingerprints }}
+      trace_logging: ${{ inputs.trace_logging }}
+      resource_sampling: ${{ inputs.resource_sampling }}

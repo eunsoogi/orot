@@ -1,4 +1,4 @@
-/* global by, device, element, waitFor */
+/* global beforeAll, by, device, element, waitFor */
 
 const { expectContentAboveFloatingBar } = require('./safeAreaHelpers');
 const { expect: jestExpect } = require('@jest/globals');
@@ -9,12 +9,23 @@ const {
   openRootTab,
   tapNativeNavigationAction,
 } = require('./smokeHelpers');
+const {
+  releasePhaseResetGuard,
+  resetHookTimeoutMs,
+} = require('./storageProbeResetGuard.e2e.js');
 
 describe('Orot mobile app', () => {
   beforeAll(async () => {
-    // Detox reinstalls between spec files, but iOS keeps Keychain items after app uninstall.
-    await device.clearKeychain();
-  });
+    // Share the phase latch so a late uninstall cannot overlap the next Release reset.
+    await releasePhaseResetGuard.runReset(async assertMayContinue => {
+      await device.uninstallApp();
+      assertMayContinue();
+      await device.clearKeychain();
+      assertMayContinue();
+      await device.installApp();
+      assertMayContinue();
+    });
+  }, resetHookTimeoutMs);
 
   // Keep the integrated route flow in one Release case.
   // The observed CI path exceeded the shared 120-second default.

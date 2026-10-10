@@ -1,4 +1,4 @@
-name: CI
+name: E2E Test
 
 on:
   pull_request:
@@ -28,7 +28,6 @@ concurrency:
 env:
   CI: 'true'
   TZ: UTC
-  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
   EXPECTED_NODE_VERSION: '22.23.2'
   EXPECTED_PNPM_VERSION: '12.3.4'
   EXPECTED_RUBY_VERSION: '4.0.7'
@@ -39,47 +38,15 @@ env:
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
 
 jobs:
-  quality_linux:
-    name: Quality Linux
-    uses: ./.github/workflows/quality-linux.yml
-
-  quality:
-    name: Quality
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    needs: [quality_linux]
-    if: ${{ always() }}
-    steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-
-      - name: Enforce the 250-line policy
-        env:
-          LOC_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
-            node scripts/ci/check-loc.mjs --all
-          else
-            node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
-          fi
-
-      - name: Require Linux quality partition
-        env:
-          QUALITY_LINUX_RESULT: ${{ needs.quality_linux.result }}
-        run: node scripts/ci/require-quality-aggregate.mjs "$QUALITY_LINUX_RESULT"
-
   ios-simulator-build:
     name: iOS Simulator Build
+    # Preserve the production/OAuth build independently of Linux leaf failures.
+    if: ${{ !cancelled() }}
     runs-on: xcode-27
     timeout-minutes: 75
+    env:
+      # Only the Xcode-backed production/OAuth build needs this macOS toolchain location.
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -182,25 +149,8 @@ jobs:
           retention-days: 14
 
   detox_profiles:
-    name: Detox profile suite
+    name: Detox E2E profiles
     uses: ./.github/workflows/detox-e2e-profiles.yml
     with:
       trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
       resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
-
-  detox_ios_e2e:
-    name: Detox iOS E2E
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [detox_profiles]
-    if: ${{ always() }}
-    steps:
-      - name: Require every Detox profile workflow
-        env:
-          DETOX_PROFILES_RESULT: ${{ needs.detox_profiles.result }}
-        run: |
-          if [[ "$DETOX_PROFILES_RESULT" != success ]]; then
-            printf 'The complete Detox profile workflow must succeed; received %s\n' "${DETOX_PROFILES_RESULT:-missing}" >&2
-            exit 1
-          fi
-          printf 'All Detox profiles and fail-closed summaries passed.\n'

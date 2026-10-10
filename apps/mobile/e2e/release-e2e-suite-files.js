@@ -17,5 +17,6 @@ module.exports = Object.freeze([
   './agentMemory.test.js',
   './graph.test.js',
   './checkpoint.detox.e2e.js',
+  // The integrated storage probe owns schema migration, so the standalone migration wrapper is not counted twice.
   './storage.test.js',
 ]);

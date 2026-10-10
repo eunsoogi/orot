@@ -2,6 +2,10 @@
 const simulatorId = process.env.OROT_DETOX_SIMULATOR_UDID;
 const releaseDerivedDataPath =
   process.env.OROT_DETOX_RELEASE_DERIVED_DATA_PATH || 'ios/build-detox-release';
+// Fresh CI Simulators have no app to uninstall during Detox initialization.
+const hasFreshReleaseSimulator =
+  process.env.OROT_DETOX_RELEASE_FRESH_SIMULATOR === 'true' ||
+  process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
 
 if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
   throw new Error(
@@ -11,7 +15,7 @@ if (!/^[A-Za-z0-9_./-]+$/.test(releaseDerivedDataPath)) {
 
 module.exports = {
   behavior: {
-    init: { reinstallApp: true },
+    init: { reinstallApp: !hasFreshReleaseSimulator },
   },
   testRunner: {
     args: {

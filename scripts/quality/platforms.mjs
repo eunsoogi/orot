@@ -3,14 +3,26 @@ import { join } from 'node:path';
 // A check partition identifies the runner requirement; the host key selects the matching tool asset.
 const ALLOWED_PLATFORMS = new Set(['all', 'linux']);
 
-export function parsePlatformArgument(args) {
+export function parseQualityArguments(args) {
   // pnpm forwards its script-argument separator; remove it only at the argument boundary.
   const forwardedArgs = args[0] === '--' ? args.slice(1) : args;
   let platform = 'all';
   let foundPlatform = false;
+  let surface = null;
+  let foundSurface = false;
   const remaining = [];
 
   for (let index = 0; index < forwardedArgs.length; index += 1) {
+    if (forwardedArgs[index] === '--surface') {
+      if (foundSurface) throw new Error('Use --surface only once');
+      foundSurface = true;
+      surface = forwardedArgs[index + 1];
+      index += 1;
+      if (!surface || surface.startsWith('--')) {
+        throw new Error('--surface requires a value; use --surface <configured-quality-surface>');
+      }
+      continue;
+    }
     if (forwardedArgs[index] !== '--platform') {
       remaining.push(forwardedArgs[index]);
       continue;
@@ -23,6 +35,13 @@ export function parsePlatformArgument(args) {
       throw new Error('Use --platform all or --platform linux');
     }
   }
+  return { platform, surface, remaining };
+}
+
+export function parsePlatformArgument(args) {
+  // Setup installs one runner toolchain; lint-only surface selection must not narrow its pins.
+  const { platform, surface, remaining } = parseQualityArguments(args);
+  if (surface) throw new Error('--surface is available only for a lint invocation');
   return { platform, remaining };
 }
 
@@ -41,6 +60,15 @@ export function selectPlatformEntries(entries, policy, platform) {
   return entries.filter(
     (entry) => entry.kind !== 'surface' || policy.surfaces[entry.surface].platform === platform,
   );
+}
+
+export function selectSurfaceEntries(entries, policy, surface) {
+  if (!Object.prototype.hasOwnProperty.call(policy.surfaces, surface)) {
+    throw new Error(`Unknown quality surface: ${surface}`);
+  }
+  // The caller builds and validates the complete repository inventory before this lint-only split.
+  // Keep a configured zero-file surface as a successful no-op leaf so its CI check name remains stable.
+  return entries.filter((entry) => entry.kind === 'surface' && entry.surface === surface);
 }
 
 export function selectQualityTools(versions, hostKey, platform) {

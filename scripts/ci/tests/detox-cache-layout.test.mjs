@@ -9,6 +9,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const profileAppCacheRestoreAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
 // Keep the CocoaPods command assertions with the helper that now owns them.
 const cocoapodsInstaller = readFileSync(
   join(repositoryRoot, 'scripts/ci/install-detox-cocoapods.sh'),
@@ -22,15 +26,18 @@ test('validates exact app caches before restoring optional native build inputs',
   );
   const rnCache = profileWorkflow.indexOf('- name: Cache React Native artifact archives');
   const pods = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const derivedFingerprint = profileWorkflow.indexOf(
-    '- name: Compute stable Detox cache fingerprints',
+  const appCacheRestore = profileAppCacheRestoreAction.indexOf(
+    '- name: Restore Detox profile app product',
   );
   const derivedCache = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const prepareCache = profileWorkflow.indexOf('- name: Prepare restored Detox DerivedData cache');
   const build = profileWorkflow.indexOf('- name: Build Detox iOS Simulator app');
   const buildEnd = profileWorkflow.indexOf('\n      - name:', build + 1);
 
-  assert.ok(derivedFingerprint >= 0 && derivedFingerprint < derivedCache);
+  // The shared hashes are passed directly into the profile cache action.
+  assert.doesNotMatch(profileAppCacheRestoreAction, /Publish shared Detox cache fingerprints/);
+  assert.ok(appCacheRestore >= 0);
+  assert.ok(derivedCache >= 0);
   assert.ok(
     derivedCache < prepareCache &&
       prepareCache < framework &&
@@ -79,7 +86,7 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
     join(repositoryRoot, 'scripts/ci/ios-derived-data-cache-paths.mjs'),
     'utf8',
   );
-  const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
+  const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/e2e-test.yml'), 'utf8');
   const gitignore = readFileSync(join(repositoryRoot, '.gitignore'), 'utf8');
 
   assert.match(releaseConfig, /\|\| 'ios\/build-detox-release'/);
@@ -104,5 +111,5 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-openai-provider\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-detox-transcription\//);
   assert.match(gitignore, /apps\/mobile\/ios\/build-production\//);
-  assert.match(profileWorkflow, /orot-detox-deriveddata-v9-/);
+  assert.match(profileWorkflow, /orot-detox-app-product-v10-/);
 });

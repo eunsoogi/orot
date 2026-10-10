@@ -101,11 +101,14 @@ function visibleValue(value: unknown, key?: string): string | undefined {
     return items.length ? items.join(', ') : undefined;
   }
   if (typeof value !== 'object') return undefined;
+  // Record IDs support local linkage but do not belong in user-facing summaries.
   const rows = Object.entries(value as Record<string, unknown>)
-    .filter(([key]) => !isPrivateIdentifier(key))
-    .map(([key, item]) => {
-      const rendered = visibleValue(item, key);
-      return rendered ? `${fieldLabels[key] ?? key}: ${rendered}` : undefined;
+    .filter(([fieldKey]) => !isPrivateIdentifier(fieldKey))
+    .map(([fieldKey, item]) => {
+      const rendered = visibleValue(item, fieldKey);
+      return rendered
+        ? `${fieldLabels[fieldKey] ?? fieldKey}: ${rendered}`
+        : undefined;
     })
     .filter((item): item is string => item !== undefined);
   return rows.length ? rows.join(' · ') : undefined;

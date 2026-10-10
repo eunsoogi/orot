@@ -1,0 +1,187 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
+import test from 'node:test';
+
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
+const storageResetGuardModule = requireFromRepository(
+  './apps/mobile/e2e/storageProbeResetGuard.e2e.js',
+);
+const noOp = async () => {};
+
+function matcher() {
+  return {
+    not: { toBeVisible: noOp, toExist: noOp },
+    toBeVisible: noOp,
+    toBeFocused: noOp,
+    toExist: noOp,
+    toHaveText: noOp,
+    toHaveLabel: noOp,
+    toBe: noOp,
+    toBeGreaterThan: noOp,
+    toBeGreaterThanOrEqual: noOp,
+  };
+}
+
+async function executeE2ECases(fileName) {
+  const source = readFileSync(join(repositoryRoot, 'apps/mobile/e2e', fileName), 'utf8');
+  const cases = [];
+  const beforeEachHooks = [];
+  const afterEachHooks = [];
+  const calls = [];
+  const waitMatcher = () => ({ withTimeout: noOp });
+  const elementHandle = {
+    getAttributes: async () => ({
+      enabled: true,
+      frame: { x: 0, y: 0, width: 100, height: 100 },
+      label: 'keyboard-visible:40:60',
+    }),
+    scrollTo: noOp,
+    tap: noOp,
+  };
+
+  // Run real reset lifecycle code while stubbing geometry helpers; hosted Detox remains the UI oracle.
+  runInNewContext(source, {
+    afterEach: (hook) => afterEachHooks.push(hook),
+    beforeEach: (hook) => beforeEachHooks.push(hook),
+    by: { id: (value) => ({ id: value }) },
+    describe: (_name, defineCases) => defineCases(),
+    device: {
+      clearKeychain: async () => calls.push({ kind: 'clearKeychain' }),
+      installApp: async () => calls.push({ kind: 'installApp' }),
+      launchApp: async (options) =>
+        calls.push({ kind: 'launchApp', options: JSON.parse(JSON.stringify(options)) }),
+      setOrientation: async (orientation) => calls.push({ kind: 'setOrientation', orientation }),
+      takeScreenshot: noOp,
+      terminateApp: async () => calls.push({ kind: 'terminateApp' }),
+      uninstallApp: async () => calls.push({ kind: 'uninstallApp' }),
+    },
+    element: () => elementHandle,
+    expect: matcher,
+    it: (name, body) => cases.push({ name, body }),
+    require: (specifier) => {
+      if (specifier === '@jest/globals') return { expect: matcher };
+      if (specifier === './storageProbeResetGuard.e2e.js') return storageResetGuardModule;
+      if (specifier === './safeAreaHelpers') {
+        return {
+          expectFloatingViewport: noOp,
+          expectKeyboardOccludesScroll: noOp,
+          frameOf: async () => ({ x: 0, y: 0, width: 100, height: 100 }),
+        };
+      }
+      if (specifier === './smokeHelpers') return { openRootTab: noOp };
+      throw new Error(`Unexpected E2E dependency: ${specifier}`);
+    },
+    waitFor: () => ({
+      toBeVisible: waitMatcher,
+      toExist: waitMatcher,
+      toHaveLabel: waitMatcher,
+      toHaveText: waitMatcher,
+    }),
+  });
+
+  for (const testCase of cases) {
+    for (const hook of beforeEachHooks) await hook();
+    await testCase.body();
+    for (const hook of afterEachHooks) await hook();
+  }
+
+  return { calls, names: cases.map(({ name }) => name) };
+}
+
+test('Safe Area applies common setup before each case and relaunches probe cases with startup arguments', async () => {
+  const { calls, names } = await executeE2ECases('safe-area.test.js');
+
+  assert.equal(names.length, 4);
+  const commonLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+    },
+  };
+  const bloodPressureProbeLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: { OROT_E2E_PROBE: 'safe-area-blood-pressure' },
+    },
+  };
+  const largeTextProbeLaunch = {
+    kind: 'launchApp',
+    options: {
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+      launchArgs: {
+        OROT_E2E_PROBE: 'safe-area',
+        UIPreferredContentSizeCategoryName: 'UICTContentSizeCategoryAccessibilityXXXL',
+      },
+    },
+  };
+
+  // The shared hook starts every case; probe cases restart only to set process launch arguments.
+  assert.deepEqual(
+    calls.filter(({ kind }) => kind === 'launchApp'),
+    [
+      commonLaunch,
+      commonLaunch,
+      commonLaunch,
+      bloodPressureProbeLaunch,
+      commonLaunch,
+      largeTextProbeLaunch,
+    ],
+  );
+});
+
+test('storage and migration scenarios keep their clean-phase, restart, and migration launch sequence', async () => {
+  const storage = await executeE2ECases('storage.test.js');
+  const migration = await executeE2ECases('storage-migration.test.js');
+
+  assert.equal(storage.names.length, 3);
+  assert.deepEqual(storage.calls, [
+    { kind: 'uninstallApp' },
+    { kind: 'clearKeychain' },
+    { kind: 'installApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'fresh' } },
+    },
+    {
+      kind: 'launchApp',
+      options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'fresh' } },
+    },
+    { kind: 'terminateApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: true, launchArgs: { OROT_STORAGE_PROBE: 'restart' } },
+    },
+    { kind: 'uninstallApp' },
+    { kind: 'clearKeychain' },
+    { kind: 'installApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'legacy' } },
+    },
+    { kind: 'terminateApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: true, launchArgs: { OROT_E2E_PROBE: 'appointments' } },
+    },
+  ]);
+  assert.deepEqual(migration.calls, [
+    {
+      kind: 'launchApp',
+      options: { newInstance: false, launchArgs: { OROT_STORAGE_PROBE: 'legacy' } },
+    },
+    { kind: 'terminateApp' },
+    {
+      kind: 'launchApp',
+      options: { newInstance: true, launchArgs: { OROT_E2E_PROBE: 'appointments' } },
+    },
+  ]);
+});

@@ -17,11 +17,11 @@ on:
         default: '0.1.0'
         required: true
       source_sha:
-        description: Full commit SHA on main that passed the required CI run.
+        description: Full commit SHA on main whose required CI checks passed.
         type: string
         required: true
       ci_run_id:
-        description: Run ID of the successful CI push workflow for source_sha.
+        description: Successful main-push E2E Test workflow run for source_sha; other required leaf jobs are collected from all main-push runs for that commit.
         type: string
         required: true
       readiness_evidence_json:

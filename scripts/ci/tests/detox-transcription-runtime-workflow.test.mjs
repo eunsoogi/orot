@@ -13,9 +13,10 @@ const cacheStateRecorder = readFileSync(
   join(repositoryRoot, 'scripts/ci/record-detox-cache-state.sh'),
   'utf8',
 );
-const readinessRegressionStep = profileWorkflow.match(
-  /- name: Install dependencies and check Speech readiness[\s\S]*?(?=\n\x20{6}- name:|$)/,
-)?.[0];
+const profileDependencySetup = readFileSync(
+  join(repositoryRoot, 'scripts/ci/install-detox-profile-dependencies.sh'),
+  'utf8',
+);
 
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
@@ -42,12 +43,10 @@ test('pins only transcription to iOS 26.2 and partitions its native caches', () 
   );
   assert.doesNotMatch(profileWorkflow, /EXPECTED_MACOS_VERSION/);
   assert.match(toolchainVerification, /id: verify_toolchain/);
-  assert.ok(
-    readinessRegressionStep,
-    'The transcription profile must compile and run the readiness regression.',
+  assert.match(
+    profileDependencySetup,
+    /if \[\[ "\$profile" == "transcription" \]\]; then[\s\S]*?run-command\.sh speech-readiness-regression[\s\S]*?run-readiness-regression\.sh/,
   );
-  assert.match(readinessRegressionStep, /inputs\.profile.*transcription/);
-  assert.match(readinessRegressionStep, /run-readiness-regression\.sh/);
   assert.ok(
     profileWorkflow.indexOf('- name: Verify runner toolchain') <
       profileWorkflow.indexOf('- name: Install dependencies and check Speech readiness') &&

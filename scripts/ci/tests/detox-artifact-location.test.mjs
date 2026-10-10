@@ -44,6 +44,7 @@ test('keeps Detox artifacts beneath the upload root across the mobile package cw
         'if [[ "$*" == *openai-provider* ]]; then',
         "  printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
         'else',
+        '# The unsharded Release wrapper discovers the complete 21-case inventory.',
         "  printf 'Test Suites: 1 passed, 1 total\\nTests: 21 passed, 21 total\\n'",
         'fi',
       ].join('\n'),

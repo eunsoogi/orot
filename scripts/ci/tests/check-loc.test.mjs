@@ -116,6 +116,40 @@ test('checks a committed integrated change from the supplied main base', (t) => 
   );
 });
 
+test('checks main-push changes against the event before SHA instead of origin/main at HEAD', (t) => {
+  const repo = repository();
+  clean(t, repo.root);
+
+  // A main push workflow checks out the new HEAD, so origin/main and HEAD already match.
+  put(repo.root, 'packages/domain/pushed.ts', physicalLines(250));
+  git(repo.root, 'add', 'packages/domain/pushed.ts');
+  git(repo.root, 'commit', '--quiet', '-m', 'push compliant source');
+  const compliantPushSha = git(repo.root, 'rev-parse', 'HEAD');
+  git(repo.root, 'update-ref', 'refs/remotes/origin/main', compliantPushSha);
+
+  const compliant = run(repo.root, '--base', repo.base);
+  assert.equal(compliant.status, 0, compliant.output);
+  assert.match(compliant.output, /lines=250 limit=250/);
+
+  put(repo.root, 'packages/domain/pushed.ts', physicalLines(251));
+  git(repo.root, 'add', 'packages/domain/pushed.ts');
+  git(repo.root, 'commit', '--quiet', '-m', 'push oversized source');
+  const oversizedPushSha = git(repo.root, 'rev-parse', 'HEAD');
+  git(repo.root, 'update-ref', 'refs/remotes/origin/main', oversizedPushSha);
+
+  const oldMergeBase = git(repo.root, 'merge-base', 'refs/remotes/origin/main', 'HEAD');
+  assert.equal(oldMergeBase, oversizedPushSha);
+  const skippedByHeadComparison = run(repo.root, '--base', oldMergeBase);
+  assert.equal(skippedByHeadComparison.status, 0, skippedByHeadComparison.output);
+
+  const checkedAgainstPushBefore = run(repo.root, '--base', compliantPushSha);
+  assert.equal(checkedAgainstPushBefore.status, 1, checkedAgainstPushBefore.output);
+  assert.match(
+    checkedAgainstPushBefore.output,
+    /FAIL CHANGED "packages\/domain\/pushed\.ts" lines=251 limit=250/,
+  );
+});
+
 test('checks a renamed Unicode path and safely skips a deletion', (t) => {
   const repo = repository({ 'old source.ts': physicalLines(250), 'removed.ts': 'gone\n' });
   clean(t, repo.root);

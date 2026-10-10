@@ -21,6 +21,10 @@ const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',
 );
+const profileAppCacheRestoreAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
+  'utf8',
+);
 
 test('keys CocoaPods intermediates by pinned toolchain and dependency metadata', () => {
   const podsCache = cacheAction.slice(cacheAction.indexOf('id: cocoapods_cache'));
@@ -44,8 +48,8 @@ test('keys CocoaPods intermediates by pinned toolchain and dependency metadata',
 test('prepares the app cache before optional CocoaPods restores and installation', () => {
   const cacheStep = profileWorkflow.indexOf('- name: Cache Detox CocoaPods intermediates');
   const podsStep = profileWorkflow.indexOf('- name: Install Detox CocoaPods dependencies');
-  const fingerprintStep = profileWorkflow.indexOf(
-    '- name: Compute stable Detox cache fingerprints',
+  const appCacheRestore = profileAppCacheRestoreAction.indexOf(
+    '- name: Restore Detox profile app product',
   );
   const derivedDataCache = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const podsBlock = profileWorkflow.slice(
@@ -53,7 +57,18 @@ test('prepares the app cache before optional CocoaPods restores and installation
     profileWorkflow.indexOf('\n      - name:', podsStep + 1),
   );
 
-  assert.ok(fingerprintStep >= 0 && fingerprintStep < derivedDataCache);
+  // The resolver validates shared hashes or computes a local fallback before cache validation.
+  assert.ok(appCacheRestore >= 0);
+  assert.doesNotMatch(profileAppCacheRestoreAction, /Publish shared Detox cache fingerprints/);
+  assert.match(
+    profileWorkflow,
+    /node scripts\/ci\/detox-cache-fingerprint-cli\.mjs --resolve-shared-derived-data-only/,
+  );
+  assert.match(
+    profileWorkflow,
+    /fingerprints: \$\{\{ steps\.prepare_detox_simulator\.outputs\.fingerprints \}\}/,
+  );
+  assert.ok(derivedDataCache >= 0);
   assert.ok(derivedDataCache < cacheStep && cacheStep < podsStep);
   assert.ok(profileWorkflow.includes('./.github/actions/detox-cocoapods-cache'));
   // The extracted logger must retain the cache hit passed by this workflow step.

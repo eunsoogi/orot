@@ -1,4 +1,5 @@
-export const REQUIRED_CI_JOBS = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E'];
+import { REQUIRED_CI_JOBS } from './ci-required-jobs.mjs';
+export { REQUIRED_CI_JOBS };
 
 const EXPECTED_EVIDENCE = {
   simulatorE2E: 42,
@@ -186,11 +187,12 @@ export function validateCandidate(context) {
     errors.push('source commit must be the full current workflow commit SHA');
   if (!context.mainContainsSource) errors.push('source commit is not present on main');
 
+  // E2E Test is the anchor run; required leaves from independent workflows are collected by source SHA.
   const run = context.ciRun;
   if (
     !run ||
     String(run.id) !== String(context.ciRunId) ||
-    run.path !== '.github/workflows/ci.yml' ||
+    run.path !== '.github/workflows/e2e-test.yml' ||
     run.event !== 'push' ||
     run.head_branch !== 'main' ||
     run.head_sha !== context.sourceSha ||

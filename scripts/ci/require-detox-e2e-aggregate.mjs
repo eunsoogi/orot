@@ -15,6 +15,7 @@ function requireProfile({
   testSuites,
   expectedProfile,
   expectedCases,
+  expectedSuites,
 }) {
   if (result !== 'success') {
     throw new Error(
@@ -28,7 +29,7 @@ function requireProfile({
   }
   for (const [kind, value, expected] of [
     ['test cases', testCases, expectedCases],
-    ['Jest suites', testSuites, 1],
+    ['Jest suites', testSuites, expectedSuites],
   ]) {
     if (!/^(0|[1-9]\d*)$/.test(value ?? '') || Number(value) !== expected) {
       throw new Error(
@@ -45,7 +46,8 @@ requireProfile({
   testCases: args[2],
   testSuites: args[3],
   expectedProfile: 'release',
-  // Release includes the native tab, guarded navigation, and storage-failure regressions.
+  // The Release parent publishes the two individually checked runner summaries.
+  expectedSuites: 2,
   expectedCases: 21,
 });
 requireProfile({
@@ -55,6 +57,7 @@ requireProfile({
   testCases: args[6],
   testSuites: args[7],
   expectedProfile: 'openai-provider',
+  expectedSuites: 1,
   expectedCases: 1,
 });
 

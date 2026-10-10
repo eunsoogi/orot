@@ -89,7 +89,7 @@ test('aligns clean-environment transcription build, cache, and Detox app paths',
   assert.ok(transcription.build.includes(`-derivedDataPath ${mobileRelativeCacheRoot}`));
 });
 
-test('connects a dedicated Simulator, native app cache, and required aggregate for the isolated profile', () => {
+test('connects a dedicated Simulator and validates the isolated profile summary in its own job', () => {
   const simulatorSetup = readFileSync(
     join(repositoryRoot, 'scripts/ci/prepare-detox-simulator.sh'),
     'utf8',
@@ -99,15 +99,28 @@ test('connects a dedicated Simulator, native app cache, and required aggregate f
     join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
     'utf8',
   );
+  const suiteRunner = readFileSync(join(repositoryRoot, 'scripts/ci/run-test-suite.sh'), 'utf8');
+  const summaryGuard = readFileSync(
+    join(repositoryRoot, 'scripts/ci/require-jest-summary.mjs'),
+    'utf8',
+  );
   const profileWorkflow = readFileSync(
     join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
+    'utf8',
+  );
+  const profileAppCacheAction = readFileSync(
+    join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
     'utf8',
   );
 
   assert.match(simulatorSetup, /OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID/);
   assert.match(builder, /ios\.sim\.release\.transcription/);
   assert.match(profileWorkflow, /inputs\.profile == 'transcription'/);
-  assert.match(profileWorkflow, /build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/);
+  // The profile workflow delegates its app path allowlist to the shared cache action.
+  assert.match(profileAppCacheAction, /build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/);
   assert.match(profilesWorkflow, /detox_transcription_e2e:[\s\S]*?profile: transcription/);
-  assert.match(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
+  assert.doesNotMatch(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
+  assert.match(suiteRunner, /node scripts\/ci\/require-jest-summary\.mjs/);
+  assert.match(summaryGuard, /Speech Transcription/);
+  assert.match(summaryGuard, /expected exactly one profile summary/);
 });

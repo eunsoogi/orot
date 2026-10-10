@@ -21,7 +21,9 @@ import {
 
 const projectPath = 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj';
 const privacyPath = 'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy';
-const workflowPath = fileURLToPath(new URL('../../../.github/workflows/ci.yml', import.meta.url));
+const workflowPath = fileURLToPath(
+  new URL('../../../.github/workflows/e2e-test.yml', import.meta.url),
+);
 const detoxBuildPath = fileURLToPath(new URL('../build-detox-apps.sh', import.meta.url));
 const productionBuildPath = fileURLToPath(
   new URL('../build-ios-simulator-app.sh', import.meta.url),
@@ -45,14 +47,26 @@ function prepareEnvironment(root, initial) {
   };
 }
 
-test('keys app caches from pre-Pods inputs and preserves the post-install integration digest', () => {
-  const root = createFixtureRepository();
-  const sourceProject = readFileSync(join(root, projectPath), 'utf8');
-  const sourcePrivacy = readFileSync(join(root, privacyPath), 'utf8');
-  const generatedProject = 'CocoaPods project integration';
-  const generatedPrivacy = 'CocoaPods aggregated privacy reasons';
+// Keep temporary repositories isolated and remove them even when an assertion fails.
+function testWithFixtureRepository(name, run) {
+  test(name, () => {
+    const root = createFixtureRepository();
+    try {
+      run(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
-  try {
+testWithFixtureRepository(
+  'keys app caches from pre-Pods inputs and preserves the post-install integration digest',
+  (root) => {
+    const sourceProject = readFileSync(join(root, projectPath), 'utf8');
+    const sourcePrivacy = readFileSync(join(root, privacyPath), 'utf8');
+    const generatedProject = 'CocoaPods project integration';
+    const generatedPrivacy = 'CocoaPods aggregated privacy reasons';
+
     const initial = computeDetoxCacheFingerprints(root);
     const environment = prepareEnvironment(root, initial);
     runCacheCommand(root, 'prepare', environment);
@@ -80,16 +94,14 @@ test('keys app caches from pre-Pods inputs and preserves the post-install integr
     const cacheResult = runCacheCommand(root, 'prepare', environment);
     assert.match(cacheResult, /classification=exact/);
     assert.match(cacheResult, /app_reusable=true/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
-test('falls back to the build path when an exact app cache is missing a Detox framework artifact', () => {
-  const root = createFixtureRepository();
-  const frameworkBinary = join(root, 'detox-framework/framework/Detox.framework/Detox');
+testWithFixtureRepository(
+  'falls back to the build path when an exact app cache is missing a Detox framework artifact',
+  (root) => {
+    const frameworkBinary = join(root, 'detox-framework/framework/Detox.framework/Detox');
 
-  try {
     const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
     const appProduct = join(derivedData, 'Build/Products/Release-iphonesimulator/Orot.app');
     mkdirSync(derivedData, { recursive: true });
@@ -103,18 +115,16 @@ test('falls back to the build path when an exact app cache is missing a Detox fr
     assert.equal(existsSync(appProduct), false);
     assert.equal(existsSync(join(root, 'detox-framework/framework')), false);
     assert.equal(existsSync(join(root, 'detox-framework/xcuitest-runner')), false);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
-test('does not reuse legacy app manifests without a Detox artifact fingerprint', () => {
-  const root = createFixtureRepository();
-  const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
-  const appProduct = join(derivedData, 'Build/Products/Release-iphonesimulator/Orot.app');
-  const manifestPath = join(derivedData, '.orot-detox-cache.json');
+testWithFixtureRepository(
+  'does not reuse legacy app manifests without a Detox artifact fingerprint',
+  (root) => {
+    const derivedData = join(root, 'apps/mobile/ios/build-detox-release');
+    const appProduct = join(derivedData, 'Build/Products/Release-iphonesimulator/Orot.app');
+    const manifestPath = join(derivedData, '.orot-detox-cache.json');
 
-  try {
     mkdirSync(derivedData, { recursive: true });
     runCacheCommand(root, 'write');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -127,15 +137,12 @@ test('does not reuse legacy app manifests without a Detox artifact fingerprint',
     assert.equal(existsSync(appProduct), false);
     assert.equal(existsSync(join(root, 'detox-framework/framework')), false);
     assert.equal(existsSync(join(root, 'detox-framework/xcuitest-runner')), false);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
-test('invalidates cached provenance when a recorded post-Pods digest is malformed', () => {
-  const root = createFixtureRepository();
-
-  try {
+testWithFixtureRepository(
+  'invalidates cached provenance when a recorded post-Pods digest is malformed',
+  (root) => {
     writeFixtureFile(root, projectPath, 'CocoaPods project integration');
     writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
@@ -153,15 +160,12 @@ test('invalidates cached provenance when a recorded post-Pods digest is malforme
     const result = runCacheCommand(root, 'prepare', environment);
     assert.match(result, /classification=invalidated/);
     assert.match(result, /cocoapods_input_provenance\.after_install_format/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
-test('fails closed when a PBX source edit occurs after fingerprinting but before cache lookup', () => {
-  const root = createFixtureRepository();
-
-  try {
+testWithFixtureRepository(
+  'fails closed when a PBX source edit occurs after fingerprinting but before cache lookup',
+  (root) => {
     writeFixtureFile(root, projectPath, 'CocoaPods project integration');
     writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
@@ -175,15 +179,12 @@ test('fails closed when a PBX source edit occurs after fingerprinting but before
       /CocoaPods input hashes changed before cache lookup: projectFile/,
     );
     assert.equal(existsSync(derivedData), true);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
-test('rejects a symlinked CocoaPods project input without following its target', () => {
-  const root = createFixtureRepository();
-
-  try {
+testWithFixtureRepository(
+  'rejects a symlinked CocoaPods project input without following its target',
+  (root) => {
     writeFixtureFile(root, 'external-project.pbxproj', 'outside source');
     unlinkSync(join(root, projectPath));
     symlinkSync(join(root, 'external-project.pbxproj'), join(root, projectPath));
@@ -192,35 +193,26 @@ test('rejects a symlinked CocoaPods project input without following its target',
       () => computeDetoxCacheFingerprints(root),
       /Refusing to normalize a symlinked CocoaPods build input: apps\/mobile\/ios\/OrotMobile\.xcodeproj\/project\.pbxproj/,
     );
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+  },
+);
+
+testWithFixtureRepository('rejects unrelated lockfile drift after cache preparation', (root) => {
+  writeFixtureFile(root, projectPath, 'CocoaPods project integration');
+  writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
+  const initial = computeDetoxCacheFingerprints(root);
+  const environment = prepareEnvironment(root, initial);
+  runCacheCommand(root, 'prepare', environment);
+  writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed after cache preparation');
+
+  assert.throws(
+    () => runCacheCommand(root, 'verify-build-inputs', environment),
+    /unexpected build-input changes after CocoaPods install/,
+  );
 });
 
-test('rejects unrelated lockfile drift after cache preparation', () => {
-  const root = createFixtureRepository();
-
-  try {
-    writeFixtureFile(root, projectPath, 'CocoaPods project integration');
-    writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
-    const initial = computeDetoxCacheFingerprints(root);
-    const environment = prepareEnvironment(root, initial);
-    runCacheCommand(root, 'prepare', environment);
-    writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed after cache preparation');
-
-    assert.throws(
-      () => runCacheCommand(root, 'verify-build-inputs', environment),
-      /unexpected build-input changes after CocoaPods install/,
-    );
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test('rejects changes to CocoaPods outputs after pre-build verification', () => {
-  const root = createFixtureRepository();
-
-  try {
+testWithFixtureRepository(
+  'rejects changes to CocoaPods outputs after pre-build verification',
+  (root) => {
     writeFixtureFile(root, projectPath, 'CocoaPods project integration');
     writeFixtureFile(root, privacyPath, 'CocoaPods aggregated privacy reasons');
     const initial = computeDetoxCacheFingerprints(root);
@@ -235,10 +227,8 @@ test('rejects changes to CocoaPods outputs after pre-build verification', () => 
       () => runCacheCommand(root, 'write', environment),
       /CocoaPods input hashes changed after build-input verification and before manifest write: projectFile/,
     );
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+  },
+);
 
 test('calls build-input verification before both production and Detox native builds', () => {
   const production = readFileSync(productionBuildPath, 'utf8');

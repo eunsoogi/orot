@@ -19,7 +19,7 @@ const {
 } = require('./transcription/transcriptProbeModeDetoxHelpers');
 
 describe('Apple Korean transcription and recording export on iOS Simulator', () => {
-  it('records transcript evidence and verifies saved recording exports', async () => {
+  it('verifies transcript export, share-sheet cancellation, and source preservation', async () => {
     // Grant only speech recognition on this dedicated Simulator so the legacy API never pauses for a system alert.
     await device.launchApp({
       newInstance: true,
