@@ -67,28 +67,6 @@ test('routes the existing launch arguments to one Release entry and rejects unkn
   );
 });
 
-test('selects the E2E-only appointments screen backed by encrypted local storage', () => {
-  const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
-  const appointmentsEntry = readFileSync(
-    join(repositoryRoot, 'apps/mobile/e2e/appointmentsProbeEntry.tsx'),
-    'utf8',
-  );
-  const appointmentsTest = readFileSync(
-    join(repositoryRoot, 'apps/mobile/e2e/appointments.test.js'),
-    'utf8',
-  );
-
-  assert.match(router, /case 'appointments':\s*require\('\.\/appointmentsProbeEntry'\)/);
-  assert.match(appointmentsEntry, /AppointmentsScreen/);
-  assert.match(appointmentsEntry, /openLocalAppointmentRepository/);
-  assert.equal((appointmentsTest.match(/OROT_E2E_PROBE: 'appointments'/g) ?? []).length, 3);
-  assert.doesNotMatch(appointmentsTest, /welcome-title/);
-  assert.match(appointmentsTest, /appointments-title/);
-  assert.match(appointmentsTest, /appointment-add/);
-  assert.match(appointmentsTest, /appointments-empty/);
-  assert.doesNotMatch(appointmentsTest, /appointments-probe-ready/);
-});
-
 test('routes the blood-pressure Safe Area probe through App with synthetic observations', () => {
   const router = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/e2eRouterEntry.tsx'), 'utf8');
   const probeEntry = readFileSync(
@@ -110,14 +88,17 @@ test('routes the blood-pressure Safe Area probe through App with synthetic obser
   );
   assert.match(probeEntry, /Synthetic Safe Area fixture/);
   assert.match(safeAreaTest, /OROT_E2E_PROBE: 'safe-area-blood-pressure'/);
-  assert.match(safeAreaTest, /expectScrollInsideSafeRoot\('blood-pressure-scroll'\)/);
+  assert.match(
+    safeAreaTest,
+    /expectScrollInsideRootFrame\(\s*'blood-pressure-scroll',\s*'navigation-keyboard-avoiding-root'/,
+  );
 });
 
 test('keeps the Release smoke on Calendar linking while manual CRUD stays in its probe', () => {
   const smokeTest = readFileSync(join(repositoryRoot, 'apps/mobile/e2e/smoke.test.js'), 'utf8');
 
   assert.match(smokeTest, /by\.id\('welcome-title'\)/);
-  assert.match(smokeTest, /by\.id\('open-appointments'\)/);
+  assert.match(smokeTest, /openRootTab\('schedule', 'calendar-title'\)/);
   assert.match(smokeTest, /by\.id\('calendar-title'\)/);
   assert.match(smokeTest, /by\.id\('calendar-connect'\)/);
   assert.doesNotMatch(smokeTest, /by\.id\('appointment-add'\)/);
@@ -132,7 +113,11 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseJestConfig.testMatch, ['<rootDir>/e2e/release-e2e.test.js']);
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
+    './settings.detox.e2e.js',
+    './navigation-glass.e2e.js',
+    './ai-feature-visit-questions.e2e.js',
     './safe-area.test.js',
+    './safe-area-keyboard.test.js',
     './appointments.test.js',
     './medicalAppointmentClassification.test.js',
     './medicalAppointmentNavigation.test.js',
