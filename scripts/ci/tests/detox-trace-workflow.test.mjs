@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
-const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
+const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/e2e-test.yml'), 'utf8');
 const profileWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
   'utf8',

@@ -15,7 +15,15 @@ test('collects required leaves from separate main-push workflows for the exact s
     },
     {
       id: 103,
-      path: '.github/workflows/quality-linux-tests.yml',
+      path: '.github/workflows/unit-test.yml',
+      event: 'push',
+      head_branch: 'main',
+      head_sha: sourceSha,
+    },
+    // The policy job now publishes from its own main-push workflow run.
+    {
+      id: 107,
+      path: '.github/workflows/policy-check.yml',
       event: 'push',
       head_branch: 'main',
       head_sha: sourceSha,
@@ -42,9 +50,9 @@ test('collects required leaves from separate main-push workflows for the exact s
       head_sha: sourceSha,
     },
   ];
-  const primaryCiRun = {
+  const primaryE2eRun = {
     id: 101,
-    path: '.github/workflows/ci.yml',
+    path: '.github/workflows/e2e-test.yml',
     event: 'push',
     head_branch: 'main',
     head_sha: sourceSha,
@@ -53,32 +61,41 @@ test('collects required leaves from separate main-push workflows for the exact s
     [101, [{ name: 'iOS Simulator Build', status: 'completed', conclusion: 'success' }]],
     [102, [{ name: 'Maintained file inventory', status: 'completed', conclusion: 'success' }]],
     [103, [{ name: 'TypeScript typecheck', status: 'completed', conclusion: 'success' }]],
+    [
+      107,
+      [{ name: 'CI, release, and quality gate tests', status: 'completed', conclusion: 'success' }],
+    ],
   ]);
   const readRunIds = [];
 
-  const jobs = collectJobsForMainPushes(sourceSha, workflowRuns, primaryCiRun, (runId) => {
+  const jobs = collectJobsForMainPushes(sourceSha, workflowRuns, primaryE2eRun, (runId) => {
     readRunIds.push(runId);
     return jobsByRun.get(runId);
   });
 
-  assert.deepEqual(readRunIds, [102, 103, 101]);
+  assert.deepEqual(readRunIds, [102, 103, 107, 101]);
   assert.deepEqual(
     jobs.map(({ name }) => name),
-    ['Maintained file inventory', 'TypeScript typecheck', 'iOS Simulator Build'],
+    [
+      'Maintained file inventory',
+      'TypeScript typecheck',
+      'CI, release, and quality gate tests',
+      'iOS Simulator Build',
+    ],
   );
 });
 
-test('does not duplicate the primary CI workflow run when it appears in the source run list', () => {
-  const primaryCiRun = {
+test('does not duplicate the primary E2E Test workflow run when it appears in the source run list', () => {
+  const primaryE2eRun = {
     id: 101,
-    path: '.github/workflows/ci.yml',
+    path: '.github/workflows/e2e-test.yml',
     event: 'push',
     head_branch: 'main',
     head_sha: sourceSha,
   };
   const readRunIds = [];
 
-  collectJobsForMainPushes(sourceSha, [primaryCiRun], primaryCiRun, (runId) => {
+  collectJobsForMainPushes(sourceSha, [primaryE2eRun], primaryE2eRun, (runId) => {
     readRunIds.push(runId);
     return [];
   });

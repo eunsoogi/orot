@@ -86,7 +86,7 @@ test('keeps Detox and production DerivedData roots separate from CocoaPods Codeg
     join(repositoryRoot, 'scripts/ci/ios-derived-data-cache-paths.mjs'),
     'utf8',
   );
-  const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
+  const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/e2e-test.yml'), 'utf8');
   const gitignore = readFileSync(join(repositoryRoot, '.gitignore'), 'utf8');
 
   assert.match(releaseConfig, /\|\| 'ios\/build-detox-release'/);

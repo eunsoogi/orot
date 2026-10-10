@@ -119,7 +119,7 @@ test('ignores CI orchestration changes but tracks app build driver changes', () 
     const initial = computeDetoxCacheFingerprints(root);
     // These files coordinate CI/cache behavior; app output inputs are hashed separately.
     for (const path of [
-      '.github/workflows/ci.yml',
+      '.github/workflows/e2e-test.yml',
       '.github/workflows/detox-e2e-profile.yml',
       'scripts/ci/detox-cache-fingerprint.mjs',
       'scripts/ci/detox-cache-fingerprint-cli.mjs',

@@ -13,7 +13,7 @@ const profilesWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
   'utf8',
 );
-const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
+const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/e2e-test.yml'), 'utf8');
 const qualityWorkflow = readFileSync(
   join(repositoryRoot, '.github/workflows/quality-linux.yml'),
   'utf8',

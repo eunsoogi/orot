@@ -5,9 +5,10 @@ import test from 'node:test';
 
 const readRepositoryFile = (path) =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
-const ciWorkflow = readRepositoryFile('.github/workflows/ci.yml');
+const e2eWorkflow = readRepositoryFile('.github/workflows/e2e-test.yml');
 const codeWorkflow = readRepositoryFile('.github/workflows/quality-linux.yml');
-const testWorkflow = readRepositoryFile('.github/workflows/quality-linux-tests.yml');
+const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
+const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
 const platformSelector = readRepositoryFile('scripts/quality/platforms.mjs');
 const surfacePolicy = JSON.parse(readRepositoryFile('scripts/quality/surface-policy.json'));
@@ -57,38 +58,47 @@ test('publishes inventory and canonical source LOC as separate Linux checks', ()
   assert.doesNotMatch(loc, /git merge-base origin\/main HEAD/);
 });
 
-test('keeps formatting, typecheck, unit tests, and policy tests as independent Linux leaves', () => {
+test('keeps formatting, unit, and policy checks as independent Linux leaves', () => {
   const format = jobBlock(codeWorkflow, 'format_check');
   assert.match(format, /name: Format check/);
   assert.match(format, /runs-on: ubuntu-24\.04/);
   assert.ok(format.includes('pnpm format:check -- --platform linux'));
   assert.doesNotMatch(format, /--surface/);
 
-  const expected = [
+  const unitJobs = [
     ['typecheck', 'TypeScript typecheck', 'pnpm typecheck'],
     ['unit_tests', 'Unit and component tests', 'scripts/ci/run-test-suite.sh unit'],
-    [
-      'gate_tests',
-      'CI, release, and quality gate tests',
-      'scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs',
-    ],
   ];
-  for (const [jobId, name, command] of expected) {
-    const job = jobBlock(testWorkflow, jobId);
+  for (const [jobId, name, command] of unitJobs) {
+    const job = jobBlock(unitTestWorkflow, jobId);
     assert.ok(job, `missing ${jobId} leaf`);
     assert.ok(job.includes(`name: ${name}`));
     assert.match(job, /runs-on: ubuntu-24\.04/);
     assert.ok(job.includes(command), `${name} command changed`);
     assert.doesNotMatch(job, /^\s+needs:/m, `${name} cannot depend on an aggregate job`);
   }
+
+  const policyJob = jobBlock(policyCheckWorkflow, 'gate_tests');
+  assert.ok(policyJob, 'missing policy-test leaf');
+  assert.ok(policyJob.includes('name: CI, release, and quality gate tests'));
+  assert.match(policyJob, /runs-on: ubuntu-24\.04/);
+  assert.ok(
+    policyJob.includes(
+      'scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs',
+    ),
+  );
+  assert.doesNotMatch(policyJob, /^\s+needs:/m);
+  // Separate contexts let branch protection identify failures by responsibility.
+  assert.doesNotMatch(unitTestWorkflow, /^\x20{2}gate_tests:/m);
+  assert.doesNotMatch(policyCheckWorkflow, /^\x20{2}(typecheck|unit_tests):/m);
 });
 
 test('pins the policy-test Ruby runtime and keeps its logs outside checkout inventory', () => {
-  const gate = jobBlock(testWorkflow, 'gate_tests');
+  const gate = jobBlock(policyCheckWorkflow, 'gate_tests');
   const expectedRubyVersion = codeWorkflow.match(/EXPECTED_RUBY_VERSION: '([^']+)'/)?.[1];
 
   assert.ok(expectedRubyVersion, 'Code Quality must declare the Ruby version');
-  assert.ok(testWorkflow.includes(`EXPECTED_RUBY_VERSION: '${expectedRubyVersion}'`));
+  assert.ok(policyCheckWorkflow.includes(`EXPECTED_RUBY_VERSION: '${expectedRubyVersion}'`));
   assert.match(gate, /uses: ruby\/setup-ruby@[a-f0-9]{40}/);
   assert.ok(gate.includes('ruby-version: ${{ env.EXPECTED_RUBY_VERSION }}'));
   assert.ok(
@@ -105,13 +115,15 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
   assert.doesNotMatch(gate, /artifacts\/gate-tests/);
 });
 
-test('exposes direct quality checks with CI event and cancellation rules', () => {
+test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
   const directTriggers =
     'on:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:';
 
   assert.match(codeWorkflow, /^name: Code Quality$/m);
-  assert.match(testWorkflow, /^name: Test Gates$/m);
-  for (const workflow of [codeWorkflow, testWorkflow]) {
+  assert.match(unitTestWorkflow, /^name: Unit Test$/m);
+  assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
+  assert.match(e2eWorkflow, /^name: E2E Test$/m);
+  for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow, e2eWorkflow]) {
     assert.ok(workflow.includes(directTriggers));
     assert.ok(
       workflow.includes(
@@ -122,12 +134,12 @@ test('exposes direct quality checks with CI event and cancellation rules', () =>
     assert.match(workflow, /^permissions:\n {2}contents: read/m);
     assert.doesNotMatch(workflow, /workflow_call/);
   }
-  assert.doesNotMatch(ciWorkflow, /quality_code:|quality_tests:/);
-  assert.doesNotMatch(ciWorkflow, /uses: \.\/\.github\/workflows\/quality-linux/);
-  assert.match(ciWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
-  assert.match(ciWorkflow, /runs-on: xcode-27/);
-  assert.doesNotMatch(ciWorkflow, /name: Detox iOS E2E/);
-  assert.doesNotMatch(ciWorkflow, /detox_ios_e2e:/);
+  assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
+  assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/quality-linux/);
+  assert.match(e2eWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
+  assert.match(e2eWorkflow, /runs-on: xcode-27/);
+  assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
+  assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });
 
 test('surface selection validates the complete inventory before filtering one lint surface', () => {

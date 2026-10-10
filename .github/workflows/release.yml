@@ -21,7 +21,7 @@ on:
         type: string
         required: true
       ci_run_id:
-        description: Successful main-push CI workflow run for source_sha; other required leaf jobs are collected from all main-push runs for that commit.
+        description: Successful main-push E2E Test workflow run for source_sha; other required leaf jobs are collected from all main-push runs for that commit.
         type: string
         required: true
       readiness_evidence_json:

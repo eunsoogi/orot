@@ -27,7 +27,7 @@ test('keeps CocoaPods source inputs fingerprinted across generated integration c
   try {
     git(root, 'init', '-q');
     for (const path of [
-      '.github/workflows/ci.yml',
+      '.github/workflows/e2e-test.yml',
       '.github/workflows/detox-e2e-profile.yml',
       '.npmrc',
       'package.json',

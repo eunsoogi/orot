@@ -6,7 +6,7 @@ import { buildReleaseRequest } from '../release-request.mjs';
 const sourceSha = 'a'.repeat(40);
 const ciRun = {
   id: 1234,
-  path: '.github/workflows/ci.yml',
+  path: '.github/workflows/e2e-test.yml',
   event: 'push',
   head_branch: 'main',
   head_sha: sourceSha,

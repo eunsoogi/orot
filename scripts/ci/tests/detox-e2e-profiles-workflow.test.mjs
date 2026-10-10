@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const root = new URL('../../../', import.meta.url);
 const read = (path) => readFileSync(fileURLToPath(new URL(path, root)), 'utf8');
-const ciWorkflow = read('.github/workflows/ci.yml');
+const ciWorkflow = read('.github/workflows/e2e-test.yml');
 const profilesWorkflow = read('.github/workflows/detox-e2e-profiles.yml');
 const releaseWorkflow = read('.github/workflows/detox-e2e-release.yml');
 const profileWorkflow = read('.github/workflows/detox-e2e-profile.yml');
