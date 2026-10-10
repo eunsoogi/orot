@@ -8,4 +8,5 @@ RCT_EXTERN_METHOD(transcribeAudio : (NSDictionary *)request resolver : (RCTPromi
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(transcribeRecording : (NSDictionary *)request resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(cancelTranscription : (NSString *)requestID)
 @end

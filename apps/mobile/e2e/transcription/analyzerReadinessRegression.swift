@@ -1,4 +1,4 @@
-// Compile with SpeechTranscriptionAnalyzer.swift and SpeechTranscriptionTypes.swift using the macOS 26 Speech SDK.
+// Compile the Speech transcription sources and deadline regression file with the macOS 26 Speech SDK.
 // The analyzer-compatible audio store below is only a link-time stand-in; these checks never read audio or start SpeechAnalyzer.
 import AVFoundation
 import Foundation
@@ -15,13 +15,14 @@ struct SpeechAnalyzerReadinessRegression {
         await preparationFailureStopsBeforeAnalysis()
         await cancelledRequestStopsBeforeAnalysis()
         await cancellationAfterRequestStopsBeforeAnalysis()
-        print("PASS: installed readiness, pending/unsupported states, preparation failure, and cancellation")
+        await SpeechTranscriptionDeadlineRegression.run()
+        print("PASS: readiness, asset states, preparation failure, cancellation, deadlines, and callback completion")
     }
 
     @available(macOS 26.0, *)
     private static func installedAssetsAllowAnalysis() async {
         let calls = AnalysisCallCounter()
-        let result = try! await SpeechTranscriptionAnalyzer.withInstalledAssets(
+        let result = try! await SpeechTranscriptionAssetInstallation.withInstalledAssets(
             prepare: { .installed },
             analyze: { await calls.record(); return "analysis started" },
         )
@@ -53,7 +54,7 @@ struct SpeechAnalyzerReadinessRegression {
         let gate = PreparationGate()
         let calls = AnalysisCallCounter()
         let operation = Task {
-            try await SpeechTranscriptionAnalyzer.withInstalledAssets(
+            try await SpeechTranscriptionAssetInstallation.withInstalledAssets(
                 prepare: { await gate.prepare() },
                 analyze: { await calls.record(); return "unexpected analysis" },
             )
@@ -67,7 +68,7 @@ struct SpeechAnalyzerReadinessRegression {
             _ = try await operation.value
             fatalError("Cancelled preparation unexpectedly started analysis")
         } catch let failure as SpeechTranscriptionFailure {
-            require(failure.code == "MODEL_INSTALL_FAILED", "Cancelled preparation lost its unavailable result")
+            require(failure.code == "TRANSCRIPTION_CANCELLED", "Cancelled preparation lost its cancellation result")
         } catch {
             fatalError("Cancelled preparation returned an unexpected error: \(error)")
         }
@@ -82,7 +83,7 @@ struct SpeechAnalyzerReadinessRegression {
     ) async {
         let calls = AnalysisCallCounter()
         do {
-            _ = try await SpeechTranscriptionAnalyzer.withInstalledAssets(
+            _ = try await SpeechTranscriptionAssetInstallation.withInstalledAssets(
                 prepare: prepare,
                 analyze: { await calls.record(); return "unexpected analysis" },
             )
@@ -101,7 +102,7 @@ struct SpeechAnalyzerReadinessRegression {
     }
 }
 
-private actor AnalysisCallCounter {
+actor AnalysisCallCounter {
     private(set) var count = 0
 
     func record() {
@@ -110,7 +111,7 @@ private actor AnalysisCallCounter {
 }
 
 @available(macOS 26.0, *)
-private actor PreparationGate {
+actor PreparationGate {
     private var hasStarted = false
     private var statusContinuation: CheckedContinuation<AssetInventory.Status, Never>?
     private var startContinuation: CheckedContinuation<Void, Never>?
