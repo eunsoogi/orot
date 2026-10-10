@@ -45,10 +45,16 @@ test('publishes inventory and canonical source LOC as separate Linux checks', ()
   assert.match(loc, /name: Source LOC policy/);
   assert.match(loc, /runs-on: ubuntu-24\.04/);
   assert.match(loc, /fetch-depth: 0/);
+  assert.ok(
+    loc.includes(
+      "LOC_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}",
+    ),
+  );
   assert.match(
     loc,
     /if \[\[ "\$GITHUB_EVENT_NAME" == workflow_dispatch \]\]; then[\s\S]*?scripts\/ci\/check-loc\.mjs --all[\s\S]*?else[\s\S]*?scripts\/ci\/check-loc\.mjs --base "\$LOC_BASE_SHA"/,
   );
+  assert.doesNotMatch(loc, /git merge-base origin\/main HEAD/);
 });
 
 test('keeps formatting, typecheck, unit tests, and policy tests as independent Linux leaves', () => {

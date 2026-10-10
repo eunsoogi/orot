@@ -75,12 +75,13 @@ jobs:
 
       - name: Check canonical source line policy
         shell: bash
-        # PR/push runs compare the merge base; manual runs audit the full tracked tree.
+        # PR uses its target base; push uses the event's before SHA instead of comparing HEAD with itself.
+        env:
+          LOC_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             scripts/ci/run-command.sh source-loc artifacts/quality/source-loc.log -- node scripts/ci/check-loc.mjs --all
           else
-            LOC_BASE_SHA="$(git merge-base origin/main HEAD)"
             scripts/ci/run-command.sh source-loc artifacts/quality/source-loc.log -- node scripts/ci/check-loc.mjs --base "$LOC_BASE_SHA"
           fi
 

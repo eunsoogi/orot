@@ -50,7 +50,7 @@ pnpm format:check
 
 CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물로 분류합니다. 같은 경로 아래의 다른 확장자는 파일 형식에 따라 검사되거나 미지원 파일로 실패합니다.
 
-`Code Quality`와 `Test Gates`는 `CI`와 같은 `main` 대상 pull request, `main` push, 수동 실행 조건을 사용하는 독립 workflow입니다. 호출 workflow가 없으므로 GitHub check context에는 caller 이름이 붙지 않습니다. `Code Quality`는 `Maintained file inventory`, 열 개의 `Lint / <surface>` checks, `Source LOC policy`, `Format check`를 각각 실행합니다. 각 lint leaf는 전체 인벤토리를 검증한 뒤 한 표면의 파일만 lint하며, 현재 파일이 없는 설정 표면도 인벤토리 검증을 거쳐 독립된 no-op check 이름을 유지합니다. Source LOC leaf는 canonical 250줄 검사기를 PR base와의 merge base로 실행하고, Code Quality 수동 실행에서는 전체 추적 파일을 검사합니다.
+`Code Quality`와 `Test Gates`는 `CI`와 같은 `main` 대상 pull request, `main` push, 수동 실행 조건을 사용하는 독립 workflow입니다. 호출 workflow가 없으므로 GitHub check context에는 caller 이름이 붙지 않습니다. `Code Quality`는 `Maintained file inventory`, 열 개의 `Lint / <surface>` checks, `Source LOC policy`, `Format check`를 각각 실행합니다. 각 lint leaf는 전체 인벤토리를 검증한 뒤 한 표면의 파일만 lint하며, 현재 파일이 없는 설정 표면도 인벤토리 검증을 거쳐 독립된 no-op check 이름을 유지합니다. Source LOC leaf는 canonical 250줄 검사기를 pull request의 target base와 main push 직전 SHA로 실행하고, Code Quality 수동 실행에서는 전체 추적 파일을 검사합니다.
 
 `Test Gates`는 `TypeScript typecheck`, `Unit and component tests`, `CI, release, and quality gate tests`를 각각 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다. Xcode와 Simulator가 필요한 `iOS Simulator Build` 및 Release UI/storage, Release stateful-data, OpenAI, Speech, Next Visit E2E leaf만 macOS runner를 사용합니다. E2E leaf는 자신의 전체 시나리오 결과를 확인하고 진단 artifact 업로드와 Simulator 정리를 수행합니다.
 
