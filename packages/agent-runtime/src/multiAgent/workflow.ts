@@ -1,12 +1,13 @@
 import type { JsonValue } from '@orot/model-runtime';
+import { normalizeThreadId } from '../checkpointConfig';
 import type {
+  MultiAgentInvocation,
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
-  MultiAgentInvocation,
 } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { deferEvidenceAdapter, revalidateCurrentEvidence } from './modelCallFreshness';
+import { deferEvidenceAdapter } from './modelCallFreshness';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import { checkpointFromState, nonResumableCheckpoint } from './state';
@@ -14,35 +15,80 @@ import {
   failureResult,
   initialState,
   makeGraph,
-  publicResult,
   restoreRunEvidence,
   resumeState,
   validBudget,
   validIdentity,
 } from './workflowSupport';
+import {
+  hasExplicitCheckpointSelector,
+  invokeWorkflowGraph,
+  loadPersistedGraphResume,
+  withCheckpointThreadLock,
+  withDeferredEvidenceAdapters,
+} from './workflowCheckpoint';
 
-async function preservePendingCancellation<TResult>(
-  operation: Promise<unknown>,
-  context: RuntimeContext<TResult>,
-): Promise<void> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([
-    operation.then(
-      () => undefined,
-      () => undefined,
-    ),
-    new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, 0);
-    }),
-  ]);
-  if (timer) clearTimeout(timer);
-  canceled(context, 'underlying_call_unconfirmed');
+interface WorkflowRunControl {
+  signal: AbortSignal;
+  timedOut: () => boolean;
+  dispose: () => void;
 }
 
-// Coordinates two model roles around allowlisted reads while persisting metadata only.
-export async function runMultiAgentWorkflow<TResult = JsonValue>(
+// The deadline covers both same-thread queueing and graph work, not just provider execution.
+function createWorkflowRunControl(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): WorkflowRunControl {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort();
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    timedOut: () => timedOut,
+    dispose: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener('abort', abortFromCaller);
+    },
+  };
+}
+
+// Coordinates validated graph runs and restores saved evidence only after source checks pass.
+export function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
   invocation: MultiAgentInvocation = {},
+): Promise<MultiAgentRunResult<TResult>> {
+  const threadId = normalizeThreadId(invocation.config?.configurable?.thread_id);
+  if (options.checkpointer && threadId !== undefined) {
+    if (!validIdentity(options) || !validBudget(options)) {
+      return runMultiAgentWorkflowUnlocked(options, invocation);
+    }
+    const runControl = createWorkflowRunControl(
+      invocation.signal,
+      options.execution.budget.timeoutMs,
+    );
+    return withCheckpointThreadLock(threadId, runControl.signal, () =>
+      runMultiAgentWorkflowUnlocked(options, invocation, runControl),
+    )
+      .then((result) =>
+        result.status === 'completed'
+          ? result.value
+          : runMultiAgentWorkflowUnlocked(options, invocation, runControl),
+      )
+      .finally(runControl.dispose);
+  }
+  return runMultiAgentWorkflowUnlocked(options, invocation);
+}
+
+async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
+  options: MultiAgentWorkflowOptions<TResult>,
+  invocation: MultiAgentInvocation,
+  suppliedRunControl?: WorkflowRunControl,
 ): Promise<MultiAgentRunResult<TResult>> {
   if (!validIdentity(options) || !validBudget(options)) {
     return {
@@ -51,13 +97,25 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       checkpoint: checkpointFromState(initialState(options)),
     };
   }
-  if (options.checkpointer && !invocation.config?.configurable?.thread_id) {
+  if (
+    options.checkpointer &&
+    normalizeThreadId(invocation.config?.configurable?.thread_id) === undefined
+  ) {
     return {
       status: 'invalid_output',
       reason: 'A checkpoint thread identifier is required.',
       checkpoint: checkpointFromState(initialState(options)),
     };
   }
+  if (options.checkpointer && hasExplicitCheckpointSelector(invocation.config)) {
+    // Caller selectors can make state validation and graph resume inspect different snapshots.
+    return {
+      status: 'stale_evidence',
+      reason: 'A checkpoint selector cannot be used for a persisted run.',
+      checkpoint: nonResumableCheckpoint(initialState(options)),
+    };
+  }
+
   const resumed = invocation.resumeFrom ? resumeState(invocation.resumeFrom, options) : undefined;
   if (invocation.resumeFrom && !resumed) {
     return {
@@ -66,37 +124,52 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       checkpoint: nonResumableCheckpoint(initialState(options)),
     };
   }
-  const start = resumed ?? initialState(options);
-  const controller = new AbortController();
-  let timedOut = false;
-  const abortFromCaller = () => controller.abort();
-  if (invocation.signal?.aborted) controller.abort();
-  else invocation.signal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, options.execution.budget.timeoutMs);
+  let start = resumed ?? initialState(options);
+  const ownsRunControl = suppliedRunControl === undefined;
+  const runControl =
+    suppliedRunControl ??
+    createWorkflowRunControl(invocation.signal, options.execution.budget.timeoutMs);
   const context: RuntimeContext<TResult> = {
     options,
-    signal: controller.signal,
-    timedOut: () => timedOut,
+    signal: runControl.signal,
+    timedOut: runControl.timedOut,
     currentEvidence: options.initialEvidence,
   };
   try {
+    const graph = makeGraph(context, options.checkpointer);
+    let persistedGraphResume = false;
+    if (options.checkpointer) {
+      // Checkpoint channel values hold references only; restore source content after validation.
+      const persisted = await loadPersistedGraphResume(
+        options,
+        () => graph.getState(invocation.config!),
+        start,
+        runControl.signal,
+        Boolean(invocation.resumeFrom),
+      );
+      if (persisted.status === 'cancelled') {
+        canceled(context);
+        return failureResult(context.outcome!, nonResumableCheckpoint(start));
+      }
+      if (persisted.status === 'stale') {
+        stop(context, persisted.reason, 'stale_evidence');
+        return failureResult(context.outcome!, nonResumableCheckpoint(persisted.state));
+      }
+      if (persisted.status === 'resumed') {
+        start = persisted.state;
+        context.currentEvidence = persisted.evidence;
+        persistedGraphResume = true;
+      }
+    }
+
     if (invocation.resumeFrom) {
-      // The restore helper invokes these callbacks before it can inspect cancellation.
-      const restoreOptions: MultiAgentWorkflowOptions<TResult> = {
-        ...options,
-        revalidateEvidence: (references, signal) =>
-          deferEvidenceAdapter(signal, () => options.revalidateEvidence(references, signal)),
-        restoreEvidence: options.restoreEvidence
-          ? (references, signal) =>
-              deferEvidenceAdapter(signal, () => options.restoreEvidence!(references, signal))
-          : undefined,
-      };
-      const restored = await restoreRunEvidence(restoreOptions, start, controller.signal);
+      const restored = await restoreRunEvidence(
+        withDeferredEvidenceAdapters(options),
+        start,
+        runControl.signal,
+      );
       if (!restored) {
-        if (controller.signal.aborted) canceled(context);
+        if (runControl.signal.aborted) canceled(context);
         else
           stop(
             context,
@@ -106,7 +179,7 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
         return failureResult(context.outcome!, checkpointFromState(start));
       }
       context.currentEvidence = restored;
-    } else {
+    } else if (!persistedGraphResume) {
       const invalid = validateEvidenceBatch(
         options.initialEvidence,
         options.execution.allowedScope,
@@ -119,10 +192,10 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
       const references = referencesFromBatch(options.initialEvidence);
       if (references.length > 0) {
         const freshness = await observeUntilAbort(
-          deferEvidenceAdapter(controller.signal, () =>
-            options.revalidateEvidence(references, controller.signal),
+          deferEvidenceAdapter(runControl.signal, () =>
+            options.revalidateEvidence(references, runControl.signal),
           ),
-          controller.signal,
+          runControl.signal,
         );
         if (freshness.kind === 'cancelled') canceled(context);
         else if (freshness.kind === 'error' || !freshness.value) {
@@ -131,84 +204,26 @@ export async function runMultiAgentWorkflow<TResult = JsonValue>(
         if (context.outcome) return failureResult(context.outcome, checkpointFromState(start));
       }
     }
-    if (controller.signal.aborted) canceled(context);
+
+    if (runControl.signal.aborted) canceled(context);
     else {
-      const graph = makeGraph(context, options.checkpointer);
-      if (options.checkpointer) {
-        const read = await observeUntilAbort(graph.getState(invocation.config!), controller.signal);
-        if (read.kind === 'cancelled') {
-          canceled(context);
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-        if (read.kind === 'error') throw new Error('Checkpoint state could not be read.');
-        if (controller.signal.aborted) {
-          canceled(context);
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-        const saved = read.value;
-        if (
-          saved.values &&
-          typeof saved.values === 'object' &&
-          Object.keys(saved.values).length > 0
-        ) {
-          stop(
-            context,
-            'A checkpoint already exists for this thread; use a fresh thread identifier.',
-            'stale_evidence',
-          );
-          return failureResult(context.outcome!, nonResumableCheckpoint(start));
-        }
-      }
-      if (controller.signal.aborted) {
-        canceled(context);
-        return failureResult(context.outcome!, nonResumableCheckpoint(start));
-      }
-      // Each persisted thread is one-use; sync durability records pending work before dispatch.
-      const graphRun = graph.invoke(start, { ...invocation.config, durability: 'sync' });
-      const invocationResult = await observeUntilAbort(graphRun, controller.signal);
-      if (invocationResult.kind === 'cancelled') {
-        await preservePendingCancellation(graphRun, context);
-        return failureResult(context.outcome!, nonResumableCheckpoint(start));
-      }
-      if (invocationResult.kind === 'error') throw new Error('The workflow invocation failed.');
-      if (controller.signal.aborted) {
-        canceled(context, 'underlying_call_unconfirmed');
-        return failureResult(context.outcome!, nonResumableCheckpoint(start));
-      }
-      const finalState = invocationResult.value;
-      if (!context.outcome)
-        stop(context, 'The workflow ended without a validated result.', 'invalid_output');
-      const finalOutcome = context.outcome!;
-      if (
-        finalOutcome.status === 'result' ||
-        (finalOutcome.status === 'needs_clarification' && typeof finalOutcome.message === 'string')
-      ) {
-        // Recheck citations and task-approved clarification copy after the async final checkpoint.
-        await revalidateCurrentEvidence(context, 'underlying_call_unconfirmed');
-        if (
-          controller.signal.aborted &&
-          (context.outcome?.status === 'result' ||
-            context.outcome?.status === 'needs_clarification')
-        ) {
-          canceled(context, 'underlying_call_unconfirmed');
-        }
-        const verifiedOutcome = context.outcome!;
-        if (verifiedOutcome.status !== finalOutcome.status)
-          return failureResult(verifiedOutcome, nonResumableCheckpoint(finalState));
-      }
-      return publicResult(
-        context.outcome!,
-        context.currentEvidence.coverage,
-        checkpointFromState(finalState),
+      return await invokeWorkflowGraph(
+        (input) =>
+          graph.invoke(input, {
+            ...invocation.config,
+            durability: 'sync',
+          }),
+        persistedGraphResume ? null : start,
+        start,
+        context,
       );
     }
     return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } catch {
-    if (controller.signal.aborted) canceled(context, 'underlying_call_unconfirmed');
+    if (runControl.signal.aborted) canceled(context, 'underlying_call_unconfirmed');
     else stop(context, 'The workflow could not complete safely.', 'unavailable');
     return failureResult(context.outcome!, nonResumableCheckpoint(start));
   } finally {
-    clearTimeout(timer);
-    invocation.signal?.removeEventListener('abort', abortFromCaller);
+    if (ownsRunControl) runControl.dispose();
   }
 }
