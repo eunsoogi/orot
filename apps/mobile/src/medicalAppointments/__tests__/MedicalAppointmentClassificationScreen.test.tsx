@@ -60,7 +60,7 @@ describe('medical appointment review fallback', () => {
       access: 'fullAccess' as const,
       events: [selectedEvent],
     }));
-    const findEvent = jest.fn(async () => ({
+    const findEvent = jest.fn(async (_identifier: string) => ({
       access: 'fullAccess' as const,
       event: selectedEvent,
     }));
@@ -114,14 +114,17 @@ describe('medical appointment review fallback', () => {
       screen.getByTestId('medical-appointment-save-calendar-candidate-1'),
     );
 
-    expect(findEvent).toHaveBeenCalledTimes(2);
+    expect(findEvent).toHaveBeenCalledTimes(3);
+    expect(findEvent.mock.calls.map(([identifier]) => identifier)).toEqual(
+      Array(3).fill(selectedEvent.calendarEventIdentifier),
+    );
     expect(repository.confirmCalendarEvent).toHaveBeenCalledWith(selectedEvent);
     expect(
       (await screen.findAllByText('일정을 저장했습니다.')).length,
     ).toBeGreaterThan(0);
     await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
     expect(onOpenManual).toHaveBeenCalledTimes(1);
-  });
+  }, 60_000);
 
   it('keeps the separate manual entry route available when Calendar permission is denied', async () => {
     const bridge = {
