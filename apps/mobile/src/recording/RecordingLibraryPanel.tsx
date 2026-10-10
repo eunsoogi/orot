@@ -16,6 +16,7 @@ type DeleteNotice = 'error' | 'cleanup-pending' | null;
 interface RecordingLibraryPanelProps {
   readonly service: RecordingLibraryService;
   readonly transcriptService?: TranscriptEvidenceService;
+  readonly fallbackExportSourceId?: string | null;
   readonly refreshKey?: string | null;
   readonly onSourceDeleted?: (sourceId: string) => void;
   readonly actionsDisabled?: boolean;
@@ -26,6 +27,7 @@ interface RecordingLibraryPanelProps {
 export default function RecordingLibraryPanel({
   service,
   transcriptService,
+  fallbackExportSourceId,
   refreshKey,
   onSourceDeleted,
   actionsDisabled = false,
@@ -135,6 +137,7 @@ export default function RecordingLibraryPanel({
   }
 
   const disabled = busy || actionsDisabled;
+  const exportSourceId = selected?.id ?? fallbackExportSourceId ?? null;
 
   return (
     <View style={styles.container} testID="recording-library-panel">
@@ -206,10 +209,10 @@ export default function RecordingLibraryPanel({
           </View>
         </View>
       ) : null}
-      {/* Use the persisted selection because the in-memory lastRecording snapshot disappears after relaunch. */}
-      {selected ? (
+      {/* A selected persisted row replaces the current-session fallback so only one source can be exported. */}
+      {exportSourceId ? (
         <RecordingExportPanel
-          recordingSourceId={selected.id}
+          recordingSourceId={exportSourceId}
           transcriptService={transcriptService}
         />
       ) : null}

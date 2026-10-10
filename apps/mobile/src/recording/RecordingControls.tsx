@@ -13,7 +13,6 @@ import {
 import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
 import { useRecordingNavigationLeaveState } from './useRecordingNavigationLeaveState';
-import RecordingExportPanel from './RecordingExportPanel';
 import RecordingSessionPanel from './RecordingSessionPanel';
 
 interface RecordingControlsProps {
@@ -156,18 +155,12 @@ export default function RecordingControls({
       {showRecordingLibrary ? (
         <RecordingLibraryPanel
           actionsDisabled={busy}
+          fallbackExportSourceId={
+            lastRecording && sourceSaved ? lastRecording.id : null
+          }
           onBusyChange={setDeletingRecording}
           onSourceDeleted={onRecordingSourceDeleted}
           service={recordingLibraryService}
-          transcriptService={transcriptService}
-        />
-      ) : null}
-      {/* Export needs the stable ID of a completed recording; transcript availability is handled inside the panel. */}
-      {lastRecording &&
-      sourceSaved &&
-      (status === 'idle' || status === 'completed') ? (
-        <RecordingExportPanel
-          recordingSourceId={lastRecording.id}
           transcriptService={transcriptService}
         />
       ) : null}

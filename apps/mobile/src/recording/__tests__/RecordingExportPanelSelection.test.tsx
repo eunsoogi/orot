@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
 import type {
   TranscriptEvidenceService,
@@ -56,10 +62,10 @@ function createServices() {
     correct: async () => {
       throw new Error('Unused in selection test.');
     },
-    play: async (segment: TranscriptEvidenceSegment) => ({
-      startMs: segment.audioRange.startMs,
-      endMs: segment.audioRange.endMs,
-      actualStartMs: segment.audioRange.startMs,
+    play: async (item: TranscriptEvidenceSegment) => ({
+      startMs: item.audioRange.startMs,
+      endMs: item.audioRange.endMs,
+      actualStartMs: item.audioRange.startMs,
     }),
   };
   const exportService: RecordingExportService = {
@@ -80,11 +86,11 @@ test('clears export feedback when the selected recording changes', async () => {
   );
 
   await fireEvent.press(await screen.findByTestId('recording-export-audio'));
-  expect(await screen.findByTestId('recording-export-status')).toHaveTextContent(
-    '파일을 공유하거나 저장했어요.',
-  );
+  expect(
+    await screen.findByTestId('recording-export-status'),
+  ).toHaveTextContent('파일을 공유하거나 저장했어요.');
 
-  panel.rerender(
+  await panel.rerender(
     <RecordingExportPanel
       recordingSourceId="recording-2"
       transcriptService={transcriptService}
@@ -100,9 +106,10 @@ test('clears export feedback when the selected recording changes', async () => {
 test('does not attach a late share result to a newly selected recording', async () => {
   const { transcriptService, exportService } = createServices();
   let resolveShare!: (status: 'completed' | 'cancelled') => void;
-  exportService.shareAudio = jest.fn(
-    () => new Promise(resolve => (resolveShare = resolve)),
+  const pendingShare = new Promise<'completed' | 'cancelled'>(
+    resolve => (resolveShare = resolve),
   );
+  exportService.shareAudio = jest.fn(() => pendingShare);
   const panel = await render(
     <RecordingExportPanel
       recordingSourceId="recording-1"
@@ -111,20 +118,20 @@ test('does not attach a late share result to a newly selected recording', async 
     />,
   );
 
-  const pendingPress = fireEvent.press(
-    await screen.findByTestId('recording-export-audio'),
-  );
+  await fireEvent.press(await screen.findByTestId('recording-export-audio'));
   expect(exportService.shareAudio).toHaveBeenCalledWith('recording-1');
 
-  panel.rerender(
+  await panel.rerender(
     <RecordingExportPanel
       recordingSourceId="recording-2"
       transcriptService={transcriptService}
       exportService={exportService}
     />,
   );
-  resolveShare('completed');
-  await pendingPress;
+  await act(async () => {
+    resolveShare('completed');
+    await pendingShare;
+  });
 
   await waitFor(() =>
     expect(screen.queryByTestId('recording-export-status')).toBeNull(),
@@ -137,9 +144,10 @@ test('does not attach a late transcript share result to a newly selected recordi
     recordingSourceId === source.id ? transcriptView : null,
   );
   let resolveShare!: (status: 'completed' | 'cancelled') => void;
-  exportService.shareTranscript = jest.fn(
-    () => new Promise(resolve => (resolveShare = resolve)),
+  const pendingShare = new Promise<'completed' | 'cancelled'>(
+    resolve => (resolveShare = resolve),
   );
+  exportService.shareTranscript = jest.fn(() => pendingShare);
   const panel = await render(
     <RecordingExportPanel
       recordingSourceId={source.id}
@@ -148,12 +156,12 @@ test('does not attach a late transcript share result to a newly selected recordi
     />,
   );
 
-  const pendingPress = fireEvent.press(
+  await fireEvent.press(
     await screen.findByTestId('recording-export-transcript'),
   );
   await waitFor(() => expect(exportService.shareTranscript).toHaveBeenCalled());
 
-  panel.rerender(
+  await panel.rerender(
     <RecordingExportPanel
       recordingSourceId="recording-2"
       transcriptService={transcriptService}
@@ -161,8 +169,10 @@ test('does not attach a late transcript share result to a newly selected recordi
     />,
   );
   expect(screen.getByTestId('recording-export-audio')).toBeDisabled();
-  resolveShare('completed');
-  await pendingPress;
+  await act(async () => {
+    resolveShare('completed');
+    await pendingShare;
+  });
 
   await waitFor(() => {
     expect(screen.queryByTestId('recording-export-status')).toBeNull();

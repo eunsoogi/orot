@@ -142,20 +142,30 @@ export default function RecordingExportPanel({
     }
   }
 
+  // Keep the button callback synchronous; these actions report their own share errors in the panel.
+  function handleShareAudioPress(): void {
+    shareAudio();
+  }
+
+  function handleShareTranscriptPress(): void {
+    shareTranscript();
+  }
+
   const hasTranscript = Boolean(view?.segments.length);
   return (
     <View style={styles.result} testID="recording-export-panel">
       <Text accessibilityRole="header">{t('recording.export.title')}</Text>
+      {/* Native sharing can wait for user input; keep its result inside the panel, not press dispatch. */}
       <Button
         disabled={busy}
-        onPress={shareAudio}
+        onPress={handleShareAudioPress}
         testID="recording-export-audio"
         title={t('recording.export.audio')}
       />
       {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
       <Button
         disabled={busy || loading}
-        onPress={shareTranscript}
+        onPress={handleShareTranscriptPress}
         testID="recording-export-transcript"
         title={t('recording.export.transcript')}
       />

@@ -238,3 +238,6 @@ describe('Apple Korean on-device transcription on iOS Simulator', () => {
     }
   });
 });
+
+// Register export as a separate timed test in the profile's single Jest suite.
+require('./recordingExport.e2e');

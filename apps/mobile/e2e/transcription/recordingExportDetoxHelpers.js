@@ -79,7 +79,8 @@ async function verifyRecordingExportLifecycle(detoxApi) {
   const sourceSecurityText = accessibilityText(
     await sourceSecurity.getAttributes(),
   );
-  jestExpect(sourceSecurityText).toContain('backup-excluded=true');
+  // Permanent audio stays backup eligible; temporary export copies have separate cleanup checks.
+  jestExpect(sourceSecurityText).toContain('backup-excluded=false');
   console.log('TRANSCRIPTION_SYNTHETIC_FILE_SECURITY_UI ' + sourceSecurityText);
   const audioExport = element(by.id('recording-export-audio'));
   await waitFor(audioExport).toExist().withTimeout(30000);
