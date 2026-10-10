@@ -6,6 +6,7 @@ import {
 } from '@testing-library/react-native';
 import { providerSuccess } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
+import { navigationText } from '../../../i18n/navigation';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
 import { providerSelectionText } from '../text';
 import type { ProviderSelectionOption, ProviderSelectionStore } from '../types';
@@ -58,6 +59,26 @@ function makeStore(
 }
 
 describe('ProviderSelectionScreen', () => {
+  it('uses the shared back label and accessible name without changing back behavior', async () => {
+    const onBack = jest.fn();
+    await render(
+      <ProviderSelectionScreen
+        options={[makeOption('apple-foundation-models', 'on-device')]}
+        requirements={requirements}
+        selectionStore={makeStore()}
+        onBack={onBack}
+      />,
+    );
+
+    const backButton = screen.getByTestId('provider-selection-back');
+    expect(screen.getByText(navigationText.back.label)).toBeTruthy();
+    expect(
+      screen.getByLabelText(navigationText.back.accessibilityLabel),
+    ).toBeTruthy();
+    await fireEvent.press(backButton);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('rechecks availability when a selected candidate changes before confirmation', async () => {
     const chatGPT = makeOption(
       'chatgpt-plan:synthetic-account:gpt-synthetic',

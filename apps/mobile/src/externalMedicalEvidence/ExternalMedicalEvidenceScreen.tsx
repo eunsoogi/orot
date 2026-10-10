@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   Pressable,
@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 import { getExternalMedicalEvidenceCopy } from './copy';
+import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import type {
   EuropePmcMedicalEvidenceService,
   EuropePmcSearchResult,
@@ -16,6 +18,8 @@ import type {
 } from './europePmc';
 
 interface ExternalMedicalEvidenceScreenProps {
+  readonly navigationRouteKey?: string;
+  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
   readonly service: EuropePmcMedicalEvidenceService;
   readonly onOpenArticle: (publication: ExternalMedicalPublication) => void;
@@ -31,6 +35,8 @@ type SearchState =
 
 /** Requires separate query-only opt-in before calling the public literature service. */
 export function ExternalMedicalEvidenceScreen({
+  navigationRouteKey,
+  onNavigationStateChange,
   onBack,
   service,
   onOpenArticle,
@@ -39,21 +45,56 @@ export function ExternalMedicalEvidenceScreen({
   const [query, setQuery] = useState('');
   const [consented, setConsented] = useState(false);
   const [state, setState] = useState<SearchState>({ status: 'idle' });
+  const operationController = useRef<AbortController | null>(null);
+  const inputRevision = useRef(0);
+
+  useAiFeatureScreenNavigationState(
+    navigationRouteKey,
+    {
+      hasUnsavedChanges:
+        query.length > 0 ||
+        consented ||
+        state.status === 'available' ||
+        state.status === 'empty' ||
+        state.status === 'unavailable',
+      isRecording: false,
+      // Search supports AbortSignal; confirmed route removal cancels the fetch.
+      hasOngoingOperation: state.status === 'loading',
+    },
+    inputRevision.current,
+    onNavigationStateChange,
+  );
+
+  useEffect(
+    () => () => {
+      operationController.current?.abort();
+      operationController.current = null;
+    },
+    [],
+  );
 
   async function search() {
     if (!consented || !query.trim() || state.status === 'loading') return;
+    const controller = new AbortController();
+    operationController.current = controller;
     setState({ status: 'loading' });
     try {
       const result: EuropePmcSearchResult = await service.search(query, {
         externalQueryConsented: true,
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
       setState(
         result.status === 'available'
           ? { status: 'available', publications: result.publications }
           : { status: result.status === 'empty' ? 'empty' : 'unavailable' },
       );
     } catch {
-      setState({ status: 'unavailable' });
+      if (!controller.signal.aborted) setState({ status: 'unavailable' });
+    } finally {
+      if (operationController.current === controller) {
+        operationController.current = null;
+      }
     }
   }
 
@@ -71,7 +112,10 @@ export function ExternalMedicalEvidenceScreen({
         accessibilityLabel={copy.placeholder}
         editable={state.status !== 'loading'}
         maxLength={240}
-        onChangeText={setQuery}
+        onChangeText={value => {
+          inputRevision.current += 1;
+          setQuery(value);
+        }}
         placeholder={copy.placeholder}
         testID="external-evidence-query"
         value={query}
@@ -79,7 +123,10 @@ export function ExternalMedicalEvidenceScreen({
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: consented }}
-        onPress={() => setConsented(value => !value)}
+        onPress={() => {
+          inputRevision.current += 1;
+          setConsented(value => !value);
+        }}
         testID="external-evidence-consent"
       >
         <Text>
