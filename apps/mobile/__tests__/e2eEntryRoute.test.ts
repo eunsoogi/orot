@@ -19,6 +19,58 @@ describe('Detox entry routing', () => {
     ).toBe('medical-appointment-app-navigation');
   });
 
+  it('loads the stream polyfill before importing App for the #108 probe', () => {
+    const readableStreamDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'ReadableStream',
+    );
+    let readableStreamAtAppImport = false;
+    Object.defineProperty(globalThis, 'ReadableStream', {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+
+    try {
+      jest.isolateModules(() => {
+        jest.doMock('../App', () => {
+          readableStreamAtAppImport =
+            typeof globalThis.ReadableStream === 'function';
+          return { __esModule: true, default: () => null };
+        });
+        jest.doMock('../app.json', () => ({ name: 'Orot' }));
+        jest.doMock('../src/providers/selection/options', () => ({
+          createAppleSelectionOption: () => ({
+            provider: { id: 'apple-intelligence' },
+            modelId: 'on-device-model',
+          }),
+        }));
+        jest.doMock('react-native', () => ({
+          AppRegistry: { registerComponent: jest.fn() },
+        }));
+        jest.doMock('react-native-get-random-values', () => ({}));
+        require('../e2e/medicalAppointmentNavigationProbeEntry');
+      });
+
+      expect(readableStreamAtAppImport).toBe(true);
+    } finally {
+      jest.dontMock('../App');
+      jest.dontMock('../app.json');
+      jest.dontMock('../src/providers/selection/options');
+      jest.dontMock('react-native');
+      jest.dontMock('react-native-get-random-values');
+      if (readableStreamDescriptor) {
+        Object.defineProperty(
+          globalThis,
+          'ReadableStream',
+          readableStreamDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(globalThis, 'ReadableStream');
+      }
+    }
+  });
+
   it('opens the safe-area keyboard fixture through its test-only selector', () => {
     expect(selectEntryRoute({ OROT_E2E_PROBE: 'safe-area' })).toBe('safe-area');
   });

@@ -1,3 +1,5 @@
+// LangGraph reads ReadableStream during module initialization on Hermes.
+import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { AppRegistry } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
