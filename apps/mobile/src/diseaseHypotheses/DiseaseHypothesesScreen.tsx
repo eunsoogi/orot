@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
+import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { getDiseaseHypothesisCopy } from './copy';
 import type {
   DiseaseHypothesisAnalysis,
@@ -8,8 +10,12 @@ import type {
 } from './task';
 
 interface DiseaseHypothesesScreenProps {
+  readonly navigationRouteKey?: string;
+  readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
-  readonly onGenerate: () => Promise<DiseaseHypothesisRunOutcome>;
+  readonly onGenerate: (
+    signal?: AbortSignal,
+  ) => Promise<DiseaseHypothesisRunOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
 
@@ -46,18 +52,44 @@ function EvidenceLinks({
 
 /** Presents hypotheses only after #117 validates coverage, freshness, and exact citations. */
 export function DiseaseHypothesesScreen({
+  navigationRouteKey,
+  onNavigationStateChange,
   onBack,
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
   const copy = getDiseaseHypothesisCopy();
   const [state, setState] = useState<ScreenState>({ status: 'idle' });
+  const operationController = useRef<AbortController | null>(null);
+
+  useAiFeatureScreenNavigationState(
+    navigationRouteKey,
+    {
+      hasUnsavedChanges: state.status === 'result',
+      isRecording: false,
+      // The request receives this signal and is aborted when a confirmed leave unmounts.
+      hasOngoingOperation: state.status === 'loading',
+    },
+    0,
+    onNavigationStateChange,
+  );
+
+  useEffect(
+    () => () => {
+      operationController.current?.abort();
+      operationController.current = null;
+    },
+    [],
+  );
 
   async function generate() {
     if (state.status === 'loading') return;
+    const controller = new AbortController();
+    operationController.current = controller;
     setState({ status: 'loading' });
     try {
-      const outcome = await onGenerate();
+      const outcome = await onGenerate(controller.signal);
+      if (controller.signal.aborted) return;
       if (outcome.status === 'incomplete_inventory')
         setState({ status: 'insufficient' });
       else if (outcome.result.status === 'result')
@@ -66,7 +98,11 @@ export function DiseaseHypothesesScreen({
         setState({ status: 'insufficient' });
       else setState({ status: 'error' });
     } catch {
-      setState({ status: 'error' });
+      if (!controller.signal.aborted) setState({ status: 'error' });
+    } finally {
+      if (operationController.current === controller) {
+        operationController.current = null;
+      }
     }
   }
 

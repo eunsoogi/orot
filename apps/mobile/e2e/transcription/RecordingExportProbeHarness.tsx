@@ -193,6 +193,7 @@ export function RecordingExportProbeHarness() {
       status === 'ready' &&
       syntheticCompletedRecording ? (
         // A completed synthetic recording drives the same controls branch as a saved user recording.
+        // No recorder is active in this probe, so the shared async stop contract resolves without work.
         <RecordingControls
           onBack={() => {}}
           stateReady
@@ -204,7 +205,7 @@ export function RecordingExportProbeHarness() {
           onStart={() => {}}
           onPause={() => {}}
           onResume={() => {}}
-          onStop={() => {}}
+          onStop={() => Promise.resolve()}
           lastRecording={syntheticCompletedRecording}
           sourceSaved
           onRetrySourceSave={() => {}}

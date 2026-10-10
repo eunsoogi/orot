@@ -14,6 +14,9 @@ export const providerSelectionText = {
   unsupportedCapabilities: t('provider.selection.unsupportedCapabilities'),
   storageLoadError: t('provider.selection.storageLoadError'),
   storageSaveError: t('provider.selection.storageSaveError'),
+  saveInProgressTitle: t('provider.selection.saveInProgressTitle'),
+  saveInProgressMessage: t('provider.selection.saveInProgressMessage'),
+  saveInProgressConfirm: t('provider.selection.saveInProgressConfirm'),
   confirmApple: t('provider.selection.confirmApple'),
   confirmRemote: t('provider.selection.confirmRemote'),
   cancel: t('provider.selection.cancel'),
@@ -53,5 +56,4 @@ export const providerSelectionText = {
   chatGPTModelsLoaded: t('provider.selection.chatGPTModelsLoaded'),
   chatGPTModelsUnavailable: t('provider.selection.chatGPTModelsUnavailable'),
   chatGPTLoginCancelled: t('provider.selection.chatGPTLoginCancelled'),
-  chatGPTBack: t('provider.selection.back'),
 } as const;

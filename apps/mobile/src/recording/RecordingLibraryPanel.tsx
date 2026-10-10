@@ -9,6 +9,7 @@ import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import type { RecordingLibraryService } from './recordingLibraryService';
 import { formatRecordedAt } from './formatRecordedAt';
+import RecordingExportPanel from './RecordingExportPanel';
 
 type DeleteNotice = 'error' | 'cleanup-pending' | null;
 
@@ -204,6 +205,13 @@ export default function RecordingLibraryPanel({
             />
           </View>
         </View>
+      ) : null}
+      {/* Use the persisted selection because the in-memory lastRecording snapshot disappears after relaunch. */}
+      {selected ? (
+        <RecordingExportPanel
+          recordingSourceId={selected.id}
+          transcriptService={transcriptService}
+        />
       ) : null}
       <TranscriptEvidencePanel
         key={JSON.stringify(recordings.map(source => source.id))}

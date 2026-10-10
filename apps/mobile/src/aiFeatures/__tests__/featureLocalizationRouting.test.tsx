@@ -34,6 +34,7 @@ const featureScreens = [
       'aiFeatures.visitQuestions.title',
       'aiFeatures.visitQuestions.description',
       'aiFeatures.visitQuestions.action',
+      'aiFeatures.visitQuestions.unavailable',
       'aiFeatures.diseaseHypotheses.title',
       'aiFeatures.diseaseHypotheses.description',
       'aiFeatures.diseaseHypotheses.action',

@@ -28,6 +28,10 @@ export const providerAccountsKo = {
   'provider.selection.storageLoadError': '저장된 AI 선택을 불러오지 못했어요.',
   'provider.selection.storageSaveError':
     'AI 선택을 저장하지 못했어요. 다시 시도해 주세요.',
+  'provider.selection.saveInProgressTitle': 'AI 선택을 저장하고 있어요',
+  'provider.selection.saveInProgressMessage':
+    '저장이 끝날 때까지 이 화면을 유지해 주세요.',
+  'provider.selection.saveInProgressConfirm': '확인',
   'provider.selection.confirmApple': '이 기기에서 처리하도록 선택',
   'provider.selection.confirmRemote': '원격 처리에 동의하고 선택 저장',
   'provider.selection.cancel': '취소',
@@ -77,5 +81,4 @@ export const providerAccountsKo = {
   'provider.selection.chatGPTModelsUnavailable':
     'ChatGPT 모델 목록을 확인하지 못했어요. 로그인 상태와 권한을 확인해 주세요.',
   'provider.selection.chatGPTLoginCancelled': 'ChatGPT 로그인을 취소했어요.',
-  'provider.selection.back': '돌아가기',
 } as const;

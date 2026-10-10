@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigationLeaveStateRegistration } from '../../navigation';
+import type { NavigationLeaveState } from '../../navigation';
 import { t } from '../../i18n';
 import type {
   BloodPressureComponent,
@@ -36,6 +38,7 @@ export function BloodPressureImportScreen({
   );
   const [importStatus, setImportStatus] = useState<ImportStatus>('idle');
   const [isImporting, setIsImporting] = useState(false);
+  const [leaveRevision, setLeaveRevision] = useState(0);
 
   const reload = useCallback(async () => {
     setLoadState('loading');
@@ -51,10 +54,20 @@ export function BloodPressureImportScreen({
     reload().catch(() => undefined);
   }, [reload]);
 
+  const hasSharedNavigation = useNavigationLeaveStateRegistration({
+    canLeave: !isImporting,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: leaveRevision,
+    inputRevision: 0,
+  } satisfies NavigationLeaveState);
+
   async function startImport() {
     if (isImporting) return;
     setIsImporting(true);
     setImportStatus('importing');
+    setLeaveRevision(current => current + 1);
     try {
       const result = await importBloodPressure();
       setImportStatus(toImportStatus(result));
@@ -63,6 +76,7 @@ export function BloodPressureImportScreen({
       setImportStatus('failed');
     } finally {
       setIsImporting(false);
+      setLeaveRevision(current => current + 1);
     }
   }
 
@@ -80,12 +94,14 @@ export function BloodPressureImportScreen({
         >
           {t('healthkit.bloodPressure.title')}
         </Text>
-        <Button
-          disabled={isImporting}
-          onPress={onBack}
-          testID="blood-pressure-back"
-          title={t('healthkit.bloodPressure.back')}
-        />
+        {hasSharedNavigation ? null : (
+          <Button
+            disabled={isImporting}
+            onPress={onBack}
+            testID="blood-pressure-back"
+            title={t('healthkit.bloodPressure.back')}
+          />
+        )}
       </View>
       <Text>{t('healthkit.bloodPressure.description')}</Text>
       <Text testID="blood-pressure-read-authorization">
