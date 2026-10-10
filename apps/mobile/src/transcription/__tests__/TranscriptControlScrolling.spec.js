@@ -19,13 +19,22 @@ describe('transcript control scrolling', () => {
     global.waitFor = originals.waitFor;
   });
 
-  it('scrolls down and waits for the Save control before tapping it', async () => {
+  it('drags to dismiss the keyboard before checking Save visibility and tapping', async () => {
     const actions = [];
     const target = { tap: () => actions.push('tap') };
     const scrollPending = Promise.withResolvers();
+    const dragPending = Promise.withResolvers();
 
     global.by = { id: id => ({ id }) };
     global.element = selector => {
+      if (selector.id === 'recording-controls-scroll') {
+        return {
+          scroll: (...args) => {
+            actions.push(['drag', ...args]);
+            return dragPending.promise;
+          },
+        };
+      }
       jestExpect(selector.id).toBe('transcript-save-0');
       return target;
     };
@@ -46,11 +55,17 @@ describe('transcript control scrolling', () => {
       };
     };
 
-    // Detox scroll direction follows content order; Save sits below the editor.
+    // A visibility query can succeed behind the iOS keyboard; a real drag must happen first.
     const saveFlow = scrollToSaveButton('transcript-save-0').then(saveButton =>
       saveButton.tap(),
     );
-    jestExpect(actions).toEqual([['scroll', 100, 'down', 0.5, 0.35]]);
+    jestExpect(actions).toEqual([['drag', 100, 'down', 0.5, 0.35]]);
+    dragPending.resolve();
+    await Promise.resolve();
+    jestExpect(actions).toEqual([
+      ['drag', 100, 'down', 0.5, 0.35],
+      ['scroll', 100, 'down', 0.5, 0.35],
+    ]);
 
     scrollPending.resolve();
     await saveFlow;

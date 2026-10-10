@@ -13,7 +13,7 @@ describe('Blood-pressure import on a dedicated iOS Simulator', () => {
     await device.disableSynchronization();
 
     await waitFor(element(by.id('welcome-title')))
-      .toHaveText('Orot에 오신 걸 환영해요')
+      .toHaveText('오롯')
       .withTimeout(30000);
     await element(by.id('open-blood-pressure-import')).tap();
     await waitFor(element(by.id('blood-pressure-title')))
@@ -85,7 +85,7 @@ describe('Blood-pressure import on a dedicated iOS Simulator', () => {
     await device.launchApp({ newInstance: false, launchArgs });
     await device.disableSynchronization();
     await waitFor(element(by.id('welcome-title')))
-      .toHaveText('Orot에 오신 걸 환영해요')
+      .toHaveText('오롯')
       .withTimeout(30000);
     await element(by.id('open-blood-pressure-import')).tap();
     await waitFor(element(by.id('blood-pressure-title')))

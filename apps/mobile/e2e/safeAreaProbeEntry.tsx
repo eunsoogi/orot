@@ -6,11 +6,12 @@ import {
   Keyboard,
   PixelRatio,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
 import { name as appName } from '../app.json';
+import { AppText as Text } from '../src/layout/AppText';
+import { appColors } from '../src/layout/appColors';
 import SafeAreaLayout from '../src/layout/SafeAreaLayout';
 
 function SafeAreaProbeEntry() {
@@ -51,15 +52,15 @@ function SafeAreaProbeEntry() {
   return (
     <SafeAreaLayout scrollable>
       <View style={styles.content}>
-        <Text accessibilityRole="header">Safe area keyboard probe</Text>
+        <Text accessibilityRole="header">안전 영역과 키보드 확인</Text>
         <Text
           accessible
           accessibilityLabel={
-            largeTextEnabled ? 'large-text-enabled' : 'large-text-disabled'
+            largeTextEnabled ? '큰 글자 사용 중' : '큰 글자 사용 안 함'
           }
           testID="safe-area-large-text-state"
         >
-          Font scale: {PixelRatio.getFontScale()}
+          글자 배율: {PixelRatio.getFontScale()}
         </Text>
         {/* Detox waits on an ID because the dynamic label matcher timed out on iOS. */}
         <Text
@@ -75,25 +76,27 @@ function SafeAreaProbeEntry() {
               : 'safe-area-keyboard-hidden'
           }
         >
-          Keyboard {keyboardFrame ? 'visible' : 'hidden'}
+          키보드 {keyboardFrame ? '표시' : '숨김'}
         </Text>
         <TextInput
-          accessibilityLabel="Keyboard test input"
+          accessibilityLabel="메모 입력"
           onChangeText={setValue}
-          placeholder="Enter a note"
+          placeholder="메모를 입력하세요"
+          placeholderTextColor={appColors.secondary}
+          style={styles.input}
           testID="safe-area-keyboard-input"
           value={value}
         />
         {Array.from({ length: 12 }, (_, index) => (
-          <Text key={index}>Scrollable section {index + 1}</Text>
+          <Text key={index}>스크롤 내용 {index + 1}</Text>
         ))}
         {actionCompleted ? (
-          <Text testID="safe-area-keyboard-action-done">Action completed</Text>
+          <Text testID="safe-area-keyboard-action-done">완료</Text>
         ) : (
           <Button
             onPress={() => setActionCompleted(true)}
             testID="safe-area-keyboard-action"
-            title="Continue"
+            title="계속"
           />
         )}
       </View>
@@ -103,6 +106,15 @@ function SafeAreaProbeEntry() {
 
 const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: 18, padding: 24 },
+  input: {
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: appColors.text,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
 });
 
 AppRegistry.registerComponent(appName, () => SafeAreaProbeEntry);

@@ -1,16 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { healthKitFeatures } from '../types';
+import { useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import type { HealthKitFeature } from '../types';
+import { AppText as Text } from '../../layout/AppText';
+import { AppButton } from '../../layout/AppButton';
+import { AppSymbol } from '../../layout/AppSymbol';
+import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { useNavigationPrimaryAction } from '../../navigation/useNavigationPrimaryAction';
+import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
+import { useNavigationLeaveStateRegistration } from '../../navigation';
 import { EventKitImportSection } from './EventKitImportSection';
+import { HealthKitProviderCard } from './HealthKitProviderCard';
 import { createUnifiedImportCoordinator } from './coordinator';
+import { useUnifiedImportScreen } from './useUnifiedImportScreen';
+import { unifiedImportStyles as styles } from './unifiedImportStyles';
 import type {
   UnifiedFeatureStatus,
   UnifiedImportMeasurement,
-  UnifiedImportProgress,
-  UnifiedImportRun,
-  UnifiedImportSelection,
   UnifiedImportStatus,
 } from './types';
 
@@ -39,7 +46,7 @@ interface HealthKitImportScreenProps {
   readonly onRunStarted?: () => void;
 }
 
-/** Presents selected providers and keeps per-provider outcomes visible during sync. */
+/** Presents actual provider outcomes under the same safe-area and action ownership as the rest of the app. */
 export function HealthKitImportScreen({
   copy,
   coordinator,
@@ -47,204 +54,126 @@ export function HealthKitImportScreen({
   onMeasurement,
   onRunStarted,
 }: HealthKitImportScreenProps) {
-  const mounted = useRef(true);
-  // A completed calendar save may publish after a later import has taken ownership.
-  const runGeneration = useRef(0);
-  const [selected, setSelected] = useState<ReadonlySet<HealthKitFeature>>(
-    new Set(),
+  const state = useUnifiedImportScreen(
+    coordinator,
+    onMeasurement,
+    onRunStarted,
   );
-  const [eventKitSelected, setEventKitSelected] = useState(false);
-  const [progress, setProgress] = useState<UnifiedImportProgress | null>(null);
-  const [run, setRun] = useState<UnifiedImportRun | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-
-  useEffect(
-    () => () => {
-      mounted.current = false;
-      runGeneration.current += 1;
-    },
-    [],
-  );
-
-  function toggleFeature(feature: HealthKitFeature) {
-    runGeneration.current += 1;
-    setSelected(current => {
-      const next = new Set(current);
-      if (next.has(feature)) next.delete(feature);
-      else next.add(feature);
-      return next;
-    });
-    setProgress(null);
-    setRun(null);
-  }
-
-  function toggleEventKit() {
-    runGeneration.current += 1;
-    setEventKitSelected(current => !current);
-    setProgress(null);
-    setRun(null);
-  }
-
-  function startImport() {
-    const selection: UnifiedImportSelection = {
-      healthKitFeatures: healthKitFeatures.filter(feature =>
-        selected.has(feature),
-      ),
-      eventKit: eventKitSelected,
-    };
-    if (
-      isRunning ||
-      (selection.healthKitFeatures.length === 0 && !selection.eventKit)
-    ) {
-      return;
-    }
-    setProgress(null);
-    setRun(null);
-    setIsRunning(true);
-    const generation = ++runGeneration.current;
-    const isCurrentRun = () =>
-      mounted.current && runGeneration.current === generation;
-    try {
-      // Probe offsets reset per run, so old callbacks must not contaminate measurements.
-      onRunStarted?.();
-      const active = coordinator.start(selection, {
-        onProgress: value => isCurrentRun() && setProgress(value),
-        ...(onMeasurement
-          ? { onMeasurement: value => isCurrentRun() && onMeasurement(value) }
-          : {}),
-      });
-      setRun(active);
-      active.result.then(result => {
-        if (!mounted.current || runGeneration.current !== generation) return;
-        setProgress(result.progress);
-        setIsRunning(false);
-      });
-    } catch {
-      setProgress(failedProgress(selection));
-      setIsRunning(false);
-      setRun(null);
-    }
-  }
-
+  const inset = useNavigationContentInset();
+  const [candidateAction, setCandidateAction] =
+    useState<NavigationPrimaryAction>();
+  const [candidateSaving, setCandidateSaving] = useState(false);
+  const { selected, eventKitSelected, progress, run, isRunning } = state;
   const phase = progress?.phase ?? 'queued';
   const hasSelection = selected.size > 0 || eventKitSelected;
+  const reviewingCalendar =
+    eventKitSelected &&
+    Boolean(progress?.eventKit.candidates.length) &&
+    !progress?.eventKit.appointmentConfirmed;
+  const importAction: NavigationPrimaryAction = isRunning
+    ? {
+        label: copy.cancelButton,
+        accessibilityLabel: copy.cancelButton,
+        testID: 'unified-import-cancel',
+        disabled: phase === 'cancelling',
+        onPress: () => run?.cancel(),
+      }
+    : {
+        label: copy.importButton,
+        accessibilityLabel: copy.importButton,
+        testID: 'unified-import-start',
+        disabled: !hasSelection,
+        onPress: state.startImport,
+      };
+  const hasSharedAction = useNavigationPrimaryAction(
+    candidateAction ?? importAction,
+  );
+  useNavigationLeaveStateRegistration({
+    canLeave: !candidateSaving,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: isRunning,
+    revision: state.revision,
+    inputRevision: state.revision,
+  });
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {onBack ? (
-        <Button
+    <ScrollView
+      contentContainerStyle={[styles.container, inset]}
+      style={styles.scroll}
+      testID="unified-import-scroll"
+    >
+      {onBack && !hasSharedAction ? (
+        <AppButton
           onPress={onBack}
           testID="healthkit-unified-import-back"
           title={t('healthkit.unifiedImport.back')}
+          variant="secondary"
         />
       ) : null}
-      <Text accessibilityRole="header" style={styles.title}>
-        {copy.title}
-      </Text>
-      <Text>{copy.description}</Text>
-      {healthKitFeatures.map(feature => {
-        const checked = selected.has(feature);
-        const outcome = progress?.features[feature];
-        return (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked, disabled: isRunning }}
-            disabled={isRunning}
-            key={feature}
-            onPress={() => toggleFeature(feature)}
-            style={styles.option}
-            testID={`unified-import-toggle-${feature}`}
-          >
-            <Text>{`${checked ? '☑' : '☐'} ${copy.featureNames[feature]}`}</Text>
-            {outcome && outcome.status !== 'notSelected' ? (
-              <Text testID={`unified-import-feature-status-${feature}`}>
-                {copy.featureStatuses[outcome.status]}
-              </Text>
-            ) : null}
-            {outcome &&
-            outcome.importedCount !== null &&
-            outcome.deletedCount !== null ? (
-              <Text>
-                {copy.changeSummary(
-                  outcome.importedCount,
-                  outcome.deletedCount,
-                )}
-              </Text>
-            ) : null}
-          </Pressable>
-        );
-      })}
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={styles.title}>
+          {reviewingCalendar
+            ? t('healthkit.unifiedImport.reviewTitle')
+            : copy.title}
+        </Text>
+        <Text style={styles.description}>
+          {reviewingCalendar ? t('calendar.confirmPrompt') : copy.description}
+        </Text>
+      </View>
+      {!reviewingCalendar || selected.size > 0 ? (
+        <HealthKitProviderCard
+          copy={copy}
+          selected={selected}
+          progress={progress}
+          disabled={isRunning || candidateSaving}
+          onToggle={state.toggleHealthKit}
+          onToggleFeature={state.toggleFeature}
+        />
+      ) : null}
       <EventKitImportSection
+        reviewing={reviewingCalendar}
         disabled={isRunning}
-        onToggle={toggleEventKit}
+        onToggle={state.toggleEventKit}
         progress={progress?.eventKit ?? null}
         run={run}
         selected={eventKitSelected}
+        onPrimaryActionChange={hasSharedAction ? setCandidateAction : undefined}
+        onSavingChange={setCandidateSaving}
       />
-      <Text>{copy.localOnly}</Text>
-      <Text testID="unified-import-read-authorization">
+      <View style={styles.notice}>
+        <AppSymbol name="lock.shield" size={18} color={appColors.secondary} />
+        <Text style={styles.noticeText}>{copy.localOnly}</Text>
+      </View>
+      <Text style={styles.caption} testID="unified-import-read-authorization">
         {copy.readAuthorization}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{
-          disabled: !hasSelection || isRunning,
-        }}
-        disabled={!hasSelection || isRunning}
-        onPress={startImport}
-        style={styles.importButton}
-        testID="unified-import-start"
-      >
-        <Text>{copy.importButton}</Text>
-      </Pressable>
-      {run && isRunning ? (
-        <Pressable
-          accessibilityRole="button"
-          disabled={!isRunning}
-          onPress={() => run.cancel()}
-          style={styles.cancelButton}
-          testID="unified-import-cancel"
-        >
-          <Text>{copy.cancelButton}</Text>
-        </Pressable>
+      {!hasSharedAction ? (
+        <>
+          <AppButton
+            accessibilityState={{ busy: isRunning }}
+            disabled={!hasSelection || isRunning}
+            onPress={state.startImport}
+            title={copy.importButton}
+            testID="unified-import-start"
+          />
+          {run && isRunning ? (
+            <AppButton
+              onPress={() => run.cancel()}
+              title={copy.cancelButton}
+              testID="unified-import-cancel"
+              variant="secondary"
+            />
+          ) : null}
+        </>
       ) : null}
-      <Text accessibilityLiveRegion="polite" testID="unified-import-status">
+      <Text
+        accessibilityLiveRegion="polite"
+        style={styles.status}
+        testID="unified-import-status"
+      >
         {copy.phaseStatuses[phase]}
       </Text>
     </ScrollView>
   );
 }
-
-function failedProgress(
-  selection: UnifiedImportSelection,
-): UnifiedImportProgress {
-  const features = Object.fromEntries(
-    healthKitFeatures.map(feature => [
-      feature,
-      {
-        status: selection.healthKitFeatures.includes(feature)
-          ? 'failed'
-          : 'notSelected',
-        importedCount: null,
-        deletedCount: null,
-      },
-    ]),
-  ) as UnifiedImportProgress['features'];
-  return {
-    phase: 'failed',
-    features,
-    eventKit: {
-      status: selection.eventKit ? 'failed' : 'notSelected',
-      access: null,
-      candidates: [],
-      appointmentConfirmed: false,
-    },
-  };
-}
-
-const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  title: { fontSize: 22, fontWeight: '700' },
-  option: { minHeight: 48, justifyContent: 'center', gap: 4 },
-  importButton: { minHeight: 48, justifyContent: 'center' },
-  cancelButton: { minHeight: 48, justifyContent: 'center' },
-});

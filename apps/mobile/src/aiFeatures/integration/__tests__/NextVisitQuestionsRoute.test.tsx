@@ -127,7 +127,9 @@ test('renders the visit route with selected AI, generation, source, and save act
   await render(<NextVisitQuestionsRoute {...props} />);
   await waitFor(() => expect(screen.getByText('합성 예약')).toBeTruthy());
   await waitFor(() =>
-    expect(screen.getByText('Apple Intelligence')).toBeTruthy(),
+    expect(screen.getByTestId('next-visit-provider-select')).toHaveTextContent(
+      /Apple Intelligence/u,
+    ),
   );
   await fireEvent.press(screen.getByTestId('next-visit-generate'));
   await waitFor(() =>

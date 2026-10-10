@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
 import {
@@ -15,7 +16,10 @@ import {
   projectCalendarMonthEvents,
 } from './calendarMonthEvents';
 import type { CalendarMonthDisplayEvent } from './calendarMonthEvents';
-import { CalendarMonthHeader } from './CalendarMonthHeader';
+import {
+  CalendarMonthHeader,
+  CalendarWeekdayHeader,
+} from './CalendarMonthHeader';
 import {
   CalendarDayCell,
   CalendarMonthEventRow,
@@ -140,26 +144,40 @@ export function CalendarMonthView({
 
   return (
     <View style={styles.calendarMonth} testID="calendar-month-view">
+      {/* Month controls stay in the viewport even when the 44pt date columns overflow. */}
       <CalendarMonthHeader
         year={visibleMonth.year}
         month={visibleMonth.month}
         onMoveMonth={moveMonth}
       />
-      <View style={styles.calendarGrid} testID="calendar-date-grid">
-        {gridDays.map(day => {
-          const dayEvents = eventsForDay(day.dateKey);
-          return (
-            <CalendarDayCell
-              day={day}
-              dayEvents={dayEvents}
-              key={day.dateKey}
-              label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
-              onPress={focusDate}
-              selected={day.dateKey === selectedDate}
-            />
-          );
-        })}
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.calendarDateGridScroll}
+        testID="calendar-date-grid-scroll"
+      >
+        <View
+          style={styles.calendarDateGridContent}
+          testID="calendar-date-grid-content"
+        >
+          <CalendarWeekdayHeader />
+          <View style={styles.calendarGrid} testID="calendar-date-grid">
+            {gridDays.map(day => {
+              const dayEvents = eventsForDay(day.dateKey);
+              return (
+                <CalendarDayCell
+                  day={day}
+                  dayEvents={dayEvents}
+                  key={day.dateKey}
+                  label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
+                  onPress={focusDate}
+                  selected={day.dateKey === selectedDate}
+                />
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
       <View style={styles.calendarSelectedDateEvents}>
         <Text
           accessibilityRole="header"

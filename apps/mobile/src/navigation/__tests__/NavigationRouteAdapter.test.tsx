@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useLayoutEffect } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
@@ -16,6 +16,13 @@ jest.mock('react-native-safe-area-context', () => {
     require('react-native') as typeof import('react-native');
 
   return {
+    SafeAreaInsetsContext: React.createContext({
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 34,
+    }),
+    useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 34 }),
     SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     SafeAreaView: ({
@@ -133,10 +140,36 @@ describe('app navigation route adapter', () => {
       controller.push('editor');
     });
 
-    expect(screen.queryAllByA11yHint('top,right,left')).toHaveLength(0);
+    expect(screen.queryAllByA11yHint('top,right,bottom,left')).toHaveLength(0);
     expect(childOwnsInsets).toHaveBeenLastCalledWith(
       expect.objectContaining({ name: 'editor' }),
     );
+  });
+
+  it('overlays the shared action bar on a scroll viewport that fills the route', async () => {
+    const controller = createNavigationController<TestRoute>('home');
+    controller.push('editor');
+
+    await render(
+      <NavigationRouteAdapter controller={controller} scrollable showHome>
+        {({ route }) => <Text>{route.name}</Text>}
+      </NavigationRouteAdapter>,
+    );
+
+    expect(screen.queryAllByA11yHint('top,right,bottom,left')).toHaveLength(0);
+    expect(screen.getAllByA11yHint('top,right,left')).toHaveLength(1);
+    const scrollView = screen.getByTestId('navigation-route-scroll');
+    const actionBarOverlay = screen.getByTestId(
+      'navigation-action-bar-overlay',
+    );
+    expect(StyleSheet.flatten(actionBarOverlay.props.style)).toEqual(
+      expect.objectContaining({ position: 'absolute', bottom: 0 }),
+    );
+    expect(StyleSheet.flatten(scrollView.props.contentContainerStyle)).toEqual(
+      expect.objectContaining({ flexGrow: 1, paddingBottom: 108 }),
+    );
+    expect(screen.getByTestId('navigation-back')).toBeVisible();
+    expect(scrollView).toBeVisible();
   });
 
   it('keeps the action bar in a keyboard-avoiding root instead of removing it', async () => {
@@ -153,5 +186,6 @@ describe('app navigation route adapter', () => {
       screen.getByTestId('navigation-keyboard-avoiding-root'),
     ).toBeVisible();
     expect(screen.getByTestId('navigation-back')).toBeVisible();
+    expect(screen.getByTestId('navigation-action-bar-overlay')).toBeVisible();
   });
 });

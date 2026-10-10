@@ -6,7 +6,6 @@ export const bloodPressureKo = {
     'HealthKit에서 가져온 수축기와 이완기 측정값을 확인할 수 있어요.',
   'healthkit.bloodPressure.localOnly':
     '선택한 기록만 이 기기의 암호화된 저장소에 보관해요.',
-  'healthkit.bloodPressure.back': '뒤로',
   'healthkit.bloodPressure.import': 'HealthKit 혈압 기록 가져오기',
   'healthkit.bloodPressure.readAuthorization':
     'HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.',

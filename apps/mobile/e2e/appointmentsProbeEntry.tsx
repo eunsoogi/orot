@@ -4,7 +4,7 @@ import { AppRegistry, StyleSheet, Text, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import { name as appName } from '../app.json';
-import AppointmentsScreen from '../src/appointments/AppointmentsScreen';
+import ManualAppointmentScreen from '../src/medicalAppointments/ManualAppointmentScreen';
 import { openLocalAppointmentRepository } from '../src/appointments/localRepository';
 
 function AppointmentsProbeEntry() {
@@ -36,7 +36,7 @@ function AppointmentsProbeEntry() {
   if (!showAppointments) return <App />;
   if (repository) {
     return (
-      <AppointmentsScreen
+      <ManualAppointmentScreen
         onBack={() => setShowAppointments(false)}
         repository={repository}
       />

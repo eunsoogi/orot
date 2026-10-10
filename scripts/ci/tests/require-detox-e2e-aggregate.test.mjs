@@ -15,7 +15,7 @@ test('accepts successful Release and OpenAI Debug jobs with the complete case in
   const result = runAggregate([
     'success',
     'release',
-    '14',
+    '21',
     '1',
     'success',
     'openai-provider',
@@ -23,7 +23,7 @@ test('accepts successful Release and OpenAI Debug jobs with the complete case in
     '1',
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /15\/15 tests passed across Release \(14\) and OpenAI Debug \(1\)/);
+  assert.match(result.stdout, /22\/22 tests passed across Release \(21\) and OpenAI Debug \(1\)/);
 });
 
 test('fails closed when either child job failed, was canceled, skipped, or is missing', () => {
@@ -31,7 +31,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedRelease = runAggregate([
       result,
       'release',
-      '14',
+      '21',
       '1',
       'success',
       'openai-provider',
@@ -43,7 +43,7 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
     const failedDebug = runAggregate([
       'success',
       'release',
-      '14',
+      '21',
       '1',
       result,
       'openai-provider',
@@ -60,16 +60,21 @@ test('fails closed when either child job failed, was canceled, skipped, or is mi
 
 test('fails closed when a profile, test count, or configured suite count is absent or incorrect', () => {
   for (const values of [
-    ['success', '', '14', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'openai-provider', '14', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', '', '21', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'openai-provider', '21', '1', 'success', 'openai-provider', '1', '1'],
     ['success', 'release', '', '1', 'success', 'openai-provider', '1', '1'],
-    // The former inventory must fail after adding the App navigation probe.
-    ['success', 'release', '13', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '15', '1', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '14', '0', 'success', 'openai-provider', '1', '1'],
-    ['success', 'release', '14', '1', 'success', 'release', '1', '1'],
-    ['success', 'release', '14', '1', 'success', 'openai-provider', '0', '1'],
-    ['success', 'release', '14', '1', 'success', 'openai-provider', '1', '0'],
+    // Reject the previous inventory and incomplete or inflated current summaries.
+    ['success', 'release', '14', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '20', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '22', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '0', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '021', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '21.0', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '21x', '1', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '21', '0', 'success', 'openai-provider', '1', '1'],
+    ['success', 'release', '21', '1', 'success', 'release', '1', '1'],
+    ['success', 'release', '21', '1', 'success', 'openai-provider', '0', '1'],
+    ['success', 'release', '21', '1', 'success', 'openai-provider', '1', '0'],
   ]) {
     assert.notEqual(runAggregate(values).status, 0, `accepted ${JSON.stringify(values)}`);
   }

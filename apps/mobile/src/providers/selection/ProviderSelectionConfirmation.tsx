@@ -1,4 +1,7 @@
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '../../layout/AppText';
+import { StyleSheet, View } from 'react-native';
+import { AppButton as Button } from '../../layout/AppButton';
+import { appColors } from '../../layout/appColors';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionOption } from './types';
 
@@ -55,5 +58,5 @@ export default function ProviderSelectionConfirmation({
 
 const styles = StyleSheet.create({
   container: { gap: 10, paddingTop: 8 },
-  blockedMessage: { color: '#9a3412' },
+  blockedMessage: { color: appColors.danger },
 });

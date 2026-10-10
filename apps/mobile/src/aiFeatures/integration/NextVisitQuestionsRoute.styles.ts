@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 
 export const visitQuestionsRouteStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f8fa' },
+  container: { flex: 1, backgroundColor: appColors.background },
   saveNotice: {
-    color: '#8a1c1c',
     paddingHorizontal: 20,
     paddingBottom: 12,
   },

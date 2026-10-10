@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '../../layout/AppText';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { appColors } from '../../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import type { NavigationLeaveState } from '../../navigation';
 import {
@@ -154,13 +156,17 @@ export function CommonObservationsImportScreen({
         onPress={() => {
           startImport().catch(() => undefined);
         }}
-        style={styles.importButton}
+        style={[
+          styles.importButton,
+          (selected.size === 0 || isImporting) && styles.importButtonDisabled,
+        ]}
         testID="common-observations-import"
       >
-        <Text>{copy.importButton}</Text>
+        <Text style={styles.importButtonLabel}>{copy.importButton}</Text>
       </Pressable>
       <Text
         accessibilityLiveRegion="polite"
+        style={status === 'failed' ? styles.error : undefined}
         testID="common-observations-status"
       >
         {copy.statuses[status]}
@@ -179,8 +185,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700' },
   option: { minHeight: 44, justifyContent: 'center' },
   importButton: {
-    minHeight: 44,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: appColors.primaryAction,
+    borderRadius: 16,
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingHorizontal: 18,
+  },
+  importButtonDisabled: { opacity: 0.45 },
+  error: { color: appColors.danger },
+  // This filled primary action keeps its foreground readable in both palettes.
+  importButtonLabel: {
+    color: appColors.onPrimary,
+    fontWeight: '600',
   },
 });

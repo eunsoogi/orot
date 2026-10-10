@@ -1,15 +1,49 @@
 import type { ReactNode } from 'react';
+import { NAVIGATION_SURFACE_HEIGHT } from './navigationLayout';
 import {
+  type NativeSyntheticEvent,
   Platform,
   requireNativeComponent,
   StyleSheet,
+  useColorScheme,
   View,
+  type StyleProp,
   type ViewProps,
+  type ViewStyle,
 } from 'react-native';
 
+export interface NavigationGlassAction {
+  readonly id: string;
+  readonly label: string;
+  readonly accessibilityLabel: string;
+  readonly testID: string;
+  readonly systemImageName?: string;
+  readonly disabled?: boolean;
+  readonly primary?: boolean;
+  readonly selected?: boolean;
+  readonly showsTitleWithSystemImage?: boolean;
+  readonly titleBelowImage?: boolean;
+}
+
+export interface NavigationGlassActionEvent {
+  readonly id: string;
+}
+
+export type NavigationGlassActionEventHandler = (
+  event: NativeSyntheticEvent<NavigationGlassActionEvent>,
+) => void;
+
+export interface NavigationGlassSurfaceProps {
+  readonly children: ReactNode;
+  readonly style?: StyleProp<ViewStyle>;
+  readonly testID: string;
+  readonly actions?: readonly NavigationGlassAction[];
+  readonly onAction?: NavigationGlassActionEventHandler;
+}
+
 interface NavigationGlassNativeProps extends ViewProps {
-  readonly testID?: string;
-  readonly children?: ReactNode;
+  readonly actions?: readonly NavigationGlassAction[];
+  readonly onAction?: NavigationGlassActionEventHandler;
 }
 
 const NativeNavigationGlassSurface =
@@ -18,24 +52,30 @@ const NativeNavigationGlassSurface =
     : null;
 
 export function NavigationGlassSurface({
+  actions = [],
   children,
+  onAction,
   style,
   testID,
-}: NavigationGlassNativeProps) {
+}: NavigationGlassSurfaceProps) {
+  const isDarkAppearance = useColorScheme() === 'dark';
+
   if (NativeNavigationGlassSurface) {
     return (
       <NativeNavigationGlassSurface
-        pointerEvents="box-none"
+        actions={actions}
+        onAction={onAction}
         style={[styles.surface, style]}
         testID={testID}
-      >
-        {children}
-      </NativeNavigationGlassSurface>
+      />
     );
   }
 
   return (
-    <View style={[styles.fallback, style]} testID={testID}>
+    <View
+      style={[styles.fallback, isDarkAppearance && styles.darkFallback, style]}
+      testID={testID}
+    >
       {children}
     </View>
   );
@@ -44,16 +84,16 @@ export function NavigationGlassSurface({
 const styles = StyleSheet.create({
   surface: {
     flexShrink: 0,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    height: NAVIGATION_SURFACE_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
   },
   fallback: {
-    backgroundColor: '#f7f8fa',
-    borderTopColor: '#52616d',
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
     paddingBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 8,
   },
+  darkFallback: { backgroundColor: '#191f28' },
 });

@@ -164,7 +164,9 @@ async function startGeneration(route: Awaited<ReturnType<typeof render>>) {
   await fireEvent.press(route.getByTestId('ai-feature-visit-questions'));
   await waitFor(() => expect(route.getByText('합성 예약')).toBeTruthy());
   await waitFor(() =>
-    expect(route.getByText('Apple Intelligence')).toBeTruthy(),
+    expect(route.getByTestId('next-visit-provider-select')).toHaveTextContent(
+      /Apple Intelligence/u,
+    ),
   );
   await fireEvent.press(route.getByTestId('next-visit-generate'));
   await waitFor(() =>

@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { AppText as Text } from '../../layout/AppText';
+import { Pressable, StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 import { isProviderSelectionOptionSelectable } from './providerSelection';
 import { providerSelectionText } from './text';
 import type {
@@ -74,13 +76,13 @@ const styles = StyleSheet.create({
   option: {
     gap: 6,
     padding: 16,
-    borderColor: '#9aa7b2',
+    borderColor: appColors.border,
     borderWidth: 1,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    backgroundColor: appColors.surface,
   },
-  selectedOption: { borderColor: '#1769aa', borderWidth: 2 },
-  optionTitle: { color: '#17212b', fontSize: 18, fontWeight: '600' },
-  privacyHeading: { color: '#293847', fontWeight: '600' },
-  unavailable: { color: '#9a3412' },
+  selectedOption: { borderColor: appColors.primary, borderWidth: 2 },
+  optionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
+  privacyHeading: { color: appColors.text, fontWeight: '600' },
+  unavailable: { color: appColors.danger },
 });

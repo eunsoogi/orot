@@ -1,15 +1,11 @@
 import type { ReactNode } from 'react';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationViewport } from './NavigationViewport';
 import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import { NavigationActionBar } from './NavigationActionBar';
+import { NavigationRouteScrollView } from './NavigationRouteScrollView';
 import { EdgeSwipeBackRegion } from './EdgeSwipeBackRegion';
 import { NavigationLeaveStateRegistrationProvider } from './useNavigationLeaveStateRegistration';
 import { createNavigationLeaveGuard } from './navigationLeaveGuard';
@@ -19,7 +15,14 @@ import type {
 } from './navigationController';
 import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
 import type { NavigationSurface } from './NavigationActionBar';
+import type { NavigationPrimaryAction } from './NavigationActionBar';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
+import type { NavigationRootTabs } from './rootTabs';
+import { appColors } from '../layout/appColors';
+import {
+  NavigationPrimaryActionContext,
+  useNavigationPrimaryActionHost,
+} from './useNavigationPrimaryAction';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -50,9 +53,14 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
   readonly scrollable?: boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly showHome?: boolean;
+  readonly homeAction?: () => void | Promise<unknown>;
+  readonly primaryAction?: NavigationPrimaryAction;
   readonly contentSafeAreaHandledByChild?:
     boolean | ((route: NavigationRoute<Name>) => boolean);
   readonly surface?: NavigationSurface;
+  readonly rootTabs?:
+    | NavigationRootTabs
+    | ((route: NavigationRoute<Name>) => NavigationRootTabs | undefined);
 }
 
 /** Binds the active app route, its real leave state, and both shared back inputs. */
@@ -62,10 +70,14 @@ export function NavigationRouteAdapter<Name extends string>({
   children,
   scrollable = false,
   showHome = false,
+  homeAction,
+  primaryAction,
   contentSafeAreaHandledByChild = false,
   surface,
+  rootTabs,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
+  const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
   const leaveStateRef = useRef(leaveState);
   const registeredLeaveState = useRef<RegisteredLeaveState<Name> | null>(null);
@@ -152,7 +164,9 @@ export function NavigationRouteAdapter<Name extends string>({
     <NavigationLeaveStateRegistrationProvider
       registerLeaveState={registerLeaveState}
     >
-      {children(actions)}
+      <NavigationPrimaryActionContext.Provider value={primary.host}>
+        {children(actions)}
+      </NavigationPrimaryActionContext.Provider>
     </NavigationLeaveStateRegistrationProvider>
   );
   const routeIsScrollable =
@@ -163,21 +177,31 @@ export function NavigationRouteAdapter<Name extends string>({
     typeof contentSafeAreaHandledByChild === 'function'
       ? contentSafeAreaHandledByChild(snapshot.currentRoute)
       : contentSafeAreaHandledByChild;
+  const routeRootTabs =
+    typeof rootTabs === 'function' ? rootTabs(snapshot.currentRoute) : rootTabs;
+  // Each destination starts at its own heading instead of inheriting another tab's scroll offset.
   const body = routeIsScrollable ? (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
-      style={styles.fill}
-      testID="navigation-route-scroll"
+    <NavigationRouteScrollView
+      key={`${snapshot.currentRoute.key}:${routeRootTabs?.activeTab ?? ''}`}
     >
       {routeContent}
-    </ScrollView>
+    </NavigationRouteScrollView>
   ) : (
     <View style={styles.fill}>{routeContent}</View>
   );
   const gestureRegion = (
     <EdgeSwipeBackRegion controller={controller}>{body}</EdgeSwipeBackRegion>
+  );
+  const actionBar = (
+    <NavigationActionBar
+      controller={controller}
+      leaveDisabled={leaveDisabled}
+      showHome={showHome}
+      homeAction={homeAction}
+      primaryAction={primary.action ?? primaryAction}
+      rootTabs={routeRootTabs}
+      surface={surface}
+    />
   );
 
   return (
@@ -188,27 +212,17 @@ export function NavigationRouteAdapter<Name extends string>({
         style={styles.fill}
         testID="navigation-keyboard-avoiding-root"
       >
-        <View style={styles.fill}>
-          {routeContentSafeAreaHandledByChild ? (
-            <View style={styles.fill}>{gestureRegion}</View>
-          ) : (
-            <SafeAreaView edges={['top', 'right', 'left']} style={styles.fill}>
-              {gestureRegion}
-            </SafeAreaView>
-          )}
-          <NavigationActionBar
-            controller={controller}
-            leaveDisabled={leaveDisabled}
-            showHome={showHome}
-            surface={surface}
-          />
-        </View>
+        <NavigationViewport
+          actionBar={actionBar}
+          childHandlesSafeArea={routeContentSafeAreaHandledByChild}
+        >
+          {gestureRegion}
+        </NavigationViewport>
       </KeyboardAvoidingView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
+  fill: { flex: 1, backgroundColor: appColors.background },
 });

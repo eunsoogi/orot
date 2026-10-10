@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import {
   transcriptEvidenceService,

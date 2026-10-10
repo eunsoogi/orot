@@ -1,4 +1,7 @@
-import { Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppText as Text } from '../../layout/AppText';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppButton as Button } from '../../layout/AppButton';
+import { appColors } from '../../layout/appColors';
 import { providerSelectionText } from './text';
 import type { ChatGPTAccountSetup } from './types';
 
@@ -21,6 +24,7 @@ export default function ChatGPTAccountSetupCard({
       {setup.statusMessage ? (
         <Text
           accessibilityRole={setup.statusIsError ? 'alert' : undefined}
+          style={setup.statusIsError ? styles.error : undefined}
           testID="chatgpt-account-status"
         >
           {setup.statusMessage}
@@ -90,16 +94,17 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#eef4f8',
+    backgroundColor: appColors.surface,
   },
-  heading: { color: '#293847', fontWeight: '600' },
+  heading: { color: appColors.text, fontWeight: '600' },
+  error: { color: appColors.danger },
   account: {
     gap: 4,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#9aa7b2',
-    borderRadius: 8,
+    borderColor: appColors.border,
+    borderRadius: 16,
   },
-  selectedAccount: { borderColor: '#1769aa', borderWidth: 2 },
-  accountTitle: { color: '#17212b', fontWeight: '600' },
+  selectedAccount: { borderColor: appColors.primary, borderWidth: 2 },
+  accountTitle: { color: appColors.text, fontWeight: '600' },
 });

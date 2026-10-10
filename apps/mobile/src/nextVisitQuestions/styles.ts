@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { BOTTOM_NAVIGATION_CONTENT_INSET } from '../navigation/navigationLayout';
 import type { NextVisitQuestionsTheme } from './types';
 
 /** Screen spacing and colors come from the app theme so this feature adds no local palette. */
@@ -9,7 +10,7 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
     container: {
       flexGrow: 1,
       gap: tokens.spacing.lg,
-      padding: tokens.spacing.lg,
+      padding: 24,
       backgroundColor: colors.canvas,
     },
     title: {
@@ -24,11 +25,6 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
     },
     section: {
       gap: tokens.spacing.md,
-      padding: tokens.spacing.lg,
-      borderRadius: tokens.radii.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
     },
     sectionHeading: {
       color: colors.text,
@@ -75,6 +71,13 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       fontSize: tokens.typography.sizes.body,
       fontWeight: tokens.typography.weights.medium,
     },
+    linkButton: {
+      minHeight: tokens.minTouchTarget,
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+    },
     warning: {
       padding: tokens.spacing.md,
       borderRadius: tokens.radii.control,
@@ -92,16 +95,47 @@ export function createNextVisitStyles(theme: NextVisitQuestionsTheme) {
       lineHeight: tokens.typography.sizes.body * 1.45,
     },
     success: {
-      padding: tokens.spacing.md,
-      borderRadius: tokens.radii.control,
-      backgroundColor: colors.accentSubtle,
       color: colors.accentText,
       fontSize: tokens.typography.sizes.body,
+    },
+    caveatBox: {
+      flexDirection: 'row',
+      gap: 8,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: colors.warningSurface,
+    },
+    caveatContent: { flex: 1, gap: 4 },
+    caveatText: {
+      color: colors.warning,
+      fontSize: tokens.typography.sizes.caption,
+      lineHeight: tokens.typography.sizes.caption * 1.5,
+    },
+    savedHeading: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+    },
+    savedStatus: {
+      marginLeft: 'auto',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    savedStatusText: {
+      color: colors.success,
+      fontSize: tokens.typography.sizes.caption,
     },
     reviewActions: {
       paddingHorizontal: tokens.spacing.lg,
       paddingTop: tokens.spacing.sm,
       paddingBottom: tokens.spacing.md,
+      // This fixed footer sits above the parent's bottom navigation, including while the keyboard resizes the route.
+      marginBottom: BOTTOM_NAVIGATION_CONTENT_INSET,
       borderTopWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.canvas,

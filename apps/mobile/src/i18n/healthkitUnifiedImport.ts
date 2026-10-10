@@ -1,7 +1,9 @@
 // Keeps authorization uncertainty and provider-specific outcomes explicit in the combined screen.
 export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.open': '건강 기록 및 캘린더 가져오기',
-  'healthkit.unifiedImport.title': 'HealthKit 및 캘린더 가져오기',
+  'healthkit.unifiedImport.title': '건강 기록 가져오기',
+  'healthkit.unifiedImport.reviewTitle': '가져온 일정 확인',
+  'healthkit.unifiedImport.reviewSource': '캘린더에서 가져온 일정',
   'healthkit.unifiedImport.description':
     '가져올 건강 기록 유형과 다가오는 캘린더 일정을 선택해 주세요.',
   'healthkit.unifiedImport.calendarLabel': '다가오는 캘린더 일정',

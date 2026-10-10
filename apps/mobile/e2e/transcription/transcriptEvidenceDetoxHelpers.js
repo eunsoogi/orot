@@ -228,9 +228,11 @@ async function scrollToStaleArtifactNotice() {
   return notice;
 }
 
-// Save follows the multiline editor, so reveal it with Detox's down-scroll before tapping.
+// A real drag dismisses the keyboard even when Detox reports Save visible behind it.
 async function scrollToSaveButton(testId) {
   const saveButton = element(by.id(testId));
+  const scroll = element(by.id('recording-controls-scroll'));
+  await scroll.scroll(100, 'down', 0.5, 0.35);
   await scrollToTranscriptControl(saveButton, 'down');
   return saveButton;
 }

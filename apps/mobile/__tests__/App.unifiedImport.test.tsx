@@ -18,6 +18,9 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
   importLocalBloodPressure: jest.fn(),
   listLocalBloodPressureObservations: jest.fn(),
 }));
+jest.mock('../src/recording/recordingLibraryService', () => ({
+  recordingLibraryService: { list: jest.fn(async () => []) },
+}));
 // The startup recovery flow is covered separately without loading native backup modules.
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
@@ -94,13 +97,19 @@ test('reconfirms a selected EventKit event after reopening the production route'
       openLocalAppointmentRepository,
     }));
     const App = require('../App').default as typeof import('../App').default;
-    const view = await render(<App />);
+    const view = await render(
+      <App
+        loadAppointments={async () => appointments}
+        loadRecordings={async () => []}
+      />,
+    );
+    await fireEvent.press(view.getByTestId('navigation-tab-records'));
 
-    await fireEvent.press(view.getByTestId('open-unified-health-import'));
+    await fireEvent.press(view.getByTestId('records-health-import'));
     expect(
-      view.getByRole('header', { name: 'HealthKit 및 캘린더 가져오기' }),
+      view.getByRole('header', { name: '건강 기록 가져오기' }),
     ).toBeTruthy();
-    expect(view.getByTestId('safe-area-root')).toBeVisible();
+    expect(view.getByTestId('unified-import-scroll')).toBeVisible();
     expect(view.queryByTestId('safe-area-scroll')).toBeNull();
     expect(view.getByTestId('unified-import-toggle-eventKit')).toBeTruthy();
 
@@ -121,9 +130,9 @@ test('reconfirms a selected EventKit event after reopening the production route'
     const firstSave = await appointments.list();
     expect(firstSave).toHaveLength(1);
 
-    await fireEvent.press(view.getByTestId('healthkit-unified-import-back'));
-    expect(view.getByTestId('welcome-title')).toBeTruthy();
-    await fireEvent.press(view.getByTestId('open-unified-health-import'));
+    await fireEvent.press(view.getByTestId('navigation-back'));
+    expect(view.getByTestId('records-title')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('records-health-import'));
     expect(view.getByTestId('unified-import-start')).toBeDisabled();
     expect(
       view.queryByTestId('unified-import-eventkit-candidate-0'),

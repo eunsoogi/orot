@@ -74,7 +74,7 @@ test('preserves the conversation and answer after opening and returning from its
   expect(await screen.findByText('근거를 확인한 대화 답변')).toBeTruthy();
   await fireEvent.press(screen.getByText(citationLabel));
   expect(await screen.findByTestId('ai-feature-source-detail')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
 
   expect(screen.getByText('첫 질문')).toBeTruthy();
   expect(screen.getByText('근거를 확인한 대화 답변')).toBeTruthy();
@@ -138,7 +138,7 @@ test('preserves generated hypotheses after opening and returning from their cita
   expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();
   await fireEvent.press(screen.getByText(citationLabel));
   expect(await screen.findByTestId('ai-feature-source-detail')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
 
   expect(screen.getByTestId('disease-hypotheses-results')).toBeTruthy();
   expect(screen.getByText('검토할 가설')).toBeTruthy();

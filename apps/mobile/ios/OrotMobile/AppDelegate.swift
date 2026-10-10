@@ -49,7 +49,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         appDelegate.window = window
 
         factory.startReactNative(
-            withModuleName: "OrotMobile",
+            withModuleName: "Orot",
             in: window,
             launchOptions: appDelegate.launchOptions,
         )

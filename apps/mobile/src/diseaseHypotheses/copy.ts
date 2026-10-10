@@ -3,7 +3,6 @@ import { t } from '../i18n';
 /** Resolves display labels from the catalog and keeps evidence IDs as interpolated data. */
 export function getDiseaseHypothesisCopy() {
   return {
-    back: t('aiFeatures.back'),
     title: t('diseaseHypotheses.title'),
     explanation: t('diseaseHypotheses.explanation'),
     generate: t('diseaseHypotheses.generate'),

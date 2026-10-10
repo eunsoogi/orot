@@ -1,13 +1,12 @@
 /** Korean copy for local recording, transcript review, and their error states. */
 export const recordingKo = {
   'recording.title': '상담 녹음',
-  'recording.back': '뒤로',
   'recording.consent.description':
     '녹음 전에 상담 참여자 모두에게 녹음 사실을 알리고 동의를 받아 주세요.',
   'recording.consent.acknowledgement':
     '참여자에게 녹음 사실을 알리고 동의를 받았습니다.',
   'recording.localOnly':
-    '녹음 파일은 이 기기에 보관되고 Orot 서버로 전송되지 않습니다.',
+    '녹음 파일은 이 기기에 보관되고 오롯 서버로 전송되지 않습니다.',
   'recording.status.idle': '녹음하지 않음',
   'recording.status.recording': '녹음 중',
   'recording.status.paused': '일시 정지됨',

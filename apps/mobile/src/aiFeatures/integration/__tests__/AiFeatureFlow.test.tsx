@@ -108,7 +108,7 @@ test('routes all four entry actions through the integration and returns from vis
   expect(
     await screen.findByTestId('ai-feature-source-unavailable'),
   ).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('ai-feature-source-back'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.queryByTestId('ai-feature-source-unavailable')).toBeNull(),
   );

@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
-import type { Appointment } from '@orot/domain';
+import { AppSymbol } from '../layout/AppSymbol';
 import { nextVisitQuestionsCopy as copy } from './copy';
-import { formatNextVisitTime } from './format';
+import { VisitAppointmentCard, VisitProviderCard } from './VisitContextCards';
 import { createNextVisitStyles } from './styles';
 import type {
   AppointmentViewState,
@@ -14,7 +14,7 @@ interface ActionButtonProps {
   readonly label: string;
   readonly onPress: () => void;
   readonly theme: NextVisitQuestionsTheme;
-  readonly variant?: 'primary' | 'secondary';
+  readonly variant?: 'primary' | 'secondary' | 'link';
   readonly testID: string;
 }
 
@@ -38,7 +38,11 @@ export function ActionButton({
         onPress();
       }}
       style={[
-        variant === 'primary' ? styles.button : styles.secondaryButton,
+        variant === 'primary'
+          ? styles.button
+          : variant === 'link'
+            ? styles.linkButton
+            : styles.secondaryButton,
         disabled && styles.disabled,
       ]}
       testID={testID}
@@ -50,6 +54,13 @@ export function ActionButton({
       >
         {label}
       </Text>
+      {variant === 'link' ? (
+        <AppSymbol
+          name="chevron.right"
+          size={14}
+          color={theme.colors.accentText}
+        />
+      ) : null}
     </Pressable>
   );
 }
@@ -67,9 +78,11 @@ export function AppointmentSection({
   const styles = createNextVisitStyles(theme);
   return (
     <View style={styles.section} testID="next-visit-appointment">
-      <Text accessibilityRole="header" style={styles.sectionHeading}>
-        {copy.appointment.heading}
-      </Text>
+      {appointment.status !== 'ready' ? (
+        <Text accessibilityRole="header" style={styles.sectionHeading}>
+          {copy.appointment.heading}
+        </Text>
+      ) : null}
       {appointment.status === 'loading' ? (
         <Text accessibilityLiveRegion="polite" style={styles.muted}>
           {copy.appointment.loading}
@@ -100,44 +113,11 @@ export function AppointmentSection({
           />
         </>
       ) : (
-        <AppointmentDetails
+        <VisitAppointmentCard
           appointment={appointment.appointment}
           theme={theme}
         />
       )}
-    </View>
-  );
-}
-
-function AppointmentDetails({
-  appointment,
-  theme,
-}: {
-  readonly appointment: Appointment;
-  readonly theme: NextVisitQuestionsTheme;
-}) {
-  const styles = createNextVisitStyles(theme);
-  const time = formatNextVisitTime(appointment);
-  const title =
-    appointment.calendarEventSnapshot?.title?.trim() ||
-    appointment.clinicLabel?.trim() ||
-    copy.appointment.fallbackTitle;
-  return (
-    <View>
-      <Text style={styles.body}>{title}</Text>
-      {appointment.clinicLabel && appointment.clinicLabel !== title ? (
-        <Text style={styles.muted}>{appointment.clinicLabel}</Text>
-      ) : null}
-      <Text style={styles.body} testID="next-visit-appointment-time">
-        {time?.label ?? copy.appointment.timeUnavailable}
-      </Text>
-      {time?.timeZoneNote === 'device' ? (
-        <Text style={styles.muted}>{copy.appointment.deviceTimeZone}</Text>
-      ) : time?.timeZoneNote === 'calendar_unreadable' ? (
-        <Text style={styles.warning}>
-          {copy.appointment.invalidCalendarTimeZone}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -153,6 +133,14 @@ export function ProviderSection({
   readonly theme: NextVisitQuestionsTheme;
 }) {
   const styles = createNextVisitStyles(theme);
+  if (provider.status === 'available')
+    return (
+      <VisitProviderCard
+        provider={provider}
+        onChoose={onChoose}
+        theme={theme}
+      />
+    );
   const message =
     provider.status === 'loading'
       ? copy.provider.loading
@@ -168,7 +156,7 @@ export function ProviderSection({
       <Text accessibilityRole="header" style={styles.sectionHeading}>
         {copy.provider.heading}
       </Text>
-      {provider.status === 'available' || provider.status === 'unavailable' ? (
+      {provider.status === 'unavailable' ? (
         <>
           <Text style={styles.body}>{provider.displayName}</Text>
           <Text style={styles.muted}>

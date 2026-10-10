@@ -17,12 +17,15 @@ export interface AiFeatureRouteProps extends Omit<
 > {
   readonly initialRoute?: FeatureScreenRoute | 'provider-selection';
   readonly onBack: () => void;
+  readonly onHome?: () => void;
+  readonly onOpenRecording?: () => void;
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
 
 /** Keeps one guarded route tree mounted so provider/source overlays preserve feature state. */
 export function AiFeatureRoute({
   onBack,
+  onHome,
   initialRoute = 'entry',
   onOpenArticle = openEuropePmcArticle,
   renderVisitQuestions,
@@ -65,7 +68,19 @@ export function AiFeatureRoute({
   }, [onBack, snapshot.currentRoute.name]);
 
   return (
-    <NavigationRouteAdapter controller={controller} leaveState={rootLeaveState}>
+    <NavigationRouteAdapter
+      controller={controller}
+      leaveState={rootLeaveState}
+      showHome
+      homeAction={
+        onHome
+          ? async () => {
+              // Home remains a guarded exit while returning to the source is reserved for Back.
+              if (await controller.requestHome()) onHome();
+            }
+          : undefined
+      }
+    >
       {navigation =>
         navigation.route.name === 'app-home' ? null : (
           <AiFeatureFlow

@@ -1,4 +1,7 @@
-import { Button, Text, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import styles from './appointmentsStyles';
 
@@ -42,6 +45,7 @@ export default function AppointmentForm({
         accessibilityLabel={t('appointments.form.clinicLabel')}
         onChangeText={onClinicLabelChange}
         placeholder={t('appointments.form.clinicLabel')}
+        placeholderTextColor={appColors.secondary}
         style={styles.input}
         testID="appointment-clinic-input"
         value={clinicLabel}
@@ -50,6 +54,7 @@ export default function AppointmentForm({
         accessibilityLabel={t('appointments.form.dateLabel')}
         onChangeText={onDateChange}
         placeholder="YYYY-MM-DD"
+        placeholderTextColor={appColors.secondary}
         style={styles.input}
         testID="appointment-date-input"
         value={date}
@@ -58,6 +63,7 @@ export default function AppointmentForm({
         accessibilityLabel={t('appointments.form.timeLabel')}
         onChangeText={onTimeChange}
         placeholder="HH:MM"
+        placeholderTextColor={appColors.secondary}
         style={styles.input}
         testID="appointment-time-input"
         value={time}
@@ -67,6 +73,7 @@ export default function AppointmentForm({
         accessibilityLabel={t('appointments.form.noteLabel')}
         onChangeText={onNoteChange}
         placeholder={t('appointments.form.noteLabel')}
+        placeholderTextColor={appColors.secondary}
         style={[styles.input, styles.note]}
         testID="appointment-note-input"
         value={note}

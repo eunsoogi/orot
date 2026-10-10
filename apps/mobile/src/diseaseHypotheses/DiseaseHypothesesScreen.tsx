@@ -1,5 +1,10 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { navigationText } from '../i18n/navigation';
+import { appColors } from '../layout/appColors';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -58,6 +63,7 @@ export function DiseaseHypothesesScreen({
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const copy = getDiseaseHypothesisCopy();
   const [state, setState] = useState<ScreenState>({ status: 'idle' });
   const operationController = useRef<AbortController | null>(null);
@@ -108,16 +114,23 @@ export function DiseaseHypothesesScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, navigationInset]}
       testID="disease-hypotheses-screen"
     >
-      <Button onPress={onBack} title={copy.back} />
+      {navigationRouteKey ? null : (
+        <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          title={navigationText.back.label}
+        />
+      )}
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
       <Text>{copy.explanation}</Text>
       <Button
         disabled={state.status === 'loading'}
+        accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
           generate().catch(() => setState({ status: 'error' }));
         }}
@@ -133,7 +146,9 @@ export function DiseaseHypothesesScreen({
         </Text>
       ) : null}
       {state.status === 'error' ? (
-        <Text accessibilityRole="alert">{copy.error}</Text>
+        <Text accessibilityRole="alert" style={styles.error}>
+          {copy.error}
+        </Text>
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
@@ -181,7 +196,7 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700' },
   results: { gap: 12 },
   card: {
-    borderColor: '#C9D4D1',
+    borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,
     gap: 8,
@@ -189,5 +204,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 17, fontWeight: '700' },
   label: { fontWeight: '700', marginTop: 4 },
+  error: { color: appColors.danger },
   section: { gap: 4 },
 });

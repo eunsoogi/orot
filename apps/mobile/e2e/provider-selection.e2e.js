@@ -41,7 +41,7 @@ describe('provider selection on iOS Simulator', () => {
     await waitFor(cancelLogin).toBeVisible().withTimeout(120000);
 
     // Leaving the route must cancel its native auth session before a later retry.
-    await element(by.id('provider-selection-back')).tap();
+    await element(by.id('navigation-back')).tap();
     await waitFor(summary)
       .toHaveText(
         'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
@@ -60,7 +60,7 @@ describe('provider selection on iOS Simulator', () => {
     console.log(
       'PROVIDER_SELECTION_SIMULATOR syntheticAuthCancellation=verified; routeExitCancelsPendingAuth=verified; reopenRetry=verified; realAccount=unverified',
     );
-    await element(by.id('provider-selection-back')).tap();
+    await element(by.id('navigation-back')).tap();
     await waitFor(element(by.id('provider-selection-probe-summary')))
       .toHaveText(
         'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
@@ -92,7 +92,7 @@ describe('provider selection on iOS Simulator', () => {
     console.log(
       'PROVIDER_SELECTION_SIMULATOR nativeSyntheticAuthReturn=verified; nativeAccountRefresh=verified; realAccount=unverified',
     );
-    await element(by.id('provider-selection-back')).tap();
+    await element(by.id('navigation-back')).tap();
     await waitFor(summary)
       .toHaveText(
         'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
@@ -200,7 +200,7 @@ describe('provider selection on iOS Simulator', () => {
     console.log(
       'PROVIDER_SELECTION_SIMULATOR nativeSyntheticSignOut=revoked; inFlightRequestCancelled=verified; postSignOutStateStable=verified; selectedProviderUnavailable=verified; realAccount=unverified',
     );
-    await element(by.id('provider-selection-back')).tap();
+    await element(by.id('navigation-back')).tap();
 
     await device.terminateApp();
     await device.launchApp({ newInstance: true });
@@ -244,7 +244,7 @@ describe('provider selection on iOS Simulator', () => {
     console.log(
       'PROVIDER_SELECTION_SIMULATOR syntheticSignOutSurvivesRelaunch=verified; relogin=verified; realAccount=unverified',
     );
-    await element(by.id('provider-selection-back')).tap();
+    await element(by.id('navigation-back')).tap();
     await element(by.id('provider-selection-probe-reset')).tap();
   });
 });

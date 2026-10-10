@@ -25,6 +25,20 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       fontWeight: tokens.typography.weights.bold,
       flexShrink: 1,
     },
+    numberBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.accentSubtle,
+    },
+    detailToggle: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      minWidth: 44,
+    },
     inputGroup: { gap: tokens.spacing.xs },
     inputLabel: {
       color: colors.textMuted,
@@ -37,11 +51,9 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       gap: tokens.spacing.xs,
     },
     questionInput: {
+      flex: 1,
       minHeight: tokens.minTouchTarget,
-      padding: tokens.spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: tokens.radii.control,
+      padding: 0,
       color: colors.text,
       fontSize: tokens.typography.sizes.body,
       textAlignVertical: 'top',
@@ -57,6 +69,7 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       textAlignVertical: 'top',
     },
     questionText: {
+      flex: 1,
       color: colors.text,
       fontSize: tokens.typography.sizes.body,
       lineHeight: tokens.typography.sizes.body * 1.5,
@@ -68,11 +81,9 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
     },
     priority: {
       minHeight: tokens.minTouchTarget,
-      alignSelf: 'flex-start',
+      minWidth: tokens.minTouchTarget,
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: tokens.spacing.md,
-      borderRadius: tokens.radii.control,
-      backgroundColor: colors.accentSubtle,
     },
     priorityLabel: {
       color: colors.accentText,
@@ -86,10 +97,12 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
     },
     sourceButton: {
       minHeight: tokens.minTouchTarget,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: tokens.spacing.xs,
-      padding: tokens.spacing.md,
-      borderRadius: tokens.radii.control,
-      backgroundColor: colors.surfaceSubtle,
+      paddingVertical: tokens.spacing.xs,
+      borderTopWidth: 1,
+      borderColor: colors.border,
     },
     sourceText: {
       color: colors.textMuted,
@@ -102,6 +115,7 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       lineHeight: tokens.typography.sizes.body * 1.4,
     },
     openSource: {
+      flex: 1,
       color: colors.accentText,
       fontSize: tokens.typography.sizes.caption,
       fontWeight: tokens.typography.weights.semibold,

@@ -1,10 +1,15 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useCallback, useEffect, useState } from 'react';
-import { Button, ScrollView, Text, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
+import { AppButton as Button } from '../layout/AppButton';
+import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import AppointmentCard from './AppointmentCard';
 import AppointmentForm from './AppointmentForm';
 import styles from './appointmentsStyles';
+import { useNavigationLeaveStateRegistration } from '../navigation';
+import type { NavigationLeaveState } from '../navigation';
 import {
   toAppointmentTimestamp,
   toAppointmentTimestampForEdit,
@@ -13,13 +18,14 @@ import {
 
 interface AppointmentsScreenProps {
   repository: AppointmentRepository;
-  onBack: () => void;
+  onAppointmentsChanged?: () => void;
 }
 
 export default function AppointmentsScreen({
   repository,
-  onBack,
+  onAppointmentsChanged,
 }: AppointmentsScreenProps) {
+  const navigationInset = useNavigationContentInset();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinicLabel, setClinicLabel] = useState('');
   const [date, setDate] = useState('');
@@ -31,6 +37,17 @@ export default function AppointmentsScreen({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [inputRevision, setInputRevision] = useState(0);
+
+  useNavigationLeaveStateRegistration({
+    canLeave: !saving,
+    hasUnsavedChanges: formOpen,
+    isRecording: false,
+    hasOngoingOperation: saving,
+    revision,
+    inputRevision,
+  } satisfies NavigationLeaveState);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -57,6 +74,8 @@ export default function AppointmentsScreen({
     setError('');
     setNotice('');
     setFormOpen(true);
+    setRevision(current => current + 1);
+    setInputRevision(current => current + 1);
   }
 
   function startEditing(appointment: Appointment) {
@@ -68,6 +87,8 @@ export default function AppointmentsScreen({
     setNote(appointment.note ?? '');
     setError('');
     setFormOpen(true);
+    setRevision(current => current + 1);
+    setInputRevision(current => current + 1);
   }
 
   async function saveAppointment() {
@@ -85,6 +106,7 @@ export default function AppointmentsScreen({
 
     setSaving(true);
     setError('');
+    setRevision(current => current + 1);
     const trimmedNote = note.trim();
     try {
       if (editing) {
@@ -101,13 +123,17 @@ export default function AppointmentsScreen({
         });
       }
       await reload();
+      // Home reads the same repository and refreshes only after the save succeeds.
+      onAppointmentsChanged?.();
       setFormOpen(false);
       setNotice(editing ? t('appointments.updated') : t('appointments.saved'));
       setEditing(null);
+      setRevision(current => current + 1);
     } catch {
       setError(t('appointments.saveError'));
     } finally {
       setSaving(false);
+      setRevision(current => current + 1);
     }
   }
 
@@ -116,6 +142,7 @@ export default function AppointmentsScreen({
     try {
       await repository.cancel(appointment.id);
       await reload();
+      onAppointmentsChanged?.();
       setNotice(t('appointments.cancelled'));
     } catch {
       setError(t('appointments.cancelError'));
@@ -124,11 +151,15 @@ export default function AppointmentsScreen({
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      // Starting an edit replaces the list and resets its potentially distant scroll offset.
+      key={formOpen ? 'editor' : 'list'}
+      contentContainerStyle={[styles.container, navigationInset]}
+      keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
+      style={styles.scroll}
       testID="appointments-scroll"
     >
-      <View style={styles.topBar}>
+      {!formOpen ? (
         <Text
           accessibilityRole="header"
           style={styles.title}
@@ -136,21 +167,22 @@ export default function AppointmentsScreen({
         >
           {t('appointments.title')}
         </Text>
-        <Button
-          onPress={onBack}
-          testID="appointments-back"
-          title={t('appointments.back')}
-        />
-      </View>
-      <Text style={styles.message}>{t('appointments.description')}</Text>
+      ) : null}
+      {!formOpen ? (
+        <Text style={styles.message}>{t('appointments.description')}</Text>
+      ) : null}
       {notice ? <Text accessibilityLiveRegion="polite">{notice}</Text> : null}
       {error ? (
-        <Text accessibilityRole="alert" testID="appointment-error">
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="appointment-error"
+        >
           {error}
         </Text>
       ) : null}
 
-      {loading ? (
+      {formOpen ? null : loading ? (
         <Text testID="appointments-loading">{t('appointments.loading')}</Text>
       ) : error && appointments.length === 0 ? (
         <Button
@@ -189,12 +221,27 @@ export default function AppointmentsScreen({
           time={time}
           note={note}
           saving={saving}
-          onClinicLabelChange={setClinicLabel}
-          onDateChange={setDate}
-          onTimeChange={setTime}
-          onNoteChange={setNote}
+          onClinicLabelChange={value => {
+            setClinicLabel(value);
+            setInputRevision(current => current + 1);
+          }}
+          onDateChange={value => {
+            setDate(value);
+            setInputRevision(current => current + 1);
+          }}
+          onTimeChange={value => {
+            setTime(value);
+            setInputRevision(current => current + 1);
+          }}
+          onNoteChange={value => {
+            setNote(value);
+            setInputRevision(current => current + 1);
+          }}
           onSave={saveAppointment}
-          onClose={() => setFormOpen(false)}
+          onClose={() => {
+            setFormOpen(false);
+            setRevision(current => current + 1);
+          }}
         />
       )}
     </ScrollView>

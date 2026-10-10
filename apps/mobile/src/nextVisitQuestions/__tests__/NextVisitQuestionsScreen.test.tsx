@@ -89,6 +89,8 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
   );
   expect(await screen.findByTestId('next-visit-review-list')).toBeTruthy();
   expect(screen.getByTestId('next-visit-review-actions')).toBeTruthy();
+  expect(screen.queryByText('질문 1의 이유')).toBeNull();
+  await fireEvent.press(screen.getByTestId('next-visit-question-details-0'));
   expect(screen.getByText('질문 1의 이유')).toBeTruthy();
   expect(
     screen.getByText(
@@ -106,7 +108,9 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
   expect(onOpenSource).toHaveBeenCalledWith(source);
   await fireEvent.press(screen.getByTestId('next-visit-source-close'));
 
+  await fireEvent.press(screen.getByTestId('next-visit-question-details-1'));
   await fireEvent.press(screen.getByTestId('next-visit-question-up-1'));
+  await fireEvent.press(screen.getByTestId('next-visit-question-details-2'));
   await fireEvent.press(screen.getByTestId('next-visit-question-remove-2'));
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));
   expect(
