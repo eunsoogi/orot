@@ -25,7 +25,7 @@ describe('synthetic next-visit questions screen', () => {
       '합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음',
     );
     await element(by.id('next-visit-probe-close-tools')).tap();
-    await dismissProbeDebugToast(device);
+    await dismissProbeDebugToast();
     const initialViewport = (await scroll.getAttributes()).frame;
     if (!initialViewport)
       throw new Error('Missing initial native viewport frame.');
