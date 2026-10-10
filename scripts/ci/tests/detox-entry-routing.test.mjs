@@ -114,6 +114,7 @@ test('the shared Release app config bundles the router and explicitly selects ev
   assert.deepEqual(releaseSuiteFiles, [
     './smoke.test.js',
     './settings.detox.e2e.js',
+    './unified-import-navigation.e2e.js',
     './navigation-glass.e2e.js',
     './ai-feature-visit-questions.e2e.js',
     './safe-area.test.js',

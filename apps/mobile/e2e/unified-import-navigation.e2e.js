@@ -1,5 +1,6 @@
 /* global by, describe, device, element, expect, it, waitFor */
 const { execFileSync } = require('node:child_process');
+const { expect: jestExpect } = require('@jest/globals');
 const {
   openRootTab,
   expectNativeNavigationAction,
@@ -21,9 +22,14 @@ describe('unified import through Records', () => {
       .withTimeout(30000);
     await expect(element(by.text('건강 기록 가져오기'))).toBeVisible();
     await expectNativeNavigationAction('unified-import-start');
-    await expect(element(by.id('unified-import-start'))).toBeDisabled();
+    // UIKit exposes the actual enabled state through Detox element attributes.
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(false);
     await element(by.id('unified-import-toggle-healthKit')).tap();
-    await expect(element(by.id('unified-import-start'))).toBeEnabled();
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(true);
     await device.takeScreenshot('unified-import-light');
     execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'dark']);
     await expect(

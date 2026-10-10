@@ -63,6 +63,7 @@ if (e2eSuites.includes(suiteName)) {
   const expectedReleaseSuiteFiles = [
     './smoke.test.js',
     './settings.detox.e2e.js',
+    './unified-import-navigation.e2e.js',
     './navigation-glass.e2e.js',
     './ai-feature-visit-questions.e2e.js',
     './safe-area.test.js',
@@ -99,7 +100,7 @@ if (e2eSuites.includes(suiteName)) {
     throw new Error('e2e: Next Visit Questions Jest config must select its dedicated probe');
   }
   const profiles = [
-    ['Release', releaseConfig.testMatch, 20],
+    ['Release', releaseConfig.testMatch, 21],
     ['OpenAI Debug', debugConfig.testMatch, 1],
     ['Speech Transcription', transcriptionConfig.testMatch, 1],
     ['Next Visit Questions', nextVisitQuestionsConfig.testMatch, 1],
