@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { buildInventory, formatInventory, getPolicy } from '../inventory.mjs';
-import { parsePlatformArgument, selectPlatformEntries, selectQualityTools } from '../platforms.mjs';
+import {
+  parsePlatformArgument,
+  parseQualityArguments,
+  selectPlatformEntries,
+  selectQualityTools,
+  selectSurfaceEntries,
+} from '../platforms.mjs';
 
 const policy = getPolicy();
 const versions = JSON.parse(
@@ -32,20 +38,68 @@ test('the Linux inventory covers every maintained file exactly once', async () =
   assert.match(formattedInventory, /javascript \(\d+; linux\)/);
 });
 
-test('platform selection requires a supported explicit value and preserves other options', () => {
-  assert.deepEqual(parsePlatformArgument(['--exclude', 'apps/mobile/', '--platform', 'linux']), {
-    platform: 'linux',
-    remaining: ['--exclude', 'apps/mobile/'],
-  });
-  assert.deepEqual(parsePlatformArgument(['--', '--platform', 'linux']), {
+test('quality selection parses platform and lint surface without dropping unrecognized options', () => {
+  assert.deepEqual(parsePlatformArgument(['--platform', 'linux']), {
     platform: 'linux',
     remaining: [],
   });
-  assert.throws(() => parsePlatformArgument(['--platform', 'windows']), /Use --platform/);
-  assert.throws(() => parsePlatformArgument(['--platform', 'macos']), /Use --platform/);
   assert.throws(
-    () => parsePlatformArgument(['--platform', 'linux', '--platform', 'macos']),
+    () => parsePlatformArgument(['--surface', 'javascript']),
+    /surface is available only for a lint invocation/,
+  );
+  assert.deepEqual(parseQualityArguments(['--platform', 'linux']), {
+    platform: 'linux',
+    surface: null,
+    remaining: [],
+  });
+  assert.deepEqual(parseQualityArguments(['--surface', 'javascript', '--platform', 'linux']), {
+    platform: 'linux',
+    surface: 'javascript',
+    remaining: [],
+  });
+  assert.deepEqual(parseQualityArguments(['--', '--platform', 'linux']), {
+    platform: 'linux',
+    surface: null,
+    remaining: [],
+  });
+  assert.deepEqual(parseQualityArguments(['--exclude', 'apps/mobile/', '--platform', 'linux']), {
+    platform: 'linux',
+    surface: null,
+    remaining: ['--exclude', 'apps/mobile/'],
+  });
+  assert.throws(() => parseQualityArguments(['--platform', 'windows']), /Use --platform/);
+  assert.throws(() => parseQualityArguments(['--platform', 'macos']), /Use --platform/);
+  assert.throws(
+    () => parseQualityArguments(['--platform', 'linux', '--platform', 'macos']),
     /only once/,
+  );
+  assert.throws(
+    () => parseQualityArguments(['--surface', 'javascript', '--surface', 'shell']),
+    /only once/,
+  );
+  assert.throws(() => parseQualityArguments(['--surface']), /requires a value/);
+});
+
+test('surface lint selection filters one full-inventory language without path exclusions', async () => {
+  const inventory = await buildInventory();
+  const linux = selectPlatformEntries(inventory, policy, 'linux');
+  const maintained = inventory.filter((entry) => entry.kind === 'surface');
+
+  for (const surface of Object.keys(policy.surfaces)) {
+    const selected = selectSurfaceEntries(linux, policy, surface);
+    const expected = maintained.filter((entry) => entry.surface === surface);
+    assert.deepEqual(selected, expected);
+  }
+  const emptySurface = Object.keys(policy.surfaces).find(
+    (surface) => !maintained.some((entry) => entry.surface === surface),
+  );
+  if (emptySurface) {
+    // Configured surfaces with no current files keep their independent CI leaf without hiding inventory errors.
+    assert.deepEqual(selectSurfaceEntries(linux, policy, emptySurface), []);
+  }
+  assert.throws(
+    () => selectSurfaceEntries(linux, policy, 'not-configured'),
+    /Unknown quality surface/,
   );
 });
 

@@ -3,7 +3,12 @@ import { dirname, join } from 'node:path';
 import { buildInventory, formatInventory, getPolicy, getRepositoryRoot } from './inventory.mjs';
 import { runFormat } from './format.mjs';
 import { runLint } from './lint.mjs';
-import { parsePlatformArgument, selectPlatformEntries, selectQualityTools } from './platforms.mjs';
+import {
+  parseQualityArguments,
+  selectPlatformEntries,
+  selectQualityTools,
+  selectSurfaceEntries,
+} from './platforms.mjs';
 import { createQualityTools, requireFile } from './process.mjs';
 
 const root = getRepositoryRoot();
@@ -79,24 +84,34 @@ async function main() {
   if (!['inventory', 'lint', 'format:check', 'format:write'].includes(command)) {
     throw new Error('Use inventory, lint, format:check, or format:write');
   }
-  const { platform, remaining } = parsePlatformArgument(process.argv.slice(3));
+  const { platform, surface, remaining } = parseQualityArguments(process.argv.slice(3));
   if (command === 'inventory' && (platform !== 'all' || remaining.length > 0)) {
     throw new Error('Run the full inventory without platform filters or path exclusions');
   }
+  if (surface && command !== 'lint') {
+    throw new Error('--surface is available only for a lint invocation');
+  }
+  if (surface && remaining.length > 0) {
+    throw new Error('surface selection cannot be combined with path exclusions');
+  }
+  // Validate every maintained path before any leaf check narrows work to one language surface.
   const inventory = await buildInventory();
   const platformEntries = selectPlatformEntries(inventory, policy, platform);
-  const entries = entriesWithout(platformEntries, remaining, command);
+  const selectedEntries = surface
+    ? selectSurfaceEntries(platformEntries, policy, surface)
+    : platformEntries;
+  const entries = entriesWithout(selectedEntries, remaining, command);
   if (command === 'inventory') {
     console.log(formatInventory(entries));
     return;
   }
-  if (!entries.some((entry) => entry.kind === 'surface')) {
+  if (!surface && !entries.some((entry) => entry.kind === 'surface')) {
     throw new Error(`No maintained files are selected for the ${platform} quality invocation`);
   }
   const selection = selectQualityTools(versions, `${process.platform}-${process.arch}`, platform);
   const { env } = qualityEnvironment(selection);
   console.log(
-    `Checking ${entries.filter((entry) => entry.kind === 'surface').length} maintained files across ${Object.keys(policy.surfaces).length} configured surfaces on ${platform}.`,
+    `Checking ${entries.filter((entry) => entry.kind === 'surface').length} maintained files across ${surface || Object.keys(policy.surfaces).length} configured quality surface(s) on ${platform}.`,
   );
   if (command === 'lint') {
     const binaryPaths = Object.fromEntries(

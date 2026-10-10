@@ -50,4 +50,8 @@ pnpm format:check
 
 CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물로 분류합니다. 같은 경로 아래의 다른 확장자는 파일 형식에 따라 검사되거나 미지원 파일로 실패합니다.
 
-CI의 `Quality Linux` 작업은 lockfile 검증, Linux 도구체인 검증, 고정 의존성·품질 도구 설치, 전체 인벤토리, CI·릴리즈·품질 게이트 테스트, 전체 린트·포맷, 타입 검사와 단위·컴포넌트 테스트를 실행하고 로그 산출물을 보관합니다. Ubuntu에서 실행되는 필수 `Quality` 집계 작업은 변경 파일의 250줄 정책을 확인하고 `Quality Linux` 작업이 성공했을 때만 통과합니다. 실패·취소·건너뜀·누락된 작업은 통과하지 않습니다. iOS Simulator Build와 Detox 필수 작업도 계속 실행됩니다.
+CI workflow는 Linux code checks와 Linux test checks를 재사용 workflow로 나누며, branch protection은 집계 wrapper가 아닌 각 leaf check를 요구합니다. Linux code checks는 `Maintained file inventory`, 열 개의 `Lint / <surface>` checks, `Source LOC policy`, `Format check`를 각각 실행합니다. 각 lint leaf는 전체 인벤토리를 검증한 뒤 한 표면의 파일만 lint하며, 현재 파일이 없는 설정 표면도 인벤토리 검증을 거쳐 독립된 no-op check 이름을 유지합니다. Source LOC leaf는 canonical 250줄 검사기를 PR base와의 merge base로 실행하고, workflow dispatch에서는 전체 추적 파일을 검사합니다.
+
+Linux test checks는 `TypeScript typecheck`, `Unit and component tests`, `CI, release, and quality gate tests`를 각각 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다. Xcode와 Simulator가 필요한 `iOS Simulator Build` 및 Release UI/storage, Release stateful-data, OpenAI, Speech, Next Visit E2E leaf만 macOS runner를 사용합니다. E2E leaf는 자신의 전체 시나리오 결과를 확인하고 진단 artifact 업로드와 Simulator 정리를 수행합니다.
+
+Branch protection과 release readiness가 사용하는 실제 check 이름은 `scripts/release/policy.mjs`가 export하는 `REQUIRED_CI_JOBS` 목록에 고정되어 있습니다. 주요 경로는 `Linux code checks / Maintained file inventory`, `Linux code checks / Lint / JavaScript|TypeScript|Swift|Objective-C|Shell|Ruby|YAML|JSON|XML|Properties`, `Linux code checks / Source LOC policy`, `Linux code checks / Format check`, 세 개의 `Linux test checks / ...` leaf, `iOS Simulator Build`, 두 Release shard leaf, 그리고 OpenAI·Speech·Next Visit의 각 E2E leaf입니다. 이 목록의 새 check가 hosted CI에서 관측된 뒤 부모가 branch protection을 마이그레이션합니다.

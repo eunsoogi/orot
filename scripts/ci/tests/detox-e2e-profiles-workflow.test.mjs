@@ -1,74 +1,97 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
-const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
-const profilesWorkflow = readFileSync(
-  join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
-  'utf8',
-);
-const releaseWorkflow = readFileSync(
-  join(repositoryRoot, '.github/workflows/detox-e2e-release.yml'),
-  'utf8',
-);
-const profileWorkflow = readFileSync(
-  join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
-  'utf8',
-);
+const root = new URL('../../../', import.meta.url);
+const read = (path) => readFileSync(fileURLToPath(new URL(path, root)), 'utf8');
+const ciWorkflow = read('.github/workflows/ci.yml');
+const profilesWorkflow = read('.github/workflows/detox-e2e-profiles.yml');
+const releaseWorkflow = read('.github/workflows/detox-e2e-release.yml');
+const profileWorkflow = read('.github/workflows/detox-e2e-profile.yml');
+const summaryGuard = read('scripts/ci/require-jest-summary.mjs');
+const suiteRunner = read('scripts/ci/run-test-suite.sh');
 
-test('preserves the required check name while delegating the profile suite', () => {
+function jobBlock(source, jobId) {
+  // Keep each assertion inside one workflow job so neighboring leaves cannot satisfy it.
+  const start = source.indexOf(`  ${jobId}:\n`);
+  if (start < 0) return '';
+  const nextJob = /\n {2}[a-z0-9_]+:\n/.exec(source.slice(start + 1));
+  return source.slice(start, nextJob ? start + 1 + nextJob.index : undefined);
+}
+
+test('exposes profile scenario results without CI summary wrapper jobs', () => {
   assert.match(
     ciWorkflow,
-    /detox_profiles:[\s\S]*?uses: \.\/\.github\/workflows\/detox-e2e-profiles\.yml/,
+    /detox_profiles:[\s\S]*?name: Detox E2E profiles[\s\S]*?uses: \.\/\.github\/workflows\/detox-e2e-profiles\.yml/,
   );
-  const aggregate = ciWorkflow.slice(ciWorkflow.indexOf('  detox_ios_e2e:'));
-  assert.match(aggregate, /name: Detox iOS E2E/);
-  assert.match(aggregate, /needs: \[detox_profiles\]/);
-  assert.match(aggregate, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(aggregate, /DETOX_PROFILES_RESULT: \$\{\{ needs\.detox_profiles\.result \}\}/);
-  assert.match(aggregate, /All Detox profiles and fail-closed summaries passed/);
+  assert.doesNotMatch(ciWorkflow, /name: Detox iOS E2E|detox_ios_e2e:/);
+  assert.doesNotMatch(
+    profilesWorkflow,
+    /validate_detox_profiles|Require complete profile summaries/,
+  );
+  assert.doesNotMatch(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
+  assert.doesNotMatch(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
 });
 
-test('runs all three isolated profiles and validates their summaries before returning success', () => {
-  for (const profile of ['openai-provider', 'transcription']) {
-    assert.match(profilesWorkflow, new RegExp(`profile: ${profile.replace('-', '\\-')}`));
+test('runs every profile as an independent leaf and continues after fingerprint failure', () => {
+  const profiles = [
+    ['detox_release_e2e', 'release', 'detox-e2e-release.yml'],
+    ['detox_openai_provider_e2e', 'openai-provider', 'detox-e2e-profile.yml'],
+    ['detox_transcription_e2e', 'transcription', 'detox-e2e-profile.yml'],
+    ['detox_next_visit_e2e', 'next-visit-questions', 'detox-e2e-profile.yml'],
+  ];
+  for (const [jobId, profile, workflow] of profiles) {
+    const job = jobBlock(profilesWorkflow, jobId);
+    assert.ok(job, `missing ${profile} E2E leaf`);
+    assert.match(job, /needs: \[detox_cache_fingerprint\]/);
+    assert.match(job, /if: \$\{\{ !cancelled\(\) \}\}/);
+    assert.ok(job.includes(`uses: ./.github/workflows/${workflow}`));
+    if (profile !== 'release') assert.match(job, new RegExp(`profile: ${profile}`));
+    assert.match(
+      job,
+      /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
+    );
   }
-  assert.match(releaseWorkflow, /profile: release/);
+  assert.doesNotMatch(profilesWorkflow, /needs: \[detox_release_e2e, detox_openai_provider_e2e/);
   assert.match(
-    profilesWorkflow,
-    /needs: \[detox_release_e2e, detox_openai_provider_e2e, detox_transcription_e2e\]/,
+    profileWorkflow,
+    /scripts\/ci\/run-test-suite\.sh "e2e-\$\{\{ inputs\.profile \}\}"/,
   );
-  assert.match(profilesWorkflow, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
-  assert.match(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
+  assert.match(summaryGuard, /expected exactly one profile summary/);
+  assert.match(summaryGuard, /14\]/);
+  assert.match(suiteRunner, /node scripts\/ci\/require-jest-summary\.mjs/);
 });
 
-test('keeps the Release check name while running its complete split on two isolated runners', () => {
-  assert.match(
-    profilesWorkflow,
-    /detox_release_e2e:[\s\S]*?name: Detox Release iOS E2E[\s\S]*?uses: \.\/\.github\/workflows\/detox-e2e-release\.yml/,
-  );
-  assert.match(
+test('keeps Release UI/storage and stateful-data as separate checked shard jobs', () => {
+  assert.doesNotMatch(
     releaseWorkflow,
-    /detox_release_ui_shard:[\s\S]*?release_shard: release-e2e\.test\.js/,
+    /validate_release_profile|Require complete Release shard results/,
   );
-  assert.match(
-    releaseWorkflow,
-    /detox_release_data_shard:[\s\S]*?release_shard: release-e2e-data\.test\.js/,
-  );
-  assert.match(
-    releaseWorkflow,
-    /detox_profile:[\s\S]*?name: Detox release iOS E2E[\s\S]*?needs: \[detox_release_ui_shard, detox_release_data_shard\][\s\S]*?if: \$\{\{ always\(\) \}\}/,
-  );
-  assert.doesNotMatch(releaseWorkflow, /detox_release_safe_area_shard/);
-  assert.match(releaseWorkflow, /require-detox-release-shard-aggregate\.mjs/);
-  assert.match(profileWorkflow, /release_shard: \{ required: false, type: string, default: '' \}/);
+  assert.doesNotMatch(releaseWorkflow, /require-detox-release-shard-aggregate\.mjs/);
+  assert.doesNotMatch(releaseWorkflow, /^\x20{2}outputs:/m);
+
+  const ui = jobBlock(releaseWorkflow, 'detox_release_ui_shard');
+  const data = jobBlock(releaseWorkflow, 'detox_release_data_shard');
+  assert.match(ui, /name: Release UI and storage/);
+  assert.match(ui, /release_shard: release-e2e\.test\.js/);
+  assert.match(data, /name: Release stateful-data/);
+  assert.match(data, /release_shard: release-e2e-data\.test\.js/);
+  assert.match(ui, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
+  assert.match(data, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
   assert.match(profileWorkflow, /OROT_DETOX_RELEASE_SHARD: \$\{\{ inputs\.release_shard \}\}/);
   assert.equal(
     [...releaseWorkflow.matchAll(/fingerprints: \$\{\{ inputs\.fingerprints \}\}/g)].length,
     2,
+  );
+});
+
+test('uses the shared profile inventory and removes the path-filtered Next Visit duplicate', () => {
+  assert.match(profilesWorkflow, /profile: next-visit-questions/);
+  assert.match(summaryGuard, /Next Visit Questions/);
+  assert.match(summaryGuard, /e2e-next-visit-questions/);
+  assert.equal(
+    existsSync(fileURLToPath(new URL('.github/workflows/next-visit-questions-e2e.yml', root))),
+    false,
   );
 });

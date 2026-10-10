@@ -1,4 +1,5 @@
-export const REQUIRED_CI_JOBS = ['Quality', 'iOS Simulator Build', 'Detox iOS E2E'];
+import { REQUIRED_CI_JOBS } from './ci-required-jobs.mjs';
+export { REQUIRED_CI_JOBS };
 
 const EXPECTED_EVIDENCE = {
   simulatorE2E: 42,

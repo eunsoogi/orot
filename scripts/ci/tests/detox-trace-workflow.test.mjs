@@ -27,19 +27,18 @@ test('enables built-in Detox trace only for a manually requested diagnostic run'
         line.includes('inputs.detox_trace == true'),
     ),
   );
+  // Each profile receives the optional diagnostic controls directly; no result-summary job gates them.
   assert.equal(
     (profilesWorkflow.match(/trace_logging: \$\{\{ inputs\.trace_logging \}\}/g) || []).length,
-    3,
+    4,
   );
   assert.equal(
     (profilesWorkflow.match(/resource_sampling: \$\{\{ inputs\.resource_sampling \}\}/g) || [])
       .length,
-    3,
+    4,
   );
-  assert.match(
-    profilesWorkflow,
-    /needs: \[detox_release_e2e, detox_openai_provider_e2e, detox_transcription_e2e\]/,
-  );
+  assert.match(profilesWorkflow, /detox_next_visit_e2e:[\s\S]*?profile: next-visit-questions/);
+  assert.doesNotMatch(profilesWorkflow, /needs: \[detox_release_e2e, detox_openai_provider_e2e/);
   assert.match(profileWorkflow, /trace_logging: \{ type: boolean, default: false \}/);
   assert.match(profileWorkflow, /OROT_DETOX_TEST_LOG_LEVEL=.*'trace'.*'info'/);
   assert.match(runner, /OROT_DETOX_TEST_LOG_LEVEL:-info/);

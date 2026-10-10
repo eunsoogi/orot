@@ -54,7 +54,12 @@ function workflowStep(source, name) {
 
 test('computes common app fingerprints once and shares them with every profile', () => {
   const fingerprintJob = workflowJob(profilesWorkflow, 'detox_cache_fingerprint');
-  const profileJobs = ['detox_release_e2e', 'detox_openai_provider_e2e', 'detox_transcription_e2e'];
+  const profileJobs = [
+    'detox_release_e2e',
+    'detox_openai_provider_e2e',
+    'detox_transcription_e2e',
+    'detox_next_visit_e2e',
+  ];
 
   // Profiles share source hashes while cache keys retain runner and Xcode identity.
   assert.match(fingerprintJob, /name: Compute shared Detox cache fingerprints/);
@@ -86,26 +91,25 @@ test('computes common app fingerprints once and shares them with every profile',
   for (const jobId of profileJobs) {
     const job = workflowJob(profilesWorkflow, jobId);
     assert.match(job, /needs: \[detox_cache_fingerprint\]/);
+    assert.match(job, /if: \$\{\{ !cancelled\(\) \}\}/);
     assert.match(
       job,
       /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
     );
   }
 
-  assert.match(
-    profilesWorkflow,
-    /needs: \[detox_release_e2e, detox_openai_provider_e2e, detox_transcription_e2e\]/,
-  );
-  assert.match(profilesWorkflow, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
+  assert.doesNotMatch(profilesWorkflow, /needs: \[detox_release_e2e, detox_openai_provider_e2e/);
+  assert.doesNotMatch(profilesWorkflow, /if: \$\{\{ always\(\) \}\}/);
+  assert.doesNotMatch(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
   for (const checkName of [
-    'Detox Release iOS E2E',
-    'Detox OpenAI Debug iOS E2E',
-    'Detox Speech Transcription iOS E2E',
-    'Require complete profile summaries',
+    'Release shards',
+    'OpenAI Debug E2E',
+    'Speech Transcription E2E',
+    'Next Visit Questions E2E',
   ]) {
     assert.ok(profilesWorkflow.includes(`name: ${checkName}`));
   }
+  assert.doesNotMatch(profilesWorkflow, /Require complete profile summaries/);
 });
 
 test('passes shared hashes directly into cache validation and preserves profile behavior', () => {

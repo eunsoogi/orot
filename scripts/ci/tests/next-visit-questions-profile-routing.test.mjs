@@ -47,11 +47,7 @@ test('routes the deterministic screen entry through its isolated app and Jest pr
   assert.deepEqual(probeJest.testMatch, ['<rootDir>/e2e/next-visit-questions.e2e.js']);
 });
 
-test('runs the synthetic E2E profile from a focused PR workflow', () => {
-  const workflow = readFileSync(
-    join(repositoryRoot, '.github/workflows/next-visit-questions-e2e.yml'),
-    'utf8',
-  );
+test('runs Next Visit as a required direct profile in the shared CI workflow', () => {
   const genericProfiles = readFileSync(
     join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
     'utf8',
@@ -62,25 +58,17 @@ test('runs the synthetic E2E profile from a focused PR workflow', () => {
   );
   const suiteRunner = readFileSync(join(repositoryRoot, 'scripts/ci/run-test-suite.sh'), 'utf8');
 
-  assert.match(workflow, /pull_request:[\s\S]*paths:/);
-  assert.match(workflow, /apps\/mobile\/src\/nextVisitQuestions\/\*\*/);
-  assert.match(workflow, /apps\/mobile\/e2e\/next-visit-questions\*/);
-  assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbe\.tsx/);
-  assert.match(workflow, /apps\/mobile\/e2e\/nextVisitQuestionsProbeEntry\.tsx/);
-  // The reusable profile needs one validated fingerprint object for its cache key.
-  assert.match(workflow, /^\x20{2}detox_cache_fingerprint:\n/m);
   assert.match(
-    workflow,
-    /build_inputs: \$\{\{ steps\.detox_cache_fingerprint\.outputs\.build_inputs \}\}/,
+    genericProfiles,
+    /detox_next_visit_e2e:[\s\S]*?name: Next Visit Questions E2E[\s\S]*?profile: next-visit-questions/,
   );
   assert.match(
-    workflow,
+    genericProfiles,
     /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
   );
-  assert.match(workflow, /needs: \[detox_cache_fingerprint\]/);
-  assert.match(workflow, /uses: \.\/\.github\/workflows\/detox-e2e-profile\.yml/);
-  assert.match(workflow, /profile: next-visit-questions/);
+  assert.match(genericProfiles, /needs: \[detox_cache_fingerprint\]/);
+  assert.doesNotMatch(genericProfiles, /paths:/);
   assert.match(reusableProfile, /inputs\.profile == 'next-visit-questions'/);
   assert.match(suiteRunner, /e2e-next-visit-questions/);
-  assert.doesNotMatch(genericProfiles, /next-visit-questions/);
+  assert.match(suiteRunner, /require-jest-summary\.mjs/);
 });

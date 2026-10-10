@@ -14,6 +14,10 @@ const profilesWorkflow = readFileSync(
   'utf8',
 );
 const ciWorkflow = readFileSync(join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8');
+const qualityWorkflow = readFileSync(
+  join(repositoryRoot, '.github/workflows/quality-linux.yml'),
+  'utf8',
+);
 const runner = readFileSync(join(repositoryRoot, 'scripts/ci/run-detox-e2e.sh'), 'utf8');
 const profileDependencySetup = readFileSync(
   join(repositoryRoot, 'scripts/ci/install-detox-profile-dependencies.sh'),
@@ -108,7 +112,7 @@ test('leaves heavy resource sampling off unless a manual run requests it and cap
     /workflow_dispatch:[\s\S]*?detox_resource_sampling:[\s\S]*?type: boolean[\s\S]*?default: false/,
   );
   assert.match(
-    ciWorkflow,
+    qualityWorkflow,
     /if \[\[ "\$GITHUB_EVENT_NAME" == workflow_dispatch \]\]; then[\s\S]*?scripts\/ci\/check-loc\.mjs --all[\s\S]*?else[\s\S]*?scripts\/ci\/check-loc\.mjs --base "\$LOC_BASE_SHA"/,
   );
   assert.match(
