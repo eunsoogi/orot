@@ -2,6 +2,7 @@ import { Button, StyleSheet, Text, View } from 'react-native';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import BackupStatusRecovery from '../backup/BackupStatusRecovery';
 import { t } from '../i18n';
+import { medicalAppointmentCopy } from '../medicalAppointments/copy.ko';
 import { providerSelectionText } from '../providers/selection/text';
 
 interface WelcomeRouteProps {
@@ -12,6 +13,7 @@ interface WelcomeRouteProps {
   onOpenRagConversation: () => void;
   onOpenExternalEvidence: () => void;
   onOpenAppointments: () => void;
+  onOpenMedicalAppointments: () => void;
   onOpenCommonObservations: () => void;
   onOpenBloodPressure: () => void;
   onOpenUnifiedImport: () => void;
@@ -49,6 +51,7 @@ export default function WelcomeRoute({
   onOpenRagConversation,
   onOpenExternalEvidence,
   onOpenAppointments,
+  onOpenMedicalAppointments,
   onOpenCommonObservations,
   onOpenBloodPressure,
   onOpenUnifiedImport,
@@ -88,6 +91,12 @@ export default function WelcomeRoute({
         onPress={onOpenAppointments}
         testID="open-appointments"
         title={t('app.actions.appointments')}
+      />
+      {/* Keep the selected-AI review and its manual fallback one tap from home. */}
+      <Button
+        onPress={onOpenMedicalAppointments}
+        testID="open-medical-appointments"
+        title={medicalAppointmentCopy.title}
       />
       <Button
         onPress={onOpenCommonObservations}
