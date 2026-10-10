@@ -122,6 +122,38 @@ describe('transcript evidence service', () => {
     expect(playRange).toHaveBeenCalledWith(source.id, 250, 1801);
   });
 
+  it('forwards caller cancellation to the provider for a saved recording', async () => {
+    const { repository } = makeRepository();
+    const controller = new AbortController();
+    const provider = {
+      transcribeRecording: jest.fn(async () =>
+        providerSuccess({
+          text: original.text,
+          language: 'ko-KR',
+          segments: [
+            { text: original.text, startSeconds: 0.25, endSeconds: 1.8 },
+          ],
+          engine: 'dictation_transcriber' as const,
+          runtimeVersion: 'iOS 26.2 (23C54)',
+          recordingDurationMs: 5000,
+        }),
+      ),
+    };
+    const service = createTranscriptEvidenceService({
+      loadRepository: async () => repository,
+      provider,
+    });
+
+    // Saved recordings must carry user cancellation through the service boundary to the native provider.
+    await service.transcribe(source.id, controller.signal);
+
+    expect(provider.transcribeRecording).toHaveBeenCalledWith({
+      recordingId: source.id,
+      language: 'ko-KR',
+      signal: controller.signal,
+    });
+  });
+
   it('loads stale derived artifacts with their recording-linked transcript revisions', async () => {
     const { repository, transcripts } = makeRepository([original]);
     const service = createTranscriptEvidenceService({

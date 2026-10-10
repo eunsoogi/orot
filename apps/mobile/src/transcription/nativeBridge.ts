@@ -12,6 +12,7 @@ interface NativeSpeechModule {
   transcribeAudio(
     request: NativeSpeechTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
+  cancelTranscription(requestId: string): void;
   transcribeRecording?(
     request: NativeRecordingTranscriptionRequest,
   ): Promise<NativeSpeechTranscriptionResponse>;
@@ -41,6 +42,10 @@ export const appleSpeechTranscriptionNativeBridge: NativeSpeechTranscriptionBrid
 
     transcribe(request) {
       return requireNativeModule().transcribeAudio(request);
+    },
+
+    cancelTranscription(requestId) {
+      requireNativeModule().cancelTranscription(requestId);
     },
 
     transcribeRecording(request) {

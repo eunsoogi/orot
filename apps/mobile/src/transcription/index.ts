@@ -13,6 +13,7 @@ export type {
   NativeRecordingTranscriptionRequest,
   NativeSpeechTranscriptionRequest,
   NativeSpeechTranscriptionResponse,
+  TranscriptionRecordingRequest,
   SpeechAvailability,
   SpeechAvailabilityStatus,
   SpeechRecognitionEngine,

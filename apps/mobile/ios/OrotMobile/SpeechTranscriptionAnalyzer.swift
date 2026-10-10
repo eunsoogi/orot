@@ -15,7 +15,7 @@ enum SpeechTranscriptionAnalyzer {
 
         // Enable source audio ranges without requesting alternatives or provisional results.
         let transcriber = makeTimeIndexedTranscriber(locale: supportedLocale)
-        return try await withInstalledAssets(
+        return try await SpeechTranscriptionAssetInstallation.withInstalledAssets(
             prepare: { try await installAssets(for: transcriber, engine: "speech_transcriber") },
             analyze: {
                 try await analyze(
@@ -39,7 +39,7 @@ enum SpeechTranscriptionAnalyzer {
 
         // Consultation files can exceed a minute, and evidence links need the source audio time range.
         let transcriber = DictationTranscriber(locale: supportedLocale, preset: .timeIndexedLongDictation)
-        return try await withInstalledAssets(
+        return try await SpeechTranscriptionAssetInstallation.withInstalledAssets(
             prepare: { try await installAssets(for: transcriber, engine: "dictation_transcriber") },
             analyze: {
                 try await analyze(
@@ -92,6 +92,14 @@ enum SpeechTranscriptionAnalyzer {
             statusAfter = await AssetInventory.status(forModules: [module])
             try Task.checkCancellation()
         } catch {
+            if let failure = error as? SpeechTranscriptionFailure,
+               failure.code == "TRANSCRIPTION_CANCELLED" || failure.code == "TRANSCRIPTION_TIMEOUT"
+            {
+                throw failure
+            }
+            if error is CancellationError {
+                throw SpeechTranscriptionDeadline.cancelledFailure()
+            }
             #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
                 let statusAfter = await AssetInventory.status(forModules: [module])
                 let reservationsAfter = await AssetInventory.reservedLocales
@@ -137,32 +145,6 @@ enum SpeechTranscriptionAnalyzer {
         return statusAfter
     }
 
-    /// An installation request can finish before assets are ready, so never enter analysis without `.installed`.
-    static func withInstalledAssets<Result>(
-        prepare: () async throws -> AssetInventory.Status,
-        analyze: () async throws -> Result,
-    ) async throws -> Result {
-        do {
-            try Task.checkCancellation()
-            let status = try await prepare()
-            try Task.checkCancellation()
-            guard status == .installed else {
-                throw SpeechTranscriptionFailure(
-                    "MODEL_INSTALL_FAILED",
-                    "Apple did not install the Korean on-device speech model.",
-                )
-            }
-            try Task.checkCancellation()
-        } catch {
-            throw SpeechTranscriptionFailure(
-                "MODEL_INSTALL_FAILED",
-                "The Korean on-device speech model could not be installed.",
-            )
-        }
-
-        return try await analyze()
-    }
-
     private static func analyze(
         _ file: SpeechTranscriptionAudioFile,
         module: any SpeechModule,
@@ -182,13 +164,21 @@ enum SpeechTranscriptionAnalyzer {
         ) { compatibleFile in
             let audioFile = try AVAudioFile(forReading: compatibleFile.url)
             let analyzer = SpeechAnalyzer(modules: [module])
-            let results = Task { try await collectResults() }
             do {
-                try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true)
-                return try await results.value
+                return try await SpeechTranscriptionTaskCancellation.withAnalyzerCancellation(
+                    start: { try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true) },
+                    collectResults: collectResults,
+                    cancel: { await analyzer.cancelAndFinishNow() },
+                )
             } catch {
-                results.cancel()
-                await analyzer.cancelAndFinishNow()
+                if let failure = error as? SpeechTranscriptionFailure,
+                   failure.code == "TRANSCRIPTION_CANCELLED" || failure.code == "TRANSCRIPTION_TIMEOUT"
+                {
+                    throw failure
+                }
+                if error is CancellationError {
+                    throw SpeechTranscriptionDeadline.cancelledFailure()
+                }
                 throw SpeechTranscriptionFailure("SPEECH_RECOGNITION_FAILED", error.localizedDescription)
             }
         }

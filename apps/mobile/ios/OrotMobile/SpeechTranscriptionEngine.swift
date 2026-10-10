@@ -8,6 +8,12 @@ enum SpeechTranscriptionEngine {
     }
 
     static func transcribe(_ request: [String: Any]) async throws -> [String: Any] {
+        try await SpeechTranscriptionDeadline.run {
+            try await transcribeAudioRequest(request)
+        }
+    }
+
+    private static func transcribeAudioRequest(_ request: [String: Any]) async throws -> [String: Any] {
         let language = try validatedLanguage(request)
         guard let base64 = request["audioBase64"] as? String,
               let mediaType = request["mediaType"] as? String
@@ -26,6 +32,12 @@ enum SpeechTranscriptionEngine {
     }
 
     static func transcribeRecording(_ request: [String: Any]) async throws -> [String: Any] {
+        try await SpeechTranscriptionDeadline.run {
+            try await transcribeRecordingRequest(request)
+        }
+    }
+
+    private static func transcribeRecordingRequest(_ request: [String: Any]) async throws -> [String: Any] {
         let language = try validatedLanguage(request)
         guard let recordingID = request["recordingId"] as? String else {
             throw SpeechTranscriptionFailure("INVALID_AUDIO", "A saved recording identifier is required.")
@@ -58,14 +70,17 @@ enum SpeechTranscriptionEngine {
 
     private static func availableEngine(language: String) async throws -> SpeechTranscriptionAvailabilityResult {
         var available = await availability(language: language)
+        try Task.checkCancellation()
         if available.status == .permissionNotDetermined {
             // Ask only after a user starts transcription; availability checks do not prompt.
             let permission = await SpeechTranscriptionAvailability.requestAuthorization()
+            try Task.checkCancellation()
             guard permission == .authorized else {
                 let status: SpeechTranscriptionStatus = permission == .restricted ? .permissionRestricted : .permissionDenied
                 throw failure(for: .failure(status, locale: language, engine: .onDeviceSpeechRecognizer))
             }
             available = await availability(language: language)
+            try Task.checkCancellation()
         }
         guard available.status == .available else { throw failure(for: available) }
         return available
@@ -76,6 +91,7 @@ enum SpeechTranscriptionEngine {
         selected available: SpeechTranscriptionAvailabilityResult,
         syntheticFixture: Bool,
     ) async throws -> [String: Any] {
+        try Task.checkCancellation()
         let text: String
         let segments: [SpeechTranscriptionSegment]
         var selectedEngine = available.engine
@@ -130,6 +146,7 @@ enum SpeechTranscriptionEngine {
         var legacy = SpeechTranscriptionAvailability.legacyAvailability()
         if legacy.status == .permissionNotDetermined {
             let permission = await SpeechTranscriptionAvailability.requestAuthorization()
+            try Task.checkCancellation()
             guard permission == .authorized else {
                 let status: SpeechTranscriptionStatus = permission == .restricted ? .permissionRestricted : .permissionDenied
                 throw failure(for: .failure(status, locale: SpeechTranscriptionLanguage.localeIdentifier, engine: .onDeviceSpeechRecognizer))
