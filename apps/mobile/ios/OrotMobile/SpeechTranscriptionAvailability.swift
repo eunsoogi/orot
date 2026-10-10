@@ -184,3 +184,40 @@ enum SpeechTranscriptionAvailability {
         )
     }
 }
+
+@available(iOS 26.0, *)
+enum SpeechTranscriptionAssetInstallation {
+    /// Asset installation can return before the model is ready, so analysis starts only after `.installed`.
+    static func withInstalledAssets<Result>(
+        prepare: () async throws -> AssetInventory.Status,
+        analyze: () async throws -> Result,
+    ) async throws -> Result {
+        do {
+            try Task.checkCancellation()
+            let status = try await prepare()
+            try Task.checkCancellation()
+            guard status == .installed else {
+                throw SpeechTranscriptionFailure(
+                    "MODEL_INSTALL_FAILED",
+                    "Apple did not install the Korean on-device speech model.",
+                )
+            }
+            try Task.checkCancellation()
+        } catch {
+            if let failure = error as? SpeechTranscriptionFailure,
+               failure.code == "TRANSCRIPTION_CANCELLED" || failure.code == "TRANSCRIPTION_TIMEOUT"
+            {
+                throw failure
+            }
+            if error is CancellationError {
+                throw SpeechTranscriptionDeadline.cancelledFailure()
+            }
+            throw SpeechTranscriptionFailure(
+                "MODEL_INSTALL_FAILED",
+                "The Korean on-device speech model could not be installed.",
+            )
+        }
+
+        return try await analyze()
+    }
+}

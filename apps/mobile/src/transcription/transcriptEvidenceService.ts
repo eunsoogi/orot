@@ -24,7 +24,10 @@ export interface TranscriptRecordingView {
 
 export interface TranscriptEvidenceService {
   load(recordingSourceId?: string): Promise<TranscriptRecordingView | null>;
-  transcribe(recordingSourceId: string): Promise<TranscriptEvidenceSegment[]>;
+  transcribe(
+    recordingSourceId: string,
+    signal?: AbortSignal,
+  ): Promise<TranscriptEvidenceSegment[]>;
   correct(segmentId: string, text: string): Promise<TranscriptEvidenceSegment>;
   play(segment: TranscriptEvidenceSegment): Promise<RecordingPlaybackRange>;
 }
@@ -112,7 +115,7 @@ export function createTranscriptEvidenceService(
       ];
       return { source, segments, staleArtifacts };
     },
-    async transcribe(recordingSourceId) {
+    async transcribe(recordingSourceId, signal) {
       const repository = await loadRepository();
       const source = await repository.get('source_record', recordingSourceId);
       if (!source || source.sourceKind !== 'audio_recording') {
@@ -126,6 +129,7 @@ export function createTranscriptEvidenceService(
       const result = await provider.transcribeRecording({
         recordingId: source.id,
         language: 'ko-KR',
+        ...(signal ? { signal } : {}),
       });
       if (!result.ok) throw new Error(result.error.message);
       const recognizedSegments = result.value.segments ?? [];

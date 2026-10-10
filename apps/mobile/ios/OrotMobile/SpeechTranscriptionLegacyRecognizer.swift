@@ -20,30 +20,35 @@ enum SpeechTranscriptionLegacyRecognizer {
         request.shouldReportPartialResults = false
         request.taskHint = .dictation
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let gate = SpeechTranscriptionContinuation<(String, [SpeechTranscriptionSegment])>(continuation)
-            let task = recognizer.recognitionTask(with: request) { result, error in
-                if let error {
-                    gate.complete(.failure(SpeechTranscriptionFailure("SPEECH_RECOGNITION_FAILED", error.localizedDescription)))
-                    return
-                }
-                guard let result, result.isFinal else { return }
+        let gate = SpeechTranscriptionContinuation<(String, [SpeechTranscriptionSegment])>()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                gate.install(continuation)
+                let task = recognizer.recognitionTask(with: request) { result, error in
+                    if let error {
+                        gate.complete(.failure(SpeechTranscriptionFailure("SPEECH_RECOGNITION_FAILED", error.localizedDescription)))
+                        return
+                    }
+                    guard let result, result.isFinal else { return }
 
-                let segments = result.bestTranscription.segments.map { segment in
-                    SpeechTranscriptionSegment(
-                        startSeconds: segment.timestamp,
-                        endSeconds: segment.timestamp + segment.duration,
-                        text: segment.substring,
-                    )
+                    let segments = result.bestTranscription.segments.map { segment in
+                        SpeechTranscriptionSegment(
+                            startSeconds: segment.timestamp,
+                            endSeconds: segment.timestamp + segment.duration,
+                            text: segment.substring,
+                        )
+                    }
+                    do {
+                        try validate(segments, duration: file.durationSeconds)
+                        gate.complete(.success((result.bestTranscription.formattedString, segments)))
+                    } catch {
+                        gate.complete(.failure(error))
+                    }
                 }
-                do {
-                    try validate(segments, duration: file.durationSeconds)
-                    gate.complete(.success((result.bestTranscription.formattedString, segments)))
-                } catch {
-                    gate.complete(.failure(error))
-                }
+                gate.attachCancellation { task.cancel() }
             }
-            gate.attach(task)
+        } onCancel: {
+            gate.cancel()
         }
     }
 
@@ -61,32 +66,70 @@ enum SpeechTranscriptionLegacyRecognizer {
     }
 }
 
-private final class SpeechTranscriptionContinuation<Value> {
+/// Bridges the legacy callback and task cancellation without double-resuming its continuation.
+final class SpeechTranscriptionContinuation<Value>: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Value, Error>?
-    private var task: SFSpeechRecognitionTask?
+    private var completion: Result<Value, Error>?
+    private var cancellationRequested = false
+    private var cancelAction: (() -> Void)?
 
-    init(_ continuation: CheckedContinuation<Value, Error>) {
-        self.continuation = continuation
-    }
-
-    func attach(_ task: SFSpeechRecognitionTask) {
+    func install(_ continuation: CheckedContinuation<Value, Error>) {
         lock.lock()
-        guard continuation != nil else {
+        if let completion {
             lock.unlock()
-            task.cancel()
+            continuation.resume(with: completion)
             return
         }
-        self.task = task
+        self.continuation = continuation
+        lock.unlock()
+    }
+
+    func attachCancellation(_ action: @escaping () -> Void) {
+        lock.lock()
+        if cancellationRequested {
+            lock.unlock()
+            action()
+            return
+        }
+        guard case .none = completion else {
+            lock.unlock()
+            return
+        }
+        cancelAction = action
         lock.unlock()
     }
 
     func complete(_ result: Result<Value, Error>) {
         lock.lock()
-        let pending = continuation
-        continuation = nil
-        task = nil
+        guard case .none = completion else {
+            lock.unlock()
+            return
+        }
+        completion = result
+        let continuation = continuation
+        self.continuation = nil
+        cancelAction = nil
         lock.unlock()
-        pending?.resume(with: result)
+        continuation?.resume(with: result)
+    }
+
+    func cancel() {
+        lock.lock()
+        guard case .none = completion else {
+            lock.unlock()
+            return
+        }
+        cancellationRequested = true
+        let result = Result<Value, Error>.failure(SpeechTranscriptionDeadline.cancelledFailure())
+        completion = result
+        let continuation = continuation
+        let cancelAction = cancelAction
+        self.continuation = nil
+        self.cancelAction = nil
+        lock.unlock()
+
+        cancelAction?()
+        continuation?.resume(with: result)
     }
 }

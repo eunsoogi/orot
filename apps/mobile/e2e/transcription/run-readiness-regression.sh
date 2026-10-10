@@ -11,7 +11,10 @@ swiftc \
   -parse-as-library \
   -o "$temporary_directory/readiness-regression" \
   apps/mobile/ios/OrotMobile/SpeechTranscriptionTypes.swift \
+  apps/mobile/ios/OrotMobile/SpeechTranscriptionAvailability.swift \
   apps/mobile/ios/OrotMobile/SpeechTranscriptionAnalyzer.swift \
-  apps/mobile/e2e/transcription/analyzerReadinessRegression.swift
+  apps/mobile/ios/OrotMobile/SpeechTranscriptionLegacyRecognizer.swift \
+  apps/mobile/e2e/transcription/analyzerReadinessRegression.swift \
+  apps/mobile/e2e/transcription/deadlineCancellationRegression.swift
 
 "$temporary_directory/readiness-regression"

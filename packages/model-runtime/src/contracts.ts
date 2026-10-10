@@ -130,6 +130,8 @@ export interface AudioInput {
 export interface TranscriptionRequest {
   readonly audio: AudioInput;
   readonly language?: string;
+  /** Cancels an in-flight transcription when the caller no longer needs the result. */
+  readonly signal?: AbortSignal;
 }
 
 export interface TranscriptionSegment {
