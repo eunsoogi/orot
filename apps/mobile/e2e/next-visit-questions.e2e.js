@@ -49,7 +49,12 @@ describe('synthetic next-visit questions screen', () => {
     await waitFor(element(by.id('next-visit-save-message')))
       .toHaveText('검토한 질문을 이 예약에 저장했어요.')
       .withTimeout(30000);
-    await scrollUntilVisible(element(by.text('검토해 수정한 합성 질문')), 'up');
+    // Saving or canceling restores the appointment/provider sections above the saved list.
+    await scrollToEdge('top');
+    await scrollUntilVisible(
+      element(by.text('검토해 수정한 합성 질문')),
+      'down',
+    );
     // The saved section can exceed one viewport; visible question and caveat are checked separately.
     await expect(element(by.id('next-visit-saved-list'))).toExist();
     await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
@@ -76,7 +81,12 @@ describe('synthetic next-visit questions screen', () => {
     // Cancellation uses the same pinned footer while the draft remains editable.
     await expect(element(by.id('next-visit-review-cancel'))).toBeVisible();
     await element(by.id('next-visit-review-cancel')).tap();
-    await scrollUntilVisible(element(by.text('검토해 수정한 합성 질문')), 'up');
+    // Saving or canceling restores the appointment/provider sections above the saved list.
+    await scrollToEdge('top');
+    await scrollUntilVisible(
+      element(by.text('검토해 수정한 합성 질문')),
+      'down',
+    );
     await expect(element(by.id('next-visit-saved-list'))).toExist();
     await expect(element(by.text('검토해 수정한 합성 질문'))).toBeVisible();
     await expect(element(by.text('저장되지 않은 임시 수정'))).not.toExist();
