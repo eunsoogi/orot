@@ -68,6 +68,13 @@ test('late confirmation progress cannot replace a newer run status', async () =>
   await render(
     <HealthKitImportScreen copy={copy} coordinator={screenCoordinator} />,
   );
+  expect(screen.getByTestId('unified-import-indicator-healthKit')).toBeTruthy();
+  for (const feature of healthKitFeatures) {
+    expect(
+      screen.getByTestId(`unified-import-indicator-${feature}`),
+    ).toBeTruthy();
+  }
+  expect(screen.getByTestId('unified-import-indicator-eventKit')).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('unified-import-toggle-eventKit'));
   await fireEvent.press(screen.getByTestId('unified-import-start'));

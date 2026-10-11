@@ -20,7 +20,7 @@ interface SettingsAccountsRouteProps {
   ) => void;
 }
 
-/** Reuses the account and model flow while keeping the Settings detail guarded. */
+/** Keeps account authentication guarded while hiding unrelated model choices. */
 export function SettingsAccountsRoute({
   actions,
   serviceDependencies,
@@ -45,6 +45,7 @@ export function SettingsAccountsRoute({
 
   return (
     <ProviderSelectionFlow
+      presentation="settings-accounts"
       navigationRouteKey={actions.route.key}
       onBack={async () => {
         await actions.onBack().catch(() => undefined);
@@ -59,6 +60,7 @@ export function SettingsAccountsRoute({
       screenTitle={t('settings.accounts')}
       selectionStore={serviceDependencies?.selectedAi?.selectionStore}
       chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
+      loadAppleOption={serviceDependencies?.selectedAi?.loadAppleOption}
     />
   );
 }

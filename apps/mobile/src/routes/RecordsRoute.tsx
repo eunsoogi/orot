@@ -14,6 +14,7 @@ interface RecordsRouteProps {
   readonly onOpenRecording: () => void;
   readonly onOpenUnifiedImport: () => void;
   readonly onOpenHealthImport: () => void;
+  readonly onOpenHealthLibrary: () => void;
   readonly onOpenBloodPressure: () => void;
 }
 
@@ -25,6 +26,7 @@ export function RecordsRoute({
   onOpenRecording,
   onOpenUnifiedImport,
   onOpenHealthImport,
+  onOpenHealthLibrary,
   onOpenBloodPressure,
 }: RecordsRouteProps) {
   useNavigationLeaveStateRegistration({
@@ -74,6 +76,11 @@ export function RecordsRoute({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('records.healthRecords')}</Text>
+        <SettingsRow
+          onPress={onOpenHealthLibrary}
+          testID="records-open-health-library"
+          title={t('records.openHealthLibrary')}
+        />
         <SettingsRow
           onPress={onOpenHealthImport}
           testID="records-open-common-observations"

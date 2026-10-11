@@ -16,21 +16,38 @@ if (!/^\d{4,5}$/.test(metroPort)) {
   throw new Error('OROT_BLOOD_PRESSURE_METRO_PORT must be a numeric port.');
 }
 
+function probeApp(
+  configuration,
+  entryFile = 'e2e/bloodPressureProbeEntry.tsx',
+) {
+  return {
+    type: 'ios.app',
+    binaryPath:
+      derivedDataPath +
+      `/Build/Products/${configuration}-iphonesimulator/Orot.app`,
+    build:
+      'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration ' +
+      configuration +
+      ' -sdk iphonesimulator -derivedDataPath ' +
+      derivedDataPath +
+      ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=' +
+      entryFile,
+  };
+}
+
 module.exports = {
   testRunner: {
     args: { $0: 'jest', config: 'e2e/blood-pressure-probe.jest.config.js' },
     jest: { setupTimeout: 240000 },
   },
   apps: {
-    'ios.blood-pressure-probe': {
-      type: 'ios.app',
-      binaryPath:
-        derivedDataPath + '/Build/Products/Debug-iphonesimulator/Orot.app',
-      build:
-        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Debug -sdk iphonesimulator -derivedDataPath ' +
-        derivedDataPath +
-        ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements ENTRY_FILE=e2e/bloodPressureProbeEntry.tsx',
-    },
+    'ios.blood-pressure-probe.debug': probeApp('Debug'),
+    // Release embeds the probe entry so screenshots show the production UI without Metro overlays.
+    'ios.blood-pressure-probe.release': probeApp('Release'),
+    'ios.blood-pressure-visual-probe.release': probeApp(
+      'Release',
+      'e2e/bloodPressureVisualProbeEntry.tsx',
+    ),
   },
   devices: {
     simulator: {
@@ -41,7 +58,15 @@ module.exports = {
   configurations: {
     'ios.sim.debug.blood-pressure-probe': {
       device: 'simulator',
-      app: 'ios.blood-pressure-probe',
+      app: 'ios.blood-pressure-probe.debug',
+    },
+    'ios.sim.release.blood-pressure-probe': {
+      device: 'simulator',
+      app: 'ios.blood-pressure-probe.release',
+    },
+    'ios.sim.release.blood-pressure-visual-probe': {
+      device: 'simulator',
+      app: 'ios.blood-pressure-visual-probe.release',
     },
   },
 };

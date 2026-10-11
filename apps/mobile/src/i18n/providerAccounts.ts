@@ -10,6 +10,11 @@ export const providerAccountsKo = {
   'provider.apple.generationFailed':
     '질문을 만들지 못했어요. 다시 시도해 주세요.',
   'provider.selection.title': '추천에 사용할 AI 선택',
+  'provider.selection.rowTitle': '사용할 AI',
+  'provider.selection.rowPrompt': 'AI 선택하기',
+  'provider.selection.rowLoading': '선택한 AI를 확인하고 있어요…',
+  'provider.selection.rowUnavailable': '선택한 AI를 확인할 수 없어요.',
+  'provider.selection.rowHint': '추천에 사용할 제공자와 모델을 선택합니다.',
   'provider.selection.introduction':
     '사용할 AI를 직접 선택하세요. 선택한 AI를 사용할 수 없으면 다른 AI로 자동 전환하지 않아요.',
   'provider.selection.selectPrompt':

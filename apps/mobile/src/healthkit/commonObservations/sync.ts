@@ -1,4 +1,3 @@
-import type { HealthKitAuthorizationResult } from '../types';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
 import {
   commonObservationRecordId,
@@ -14,6 +13,8 @@ import type {
 } from './syncOptions';
 import { measureCommonObservationOperation } from './syncOptions';
 import type { CommonObservationFeature } from './types';
+import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
+import { resolveHealthKitSyncAuthorization } from '../syncAuthorization';
 
 export type {
   CommonObservationRepository,
@@ -43,21 +44,28 @@ async function syncCommonObservationChangesExclusive(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
   const { feature, healthKit, repository, now } = options;
-  // A completed outer batch avoids a second prompt; standalone sync keeps its single-feature request.
-  let authorization: HealthKitAuthorizationResult;
-  if (options.authorization) {
-    authorization = options.authorization;
-  } else if ('requestReadAuthorization' in healthKit) {
-    authorization = await healthKit.requestReadAuthorization(feature);
-  } else {
-    throw new Error(
+  const authorization = await resolveHealthKitSyncAuthorization({
+    permissionPreviouslyRequested: options.permissionPreviouslyRequested,
+    authorization: options.authorization,
+    requestAuthorization:
+      'requestReadAuthorization' in healthKit
+        ? () => healthKit.requestReadAuthorization(feature)
+        : undefined,
+    onRequestCompleted: options.rememberForAutoSync
+      ? () =>
+          measureCommonObservationOperation(
+            options.instrumentation,
+            'persist',
+            () => rememberHealthKitAutoSyncRequest(repository, feature, now),
+          )
+      : undefined,
+    missingRequestMessage:
       'A feature-scoped authorization result is required before sync.',
-    );
-  }
-  if (authorization.availability !== 'available') {
+  });
+  if (authorization && authorization.availability !== 'available') {
     return result(authorization.availability, 0, 0, 0, false);
   }
-  if (authorization.requestStatus !== 'completed') {
+  if (authorization && authorization.requestStatus !== 'completed') {
     return result('unavailable', 0, 0, 0, false);
   }
 

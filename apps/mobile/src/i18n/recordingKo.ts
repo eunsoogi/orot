@@ -44,6 +44,11 @@ export const recordingKo = {
   'recording.transcript.empty': '이 녹음에는 저장된 전사 내용이 없어요.',
   'recording.transcript.create': '이 녹음 전사하기',
   'recording.transcript.creating': '기기에서 전사 중…',
+  'recording.transcript.autoProgress':
+    '저장된 녹음을 기기에서 전사하고 있어요…',
+  'recording.transcript.autoFailed':
+    '자동 전사를 완료하지 못했어요. 원본 녹음은 저장되어 있어요.',
+  'recording.transcript.retry': '전사 다시 시도',
   'recording.transcript.error.load': '전사 기록을 불러오지 못했어요.',
   'recording.transcript.error.create':
     '녹음을 전사하지 못했어요. 기기 지원 상태를 확인해 주세요.',
@@ -87,9 +92,16 @@ export const recordingKo = {
   'recording.library.loadError': '녹음 목록을 불러오지 못했어요.',
   'recording.library.empty': '저장된 녹음이 없어요.',
   'recording.library.details': '상세 보기',
+  'recording.library.openDetailsHint': '녹음과 전사 검토 내용을 엽니다.',
   'recording.library.closeDetails': '상세 닫기',
   'recording.library.delete': '녹음 삭제',
   'recording.library.untitled': '이름 없는 녹음',
+  'recording.library.durationUnavailable': '길이 확인 불가',
+  'recording.library.transcriptNotStarted': '전사 전',
+  'recording.library.transcriptStatusUnavailable': '검토 상태 확인 불가',
+  'recording.library.playAudio': '녹음 전체 듣기',
+  'recording.library.playingAudio': '녹음 재생 중…',
+  'recording.library.playbackError': '녹음을 재생하지 못했어요.',
   'recording.library.confirmTitle': '녹음을 삭제할까요?',
   'recording.library.confirmMessage':
     '“{title}” 녹음과 전사 및 연결된 자료를 이 기기에서 삭제합니다.',

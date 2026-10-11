@@ -4,13 +4,9 @@ import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
-import ProviderSelectionConfirmation from './ProviderSelectionConfirmation';
-import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
-import {
-  providerSelectionScreenStyles as styles,
-  resolutionMessage,
-} from './providerSelectionScreenPresentation';
+import { ProviderSelectionChoices } from './ProviderSelectionChoices';
+import { providerSelectionScreenStyles as styles } from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -19,11 +15,13 @@ import type {
   ChatGPTAccountSetup,
   ProviderSelection,
   ProviderSelectionOption,
+  ProviderSelectionPresentation,
   ProviderSelectionRequirements,
   ProviderSelectionStore,
 } from './types';
 
 interface ProviderSelectionScreenProps {
+  readonly presentation?: ProviderSelectionPresentation;
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
@@ -42,6 +40,7 @@ interface ProviderSelectionScreenProps {
 }
 
 export default function ProviderSelectionScreen({
+  presentation = 'feature',
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
@@ -170,7 +169,13 @@ export default function ProviderSelectionScreen({
     <ScrollView
       contentContainerStyle={[styles.container, navigationInset]}
       style={styles.scrollView}
-      testID="provider-selection-screen"
+      testID={
+        presentation === 'settings-provider'
+          ? 'settings-provider-screen'
+          : presentation === 'settings-accounts'
+            ? 'settings-accounts-screen'
+            : 'provider-selection-screen'
+      }
     >
       {onBack && !navigationRouteKey ? (
         <Button
@@ -180,48 +185,30 @@ export default function ProviderSelectionScreen({
           title={navigationText.back.label}
         />
       ) : null}
-      {/* Settings and AI share the same selection state but enter with different context. */}
+      {/* AI keeps combined controls; Settings exposes provider choices or account actions by route. */}
       <Text accessibilityRole="header" style={styles.title}>
         {screenTitle ?? providerSelectionText.title}
       </Text>
       <Text style={styles.introduction}>
         {screenIntroduction ?? providerSelectionText.introduction}
       </Text>
-      <Text
-        accessibilityRole={loadError || saveError ? 'alert' : undefined}
-        style={loadError || saveError ? styles.error : undefined}
-        testID="provider-selection-current"
-      >
-        {saveError ? providerSelectionText.storageSaveError : selectionMessage}
-      </Text>
+      {presentation !== 'settings-accounts' ? (
+        <Text
+          accessibilityRole={loadError || saveError ? 'alert' : undefined}
+          style={loadError || saveError ? styles.error : undefined}
+          testID="provider-selection-current"
+        >
+          {saveError
+            ? providerSelectionText.storageSaveError
+            : selectionMessage}
+        </Text>
+      ) : null}
       {chatGPTSetup ? <ChatGPTAccountSetupCard setup={chatGPTSetup} /> : null}
 
-      {options.map((option, index) => (
-        <ProviderSelectionOptionCard
-          key={`${option.provider.id}:${option.modelId}`}
-          disabled={loading || saving}
-          index={index}
-          onPress={() => {
-            publishNavigationState(
-              { hasPendingSelection: true, isSavingSelection: false },
-              true,
-            );
-            setPendingOption(option);
-            setSaveError(false);
-          }}
-          option={option}
-          requirements={requirements}
-          selected={
-            selectedOption?.provider.id === option.provider.id &&
-            selectedOption.modelId === option.modelId
-          }
-        />
-      ))}
-
-      {pendingOption && confirmationOption ? (
-        <ProviderSelectionConfirmation
-          blockedMessage={resolutionMessage(pendingResolution)}
-          canConfirm={pendingResolution?.ok === true}
+      {presentation !== 'settings-accounts' ? (
+        <ProviderSelectionChoices
+          confirmationOption={confirmationOption ?? undefined}
+          loading={loading}
           onCancel={() => {
             publishNavigationState(
               { hasPendingSelection: false, isSavingSelection: false },
@@ -229,9 +216,21 @@ export default function ProviderSelectionScreen({
             );
             setPendingOption(null);
           }}
+          onChoose={option => {
+            publishNavigationState(
+              { hasPendingSelection: true, isSavingSelection: false },
+              true,
+            );
+            setPendingOption(option);
+            setSaveError(false);
+          }}
           onConfirm={confirmSelection}
-          option={confirmationOption}
+          options={options}
+          pendingOption={pendingOption}
+          pendingResolution={pendingResolution}
+          requirements={requirements}
           saving={saving}
+          selectedOption={selectedOption}
         />
       ) : null}
     </ScrollView>

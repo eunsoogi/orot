@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
+import { CheckboxIndicator } from '../layout/CheckboxIndicator';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type {
   NextVisitEvidenceReference,
@@ -102,13 +103,11 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             }
             style={styles.priority}
           >
-            <AppSymbol
-              name={
-                question.priority === 'important'
-                  ? 'checkmark.square.fill'
-                  : 'square'
-              }
+            <CheckboxIndicator
+              checked={question.priority === 'important'}
               color={theme.colors.accentText}
+              disabled={disabled}
+              testID={`next-visit-question-priority-indicator-${index}`}
             />
           </Pressable>
         ) : null}

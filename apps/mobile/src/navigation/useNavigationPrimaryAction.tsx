@@ -14,14 +14,13 @@ interface ActionRegistration {
   readonly token: symbol;
   readonly action: NavigationPrimaryAction;
 }
-interface ActionHost {
+export interface NavigationPrimaryActionHost {
   readonly routeKey: string;
   readonly register: (registration: ActionRegistration) => () => void;
 }
 
-export const NavigationPrimaryActionContext = createContext<ActionHost | null>(
-  null,
-);
+export const NavigationPrimaryActionContext =
+  createContext<NavigationPrimaryActionHost | null>(null);
 
 /** Only the visible route may publish an action; retained overlay drafts keep their original owner. */
 export function useNavigationPrimaryActionHost(routeKey: string) {
@@ -38,7 +37,10 @@ export function useNavigationPrimaryActionHost(routeKey: string) {
         return remaining;
       });
   }, []);
-  const host = useMemo(() => ({ routeKey, register }), [routeKey, register]);
+  const host = useMemo<NavigationPrimaryActionHost>(
+    () => ({ routeKey, register }),
+    [routeKey, register],
+  );
   return {
     host,
     action: registrations.get(routeKey)?.action,

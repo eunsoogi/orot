@@ -16,6 +16,7 @@ import {
 } from '../src/aiFeatures/integration/featureServiceFixtures';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
 import type { ChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
+import { providerSuccess } from '@orot/model-runtime';
 import App from '../App';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
@@ -63,12 +64,72 @@ test('opens connected accounts as a Settings detail and returns to the Settings 
 
   await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
   await fireEvent.press(screen.getByTestId('settings-open-accounts'));
+  expect(await screen.findByTestId('settings-accounts-screen')).toBeTruthy();
   expect(await screen.findByText('연결된 계정')).toBeTruthy();
   expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
+  expect(screen.queryByTestId('provider-option-0')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
+});
+
+test('keeps model selection and account management on separate Settings screens', async () => {
+  const accountID = 'synthetic-account';
+  const services: ChatGPTSelectionServices = {
+    listAccounts: jest.fn().mockResolvedValue([
+      {
+        issuedClientID: accountID,
+        requiresSignIn: false,
+        hasDirectPlanAccess: true,
+      },
+    ]),
+    listModels: jest
+      .fn()
+      .mockResolvedValue(
+        providerSuccess([
+          { slug: 'gpt-synthetic', displayName: 'GPT Synthetic' },
+        ]),
+      ),
+    signIn: jest.fn() as ChatGPTSelectionServices['signIn'],
+    signOut: jest.fn() as ChatGPTSelectionServices['signOut'],
+    cancelSignIn: jest.fn(),
+  };
+  const appointmentStore = createAppointmentStore();
+  await render(
+    <App
+      loadAppointments={async () => appointmentStore.repository}
+      loadRecordings={async () => []}
+      aiFeatureServiceDependencies={providerDependencies(
+        services,
+        selectionStore(null),
+      )}
+    />,
+  );
+
+  await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
+  await fireEvent.press(screen.getByTestId('settings-open-provider'));
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
+  expect(screen.getByTestId('provider-option-0')).toBeTruthy();
+  expect(screen.getByTestId('settings-provider-load-models')).toBeTruthy();
+  expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
+  expect(screen.queryByTestId('chatgpt-account-sign-out')).toBeNull();
+
+  await fireEvent.press(screen.getByTestId('settings-provider-load-models'));
+  await waitFor(() =>
+    expect(services.listModels).toHaveBeenCalledWith(accountID),
+  );
+  expect(screen.getByText('GPT Synthetic')).toBeTruthy();
+  expect(services.signIn).not.toHaveBeenCalled();
+  expect(services.signOut).not.toHaveBeenCalled();
+
+  await fireEvent.press(
+    screen.getByTestId('settings-provider-manage-accounts'),
+  );
+  expect(await screen.findByTestId('settings-accounts-screen')).toBeTruthy();
+  expect(screen.queryByTestId('provider-option-0')).toBeNull();
+  expect(screen.queryByTestId('settings-provider-load-models')).toBeNull();
+  expect(screen.getByTestId('chatgpt-account-sign-out')).toBeTruthy();
 });
 
 test('keeps sign-in on the Settings account detail until shared Back is confirmed', async () => {
@@ -140,10 +201,11 @@ test('keeps sign-in on the Settings account detail until shared Back is confirme
 
 function providerDependencies(
   chatGPTServices: ChatGPTSelectionServices,
+  store = selectionStore(null),
 ): AiFeatureServiceDependencies {
   return {
     selectedAi: {
-      selectionStore: selectionStore(null),
+      selectionStore: store,
       chatGPTServices,
       loadAppleOption: async () => apple,
     },

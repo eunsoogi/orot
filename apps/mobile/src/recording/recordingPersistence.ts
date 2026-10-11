@@ -36,7 +36,17 @@ export async function saveRecordingSource(
       existing.effectiveAt === recording.startedAt &&
       existing.recordedAt === recording.completedAt
     ) {
-      return existing;
+      if (existing.recordingDurationMs === recording.durationMs)
+        return existing;
+      if (existing.recordingDurationMs === undefined) {
+        // A metadata-link retry may add the duration measured by the native file recorder.
+        const upgraded = {
+          ...existing,
+          recordingDurationMs: recording.durationMs,
+        };
+        await repository.put('source_record', upgraded);
+        return upgraded;
+      }
     }
     throw new Error('The recording source identifier is already in use.');
   }
@@ -50,6 +60,7 @@ export async function saveRecordingSource(
     reviewState: { status: 'unreviewed' },
     sourceKind: 'audio_recording',
     title: '상담 녹음',
+    recordingDurationMs: recording.durationMs,
   };
   await repository.put('source_record', source);
   return source;

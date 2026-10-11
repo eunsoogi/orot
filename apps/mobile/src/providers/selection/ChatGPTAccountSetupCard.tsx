@@ -2,6 +2,7 @@ import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
 import { appColors } from '../../layout/appColors';
+import { t } from '../../i18n';
 import { providerSelectionText } from './text';
 import type { ChatGPTAccountSetup } from './types';
 
@@ -16,11 +17,23 @@ export default function ChatGPTAccountSetupCard({
     account => account.issuedClientID === setup.selectedAccountID,
   );
   const selectedAccount = setup.accounts[selectedAccountIndex];
+  const selectedAccountCanLoadModels =
+    selectedAccount !== undefined &&
+    !selectedAccount.requiresSignIn &&
+    selectedAccount.hasDirectPlanAccess;
+  const isProviderSettings = setup.presentation === 'settings-provider';
+  const isAccountSettings = setup.presentation === 'settings-accounts';
 
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
-      <Text style={styles.heading}>{providerSelectionText.remoteHeading}</Text>
-      <Text>{providerSelectionText.remotePrivacy}</Text>
+      {!isAccountSettings ? (
+        <Text style={styles.heading}>
+          {providerSelectionText.remoteHeading}
+        </Text>
+      ) : null}
+      {!isAccountSettings ? (
+        <Text>{providerSelectionText.remotePrivacy}</Text>
+      ) : null}
       {setup.statusMessage ? (
         <Text
           accessibilityRole={setup.statusIsError ? 'alert' : undefined}
@@ -54,7 +67,9 @@ export default function ChatGPTAccountSetupCard({
           </Pressable>
         );
       })}
-      {selectedAccount && !selectedAccount.requiresSignIn ? (
+      {selectedAccount &&
+      !selectedAccount.requiresSignIn &&
+      !isProviderSettings ? (
         // The numbered label keeps the sign-out target clear when several accounts are saved.
         <Button
           disabled={setup.busy}
@@ -77,6 +92,34 @@ export default function ChatGPTAccountSetupCard({
           testID="chatgpt-cancel-sign-in"
           title={providerSelectionText.chatGPTCancelLogin}
         />
+      ) : isProviderSettings ? (
+        <>
+          {/* Catalog reads are allowed here; authentication changes stay on the account screen. */}
+          {selectedAccountCanLoadModels ? (
+            <Button
+              disabled={setup.busy || setup.actionDisabled}
+              onPress={setup.onAction}
+              testID="settings-provider-load-models"
+              title={providerSelectionText.chatGPTLoadModels}
+            />
+          ) : null}
+          <Button
+            disabled={setup.busy || !setup.onOpenAccounts}
+            onPress={() => setup.onOpenAccounts?.()}
+            testID="settings-provider-manage-accounts"
+            title={t('settings.accounts')}
+          />
+        </>
+      ) : isAccountSettings ? (
+        selectedAccountCanLoadModels ||
+        (setup.accounts.length > 0 && !selectedAccount) ? null : (
+          <Button
+            disabled={setup.busy || setup.actionDisabled}
+            onPress={setup.onAction}
+            testID="chatgpt-account-action"
+            title={setup.actionTitle}
+          />
+        )
       ) : (
         <Button
           disabled={setup.busy || setup.actionDisabled}

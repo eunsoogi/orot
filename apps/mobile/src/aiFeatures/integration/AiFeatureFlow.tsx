@@ -1,6 +1,6 @@
-import { AppButton as Button } from '../../layout/AppButton';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import type { ReactElement } from 'react';
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { Text, View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
@@ -8,11 +8,12 @@ import type {
   ProviderSelection,
   ProviderSelectionOption,
 } from '../../providers/selection';
-import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
 import { getAiFeatureIntegrationCopy } from './copy';
-import { createAiFeatureServices } from './featureServices';
-import type { AiFeatureServiceDependencies } from './featureServices';
+import type {
+  AiFeatureServiceDependencies,
+  AiFeatureServices,
+} from './featureServices';
 import { resolveSelectedAiProvider as resolveSelectedAi } from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import type { AiFeatureRouteName } from './aiFeatureNavigation';
@@ -20,9 +21,12 @@ import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
 import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
+import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 
 export interface AiFeatureFlowProps {
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
+  readonly consent: ExecutionConsentPort;
+  readonly services: AiFeatureServices;
   readonly renderVisitQuestions?: (
     input: VisitQuestionsRenderInput,
   ) => ReactElement;
@@ -39,11 +43,13 @@ export interface AiFeatureFlowProps {
 
 /** Keeps source/provider overlays over the live feature route so drafts survive navigation. */
 export function AiFeatureFlow({
+  consent,
   navigation,
   renderVisitQuestions,
   onOpenArticle,
   onProviderSelectionCommitted,
   serviceDependencies,
+  services,
 }: AiFeatureFlowProps) {
   const {
     articleOpenError,
@@ -62,16 +68,11 @@ export function AiFeatureFlow({
     sourceDetailOpen,
     sourceReference,
   } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
-  const { consent, disclosureSheet } = useInferenceConsent();
   const selectedAiDependencies = serviceDependencies?.selectedAi;
   // Provider refreshes follow the explicit selection revision, not render churn.
   const resolveSelectedAiForRoute = useCallback(
     () => resolveSelectedAi(selectedAiDependencies),
     [selectedAiDependencies],
-  );
-  const services = useMemo(
-    () => createAiFeatureServices(consent, serviceDependencies),
-    [consent, serviceDependencies],
   );
   const copy = getAiFeatureIntegrationCopy();
   const requestBack = useCallback(() => {
@@ -85,14 +86,11 @@ export function AiFeatureFlow({
       {!providerSelectionOpen &&
       !sourceDetailOpen &&
       screenRoute !== 'visit-questions' ? (
-        <View style={styles.providerBar}>
-          <Text style={styles.providerNotice}>{copy.selectedAiNotice}</Text>
-          <Button
-            onPress={openProviderSelection}
-            testID="ai-feature-select-provider"
-            title={copy.selectAi}
-          />
-        </View>
+        <AiProviderSelectorRow
+          onPress={openProviderSelection}
+          resolveSelectedAi={resolveSelectedAiForRoute}
+          revision={selectedAiRevision}
+        />
       ) : null}
       {articleOpenError ? (
         <Text accessibilityRole="alert" testID="external-article-open-error">
@@ -175,7 +173,6 @@ export function AiFeatureFlow({
           </View>
         ) : null}
       </View>
-      {disclosureSheet}
     </View>
   );
 }

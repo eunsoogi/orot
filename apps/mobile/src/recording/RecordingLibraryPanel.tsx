@@ -1,41 +1,63 @@
 import { useEffect, useState } from 'react';
-import { Button, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
-import type { RecordingSourceRecord } from './recordingTypes';
+import type { RecordingService, RecordingSourceRecord } from './recordingTypes';
+import { recordingService } from './recordingService';
 import RecordingDeletionNotice from './RecordingDeletionNotice';
 import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
-import type { RecordingLibraryService } from './recordingLibraryService';
-import { formatRecordedAt } from './formatRecordedAt';
+import type {
+  RecordingLibraryService,
+  RecordingLibrarySummary,
+} from './recordingLibraryService';
 import RecordingExportPanel from './RecordingExportPanel';
+import RecordingLibrarySummaryRow from './RecordingLibrarySummaryRow';
+import RecordingLibraryDetail from './RecordingLibraryDetail';
+import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
 
 type DeleteNotice = 'error' | 'cleanup-pending' | null;
 
 interface RecordingLibraryPanelProps {
   readonly service: RecordingLibraryService;
   readonly transcriptService?: TranscriptEvidenceService;
+  readonly automaticTranscription?: AutomaticTranscriptionSnapshot | null;
   readonly fallbackExportSourceId?: string | null;
   readonly refreshKey?: string | null;
   readonly onSourceDeleted?: (sourceId: string) => void;
   readonly actionsDisabled?: boolean;
   readonly onBusyChange?: (busy: boolean) => void;
+  readonly playbackService?: Pick<RecordingService, 'playRange'>;
 }
 
-/** Shows the latest or selected transcript with one shared delete confirmation. */
+async function loadSummaries(
+  service: RecordingLibraryService,
+): Promise<readonly RecordingLibrarySummary[]> {
+  if (service.listSummaries) return service.listSummaries();
+  // Older test adapters can still render rows without making an unsupported review-state claim.
+  return (await service.list()).map(source => ({
+    source,
+    durationMs: source.recordingDurationMs ?? null,
+    transcriptReviewState: 'unavailable',
+  }));
+}
+
+/** Shows real saved-audio summaries and one selected detail with shared delete recovery. */
 export default function RecordingLibraryPanel({
   service,
   transcriptService,
+  automaticTranscription = null,
   fallbackExportSourceId,
   refreshKey,
   onSourceDeleted,
   actionsDisabled = false,
   onBusyChange,
+  playbackService = recordingService,
 }: RecordingLibraryPanelProps) {
   const [recordings, setRecordings] = useState<
-    readonly RecordingSourceRecord[]
+    readonly RecordingLibrarySummary[]
   >([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] =
@@ -49,13 +71,12 @@ export default function RecordingLibraryPanel({
     let active = true;
     setLoading(true);
     setLoadError(false);
-    service
-      .list()
+    loadSummaries(service)
       .then(next => {
         if (!active) return;
         setRecordings(next);
         setSelectedSourceId(current =>
-          current && next.some(source => source.id === current)
+          current && next.some(item => item.source.id === current)
             ? current
             : null,
         );
@@ -69,9 +90,14 @@ export default function RecordingLibraryPanel({
     return () => {
       active = false;
     };
-  }, [refreshKey, service]);
+  }, [
+    automaticTranscription?.sourceId,
+    automaticTranscription?.status,
+    refreshKey,
+    service,
+  ]);
 
-  const selected = recordings.find(item => item.id === selectedSourceId);
+  const selected = recordings.find(item => item.source.id === selectedSourceId);
 
   function requestDelete(source: RecordingSourceRecord): void {
     setDeleteNotice(null);
@@ -80,7 +106,9 @@ export default function RecordingLibraryPanel({
 
   function requestTranscriptDelete(sourceId: string): void {
     // A stale transcript must not create a confirmation for a source that is no longer listed.
-    const source = recordings.find(candidate => candidate.id === sourceId);
+    const source = recordings.find(
+      candidate => candidate.source.id === sourceId,
+    )?.source;
     if (source) requestDelete(source);
     else setDeleteNotice('error');
   }
@@ -90,12 +118,12 @@ export default function RecordingLibraryPanel({
     wasDeleted: boolean,
   ): Promise<boolean> {
     try {
-      const next = await service.list();
+      const next = await loadSummaries(service);
       setRecordings(next);
       setSelectedSourceId(current =>
         current &&
         current !== targetId &&
-        next.some(source => source.id === current)
+        next.some(item => item.source.id === current)
           ? current
           : null,
       );
@@ -103,7 +131,7 @@ export default function RecordingLibraryPanel({
     } catch {
       if (wasDeleted) {
         setRecordings(current =>
-          current.filter(source => source.id !== targetId),
+          current.filter(item => item.source.id !== targetId),
         );
         setSelectedSourceId(current => (current === targetId ? null : current));
       }
@@ -138,7 +166,17 @@ export default function RecordingLibraryPanel({
   }
 
   const disabled = busy || actionsDisabled;
-  const exportSourceId = selected?.id ?? fallbackExportSourceId ?? null;
+  const exportSourceId = selected?.source.id ?? fallbackExportSourceId ?? null;
+  const transcriptSourceId =
+    selected?.source.id ??
+    automaticTranscription?.sourceId ??
+    fallbackExportSourceId ??
+    null;
+  const transcriptionStatus =
+    automaticTranscription &&
+    automaticTranscription.sourceId === transcriptSourceId
+      ? automaticTranscription.status
+      : undefined;
 
   return (
     <View style={styles.container} testID="recording-library-panel">
@@ -158,57 +196,35 @@ export default function RecordingLibraryPanel({
       ) : null}
       {recordings.length > 0 ? (
         <View style={styles.list} testID="recording-library-list">
-          {recordings.map(source => (
-            <View
-              key={source.id}
-              style={styles.item}
-              testID={`recording-library-item-${source.id}`}
-            >
-              <Text style={styles.copy}>{source.title}</Text>
-              <Text style={styles.copy}>
-                {formatRecordedAt(source.recordedAt)}
-              </Text>
-              <View style={styles.actions}>
-                <Button
-                  disabled={disabled}
-                  onPress={() => setSelectedSourceId(source.id)}
-                  testID={`recording-details-${source.id}`}
-                  title={t('recording.library.details')}
-                />
-                <Button
-                  disabled={disabled}
-                  onPress={() => requestDelete(source)}
-                  testID={`recording-delete-${source.id}`}
-                  title={t('recording.library.delete')}
-                />
-              </View>
-            </View>
+          {recordings.map(summary => (
+            <RecordingLibrarySummaryRow
+              key={summary.source.id}
+              summary={summary}
+              disabled={disabled}
+              onOpen={() => setSelectedSourceId(summary.source.id)}
+              onDelete={() => requestDelete(summary.source)}
+            />
           ))}
         </View>
       ) : null}
       {selected ? (
-        <View style={styles.detail} testID="recording-detail">
-          <Text accessibilityRole="header" style={styles.title}>
-            {selected.title}
-          </Text>
-          <Text style={styles.copy} testID="recording-detail-date">
-            {formatRecordedAt(selected.recordedAt)}
-          </Text>
-          <View style={styles.actions}>
-            <Button
-              disabled={disabled}
-              onPress={() => setSelectedSourceId(null)}
-              testID="recording-detail-close"
-              title={t('recording.library.closeDetails')}
-            />
-            <Button
-              disabled={disabled}
-              onPress={() => requestDelete(selected)}
-              testID="recording-detail-delete"
-              title={t('recording.library.delete')}
-            />
-          </View>
-        </View>
+        <RecordingLibraryDetail
+          summary={selected}
+          disabled={disabled}
+          playbackService={playbackService}
+          onClose={() => setSelectedSourceId(null)}
+          onDelete={() => requestDelete(selected.source)}
+        />
+      ) : null}
+      {transcriptSourceId ? (
+        <TranscriptEvidencePanel
+          key={`${recordings.map(item => item.source.id).join(',')}:${transcriptSourceId}:${transcriptionStatus ?? ''}`}
+          deletionBusy={disabled}
+          onRequestDelete={selected ? undefined : requestTranscriptDelete}
+          recordingSourceId={transcriptSourceId}
+          automaticTranscriptionStatus={transcriptionStatus}
+          service={transcriptService}
+        />
       ) : null}
       {/* A selected persisted row replaces the current-session fallback so only one source can be exported. */}
       {exportSourceId ? (
@@ -217,13 +233,6 @@ export default function RecordingLibraryPanel({
           transcriptService={transcriptService}
         />
       ) : null}
-      <TranscriptEvidencePanel
-        key={JSON.stringify(recordings.map(source => source.id))}
-        deletionBusy={disabled}
-        onRequestDelete={requestTranscriptDelete}
-        recordingSourceId={selected?.id}
-        service={transcriptService}
-      />
       <RecordingDeletionConfirmation
         busy={disabled}
         onCancel={() => setDeleteTarget(null)}

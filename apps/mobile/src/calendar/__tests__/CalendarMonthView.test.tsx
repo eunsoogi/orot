@@ -8,13 +8,14 @@ import { StyleSheet } from 'react-native';
 import { appointmentFor, event } from '../calendarTestUtils';
 import { CalendarMonthView } from '../CalendarMonthView';
 import { calendarEventDayRange } from '../calendarMonth';
+import { appColors } from '../../layout/appColors';
 
 function queryWindow(start: string, end: string) {
   return { startDay: start, endDay: end };
 }
 
 describe('calendar month view', () => {
-  it('preserves a 44pt date target in a horizontally scrollable seven-column region', async () => {
+  it('shows all seven date columns without horizontal scrolling', async () => {
     const calendar = await render(
       <CalendarMonthView
         appointmentsLoading={false}
@@ -28,25 +29,24 @@ describe('calendar month view', () => {
       />,
     );
 
-    expect(
-      calendar.getByTestId('calendar-date-grid-scroll').props.horizontal,
-    ).toBe(true);
-    expect(
-      StyleSheet.flatten(
-        calendar.getByTestId('calendar-date-grid-content').props.style,
-      ).minWidth,
-    ).toBe(308);
+    expect(calendar.queryByTestId('calendar-date-grid-scroll')).toBeNull();
+    const dayCells = within(
+      calendar.getByTestId('calendar-date-grid'),
+    ).getAllByRole('button');
+    expect(dayCells.length).toBeGreaterThanOrEqual(35);
+    expect(dayCells.length % 7).toBe(0);
     expect(
       StyleSheet.flatten(
         calendar.getByTestId('calendar-day-2035-06-02').props.style,
-      ).minWidth,
-    ).toBe(44);
-    // Month actions must remain reachable without horizontally scrolling the 308pt grid.
-    const dateScroller = within(
-      calendar.getByTestId('calendar-date-grid-scroll'),
-    );
-    expect(dateScroller.queryByTestId('calendar-next-month')).toBeNull();
-    expect(dateScroller.queryByTestId('calendar-previous-month')).toBeNull();
+      ),
+    ).toMatchObject({ width: '14.2857142857%' });
+    expect(
+      within(calendar.getByTestId('calendar-weekday-row'))
+        .getAllByText(/./u)
+        .map(node => node.props.children),
+    ).toEqual(['일', '월', '화', '수', '목', '금', '토']);
+    expect(calendar.getByTestId('calendar-previous-month')).toBeTruthy();
+    expect(calendar.getByTestId('calendar-next-month')).toBeTruthy();
   });
 
   it('shows multiple events and marks the stored visit on its date', async () => {
@@ -98,6 +98,12 @@ describe('calendar month view', () => {
     expect(calendar.getByTestId('calendar-next-visit-title')).toHaveTextContent(
       'clinic',
     );
+    // Event details need the semantic foreground token on dark calendar cards.
+    expect(
+      StyleSheet.flatten(
+        calendar.getByTestId('calendar-next-visit-time').props.style,
+      ),
+    ).toMatchObject({ color: appColors.text });
     expect(calendar.getByTestId('calendar-candidate-clinic')).toBeTruthy();
     expect(
       calendar.getByTestId(

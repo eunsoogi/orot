@@ -21,9 +21,14 @@ test('shows the matching debug interruption action for each probe phase', async 
   const { service, emit } = createService();
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);
   await screen.findByTestId('recording-status');
+  expect(screen.getByTestId('recording-consent-indicator')).toBeTruthy();
+  expect(
+    screen.getByTestId('recording-consent').props.accessibilityState,
+  ).toMatchObject({ checked: false });
   await fireEvent.press(screen.getByTestId('recording-probe-synthetic'));
   await fireEvent.press(screen.getByTestId('recording-consent'));
   await fireEvent.press(screen.getByTestId('recording-start'));
+  expect(screen.getByTestId('recording-consent')).toBeDisabled();
 
   await fireEvent.press(
     screen.getByTestId('recording-probe-interruption-began'),

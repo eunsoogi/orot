@@ -9,55 +9,37 @@ const {
 } = require('./safeAreaHelpers');
 const { openRootTab } = require('./smokeHelpers');
 
-// The default Detox simulator has a notch and Home indicator; measurements are points.
 const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
 const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
 
+// Keep route geometry checks local because the launch-sequence harness replaces shared Detox helpers.
 async function frameFor(testID) {
   return frameOf(element(by.id(testID)), testID);
 }
 
-async function expectScrollInsideRootFrame(
-  scrollTestID = 'safe-area-scroll',
-  rootTestID = 'safe-area-root',
-) {
+async function expectInset(testID, rootTestID, edge = 'top') {
   const root = await frameFor(rootTestID);
-  const scroll = await frameFor(scrollTestID);
+  const target = await frameFor(testID);
 
-  // Require meaningful edge clearance so a 1-point padding regression fails.
-  jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
-    MINIMUM_TOP_SAFE_AREA_POINTS,
-  );
-  jestExpect(
-    root.y + root.height - scroll.y - scroll.height,
-  ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
+  if (edge !== 'bottom') {
+    jestExpect(target.y - root.y).toBeGreaterThanOrEqual(
+      MINIMUM_TOP_SAFE_AREA_POINTS,
+    );
+  }
+  if (edge !== 'top') {
+    jestExpect(
+      root.y + root.height - target.y - target.height,
+    ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
+  }
 }
 
-async function expectRouteScrollTopInset(scrollTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const scroll = await frameFor(scrollTestID);
+const expectElementBelowTopInset = expectInset;
+const expectRouteScrollTopInset = expectInset;
+const expectElementAboveBottomInset = (testID, rootTestID) =>
+  expectInset(testID, rootTestID, 'bottom');
 
-  jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
-    MINIMUM_TOP_SAFE_AREA_POINTS,
-  );
-}
-
-async function expectElementBelowTopInset(elementTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const target = await frameFor(elementTestID);
-
-  jestExpect(target.y - root.y).toBeGreaterThanOrEqual(
-    MINIMUM_TOP_SAFE_AREA_POINTS,
-  );
-}
-
-async function expectElementAboveBottomInset(elementTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const target = await frameFor(elementTestID);
-
-  jestExpect(
-    root.y + root.height - target.y - target.height,
-  ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
+async function expectScrollInsideRootFrame(scrollTestID, rootTestID) {
+  await expectInset(scrollTestID, rootTestID, 'both');
 }
 
 describe('safe area routes on iOS Simulator', () => {
@@ -171,39 +153,45 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()
       .withTimeout(30000);
-    const lastReading = element(
-      by.id('blood-pressure-reading-diastolic-11-card'),
-    );
-    await waitFor(lastReading).toExist().withTimeout(30000);
 
-    await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expectScrollInsideRootFrame(
       'blood-pressure-scroll',
       'navigation-keyboard-avoiding-root',
     );
-
-    const bloodPressureScroll = element(by.id('blood-pressure-scroll'));
-    // Start inside the scroll view so the overlaid recording action is not hit.
-    await bloodPressureScroll.scrollTo('bottom', 0.5, 0.5);
-    await expect(lastReading).toBeVisible();
-    await expectElementAboveBottomInset(
-      'blood-pressure-reading-diastolic-11-card',
-      'navigation-keyboard-avoiding-root',
-    );
-    await bloodPressureScroll.scrollTo('top');
-
+    const pressureScroll = element(by.id('blood-pressure-scroll'));
+    await pressureScroll.scrollTo('bottom', 0.5, 0.5);
     const importAction = element(by.id('blood-pressure-import'));
     await expect(importAction).toBeVisible();
     await expectElementAboveBottomInset(
       'blood-pressure-import',
       'navigation-keyboard-avoiding-root',
     );
-    // Detox exposes enabled through attributes; keep this check before tapping.
     jestExpect((await importAction.getAttributes()).enabled).toBe(true);
     await importAction.tap();
     await waitFor(element(by.id('blood-pressure-status')))
-      .toHaveText('새로운 혈압 기록 변경이 없어요.')
+      .toHaveText('새로 반영된 기록이 없어요')
       .withTimeout(30000);
+
+    await element(by.id('blood-pressure-open-library')).tap();
+    await waitFor(element(by.id('health-records-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+    const lastReading = element(by.id('health-record-row-23'));
+    await waitFor(lastReading).toExist().withTimeout(30000);
+
+    await expect(element(by.id('navigation-route-scroll'))).not.toExist();
+    await expectScrollInsideRootFrame(
+      'health-records-scroll',
+      'navigation-keyboard-avoiding-root',
+    );
+
+    const recordsScroll = element(by.id('health-records-scroll'));
+    await recordsScroll.scrollTo('bottom', 0.5, 0.5);
+    await expect(lastReading).toBeVisible();
+    await expectElementAboveBottomInset(
+      'health-record-row-23',
+      'navigation-keyboard-avoiding-root',
+    );
   });
 
   it('keeps a primary action reachable with large text and the keyboard open', async () => {

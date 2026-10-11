@@ -33,12 +33,12 @@ test('keeps the shared back state denied until import completes', async () => {
     >
       <BloodPressureImportScreen
         onBack={jest.fn()}
+        onOpenLibrary={jest.fn()}
         importBloodPressure={() => result.promise}
-        loadObservations={async () => []}
       />
     </NavigationLeaveStateRegistrationProvider>,
   );
-  await screen.findByTestId('blood-pressure-empty');
+  await screen.findByTestId('blood-pressure-status');
 
   const readState = () => {
     if (!registered) throw new Error('Leave state was not registered.');

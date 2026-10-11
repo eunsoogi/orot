@@ -107,9 +107,9 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     private var groupContentWidth: CGFloat {
-        // Reserve the system material's outer margins; every visible native target stays at least 44 points.
+        // Tighten the material's side gutters while keeping each native control at least 44 points wide.
         max(CGFloat(actionButtons.count) * 44 + CGFloat(max(0, actionButtons.count - 1)) * 4,
-            bounds.width - 64)
+            bounds.width - 32)
     }
 
     override func layoutSubviews() {
@@ -133,7 +133,7 @@ final class NavigationGlassSurfaceView: UIView {
             configuration.image = UIImage(
                 systemName: name,
                 withConfiguration: UIImage.SymbolConfiguration(
-                    pointSize: 18,
+                    pointSize: 24,
                     weight: .semibold,
                 ),
             )

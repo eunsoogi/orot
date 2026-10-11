@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import type { SetStateAction } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import type { ProviderSelectionNavigationState } from '../../providers/selection/ProviderSelectionFlow';
@@ -16,6 +17,7 @@ import {
 } from './useAiFeatureNavigationState';
 import { useProviderSelectionLeaveGuard } from './useProviderSelectionLeaveGuard';
 import { useVisitQuestionsLeaveGuard } from './useVisitQuestionsLeaveGuard';
+import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 
 const emptyProviderNavigationState: ProviderSelectionNavigationState = {
   hasPendingSelection: false,
@@ -32,22 +34,29 @@ export function useAiFeatureFlowNavigation(
     publication: ExternalMedicalPublication,
   ) => void | Promise<void>,
 ) {
-  const [sourceReference, setSourceReference] =
-    useState<EvidenceReference | null>(null);
-  const [sourceReturnRoute, setSourceReturnRoute] =
-    useState<FeatureScreenRoute>('entry');
-  const [sourceReturnRouteKey, setSourceReturnRouteKey] = useState<
-    string | null
-  >(null);
-  const [providerReturnRoute, setProviderReturnRoute] =
-    useState<FeatureScreenRoute>('entry');
-  const [providerReturnRouteKey, setProviderReturnRouteKey] = useState<
-    string | null
-  >(null);
-  const [selectedAiRevision, setSelectedAiRevision] = useState(0);
+  const { state, setState } = useAiFeatureSharedNavigationState();
+  const {
+    articleOpenError,
+    providerReturnRoute,
+    providerReturnRouteKey,
+    selectedAiRevision,
+    sourceReference,
+    sourceReturnRoute,
+    sourceReturnRouteKey,
+  } = state;
+  const setSelectedAiRevision = useCallback(
+    (update: SetStateAction<number>) =>
+      setState(current => ({
+        ...current,
+        selectedAiRevision:
+          typeof update === 'function'
+            ? update(current.selectedAiRevision)
+            : update,
+      })),
+    [setState],
+  );
   const [visitQuestionsStateRevision, setVisitQuestionsStateRevision] =
     useState(0);
-  const [articleOpenError, setArticleOpenError] = useState(false);
   const providerNavigationStateRef = useRef<ProviderSelectionNavigationState>(
     emptyProviderNavigationState,
   );
@@ -90,8 +99,11 @@ export function useAiFeatureFlowNavigation(
         ? providerReturnRouteKey
         : navigation.route.key;
     providerNavigationStateRef.current = { ...emptyProviderNavigationState };
-    setProviderReturnRoute(returnRoute);
-    setProviderReturnRouteKey(returnRouteKey);
+    setState(current => ({
+      ...current,
+      providerReturnRoute: returnRoute,
+      providerReturnRouteKey: returnRouteKey,
+    }));
     if (!providerSelectionOpen) navigation.push('provider-selection');
   }, [
     navigation,
@@ -99,6 +111,7 @@ export function useAiFeatureFlowNavigation(
     providerReturnRouteKey,
     providerSelectionOpen,
     routeName,
+    setState,
     sourceDetailOpen,
     sourceReturnRoute,
     sourceReturnRouteKey,
@@ -119,9 +132,12 @@ export function useAiFeatureFlowNavigation(
         : sourceDetailOpen
           ? sourceReturnRouteKey
           : navigation.route.key;
-      setSourceReference(reference);
-      setSourceReturnRoute(returnRoute);
-      setSourceReturnRouteKey(returnRouteKey);
+      setState(current => ({
+        ...current,
+        sourceReference: reference,
+        sourceReturnRoute: returnRoute,
+        sourceReturnRouteKey: returnRouteKey,
+      }));
       if (!sourceDetailOpen) navigation.push('source-detail');
     },
     [
@@ -130,6 +146,7 @@ export function useAiFeatureFlowNavigation(
       providerReturnRouteKey,
       providerSelectionOpen,
       routeName,
+      setState,
       sourceDetailOpen,
       sourceReturnRoute,
       sourceReturnRouteKey,
@@ -140,33 +157,34 @@ export function useAiFeatureFlowNavigation(
     async (publication: ExternalMedicalPublication) => {
       try {
         await onOpenArticle(publication);
-        setArticleOpenError(false);
+        setState(current => ({ ...current, articleOpenError: false }));
       } catch {
-        setArticleOpenError(true);
+        setState(current => ({ ...current, articleOpenError: true }));
       }
     },
-    [onOpenArticle],
+    [onOpenArticle, setState],
   );
   const pushFeatureRoute = useCallback(
     (route: FeatureScreenRoute) => navigation.push(route),
     [navigation],
   );
   const reportProviderNavigationState = useCallback(
-    (state: ProviderSelectionNavigationState) => {
-      providerNavigationStateRef.current = state;
+    (navigationState: ProviderSelectionNavigationState) => {
+      providerNavigationStateRef.current = navigationState;
     },
     [],
   );
   const reportVisitQuestionsRouteState = useCallback(
-    (state: VisitQuestionsRouteState) => {
-      visitQuestionsNavigationStateRef.current = state;
+    (navigationState: VisitQuestionsRouteState) => {
+      visitQuestionsNavigationStateRef.current = navigationState;
       setVisitQuestionsStateRevision(revision => revision + 1);
     },
     [],
   );
   const reportFeatureNavigationState = useCallback(
-    (routeKey: string, state: NavigationLeaveState | null) => {
-      if (state) featureNavigationStatesRef.current.set(routeKey, state);
+    (routeKey: string, navigationState: NavigationLeaveState | null) => {
+      if (navigationState)
+        featureNavigationStatesRef.current.set(routeKey, navigationState);
       else featureNavigationStatesRef.current.delete(routeKey);
     },
     [],

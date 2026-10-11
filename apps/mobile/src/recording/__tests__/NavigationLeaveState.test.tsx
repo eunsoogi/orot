@@ -38,6 +38,8 @@ jest.mock('react-native-safe-area-context', () => {
 
   return {
     SafeAreaInsetsContext: React.createContext(null),
+    // Native stack reads insets even when the route content is rendered in a unit test.
+    useSafeAreaInsets: () => ({ top: 0, left: 0, right: 0, bottom: 0 }),
     SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     SafeAreaView: ({

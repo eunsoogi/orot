@@ -1,12 +1,5 @@
 import { useEffect, useState } from 'react';
 import RecordingControls from './RecordingControls';
-import { t } from '../i18n';
-import {
-  isSyntheticRecordingProbeAvailable,
-  prepareSyntheticRecordingProbe,
-  prepareSyntheticRecordingStartFailure,
-  simulateRecordingInterruption,
-} from './nativeRecordingBridge';
 import {
   clearPendingRecordingRetry,
   getPendingRecordingRetry,
@@ -22,6 +15,8 @@ import type { TranscriptEvidenceService } from '../transcription/transcriptEvide
 import type { RecordingLibraryService } from './recordingLibraryService';
 import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
 import { errorMessage, sourceSaveErrorMessage } from './recordingErrors';
+import { useAutomaticRecordingTranscription } from './useAutomaticRecordingTranscription';
+import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions';
 
 interface RecordingScreenProps {
   onBack: () => void;
@@ -55,9 +50,9 @@ export default function RecordingScreen({
   const [sourceSaved, setSourceSaved] = useState(
     () => getPendingRecordingRetry(service) === null,
   );
-  const [syntheticProbeReady, setSyntheticProbeReady] = useState(false);
-  const [probeError, setProbeError] = useState('');
-  const syntheticProbeAvailable = isSyntheticRecordingProbeAvailable();
+  const automaticTranscription =
+    useAutomaticRecordingTranscription(transcriptService);
+  const probeActions = useRecordingScreenProbeActions();
 
   useEffect(() => {
     let mounted = true;
@@ -119,6 +114,7 @@ export default function RecordingScreen({
       clearPendingRecordingRetry(service);
       setLastRecording(null);
       setSourceSaved(false);
+      automaticTranscription.reset();
       return next;
     });
   }
@@ -147,6 +143,7 @@ export default function RecordingScreen({
         await service.saveSource(result);
         clearPendingRecordingRetry(service);
         setSourceSaved(true);
+        void automaticTranscription.start(result.id);
       } catch (reason) {
         setSourceSaved(false);
         setError(sourceSaveErrorMessage(reason));
@@ -154,7 +151,7 @@ export default function RecordingScreen({
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {
-      setSyntheticProbeReady(false);
+      probeActions.clear();
       setBusy(false);
     }
   }
@@ -167,6 +164,7 @@ export default function RecordingScreen({
       await service.saveSource(lastRecording);
       clearPendingRecordingRetry(service);
       setSourceSaved(true);
+      void automaticTranscription.start(lastRecording.id);
     } catch (reason) {
       setError(sourceSaveErrorMessage(reason));
     } finally {
@@ -174,38 +172,13 @@ export default function RecordingScreen({
     }
   }
 
-  async function prepareSyntheticProbe() {
-    setProbeError('');
-    try {
-      await prepareSyntheticRecordingProbe();
-      setSyntheticProbeReady(true);
-    } catch {
-      setProbeError(t('recording.errors.generic'));
-    }
-  }
-
-  async function prepareSyntheticStartFailure(
-    point: 'beforeFileURL' | 'afterFileCreated',
-  ) {
-    setProbeError('');
-    try {
-      await prepareSyntheticRecordingStartFailure(point);
-      setSyntheticProbeReady(true);
-    } catch {
-      setProbeError(t('recording.errors.generic'));
-    }
-  }
-
-  async function sendInterruption(phase: 'began' | 'ended') {
-    setProbeError('');
-    try {
-      await simulateRecordingInterruption(phase);
-    } catch {
-      setProbeError(t('recording.errors.generic'));
-    }
+  function retryTranscription(): void {
+    const sourceId = automaticTranscription.state?.sourceId;
+    if (sourceId) void automaticTranscription.start(sourceId);
   }
 
   function handleRecordingSourceDeleted(sourceId: string): void {
+    automaticTranscription.cancel(sourceId);
     if (lastRecording?.id !== sourceId) return;
     // Clear the retry snapshot too, so a deleted file cannot return through metadata retry after remount.
     clearPendingRecordingRetry(service);
@@ -232,14 +205,16 @@ export default function RecordingScreen({
       sourceSaved={sourceSaved}
       onRetrySourceSave={retrySourceSave}
       error={error}
-      syntheticProbeAvailable={syntheticProbeAvailable}
-      syntheticProbeReady={syntheticProbeReady}
-      onPrepareSyntheticProbe={prepareSyntheticProbe}
-      onPrepareSyntheticStartFailure={prepareSyntheticStartFailure}
-      onSendInterruption={sendInterruption}
-      probeError={probeError}
+      syntheticProbeAvailable={probeActions.available}
+      syntheticProbeReady={probeActions.ready}
+      onPrepareSyntheticProbe={probeActions.prepare}
+      onPrepareSyntheticStartFailure={probeActions.prepareStartFailure}
+      onSendInterruption={probeActions.sendInterruption}
+      probeError={probeActions.error}
       transcriptService={transcriptService}
       recordingLibraryService={recordingLibraryService}
+      automaticTranscription={automaticTranscription.state}
+      onRetryTranscription={retryTranscription}
       onRecordingSourceDeleted={handleRecordingSourceDeleted}
     />
   );

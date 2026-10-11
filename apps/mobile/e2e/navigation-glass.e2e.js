@@ -1,46 +1,11 @@
 /* global by, describe, device, element, expect, it, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
-const { openRootTab } = require('./smokeHelpers');
+const { openRootTab, tapNativeNavigationAction } = require('./smokeHelpers');
 
 async function scrollRouteToBottom() {
   // Scroll the route viewport independently of its fixed bottom action bar.
   await element(by.id('navigation-route-scroll')).scrollTo('bottom', 0.5, 0.5);
-}
-
-async function tapNativeNavigationAction(testID) {
-  const action = element(by.id(testID));
-  const toolbar = element(by.id('navigation-native-toolbar'));
-  const attributes = await action.getAttributes();
-  const toolbarAttributes = await toolbar.getAttributes();
-  const hierarchyXml = await device.generateViewHierarchyXml(true);
-  const frame = attributes.frame;
-  const toolbarFrame = toolbarAttributes.frame;
-  const actionNode = hierarchyXml
-    .split('\n')
-    .find(line => line.includes(`id="${testID}"`));
-  const actionVisibleInHierarchy = actionNode?.includes('visibility="visible"');
-
-  // iOS 27 marks these visible toolbar child buttons hidden in XCUI attributes; verify the actual UIKit node, frame, and toolbar instead.
-  if (
-    !actionVisibleInHierarchy ||
-    !toolbarAttributes.visible ||
-    !toolbarAttributes.hittable ||
-    !frame ||
-    frame.width + 0.001 < 44 ||
-    frame.height + 0.001 < 44 ||
-    !toolbarFrame
-  ) {
-    throw new Error(
-      `Native navigation action ${testID} must be visible in UIKit, inside a visible and hittable toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
-    );
-  }
-
-  // Tap the action's measured center through its visible toolbar because XCUI misreports the child activation point.
-  await toolbar.tap({
-    x: frame.x + frame.width / 2 - toolbarFrame.x,
-    y: frame.y + frame.height / 2 - toolbarFrame.y,
-  });
 }
 
 describe('native navigation glass', () => {
@@ -128,7 +93,7 @@ describe('native navigation glass', () => {
       .withTimeout(30000);
   });
 
-  it('shows native back and Home glass actions on a feature route opened from AI', async () => {
+  it('shows native actions and handles edge-back on an AI feature route', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -151,23 +116,40 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('next-visit-questions-scroll')))
       .toBeVisible()
       .withTimeout(30000);
-    const routeRoot = await element(
+    const routeRoots = await element(
       by.id('navigation-keyboard-avoiding-root'),
     ).getAttributes();
     const routeScroll = await element(
       by.id('next-visit-questions-scroll'),
     ).getAttributes();
-    const routeTitle = await element(by.text('다음 진료 질문')).getAttributes();
-    for (const [description, attributes] of [
-      ['feature scroll', routeScroll],
-      ['feature title', routeTitle],
-    ]) {
-      if (!attributes.frame || !routeRoot.frame) {
-        throw new Error(`Missing safe-area frame for ${description}.`);
-      }
-      jestExpect(attributes.frame.y - routeRoot.frame.y).toBeGreaterThanOrEqual(
-        44,
+    const routeTitle = await element(by.id('next-visit-title')).getAttributes();
+    const titleFrame =
+      routeTitle.frame ??
+      routeTitle.elements?.find(item => item.identifier === 'next-visit-title')
+        ?.frame;
+    // Nested native stacks can expose one shell frame per mounted scene; use the one containing this route's scroll view.
+    const routeRootFrames = routeRoots.frame
+      ? [routeRoots.frame]
+      : (routeRoots.elements ?? []).flatMap(item =>
+          item.frame ? [item.frame] : [],
+        );
+    const routeRootFrame = routeRootFrames.find(frame => {
+      const scrollFrame = routeScroll.frame;
+      return (
+        scrollFrame &&
+        frame.x <= scrollFrame.x &&
+        frame.y <= scrollFrame.y &&
+        frame.x + frame.width >= scrollFrame.x + scrollFrame.width &&
+        frame.y + frame.height >= scrollFrame.y + scrollFrame.height
       );
+    });
+    if (!routeScroll.frame || !titleFrame || !routeRootFrame) {
+      throw new Error(
+        'Missing active route frames for safe-area verification.',
+      );
+    }
+    for (const frame of [routeScroll.frame, titleFrame]) {
+      jestExpect(frame.y - routeRootFrame.y).toBeGreaterThanOrEqual(44);
     }
     // The shared backdrop must be an actual UIKit toolbar in the mounted app.
     await expect(element(by.id('navigation-native-toolbar'))).toExist();
@@ -179,6 +161,31 @@ describe('native navigation glass', () => {
     );
     // Capture the native buttons before verifying the Home action reaches the root route.
     await device.takeScreenshot('visit-questions-safe-area-native-glass');
+
+    // Keep cancel and commit gestures on the same UIKit stack before checking Home navigation.
+    const featureScroll = element(by.id('next-visit-questions-scroll'));
+    await device.takeScreenshot('edge-back-before-cancelled-gesture');
+    // A short leading-edge pan should finish below UIKit's commit distance.
+    await featureScroll.swipe('right', 'slow', 0.08, 0.01, 0.5);
+    await expect(featureScroll).toBeVisible();
+    await device.takeScreenshot('edge-back-after-cancelled-gesture');
+
+    // A fast, longer pan should let the native stack complete the pop.
+    await featureScroll.swipe('right', 'fast', 0.85, 0.01, 0.5);
+    await waitFor(element(by.id('ai-features-screen')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await device.takeScreenshot('edge-back-after-completed-gesture');
+
+    await scroll.scrollTo('top');
+    await waitFor(featureAction)
+      .toBeVisible()
+      .whileElement(by.id('navigation-route-scroll'))
+      .scroll(100, 'down', 0.5, 0.35);
+    await featureAction.tap();
+    await waitFor(element(by.id('next-visit-questions-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
     await tapNativeNavigationAction('navigation-home');
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()

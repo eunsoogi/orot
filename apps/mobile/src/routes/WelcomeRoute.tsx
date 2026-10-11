@@ -161,7 +161,7 @@ export default function WelcomeRoute({
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    // Let the shared ScrollView measure long Dynamic Type content past its viewport.
     gap: 32,
     paddingHorizontal: 24,
     paddingTop: 24,

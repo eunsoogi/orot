@@ -47,6 +47,7 @@ export function createUnifiedFeatureImporter(options: {
         repository,
         instrumentation,
         now,
+        rememberForAutoSync: true,
       });
       return commonOutcome(result);
     }
@@ -64,6 +65,7 @@ export function createUnifiedFeatureImporter(options: {
         healthKit: healthKitClient,
         repository: instrumentedRepository,
         now,
+        rememberForAutoSync: true,
       });
       return bloodPressureOutcome(result);
     }

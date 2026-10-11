@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
 import { appColors } from '../../layout/appColors';
 import { healthKitFeatures, type HealthKitFeature } from '../types';
 import type { HealthKitImportScreenCopy } from './HealthKitImportScreen';
@@ -47,15 +48,10 @@ export function HealthKitProviderCard({
           <Text style={styles.sectionTitle}>건강 앱</Text>
           <Text style={styles.caption}>가져올 기록을 선택해 주세요.</Text>
         </View>
-        <AppSymbol
-          name={
-            checked === true
-              ? 'checkmark.square.fill'
-              : checked === 'mixed'
-                ? 'minus.square.fill'
-                : 'square'
-          }
-          color={appColors.primaryText}
+        <CheckboxIndicator
+          checked={checked}
+          disabled={disabled}
+          testID="unified-import-indicator-healthKit"
         />
       </Pressable>
       <View style={styles.options}>
@@ -73,10 +69,10 @@ export function HealthKitProviderCard({
               testID={`unified-import-toggle-${feature}`}
             >
               <View style={styles.optionHeading}>
-                <AppSymbol
-                  name={featureChecked ? 'checkmark.square.fill' : 'square'}
-                  size={16}
-                  color={appColors.primaryText}
+                <CheckboxIndicator
+                  checked={featureChecked}
+                  disabled={disabled}
+                  testID={`unified-import-indicator-${feature}`}
                 />
                 <Text style={styles.optionLabel}>
                   {copy.featureNames[feature]}

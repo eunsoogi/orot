@@ -1,14 +1,19 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
-import { Modal } from 'react-native';
 import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import type { RecordingLibraryService } from '../recordingLibraryService';
+import {
+  mockNativeDeletionAlert,
+  confirmNativeDeletion,
+  pressNativeDeletionButton,
+} from '../testSupport/nativeDeletionAlert';
 
 const firstSource: SourceRecord = {
   id: 'recording-1',
@@ -78,7 +83,7 @@ function createTranscriptService(): TranscriptEvidenceService {
 
 test('cancelling list deletion keeps the saved recording available', async () => {
   const service = createLibraryService();
-  const modalRender = jest.spyOn(Modal.prototype, 'render');
+  const alert = mockNativeDeletionAlert();
   await render(
     <RecordingLibraryPanel
       service={service}
@@ -88,32 +93,30 @@ test('cancelling list deletion keeps the saved recording available', async () =>
 
   await screen.findByTestId('recording-library-item-recording-1');
   await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
-  const confirmation = await screen.findByTestId(
-    'recording-delete-confirmation',
-  );
-  expect(confirmation.props.accessibilityViewIsModal).toBe(true);
-  const cancelAction = screen.getByTestId('recording-delete-cancel');
-  expect(cancelAction.props.accessibilityRole).toBe('button');
-  expect(cancelAction.props.accessibilityState.disabled).toBe(false);
-  expect(
-    modalRender.mock.contexts.some(modal => modal.props.visible === true),
-  ).toBe(true);
-  await fireEvent.press(cancelAction);
-  // iOS needs a visible=false update to dismiss the native modal host.
   await waitFor(() => {
-    expect(
-      modalRender.mock.contexts.some(modal => modal.props.visible === false),
-    ).toBe(true);
+    expect(alert).toHaveBeenCalledTimes(1);
   });
+  const buttons = alert.mock.calls[0]?.[2] as
+    readonly { readonly style?: string }[] | undefined;
+  expect(buttons?.map(button => button.style)).toEqual([
+    'cancel',
+    'destructive',
+  ]);
+  await act(async () => pressNativeDeletionButton(alert, 'cancel'));
 
   expect(service.deleteRecording).not.toHaveBeenCalled();
   expect(screen.getByTestId('recording-library-item-recording-1')).toBeTruthy();
   expect(screen.getByTestId('recording-library-item-recording-2')).toBeTruthy();
-  modalRender.mockRestore();
+  alert.mockRestore();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 test('a source deletion failure keeps the recording in the list', async () => {
   const service = createLibraryService();
+  const alert = mockNativeDeletionAlert();
   jest
     .mocked(service.deleteRecording)
     .mockRejectedValueOnce(new Error('local source deletion failed'));
@@ -126,7 +129,8 @@ test('a source deletion failure keeps the recording in the list', async () => {
 
   await screen.findByTestId('recording-library-item-recording-1');
   await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   expect(await screen.findByTestId('recording-delete-error')).toBeTruthy();
   expect(screen.getByTestId('recording-library-item-recording-1')).toBeTruthy();
@@ -135,6 +139,7 @@ test('a source deletion failure keeps the recording in the list', async () => {
 
 test('reports deferred audio cleanup when the source is already deleted', async () => {
   const service = createLibraryService();
+  const alert = mockNativeDeletionAlert();
   jest.mocked(service.deleteRecording).mockResolvedValueOnce({
     audioCleanupPending: true,
   });
@@ -150,7 +155,8 @@ test('reports deferred audio cleanup when the source is already deleted', async 
     .mocked(service.list)
     .mockRejectedValueOnce(new Error('recovery unavailable'));
   await fireEvent.press(screen.getByTestId('recording-delete-recording-1'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   expect(
     await screen.findByTestId('recording-delete-cleanup-pending'),
@@ -159,8 +165,9 @@ test('reports deferred audio cleanup when the source is already deleted', async 
   expect(screen.queryByTestId('recording-delete-error')).toBeNull();
 });
 
-test('opens a recording detail and deletes it from the transcript panel', async () => {
+test('opens a recording detail and deletes it from secondary detail actions', async () => {
   const service = createLibraryService();
+  const alert = mockNativeDeletionAlert();
   const transcriptService = createTranscriptService();
   const onSourceDeleted = jest.fn();
   await render(
@@ -175,8 +182,9 @@ test('opens a recording detail and deletes it from the transcript panel', async 
   await fireEvent.press(screen.getByTestId('recording-details-recording-1'));
   await screen.findByTestId('recording-detail');
   expect(await screen.findByText(segment.text)).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('recording-transcript-delete'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await fireEvent.press(screen.getByTestId('recording-detail-delete'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   await waitFor(() => {
     expect(
@@ -188,25 +196,9 @@ test('opens a recording detail and deletes it from the transcript panel', async 
   expect(onSourceDeleted).toHaveBeenCalledWith(firstSource.id);
 });
 
-test('deletes the latest saved recording from the unselected transcript preview', async () => {
-  const service = createLibraryService();
-  const transcriptService = createTranscriptService();
-  await render(
-    <RecordingLibraryPanel
-      service={service}
-      transcriptService={transcriptService}
-    />,
-  );
-
-  await screen.findByTestId('recording-transcript-delete');
-  await fireEvent.press(screen.getByTestId('recording-transcript-delete'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
-
-  expect(service.deleteRecording).toHaveBeenCalledWith(secondSource.id);
-});
-
 test('deletes a saved recording from its detail screen after confirmation', async () => {
   const service = createLibraryService();
+  const alert = mockNativeDeletionAlert();
   await render(
     <RecordingLibraryPanel
       service={service}
@@ -218,7 +210,8 @@ test('deletes a saved recording from its detail screen after confirmation', asyn
   await fireEvent.press(screen.getByTestId('recording-details-recording-1'));
   await screen.findByTestId('recording-detail');
   await fireEvent.press(screen.getByTestId('recording-detail-delete'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   await waitFor(() => {
     expect(

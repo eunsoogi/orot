@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     minWidth: 44,
   },
-  symbol: { color: appColors.secondary, fontSize: 21, lineHeight: 24 },
+  symbol: { color: appColors.secondary, fontSize: 24, lineHeight: 27 },
   label: { color: appColors.secondary, fontSize: 10, lineHeight: 13 },
   selected: { color: appColors.primary },
 });

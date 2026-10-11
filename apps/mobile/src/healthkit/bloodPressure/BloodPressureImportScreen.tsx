@@ -1,64 +1,40 @@
-import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
-import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
 import type { NavigationLeaveState } from '../../navigation';
-import { navigationText } from '../../i18n/navigation';
+import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { t } from '../../i18n';
-import { appColors } from '../../layout/appColors';
-import type {
-  BloodPressureComponent,
-  BloodPressureObservation,
-  BloodPressureSyncResult,
-} from './types';
+import { navigationText } from '../../i18n/navigation';
+import type { BloodPressureSyncResult } from './types';
+import {
+  BloodPressureImportCompletion,
+  type BloodPressureImportOutcome,
+  type BloodPressureImportSummary,
+} from './BloodPressureImportCompletion';
 
 interface BloodPressureImportScreenProps {
   readonly onBack: () => void;
+  readonly onOpenLibrary: () => void;
   readonly importBloodPressure: () => Promise<BloodPressureSyncResult>;
-  readonly loadObservations: () => Promise<readonly BloodPressureObservation[]>;
 }
 
-type ImportStatus =
-  | 'idle'
-  | 'importing'
-  | 'complete'
-  | 'empty'
-  | 'unavailable'
-  | 'partial'
-  | 'failed';
+type ImportStatus = 'idle' | 'importing' | BloodPressureImportOutcome;
 
-/** Shows only saved HealthKit components and never fills in an absent partner. */
+/** Presents the import outcome and keeps saved measurements in the Records library. */
 export function BloodPressureImportScreen({
   onBack,
+  onOpenLibrary,
   importBloodPressure,
-  loadObservations,
 }: BloodPressureImportScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const [observations, setObservations] = useState<
-    readonly BloodPressureObservation[]
-  >([]);
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'failed'>(
-    'loading',
-  );
   const [importStatus, setImportStatus] = useState<ImportStatus>('idle');
   const [isImporting, setIsImporting] = useState(false);
   const [leaveRevision, setLeaveRevision] = useState(0);
-
-  const reload = useCallback(async () => {
-    setLoadState('loading');
-    try {
-      setObservations(await loadObservations());
-      setLoadState('ready');
-    } catch {
-      setLoadState('failed');
-    }
-  }, [loadObservations]);
-
-  useEffect(() => {
-    reload().catch(() => undefined);
-  }, [reload]);
+  const [summary, setSummary] = useState<BloodPressureImportSummary | null>(
+    null,
+  );
 
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
     canLeave: !isImporting,
@@ -73,11 +49,15 @@ export function BloodPressureImportScreen({
     if (isImporting) return;
     setIsImporting(true);
     setImportStatus('importing');
+    setSummary(null);
     setLeaveRevision(current => current + 1);
     try {
       const result = await importBloodPressure();
       setImportStatus(toImportStatus(result));
-      await reload();
+      if (result.status !== 'notRun') {
+        // The upsert count includes additions and updates, so the UI uses a neutral label.
+        setSummary({ saved: result.upserted, deleted: result.deleted });
+      }
     } catch {
       setImportStatus('failed');
     } finally {
@@ -86,7 +66,6 @@ export function BloodPressureImportScreen({
     }
   }
 
-  const componentCounts = new Map<BloodPressureComponent, number>();
   return (
     <ScrollView
       contentContainerStyle={[styles.container, navigationInset]}
@@ -110,118 +89,49 @@ export function BloodPressureImportScreen({
           />
         )}
       </View>
-      <Text>{t('healthkit.bloodPressure.description')}</Text>
-      <Text testID="blood-pressure-read-authorization">
-        {t('healthkit.bloodPressure.readAuthorization')}
-      </Text>
-      <Text>{t('healthkit.bloodPressure.localOnly')}</Text>
-      <Button
-        disabled={isImporting || loadState === 'loading'}
-        onPress={() => {
-          startImport().catch(() => undefined);
-        }}
-        testID="blood-pressure-import"
-        title={t('healthkit.bloodPressure.import')}
-      />
-      <Text accessibilityLiveRegion="polite" testID="blood-pressure-status">
-        {t(`healthkit.bloodPressure.status.${importStatus}`)}
-      </Text>
-
-      {loadState === 'loading' ? (
-        <Text testID="blood-pressure-loading">
-          {t('healthkit.bloodPressure.loading')}
-        </Text>
-      ) : null}
-      {loadState === 'failed' ? (
-        <View>
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="blood-pressure-load-error"
-          >
-            {t('healthkit.bloodPressure.loadError')}
+      {importStatus === 'idle' || importStatus === 'importing' ? (
+        <>
+          <Text>{t('healthkit.bloodPressure.description')}</Text>
+          <Text testID="blood-pressure-read-authorization">
+            {t('healthkit.bloodPressure.readAuthorization')}
+          </Text>
+          <Text>{t('healthkit.bloodPressure.localOnly')}</Text>
+          <Button
+            disabled={isImporting}
+            onPress={() => {
+              startImport().catch(() => undefined);
+            }}
+            testID="blood-pressure-import"
+            title={t('healthkit.bloodPressure.import')}
+          />
+          <Text accessibilityLiveRegion="polite" testID="blood-pressure-status">
+            {t(`healthkit.bloodPressure.status.${importStatus}`)}
           </Text>
           <Button
-            onPress={() => {
-              reload().catch(() => undefined);
-            }}
-            testID="blood-pressure-retry-load"
-            title={t('healthkit.bloodPressure.retry')}
+            disabled={isImporting}
+            onPress={onOpenLibrary}
+            testID="blood-pressure-open-library"
+            title={t('healthkit.bloodPressure.openLibrary')}
+            variant="secondary"
           />
-        </View>
-      ) : null}
-      {loadState === 'ready' && observations.length === 0 ? (
-        <Text testID="blood-pressure-empty">
-          {t('healthkit.bloodPressure.empty')}
-        </Text>
-      ) : null}
-      {observations.map(observation => {
-        const component = componentForConcept(observation.concept);
-        if (!component || observation.value.kind !== 'quantity') return null;
-        const index = componentCounts.get(component) ?? 0;
-        componentCounts.set(component, index + 1);
-        return (
-          <BloodPressureReading
-            component={component}
-            index={index}
-            key={observation.id}
-            observation={observation}
-          />
-        );
-      })}
+        </>
+      ) : (
+        <BloodPressureImportCompletion
+          onOpenLibrary={onOpenLibrary}
+          onRetry={() => {
+            startImport().catch(() => undefined);
+          }}
+          status={importStatus}
+          summary={summary}
+        />
+      )}
     </ScrollView>
   );
 }
 
-function BloodPressureReading({
-  component,
-  index,
-  observation,
-}: {
-  readonly component: BloodPressureComponent;
-  readonly index: number;
-  readonly observation: BloodPressureObservation;
-}) {
-  if (observation.value.kind !== 'quantity') return null;
-  const source =
-    observation.provenance.source?.sourceName ??
-    observation.provenance.source?.sourceIdentifier ??
-    'HealthKit';
-  const representation = observation.value.sourceRepresentation;
-  const readingId = `blood-pressure-reading-${component}-${index}`;
-
-  return (
-    <View style={styles.reading} testID={`${readingId}-card`}>
-      <Text testID={`${readingId}-value`}>
-        {`${t(`healthkit.bloodPressure.component.${component}`)} ${observation.value.amount} ${observation.value.unit}`}
-      </Text>
-      <Text testID={`${readingId}-time`}>
-        {t('healthkit.bloodPressure.measurementTime', {
-          timestamp: observation.effectiveAt,
-        })}
-      </Text>
-      <Text testID={`${readingId}-source`}>
-        {t('healthkit.bloodPressure.source', { source })}
-      </Text>
-      <Text testID={`${readingId}-original`}>
-        {representation?.status === 'available'
-          ? t('healthkit.bloodPressure.originalAvailable', {
-              amount: representation.amount,
-              unit: representation.unit,
-            })
-          : t('healthkit.bloodPressure.originalUnavailable')}
-      </Text>
-    </View>
-  );
-}
-
-function componentForConcept(concept: string): BloodPressureComponent | null {
-  if (concept === 'blood pressure systolic') return 'systolic';
-  if (concept === 'blood pressure diastolic') return 'diastolic';
-  return null;
-}
-
-function toImportStatus(result: BloodPressureSyncResult): ImportStatus {
+function toImportStatus(
+  result: BloodPressureSyncResult,
+): BloodPressureImportOutcome {
   if (result.status === 'notRun') return 'unavailable';
   if (result.status === 'partial') return 'partial';
   return result.upserted + result.deleted > 0 ? 'complete' : 'empty';
@@ -238,13 +148,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: { fontSize: 22, fontWeight: '700' },
-  error: { color: appColors.danger },
-  reading: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 6,
-    padding: 12,
-  },
 });

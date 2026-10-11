@@ -14,6 +14,7 @@ import {
 } from '../../commonObservations/testSupport';
 import { page } from '../../commonObservations/testSyncSupport';
 import { healthKitSampleChangesCheckpointKey } from '../../sampleChangesCheckpoint';
+import { healthKitAutoSyncCheckpointKey } from '../../autoSyncCheckpoint';
 import { createUnifiedFeatureImporter } from '../featureImporter';
 import { deferred } from '../testSupport';
 
@@ -73,6 +74,8 @@ test('routes preauthorized blood pressure through measured query and atomic pers
   });
   expect(healthKit.querySampleChanges).toHaveBeenCalledTimes(1);
   expect(phases).toEqual([
+    'persistence:started',
+    'persistence:finished',
     'query:started',
     'query:finished',
     'persistence:started',
@@ -82,6 +85,9 @@ test('routes preauthorized blood pressure through measured query and atomic pers
   expect(store.checkpoint('healthkit:bloodPressure:bloodPressure')?.value).toBe(
     'new-cursor',
   );
+  expect(
+    store.checkpoint(healthKitAutoSyncCheckpointKey('bloodPressure'))?.value,
+  ).toBe('requested');
 });
 
 test('serializes overlapping adapter imports by the original repository identity', async () => {
@@ -159,8 +165,12 @@ test('serializes overlapping adapter imports by the original repository identity
 
   expect(querySampleChanges).toHaveBeenCalledTimes(2);
   expect(phases).toEqual([
+    'persistence:started',
+    'persistence:finished',
     'query:started',
     'query:finished',
+    'persistence:started',
+    'persistence:finished',
     'persistence:started',
     'persistence:finished',
     'query:started',
@@ -175,4 +185,7 @@ test('serializes overlapping adapter imports by the original repository identity
       healthKitSampleChangesCheckpointKey('heartRate', 'heartRate'),
     ),
   ).resolves.toMatchObject({ value: 'a2' });
+  await expect(
+    store.getSyncCheckpoint(healthKitAutoSyncCheckpointKey('heartRate')),
+  ).resolves.toMatchObject({ value: 'requested' });
 });

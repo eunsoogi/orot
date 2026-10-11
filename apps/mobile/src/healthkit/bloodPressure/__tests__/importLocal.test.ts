@@ -39,6 +39,7 @@ describe('local blood-pressure storage boundary', () => {
       expect.objectContaining({
         healthKit,
         repository,
+        rememberForAutoSync: true,
         now: expect.any(Function),
       }),
     );

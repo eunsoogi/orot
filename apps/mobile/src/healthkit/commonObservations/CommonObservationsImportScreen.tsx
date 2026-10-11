@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AppText as Text } from '../../layout/AppText';
+import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../../navigation';
@@ -143,7 +144,14 @@ export function CommonObservationsImportScreen({
             style={styles.option}
             testID={`common-observations-toggle-${feature}`}
           >
-            <Text>{`${checked ? '☑' : '☐'} ${copy.featureNames[feature]}`}</Text>
+            <View style={styles.optionContent}>
+              <CheckboxIndicator
+                checked={checked}
+                disabled={isImporting}
+                testID={`common-observations-indicator-${feature}`}
+              />
+              <Text>{copy.featureNames[feature]}</Text>
+            </View>
           </Pressable>
         );
       })}
@@ -184,6 +192,7 @@ const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   title: { fontSize: 22, fontWeight: '700' },
   option: { minHeight: 44, justifyContent: 'center' },
+  optionContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   importButton: {
     alignItems: 'center',
     backgroundColor: appColors.primaryAction,

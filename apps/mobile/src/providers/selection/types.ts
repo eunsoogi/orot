@@ -37,7 +37,12 @@ export interface ProviderSelectionStore {
   clear(): Promise<void>;
 }
 
+/** Settings separates model choices from sign-in and sign-out actions. */
+export type ProviderSelectionPresentation =
+  'feature' | 'settings-provider' | 'settings-accounts';
+
 export interface ChatGPTAccountSetup {
+  readonly presentation: ProviderSelectionPresentation;
   readonly accounts: readonly OpenAIAccountSummary[];
   readonly selectedAccountID: string | null;
   readonly statusMessage: string;
@@ -51,6 +56,7 @@ export interface ChatGPTAccountSetup {
   readonly onAction: () => void;
   readonly onSignOut: (issuedClientID: string) => void;
   readonly onCancelSignIn: () => void;
+  readonly onOpenAccounts?: () => void;
 }
 
 export type ProviderSelectionResolution =

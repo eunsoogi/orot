@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useLayoutEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
@@ -58,6 +58,16 @@ function RegisterLeaveState({
 }
 
 describe('app navigation route adapter', () => {
+  beforeEach(() => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('uses the active screen state source registered by that screen', async () => {
     const controller = createNavigationController<TestRoute>('home');
     controller.push('editor');
@@ -166,7 +176,7 @@ describe('app navigation route adapter', () => {
       expect.objectContaining({ position: 'absolute', bottom: 0 }),
     );
     expect(StyleSheet.flatten(scrollView.props.contentContainerStyle)).toEqual(
-      expect.objectContaining({ flexGrow: 1, paddingBottom: 108 }),
+      expect.objectContaining({ flexGrow: 1, paddingBottom: 102 }),
     );
     expect(screen.getByTestId('navigation-back')).toBeVisible();
     expect(scrollView).toBeVisible();
