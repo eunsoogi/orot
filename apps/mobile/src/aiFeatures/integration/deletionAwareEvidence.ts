@@ -40,8 +40,13 @@ export function revalidateWithLocalDeletionGuard(
   revalidate: EvidenceRevalidator,
   resolveIdentity?: LocalEvidenceIdentityResolver,
 ): Promise<boolean> {
+  // External publications have no local tombstone identity; the run's snapshot validator still checks them below.
   const identities = references.map(reference =>
-    resolveIdentity ? resolveIdentity(reference) : reference,
+    reference.sourceKind === 'external_medical'
+      ? reference
+      : resolveIdentity
+        ? resolveIdentity(reference)
+        : reference,
   );
   if (identities.some(reference => !reference)) return Promise.resolve(false);
   const guardIdentities = (identities as EvidenceReference[]).map(

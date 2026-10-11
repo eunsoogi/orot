@@ -26,6 +26,7 @@ interface NativeRouteStackProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly routes: readonly NavigationRoute<Name>[];
   readonly isTransitioning: boolean;
+  readonly canNativeGoBack: (routeKey: string) => boolean;
   readonly renderRoute: (route: NavigationRoute<Name>) => ReactNode;
   readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
@@ -35,6 +36,7 @@ export function NativeRouteStack<Name extends string>({
   controller,
   routes,
   isTransitioning,
+  canNativeGoBack,
   renderRoute,
   onNativeRouteRemovalComplete,
 }: NativeRouteStackProps<Name>) {
@@ -42,6 +44,7 @@ export function NativeRouteStack<Name extends string>({
   const [ready, setReady] = useState(false);
   const [nativeRevision, setNativeRevision] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const allowedNativeRemoval = useRef<string | null>(null);
   const initialRouteKey = useRef(routes[0]?.key);
   const {
     getNativeRouteKeys,
@@ -77,10 +80,16 @@ export function NativeRouteStack<Name extends string>({
     () => ({
       routes: routes as readonly NavigationRoute<string>[],
       isTransitioning,
+      canNativeGoBack,
+      prepareNativeBack: routeKey => {
+        allowedNativeRemoval.current = canNativeGoBack(routeKey)
+          ? routeKey
+          : null;
+      },
       requestBack: controller.requestBack,
       renderRoute: route => renderRoute(route as NavigationRoute<Name>),
     }),
-    [controller, isTransitioning, renderRoute, routes],
+    [canNativeGoBack, controller, isTransitioning, renderRoute, routes],
   );
 
   useLayoutEffect(() => {
@@ -134,7 +143,22 @@ export function NativeRouteStack<Name extends string>({
       <NavigationContainer
         ref={navigationRef}
         onReady={() => setReady(true)}
-        onStateChange={() => setNativeRevision(revision => revision + 1)}
+        onStateChange={() => {
+          const current = controller.getSnapshot().routes;
+          const nativeKeys = getNativeRouteKeys();
+          const removed = current[current.length - 1];
+          // Cancelled gestures keep native state intact. Reconcile only one matching tail removal.
+          if (
+            removed &&
+            nativeKeys?.length === current.length - 1 &&
+            nativeKeys.every((key, index) => key === current[index]?.key) &&
+            allowedNativeRemoval.current === removed.key
+          ) {
+            controller.reconcileNativeBack(removed.key);
+          }
+          allowedNativeRemoval.current = null;
+          setNativeRevision(revision => revision + 1);
+        }}
       >
         <Stack.Navigator
           screenListeners={({ route }) => ({

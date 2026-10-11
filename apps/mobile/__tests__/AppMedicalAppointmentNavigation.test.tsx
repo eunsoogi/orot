@@ -131,7 +131,9 @@ it('opens classification with the saved AI and reaches the separate manual page'
   ).toBeTruthy();
   await fireEvent.press(screen.getByText(medicalAppointmentCopy.loadCalendar));
   expect(await screen.findByText('치과 검진')).toBeTruthy();
-  await fireEvent.press(screen.getByText(medicalAppointmentCopy.classify));
+  await waitFor(() =>
+    expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(event),
+  );
 
   await waitFor(() =>
     expect(classify).toHaveBeenCalledWith(

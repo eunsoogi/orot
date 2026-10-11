@@ -44,6 +44,10 @@ export interface LanguageModelCapabilities extends ProviderCapabilities {
   readonly streaming: boolean;
   readonly structuredOutput: boolean;
   readonly toolCalling: boolean;
+  /** Omitted controls are not requested; provider defaults remain authoritative. */
+  readonly requestControls?: readonly ('maxOutputTokens' | 'temperature')[];
+  /** False means guided/tool requests must use generate even when text can stream. */
+  readonly structuredOutputStreaming?: boolean;
 }
 
 export interface TranscriptionCapabilities extends ProviderCapabilities {
@@ -118,8 +122,14 @@ export interface LanguageModelProvider {
   readonly id: ProviderId;
   readonly displayName: string;
   readonly capabilities: LanguageModelCapabilities;
-  generate(request: LanguageModelRequest): Promise<ProviderResult<LanguageModelResponse>>;
-  stream?(request: LanguageModelRequest): AsyncIterable<ProviderResult<LanguageModelStreamEvent>>;
+  generate(
+    request: LanguageModelRequest,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<ProviderResult<LanguageModelResponse>>;
+  stream?(
+    request: LanguageModelRequest,
+    options?: { readonly signal?: AbortSignal },
+  ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>>;
 }
 
 export interface AudioInput {

@@ -61,7 +61,11 @@ export function useProviderSelectionAccounts({
     loadAppleOption().then(option => {
       if (!mounted) return;
       setAppleOption(option);
-      setOptions([option]);
+      // Availability and the authenticated catalog arrive independently.
+      setOptions(current => [
+        option,
+        ...current.filter(item => item.privacyBoundary !== 'on-device'),
+      ]);
     });
     chatGPTServices
       .listAccounts()

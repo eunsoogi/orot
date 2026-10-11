@@ -136,7 +136,8 @@ describe('shared back inputs', () => {
     expect(screen.getByTestId('navigation-back')).toBeEnabled();
     await fireEvent.press(screen.getByTestId('native-back-trigger'));
     expect(controller.getSnapshot().currentRoute.name).toBe('home');
-    expect(requestBack).toHaveBeenCalledTimes(2);
+    // The completed native pop is reconciled without another guarded pop request.
+    expect(requestBack).toHaveBeenCalledTimes(1);
   });
 
   it('uses the same operation leave guard for button and native-stack removal', async () => {

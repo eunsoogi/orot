@@ -126,12 +126,22 @@ async function verifyRecordingExportLifecycle(detoxApi) {
       'RECORDING_EXPORT_AUDIO_SHARE_FRAME ' +
         (await device.takeScreenshot('recording-export-audio-share-sheet')),
     );
-    console.log(
-      'RECORDING_EXPORT_AUDIO_SHARE_HIERARCHY ' +
-        (await device.captureViewHierarchy(
-          'recording-export-audio-share-sheet',
-        )),
-    );
+    try {
+      console.log(
+        'RECORDING_EXPORT_AUDIO_SHARE_HIERARCHY ' +
+          (await device.captureViewHierarchy(
+            'recording-export-audio-share-sheet',
+          )),
+      );
+    } catch (failure) {
+      // XCTest's optional hierarchy capture can be unavailable even when the
+      // share sheet works. Keep its failure separate from the actual dismissal,
+      // temporary-file cleanup, and source-preservation assertions below.
+      console.log(
+        'RECORDING_EXPORT_AUDIO_SHARE_HIERARCHY_UNAVAILABLE ' +
+          failureDescription(failure),
+      );
+    }
     await dismissRecordingExportShareSheet(detoxApi);
     await waitFor(element(by.id('recording-export-status')))
       .toHaveText('내보내기를 취소했어요.')

@@ -1,10 +1,6 @@
+import { hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
-import {
-  hasIncompleteCoverage,
-  referencesFromBatch,
-  sameReference,
-  validateEvidenceBatch,
-} from './evidence';
+import { referencesFromBatch, sameReference, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
@@ -135,7 +131,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
-    if (hasIncompleteCoverage(combined)) {
+    if (hasBlockingCoverage(combined, context.options.task.allowBoundedExternalEvidence)) {
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The available evidence has gaps, conflicts, or truncation.',

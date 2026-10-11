@@ -63,6 +63,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskVersion: string;
   readonly systemPrompt: string;
   readonly resultSchema: JsonObject;
+  /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
+  readonly allowBoundedExternalEvidence?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }

@@ -10,6 +10,8 @@ export type NativeRouteParamList = {
 export interface NativeRouteRegistry {
   readonly routes: readonly NavigationRoute<string>[];
   readonly isTransitioning: boolean;
+  readonly canNativeGoBack: (routeKey: string) => boolean;
+  readonly prepareNativeBack: (routeKey: string) => void;
   readonly requestBack: () => Promise<boolean>;
   readonly renderRoute: (route: NavigationRoute<string>) => ReactNode;
 }

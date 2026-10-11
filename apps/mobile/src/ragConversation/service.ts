@@ -101,11 +101,20 @@ export async function runRagConversationTurn(
       question,
       invocation.signal ?? new AbortController().signal,
     );
-    const hits = await options.rag.search(question, snapshot.chunks, 5, {
-      signal: invocation.signal,
-    });
+    // An empty library must not require the on-device embedding engine before literature research.
+    const hits = snapshot.chunks.length
+      ? await options.rag.search(question, snapshot.chunks, 5, {
+          signal: invocation.signal,
+        })
+      : [];
     const initialEvidence = selectEvidence(snapshot.batch, hits);
-    if (!initialEvidence.items.length) return { status: 'no_evidence' };
+    if (
+      !initialEvidence.items.length &&
+      !options.workflow.tools?.some(
+        tool => tool.sourceKind === 'external_medical',
+      )
+    )
+      return { status: 'no_evidence' };
     const result = await runMultiAgentWorkflow(
       {
         ...options.workflow,
@@ -129,7 +138,12 @@ export async function runRagConversationTurn(
       if (!result.citations.length) return { status: 'insufficient' };
       return {
         status: 'answer',
-        answer: result.value.answer,
+        // The app always displays this boundary even if the model omits its requested caveat.
+        answer: result.citations.some(
+          reference => reference.sourceKind === 'external_medical',
+        )
+          ? `${result.value.answer}\n\n공개 의학 문헌의 일부 검색 결과를 참고했어요. 개인의 진단이나 전체 문헌 검토를 대신하지 않아요.`
+          : result.value.answer,
         citations: result.citations,
       };
     }

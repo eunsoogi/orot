@@ -110,6 +110,7 @@ function normalizePublication(value: EuropePmcAdapterPublication): EvidenceItem 
     evidenceRevision,
     locator: {
       provider: 'Europe PMC',
+      title,
       source,
       recordId,
       originalUrl,

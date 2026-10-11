@@ -84,6 +84,9 @@ test('refreshes provider state after connected accounts sign in and sign out', a
   await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
   await fireEvent.press(screen.getByTestId('settings-open-provider'));
   await screen.findByTestId('settings-provider-screen');
+  if (!screen.queryByTestId('settings-provider-manage-accounts')) {
+    await fireEvent.press(screen.getByTestId('chatgpt-account-details'));
+  }
   await fireEvent.press(
     screen.getByTestId('settings-provider-manage-accounts'),
   );
@@ -106,6 +109,9 @@ test('refreshes provider state after connected accounts sign in and sign out', a
   await fireEvent.press(screen.getByTestId('settings-provider-load-models'));
   await screen.findByText('GPT Synthetic');
 
+  if (!screen.queryByTestId('settings-provider-manage-accounts')) {
+    await fireEvent.press(screen.getByTestId('chatgpt-account-details'));
+  }
   await fireEvent.press(
     screen.getByTestId('settings-provider-manage-accounts'),
   );

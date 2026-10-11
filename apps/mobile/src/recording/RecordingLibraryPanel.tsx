@@ -62,6 +62,7 @@ export default function RecordingLibraryPanel({
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<RecordingSourceRecord | null>(null);
+  const [deletedIds] = useState(() => new Set<string>());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -74,7 +75,7 @@ export default function RecordingLibraryPanel({
     loadSummaries(service)
       .then(next => {
         if (!active) return;
-        setRecordings(next);
+        setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
         setSelectedSourceId(current =>
           current && next.some(item => item.source.id === current)
             ? current
@@ -95,6 +96,7 @@ export default function RecordingLibraryPanel({
     automaticTranscription?.status,
     refreshKey,
     service,
+    deletedIds,
   ]);
 
   const selected = recordings.find(item => item.source.id === selectedSourceId);
@@ -113,13 +115,10 @@ export default function RecordingLibraryPanel({
     else setDeleteNotice('error');
   }
 
-  async function refreshAfterDelete(
-    targetId: string,
-    wasDeleted: boolean,
-  ): Promise<boolean> {
+  async function refreshAfterDelete(targetId: string): Promise<boolean> {
     try {
       const next = await loadSummaries(service);
-      setRecordings(next);
+      setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
       setSelectedSourceId(current =>
         current &&
         current !== targetId &&
@@ -129,12 +128,6 @@ export default function RecordingLibraryPanel({
       );
       return true;
     } catch {
-      if (wasDeleted) {
-        setRecordings(current =>
-          current.filter(item => item.source.id !== targetId),
-        );
-        setSelectedSourceId(current => (current === targetId ? null : current));
-      }
       setLoadError(true);
       return false;
     }
@@ -150,15 +143,23 @@ export default function RecordingLibraryPanel({
       const result = await service.deleteRecording(target.id);
       setDeleteTarget(null);
       onSourceDeleted?.(target.id);
-      const refreshed = await refreshAfterDelete(target.id, true);
-      if (result.audioCleanupPending && !refreshed) {
+      // The cascade has committed. Publish its result immediately, without a full metadata reread.
+      deletedIds.add(target.id);
+      setRecordings(current =>
+        current.filter(item => item.source.id !== target.id),
+      );
+      setSelectedSourceId(current => (current === target.id ? null : current));
+      if (result.audioCleanupPending) {
         setDeleteNotice('cleanup-pending');
+        void refreshAfterDelete(target.id).then(refreshed => {
+          if (refreshed) setDeleteNotice(null);
+        });
       }
     } catch {
       setDeleteTarget(null);
       setDeleteNotice('error');
       // Re-read after failure so an interrupted operation is shown from persisted state.
-      await refreshAfterDelete(target.id, false);
+      await refreshAfterDelete(target.id);
     } finally {
       setBusy(false);
       onBusyChange?.(false);

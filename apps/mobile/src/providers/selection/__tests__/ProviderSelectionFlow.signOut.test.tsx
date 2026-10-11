@@ -103,6 +103,7 @@ describe('ProviderSelectionFlow sign-out', () => {
 
     await renderFlow(services, makeSelectionStore(null));
     await waitFor(() => expect(services.listAccounts).toHaveBeenCalledTimes(1));
+    await fireEvent.press(screen.getByTestId('chatgpt-account-details'));
     await fireEvent.press(screen.getByTestId('chatgpt-account-sign-out'));
 
     await waitFor(() =>
@@ -128,6 +129,7 @@ describe('ProviderSelectionFlow sign-out', () => {
 
     await renderFlow(services, makeSelectionStore(null));
     await waitFor(() => expect(services.listAccounts).toHaveBeenCalledTimes(1));
+    await fireEvent.press(screen.getByTestId('chatgpt-account-details'));
     await fireEvent.press(screen.getByTestId('chatgpt-account-sign-out'));
 
     await waitFor(() =>

@@ -5,9 +5,21 @@ export type CalendarEvent = CalendarAppointmentInput;
 export type CalendarAccessState =
   'fullAccess' | 'writeOnly' | 'notDetermined' | 'denied' | 'restricted';
 
+/** Native query covers starts in this interval, not the user's entire Calendar history. */
+export interface CalendarQueryCoverage {
+  readonly fromInclusive: string;
+  readonly toExclusive: string;
+  readonly horizonYears: 1;
+  readonly resultLimit: null;
+  readonly complete: boolean;
+  readonly omittedEventCount: number;
+}
+
 export interface UpcomingCalendarEvents {
   access: CalendarAccessState;
   events: CalendarEvent[];
+  /** Older injected adapters may omit coverage; absence never proves completeness. */
+  query?: CalendarQueryCoverage;
 }
 
 export interface CalendarEventLookup {

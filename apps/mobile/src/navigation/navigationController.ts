@@ -32,6 +32,7 @@ export interface NavigationController<Name extends string> {
     guard: NavigationLeaveGuard<Name>,
   ) => () => void;
   requestBack: () => Promise<boolean>;
+  reconcileNativeBack: (routeKey: string) => boolean;
   requestHome: () => Promise<boolean>;
   requestTabSwitch: () => Promise<boolean>;
 }
@@ -154,6 +155,19 @@ export function createNavigationController<Name extends string>(
       return () => {
         if (leaveGuards.get(routeKey) === guard) leaveGuards.delete(routeKey);
       };
+    },
+    // Called only for an already-completed, unguarded native pop; never dispatch a second pop.
+    reconcileNativeBack: routeKey => {
+      if (
+        isTransitioning ||
+        routes.length < 2 ||
+        snapshot.currentRoute.key !== routeKey
+      )
+        return false;
+      routes = routes.slice(0, -1);
+      leaveGuards.delete(routeKey);
+      publish();
+      return true;
     },
     requestBack: () => requestLeave('back'),
     requestHome: () => requestLeave('home'),

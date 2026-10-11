@@ -1,4 +1,6 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
+import type { SqlDatabase } from '@orot/storage';
+import type { LocalE5RagService } from '../rag/localE5RagService';
 import { RecordIdSchema } from '@orot/domain';
 import { createLocalE5RagService } from '../rag/localE5RagService';
 import {
@@ -11,6 +13,19 @@ export interface SourceMemoryDeletionResult {
   readonly memoriesDeleted: number;
 }
 
+// Preparation is tied to the open database, never to a recording or a process-wide boolean.
+// A reopened database gets fresh schema checks; prepare() itself retries a failed initialization.
+const deletionRagServices = new WeakMap<SqlDatabase, LocalE5RagService>();
+
+function deletionRag(database: SqlDatabase): LocalE5RagService {
+  let rag = deletionRagServices.get(database);
+  if (!rag) {
+    rag = createLocalE5RagService(database);
+    deletionRagServices.set(database, rag);
+  }
+  return rag;
+}
+
 /** Deletes a source record and memories that cite the source or one of its cascading records. */
 export async function removeLocalSourceWithMemory(
   sourceId: string,
@@ -21,7 +36,7 @@ export async function removeLocalSourceWithMemory(
     openLocalAgentMemoryDatabase(),
     openLocalStorage(),
   ]);
-  const rag = createLocalE5RagService(database);
+  const rag = deletionRag(database);
   await rag.prepare();
   // Capture the same cascade roots before SQL removal so transcript-only memory references are deleted too.
   const deletionReferences =

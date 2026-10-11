@@ -26,6 +26,7 @@ interface RecordingControlsProps {
   stateReady: boolean;
   status: RecordingStatus;
   durationMs: number;
+  amplitude?: number;
   consentAcknowledged: boolean;
   onToggleConsent: () => void;
   busy: boolean;
@@ -57,6 +58,7 @@ export default function RecordingControls({
   stateReady,
   status,
   durationMs,
+  amplitude,
   consentAcknowledged,
   onToggleConsent,
   busy,
@@ -129,6 +131,7 @@ export default function RecordingControls({
       <RecordingSessionPanel
         status={status}
         durationMs={durationMs}
+        amplitude={amplitude}
         consentAcknowledged={consentAcknowledged}
         onToggleConsent={onToggleConsent}
         controlsBusy={

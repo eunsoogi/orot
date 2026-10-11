@@ -119,5 +119,8 @@ test('uses the selected detail action and native deletion confirmation', async (
     ['transcript-evidence-seed-deletion', 'down'],
     ['recording-detail-delete', 'up'],
     ['recording-detail-delete', 'up'],
+    // Empty-state assertions must reach the library below the recording hero, including after relaunch.
+    ['recording-library-empty', 'down'],
+    ['recording-library-empty', 'down'],
   ]);
 });

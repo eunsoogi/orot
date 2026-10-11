@@ -1,9 +1,8 @@
 /** Korean catalog entries for the grounded local-record conversation screen. */
 export const ragConversationKo = {
-  'ragConversation.title': '건강 기록과 대화하기',
-  'ragConversation.description':
-    '매 질문마다 현재 저장된 근거를 다시 찾고, 답에 사용한 원문을 표시해요.',
-  'ragConversation.placeholder': '건강 기록에 대해 질문해 주세요',
+  'ragConversation.title': '기록과 대화',
+  'ragConversation.description': '내 기록을 바탕으로 궁금한 점을 물어보세요.',
+  'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
   'ragConversation.loading': '저장된 근거를 확인하고 있어요.',
   'ragConversation.noEvidence':

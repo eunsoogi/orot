@@ -61,6 +61,12 @@ describe('medical appointment responder contract', () => {
     expect(payload).toContain('치과 진료');
     expect(payload).not.toContain('calendarEventIdentifier');
     expect(payload).not.toContain('sourceId');
+    expect(task.systemPrompt).toContain(
+      'Uncertainty measures only whether this is a medical appointment.',
+    );
+    expect(task.systemPrompt).toContain(
+      'Do not increase uncertainty merely because clinical details are absent.',
+    );
     expect(task.resultSchema).toMatchObject({
       properties: {
         classifications: {

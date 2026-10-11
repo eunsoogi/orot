@@ -1,3 +1,5 @@
+import { readHealthObservationPage } from './healthObservationPages';
+import type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';
 import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
@@ -32,6 +34,10 @@ export interface RecordWriter {
 }
 
 export interface RecordRepository extends RecordWriter {
+  listHealthObservationPage(
+    cursor?: HealthObservationCursor | null,
+    limit?: number,
+  ): Promise<HealthObservationPage>;
   sourceRecords: SourceRecordRepository;
   evidenceSpans: EvidenceSpanRepository;
   transcripts: TranscriptEvidenceRepository;
@@ -102,6 +108,8 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
   const transcripts = createTranscriptEvidenceRepository(database);
   return {
     ...sourceEvidenceRepositories,
+    listHealthObservationPage: (cursor, limit) =>
+      readHealthObservationPage(database, cursor, limit),
     transcripts,
     async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
       await database.transaction(async (transaction) => {

@@ -4,6 +4,7 @@ import type { RecordingPlaybackRange } from '../recording/recordingTypes';
 import { recordingService } from '../recording/recordingService';
 import { appleOnDeviceSpeechTranscriptionProvider } from './index';
 import type { AppleOnDeviceSpeechProvider } from './provider';
+import { TranscriptRecognitionError } from './TranscriptRecognitionError';
 
 type RepositoryLoader = () => Promise<RecordRepository>;
 type TranscriptionProvider = Pick<
@@ -95,7 +96,7 @@ export function createTranscriptEvidenceService(
       ...(signal ? { signal } : {}),
     });
     if (signal?.aborted) throw new Error('Transcription was canceled.');
-    if (!result.ok) throw new Error(result.error.message);
+    if (!result.ok) throw new TranscriptRecognitionError(result.error);
     const currentSource = await repository.get('source_record', source.id);
     if (!currentSource || currentSource.sourceKind !== 'audio_recording') {
       throw new Error('The saved recording was removed during transcription.');

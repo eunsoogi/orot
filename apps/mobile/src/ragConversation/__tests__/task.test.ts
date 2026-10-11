@@ -44,3 +44,52 @@ test('asks for clarification when the current evidence set is empty', () => {
   );
   expect(result.status).toBe('needs_clarification');
 });
+
+test('keeps evidence content and coverage while leaving full citation identity for local validation', () => {
+  const content =
+    'Title: Synthetic publication\nAbstract: Unabridged supplied abstract.';
+  const input = {
+    request: 'Summarize this literature.',
+    evidence: {
+      items: [
+        {
+          ...reference,
+          sourceKind: 'external_medical' as const,
+          content,
+          locator: {
+            title: 'duplicate-title',
+            originalUrl: 'https://example.org/paper',
+            retrievedAt: 'private-validation-revision',
+          },
+        },
+      ],
+      coverage: [
+        {
+          sourceKind: 'external_medical' as const,
+          searchedSourceIds: ['europe-pmc'],
+          gaps: ['abstract gap'],
+          truncated: true,
+          returnedCount: 1,
+          resultLimit: 5,
+        },
+      ],
+      conflicts: [],
+    },
+  };
+  const message = ragConversationTask.createMessages(input)[0];
+  if (message.role !== 'user' || typeof message.content !== 'string')
+    throw new Error('Expected user text');
+  const body = JSON.parse(message.content);
+  expect(body.evidence).toEqual([
+    {
+      evidenceId: 'evidence-1',
+      sourceKind: 'external_medical',
+      effectiveTime: null,
+      reviewState: 'reviewed',
+      content,
+    },
+  ]);
+  expect(body.coverage).toEqual(input.evidence.coverage);
+  expect(message.content).not.toContain('private-validation-revision');
+  expect(ragConversationTask.systemPrompt).toContain('concise grounded answer');
+});

@@ -85,7 +85,8 @@ export function AiFeatureFlow({
     <View style={styles.container} testID="ai-feature-flow">
       {!providerSelectionOpen &&
       !sourceDetailOpen &&
-      screenRoute !== 'visit-questions' ? (
+      screenRoute !== 'visit-questions' &&
+      screenRoute !== 'rag-conversation' ? (
         <AiProviderSelectorRow
           onPress={openProviderSelection}
           resolveSelectedAi={resolveSelectedAiForRoute}

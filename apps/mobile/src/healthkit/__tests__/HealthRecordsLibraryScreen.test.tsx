@@ -24,10 +24,10 @@ test('shows saved observation values in the records library and supports Back', 
     correlation('library-pressure'),
     '2026-10-05T10:00:00.000Z',
   ).observations;
-  const loadObservations = jest.fn(async () => [
-    commonObservation,
-    ...pressureObservations,
-  ]);
+  const loadObservations = jest.fn(async () => ({
+    records: [commonObservation, ...pressureObservations],
+    nextCursor: null,
+  }));
   const onBack = jest.fn();
 
   await render(

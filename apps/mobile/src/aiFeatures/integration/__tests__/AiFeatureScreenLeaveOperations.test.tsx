@@ -159,17 +159,33 @@ test('aborts external search after confirmed leave and ignores its late result',
   const route = await render(
     <AiFeatureRoute
       onBack={jest.fn()}
-      serviceDependencies={routeDependencies({ externalEvidence })}
+      serviceDependencies={routeDependencies({
+        externalEvidence,
+        externalQueryConsent: { authorize: async () => 'authorized' },
+        ragRunner: async (options, invocation) => {
+          await options.workflow.tools
+            .find(tool => tool.sourceKind === 'external_medical')!
+            .search({
+              operationRunId: 'test-turn',
+              operationKey: 'search',
+              input: { query: '수면과 혈압 연구' },
+              allowedScope: options.workflow.execution.allowedScope,
+              resultLimit: 5,
+              maxPayloadBytes: 65536,
+              signal: invocation?.signal ?? new AbortController().signal,
+            });
+          return { status: 'no_evidence' };
+        },
+      })}
     />,
   );
 
-  await fireEvent.press(route.getByTestId('ai-feature-external-evidence'));
+  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
   await fireEvent.changeText(
-    route.getByTestId('external-evidence-query'),
+    route.getByTestId('rag-conversation-input'),
     '수면과 혈압 연구',
   );
-  await fireEvent.press(route.getByTestId('external-evidence-consent'));
-  await fireEvent.press(route.getByTestId('external-evidence-search'));
+  await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
   await fireEvent.press(route.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
@@ -185,11 +201,11 @@ test('aborts external search after confirmed leave and ignores its late result',
   );
   await pressAlertButton(alert, 1);
   await waitFor(() =>
-    expect(route.queryByTestId('external-medical-evidence-screen')).toBeNull(),
+    expect(route.queryByTestId('rag-conversation-screen')).toBeNull(),
   );
   expect(signal?.aborted).toBe(true);
   await act(async () => finish({ status: 'empty' }));
-  expect(route.queryByTestId('external-medical-evidence-screen')).toBeNull();
+  expect(route.queryByTestId('rag-conversation-screen')).toBeNull();
 });
 
 function routeDependencies(

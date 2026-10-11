@@ -11,6 +11,40 @@ const childRoute: NavigationRoute<string> = {
 };
 
 describe('native route removal reconciliation', () => {
+  it('does not report removal or dispatch a pop when a gesture returns to the same stack', async () => {
+    const dispatch = jest.fn();
+    const onRemovalComplete = jest.fn();
+    const navigationRef = {
+      dispatch,
+      getRootState: () => ({
+        routes: [rootRoute, childRoute].map(route => ({
+          key: route.key,
+          name: 'scene',
+          params: { routeKey: route.key },
+        })),
+      }),
+    } as unknown as NavigationContainerRefWithCurrent<NativeRouteParamList>;
+    let actions: ReturnType<typeof useNativeRouteRemoval<string>> | undefined;
+    function Probe() {
+      actions = useNativeRouteRemoval({
+        navigationRef,
+        routes: [rootRoute, childRoute],
+        ready: true,
+        nativeRevision: 0,
+        reduceMotion: false,
+        onNativeRouteRemovalComplete: onRemovalComplete,
+      });
+      return null;
+    }
+    await render(<Probe />);
+    await act(async () => {
+      actions?.trackRemovedRoutes(['root', 'child'], ['root', 'child']);
+      actions?.markNativeTransitionComplete('child', false);
+    });
+    expect(onRemovalComplete).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
   it('keeps a completed pop pending until the latest logical and native stacks agree', async () => {
     const nativeKeys = { current: ['root', 'child'] as string[] };
     const navigationRef = {

@@ -1,3 +1,5 @@
+import { createExternalConversationEvidence } from './externalConversationEvidence';
+import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -59,6 +61,7 @@ export interface AiFeatureServiceDependencies {
   readonly ragRunner?: typeof defaultRagRunner;
   readonly createOperationRunId?: () => string;
   readonly externalEvidence?: EuropePmcMedicalEvidenceService;
+  readonly externalQueryConsent?: ExternalMedicalQueryConsentPort;
 }
 
 const DISEASE_REQUEST =
@@ -76,6 +79,8 @@ export function createAiFeatureServices(
   dependencies: AiFeatureServiceDependencies = {},
 ): AiFeatureServices {
   const registry = new LocalEvidenceReferenceRegistry();
+  const externalEvidence =
+    dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService();
   const loadLocalData =
     dependencies.loadLocalData ??
     (async () => (await import('./localData')).openAiFeatureLocalData());
@@ -90,8 +95,7 @@ export function createAiFeatureServices(
 
   return {
     ...createVisitQuestionSourceService(registry, loadLocalData),
-    externalEvidence:
-      dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService(),
+    externalEvidence,
     async loadSavedVisitQuestions(appointmentId) {
       const data = await loadLocalData();
       const { openLocalStorage } = await import('../../storage/secureDatabase');
@@ -163,7 +167,11 @@ export function createAiFeatureServices(
         );
         if (snapshot.gaps.length) return { status: 'insufficient' };
         await indexChangedFeatureEvidence(data, snapshot, signal);
-        const tools = toolsFor(snapshot, data);
+        const external = createExternalConversationEvidence(
+          externalEvidence,
+          dependencies.externalQueryConsent,
+        );
+        const tools = [...toolsFor(snapshot, data), external.tool];
         const runId = dependencies.createOperationRunId?.() ?? operationRunId();
         const batch: {
           items: EvidenceBatch['items'];
@@ -204,6 +212,7 @@ export function createAiFeatureServices(
               consent,
               registry,
               tools,
+              external,
             }),
           },
           { signal },

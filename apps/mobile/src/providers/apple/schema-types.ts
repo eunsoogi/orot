@@ -3,6 +3,7 @@ export type AppleNativeSchema =
   | {
       readonly kind: 'enum';
       readonly name: string;
+      readonly description?: string;
       readonly values: readonly string[];
     }
   | {
@@ -14,6 +15,7 @@ export type AppleNativeSchema =
   | {
       readonly kind: 'object';
       readonly name: string;
+      readonly description?: string;
       readonly properties: readonly {
         readonly name: string;
         readonly schema: AppleNativeSchema;
@@ -24,6 +26,7 @@ export type AppleNativeSchema =
   | {
       readonly kind: 'union';
       readonly name: string;
+      readonly description?: string;
       readonly choices: readonly AppleNativeSchema[];
     };
 

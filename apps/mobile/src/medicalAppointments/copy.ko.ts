@@ -59,6 +59,12 @@ export const medicalAppointmentCopy = {
   get manualReview() {
     return t('medicalAppointments.status.manualReview');
   },
+  get noMedical() {
+    return t('medicalAppointments.status.noMedical');
+  },
+  imported(count: number) {
+    return t('medicalAppointments.status.imported', { count });
+  },
   get notClassified() {
     return t('medicalAppointments.status.notClassified');
   },

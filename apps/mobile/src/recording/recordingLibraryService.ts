@@ -61,7 +61,7 @@ async function openDeletionMemory(): Promise<AgentMemoryService> {
   const rag = ragModule.createLocalE5RagService(
     await databaseModule.openLocalAgentMemoryDatabase(),
   );
-  await rag.prepare();
+  // Opening memory only needs the provider. Source removal prepares RAG tables before its transaction.
   return memoryModule.openOrReuseLocalAgentMemory(rag.provider);
 }
 

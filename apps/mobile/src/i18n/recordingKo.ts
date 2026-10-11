@@ -1,12 +1,23 @@
 /** Korean copy for local recording, transcript review, and their error states. */
 export const recordingKo = {
   'recording.title': '상담 녹음',
+  'recording.subtitle': '중요한 이야기를 놓치지 않도록',
+  'recording.listening': '목소리를 듣고 있어요.',
+  'recording.readyHint': '동의를 확인한 뒤 녹음을 시작해 주세요.',
+  'recording.saveAction': '녹음 저장',
+  'recording.afterSave': '저장 후 음성을 글로 옮겨요.',
+  'recording.transcript.permissionHelp':
+    '설정에서 오롯의 음성 인식 권한을 허용한 뒤 다시 시도해 주세요.',
+  'recording.transcript.modelHelp':
+    '기기 내 음성 인식 모델을 준비하지 못했어요. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+  'recording.transcript.unsupportedHelp':
+    '이 기기나 언어에서는 기기 내 음성 인식을 사용할 수 없어요.',
+  'recording.transcript.timeoutHelp':
+    '음성 인식 시간이 초과됐어요. 저장된 녹음으로 다시 시도해 주세요.',
   'recording.consent.description':
     '녹음 전에 상담 참여자 모두에게 녹음 사실을 알리고 동의를 받아 주세요.',
-  'recording.consent.acknowledgement':
-    '참여자에게 녹음 사실을 알리고 동의를 받았습니다.',
-  'recording.localOnly':
-    '녹음 파일은 이 기기에 보관되고 오롯 서버로 전송되지 않습니다.',
+  'recording.consent.acknowledgement': '참여자에게 알리고 동의를 받았어요',
+  'recording.localOnly': '녹음 파일은 이 기기에 보관돼요.',
   'recording.status.idle': '녹음하지 않음',
   'recording.status.recording': '녹음 중',
   'recording.status.paused': '일시 정지됨',

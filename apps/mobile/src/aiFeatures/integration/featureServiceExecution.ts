@@ -1,3 +1,4 @@
+import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
 import type {
   EvidenceReference,
@@ -37,6 +38,7 @@ export function executionOptions(input: {
   readonly consent: MultiAgentWorkflowOptions['consent'];
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly tools: readonly EvidenceSearchTool[];
+  readonly external?: ReturnType<typeof createExternalConversationEvidence>;
 }) {
   return {
     execution: {
@@ -46,7 +48,13 @@ export function executionOptions(input: {
       recipient: input.selected.recipient,
       remoteProcessing: input.selected.remoteProcessing,
       allowedScope: {
-        sourceKinds: ['personal_record', 'reviewed_memory'] as const,
+        sourceKinds: input.external
+          ? ([
+              'personal_record',
+              'reviewed_memory',
+              'external_medical',
+            ] as const)
+          : (['personal_record', 'reviewed_memory'] as const),
       },
       budget: DEFAULT_MULTI_AGENT_BUDGET,
     },
@@ -56,6 +64,20 @@ export function executionOptions(input: {
     revalidateEvidence: (
       references: readonly EvidenceReference[],
       signal: AbortSignal,
-    ) => input.registry.revalidateEvidence(references, signal),
+    ) => {
+      if (signal.aborted || references.length === 0)
+        return Promise.resolve(false);
+      const external = references.filter(
+        reference => reference.sourceKind === 'external_medical',
+      );
+      if (external.some(reference => !input.external?.validates(reference)))
+        return Promise.resolve(false);
+      const local = references.filter(
+        reference => reference.sourceKind !== 'external_medical',
+      );
+      return local.length
+        ? input.registry.revalidateEvidence(local, signal)
+        : Promise.resolve(true);
+    },
   };
 }

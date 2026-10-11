@@ -10,6 +10,7 @@ interface AiProviderSelectorRowProps {
   readonly onPress: () => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly revision: number;
+  readonly embedded?: boolean;
 }
 
 /** Reads the saved choice for display and leaves unavailable choices explicit, with no provider fallback. */
@@ -17,6 +18,7 @@ export function AiProviderSelectorRow({
   onPress,
   resolveSelectedAi,
   revision,
+  embedded = false,
 }: AiProviderSelectorRowProps) {
   const [status, setStatus] = useState<
     'loading' | 'selection-required' | 'unavailable' | 'ready'
@@ -60,7 +62,7 @@ export function AiProviderSelectorRow({
       accessibilityRole="button"
       accessibilityState={{ busy: status === 'loading' }}
       onPress={onPress}
-      style={styles.row}
+      style={[styles.row, embedded && styles.embedded]}
       testID="ai-feature-select-provider"
     >
       <AppSymbol name="sparkles" size={20} color={appColors.primaryText} />
@@ -74,6 +76,8 @@ export function AiProviderSelectorRow({
 }
 
 const styles = StyleSheet.create({
+  // Composed headers already own their page inset; standalone routes need the row's default inset.
+  embedded: { marginHorizontal: 0, marginVertical: 0, minHeight: 74 },
   row: {
     alignItems: 'center',
     backgroundColor: appColors.surface,
@@ -83,6 +87,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     minHeight: 60,
+    marginHorizontal: 20,
+    marginVertical: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

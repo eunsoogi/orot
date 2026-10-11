@@ -29,7 +29,6 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     var playbackTimer: DispatchSourceTimer?
     var playbackResolve: RCTPromiseResolveBlock?
     var playbackResult: NSDictionary?
-    var lastStateEvent = Date.distantPast
     var observers: [NSObjectProtocol] = []
     #if DEBUG && targetEnvironment(simulator)
         var syntheticCapture: RecordingSyntheticCapture?
@@ -129,10 +128,8 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
             #else
                 lastDurationMs = currentDurationMs()
             #endif
-            if Date().timeIntervalSince(lastStateEvent) >= 1 {
-                lastStateEvent = Date()
-                emitState()
-            }
+            // Ten bounded updates per second drive the live waveform without sending audio.
+            emitState()
         }
         timer = source
         source.resume()
@@ -157,10 +154,18 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     }
 
     func snapshot() -> NSDictionary {
-        [
+        var amplitude = 0.0
+        if status == .recording, let recorder {
+            recorder.updateMeters()
+            let power = Double(recorder.averagePower(forChannel: 0))
+            // Linear amplitude in [0, 1]; values below -60 dBFS render as silence.
+            amplitude = power > -60 ? min(1, max(0, pow(10, power / 20))) : 0
+        }
+        return [
             "status": status.rawValue,
             "id": recordingID as Any? ?? NSNull(),
             "durationMs": currentDurationMs(),
+            "amplitude": amplitude,
             "consentAcknowledged": consentAcknowledged,
         ] as NSDictionary
     }

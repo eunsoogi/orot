@@ -1,0 +1,215 @@
+import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import type { LanguageModelProvider } from '@orot/model-runtime';
+import { AppleFoundationModelsProvider } from '@orot/provider-apple';
+import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
+import { createEuropePmcMedicalEvidenceService } from '../src/externalMedicalEvidence/europePmc';
+import type { ExternalMedicalPublication } from '../src/externalMedicalEvidence/europePmc';
+import { createExternalConversationEvidence } from '../src/aiFeatures/integration/externalConversationEvidence';
+import { runRagConversationTurn } from '../src/ragConversation/service';
+import type { RagConversationOutcome } from '../src/ragConversation/service';
+
+const approvedQuery = 'sleep duration adults';
+const question =
+  'This is a synthetic general-literature question, with no personal health records. Search Europe PMC using the exact query "sleep duration adults". Summarize what the returned publications say about adult sleep duration, cite their supplied evidence IDs and publication dates, and explain the limits of this search sample. Do not give individual medical advice.';
+
+export interface Issue189RagProbeResult {
+  readonly availability: string;
+  readonly terminal: string;
+  readonly retrieval: 'observed' | 'notobserved';
+  readonly consent: readonly { query: string; decision: string }[];
+  readonly requests: readonly string[];
+  readonly responses: readonly { status: number; ok: boolean }[];
+  readonly publications: readonly ExternalMedicalPublication[];
+  readonly diagnostics: readonly unknown[];
+  readonly nativeCancellations: readonly string[];
+  readonly outcome?: RagConversationOutcome;
+  readonly failure?: string;
+  readonly elapsedMs: number;
+  readonly workflowBudgetMs: number;
+  readonly parentAborted: boolean;
+}
+
+/** Executes the shipping RAG chain with real network/model calls and an empty personal library. */
+export async function runIssue189RagProbe(
+  onPhase: (phase: string) => void,
+  parentSignal: AbortSignal,
+): Promise<Issue189RagProbeResult> {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  parentSignal.addEventListener('abort', abort, { once: true });
+  if (parentSignal.aborted) abort();
+  const consent: { query: string; decision: string }[] = [];
+  const requests: string[] = [];
+  const responses: { status: number; ok: boolean }[] = [];
+  const publications: ExternalMedicalPublication[] = [];
+  const diagnostics: unknown[] = [];
+  const nativeCancellations: string[] = [];
+  let availability = 'notobserved';
+  let terminal = 'notobserved';
+  let outcome: RagConversationOutcome | undefined;
+  let failure: string | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const native = new AppleFoundationModelsProvider({
+    ...appleFoundationModelsNativeBridge,
+    cancel(requestId) {
+      nativeCancellations.push(requestId);
+      appleFoundationModelsNativeBridge.cancel(requestId);
+    },
+  });
+  const provider: LanguageModelProvider = {
+    kind: native.kind,
+    id: native.id,
+    displayName: native.displayName,
+    capabilities: native.capabilities,
+    async generate(request, options) {
+      onPhase('apple-generation');
+      const callStarted = Date.now();
+      const diagnostic: Record<string, unknown> = {
+        startedAtMs: callStarted - startedAt,
+        format: request.responseFormat?.name,
+        requestCharacters: JSON.stringify(request).length,
+        status: 'pending',
+        aborted: false,
+      };
+      diagnostics.push(diagnostic);
+      const markAborted = () => {
+        diagnostic.aborted = true;
+        diagnostic.elapsedMs = Date.now() - callStarted;
+      };
+      options?.signal?.addEventListener('abort', markAborted, { once: true });
+      try {
+        const result = await native.generate(request, options);
+        diagnostic.status = result.ok ? 'response' : 'provider-error';
+        diagnostic.response = result;
+        return result;
+      } catch (error) {
+        diagnostic.status = 'thrown';
+        diagnostic.error =
+          error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        diagnostic.elapsedMs = Date.now() - callStarted;
+        options?.signal?.removeEventListener('abort', markAborted);
+      }
+    },
+  };
+  const service = createEuropePmcMedicalEvidenceService({
+    async fetcher(url, init) {
+      onPhase('europe-pmc-request');
+      requests.push(url);
+      const response = await fetch(url, init);
+      responses.push({ status: response.status, ok: response.ok });
+      return response;
+    },
+  });
+  const external = createExternalConversationEvidence(
+    {
+      async search(query, options) {
+        const result = await service.search(query, options);
+        if (result.status === 'available')
+          publications.push(...result.publications);
+        return result;
+      },
+    },
+    {
+      async authorize(request) {
+        // This diagnostic authorizes exactly one public synthetic phrase, never model-expanded queries.
+        const decision =
+          request.query === approvedQuery && !request.signal.aborted
+            ? 'authorized'
+            : 'denied';
+        consent.push({ query: request.query, decision });
+        return decision;
+      },
+    },
+  );
+  try {
+    await Promise.race([
+      (async () => {
+        onPhase('apple-availability');
+        availability = (await native.getAvailability()).status;
+        if (availability !== 'available' || controller.signal.aborted) {
+          terminal = controller.signal.aborted
+            ? 'cancelled'
+            : 'provider-unavailable';
+          return;
+        }
+        outcome = await runRagConversationTurn(
+          {
+            question,
+            previousMessages: [],
+            loadCurrentEvidence: async () => ({
+              batch: { items: [], coverage: [], conflicts: [] },
+              chunks: [],
+            }),
+            // No chunks exist: reaching local retrieval would violate the diagnostic's empty-library boundary.
+            rag: {
+              search: async () => {
+                throw new Error('Unexpected personal-record retrieval');
+              },
+            },
+            workflow: {
+              provider,
+              execution: {
+                operationRunId: 'synthetic-europe-pmc-' + Date.now(),
+                providerId: provider.id,
+                modelId: 'apple-foundation-models-system-default',
+                recipient: 'on-device',
+                remoteProcessing: false,
+                allowedScope: {
+                  sourceKinds: ['external_medical'],
+                  sourceIds: ['europe-pmc'],
+                },
+                budget: DEFAULT_MULTI_AGENT_BUDGET,
+              },
+              tools: [external.tool],
+              consent: {
+                authorize: async () =>
+                  controller.signal.aborted ? 'renewal_required' : 'authorized',
+              },
+              revalidateEvidence: async (references, signal) =>
+                !signal.aborted &&
+                references.every(reference => external.validates(reference)),
+            },
+          },
+          { signal: controller.signal },
+        );
+        if (terminal !== 'deadline-exceeded') {
+          terminal = controller.signal.aborted ? 'cancelled' : outcome.status;
+        }
+      })(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          terminal = 'deadline-exceeded';
+          controller.abort();
+          reject(new Error('Diagnostic deadline exceeded: 120000 ms'));
+        }, 120_000);
+      }),
+    ]);
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error);
+    if (terminal !== 'deadline-exceeded')
+      terminal = controller.signal.aborted ? 'cancelled' : 'probe-error';
+  } finally {
+    if (timer) clearTimeout(timer);
+    parentSignal.removeEventListener('abort', abort);
+  }
+  onPhase(terminal);
+  return {
+    availability,
+    terminal,
+    retrieval: requests.length ? 'observed' : 'notobserved',
+    consent: [...consent],
+    requests: [...requests],
+    responses: [...responses],
+    publications: [...publications],
+    diagnostics: [...diagnostics],
+    nativeCancellations: [...nativeCancellations],
+    outcome,
+    failure,
+    elapsedMs: Date.now() - startedAt,
+    workflowBudgetMs: DEFAULT_MULTI_AGENT_BUDGET.timeoutMs,
+    parentAborted: controller.signal.aborted,
+  };
+}

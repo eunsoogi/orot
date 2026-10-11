@@ -2,10 +2,16 @@ import { useNavigationContentInset } from '../navigation/useNavigationContentIns
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, ComponentRef } from 'react';
+import { AppSymbol } from '../layout/AppSymbol';
+import { styles } from './ConversationScreen.styles';
+import { ConversationMessage } from './ConversationMessage';
+import type { DisplayMessage } from './ConversationMessage';
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
   TextInput,
   View,
 } from 'react-native';
@@ -18,12 +24,8 @@ import type { RagConversationOutcome } from './service';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 
-interface DisplayMessage extends RagConversationMessage {
-  readonly id: number;
-  readonly citations?: readonly EvidenceReference[];
-}
-
 interface ConversationScreenProps {
+  readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
@@ -38,6 +40,7 @@ interface ConversationScreenProps {
 /** Keeps chat history in view state only; evidence is freshly loaded by the injected turn service. */
 export function ConversationScreen({
   navigationRouteKey,
+  providerSelection,
   onNavigationStateChange,
   onBack,
   onSend,
@@ -53,6 +56,7 @@ export function ConversationScreen({
   const nextMessageId = useRef(0);
   const operationController = useRef<AbortController | null>(null);
   const inputRevision = useRef(0);
+  const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -124,103 +128,120 @@ export function ConversationScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, navigationInset]}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.screen}
       testID="rag-conversation-screen"
     >
-      {navigationRouteKey ? null : (
-        <Button
-          accessibilityLabel={navigationText.back.accessibilityLabel}
-          onPress={onBack}
-          title={navigationText.back.label}
-        />
-      )}
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
-      <Text>{copy.description}</Text>
-      {messages.map(message => (
-        <View key={message.id} style={styles.message}>
-          <Text style={styles.role}>
-            {message.role === 'user' ? copy.speakerUser : '오롯'}
-          </Text>
-          <Text>{message.content}</Text>
-          {message.citations?.map(reference => (
-            <Pressable
-              key={`${reference.sourceId}:${reference.evidenceId}:${reference.evidenceRevision}`}
-              accessibilityRole="button"
-              onPress={() => onOpenSource(reference)}
-            >
-              <Text style={styles.source}>
-                {copy.source(reference.sourceId)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ))}
-      {busy ? (
-        <Text testID="rag-conversation-loading">{copy.loading}</Text>
-      ) : null}
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
+      <View style={styles.header}>
+        {!navigationRouteKey && (
+          <Button
+            accessibilityLabel={navigationText.back.accessibilityLabel}
+            onPress={onBack}
+            title={navigationText.back.label}
+          />
+        )}
+        <Text accessibilityRole="header" style={styles.heading}>
+          {copy.title}
         </Text>
-      ) : null}
-      <TextInput
-        accessibilityLabel={copy.placeholder}
-        editable={!busy}
-        maxLength={1000}
-        onChangeText={value => {
-          inputRevision.current += 1;
-          setDraft(value);
-        }}
-        placeholder={copy.placeholder}
-        placeholderTextColor={appColors.secondary}
-        onFocus={() => setInputFocused(true)}
-        onBlur={() => setInputFocused(false)}
-        style={[styles.input, inputFocused && styles.inputFocused]}
-        testID="rag-conversation-input"
-        value={draft}
-      />
-      <Button
-        disabled={busy || !draft.trim()}
-        accessibilityState={{ busy }}
-        onPress={() => {
-          send().catch(() => setError(copy.unavailable));
-        }}
-        testID="rag-conversation-send"
-        title={copy.send}
-      />
-    </ScrollView>
+        <Text style={styles.description}>{copy.description}</Text>
+        {providerSelection ? (
+          <View style={styles.provider}>{providerSelection}</View>
+        ) : null}
+      </View>
+      <ScrollView
+        ref={historyView}
+        style={styles.history}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() =>
+          historyView.current?.scrollToEnd({ animated: true })
+        }
+        testID="rag-conversation-history"
+      >
+        {!messages.length && (
+          <Text style={styles.empty}>
+            질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
+          </Text>
+        )}
+        {messages.map(message => (
+          <ConversationMessage
+            key={message.id}
+            message={message}
+            onOpenSource={onOpenSource}
+            onLinkError={() =>
+              setError('문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
+            }
+          />
+        ))}
+        {busy && (
+          <Text
+            accessibilityLiveRegion="polite"
+            testID="rag-conversation-loading"
+          >
+            {copy.loading}
+          </Text>
+        )}
+        {error ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+      </ScrollView>
+      <View
+        style={[styles.composerArea, navigationInset]}
+        testID="rag-conversation-composer"
+      >
+        <Text style={styles.disclaimer}>
+          필요하면 동의를 받고 공개 의학 문헌도 찾아요.
+        </Text>
+        <View
+          style={[styles.composer, inputFocused && styles.inputFocused]}
+          testID="rag-conversation-composer-field"
+        >
+          <TextInput
+            accessibilityLabel={copy.placeholder}
+            editable={!busy}
+            maxLength={1000}
+            multiline
+            onChangeText={value => {
+              inputRevision.current += 1;
+              setDraft(value);
+            }}
+            placeholder={copy.placeholder}
+            placeholderTextColor={appColors.secondary}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            style={styles.input}
+            testID="rag-conversation-input"
+            value={draft}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={busy ? '답변 중단' : copy.send}
+            accessibilityState={{ busy, disabled: !busy && !draft.trim() }}
+            disabled={!busy && !draft.trim()}
+            style={[styles.send, !busy && !draft.trim() && styles.disabled]}
+            testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
+            onPress={() => {
+              if (busy) {
+                operationController.current?.abort();
+                operationController.current = null;
+                setBusy(false);
+                return;
+              }
+              send().catch(() => setError(copy.unavailable));
+            }}
+          >
+            <AppSymbol
+              name={busy ? 'stop.fill' : 'arrow.up'}
+              size={24}
+              color={appColors.onPrimary}
+            />
+          </Pressable>
+        </View>
+        <Text style={styles.disclaimer}>AI 답변은 진료를 대신하지 않아요.</Text>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  input: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: appColors.text,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  message: {
-    borderColor: appColors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-    padding: 12,
-  },
-  role: { fontWeight: '700' },
-  // Focus remains visible for keyboard users in both system appearances.
-  inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
-  error: { color: appColors.danger },
-  source: {
-    color: appColors.primaryText,
-    fontWeight: '700',
-    paddingVertical: 4,
-  },
-});

@@ -26,12 +26,6 @@ export function getAiFeatureCopy() {
         description: t('aiFeatures.ragConversation.description'),
         action: t('aiFeatures.ragConversation.action'),
       },
-      {
-        id: 'external-evidence',
-        title: t('aiFeatures.externalEvidence.title'),
-        description: t('aiFeatures.externalEvidence.description'),
-        action: t('aiFeatures.externalEvidence.action'),
-      },
     ],
   };
 }

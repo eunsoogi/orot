@@ -123,6 +123,7 @@ test('keeps model selection and account management on separate Settings screens'
   expect(services.signIn).not.toHaveBeenCalled();
   expect(services.signOut).not.toHaveBeenCalled();
 
+  await fireEvent.press(screen.getByTestId('chatgpt-account-details'));
   await fireEvent.press(
     screen.getByTestId('settings-provider-manage-accounts'),
   );

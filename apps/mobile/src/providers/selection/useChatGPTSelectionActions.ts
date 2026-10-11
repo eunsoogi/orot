@@ -93,7 +93,10 @@ export function useChatGPTSelectionActions({
         account.issuedClientID,
         models.value,
       );
-      setOptions([...(appleOption ? [appleOption] : []), ...remoteOptions]);
+      setOptions(current => [
+        ...current.filter(option => option.privacyBoundary === 'on-device'),
+        ...remoteOptions,
+      ]);
       setActionStatus(providerSelectionText.chatGPTModelsLoaded);
     } catch (error) {
       if (isSignInCancelled(error)) {
