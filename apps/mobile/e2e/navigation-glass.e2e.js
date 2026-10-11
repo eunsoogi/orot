@@ -16,7 +16,8 @@ async function scrollRouteToBottom() {
 }
 
 describe('native navigation glass', () => {
-  it('visits every root destination with a reachable selected tab', async () => {
+  // Diagnostics can cover controls, so leave them off; tap the visible roof instead of the hollow glyph center.
+  it('visits every root tab, keeps Home clear, and opens Records from the tab bar', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -25,6 +26,7 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    // Keep tab traversal in this registered Release case so shard accounting stays exact.
     const tabs = [
       ['home', 'welcome-title', '홈 탭'],
       ['records', 'records-title', '기록 탭'],
@@ -43,18 +45,11 @@ describe('native navigation glass', () => {
       );
       await device.takeScreenshot(`selected-root-tab-${tab}`);
     }
-  });
-
-  // Diagnostics can cover controls, so leave them off; tap the visible roof instead of the hollow glyph center.
-  it('keeps Home content clear of native controls and opens Records from the tab bar', async () => {
-    await device.launchApp({
-      newInstance: true,
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-    });
-
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
+    await openRootTab('home', [
+      'welcome-title',
+      'home-empty-recordings',
+      'home-recordings-retry',
+    ]);
     const root = await element(
       by.id('navigation-keyboard-avoiding-root'),
     ).getAttributes();
