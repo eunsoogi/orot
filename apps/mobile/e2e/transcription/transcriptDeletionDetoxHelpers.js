@@ -44,8 +44,8 @@ async function runTranscriptDeletionFlow(detoxApi) {
   // The detail action is above transcript evidence in the shared scroll view.
   await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
-  // Alert.alert renders native accessibility labels instead of React Native test IDs.
-  const confirmation = detoxElement(detoxBy.label('녹음을 삭제할까요?'));
+  // UIKit exposes the alert title as text while its native action buttons use labels.
+  const confirmation = detoxElement(detoxBy.text('녹음을 삭제할까요?'));
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
   await detoxElement(detoxBy.label('취소')).tap();
   await detoxWaitFor(confirmation).not.toExist().withTimeout(10000);

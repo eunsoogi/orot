@@ -16,6 +16,10 @@ test('uses the selected detail action and native deletion confirmation', async (
       selectors.push({ matcher: 'label', value });
       return { matcher: 'label', value };
     },
+    text: value => {
+      selectors.push({ matcher: 'text', value });
+      return { matcher: 'text', value };
+    },
   };
   const element = selector => ({
     selector,
@@ -62,11 +66,14 @@ test('uses the selected detail action and native deletion confirmation', async (
   const labels = selectors
     .filter(selector => selector.matcher === 'label')
     .map(selector => selector.value);
+  const texts = selectors
+    .filter(selector => selector.matcher === 'text')
+    .map(selector => selector.value);
   jestExpect(ids).toContain('recording-detail-delete');
   jestExpect(ids).not.toContain('recording-transcript-delete');
-  jestExpect(labels).toEqual(
-    jestExpect.arrayContaining(['녹음을 삭제할까요?', '취소', '삭제']),
-  );
+  jestExpect(labels).toEqual(jestExpect.arrayContaining(['취소', '삭제']));
+  // UIKit exposes the alert title as text and its native actions as labels.
+  jestExpect(texts).toContain('녹음을 삭제할까요?');
   jestExpect(
     scrollAttempts.every(
       attempt => attempt.container === 'recording-controls-scroll',
