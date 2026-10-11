@@ -12,6 +12,8 @@ const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.y
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
 const platformSelector = readRepositoryFile('scripts/quality/platforms.mjs');
 const surfacePolicy = JSON.parse(readRepositoryFile('scripts/quality/surface-policy.json'));
+const qualitySurfaceAction = readRepositoryFile('.github/actions/run-quality-surface/action.yml');
+const qualitySetupAction = readRepositoryFile('.github/actions/setup-linux-quality/action.yml');
 
 function jobBlock(source, jobId) {
   const start = source.indexOf(`  ${jobId}:\n`);
@@ -21,18 +23,46 @@ function jobBlock(source, jobId) {
 }
 
 test('runs a full-inventory lint leaf for every language surface on Linux', () => {
-  const lint = jobBlock(codeWorkflow, 'surface_lint');
-  assert.match(lint, /strategy:\n\s+fail-fast: false/);
-  assert.match(lint, /name: Lint \/ \$\{\{ matrix\.label \}\}/);
-  assert.match(lint, /runs-on: ubuntu-24\.04/);
+  const surfaceNames = {
+    javascript: 'JavaScript',
+    typescript: 'TypeScript',
+    swift: 'Swift',
+    'objective-c': 'Objective-C',
+    shell: 'Shell',
+    ruby: 'Ruby',
+    yaml: 'YAML',
+    json: 'JSON',
+    xml: 'XML',
+    properties: 'Properties',
+  };
+
   for (const surface of Object.keys(surfacePolicy.surfaces)) {
-    assert.ok(lint.includes(`surface: ${surface}`), `missing ${surface} lint leaf`);
+    const jobId = `lint_${surface.replaceAll('-', '_')}`;
+    const lint = jobBlock(codeWorkflow, jobId);
+    assert.ok(lint, `missing ${surface} lint leaf`);
+    assert.ok(lint.includes(`name: Lint / ${surfaceNames[surface]}`));
+    assert.match(lint, /needs: inventory/);
+    assert.match(lint, /runs-on: ubuntu-24\.04/);
+    assert.match(lint, /selection_complete != 'true'/);
+    assert.ok(lint.includes(`needs.inventory.outputs.${jobId.slice(5)} == 'true'`));
+    assert.match(lint, /uses: \.\/\.github\/actions\/run-quality-surface/);
+    assert.ok(lint.includes(`surface: ${surface}`));
   }
-  assert.ok(lint.includes('pnpm quality:inventory'));
-  assert.match(lint, /pnpm lint -- --platform linux --surface "\$\{\{ matrix\.surface \}\}"/);
-  assert.doesNotMatch(lint, /--exclude|changed-files|paths-filter/);
-  assert.ok(lint.includes('tool-versions.json'));
-  assert.ok(lint.includes('ci-quality-lint-${{ matrix.surface }}-${{ github.run_id }}'));
+
+  // Static job IDs preserve each protected context while the composite shares setup and check execution.
+  assert.ok(qualitySurfaceAction.includes('pnpm quality:inventory'));
+  assert.match(
+    qualitySurfaceAction,
+    /pnpm lint -- --platform linux --surface "\$\{\{ inputs\.surface \}\}"/,
+  );
+  assert.match(
+    qualitySurfaceAction,
+    /ci-quality-\$\{\{ inputs\.mode == 'lint' && format\('lint-\{0\}', inputs\.surface\) \|\| 'format' \}\}-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(qualitySurfaceAction, /if: \$\{\{ inputs\.mode == 'format' \}\}/);
+  assert.ok(qualitySurfaceAction.includes('pnpm format:check -- --platform linux'));
+  assert.ok(qualitySetupAction.includes('tool-versions.json'));
+  assert.doesNotMatch(qualitySurfaceAction, /--exclude|changed-files|paths-filter/);
 });
 
 test('publishes inventory and canonical source LOC as separate Linux checks', () => {
@@ -62,7 +92,8 @@ test('keeps formatting, unit, and policy checks as independent Linux leaves', ()
   const format = jobBlock(codeWorkflow, 'format_check');
   assert.match(format, /name: Format check/);
   assert.match(format, /runs-on: ubuntu-24\.04/);
-  assert.ok(format.includes('pnpm format:check -- --platform linux'));
+  assert.ok(format.includes('uses: ./.github/actions/run-quality-surface'));
+  assert.ok(format.includes('mode: format'));
   assert.doesNotMatch(format, /--surface/);
 
   const unitJobs = [
@@ -75,7 +106,16 @@ test('keeps formatting, unit, and policy checks as independent Linux leaves', ()
     assert.ok(job.includes(`name: ${name}`));
     assert.match(job, /runs-on: ubuntu-24\.04/);
     assert.ok(job.includes(command), `${name} command changed`);
-    assert.doesNotMatch(job, /^\s+needs:/m, `${name} cannot depend on an aggregate job`);
+    if (jobId === 'unit_tests') {
+      // Unit tests consume only the selector outputs from typecheck and stay a separate required leaf.
+      assert.match(job, /needs: typecheck/);
+      assert.match(
+        job,
+        /if: \$\{\{ always\(\) && !cancelled\(\)[\s\S]*needs\.typecheck\.outputs\.unit_tests == 'true'/,
+      );
+    } else {
+      assert.doesNotMatch(job, /^\s+needs:/m, `${name} cannot depend on an aggregate job`);
+    }
   }
 
   const policyJob = jobBlock(policyCheckWorkflow, 'gate_tests');

@@ -32,6 +32,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up pnpm
@@ -47,27 +48,36 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      # The required policy check itself must fail if path selection cannot complete.
+      - name: Select checks for changed paths
+        id: select
+        run: node scripts/ci/select-changed-paths.mjs
+
       - name: Cache pnpm lockfile verification
+        if: ${{ steps.select.outputs.policy_tests == 'true' }}
         uses: ./.github/actions/pnpm-lockfile-verification
         with:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
       # CocoaPods diagnostic fixtures need the same Ruby version as Code Quality.
       - name: Set up Ruby
+        if: ${{ steps.select.outputs.policy_tests == 'true' }}
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
         with:
           ruby-version: ${{ env.EXPECTED_RUBY_VERSION }}
           bundler-cache: false
 
       - name: Install frozen workspace dependencies
+        if: ${{ steps.select.outputs.policy_tests == 'true' }}
         # Inventory tests scan the checkout, so keep their generated logs in runner temp.
         run: scripts/ci/run-command.sh install "$RUNNER_TEMP/orot-gate-tests/install.log" -- pnpm install --frozen-lockfile
 
       - name: Run CI, release, and quality gate tests
+        if: ${{ steps.select.outputs.policy_tests == 'true' }}
         run: scripts/ci/run-command.sh gate-tests "$RUNNER_TEMP/orot-gate-tests/gate-tests.log" -- node --test scripts/ci/tests/*.test.mjs scripts/release/tests/*.test.mjs scripts/quality/tests/*.test.mjs
 
       - name: Upload policy test logs
-        if: ${{ always() }}
+        if: ${{ always() && steps.select.outputs.policy_tests == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-policy-tests-${{ github.run_id }}-${{ github.run_attempt }}

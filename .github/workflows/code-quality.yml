@@ -28,10 +28,26 @@ jobs:
     name: Maintained file inventory
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      selection_complete: ${{ steps.select.outputs.selection_complete }}
+      quality_inventory: ${{ steps.select.outputs.quality_inventory }}
+      source_loc: ${{ steps.select.outputs.source_loc }}
+      format_check: ${{ steps.select.outputs.format_check }}
+      javascript: ${{ steps.select.outputs.javascript }}
+      typescript: ${{ steps.select.outputs.typescript }}
+      swift: ${{ steps.select.outputs.swift }}
+      objective_c: ${{ steps.select.outputs.objective_c }}
+      shell: ${{ steps.select.outputs.shell }}
+      ruby: ${{ steps.select.outputs.ruby }}
+      yaml: ${{ steps.select.outputs.yaml }}
+      json: ${{ steps.select.outputs.json }}
+      xml: ${{ steps.select.outputs.xml }}
+      properties: ${{ steps.select.outputs.properties }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up pnpm
@@ -45,11 +61,17 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # This required check owns path selection so selector failures remain visible to branch protection.
+      - name: Select checks for changed paths
+        id: select
+        run: node scripts/ci/select-changed-paths.mjs
+
       - name: Record maintained code inventory
+        if: ${{ steps.select.outputs.quality_inventory == 'true' }}
         run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
 
       - name: Upload inventory log
-        if: ${{ always() }}
+        if: ${{ always() && steps.select.outputs.quality_inventory == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-quality-inventory-${{ github.run_id }}-${{ github.run_attempt }}
@@ -59,6 +81,9 @@ jobs:
 
   source_loc:
     name: Source LOC policy
+    needs: inventory
+    # No completion marker means selection failed; run every downstream quality leaf.
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.source_loc == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -94,152 +119,127 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  surface_lint:
-    name: Lint / ${{ matrix.label }}
+  lint_javascript:
+    name: Lint / JavaScript
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.javascript == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - surface: javascript
-            label: JavaScript
-          - surface: typescript
-            label: TypeScript
-          - surface: swift
-            label: Swift
-          - surface: objective-c
-            label: Objective-C
-          - surface: shell
-            label: Shell
-          - surface: ruby
-            label: Ruby
-          - surface: yaml
-            label: YAML
-          - surface: json
-            label: JSON
-          - surface: xml
-            label: XML
-          - surface: properties
-            label: Properties
     steps:
-      - name: Check out source
+      # The runner must check out local action files before resolving the composite step below.
+      - &quality_checkout
+        name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
+        with: { persist-credentials: false }
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: javascript }
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
+  lint_typescript:
+    name: Lint / TypeScript
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.typescript == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: typescript }
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+  lint_swift:
+    name: Lint / Swift
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.swift == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: swift }
 
-      - name: Cache pnpm lockfile verification
-        uses: ./.github/actions/pnpm-lockfile-verification
-        with:
-          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
+  lint_objective_c:
+    name: Lint / Objective-C
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.objective_c == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: objective-c }
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
+  lint_shell:
+    name: Lint / Shell
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.shell == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: shell }
 
-      - name: Verify Linux portable toolchain
-        run: scripts/ci/verify-toolchain.sh --portable
+  lint_ruby:
+    name: Lint / Ruby
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.ruby == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: ruby }
 
-      - name: Install frozen workspace dependencies
-        run: scripts/ci/run-command.sh install artifacts/quality/install.log -- pnpm install --frozen-lockfile
+  lint_yaml:
+    name: Lint / YAML
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.yaml == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: yaml }
 
-      - name: Cache pinned quality tools
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: node_modules/.cache/orot-quality
-          key: orot-quality-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/quality/tool-versions.json') }}
+  lint_json:
+    name: Lint / JSON
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.json == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: json }
 
-      - name: Install pinned quality tools
-        run: scripts/ci/run-command.sh quality-tools-install artifacts/quality/quality-tools-install.log -- pnpm quality:setup -- --platform linux
+  lint_xml:
+    name: Lint / XML
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.xml == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: xml }
 
-      # Every leaf validates the full maintained inventory before selecting one lint surface.
-      - name: Record maintained code inventory
-        run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
-
-      - name: Lint complete configured surface
-        run: scripts/ci/run-command.sh lint-${{ matrix.surface }} artifacts/quality/lint-${{ matrix.surface }}.log -- pnpm lint -- --platform linux --surface "${{ matrix.surface }}"
-
-      - name: Upload lint and inventory logs
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-quality-lint-${{ matrix.surface }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/quality/
-          if-no-files-found: error
-          retention-days: 14
+  lint_properties:
+    name: Lint / Properties
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.properties == 'true') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { surface: properties }
 
   format_check:
     name: Format check
+    needs: inventory
+    if: ${{ always() && !cancelled() && (needs.inventory.outputs.selection_complete != 'true' || needs.inventory.outputs.format_check == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Cache pnpm lockfile verification
-        uses: ./.github/actions/pnpm-lockfile-verification
-        with:
-          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
-
-      - name: Verify Linux portable toolchain
-        run: scripts/ci/verify-toolchain.sh --portable
-
-      - name: Install frozen workspace dependencies
-        run: scripts/ci/run-command.sh install artifacts/quality/install.log -- pnpm install --frozen-lockfile
-
-      - name: Cache pinned quality tools
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: node_modules/.cache/orot-quality
-          key: orot-quality-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/quality/tool-versions.json') }}
-
-      - name: Install pinned quality tools
-        run: scripts/ci/run-command.sh quality-tools-install artifacts/quality/quality-tools-install.log -- pnpm quality:setup -- --platform linux
-
-      - name: Check complete maintained-file formatting
-        run: scripts/ci/run-command.sh format artifacts/quality/format.log -- pnpm format:check -- --platform linux
-
-      - name: Upload format and setup logs
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-quality-format-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/quality/
-          if-no-files-found: error
-          retention-days: 14
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { mode: format }

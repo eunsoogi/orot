@@ -1,0 +1,40 @@
+name: Run Linux quality surface
+description: Validate a selected language surface or formatting and preserve its logs.
+inputs:
+  mode:
+    description: Quality check to run after shared setup.
+    required: false
+    default: lint
+  surface:
+    description: Configured quality surface and artifact slug.
+    required: false
+runs:
+  using: composite
+  steps:
+    # Each caller remains a statically named required check; shared setup keeps its work aligned.
+    - name: Set up Linux quality tools
+      uses: ./.github/actions/setup-linux-quality
+      with:
+        pnpm_version: ${{ env.EXPECTED_PNPM_VERSION }}
+        ruby_version: ${{ env.EXPECTED_RUBY_VERSION }}
+    # Format and lint share pinned setup, but only lint needs the language inventory.
+    - name: Record maintained code inventory
+      if: ${{ inputs.mode == 'lint' }}
+      shell: bash
+      run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
+    - name: Lint complete configured surface
+      if: ${{ inputs.mode == 'lint' }}
+      shell: bash
+      run: scripts/ci/run-command.sh lint-${{ inputs.surface }} artifacts/quality/lint-${{ inputs.surface }}.log -- pnpm lint -- --platform linux --surface "${{ inputs.surface }}"
+    - name: Check complete maintained-file formatting
+      if: ${{ inputs.mode == 'format' }}
+      shell: bash
+      run: scripts/ci/run-command.sh format artifacts/quality/format.log -- pnpm format:check -- --platform linux
+    - name: Upload quality and setup logs
+      if: ${{ always() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: ci-quality-${{ inputs.mode == 'lint' && format('lint-{0}', inputs.surface) || 'format' }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/quality/
+        if-no-files-found: error
+        retention-days: 14

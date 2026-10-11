@@ -54,11 +54,11 @@ function workflowStep(source, name) {
 
 test('computes common app fingerprints once and shares them with every profile', () => {
   const fingerprintJob = workflowJob(profilesWorkflow, 'detox_cache_fingerprint');
-  const profileJobs = [
+  const fingerprintConsumers = [
     'detox_release_e2e',
-    'detox_openai_provider_e2e',
-    'detox_transcription_e2e',
-    'detox_next_visit_e2e',
+    'run_detox_openai_provider_profile',
+    'run_detox_transcription_profile',
+    'run_detox_next_visit_profile',
   ];
 
   // Profiles share source hashes while cache keys retain runner and Xcode identity.
@@ -88,10 +88,10 @@ test('computes common app fingerprints once and shares them with every profile',
       ),
     );
   }
-  for (const jobId of profileJobs) {
+  for (const jobId of fingerprintConsumers) {
     const job = workflowJob(profilesWorkflow, jobId);
     assert.match(job, /needs: \[detox_cache_fingerprint\]/);
-    assert.match(job, /if: \$\{\{ !cancelled\(\) \}\}/);
+    assert.match(job, /if: \$\{\{ !cancelled\(\)/);
     assert.match(
       job,
       /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
@@ -99,7 +99,6 @@ test('computes common app fingerprints once and shares them with every profile',
   }
 
   assert.doesNotMatch(profilesWorkflow, /needs: \[detox_release_e2e, detox_openai_provider_e2e/);
-  assert.doesNotMatch(profilesWorkflow, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
   for (const checkName of [
     'Release shards',
