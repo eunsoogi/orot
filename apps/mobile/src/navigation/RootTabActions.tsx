@@ -11,7 +11,7 @@ interface RootTabActionsProps<Name extends string> {
   readonly rootTabs: NavigationRootTabs;
 }
 
-/** Routes tab changes through the current screen's leave guard before selection. */
+/** Routes tab changes through leave guards and keeps selection visible without color alone. */
 export function RootTabActions<Name extends string>({
   controller,
   disabled,
@@ -39,13 +39,16 @@ export function RootTabActions<Name extends string>({
                 ),
             );
           }}
-          style={styles.tab}
+          style={[
+            styles.tab,
+            rootTabs.activeTab === item.id && styles.selectedTab,
+          ]}
           testID={item.testID}
         >
           <Text
             style={[
               styles.symbol,
-              rootTabs.activeTab === item.id && styles.selected,
+              rootTabs.activeTab === item.id && styles.selectedForeground,
             ]}
           >
             {item.fallbackSymbol}
@@ -53,7 +56,7 @@ export function RootTabActions<Name extends string>({
           <Text
             style={[
               styles.label,
-              rootTabs.activeTab === item.id && styles.selected,
+              rootTabs.activeTab === item.id && styles.selectedForeground,
             ]}
           >
             {item.label}
@@ -68,12 +71,16 @@ const styles = StyleSheet.create({
   tab: {
     alignItems: 'center',
     backgroundColor: 'transparent',
+    borderRadius: 24,
+    gap: 2,
     flex: 1,
     justifyContent: 'center',
     minHeight: 48,
     minWidth: 44,
+    paddingHorizontal: 6,
   },
-  symbol: { color: appColors.secondary, fontSize: 24, lineHeight: 27 },
-  label: { color: appColors.secondary, fontSize: 10, lineHeight: 13 },
-  selected: { color: appColors.primary },
+  selectedTab: { backgroundColor: appColors.primaryAction },
+  symbol: { color: appColors.secondary, fontSize: 22, lineHeight: 24 },
+  label: { color: appColors.secondary, fontSize: 12, lineHeight: 16 },
+  selectedForeground: { color: appColors.onPrimary },
 });
