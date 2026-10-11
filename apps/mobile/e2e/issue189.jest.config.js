@@ -1,5 +1,11 @@
 const probe = process.env.OROT_ISSUE189_PROBE;
-const probes = ['apple-workflow', 'rag', 'ui', 'calendar'];
+const probes = [
+  'apple-workflow',
+  'rag',
+  'ui',
+  'calendar',
+  'automatic-transcription',
+];
 if (!probes.includes(probe)) throw new Error('Select a known issue 189 probe.');
 
 module.exports = {

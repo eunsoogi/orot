@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ProviderSelectionOption } from '../../../providers/selection/types';
 import { AiProviderSelectorRow } from '../AiProviderSelectorRow';
 import type { SelectedAiResolution } from '../provider';
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 
 jest.mock('../../../layout/AppSymbol', () => ({
   AppSymbol: ({ name }: { name: string }) =>
@@ -65,4 +66,32 @@ test('prompts only when no AI is selected and keeps unavailable state explicit',
     />,
   );
   expect(await screen.findByText('선택한 AI를 확인할 수 없어요.')).toBeTruthy();
+});
+
+test('uses the saved Apple identity for its brand and removes it when unavailable', async () => {
+  const selected = readySelection('Apple Intelligence');
+  const resolveSelectedAi = jest
+    .fn<Promise<SelectedAiResolution>, []>()
+    .mockResolvedValueOnce({
+      ...selected,
+      selection: { providerId: APPLE_PROVIDER_ID, modelId: 'system' },
+    } as SelectedAiResolution)
+    .mockResolvedValueOnce({ status: 'unavailable' });
+  const view = await render(
+    <AiProviderSelectorRow
+      onPress={jest.fn()}
+      resolveSelectedAi={resolveSelectedAi}
+      revision={0}
+    />,
+  );
+  expect(await screen.findByTestId('symbol-apple.logo')).toBeTruthy();
+  await view.rerender(
+    <AiProviderSelectorRow
+      onPress={jest.fn()}
+      resolveSelectedAi={resolveSelectedAi}
+      revision={1}
+    />,
+  );
+  expect(await screen.findByText('선택한 AI를 확인할 수 없어요.')).toBeTruthy();
+  expect(screen.queryByTestId('symbol-apple.logo')).toBeNull();
 });

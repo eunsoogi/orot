@@ -31,8 +31,16 @@ export const styles = StyleSheet.create({
   },
   assistantMessage: { gap: 8 },
   speaker: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: appColors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   role: { fontSize: 16, fontWeight: '700' },
-  assistantBody: { paddingLeft: 36, gap: 12 },
+  assistantBody: { paddingLeft: 44, gap: 12 },
   messageText: { fontSize: 17, lineHeight: 26 },
   userText: { color: appColors.onPrimary },
   source: {

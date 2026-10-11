@@ -27,7 +27,13 @@ export function ConversationMessage({
     <View style={user ? styles.userMessage : styles.assistantMessage}>
       {!user && (
         <View style={styles.speaker}>
-          <AppSymbol name="sparkles" color={appColors.primary} size={24} />
+          <View style={styles.avatar}>
+            <AppSymbol
+              name="sparkles"
+              color={appColors.primaryText}
+              size={20}
+            />
+          </View>
           <Text style={styles.role}>오롯</Text>
         </View>
       )}
