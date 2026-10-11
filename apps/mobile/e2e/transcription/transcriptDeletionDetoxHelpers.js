@@ -16,12 +16,11 @@ async function reveal(
 }
 
 /** Drives transcript deletion; the spec supplies its Jest-scoped Detox APIs explicitly. */
-async function runTranscriptDeletionFlow(detoxApi) {
+async function runTranscriptDeletionFlow(detoxApi, reportSimulatorResult) {
   const {
     by: detoxBy,
     device: detoxDevice,
     element: detoxElement,
-    system: detoxSystem,
     waitFor: detoxWaitFor,
   } = detoxApi;
   const sourceIDElement = detoxElement(
@@ -45,11 +44,13 @@ async function runTranscriptDeletionFlow(detoxApi) {
   // The detail action is above transcript evidence in the shared scroll view.
   await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
-  // UIKit exposes the alert title as text while its native action buttons use labels.
+  // UIKit exposes the alert title and action titles as text in the app accessibility tree.
   const confirmation = detoxElement(detoxBy.text('녹음을 삭제할까요?'));
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  // The app-tree label matched twice with the native alert open; system matching isolates its action.
-  await detoxSystem.element(detoxBy.system.label('취소')).tap();
+  // The UIKit alert repeats each action label on wrapper views, so target its unique text leaf.
+  const cancelAction = detoxElement(detoxBy.text('취소'));
+  await detoxWaitFor(cancelAction).toBeVisible().withTimeout(10000);
+  await cancelAction.tap();
   await detoxWaitFor(confirmation).not.toExist().withTimeout(10000);
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
@@ -60,7 +61,9 @@ async function runTranscriptDeletionFlow(detoxApi) {
   await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  await detoxSystem.element(detoxBy.system.label('삭제')).tap();
+  const confirmAction = detoxElement(detoxBy.text('삭제'));
+  await detoxWaitFor(confirmAction).toBeVisible().withTimeout(10000);
+  await confirmAction.tap();
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
   )
@@ -86,20 +89,26 @@ async function runTranscriptDeletionFlow(detoxApi) {
   await detoxWaitFor(detoxElement(detoxBy.id('recording-library-empty')))
     .toBeVisible()
     .withTimeout(30000);
-  console.log(
-    'TRANSCRIPT_DELETION_SIMULATOR_RESULT ' +
-      JSON.stringify({
-        sourceID,
-        cancelPreserved: true,
-        deletionAfterRelaunch: 'passed',
-      }),
-  );
+  // Only the real Detox caller may emit a marker that represents Simulator evidence.
+  if (reportSimulatorResult === true) {
+    console.log(
+      'TRANSCRIPT_DELETION_SIMULATOR_RESULT ' +
+        JSON.stringify({
+          sourceID,
+          cancelPreserved: true,
+          deletionAfterRelaunch: 'passed',
+        }),
+    );
+  }
 }
 
 /** Returns failures so the enclosing Detox test can still attempt fixture cleanup. */
-async function runTranscriptDeletionAssertion(detoxApi) {
+async function runTranscriptDeletionAssertion(
+  detoxApi,
+  reportSimulatorResult = false,
+) {
   try {
-    await runTranscriptDeletionFlow(detoxApi);
+    await runTranscriptDeletionFlow(detoxApi, reportSimulatorResult);
     return null;
   } catch (failure) {
     const message =

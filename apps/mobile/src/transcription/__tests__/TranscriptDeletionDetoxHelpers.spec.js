@@ -1,11 +1,12 @@
 const {
   runTranscriptDeletionAssertion,
 } = require('../../../e2e/transcription/transcriptDeletionDetoxHelpers');
-const { expect: jestExpect } = require('@jest/globals');
+const { expect: jestExpect, jest } = require('@jest/globals');
 
 test('uses the selected detail action and native deletion confirmation', async () => {
   const selectors = [];
   const systemTaps = [];
+  const textTaps = [];
   const scrollAttempts = [];
   const sourceId = '123e4567-e89b-12d3-a456-426614174000';
   const by = {
@@ -30,7 +31,9 @@ test('uses the selected detail action and native deletion confirmation', async (
   };
   const element = selector => ({
     selector,
-    tap: async () => {},
+    tap: async () => {
+      if (selector.matcher === 'text') textTaps.push(selector.value);
+    },
     getAttributes: async () =>
       selector.value === 'transcript-evidence-source-id'
         ? { text: sourceId }
@@ -57,6 +60,9 @@ test('uses the selected detail action and native deletion confirmation', async (
     terminateApp: async () => {},
     launchApp: async () => {},
   };
+  const simulatorResultLog = jest
+    .spyOn(console, 'log')
+    .mockImplementation(() => {});
   const system = {
     element: selector => ({
       tap: async () => {
@@ -73,8 +79,11 @@ test('uses the selected detail action and native deletion confirmation', async (
     system,
     waitFor,
   });
+  const simulatorResultLogCalls = simulatorResultLog.mock.calls;
+  simulatorResultLog.mockRestore();
 
   jestExpect(failure).toBeNull();
+  jestExpect(simulatorResultLogCalls).toEqual([]);
   const ids = selectors
     .filter(selector => selector.matcher === 'id')
     .map(selector => selector.value);
@@ -89,14 +98,14 @@ test('uses the selected detail action and native deletion confirmation', async (
     .map(selector => selector.value);
   jestExpect(ids).toContain('recording-detail-delete');
   jestExpect(ids).not.toContain('recording-transcript-delete');
-  // UIKit exposes the alert title as text and its native actions as labels.
+  // UIKit repeats action labels on wrapper views; the inner text node stays unique.
   jestExpect(texts).toContain('녹음을 삭제할까요?');
-  // Scope actions to the system tree to avoid the duplicate app-tree label match seen in CI.
-  jestExpect(systemLabels).toEqual(['취소', '삭제']);
-  jestExpect(systemTaps.map(selector => selector.value)).toEqual([
-    '취소',
-    '삭제',
-  ]);
+  jestExpect(texts).toEqual(
+    jestExpect.arrayContaining(['녹음을 삭제할까요?', '취소', '삭제']),
+  );
+  jestExpect(textTaps).toEqual(['취소', '삭제']);
+  jestExpect(systemLabels).toEqual([]);
+  jestExpect(systemTaps).toEqual([]);
   jestExpect(labels).not.toEqual(jestExpect.arrayContaining(['취소', '삭제']));
   jestExpect(
     scrollAttempts.every(
