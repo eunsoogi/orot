@@ -1,5 +1,7 @@
 # Native design QA — 2026-10-10
 
+이 문서는 해당 날짜의 화면 검증 결과와 근거를 기록합니다. 재사용할 디자인 규칙은 [DESIGN.md](DESIGN.md)를 참고하세요.
+
 ## Scope and visual truth
 
 This report covers the saved-question/edit revision, floating navigation spacing,

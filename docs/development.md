@@ -2,6 +2,8 @@
 
 Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습니다. 이후 공유 패키지는 `packages/*` 아래에 둡니다.
 
+화면을 구현할 때는 [디자인 시스템](../DESIGN.md)을, 날짜별 실제 화면 검증 근거는 [디자인 QA 보고서](../design-qa.md)를 참고하세요.
+
 ## 개발 환경
 
 | 도구 | 버전 |
