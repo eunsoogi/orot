@@ -61,15 +61,15 @@ flowchart LR
   rag --> questions["다음 진료 질문"]
   rag --> symptoms["증상 정리"]
   rag --> conversation["기록과 대화"]
-  questions --> graph["LangGraph 실행 흐름"]
-  symptoms --> graph
-  conversation --> graph
-  graph --> tools["LangChain 도구"]
-  tools --> graph
-  graph --> localModel["Apple Foundation Models"]
-  graph --> consent["원격 전송 내용과 수신자 확인"] --> chatgpt["사용자가 선택한 ChatGPT 모델"]
+  questions --> agentFlow["LangGraph 실행 흐름"]
+  symptoms --> agentFlow
+  conversation --> agentFlow
+  agentFlow --> tools["LangChain 도구"]
+  tools --> agentFlow
+  agentFlow --> localModel["Apple Foundation Models"]
+  agentFlow --> consent["원격 전송 내용과 수신자 확인"] --> chatgpt["사용자가 선택한 ChatGPT 모델"]
   search["사용자가 입력한 문헌 검색어"] --> queryConsent["검색어 전송 동의"] --> europePmc["Europe PMC"]
-  graph --> answer["근거와 출처가 연결된 응답"]
+  agentFlow --> answer["근거와 출처가 연결된 응답"]
 ```
 
 RAG는 호출자가 준비한 출처 연결 근거만 검색합니다. E5 임베딩 순위와 FTS5의 BM25 키워드 순위를 결합하며, 전체 데이터베이스를 자동으로 색인하지 않습니다. 원격 모델 요청에는 전송할 내용과 수신자를 확인하는 별도 동의가 필요합니다. 의학 문헌 검색은 원격 모델 요청과 분리된 검색어 동의 경계를 사용합니다.
