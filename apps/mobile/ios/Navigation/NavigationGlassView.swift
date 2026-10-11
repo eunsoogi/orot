@@ -32,9 +32,14 @@ final class NavigationGlassSurfaceView: UIView {
             : NavigationGlassSurfaceView.rgbColor(red: 49, green: 130, blue: 246)
     }
 
-    private static let selectedRootTabTint = UIColor { traits in
-        // A darker selected fill keeps its white label readable in standard and high-contrast modes.
-        let color = traits.accessibilityContrast == .high ? (31, 93, 184) : (27, 100, 218)
+    private static let selectedRootTabBackground = UIColor.secondarySystemFill
+    private static let selectedRootTabForeground = UIColor { traits in
+        // Keep small selected labels readable by adapting the brand hue to appearance and contrast.
+        let color: (Int, Int, Int) = if traits.userInterfaceStyle == .dark {
+            traits.accessibilityContrast == .high ? (179, 208, 255) : (141, 187, 255)
+        } else {
+            (31, 93, 184)
+        }
         return NavigationGlassSurfaceView.rgbColor(red: color.0, green: color.1, blue: color.2)
     }
 
@@ -133,44 +138,63 @@ final class NavigationGlassSurfaceView: UIView {
         }
         if selectedRootTab {
             configuration.cornerStyle = .capsule
-            configuration.baseBackgroundColor = Self.selectedRootTabTint
+            configuration.baseBackgroundColor = Self.selectedRootTabBackground
         }
-        configuration.title =
-            action.systemImageName == nil || action.showsTitleWithSystemImage
-                ? action.label
-                : nil
-        if let name = action.systemImageName {
-            configuration.image = UIImage(
-                systemName: name,
-                withConfiguration: UIImage.SymbolConfiguration(
-                    pointSize: action.rootTab ? 22 : 24,
-                    weight: action.rootTab ? .medium : .semibold,
-                ),
+        if action.rootTab {
+            // Keep UIKit's glass background while drawing tab content in explicitly bounded native views.
+            configuration.title = nil
+            configuration.image = nil
+            configuration.contentInsets = .zero
+        } else {
+            configuration.title =
+                action.systemImageName == nil || action.showsTitleWithSystemImage
+                    ? action.label
+                    : nil
+            if let name = action.systemImageName {
+                configuration.image = UIImage(
+                    systemName: name,
+                    withConfiguration: UIImage.SymbolConfiguration(
+                        pointSize: 24,
+                        weight: .semibold,
+                    ),
+                )
+            }
+            configuration.imagePlacement = action.titleBelowImage ? .top : .leading
+            configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
+            if action.showsTitleWithSystemImage {
+                configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                    var updated = attributes
+                    let titleSize: CGFloat = action.titleBelowImage ? 10 : 14
+                    updated.font = .systemFont(ofSize: titleSize, weight: .medium)
+                    return updated
+                }
+            }
+            configuration.contentInsets = NSDirectionalEdgeInsets(
+                top: action.showsTitleWithSystemImage ? 5 : 12,
+                leading: action.showsTitleWithSystemImage ? 5 : 12,
+                bottom: action.showsTitleWithSystemImage ? 5 : 12,
+                trailing: action.showsTitleWithSystemImage ? 5 : 12,
             )
         }
-        configuration.imagePlacement = action.titleBelowImage ? .top : .leading
-        configuration.imagePadding = action.rootTab
-            ? 3
-            : action.showsTitleWithSystemImage ? 2 : 6
-        if action.showsTitleWithSystemImage {
-            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-                var updated = attributes
-                let titleSize: CGFloat = action.rootTab ? 12 : action.titleBelowImage ? 10 : 14
-                updated.font = .systemFont(ofSize: titleSize, weight: .medium)
-                return updated
-            }
-        }
-        // Root tabs get room for their larger labels while contextual actions retain their original insets.
-        configuration.contentInsets = NSDirectionalEdgeInsets(
-            top: action.rootTab ? 4 : action.showsTitleWithSystemImage ? 5 : 12,
-            leading: action.rootTab ? 6 : action.showsTitleWithSystemImage ? 5 : 12,
-            bottom: action.rootTab ? 4 : action.showsTitleWithSystemImage ? 5 : 12,
-            trailing: action.rootTab ? 6 : action.showsTitleWithSystemImage ? 5 : 12,
-        )
-        configuration.baseForegroundColor = action.primary || selectedRootTab
+        configuration.baseForegroundColor = action.primary
             ? .white
+            : selectedRootTab
+            ? Self.selectedRootTabForeground
             : action.selected ? Self.primaryTint : .label
         button.configuration = configuration
+        if action.rootTab, let name = action.systemImageName {
+            let content = NavigationRootTabContent.make(
+                label: action.label,
+                symbolName: name,
+                testID: action.testID,
+                foregroundColor: action.selected ? Self.selectedRootTabForeground : .label,
+            )
+            button.addSubview(content)
+            NSLayoutConstraint.activate([
+                content.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+                content.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            ])
+        }
         button.accessibilityLabel = action.accessibilityLabel
         button.accessibilityIdentifier = action.testID
         button.isEnabled = !action.disabled
@@ -178,7 +202,7 @@ final class NavigationGlassSurfaceView: UIView {
             action.primary
                 ? Self.primaryTint
                 : selectedRootTab
-                ? Self.selectedRootTabTint
+                ? Self.selectedRootTabBackground
                 : action.selected ? Self.primaryTint : UIColor.label
         button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -192,44 +216,6 @@ final class NavigationGlassSurfaceView: UIView {
         }, for: .touchUpInside)
 
         return button
-    }
-}
-
-private struct NavigationActionDescriptor {
-    let id: String
-    let label: String
-    let accessibilityLabel: String
-    let testID: String
-    let systemImageName: String?
-    let disabled: Bool
-    let primary: Bool
-    let selected: Bool
-    let rootTab: Bool
-    let showsTitleWithSystemImage: Bool
-    let titleBelowImage: Bool
-
-    init?(_ value: Any) {
-        guard
-            let payload = value as? [String: Any],
-            let id = payload["id"] as? String,
-            let label = payload["label"] as? String,
-            let accessibilityLabel = payload["accessibilityLabel"] as? String,
-            let testID = payload["testID"] as? String
-        else {
-            return nil
-        }
-
-        self.id = id
-        self.label = label
-        self.accessibilityLabel = accessibilityLabel
-        self.testID = testID
-        systemImageName = payload["systemImageName"] as? String
-        disabled = payload["disabled"] as? Bool ?? false
-        primary = payload["primary"] as? Bool ?? false
-        selected = payload["selected"] as? Bool ?? false
-        rootTab = payload["rootTab"] as? Bool ?? false
-        showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
-        titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
     }
 }
 

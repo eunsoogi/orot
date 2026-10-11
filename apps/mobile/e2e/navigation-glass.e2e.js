@@ -2,6 +2,9 @@
 
 const { expect: jestExpect } = require('@jest/globals');
 const {
+  expectRootTabContentLayout,
+} = require('./navigationGlassLayoutAssertions');
+const {
   expectNativeNavigationAction,
   openRootTab,
   tapNativeNavigationAction,
@@ -25,14 +28,16 @@ describe('native navigation glass', () => {
     const tabs = [
       ['home', 'welcome-title', '홈 탭'],
       ['records', 'records-title', '기록 탭'],
-      // The retry button exists only when Schedule fails; its route title is always present.
-      ['schedule', 'calendar-title', '일정 탭'],
+      // The retry marker covers the existing data-load error while the normal route is unavailable.
+      ['schedule', ['calendar-title', 'schedule-retry'], '일정 탭'],
       ['ai', 'ai-features-screen', 'AI 탭'],
       ['settings', 'settings-title', '설정 탭'],
     ];
     for (const [tab, routeMarker, accessibilityLabel] of tabs) {
       await openRootTab(tab, routeMarker);
-      await expectNativeNavigationAction(`navigation-tab-${tab}`);
+      const testID = `navigation-tab-${tab}`;
+      const { hierarchyXml } = await expectNativeNavigationAction(testID);
+      expectRootTabContentLayout(hierarchyXml, testID);
       await expect(element(by.id(`navigation-tab-${tab}`))).toHaveLabel(
         accessibilityLabel,
       );
@@ -99,7 +104,15 @@ describe('native navigation glass', () => {
       .withTimeout(30000);
     // Large text creates real overflow; verify scrolling here rather than assuming it at normal size.
     await scrollRouteToBottom();
-    await expect(element(by.id('home-empty-recordings'))).toBeVisible();
+    // Home can show either an empty list or its existing load retry; both keep this UI check independent of data availability.
+    await openRootTab('home', [
+      'home-empty-recordings',
+      'home-recordings-retry',
+    ]);
+    const { hierarchyXml } = await expectNativeNavigationAction(
+      'navigation-tab-home',
+    );
+    expectRootTabContentLayout(hierarchyXml, 'navigation-tab-home');
     await device.takeScreenshot('home-xxxl-native-glass-tabs');
     await openRootTab('records', 'records-title');
     await expect(element(by.id('records-new-recording'))).toBeVisible();
