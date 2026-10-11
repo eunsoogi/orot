@@ -1,0 +1,29 @@
+name: Run Linux quality surface
+description: Validate the complete inventory, lint one language surface, and preserve its logs.
+inputs:
+  surface:
+    description: Configured quality surface and artifact slug.
+    required: true
+runs:
+  using: composite
+  steps:
+    # Each caller remains a statically named required check; shared setup keeps its work aligned.
+    - name: Set up Linux quality tools
+      uses: ./.github/actions/setup-linux-quality
+      with:
+        pnpm_version: ${{ env.EXPECTED_PNPM_VERSION }}
+        ruby_version: ${{ env.EXPECTED_RUBY_VERSION }}
+    - name: Record maintained code inventory
+      shell: bash
+      run: scripts/ci/run-command.sh quality-inventory artifacts/quality/quality-inventory.log -- pnpm quality:inventory
+    - name: Lint complete configured surface
+      shell: bash
+      run: scripts/ci/run-command.sh lint-${{ inputs.surface }} artifacts/quality/lint-${{ inputs.surface }}.log -- pnpm lint -- --platform linux --surface "${{ inputs.surface }}"
+    - name: Upload lint and inventory logs
+      if: ${{ always() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: ci-quality-lint-${{ inputs.surface }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/quality/
+        if-no-files-found: error
+        retention-days: 14

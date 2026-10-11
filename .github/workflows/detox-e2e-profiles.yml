@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      run_release: { required: false, type: boolean, default: true }
+      run_openai: { required: false, type: boolean, default: true }
+      run_transcription: { required: false, type: boolean, default: true }
+      run_next_visit: { required: false, type: boolean, default: true }
+      path_selection_failed: { required: false, type: boolean, default: false }
 
 permissions:
   contents: read
@@ -21,6 +26,7 @@ jobs:
   # Fingerprinting improves cache reuse; each profile has a synchronous fallback when it fails.
   detox_cache_fingerprint:
     name: Compute shared Detox cache fingerprints
+    if: ${{ !inputs.path_selection_failed && (inputs.run_release || inputs.run_openai || inputs.run_transcription || inputs.run_next_visit) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -52,6 +58,8 @@ jobs:
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_release }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
 
   detox_openai_provider_e2e:
     name: OpenAI Debug E2E
@@ -63,6 +71,8 @@ jobs:
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_openai }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
 
   detox_transcription_e2e:
     name: Speech Transcription E2E
@@ -74,6 +84,8 @@ jobs:
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_transcription }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
 
   detox_next_visit_e2e:
     name: Next Visit Questions E2E
@@ -85,3 +97,5 @@ jobs:
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_next_visit }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}

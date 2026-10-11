@@ -17,6 +17,8 @@ on:
         required: false
         type: boolean
         default: false
+      run_profile: { required: false, type: boolean, default: true }
+      path_selection_failed: { required: false, type: boolean, default: false }
 
 permissions:
   contents: read
@@ -32,6 +34,8 @@ jobs:
       fingerprints: ${{ inputs.fingerprints }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_profile }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
 
   detox_release_data_shard:
     name: Release stateful-data
@@ -42,3 +46,5 @@ jobs:
       fingerprints: ${{ inputs.fingerprints }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
+      run_profile: ${{ inputs.run_profile }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}

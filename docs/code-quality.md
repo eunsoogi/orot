@@ -55,3 +55,21 @@ CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물�
 `Unit Test`는 `TypeScript typecheck`와 `Unit and component tests`를 실행하고, `Policy Check`는 CI·release·quality 정책 테스트를 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다. Xcode와 Simulator가 필요한 `iOS Simulator Build` 및 Release UI/storage, Release stateful-data, OpenAI, Speech, Next Visit E2E leaf만 macOS runner를 사용합니다. E2E leaf는 자신의 전체 시나리오 결과를 확인하고 진단 artifact 업로드와 Simulator 정리를 수행합니다.
 
 Branch protection과 release readiness가 사용하는 실제 check 이름은 `scripts/release/ci-required-jobs.mjs`의 `REQUIRED_CI_JOBS` 목록에 고정되어 있습니다. 주요 경로는 `Maintained file inventory`, `Lint / JavaScript|TypeScript|Swift|Objective-C|Shell|Ruby|YAML|JSON|XML|Properties`, `Source LOC policy`, `Format check`, 세 개의 typecheck/test leaf, `iOS Simulator Build`, 두 Release shard leaf, 그리고 OpenAI·Speech·Next Visit의 각 E2E leaf입니다. 이 목록의 새 check가 hosted CI에서 관측된 뒤 부모가 branch protection을 마이그레이션합니다.
+
+## 변경 경로별 CI 실행
+
+네 개의 상위 workflow는 workflow-level `paths` 필터를 사용하지 않습니다. 각 workflow 안의 필수 check가 이벤트의 변경 경로를 선택해 관련 leaf만 실행하므로, 경로 필터 때문에 필수 check가 대기 상태로 남지 않습니다. pull request는 base와 head의 merge base부터 head까지, `main` push는 이벤트의 `before`와 `after` commit 사이를 비교합니다. 이름 변경은 이전 경로와 새 경로를 모두 검사하고, 삭제는 삭제된 경로의 정책을 적용합니다.
+
+| 변경 경로 | 선택하는 검사 |
+| --- | --- |
+| Markdown과 `AGENTS.md` | CI 정책 회귀 검사. Markdown은 품질 포매터 대상이 아니며 앱 빌드와 E2E는 실행하지 않습니다. |
+| 저장소의 앱 밖 래스터 이미지 | 코드 검사가 필요하지 않아 필수 leaf를 실행하지 않습니다. 앱 번들 이미지와 E2E fixture 이미지는 관련 iOS 빌드 또는 해당 E2E 프로필을 선택합니다. |
+| 앱 소스와 공유 `packages/*` | 관련 언어 lint, inventory, LOC, format, typecheck, unit tests, iOS 빌드 및 E2E 프로필. 공유 패키지 변경은 모든 E2E 프로필을 선택합니다. |
+| 특정 `apps/mobile/e2e/` 시나리오 | 해당 파일의 언어 lint, LOC, format과 추론한 E2E 프로필. 공유 E2E fixture 또는 알 수 없는 시나리오 지원 파일은 모든 프로필을 선택합니다. |
+| 잠금 파일, workspace 또는 native 의존성 | 모든 필수 검사. |
+| `.github/actions/`, `scripts/ci/`, 알 수 없는 GitHub 설정 또는 미지원 경로 | 모든 필수 검사. |
+| CI workflow 파일 | 변경된 workflow와 그 종속 check를 선택하며 정책 회귀 검사도 실행합니다. workflow 변경을 인식할 수 없으면 모든 검사를 선택합니다. |
+
+변경 경로 비교가 불완전하거나 알 수 없는 이벤트·파일을 만나면 모든 검사로 대체합니다. 수동 `workflow_dispatch`도 전체 검사를 선택합니다. Selector의 출력 기록을 할 수 없으면 selector를 소유한 필수 check가 실패합니다. E2E 경로 선택이 실패하면 iOS build와 각 필수 E2E leaf가 실패 상태를 남기며 선택되지 않은 check로 위장하지 않습니다.
+
+GitHub 실행에서 `skipped`는 해당 leaf가 선택되지 않아 실행되지 않았다는 뜻입니다. workflow 요약의 성공만으로 그 leaf가 검증되었다고 해석하지 말고, 실행된 job의 단계·로그와 결과 artifact를 확인하세요. 수동 전체 검증에서는 각 check가 실제로 실행됐는지와 최종 상태를 별도로 확인하세요.

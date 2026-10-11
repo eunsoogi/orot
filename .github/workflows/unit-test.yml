@@ -27,10 +27,15 @@ jobs:
     name: TypeScript typecheck
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    outputs:
+      selection_complete: ${{ steps.select.outputs.selection_complete }}
+      typecheck: ${{ steps.select.outputs.typecheck }}
+      unit_tests: ${{ steps.select.outputs.unit_tests }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up pnpm
@@ -46,19 +51,27 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      # Keep selector errors in a required check before dependency installation.
+      - name: Select checks for changed paths
+        id: select
+        run: node scripts/ci/select-changed-paths.mjs
+
       - name: Cache pnpm lockfile verification
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
         uses: ./.github/actions/pnpm-lockfile-verification
         with:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
       - name: Install frozen workspace dependencies
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
         run: scripts/ci/run-command.sh install artifacts/typecheck/install.log -- pnpm install --frozen-lockfile
 
       - name: Type check workspace
+        if: ${{ steps.select.outputs.typecheck == 'true' }}
         run: scripts/ci/run-command.sh typecheck artifacts/typecheck/typecheck.log -- pnpm typecheck
 
       - name: Upload typecheck logs
-        if: ${{ always() }}
+        if: ${{ always() && steps.select.outputs.typecheck == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-typecheck-${{ github.run_id }}-${{ github.run_attempt }}
@@ -68,6 +81,9 @@ jobs:
 
   unit_tests:
     name: Unit and component tests
+    needs: typecheck
+    # A selector failure must not turn this dependent required check into a skip.
+    if: ${{ always() && !cancelled() && (needs.typecheck.outputs.selection_complete != 'true' || needs.typecheck.outputs.unit_tests == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
