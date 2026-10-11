@@ -24,6 +24,11 @@ describe('issue 189 automatic transcription with real Apple Speech', () => {
     jestExpect(refusal.providerCalls).toBe(0);
     jestExpect(refusal.fileProtection).not.toBe('complete');
     await element(by.id('recording-consent')).tap();
+    // Probe diagnostics consume extra height; reveal the actual screen action before tapping it.
+    await waitFor(element(by.id('recording-start')))
+      .toBeVisible()
+      .whileElement(by.id('recording-controls-scroll'))
+      .scroll(200, 'down');
     await element(by.id('recording-start')).tap();
     await waitFor(element(by.id('recording-stop')))
       .toBeVisible()
