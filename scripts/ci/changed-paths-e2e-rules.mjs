@@ -7,10 +7,28 @@ const RELEASE_E2E_FILES = new Set([
   'navigation-glass.e2e.js',
   'navigationglasslayoutassertions.js',
 ]);
+// These E2E support inputs are imported by mobile unit tests and need both runners.
+const UNIT_CONSUMED_E2E_PATHS = new Set([
+  'apps/mobile/e2e/backupcontainersnapshot.js',
+  'apps/mobile/e2e/backupprobepreparation.ts',
+  'apps/mobile/e2e/backupprobetypes.ts',
+  'apps/mobile/e2e/nextvisitprobediagnostics.js',
+  'apps/mobile/e2e/providerselectionsystemconsent.js',
+  'apps/mobile/e2e/transcription/fixtures/synthetic-korean.json',
+  'apps/mobile/e2e/transcription/transcriptdeletiondetoxhelpers.js',
+  'apps/mobile/e2e/transcription/transcriptdeletionprobesupport.ts',
+  'apps/mobile/e2e/transcription/transcriptevidencedetoxhelpers.js',
+  'apps/mobile/e2e/transcription/transcriptevidenceprobesupport.ts',
+  'apps/mobile/e2e/transcription/transcriptevidenceprobe.ts',
+  'apps/mobile/e2e/unifiedimportprobemeasurements.ts',
+]);
 
 export function selectE2EPath(path, selection) {
   const lower = path.toLowerCase();
   const file = basename(lower);
+  // CI policy tests inspect E2E contracts; some app unit tests also import E2E helpers and fixtures.
+  selection.policy_tests = true;
+  if (UNIT_CONSUMED_E2E_PATHS.has(lower)) selection.unit_tests = true;
   if (RELEASE_E2E_FILES.has(file)) {
     // The Release shard owns these tests and helpers even when their names are not release-specific.
     selection.detox_release = true;

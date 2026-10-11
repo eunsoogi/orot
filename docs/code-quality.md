@@ -65,7 +65,7 @@ Branch protection과 release readiness가 사용하는 실제 check 이름은 `s
 | Markdown과 `AGENTS.md` | CI 정책 회귀 검사. Markdown은 품질 포매터 대상이 아니며 앱 빌드와 E2E는 실행하지 않습니다. |
 | 저장소의 앱 밖 래스터 이미지 | 코드 검사가 필요하지 않아 필수 leaf를 실행하지 않습니다. 앱 번들 이미지와 E2E fixture 이미지는 관련 iOS 빌드 또는 해당 E2E 프로필을 선택합니다. |
 | 앱 소스와 공유 `packages/*` | 관련 언어 lint, inventory, LOC, format, typecheck, unit tests, iOS 빌드 및 E2E 프로필. 공유 패키지 변경은 모든 E2E 프로필을 선택합니다. |
-| 특정 `apps/mobile/e2e/` 시나리오 | 해당 파일의 언어 lint, LOC, format과 추론한 E2E 프로필. 공유 E2E fixture 또는 알 수 없는 시나리오 지원 파일은 모든 프로필을 선택합니다. |
+| `apps/mobile/e2e/` 파일 | 해당 파일의 언어 lint, LOC, format, CI 정책 회귀 검사와 추론한 E2E 프로필. 앱 단위 테스트에서 직접 사용하는 E2E helper와 fixture는 `Unit Test`도 선택합니다. 공유 E2E fixture 또는 알 수 없는 시나리오 지원 파일은 모든 프로필을 선택합니다. |
 | 잠금 파일, workspace 또는 native 의존성 | 모든 필수 검사. |
 | `.github/actions/`, `scripts/ci/`, 알 수 없는 GitHub 설정 또는 미지원 경로 | 모든 필수 검사. |
 | CI workflow 파일 | 변경된 workflow와 그 종속 check를 선택하며 정책 회귀 검사도 실행합니다. workflow 변경을 인식할 수 없으면 모든 검사를 선택합니다. |
