@@ -6,7 +6,7 @@ This file applies to the entire repository and all subdirectories. System, devel
 
 - The iOS app is in `apps/mobile/`, and shared workspace packages are in `packages/*/`.
 - [`README.md`](README.md) is the source of truth for the product overview and user-facing features; [`docs/development.md`](docs/development.md) is the source of truth for the development environment and check procedures (`MUST`).
-- [`docs/code-quality.md`](docs/code-quality.md) is the source of truth for quality-check scope and tools; `.github/workflows/release.yml` and the implementations in `scripts/release/` are the source of truth for release-verification behavior (`MUST`). Do not copy detailed procedures into this file (`MUST NOT`).
+- [`docs/code-quality.md`](docs/code-quality.md) is the source of truth for quality-check scope and tools; [`docs/releasing.md`](docs/releasing.md) is the source of truth for release verification, and `.github/workflows/release.yml` and the implementations in `scripts/release/` are the source of truth for its actual behavior (`MUST`). Do not copy detailed procedures into this file (`MUST NOT`).
 
 ## Changes and verification
 
@@ -31,7 +31,7 @@ This file applies to the entire repository and all subdirectories. System, devel
 
 - Pull request (PR) titles and bodies MUST be written in English. This requirement applies to PR metadata and MUST NOT change the existing language of Korean product documentation.
 - Repository documentation and PR titles and bodies MUST use clear, natural prose, ordinary punctuation, and standard Markdown. They MUST NOT use unnecessary special characters or decorative symbols; meaningful code syntax, identifiers, commands, and URLs MUST be preserved.
-- PR titles MUST follow the existing Conventional Commit convention, using `type(scope): description` with a nonempty type, scope, and description.
+- PR titles MUST follow the existing Conventional Commit convention, using `type(scope): description` or `type: description`. The type and description MUST be nonempty; scope is optional.
 - An issue-owned PR MUST include an accurate closing reference to its issue, such as `Fixes #<issue-number>`, and MUST use the correct assignee, milestone, and applicable existing `type/*`, `area/*`, and `priority/*` labels.
 - After creating or updating an issue-owned PR, MUST use authenticated GitHub readback to verify its title and body, assignee, milestone, applicable labels, linked issue and closing reference, base branch, head branch and commit, and open/draft state before reporting completion or handing it off.
 - PRs with incomplete required validation MUST remain drafts. When editing a PR body, preserve the PR's existing metadata and state, and verify them again afterward (`MUST`).
