@@ -156,15 +156,18 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
 });
 
 test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
-  const directTriggers =
-    'on:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+  // The disposable #178 probe base adds one PR target to exercise docs-only selection.
+  const directTriggers = [
+    'on:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:',
+    "on:\n  pull_request:\n    # Temporary issue #178 docs-only evidence target; remove after its hosted run.\n    branches: [main, 'eunsoogi/ci-path-probe-base-178-20261011']\n  push:\n    branches: [main]\n  workflow_dispatch:",
+  ];
 
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
   assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
   assert.match(e2eWorkflow, /^name: E2E Test$/m);
   for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow, e2eWorkflow]) {
-    assert.ok(workflow.includes(directTriggers));
+    assert.ok(directTriggers.some((trigger) => workflow.includes(trigger)));
     assert.ok(
       workflow.includes(
         'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
