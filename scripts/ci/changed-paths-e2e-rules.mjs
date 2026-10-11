@@ -19,7 +19,7 @@ const UNIT_CONSUMED_E2E_PATHS = new Set([
   'apps/mobile/e2e/transcription/transcriptdeletionprobesupport.ts',
   'apps/mobile/e2e/transcription/transcriptevidencedetoxhelpers.js',
   'apps/mobile/e2e/transcription/transcriptevidenceprobesupport.ts',
-  'apps/mobile/e2e/transcription/transcriptevidenceprobe.ts',
+  'apps/mobile/e2e/transcription/transcriptevidenceprobe.tsx',
   'apps/mobile/e2e/unifiedimportprobemeasurements.ts',
 ]);
 

@@ -14,7 +14,7 @@ const unitConsumedE2EPaths = [
   'apps/mobile/e2e/transcription/transcriptDeletionProbeSupport.ts',
   'apps/mobile/e2e/transcription/transcriptEvidenceDetoxHelpers.js',
   'apps/mobile/e2e/transcription/transcriptEvidenceProbeSupport.ts',
-  'apps/mobile/e2e/transcription/transcriptEvidenceProbe.ts',
+  'apps/mobile/e2e/transcription/transcriptEvidenceProbe.tsx',
   'apps/mobile/e2e/unifiedImportProbeMeasurements.ts',
 ];
 
