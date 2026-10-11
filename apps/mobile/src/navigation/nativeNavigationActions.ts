@@ -79,6 +79,7 @@ export function createNativeNavigationBindings<Name extends string>({
             : item.systemImageName,
         disabled: backDisabled,
         selected: rootTabs.activeTab === item.id,
+        rootTab: true,
         showsTitleWithSystemImage: true,
         titleBelowImage: true,
       }),

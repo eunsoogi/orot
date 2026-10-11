@@ -15,22 +15,27 @@ final class NavigationGlassSurfaceView: UIView {
     private var actionButtons: [UIButton] = []
     private let actionGroup = UIStackView()
     private var groupWidth: NSLayoutConstraint?
-    private static let primaryTint = UIColor { traits in
-        // Darken the brand tint in higher-contrast settings while retaining its hue.
-        if traits.accessibilityContrast == .high {
-            return UIColor(
-                red: CGFloat(31) / 255,
-                green: CGFloat(93) / 255,
-                blue: CGFloat(184) / 255,
-                alpha: 1,
-            )
-        }
-        return UIColor(
-            red: CGFloat(49) / 255,
-            green: CGFloat(130) / 255,
-            blue: CGFloat(246) / 255,
+    /// Color values use 8-bit channels; UIColor expects normalized 0...1 components.
+    private static func rgbColor(red: Int, green: Int, blue: Int) -> UIColor {
+        UIColor(
+            red: CGFloat(red) / 255,
+            green: CGFloat(green) / 255,
+            blue: CGFloat(blue) / 255,
             alpha: 1,
         )
+    }
+
+    private static let primaryTint = UIColor { traits in
+        // Darken the brand tint in higher-contrast settings while retaining its hue.
+        traits.accessibilityContrast == .high
+            ? NavigationGlassSurfaceView.rgbColor(red: 31, green: 93, blue: 184)
+            : NavigationGlassSurfaceView.rgbColor(red: 49, green: 130, blue: 246)
+    }
+
+    private static let selectedRootTabTint = UIColor { traits in
+        // A darker selected fill keeps its white label readable in standard and high-contrast modes.
+        let color = traits.accessibilityContrast == .high ? (31, 93, 184) : (27, 100, 218)
+        return NavigationGlassSurfaceView.rgbColor(red: color.0, green: color.1, blue: color.2)
     }
 
     override init(frame: CGRect) {
@@ -119,11 +124,16 @@ final class NavigationGlassSurfaceView: UIView {
 
     private func makeToolbarButton(for action: NavigationActionDescriptor) -> UIButton {
         let button = UIButton(type: .system)
+        let selectedRootTab = action.rootTab && action.selected
         var configuration: UIButton.Configuration = if #available(iOS 26.0, *) {
             // Nonprimary icons share the toolbar's native material instead of drawing separate bubbles.
-            action.primary ? .prominentGlass() : .plain()
+            action.primary || selectedRootTab ? .prominentGlass() : .plain()
         } else {
-            action.primary ? .filled() : .plain()
+            action.primary || selectedRootTab ? .filled() : .plain()
+        }
+        if selectedRootTab {
+            configuration.cornerStyle = .capsule
+            configuration.baseBackgroundColor = Self.selectedRootTabTint
         }
         configuration.title =
             action.systemImageName == nil || action.showsTitleWithSystemImage
@@ -133,39 +143,48 @@ final class NavigationGlassSurfaceView: UIView {
             configuration.image = UIImage(
                 systemName: name,
                 withConfiguration: UIImage.SymbolConfiguration(
-                    pointSize: 24,
-                    weight: .semibold,
+                    pointSize: action.rootTab ? 22 : 24,
+                    weight: action.rootTab ? .medium : .semibold,
                 ),
             )
         }
         configuration.imagePlacement = action.titleBelowImage ? .top : .leading
-        configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
+        configuration.imagePadding = action.rootTab
+            ? 3
+            : action.showsTitleWithSystemImage ? 2 : 6
         if action.showsTitleWithSystemImage {
             configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
                 var updated = attributes
-                updated.font = .systemFont(ofSize: action.titleBelowImage ? 10 : 14, weight: .medium)
+                let titleSize: CGFloat = action.rootTab ? 12 : action.titleBelowImage ? 10 : 14
+                updated.font = .systemFont(ofSize: titleSize, weight: .medium)
                 return updated
             }
         }
-        // The five tab targets share the glass background and retain a 44-point hit area.
+        // Root tabs get room for their larger labels while contextual actions retain their original insets.
         configuration.contentInsets = NSDirectionalEdgeInsets(
-            top: action.showsTitleWithSystemImage ? 5 : 12,
-            leading: action.showsTitleWithSystemImage ? 5 : 12,
-            bottom: action.showsTitleWithSystemImage ? 5 : 12,
-            trailing: action.showsTitleWithSystemImage ? 5 : 12,
+            top: action.rootTab ? 4 : action.showsTitleWithSystemImage ? 5 : 12,
+            leading: action.rootTab ? 6 : action.showsTitleWithSystemImage ? 5 : 12,
+            bottom: action.rootTab ? 4 : action.showsTitleWithSystemImage ? 5 : 12,
+            trailing: action.rootTab ? 6 : action.showsTitleWithSystemImage ? 5 : 12,
         )
-        configuration.baseForegroundColor = action.primary ? .white : action.selected ? Self.primaryTint : .label
+        configuration.baseForegroundColor = action.primary || selectedRootTab
+            ? .white
+            : action.selected ? Self.primaryTint : .label
         button.configuration = configuration
         button.accessibilityLabel = action.accessibilityLabel
         button.accessibilityIdentifier = action.testID
         button.isEnabled = !action.disabled
         button.tintColor =
-            action.primary || action.selected ? Self.primaryTint : UIColor.label
+            action.primary
+                ? Self.primaryTint
+                : selectedRootTab
+                ? Self.selectedRootTabTint
+                : action.selected ? Self.primaryTint : UIColor.label
         button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            button.heightAnchor.constraint(equalToConstant: 44),
+            button.heightAnchor.constraint(equalToConstant: action.rootTab ? 48 : 44),
         ])
         button.addAction(UIAction(title: action.label) { [weak self] _ in
             // Stable IDs keep UIKit input connected to the existing JS navigation handlers.
@@ -185,6 +204,7 @@ private struct NavigationActionDescriptor {
     let disabled: Bool
     let primary: Bool
     let selected: Bool
+    let rootTab: Bool
     let showsTitleWithSystemImage: Bool
     let titleBelowImage: Bool
 
@@ -207,6 +227,7 @@ private struct NavigationActionDescriptor {
         disabled = payload["disabled"] as? Bool ?? false
         primary = payload["primary"] as? Bool ?? false
         selected = payload["selected"] as? Bool ?? false
+        rootTab = payload["rootTab"] as? Bool ?? false
         showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
         titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
     }

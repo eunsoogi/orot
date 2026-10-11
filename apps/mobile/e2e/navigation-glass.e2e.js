@@ -1,7 +1,11 @@
 /* global by, describe, device, element, expect, it, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
-const { openRootTab, tapNativeNavigationAction } = require('./smokeHelpers');
+const {
+  expectNativeNavigationAction,
+  openRootTab,
+  tapNativeNavigationAction,
+} = require('./smokeHelpers');
 
 async function scrollRouteToBottom() {
   // Scroll the route viewport independently of its fixed bottom action bar.
@@ -9,6 +13,33 @@ async function scrollRouteToBottom() {
 }
 
 describe('native navigation glass', () => {
+  it('visits every root destination with a reachable selected tab', async () => {
+    await device.launchApp({
+      newInstance: true,
+      languageAndLocale: { language: 'en', locale: 'en_US' },
+    });
+
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
+    const tabs = [
+      ['home', 'welcome-title', '홈 탭'],
+      ['records', 'records-title', '기록 탭'],
+      // The retry button exists only when Schedule fails; its route title is always present.
+      ['schedule', 'calendar-title', '일정 탭'],
+      ['ai', 'ai-features-screen', 'AI 탭'],
+      ['settings', 'settings-title', '설정 탭'],
+    ];
+    for (const [tab, routeMarker, accessibilityLabel] of tabs) {
+      await openRootTab(tab, routeMarker);
+      await expectNativeNavigationAction(`navigation-tab-${tab}`);
+      await expect(element(by.id(`navigation-tab-${tab}`))).toHaveLabel(
+        accessibilityLabel,
+      );
+      await device.takeScreenshot(`selected-root-tab-${tab}`);
+    }
+  });
+
   // Diagnostics can cover controls, so leave them off; tap the visible roof instead of the hollow glyph center.
   it('keeps Home content clear of native controls and opens Records from the tab bar', async () => {
     await device.launchApp({
@@ -127,13 +158,11 @@ describe('native navigation glass', () => {
       routeTitle.frame ??
       routeTitle.elements?.find(item => item.identifier === 'next-visit-title')
         ?.frame;
-    // Nested native stacks can expose one shell frame per mounted scene; use the one containing this route's scroll view.
-    const routeRootFrames = routeRoots.frame
-      ? [routeRoots.frame]
-      : (routeRoots.elements ?? []).flatMap(item =>
-          item.frame ? [item.frame] : [],
-        );
-    const routeRootFrame = routeRootFrames.find(frame => {
+    // Nested native stacks expose multiple shells; retain the matching shell's device-specific safe-area inset.
+    const routeRootCandidates = routeRoots.frame
+      ? [routeRoots]
+      : (routeRoots.elements ?? []);
+    const routeRoot = routeRootCandidates.find(({ frame }) => {
       const scrollFrame = routeScroll.frame;
       return (
         scrollFrame &&
@@ -143,14 +172,23 @@ describe('native navigation glass', () => {
         frame.y + frame.height >= scrollFrame.y + scrollFrame.height
       );
     });
-    if (!routeScroll.frame || !titleFrame || !routeRootFrame) {
+    const routeRootFrame = routeRoot?.frame;
+    const routeRootTopInset = routeRoot?.safeAreaInsets?.top;
+    if (
+      !routeScroll.frame ||
+      !titleFrame ||
+      !routeRootFrame ||
+      !Number.isFinite(routeRootTopInset)
+    ) {
       throw new Error(
         'Missing active route frames for safe-area verification.',
       );
     }
-    for (const frame of [routeScroll.frame, titleFrame]) {
-      jestExpect(frame.y - routeRootFrame.y).toBeGreaterThanOrEqual(44);
-    }
+    // The scroll viewport starts at the actual safe area, which varies by device size.
+    jestExpect(routeScroll.frame.y - routeRootFrame.y).toBeGreaterThanOrEqual(
+      routeRootTopInset,
+    );
+    jestExpect(titleFrame.y).toBeGreaterThanOrEqual(routeScroll.frame.y);
     // The shared backdrop must be an actual UIKit toolbar in the mounted app.
     await expect(element(by.id('navigation-native-toolbar'))).toExist();
     await expect(element(by.id('navigation-back'))).toHaveLabel(
