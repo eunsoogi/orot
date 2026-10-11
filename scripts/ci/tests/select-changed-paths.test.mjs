@@ -124,6 +124,24 @@ test('Release E2E consumers keep AI feature visit-question paths in the Release 
   }
 });
 
+test('Navigation Glass E2E and its dedicated helper select only the Release profile', () => {
+  for (const path of [
+    'apps/mobile/e2e/navigation-glass.e2e.js',
+    'apps/mobile/e2e/navigationGlassLayoutAssertions.js',
+  ]) {
+    const selection = selectChecksForPaths([path]);
+
+    assert.equal(selection.javascript, true, path);
+    assert.equal(selection.source_loc, true, path);
+    assert.equal(selection.detox_release, true, path);
+    assert.equal(selection.detox_openai, false, path);
+    assert.equal(selection.detox_transcription, false, path);
+    assert.equal(selection.detox_next_visit, false, path);
+    assert.equal(selection.ios_build, false, path);
+    assert.equal(selection.unit_tests, false, path);
+  }
+});
+
 test('E2E TypeScript inputs run the mobile compiler check', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/sharedProbeEntry.tsx']);
 

@@ -5,10 +5,12 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
 import { NavigationActionBar } from '../NavigationActionBar';
 import { createNavigationController } from '../navigationController';
 import type { NavigationRootTabs } from '../rootTabs';
+import { appColors } from '../../layout/appColors';
 
 function FallbackSurface({
   children,
@@ -41,6 +43,22 @@ test('renders five tabs and routes the selected destination', async () => {
   expect(
     screen.getByTestId('navigation-tab-home').props.accessibilityState,
   ).toEqual({ selected: true, disabled: false });
+  expect(
+    StyleSheet.flatten(screen.getByTestId('navigation-tab-home').props.style),
+  ).toEqual(
+    expect.objectContaining({
+      backgroundColor: appColors.primaryAction,
+      borderRadius: 24,
+    }),
+  );
+  expect(StyleSheet.flatten(screen.getByText('홈').props.style)).toEqual(
+    expect.objectContaining({ color: appColors.onPrimary }),
+  );
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('navigation-tab-records').props.style,
+    ),
+  ).toEqual(expect.objectContaining({ backgroundColor: 'transparent' }));
   expect(screen.queryByTestId('navigation-back')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith('records'));

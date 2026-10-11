@@ -4,13 +4,15 @@ import { markAllDetox } from './changed-paths-core.mjs';
 const RELEASE_E2E_FILES = new Set([
   'ai-feature-visit-questions.e2e.js',
   'aifeaturevisitquestionsprobeentry.tsx',
+  'navigation-glass.e2e.js',
+  'navigationglasslayoutassertions.js',
 ]);
 
 export function selectE2EPath(path, selection) {
   const lower = path.toLowerCase();
   const file = basename(lower);
   if (RELEASE_E2E_FILES.has(file)) {
-    // The Release shard and router own these files despite their visit-question names.
+    // The Release shard owns these tests and helpers even when their names are not release-specific.
     selection.detox_release = true;
   } else if (lower.includes('/transcription/') || lower.includes('transcription.')) {
     selection.detox_transcription = true;

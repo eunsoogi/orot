@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
 import { createNavigationController } from '../navigationController';
 import { NavigationActionBar } from '../NavigationActionBar';
@@ -80,6 +81,45 @@ describe('native bottom navigation toolbar', () => {
     expect(requestBack).toHaveBeenCalledTimes(1);
   });
 
+  it('marks all root destinations for selected-only tab presentation', async () => {
+    const controller = createNavigationController<'home'>('home');
+    await render(
+      <NavigationActionBar
+        controller={controller}
+        rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
+        safeAreaHandledByParent
+      />,
+    );
+
+    const toolbar = screen.getByTestId('navigation-bar-native-surface');
+    const actions = toolbar.props.actions as Array<Record<string, unknown>>;
+    expect(actions).toHaveLength(5);
+    expect(actions.map(action => action.rootTab)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(actions[0]).toEqual(
+      expect.objectContaining({
+        id: 'tab-home',
+        selected: true,
+        systemImageName: 'house.fill',
+      }),
+    );
+    expect(actions[1]).toEqual(
+      expect.objectContaining({
+        id: 'tab-records',
+        selected: false,
+        systemImageName: 'doc.text',
+      }),
+    );
+    expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
+      expect.objectContaining({ height: 56 }),
+    );
+  });
+
   it('routes callback-route actions through the native toolbar items', async () => {
     const onBack = jest.fn();
     const onHome = jest.fn();
@@ -99,6 +139,14 @@ describe('native bottom navigation toolbar', () => {
     );
 
     const toolbar = screen.getByTestId('navigation-bar-native-surface');
+    expect(
+      (toolbar.props.actions as Array<Record<string, unknown>>).every(
+        action => !action.rootTab,
+      ),
+    ).toBe(true);
+    expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
+      expect.objectContaining({ height: 48 }),
+    );
     expect(toolbar.props.actions).toEqual([
       expect.objectContaining({ id: 'back', testID: 'calendar-back' }),
       expect.objectContaining({ id: 'home', testID: 'navigation-home' }),

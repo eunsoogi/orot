@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
-import { NAVIGATION_SURFACE_HEIGHT } from './navigationLayout';
+import {
+  NAVIGATION_SURFACE_HEIGHT,
+  ROOT_TAB_SURFACE_HEIGHT,
+} from './navigationLayout';
 import {
   type NativeSyntheticEvent,
   Platform,
@@ -21,6 +24,8 @@ export interface NavigationGlassAction {
   readonly disabled?: boolean;
   readonly primary?: boolean;
   readonly selected?: boolean;
+  /** Keeps root-only sizing and selected glass from leaking into contextual actions. */
+  readonly rootTab?: boolean;
   readonly showsTitleWithSystemImage?: boolean;
   readonly titleBelowImage?: boolean;
 }
@@ -59,13 +64,14 @@ export function NavigationGlassSurface({
   testID,
 }: NavigationGlassSurfaceProps) {
   const isDarkAppearance = useColorScheme() === 'dark';
+  const hasRootTabs = actions.some(action => action.rootTab);
 
   if (NativeNavigationGlassSurface) {
     return (
       <NativeNavigationGlassSurface
         actions={actions}
         onAction={onAction}
-        style={[styles.surface, style]}
+        style={[styles.surface, hasRootTabs && styles.rootTabSurface, style]}
         testID={testID}
       />
     );
@@ -73,7 +79,12 @@ export function NavigationGlassSurface({
 
   return (
     <View
-      style={[styles.fallback, isDarkAppearance && styles.darkFallback, style]}
+      style={[
+        styles.fallback,
+        isDarkAppearance && styles.darkFallback,
+        hasRootTabs && styles.rootTabFallback,
+        style,
+      ]}
       testID={testID}
     >
       {children}
@@ -88,6 +99,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 0,
   },
+  rootTabSurface: { height: ROOT_TAB_SURFACE_HEIGHT },
   fallback: {
     backgroundColor: '#ffffff',
     borderRadius: 28,
@@ -95,5 +107,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
+  rootTabFallback: { paddingBottom: 4, paddingTop: 4 },
   darkFallback: { backgroundColor: '#191f28' },
 });

@@ -1,0 +1,127 @@
+name: Version PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/version-pr.yml'
+      - 'scripts/version/**'
+      - 'docs/versioning.md'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Numeric version to apply, for example 0.1.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.inputs.version || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version_tests:
+    name: Version automation tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run version automation tests
+        run: node --test scripts/version/tests/*.test.mjs
+
+  dispatch_guard:
+    if: github.event_name == 'workflow_dispatch'
+    name: Validate version request
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.validate.outputs.status }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      - name: Validate the main-only request and version sources
+        id: validate
+        env:
+          OROT_VERSION: ${{ inputs.version }}
+        run: node scripts/version/run-version-pr.mjs --validate-only
+
+  create_pr:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.dispatch_guard.outputs.status == 'update'
+    needs: [version_tests, dispatch_guard]
+    name: Create draft version PR
+    runs-on: ubuntu-24.04
+    outputs:
+      pull_request: ${{ steps.create.outputs.pull_request }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      # GITHUB_TOKEN-created PR checks wait for an authorized writer to approve them.
+      - name: Create or reuse the version PR
+        id: create
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OROT_VERSION: ${{ inputs.version }}
+        run: node scripts/version/run-version-pr.mjs
+
+  ensure_metadata:
+    if: github.event_name == 'workflow_dispatch' && needs.create_pr.outputs.pull_request != ''
+    needs: create_pr
+    name: Verify version PR metadata
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+
+      - name: Apply and verify issue metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OROT_VERSION: ${{ inputs.version }}
+          PULL_REQUEST_URL: ${{ needs.create_pr.outputs.pull_request }}
+        run: node scripts/version/ensure-pr-metadata.mjs

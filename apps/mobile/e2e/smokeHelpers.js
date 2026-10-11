@@ -33,10 +33,33 @@ async function confirmUnsavedLeave() {
   await element(by.text('내용 버리고 나가기')).tap();
 }
 
-/** Opens a native root tab and waits for its first real route marker. */
+/** Opens a native root tab and waits for any route marker that proves its content is active. */
 async function openRootTab(tabId, screenID) {
   await tapNativeNavigationAction(`navigation-tab-${tabId}`);
-  await waitFor(element(by.id(screenID)))
+  const screenIDs = Array.isArray(screenID) ? screenID : [screenID];
+  if (screenIDs.length > 1) {
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      const hierarchyXml = await device.generateViewHierarchyXml(true);
+      if (
+        hierarchyXml
+          .split('\n')
+          .some(
+            line =>
+              screenIDs.some(screenId => line.includes(`id="${screenId}"`)) &&
+              line.includes('visibility="visible"'),
+          )
+      ) {
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    throw new Error(
+      `None of the native route markers became visible: ${screenIDs.join(', ')}.`,
+    );
+  }
+
+  await waitFor(element(by.id(screenIDs[0])))
     .toBeVisible()
     .withTimeout(30000);
 }
@@ -95,6 +118,7 @@ async function expectNativeNavigationAction(testID) {
     toolbar: toolbarMatches.atIndex(activeToolbar.index),
     frame,
     toolbarFrame,
+    hierarchyXml,
   };
 }
 
