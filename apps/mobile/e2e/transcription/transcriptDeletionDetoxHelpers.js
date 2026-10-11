@@ -35,16 +35,14 @@ async function runTranscriptDeletionFlow(detoxApi) {
     .toHaveText('seeded')
     .withTimeout(30000);
 
-  const transcriptDelete = detoxElement(
-    detoxBy.id('recording-transcript-delete'),
-  );
-  await reveal(transcriptDelete, detoxApi);
-  await transcriptDelete.tap();
-  const confirmation = detoxElement(
-    detoxBy.id('recording-delete-confirmation'),
-  );
+  // Selecting a saved row moves deletion to its detail actions and hides the transcript fallback.
+  const detailDelete = detoxElement(detoxBy.id('recording-detail-delete'));
+  await reveal(detailDelete, detoxApi);
+  await detailDelete.tap();
+  // Alert.alert renders native accessibility labels instead of React Native test IDs.
+  const confirmation = detoxElement(detoxBy.label('녹음을 삭제할까요?'));
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  await detoxElement(detoxBy.id('recording-delete-cancel')).tap();
+  await detoxElement(detoxBy.label('취소')).tap();
   await detoxWaitFor(confirmation).not.toExist().withTimeout(10000);
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
@@ -52,10 +50,10 @@ async function runTranscriptDeletionFlow(detoxApi) {
     .toExist()
     .withTimeout(10000);
 
-  await reveal(transcriptDelete, detoxApi);
-  await transcriptDelete.tap();
+  await reveal(detailDelete, detoxApi);
+  await detailDelete.tap();
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  await detoxElement(detoxBy.id('recording-delete-confirm')).tap();
+  await detoxElement(detoxBy.label('삭제')).tap();
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
   )
