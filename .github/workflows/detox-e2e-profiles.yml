@@ -61,10 +61,10 @@ jobs:
       run_profile: ${{ inputs.run_release }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
 
-  detox_openai_provider_e2e:
-    name: OpenAI Debug E2E
+  run_detox_openai_provider_profile:
+    name: Execute OpenAI Debug profile
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && inputs.run_openai }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: openai-provider
@@ -74,10 +74,21 @@ jobs:
       run_profile: ${{ inputs.run_openai }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
 
-  detox_transcription_e2e:
-    name: Speech Transcription E2E
+  detox_openai_provider_e2e:
+    name: OpenAI Debug E2E
+    needs: [detox_cache_fingerprint, run_detox_openai_provider_profile]
+    if: ${{ always() }}
+    uses: ./.github/workflows/detox-e2e-profile-status.yml
+    with:
+      profile: openai-provider
+      run_profile: ${{ inputs.run_openai }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
+      execution_result: ${{ needs.run_detox_openai_provider_profile.result }}
+
+  run_detox_transcription_profile:
+    name: Execute Speech Transcription profile
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && inputs.run_transcription }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: transcription
@@ -87,10 +98,21 @@ jobs:
       run_profile: ${{ inputs.run_transcription }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
 
-  detox_next_visit_e2e:
-    name: Next Visit Questions E2E
+  detox_transcription_e2e:
+    name: Speech Transcription E2E
+    needs: [detox_cache_fingerprint, run_detox_transcription_profile]
+    if: ${{ always() }}
+    uses: ./.github/workflows/detox-e2e-profile-status.yml
+    with:
+      profile: transcription
+      run_profile: ${{ inputs.run_transcription }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
+      execution_result: ${{ needs.run_detox_transcription_profile.result }}
+
+  run_detox_next_visit_profile:
+    name: Execute Next Visit Questions profile
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && inputs.run_next_visit }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: next-visit-questions
@@ -99,3 +121,14 @@ jobs:
       resource_sampling: ${{ inputs.resource_sampling }}
       run_profile: ${{ inputs.run_next_visit }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+
+  detox_next_visit_e2e:
+    name: Next Visit Questions E2E
+    needs: [detox_cache_fingerprint, run_detox_next_visit_profile]
+    if: ${{ always() }}
+    uses: ./.github/workflows/detox-e2e-profile-status.yml
+    with:
+      profile: next-visit-questions
+      run_profile: ${{ inputs.run_next_visit }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
+      execution_result: ${{ needs.run_detox_next_visit_profile.result }}

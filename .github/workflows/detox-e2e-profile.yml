@@ -54,7 +54,8 @@ env:
 
 jobs:
   detox_profile:
-    name: Detox ${{ inputs.profile }} iOS E2E
+    # The status workflow owns the protected check name so this executor may skip cleanly.
+    name: Execute Detox profile
     if: ${{ inputs.run_profile }}
     # Only the speech probe selects the installed image containing its measured model-compatible runtime.
     runs-on: ${{ inputs.profile == 'transcription' && 'macos-26' || 'xcode-27' }}

@@ -72,4 +72,4 @@ Branch protection과 release readiness가 사용하는 실제 check 이름은 `s
 
 변경 경로 비교가 불완전하거나 알 수 없는 이벤트·파일을 만나면 모든 검사로 대체합니다. 수동 `workflow_dispatch`도 전체 검사를 선택합니다. Selector의 출력 기록을 할 수 없으면 selector를 소유한 필수 check가 실패합니다. E2E 경로 선택이 실패하면 iOS build와 각 필수 E2E leaf가 실패 상태를 남기며 선택되지 않은 check로 위장하지 않습니다.
 
-GitHub 실행에서 `skipped`는 해당 leaf가 선택되지 않아 실행되지 않았다는 뜻입니다. workflow 요약의 성공만으로 그 leaf가 검증되었다고 해석하지 말고, 실행된 job의 단계·로그와 결과 artifact를 확인하세요. 수동 전체 검증에서는 각 check가 실제로 실행됐는지와 최종 상태를 별도로 확인하세요.
+E2E 경로가 프로필을 선택하지 않으면 실제 빌드·테스트를 담은 `Execute ... profile` job은 `skipped`로 표시됩니다. 필수 check 이름은 별도의 짧은 Linux 상태 job이 항상 기록하며, 경로 선택으로 실행을 생략한 경우 이 상태 job은 성공하고 요약에 프로필 실행이 생략됐다고 남깁니다. 따라서 상태 check의 성공만으로 E2E를 실행했다고 해석하지 말고, 프로필 실행 job의 상태와 테스트 단계·로그 및 결과 artifact를 확인하세요. 수동 전체 검증에서는 모든 프로필 실행 job과 테스트 단계가 실제로 실행됐는지 확인하세요.

@@ -24,9 +24,10 @@ permissions:
   contents: read
 
 jobs:
-  # Each leaf runs its own scenario guard and preserves diagnostics before Simulator cleanup.
-  detox_release_ui_shard:
-    name: Release UI and storage
+  # The required status jobs keep static shard names while profile runners skip irrelevant paths.
+  run_detox_release_ui_shard:
+    name: Execute Release UI and storage profile
+    if: ${{ inputs.run_profile }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
@@ -37,8 +38,20 @@ jobs:
       run_profile: ${{ inputs.run_profile }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
 
-  detox_release_data_shard:
-    name: Release stateful-data
+  detox_release_ui_shard:
+    name: Release UI and storage
+    needs: [run_detox_release_ui_shard]
+    if: ${{ always() }}
+    uses: ./.github/workflows/detox-e2e-profile-status.yml
+    with:
+      profile: release
+      run_profile: ${{ inputs.run_profile }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
+      execution_result: ${{ needs.run_detox_release_ui_shard.result }}
+
+  run_detox_release_data_shard:
+    name: Execute Release stateful-data profile
+    if: ${{ inputs.run_profile }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
@@ -48,3 +61,14 @@ jobs:
       resource_sampling: ${{ inputs.resource_sampling }}
       run_profile: ${{ inputs.run_profile }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+
+  detox_release_data_shard:
+    name: Release stateful-data
+    needs: [run_detox_release_data_shard]
+    if: ${{ always() }}
+    uses: ./.github/workflows/detox-e2e-profile-status.yml
+    with:
+      profile: release
+      run_profile: ${{ inputs.run_profile }}
+      path_selection_failed: ${{ inputs.path_selection_failed }}
+      execution_result: ${{ needs.run_detox_release_data_shard.result }}
