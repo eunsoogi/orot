@@ -1,104 +1,88 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { collectJobsForMainPushes } from '../github.mjs';
+import {
+  collectJobsForMainPushes,
+  latestMainPushRuns,
+  listWorkflowRunsForSourcePushes,
+  readWorkflowRunJobs,
+} from '../ci.mjs';
+import { sourceSha } from './fixtures.mjs';
 
-const sourceSha = 'a'.repeat(40);
-
-test('collects required leaves from separate main-push workflows for the exact source commit', () => {
-  const workflowRuns = [
-    {
-      id: 102,
-      path: '.github/workflows/code-quality.yml',
-      event: 'push',
-      head_branch: 'main',
-      head_sha: sourceSha,
-    },
-    {
-      id: 103,
-      path: '.github/workflows/unit-test.yml',
-      event: 'push',
-      head_branch: 'main',
-      head_sha: sourceSha,
-    },
-    // The policy job now publishes from its own main-push workflow run.
-    {
-      id: 107,
-      path: '.github/workflows/policy-check.yml',
-      event: 'push',
-      head_branch: 'main',
-      head_sha: sourceSha,
-    },
-    {
-      id: 104,
-      path: '.github/workflows/code-quality.yml',
-      event: 'pull_request',
-      head_branch: 'main',
-      head_sha: sourceSha,
-    },
-    {
-      id: 105,
-      path: '.github/workflows/code-quality.yml',
-      event: 'push',
-      head_branch: 'main',
-      head_sha: 'b'.repeat(40),
-    },
-    {
-      id: 106,
-      path: '.github/workflows/code-quality.yml',
-      event: 'push',
-      head_branch: 'release',
-      head_sha: sourceSha,
-    },
-  ];
-  const primaryE2eRun = {
-    id: 101,
-    path: '.github/workflows/e2e-test.yml',
+function run(id, path, overrides = {}) {
+  return {
+    id,
+    path,
     event: 'push',
     head_branch: 'main',
     head_sha: sourceSha,
+    created_at: `2026-10-11T00:00:${String(id).padStart(2, '0')}Z`,
+    ...overrides,
   };
-  const jobsByRun = new Map([
-    [101, [{ name: 'iOS Simulator Build', status: 'completed', conclusion: 'success' }]],
-    [102, [{ name: 'Maintained file inventory', status: 'completed', conclusion: 'success' }]],
-    [103, [{ name: 'TypeScript typecheck', status: 'completed', conclusion: 'success' }]],
-    [
-      107,
-      [{ name: 'CI, release, and quality gate tests', status: 'completed', conclusion: 'success' }],
-    ],
-  ]);
-  const readRunIds = [];
+}
 
-  const jobs = collectJobsForMainPushes(sourceSha, workflowRuns, primaryE2eRun, (runId) => {
-    readRunIds.push(runId);
-    return jobsByRun.get(runId);
-  });
-
-  assert.deepEqual(readRunIds, [102, 103, 107, 101]);
+test('selects the latest run per workflow for the exact main-push candidate', () => {
+  const runs = [
+    run(1, '.github/workflows/code-quality.yml'),
+    run(2, '.github/workflows/code-quality.yml', { conclusion: 'failure' }),
+    run(3, '.github/workflows/e2e-test.yml'),
+    run(4, '.github/workflows/unit-test.yml', { event: 'pull_request' }),
+    run(5, '.github/workflows/policy-check.yml', { head_sha: 'b'.repeat(40) }),
+    run(6, '.github/workflows/other.yml', { head_branch: 'release' }),
+  ];
   assert.deepEqual(
-    jobs.map(({ name }) => name),
-    [
-      'Maintained file inventory',
-      'TypeScript typecheck',
-      'CI, release, and quality gate tests',
-      'iOS Simulator Build',
-    ],
+    latestMainPushRuns(sourceSha, runs).map(({ id }) => id),
+    [2, 3],
   );
 });
 
-test('does not duplicate the primary E2E Test workflow run when it appears in the source run list', () => {
-  const primaryE2eRun = {
-    id: 101,
-    path: '.github/workflows/e2e-test.yml',
-    event: 'push',
-    head_branch: 'main',
-    head_sha: sourceSha,
-  };
-  const readRunIds = [];
+test('collects jobs only from the selected run for each main-push workflow', () => {
+  const runs = [
+    run(1, '.github/workflows/code-quality.yml'),
+    run(2, '.github/workflows/code-quality.yml', { run_number: 2 }),
+    run(3, '.github/workflows/e2e-test.yml'),
+  ];
+  const jobs = collectJobsForMainPushes(sourceSha, runs, (id) => [{ name: `run-${id}` }]);
+  assert.deepEqual(
+    jobs.map(({ name }) => name),
+    ['run-2', 'run-3'],
+  );
+});
 
-  collectJobsForMainPushes(sourceSha, [primaryE2eRun], primaryE2eRun, (runId) => {
-    readRunIds.push(runId);
-    return [];
+test('paginates source workflow runs until the reported total is complete', () => {
+  const calls = [];
+  const items = listWorkflowRunsForSourcePushes('eunsoogi/orot', sourceSha, (endpoint) => {
+    calls.push(endpoint);
+    return endpoint.endsWith('page=1')
+      ? {
+          total_count: 101,
+          workflow_runs: Array.from({ length: 100 }, (_, index) => ({ id: index })),
+        }
+      : { total_count: 101, workflow_runs: [{ id: 100 }] };
   });
+  assert.equal(items.length, 101);
+  assert.match(calls[0], /page=1$/);
+  assert.match(calls[1], /page=2$/);
+});
 
-  assert.deepEqual(readRunIds, [101]);
+test('fails closed when GitHub reports more source runs than it returns', () => {
+  assert.throws(
+    () =>
+      listWorkflowRunsForSourcePushes('eunsoogi/orot', sourceSha, () => ({
+        total_count: 101,
+        workflow_runs: [],
+      })),
+    /incomplete workflow run list/,
+  );
+});
+
+test('paginates workflow jobs when a run has more than one page', () => {
+  const calls = [];
+  const jobs = readWorkflowRunJobs('eunsoogi/orot', 123, (endpoint) => {
+    calls.push(endpoint);
+    return endpoint.endsWith('page=1')
+      ? { jobs: Array.from({ length: 100 }, (_, index) => ({ id: index })) }
+      : { jobs: [{ id: 100 }] };
+  });
+  assert.equal(jobs.length, 101);
+  assert.match(calls[1], /page=2$/);
 });
