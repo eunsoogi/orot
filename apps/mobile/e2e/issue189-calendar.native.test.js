@@ -26,9 +26,9 @@ describe('issue 189 actual Apple calendar import with synthetic sources', () => 
         .toBeVisible()
         .withTimeout(120000);
       const coverage = await element(
-        by.text('불러온 일정 3건 중 3건을 분류했습니다.'),
+        by.text('일정 3건 · 분류 완료'),
       ).getAttributes();
-      jestExpect(coverage.label || coverage.text).toContain('3건 중 3건');
+      jestExpect(coverage.label || coverage.text).toBe('일정 3건 · 분류 완료');
       await expect(
         element(by.id('medical-appointment-details-calendar-candidate-1')),
       ).toExist();

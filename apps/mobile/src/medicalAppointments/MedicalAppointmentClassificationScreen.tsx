@@ -114,6 +114,7 @@ export default function MedicalAppointmentClassificationScreen({
       // Classification settles before import; unfinished and uncertain rows stay excluded.
       const medical = result.candidates.filter(isConfidentMedical);
       let imported = 0;
+      let preserved = 0;
       let saveFailure = '';
       for (const candidate of medical) {
         if (!isCurrent()) return;
@@ -132,12 +133,17 @@ export default function MedicalAppointmentClassificationScreen({
               new Set(previous).add(candidate.candidateId),
             );
           } else if (outcome === 'stale') saveFailure = copy.stale;
+          else if (outcome === 'preserved') preserved += 1;
         } catch {
           saveFailure = copy.saveError;
         }
       }
       if (!isCurrent()) return;
-      const summary = medical.length ? copy.imported(imported) : copy.noMedical;
+      const summary = medical.length
+        ? [copy.imported(imported), preserved ? copy.preserved(preserved) : '']
+            .filter(Boolean)
+            .join(' ')
+        : copy.noMedical;
       const incomplete =
         result.status !== 'complete' && result.status !== 'empty';
       setMessage(saveFailure || (incomplete ? copy.manualReview : summary));

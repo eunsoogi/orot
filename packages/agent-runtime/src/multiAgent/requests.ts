@@ -1,4 +1,10 @@
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
+import { isSourceAllowed } from './evidence';
+import {
+  EUROPE_PMC_QUERY_GUIDANCE,
+  EUROPE_PMC_SOURCE_ID,
+  EUROPE_PMC_TOOL_ID,
+} from './literatureQueryGuidance';
 import type {
   AllowedEvidenceScope,
   EvidenceSearchTool,
@@ -72,13 +78,19 @@ export function buildResearchRequest(
   budget: MultiAgentBudget,
 ): LanguageModelRequest {
   const body = researcherPrompt(request, need, tools, allowedScope, budget);
+  // Source-specific search language must not affect local records or an unavailable tool.
+  const canSearchEuropePmc =
+    allowedScope.timeRange === undefined &&
+    isSourceAllowed(allowedScope, 'external_medical', EUROPE_PMC_SOURCE_ID) &&
+    tools.some((tool) => tool.id === EUROPE_PMC_TOOL_ID && tool.sourceKind === 'external_medical');
   const result: LanguageModelRequest = {
     messages: [
       {
         role: 'system',
         content:
           'You are the EvidenceResearcher. Select one allowlisted read-only search request. ' +
-          'Do not answer the task or expand the allowed source and time scope.',
+          'Do not answer the task or expand the allowed source and time scope.' +
+          (canSearchEuropePmc ? ` ${EUROPE_PMC_QUERY_GUIDANCE}` : ''),
       },
       { role: 'user', content: body },
     ],

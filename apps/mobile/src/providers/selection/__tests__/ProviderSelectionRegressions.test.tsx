@@ -134,3 +134,29 @@ test('disconnected catalog shows its account guidance once', async () => {
     screen.getAllByText(providerSelectionText.chatGPTNoAccounts),
   ).toHaveLength(1);
 });
+
+test('pending sign-in remains cancellable while other account actions are busy', async () => {
+  const onCancelSignIn = jest.fn();
+  await render(
+    <ProviderCatalogAccount
+      setup={{
+        presentation: 'feature',
+        accounts: [],
+        selectedAccountID: null,
+        statusMessage: '',
+        statusIsError: false,
+        actionTitle: '로그인',
+        busy: true,
+        signingIn: true,
+        signingOut: false,
+        actionDisabled: true,
+        onAccountSelected() {},
+        onAction() {},
+        onSignOut() {},
+        onCancelSignIn,
+      }}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('chatgpt-cancel-sign-in'));
+  expect(onCancelSignIn).toHaveBeenCalledTimes(1);
+});

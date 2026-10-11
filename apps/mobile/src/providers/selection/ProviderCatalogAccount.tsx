@@ -20,6 +20,9 @@ export function ProviderCatalogAccount({
   const [expanded, setExpanded] = useState(false);
   const ready =
     account && !account.requiresSignIn && account.hasDirectPlanAccess;
+  // Cancelling an active sign-in remains available while starting other actions is disabled.
+  const actionDisabled =
+    !setup.signingIn && (setup.busy || setup.actionDisabled);
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
       <View style={styles.header}>
@@ -46,9 +49,9 @@ export function ProviderCatalogAccount({
           <Pressable
             accessibilityRole="button"
             accessibilityState={{
-              disabled: setup.busy || setup.actionDisabled,
+              disabled: actionDisabled,
             }}
-            disabled={setup.busy || setup.actionDisabled}
+            disabled={actionDisabled}
             onPress={setup.signingIn ? setup.onCancelSignIn : setup.onAction}
             testID={
               setup.signingIn

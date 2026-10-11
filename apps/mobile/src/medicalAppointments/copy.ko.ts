@@ -65,6 +65,9 @@ export const medicalAppointmentCopy = {
   imported(count: number) {
     return t('medicalAppointments.status.imported', { count });
   },
+  preserved(count: number) {
+    return t('medicalAppointments.status.preserved', { count });
+  },
   get notClassified() {
     return t('medicalAppointments.status.notClassified');
   },
@@ -96,6 +99,8 @@ export const medicalAppointmentCopy = {
     return t('medicalAppointments.unclassified');
   },
   coverage(returned: number, classified: number) {
+    if (returned > 0 && returned === classified)
+      return t('medicalAppointments.coverageComplete', { returned });
     return t('medicalAppointments.coverage', { returned, classified });
   },
   get labels() {

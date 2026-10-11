@@ -1,4 +1,4 @@
-import { createAppointment } from '@orot/domain';
+import { cancelAppointment, createAppointment } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import type { CalendarBridge } from '../../calendar/types';
 import { saveCalendarCandidate } from '../saveCalendarCandidate';
@@ -45,3 +45,42 @@ test('repeat imports reconfirm the same occurrence without creating another appo
     occurrence,
   );
 });
+
+test.each(['cancelled', 'completed'] as const)(
+  'reimport preserves a %s occurrence instead of creating another appointment',
+  async status => {
+    const occurrence = event('recurring', '치과 진료', '2035-06-02');
+    const scheduled = createAppointment({
+      ...occurrence,
+      id: 'cancelled-appointment',
+      recordedAt: '2035-06-01T00:00:00.000Z',
+      ingestedAt: '2035-06-01T00:00:00.000Z',
+      provenance: { origin: 'user_reported', sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' },
+    });
+    const cancelled =
+      status === 'cancelled'
+        ? cancelAppointment(scheduled, '2035-06-01T01:00:00.000Z')
+        : { ...scheduled, status };
+    const appointments = repository();
+    jest.mocked(appointments.list).mockResolvedValue([cancelled]);
+    const bridge: CalendarBridge = {
+      requestAccessAndListUpcomingEvents: jest.fn(),
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: occurrence,
+      })),
+      addEventStoreListener: jest.fn(),
+    };
+    await expect(
+      saveCalendarCandidate(
+        result([occurrence]).candidates[0]!,
+        appointments,
+        bridge,
+      ),
+    ).resolves.toBe('preserved');
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+    expect(appointments.reconfirmCalendarEvent).not.toHaveBeenCalled();
+    expect(cancelled.status).toBe(status);
+  },
+);

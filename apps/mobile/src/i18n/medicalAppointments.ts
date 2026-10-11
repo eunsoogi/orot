@@ -4,8 +4,7 @@
  */
 export const medicalAppointmentsKo = {
   'medicalAppointments.title': '진료 일정 분류',
-  'medicalAppointments.description':
-    '캘린더의 모든 다가오는 일정을 분류해 병원 일정만 가져와요.',
+  'medicalAppointments.description': '캘린더에서 병원 일정을 찾아 가져와요.',
   'medicalAppointments.queryLimit':
     '향후 1년의 캘린더 일정을 건수 제한 없이 확인해요.',
   'medicalAppointments.incompleteCalendar':
@@ -57,6 +56,8 @@ export const medicalAppointmentsKo = {
     '일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요.',
   'medicalAppointments.status.noMedical': '진료 일정으로 분류된 일정이 없어요.',
   'medicalAppointments.status.imported': '진료 일정 {count}건을 가져왔어요.',
+  'medicalAppointments.status.preserved':
+    '취소하거나 완료한 일정 {count}건은 그대로 유지했어요.',
   'medicalAppointments.status.notClassified': '아직 분류하지 않았습니다.',
   'medicalAppointments.actions.save': '진료 일정으로 추가',
   'medicalAppointments.actions.saving': '저장 중입니다.',
@@ -71,6 +72,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.unclassified': '미분류',
   'medicalAppointments.coverage':
     '불러온 일정 {returned}건 중 {classified}건을 분류했습니다.',
+  'medicalAppointments.coverageComplete': '일정 {returned}건 · 분류 완료',
   'medicalAppointments.labels.medical': '진료 일정',
   'medicalAppointments.labels.nonMedical': '진료 일정 아님',
   'medicalAppointments.labels.uncertain': '불확실',

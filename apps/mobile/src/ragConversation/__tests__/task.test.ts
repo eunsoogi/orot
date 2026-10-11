@@ -1,5 +1,29 @@
 import { ragConversationTask } from '../task';
 
+test('guides Korean literature questions to research before declaring missing sources unavailable', () => {
+  const prompt = ragConversationTask.systemPrompt;
+  expect(prompt).toContain('Write the user-facing answer in Korean');
+  expect(prompt).toContain(
+    'Keep publication titles and citation IDs in their original form',
+  );
+  expect(prompt).toContain('explicitly asks for literature');
+  expect(prompt).toContain('request evidence before declaring it unavailable');
+  expect(prompt).toContain(
+    'denied, exhausted, or returned no supporting results',
+  );
+  // Prompt guidance cannot turn an unsupported generated answer into a valid result.
+  expect(
+    ragConversationTask.validateResult(
+      { answer: '수면 관련 문헌을 확인했어요.' },
+      {
+        request:
+          '성인의 수면 시간과 건강에 관한 공개 의학 문헌을 찾아 한국어로 요약해 주세요.',
+        evidence: { items: [], coverage: [], conflicts: [] },
+      },
+    ).status,
+  ).toBe('needs_clarification');
+});
+
 const reference = {
   sourceKind: 'personal_record' as const,
   sourceId: 'record-1',

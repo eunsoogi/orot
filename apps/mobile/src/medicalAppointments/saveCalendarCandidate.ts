@@ -18,13 +18,11 @@ export async function saveCalendarCandidate(
   repository: AppointmentRepository,
   bridge: CalendarBridge,
   signal?: AbortSignal,
-): Promise<'saved' | 'stale' | 'cancelled'> {
+): Promise<'saved' | 'stale' | 'cancelled' | 'preserved'> {
   if (signal?.aborted) return 'cancelled';
   const existingAppointments = await repository.list();
   const linked = existingAppointments.find(
     appointment =>
-      (appointment.status === 'scheduled' ||
-        appointment.status === 'rescheduled') &&
       appointment.calendarEventIdentifier ===
         candidate.event.calendarEventIdentifier &&
       appointment.calendarEventSnapshot?.occurrenceDate ===
@@ -33,6 +31,13 @@ export async function saveCalendarCandidate(
         (candidate.event.calendarEventSnapshot.floatingOccurrenceAt ?? null),
   );
   if (signal?.aborted) return 'cancelled';
+  // An unchanged calendar occurrence must not undo a user's cancellation or completion.
+  if (
+    linked &&
+    linked.status !== 'scheduled' &&
+    linked.status !== 'rescheduled'
+  )
+    return 'preserved';
   // Permissions and the full snapshot must still match when classification finishes.
   const current = await bridge.findEvent(
     candidate.event.calendarEventIdentifier,

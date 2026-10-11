@@ -130,9 +130,7 @@ test('clears the previous event progress as soon as a new query starts', async (
   const { bridge } = await renderScreen([[first], [next]], appointments);
   await fireEvent.press(importAction());
   await waitFor(() => expect(importAction()).not.toBeDisabled());
-  expect(
-    screen.getByText('불러온 일정 1건 중 1건을 분류했습니다.'),
-  ).toBeTruthy();
+  expect(screen.getByText('일정 1건 · 분류 완료')).toBeTruthy();
   let finish!: (value: {
     access: 'fullAccess';
     events: CalendarEvent[];
@@ -144,9 +142,7 @@ test('clears the previous event progress as soon as a new query starts', async (
       }),
   );
   await fireEvent.press(importAction());
-  expect(
-    screen.queryByText('불러온 일정 1건 중 1건을 분류했습니다.'),
-  ).toBeNull();
+  expect(screen.queryByText('일정 1건 · 분류 완료')).toBeNull();
   expect(screen.queryByText('기존 진료')).toBeNull();
   await act(async () => finish({ access: 'fullAccess', events: [next] }));
   await waitFor(() =>
