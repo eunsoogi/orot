@@ -7,6 +7,7 @@ import {
   markQualityPath,
   selectEverything,
 } from './changed-paths-core.mjs';
+import { selectE2EPath } from './changed-paths-e2e-rules.mjs';
 import { selectWorkflowPath } from './changed-paths-workflow-rules.mjs';
 
 const IMAGES = new Set([
@@ -41,38 +42,11 @@ const ROOT_QUALITY_CONFIG = new Set([
   '.swiftformat',
   'eslint.config.js',
 ]);
-
 function mobileRuntime(selection) {
   selection.typecheck = true;
   selection.unit_tests = true;
   selection.ios_build = true;
   markAllDetox(selection);
-}
-
-function detoxForTest(path, selection) {
-  const lower = path.toLowerCase();
-  const file = basename(lower);
-  if (lower.includes('/transcription/') || lower.includes('transcription.')) {
-    selection.detox_transcription = true;
-  } else if (
-    lower.includes('openai') ||
-    lower.includes('providerselection') ||
-    lower.includes('provider-selection')
-  ) {
-    selection.detox_openai = true;
-  } else if (
-    lower.includes('nextvisit') ||
-    lower.includes('next-visit') ||
-    lower.includes('visitquestions') ||
-    lower.includes('visit-questions')
-  ) {
-    selection.detox_next_visit = true;
-  } else if (file.startsWith('release-e2e-') || file === 'release-e2e.test.js') {
-    selection.detox_release = true;
-  } else {
-    // Shared fixtures and helpers can feed any profile, so run every dependent E2E leaf.
-    markAllDetox(selection);
-  }
 }
 
 function normalizePath(value) {
@@ -120,7 +94,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
         selection.ios_build = true;
         markAllDetox(selection);
       } else if (lower.startsWith('apps/mobile/e2e/')) {
-        detoxForTest(path, selection);
+        selectE2EPath(path, selection);
       }
       continue;
     }
@@ -166,7 +140,15 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       if (!markQualityPath(path, selection, policies)) {
         return { ...selectEverything('unknown-e2e-file'), paths: selection.paths };
       }
-      detoxForTest(path, selection);
+      selectE2EPath(path, selection);
+      continue;
+    }
+    if (lower === 'apps/mobile/.eslintrc.js') {
+      if (!markQualityPath(path, selection, policies)) {
+        return { ...selectEverything('unknown-mobile-file'), paths: selection.paths };
+      }
+      // The shared workspace ESLint invocation consumes this config for both JavaScript and TypeScript.
+      selection.typescript = true;
       continue;
     }
     if (lower.startsWith('apps/mobile/android/')) {

@@ -94,6 +94,13 @@ test('non-app images are ignored while mobile bundle images validate native outp
   assert.equal(appImage.detox_release, true);
 });
 
+test('an E2E fixture image selects the profile that consumes its scenario assets', () => {
+  const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.fixture.png']);
+
+  assert.equal(selection.detox_next_visit, true);
+  assert.equal(selection.detox_release, false);
+});
+
 test('a dedicated E2E test file selects its profile and its language checks', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.e2e.js']);
 
@@ -103,6 +110,37 @@ test('a dedicated E2E test file selects its profile and its language checks', ()
   assert.equal(selection.detox_release, false);
   assert.equal(selection.ios_build, false);
   assert.equal(selection.unit_tests, false);
+});
+
+test('Release E2E consumers keep AI feature visit-question paths in the Release profile', () => {
+  for (const path of [
+    'apps/mobile/e2e/ai-feature-visit-questions.e2e.js',
+    'apps/mobile/e2e/aiFeatureVisitQuestionsProbeEntry.tsx',
+  ]) {
+    const selection = selectChecksForPaths([path]);
+
+    assert.equal(selection.detox_release, true, path);
+    assert.equal(selection.detox_next_visit, false, path);
+  }
+});
+
+test('E2E TypeScript inputs run the mobile compiler check', () => {
+  const selection = selectChecksForPaths(['apps/mobile/e2e/sharedProbeEntry.tsx']);
+
+  assert.equal(selection.typescript, true);
+  assert.equal(selection.typecheck, true);
+});
+
+test('the mobile ESLint config selects both language surfaces that consume it', () => {
+  const selection = selectChecksForPaths(['apps/mobile/.eslintrc.js']);
+
+  assert.equal(selection.javascript, true);
+  assert.equal(selection.typescript, true);
+  assert.equal(selection.format_check, true);
+  assert.equal(selection.typecheck, false);
+  assert.equal(selection.unit_tests, false);
+  assert.equal(selection.ios_build, false);
+  assert.equal(selection.detox_release, false);
 });
 
 test('reusable Detox workflow changes select policy, YAML, and every dependent E2E leaf', () => {

@@ -82,9 +82,9 @@ test('caches pnpm policy verification in each independent dependency-install job
     codeQuality.match(/uses: \.\/\.github\/actions\/run-quality-surface/g) ?? []
   ).length;
 
-  // Static lint leaves share one setup action, so verify its transitive cache-before-install path once.
-  assert.equal(qualitySurfaceUsers, 10);
-  assert.equal(qualitySetupUsers, 1);
+  // Ten lint leaves and the format leaf share one setup action, so verify its cache path once.
+  assert.equal(qualitySurfaceUsers, 11);
+  assert.equal(qualitySetupUsers, 0);
   assert.match(qualitySurfaceAction, /uses: \.\/\.github\/actions\/setup-linux-quality/);
   requireCacheInAction(qualitySetupAction);
 });

@@ -49,7 +49,7 @@ test('runs a full-inventory lint leaf for every language surface on Linux', () =
     assert.ok(lint.includes(`surface: ${surface}`));
   }
 
-  // Job-level path guards need static job IDs; the composite action keeps full inventory and lint behavior shared.
+  // Static job IDs preserve each protected context while the composite shares setup and check execution.
   assert.ok(qualitySurfaceAction.includes('pnpm quality:inventory'));
   assert.match(
     qualitySurfaceAction,
@@ -57,8 +57,10 @@ test('runs a full-inventory lint leaf for every language surface on Linux', () =
   );
   assert.match(
     qualitySurfaceAction,
-    /ci-quality-lint-\$\{\{ inputs\.surface \}\}-\$\{\{ github\.run_id \}\}/,
+    /ci-quality-\$\{\{ inputs\.mode == 'lint' && format\('lint-\{0\}', inputs\.surface\) \|\| 'format' \}\}-\$\{\{ github\.run_id \}\}/,
   );
+  assert.match(qualitySurfaceAction, /if: \$\{\{ inputs\.mode == 'format' \}\}/);
+  assert.ok(qualitySurfaceAction.includes('pnpm format:check -- --platform linux'));
   assert.ok(qualitySetupAction.includes('tool-versions.json'));
   assert.doesNotMatch(qualitySurfaceAction, /--exclude|changed-files|paths-filter/);
 });
@@ -90,7 +92,8 @@ test('keeps formatting, unit, and policy checks as independent Linux leaves', ()
   const format = jobBlock(codeWorkflow, 'format_check');
   assert.match(format, /name: Format check/);
   assert.match(format, /runs-on: ubuntu-24\.04/);
-  assert.ok(format.includes('pnpm format:check -- --platform linux'));
+  assert.ok(format.includes('uses: ./.github/actions/run-quality-surface'));
+  assert.ok(format.includes('mode: format'));
   assert.doesNotMatch(format, /--surface/);
 
   const unitJobs = [

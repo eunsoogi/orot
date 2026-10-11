@@ -126,6 +126,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      # The runner must check out local action files before resolving the composite step below.
+      - &quality_checkout
+        name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
       - uses: ./.github/actions/run-quality-surface
         with: { surface: javascript }
 
@@ -136,6 +141,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: typescript }
 
@@ -146,6 +152,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: swift }
 
@@ -156,6 +163,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: objective-c }
 
@@ -166,6 +174,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: shell }
 
@@ -176,6 +185,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: ruby }
 
@@ -186,6 +196,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: yaml }
 
@@ -196,6 +207,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: json }
 
@@ -206,6 +218,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: xml }
 
@@ -216,6 +229,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
+      - *quality_checkout
       - uses: ./.github/actions/run-quality-surface
         with: { surface: properties }
 
@@ -226,20 +240,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Set up Linux quality tools
-        uses: ./.github/actions/setup-linux-quality
-        with:
-          pnpm_version: ${{ env.EXPECTED_PNPM_VERSION }}
-          ruby_version: ${{ env.EXPECTED_RUBY_VERSION }}
-
-      - name: Check complete maintained-file formatting
-        run: scripts/ci/run-command.sh format artifacts/quality/format.log -- pnpm format:check -- --platform linux
-
-      - name: Upload format and setup logs
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-quality-format-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/quality/
-          if-no-files-found: error
-          retention-days: 14
+      - *quality_checkout
+      - uses: ./.github/actions/run-quality-surface
+        with: { mode: format }
