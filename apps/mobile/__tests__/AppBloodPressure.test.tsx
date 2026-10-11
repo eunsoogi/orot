@@ -18,6 +18,9 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
 }));
+jest.mock('../src/healthkit/healthObservationLibrary', () => ({
+  listLocalHealthObservations: jest.fn(async () => []),
+}));
 
 // The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
 jest.mock('../src/backup/backupSupport', () => ({
@@ -92,6 +95,23 @@ test('shows an import summary and opens the saved health records library', async
   await waitForNavigationBackEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+});
+
+test('keeps the blood-pressure probe loader compatible with the unified library', async () => {
+  const observations = mapBloodPressureCorrelation(
+    correlation('legacy-app-loader'),
+    '2026-10-05T10:00:00.000Z',
+  ).observations;
+  const loadBloodPressureObservations = jest.fn(async () => [...observations]);
+  await renderApp({ loadBloodPressureObservations });
+
+  await openBloodPressure();
+  await fireEvent.press(
+    await screen.findByTestId('blood-pressure-open-library'),
+  );
+
+  expect(await screen.findByText('120 mmHg')).toBeTruthy();
+  expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });
 
 test('keeps the import action in its own shared safe-area scroller', async () => {

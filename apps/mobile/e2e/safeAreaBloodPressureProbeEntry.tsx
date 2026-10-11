@@ -54,7 +54,7 @@ function SafeAreaBloodPressureProbeEntry() {
   return (
     <App
       importBloodPressure={completeEmptySyntheticImport}
-      loadHealthObservations={loadSyntheticObservations}
+      loadBloodPressureObservations={loadSyntheticObservations}
     />
   );
 }

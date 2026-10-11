@@ -16,14 +16,19 @@ export function RecordingLibraryVisualProbe() {
     null,
   );
   const [setupError, setSetupError] = useState('');
-  const transcriptService = useMemo(
-    () =>
-      createTranscriptEvidenceProbeService(
-        ignorePlayback,
-        ignoreCorrectionStatus,
-      ),
-    [],
-  );
+  const transcriptService = useMemo(() => {
+    const service = createTranscriptEvidenceProbeService(
+      ignorePlayback,
+      ignoreCorrectionStatus,
+    );
+    // A deterministic playback failure keeps the real alert visible for theme review.
+    return {
+      ...service,
+      async play() {
+        throw new Error('Synthetic playback failure for visual proof.');
+      },
+    };
+  }, []);
   const settingsManager = (
     NativeModules as unknown as {
       SettingsManager?: {

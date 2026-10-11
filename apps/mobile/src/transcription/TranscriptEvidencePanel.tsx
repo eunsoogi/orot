@@ -154,8 +154,13 @@ export default function TranscriptEvidencePanel({
       {loading ? (
         <Text style={styles.copy}>{t('recording.transcript.loading')}</Text>
       ) : null}
+      {/* Keep the rendered failure state addressable for theme-contrast probes. */}
       {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="transcript-error"
+        >
           {errorLabel(error)}
         </Text>
       ) : null}

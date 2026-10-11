@@ -17,6 +17,12 @@ const {
 const {
   switchToTranscriptEvidenceMode,
 } = require('./transcription/transcriptProbeModeDetoxHelpers');
+const {
+  selectSavedRecordingTranscriptPanel,
+} = require('./transcription/recordingSelectionDetoxHelpers');
+const {
+  transcriptRangeMilliseconds,
+} = require('./transcription/transcriptRangeDetoxHelpers');
 
 describe('Apple Korean transcription and recording export on iOS Simulator', () => {
   it('verifies transcript export, share-sheet cancellation, and source preservation', async () => {
@@ -41,13 +47,14 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
       const setupStatus = element(by.id('transcript-evidence-setup-status'));
       assertionStage = 'wait for recording setup';
       await waitFor(setupStatus).toHaveText('ready').withTimeout(30000);
-      assertionStage = 'reveal transcript panel';
-      await waitFor(element(by.id('transcript-panel')))
-        .toBeVisible()
-        .whileElement(by.id('recording-controls-scroll'))
-        .scroll(120, 'down', 0.5, 0.35);
+
+      // The transcript editor belongs to the saved row selected from the real library.
+      assertionStage = 'select saved recording and open transcript panel';
+      await selectSavedRecordingTranscriptPanel({ by, element, waitFor });
       assertionStage = 'create transcript';
-      await element(by.id('transcript-create')).tap();
+      const createTranscript = element(by.id('transcript-create'));
+      await scrollToTranscriptControl(createTranscript);
+      await createTranscript.tap();
 
       assertionStage = 'read transcript metadata';
       const transcript = element(by.id('transcript-text-0'));
@@ -79,15 +86,7 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
       const rangeLabel = rangeAttributes.label || rangeAttributes.text;
       const engineMetadataVisible = false;
       const runtimeMetadataVisible = false;
-      jestExpect(typeof rangeLabel).toBe('string');
-      const range = /^(\d{2}):(\d{2})\.(\d{3})–(\d{2}):(\d{2})\.(\d{3})$/.exec(
-        rangeLabel,
-      );
-      jestExpect(range).not.toBeNull();
-      const startMs =
-        Number(range[1]) * 60_000 + Number(range[2]) * 1000 + Number(range[3]);
-      const endMs =
-        Number(range[4]) * 60_000 + Number(range[5]) * 1000 + Number(range[6]);
+      const { startMs, endMs } = transcriptRangeMilliseconds(rangeLabel);
 
       assertionStage = 'play selected audio range';
       // Scroll the evidence row's bounded list so its action remains hittable on compact Simulator screens.

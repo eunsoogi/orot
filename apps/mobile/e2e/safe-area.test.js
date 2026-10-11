@@ -3,15 +3,44 @@
 // Detox reserves global expect() for UI elements, so frame numbers use Jest's matcher.
 const { expect: jestExpect } = require('@jest/globals');
 const {
-  expectElementAboveBottomInset,
-  expectElementBelowTopInset,
   expectKeyboardOccludesScroll,
   expectFloatingViewport,
-  expectRouteScrollTopInset,
-  expectScrollInsideRootFrame,
-  frameFor,
+  frameOf,
 } = require('./safeAreaHelpers');
-const { openRootTab, tapNativeNavigationAction } = require('./smokeHelpers');
+const { openRootTab } = require('./smokeHelpers');
+
+const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
+const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
+
+// Keep route geometry checks local because the launch-sequence harness replaces shared Detox helpers.
+async function frameFor(testID) {
+  return frameOf(element(by.id(testID)), testID);
+}
+
+async function expectInset(testID, rootTestID, edge = 'top') {
+  const root = await frameFor(rootTestID);
+  const target = await frameFor(testID);
+
+  if (edge !== 'bottom') {
+    jestExpect(target.y - root.y).toBeGreaterThanOrEqual(
+      MINIMUM_TOP_SAFE_AREA_POINTS,
+    );
+  }
+  if (edge !== 'top') {
+    jestExpect(
+      root.y + root.height - target.y - target.height,
+    ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
+  }
+}
+
+const expectElementBelowTopInset = expectInset;
+const expectRouteScrollTopInset = expectInset;
+const expectElementAboveBottomInset = (testID, rootTestID) =>
+  expectInset(testID, rootTestID, 'bottom');
+
+async function expectScrollInsideRootFrame(scrollTestID, rootTestID) {
+  await expectInset(scrollTestID, rootTestID, 'both');
+}
 
 describe('safe area routes on iOS Simulator', () => {
   beforeEach(async () => {
@@ -124,6 +153,25 @@ describe('safe area routes on iOS Simulator', () => {
     await waitFor(element(by.id('blood-pressure-title')))
       .toBeVisible()
       .withTimeout(30000);
+
+    await expectScrollInsideRootFrame(
+      'blood-pressure-scroll',
+      'navigation-keyboard-avoiding-root',
+    );
+    const pressureScroll = element(by.id('blood-pressure-scroll'));
+    await pressureScroll.scrollTo('bottom', 0.5, 0.5);
+    const importAction = element(by.id('blood-pressure-import'));
+    await expect(importAction).toBeVisible();
+    await expectElementAboveBottomInset(
+      'blood-pressure-import',
+      'navigation-keyboard-avoiding-root',
+    );
+    jestExpect((await importAction.getAttributes()).enabled).toBe(true);
+    await importAction.tap();
+    await waitFor(element(by.id('blood-pressure-status')))
+      .toHaveText('새로 반영된 기록이 없어요')
+      .withTimeout(30000);
+
     await element(by.id('blood-pressure-open-library')).tap();
     await waitFor(element(by.id('health-records-title')))
       .toBeVisible()
@@ -144,24 +192,6 @@ describe('safe area routes on iOS Simulator', () => {
       'health-record-row-23',
       'navigation-keyboard-avoiding-root',
     );
-    await recordsScroll.scrollTo('top');
-    await tapNativeNavigationAction('navigation-back');
-    await waitFor(element(by.id('blood-pressure-title')))
-      .toBeVisible()
-      .withTimeout(30000);
-
-    const importAction = element(by.id('blood-pressure-import'));
-    await expect(importAction).toBeVisible();
-    await expectElementAboveBottomInset(
-      'blood-pressure-import',
-      'navigation-keyboard-avoiding-root',
-    );
-    // Detox exposes enabled through attributes; keep this check before tapping.
-    jestExpect((await importAction.getAttributes()).enabled).toBe(true);
-    await importAction.tap();
-    await waitFor(element(by.id('blood-pressure-status')))
-      .toHaveText('새로 반영된 기록이 없어요')
-      .withTimeout(30000);
   });
 
   it('keeps a primary action reachable with large text and the keyboard open', async () => {

@@ -2,8 +2,6 @@
 
 const { expect: jestExpect } = require('@jest/globals');
 const MINIMUM_KEYBOARD_OCCLUSION_RATIO = 0.25;
-const MINIMUM_TOP_SAFE_AREA_POINTS = 44;
-const MINIMUM_BOTTOM_SAFE_AREA_POINTS = 20;
 
 /** Reads UIKit screen coordinates and rejects missing measurement evidence. */
 async function frameOf(target, description) {
@@ -12,46 +10,6 @@ async function frameOf(target, description) {
     throw new Error(`Detox did not return a frame for ${description}.`);
   }
   return attributes.frame;
-}
-
-async function frameFor(testID) {
-  return frameOf(element(by.id(testID)), testID);
-}
-
-/** Checks route content against the UIKit status and home-indicator insets in points. */
-async function expectScrollInsideRootFrame(scrollTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const scroll = await frameFor(scrollTestID);
-
-  // Require meaningful edge clearance so a 1-point padding regression fails.
-  jestExpect(scroll.y - root.y).toBeGreaterThanOrEqual(
-    MINIMUM_TOP_SAFE_AREA_POINTS,
-  );
-  jestExpect(
-    root.y + root.height - scroll.y - scroll.height,
-  ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
-}
-
-async function expectRouteScrollTopInset(scrollTestID, rootTestID) {
-  await expectElementBelowTopInset(scrollTestID, rootTestID);
-}
-
-async function expectElementBelowTopInset(elementTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const target = await frameFor(elementTestID);
-
-  jestExpect(target.y - root.y).toBeGreaterThanOrEqual(
-    MINIMUM_TOP_SAFE_AREA_POINTS,
-  );
-}
-
-async function expectElementAboveBottomInset(elementTestID, rootTestID) {
-  const root = await frameFor(rootTestID);
-  const target = await frameFor(elementTestID);
-
-  jestExpect(
-    root.y + root.height - target.y - target.height,
-  ).toBeGreaterThanOrEqual(MINIMUM_BOTTOM_SAFE_AREA_POINTS);
 }
 
 /** Confirms the visible keyboard overlaps the scroll viewport without hiding all content. */
@@ -120,13 +78,8 @@ async function expectContentAboveFloatingBar(scrollID, contentID) {
 }
 
 module.exports = {
-  expectElementAboveBottomInset,
-  expectElementBelowTopInset,
   expectContentAboveFloatingBar,
   expectKeyboardOccludesScroll,
   expectFloatingViewport,
-  expectRouteScrollTopInset,
-  expectScrollInsideRootFrame,
-  frameFor,
   frameOf,
 };

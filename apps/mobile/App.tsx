@@ -43,6 +43,8 @@ interface AppProps {
     features: readonly CommonObservationFeature[],
   ) => Promise<CommonObservationsImportResult>;
   importBloodPressure?: () => Promise<BloodPressureSyncResult>;
+  /** Keeps older blood-pressure fixtures working while the library uses one shared reader. */
+  loadBloodPressureObservations?: () => Promise<readonly HealthObservation[]>;
   loadHealthObservations?: () => Promise<readonly HealthObservation[]>;
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
   /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
@@ -63,7 +65,9 @@ export default function App({
   calendarBridge = eventKitCalendarBridge,
   importHealthObservations = importLocalCommonObservations,
   importBloodPressure = importLocalBloodPressure,
-  loadHealthObservations = listLocalHealthObservations,
+  loadBloodPressureObservations,
+  loadHealthObservations = loadBloodPressureObservations ??
+    listLocalHealthObservations,
   aiFeatureServiceDependencies,
   renderVisitQuestions,
 }: AppProps) {

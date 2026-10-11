@@ -93,7 +93,7 @@ describe('native navigation glass', () => {
       .withTimeout(30000);
   });
 
-  it('shows native back and Home glass actions on a feature route opened from AI', async () => {
+  it('shows native actions and handles edge-back on an AI feature route', async () => {
     await device.launchApp({
       newInstance: true,
       languageAndLocale: { language: 'en', locale: 'en_US' },
@@ -161,43 +161,34 @@ describe('native navigation glass', () => {
     );
     // Capture the native buttons before verifying the Home action reaches the root route.
     await device.takeScreenshot('visit-questions-safe-area-native-glass');
-    await tapNativeNavigationAction('navigation-home');
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
-  });
 
-  it('cancels and completes the native edge-back gesture on the active route', async () => {
-    await device.launchApp({
-      newInstance: true,
-      languageAndLocale: { language: 'en', locale: 'en_US' },
-    });
-    await waitFor(element(by.id('welcome-title')))
-      .toBeVisible()
-      .withTimeout(30000);
-    await openRootTab('ai', 'ai-features-screen');
-
-    const aiScreen = element(by.id('ai-features-screen'));
-    const featureAction = element(by.id('ai-feature-visit-questions'));
-    await aiScreen.scrollTo('top');
-    await waitFor(featureAction)
-      .toBeVisible()
-      .whileElement(by.id('navigation-route-scroll'))
-      .scroll(100, 'down', 0.5, 0.35);
-    await featureAction.tap();
-
+    // Keep cancel and commit gestures on the same UIKit stack before checking Home navigation.
     const featureScroll = element(by.id('next-visit-questions-scroll'));
-    await waitFor(featureScroll).toBeVisible().withTimeout(30000);
     await device.takeScreenshot('edge-back-before-cancelled-gesture');
-    // UIKit should keep the route when a leading-edge pan ends before its commit distance.
+    // A short leading-edge pan should finish below UIKit's commit distance.
     await featureScroll.swipe('right', 'slow', 0.08, 0.01, 0.5);
     await expect(featureScroll).toBeVisible();
     await device.takeScreenshot('edge-back-after-cancelled-gesture');
 
+    // A fast, longer pan should let the native stack complete the pop.
     await featureScroll.swipe('right', 'fast', 0.85, 0.01, 0.5);
     await waitFor(element(by.id('ai-features-screen')))
       .toBeVisible()
       .withTimeout(30000);
     await device.takeScreenshot('edge-back-after-completed-gesture');
+
+    await scroll.scrollTo('top');
+    await waitFor(featureAction)
+      .toBeVisible()
+      .whileElement(by.id('navigation-route-scroll'))
+      .scroll(100, 'down', 0.5, 0.35);
+    await featureAction.tap();
+    await waitFor(element(by.id('next-visit-questions-scroll')))
+      .toBeVisible()
+      .withTimeout(30000);
+    await tapNativeNavigationAction('navigation-home');
+    await waitFor(element(by.id('welcome-title')))
+      .toBeVisible()
+      .withTimeout(30000);
   });
 });
