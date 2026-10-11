@@ -5,6 +5,7 @@ const { expect: jestExpect } = require('@jest/globals');
 
 test('uses the selected detail action and native deletion confirmation', async () => {
   const selectors = [];
+  const systemTaps = [];
   const scrollAttempts = [];
   const sourceId = '123e4567-e89b-12d3-a456-426614174000';
   const by = {
@@ -19,6 +20,12 @@ test('uses the selected detail action and native deletion confirmation', async (
     text: value => {
       selectors.push({ matcher: 'text', value });
       return { matcher: 'text', value };
+    },
+    system: {
+      label: value => {
+        selectors.push({ matcher: 'system-label', value });
+        return { matcher: 'system-label', value };
+      },
     },
   };
   const element = selector => ({
@@ -50,12 +57,20 @@ test('uses the selected detail action and native deletion confirmation', async (
     terminateApp: async () => {},
     launchApp: async () => {},
   };
+  const system = {
+    element: selector => ({
+      tap: async () => {
+        systemTaps.push(selector);
+      },
+    }),
+  };
 
   // A selected saved row hides the transcript panel's fallback delete control.
   const failure = await runTranscriptDeletionAssertion({
     by,
     device,
     element,
+    system,
     waitFor,
   });
 
@@ -69,11 +84,20 @@ test('uses the selected detail action and native deletion confirmation', async (
   const texts = selectors
     .filter(selector => selector.matcher === 'text')
     .map(selector => selector.value);
+  const systemLabels = selectors
+    .filter(selector => selector.matcher === 'system-label')
+    .map(selector => selector.value);
   jestExpect(ids).toContain('recording-detail-delete');
   jestExpect(ids).not.toContain('recording-transcript-delete');
-  jestExpect(labels).toEqual(jestExpect.arrayContaining(['취소', '삭제']));
   // UIKit exposes the alert title as text and its native actions as labels.
   jestExpect(texts).toContain('녹음을 삭제할까요?');
+  // Scope actions to the system tree to avoid the duplicate app-tree label match seen in CI.
+  jestExpect(systemLabels).toEqual(['취소', '삭제']);
+  jestExpect(systemTaps.map(selector => selector.value)).toEqual([
+    '취소',
+    '삭제',
+  ]);
+  jestExpect(labels).not.toEqual(jestExpect.arrayContaining(['취소', '삭제']));
   jestExpect(
     scrollAttempts.every(
       attempt => attempt.container === 'recording-controls-scroll',

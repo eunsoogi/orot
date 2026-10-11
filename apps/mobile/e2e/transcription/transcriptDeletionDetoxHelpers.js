@@ -21,6 +21,7 @@ async function runTranscriptDeletionFlow(detoxApi) {
     by: detoxBy,
     device: detoxDevice,
     element: detoxElement,
+    system: detoxSystem,
     waitFor: detoxWaitFor,
   } = detoxApi;
   const sourceIDElement = detoxElement(
@@ -47,7 +48,8 @@ async function runTranscriptDeletionFlow(detoxApi) {
   // UIKit exposes the alert title as text while its native action buttons use labels.
   const confirmation = detoxElement(detoxBy.text('녹음을 삭제할까요?'));
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  await detoxElement(detoxBy.label('취소')).tap();
+  // The app-tree label matched twice with the native alert open; system matching isolates its action.
+  await detoxSystem.element(detoxBy.system.label('취소')).tap();
   await detoxWaitFor(confirmation).not.toExist().withTimeout(10000);
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
@@ -58,7 +60,7 @@ async function runTranscriptDeletionFlow(detoxApi) {
   await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
-  await detoxElement(detoxBy.label('삭제')).tap();
+  await detoxSystem.element(detoxBy.system.label('삭제')).tap();
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
   )

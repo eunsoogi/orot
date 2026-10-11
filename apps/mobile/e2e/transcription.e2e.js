@@ -1,4 +1,4 @@
-/* global by, device, element, waitFor, describe, it */
+/* global by, device, element, system, waitFor, describe, it */
 
 const { expect: jestExpect } = require('@jest/globals');
 const {
@@ -200,7 +200,7 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
     }
 
     // Pass the spec's Detox APIs into helpers instead of relying on global bindings.
-    const detoxApi = { by, device, element, waitFor };
+    const detoxApi = { by, device, element, system, waitFor };
     assertionFailure ??= await runTranscriptDeletionAssertion(detoxApi);
 
     let cleanupFailure;
