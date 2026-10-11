@@ -105,8 +105,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
 
     func startTimer() {
         stopTimer()
-        let source = DispatchSource.makeTimerSource(queue: workQueue)
-        source.schedule(deadline: .now(), repeating: .milliseconds(100))
+        let source = RecordingMetering.timer(queue: workQueue)
         source.setEventHandler { [weak self] in
             guard let self, status == .recording else { return }
             #if DEBUG && targetEnvironment(simulator)
@@ -154,13 +153,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     }
 
     func snapshot() -> NSDictionary {
-        var amplitude = 0.0
-        if status == .recording, let recorder {
-            recorder.updateMeters()
-            let power = Double(recorder.averagePower(forChannel: 0))
-            // Linear amplitude in [0, 1]; values below -60 dBFS render as silence.
-            amplitude = power > -60 ? min(1, max(0, pow(10, power / 20))) : 0
-        }
+        let amplitude = RecordingMetering.amplitude(recorder: recorder, recording: status == .recording)
         return [
             "status": status.rawValue,
             "id": recordingID as Any? ?? NSNull(),

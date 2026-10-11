@@ -39,6 +39,10 @@
 		A64F0000000000000000000B /* RecordingDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000B /* RecordingDeletion.swift */; };
 		A64F0000000000000000000C /* RecordingDeletionPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000C /* RecordingDeletionPaths.swift */; };
 		A64F0000000000000000000D /* RecordingPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000D /* RecordingPlayback.swift */; };
+		A64F0000000000000000000E /* RecordingMetering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000E /* RecordingMetering.swift */; };
+		A64F0000000000000000000F /* RecordingMeteringProbeFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */; };
+		A64F00000000000000000010 /* RecordingMeteringProbeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */; };
+		A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000011 /* RecordingMeteringProbeModule.m */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
@@ -114,6 +118,10 @@
 		B64F0000000000000000000B /* RecordingDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletion.swift; path = OrotMobile/RecordingDeletion.swift; sourceTree = "<group>"; };
 		B64F0000000000000000000C /* RecordingDeletionPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingDeletionPaths.swift; path = OrotMobile/RecordingDeletionPaths.swift; sourceTree = "<group>"; };
 		B64F0000000000000000000D /* RecordingPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlayback.swift; path = OrotMobile/RecordingPlayback.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000E /* RecordingMetering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMetering.swift; path = OrotMobile/RecordingMetering.swift; sourceTree = "<group>"; };
+		B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringProbeFile.swift; path = OrotMobile/RecordingMeteringProbeFile.swift; sourceTree = "<group>"; };
+		B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringProbeModule.swift; path = OrotMobile/RecordingMeteringProbeModule.swift; sourceTree = "<group>"; };
+		B64F00000000000000000011 /* RecordingMeteringProbeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingMeteringProbeModule.m; path = OrotMobile/RecordingMeteringProbeModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
@@ -199,6 +207,10 @@
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F0000000000000000000D /* RecordingPlayback.swift */,
+				B64F0000000000000000000E /* RecordingMetering.swift */,
+				B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */,
+				B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */,
+				B64F00000000000000000011 /* RecordingMeteringProbeModule.m */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
@@ -485,6 +497,10 @@
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
+				A64F0000000000000000000E /* RecordingMetering.swift in Sources */,
+				A64F0000000000000000000F /* RecordingMeteringProbeFile.swift in Sources */,
+				A64F00000000000000000010 /* RecordingMeteringProbeModule.swift in Sources */,
+				A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
 				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,

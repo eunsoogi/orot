@@ -5,6 +5,7 @@ const probes = [
   'ui',
   'calendar',
   'automatic-transcription',
+  'metering',
 ];
 if (!probes.includes(probe)) throw new Error('Select a known issue 189 probe.');
 
