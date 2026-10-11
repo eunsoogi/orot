@@ -19,6 +19,8 @@ on:
         type: boolean
         default: false
       trace_logging: { type: boolean, default: false }
+      run_profile: { required: false, type: boolean, default: true }
+      path_selection_failed: { required: false, type: boolean, default: false }
     outputs:
       profile:
         description: The profile whose complete Jest summary passed validation.
@@ -52,7 +54,9 @@ env:
 
 jobs:
   detox_profile:
-    name: Detox ${{ inputs.profile }} iOS E2E
+    # The status workflow owns the protected check name so this executor may skip cleanly.
+    name: Execute Detox profile
+    if: ${{ inputs.run_profile }}
     # Only the speech probe selects the installed image containing its measured model-compatible runtime.
     runs-on: ${{ inputs.profile == 'transcription' && 'macos-26' || 'xcode-27' }}
     timeout-minutes: 75
@@ -61,6 +65,12 @@ jobs:
       test_cases: ${{ steps.run_detox_tests.outputs.e2e_test_cases }}
       test_suites: ${{ steps.run_detox_tests.outputs.e2e_test_suites }}
     steps:
+      # A selector failure must reach each required E2E leaf instead of becoming a skip.
+      - name: Fail if changed-path selection was unavailable
+        if: ${{ inputs.path_selection_failed }}
+        run: |
+          echo "::error::Changed-path selection failed; refusing to skip this required E2E check."
+          exit 1
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -228,23 +238,11 @@ jobs:
           OROT_DETOX_RELEASE_FRESH_SIMULATOR: ${{ inputs.profile == 'release' }}
           OROT_DETOX_RELEASE_SHARD: ${{ inputs.release_shard }}
         run: OROT_DETOX_TEST_LOG_LEVEL="${{ inputs.trace_logging && 'trace' || 'info' }}" scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
-
-      - name: Collect simulator logs
-        if: ${{ always() }}
-        timeout-minutes: 5
-        run: scripts/ci/collect-simulator-diagnostics.sh artifacts/detox/e2e-test.log artifacts/detox/simulator.log artifacts/detox/simulator.udid "${{ inputs.profile }}" artifacts/detox/simulator-baseline.json artifacts/detox/simulator-targets.txt
-
-      - name: Delete dedicated Detox Simulator
-        if: ${{ always() }}
-        timeout-minutes: 15
-        run: scripts/ci/run-command.sh detox-simulator-teardown artifacts/detox/simulator-teardown.log -- bash scripts/ci/teardown-detox-simulator.sh --identity-file artifacts/detox/simulator.udid artifacts/detox/simulator-teardown-details.log artifacts/detox/simulator-targets.txt artifacts/detox/release-worker-simulators.txt
-
-      - name: Upload Detox reports, logs, screenshots, and videos
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - name: Collect and preserve Detox diagnostics
+        # Selection failure happens before Simulator setup, so there is nothing to tear down.
+        if: ${{ always() && !inputs.path_selection_failed }}
+        timeout-minutes: 20
+        uses: ./.github/actions/detox-profile-cleanup
         with:
-          # Parallel Release runners need separate artifacts so each keeps its own diagnostics.
-          name: ci-detox-${{ inputs.profile }}${{ inputs.release_shard != '' && format('-{0}', inputs.release_shard) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/detox/
-          if-no-files-found: error
-          retention-days: 14
+          profile: ${{ inputs.profile }}
+          release_shard: ${{ inputs.release_shard }}

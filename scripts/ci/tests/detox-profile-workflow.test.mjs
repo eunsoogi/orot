@@ -23,10 +23,20 @@ const profileDependencySetup = readFileSync(
   join(repositoryRoot, 'scripts/ci/install-detox-profile-dependencies.sh'),
   'utf8',
 );
+const profileCleanupAction = readFileSync(
+  join(repositoryRoot, '.github/actions/detox-profile-cleanup/action.yml'),
+  'utf8',
+);
 function workflowStep(name) {
   const start = profileWorkflow.indexOf(`- name: ${name}`);
   const end = profileWorkflow.indexOf('\n      - name:', start + 1);
   return start < 0 ? '' : profileWorkflow.slice(start, end < 0 ? undefined : end);
+}
+
+function cleanupStep(name) {
+  const start = profileCleanupAction.indexOf(`- name: ${name}`);
+  const end = profileCleanupAction.indexOf('\n    - name:', start + 1);
+  return start < 0 ? '' : profileCleanupAction.slice(start, end < 0 ? undefined : end);
 }
 
 test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanup and upload in order', () => {
@@ -47,19 +57,21 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const cacheRestore = profileWorkflow.indexOf('- name: Cache Detox profile app product');
   const boot = profileWorkflow.indexOf('- name: Wait for dedicated Detox Simulator');
   const tests = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
-  const diagnostics = profileWorkflow.indexOf('- name: Collect simulator logs');
-  const teardown = profileWorkflow.indexOf('- name: Delete dedicated Detox Simulator');
-  const upload = profileWorkflow.indexOf(
+  const cleanup = profileWorkflow.indexOf('- name: Collect and preserve Detox diagnostics');
+  const diagnostics = profileCleanupAction.indexOf('- name: Collect simulator logs');
+  const teardown = profileCleanupAction.indexOf('- name: Delete dedicated Detox Simulator');
+  const upload = profileCleanupAction.indexOf(
     '- name: Upload Detox reports, logs, screenshots, and videos',
   );
-  const uploadStep = workflowStep('Upload Detox reports, logs, screenshots, and videos');
   const testStepStart = profileWorkflow.indexOf('- name: Run Detox iOS Simulator tests');
   const testStepEnd = profileWorkflow.indexOf('\n      - name:', testStepStart + 1);
   const testStep = profileWorkflow.slice(testStepStart, testStepEnd);
   const bootStep = workflowStep('Wait for dedicated Detox Simulator');
-  const diagnosticsStep = workflowStep('Collect simulator logs');
+  const cleanupStepBlock = workflowStep('Collect and preserve Detox diagnostics');
+  const diagnosticsStep = cleanupStep('Collect simulator logs');
+  const uploadStep = cleanupStep('Upload Detox reports, logs, screenshots, and videos');
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
-  const teardownStep = workflowStep('Delete dedicated Detox Simulator');
+  const teardownStep = cleanupStep('Delete dedicated Detox Simulator');
 
   // Finish dependency materialization before boot, then overlap boot with native and cache preparation.
   assert.ok(
@@ -79,7 +91,11 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   );
   assert.match(install, /scripts\/ci\/install-detox-profile-dependencies\.sh/);
   assert.match(profileDependencySetup, /pnpm install --frozen-lockfile/);
-  assert.ok(diagnostics > tests && teardown > diagnostics && upload > teardown);
+  // The reusable action keeps all post-test recovery ordered while the profile leaf stays below the source-line limit.
+  assert.ok(tests >= 0 && cleanup > tests);
+  assert.match(cleanupStepBlock, /uses: \.\/\.github\/actions\/detox-profile-cleanup/);
+  assert.match(cleanupStepBlock, /if: \$\{\{ always\(\) && !inputs\.path_selection_failed \}\}/);
+  assert.ok(diagnostics >= 0 && teardown > diagnostics && upload > teardown);
   assert.match(prepareStep, /id: prepare_detox_simulator/);
   assert.match(prepareStep, /artifacts\/detox\/simulator\.udid/);
   assert.match(prepareStep, /DETOX_SHARED_FINGERPRINTS_JSON: \$\{\{ inputs\.fingerprints \}\}/);
@@ -106,7 +122,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
     uploadStep,
     /name: ci-detox-\$\{\{ inputs\.profile \}\}[\s\S]*inputs\.release_shard/,
   );
-  assert.match(profileWorkflow, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(profileCleanupAction, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(profileWorkflow, /mdutil|Spotlight|spotlight/i);
   assert.doesNotMatch(ciWorkflow, /mdutil|Spotlight|spotlight/i);
 });
