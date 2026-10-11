@@ -2,7 +2,8 @@ name: Policy Check
 
 on:
   pull_request:
-    branches: [main]
+    # Temporary issue #178 docs-only evidence target; remove after its hosted run.
+    branches: [main, 'eunsoogi/ci-path-probe-base-178-20261011']
   push:
     branches: [main]
   workflow_dispatch:
