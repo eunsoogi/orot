@@ -63,15 +63,15 @@ async function runTranscriptDeletionFlow(detoxApi, reportSimulatorResult) {
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
   const confirmAction = detoxElement(detoxBy.text('삭제'));
   await detoxWaitFor(confirmAction).toBeVisible().withTimeout(10000);
+  const deletionStartedAt = Date.now();
   await confirmAction.tap();
   await detoxWaitFor(
     detoxElement(detoxBy.id(`recording-library-item-${sourceID}`)),
   )
     .not.toExist()
     .withTimeout(30000);
-  await detoxWaitFor(detoxElement(detoxBy.id('recording-library-empty')))
-    .toBeVisible()
-    .withTimeout(30000);
+  const deletionVisibleMs = Date.now() - deletionStartedAt;
+  await reveal(detoxElement(detoxBy.id('recording-library-empty')), detoxApi);
 
   await detoxDevice.terminateApp();
   // Keep the transcript-only entry active so relaunch verification does not start Speech again.
@@ -86,9 +86,8 @@ async function runTranscriptDeletionFlow(detoxApi, reportSimulatorResult) {
     detoxBy.id('transcript-evidence-deletion-status'),
   );
   await detoxWaitFor(deletionStatus).toHaveText('passed').withTimeout(30000);
-  await detoxWaitFor(detoxElement(detoxBy.id('recording-library-empty')))
-    .toBeVisible()
-    .withTimeout(30000);
+  // Relaunch restores the hero at the top; the saved-recording section is below it.
+  await reveal(detoxElement(detoxBy.id('recording-library-empty')), detoxApi);
   // Only the real Detox caller may emit a marker that represents Simulator evidence.
   if (reportSimulatorResult === true) {
     console.log(
@@ -96,6 +95,7 @@ async function runTranscriptDeletionFlow(detoxApi, reportSimulatorResult) {
         JSON.stringify({
           sourceID,
           cancelPreserved: true,
+          deletionVisibleMs,
           deletionAfterRelaunch: 'passed',
         }),
     );

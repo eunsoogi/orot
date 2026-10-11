@@ -1,4 +1,10 @@
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
+import { isSourceAllowed } from './evidence';
+import {
+  EUROPE_PMC_QUERY_GUIDANCE,
+  EUROPE_PMC_SOURCE_ID,
+  EUROPE_PMC_TOOL_ID,
+} from './literatureQueryGuidance';
 import type {
   AllowedEvidenceScope,
   EvidenceSearchTool,
@@ -26,7 +32,7 @@ export function buildTaskRequest<TResult>(
   budget: MultiAgentBudget,
 ): TaskRequestBuild {
   try {
-    const messages = buildTaskMessages(contract, input);
+    const messages = buildTaskMessages(contract, input, provider.capabilities.structuredOutput);
     if (!messages || !messages.some((message) => message.role === 'user'))
       return { status: 'invalid' };
     const supportsMessages = messages.every((message) => {
@@ -37,14 +43,24 @@ export function buildTaskRequest<TResult>(
     });
     if (!supportsMessages) return { status: 'unsupported_input' };
     const request: LanguageModelRequest = {
-      messages: [{ role: 'system', content: contract.systemPrompt }, ...messages],
-      maxOutputTokens: budget.maxOutputTokens,
-      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content: [
+            contract.systemPrompt,
+            'When the supplied evidence supports the task, return type=result with value matching the task schema and citations containing the used evidenceId strings.',
+            'Use type=request_evidence only if the task permits more research and a specific missing fact prevents a supported result.',
+            'Preserve task-defined uncertainty and clarification outcomes. Do not request evidence merely because a result is uncertain.',
+          ].join('\n'),
+        },
+        ...messages,
+      ],
+      ...requestControls(provider, budget, 0.2),
     };
     const completedRequest = provider.capabilities.structuredOutput
       ? {
           ...request,
-          responseFormat: { name: 'task_response', schema: taskResponseSchema(contract) },
+          responseFormat: { name: 'task_response', schema: taskResponseSchema(contract, input) },
         }
       : request;
     return { status: 'ready', request: completedRequest };
@@ -62,18 +78,23 @@ export function buildResearchRequest(
   budget: MultiAgentBudget,
 ): LanguageModelRequest {
   const body = researcherPrompt(request, need, tools, allowedScope, budget);
+  // Source-specific search language must not affect local records or an unavailable tool.
+  const canSearchEuropePmc =
+    allowedScope.timeRange === undefined &&
+    isSourceAllowed(allowedScope, 'external_medical', EUROPE_PMC_SOURCE_ID) &&
+    tools.some((tool) => tool.id === EUROPE_PMC_TOOL_ID && tool.sourceKind === 'external_medical');
   const result: LanguageModelRequest = {
     messages: [
       {
         role: 'system',
         content:
           'You are the EvidenceResearcher. Select one allowlisted read-only search request. ' +
-          'Do not answer the task or expand the allowed source and time scope.',
+          'Do not answer the task or expand the allowed source and time scope.' +
+          (canSearchEuropePmc ? ` ${EUROPE_PMC_QUERY_GUIDANCE}` : ''),
       },
       { role: 'user', content: body },
     ],
-    maxOutputTokens: budget.maxOutputTokens,
-    temperature: 0,
+    ...requestControls(provider, budget, 0),
   };
   return provider.capabilities.structuredOutput
     ? {
@@ -84,4 +105,17 @@ export function buildResearchRequest(
         },
       }
     : result;
+}
+
+// Some account-backed endpoints reject sampling controls entirely rather than ignoring them.
+function requestControls(
+  provider: LanguageModelProvider,
+  budget: MultiAgentBudget,
+  temperature: number,
+) {
+  const supported = provider.capabilities.requestControls ?? [];
+  return {
+    ...(supported.includes('maxOutputTokens') ? { maxOutputTokens: budget.maxOutputTokens } : {}),
+    ...(supported.includes('temperature') ? { temperature } : {}),
+  };
 }

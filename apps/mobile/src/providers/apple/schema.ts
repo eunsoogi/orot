@@ -7,6 +7,7 @@ import {
   ensureOnly,
   numberOption,
   objectSchema,
+  schemaMetadata,
 } from './schema-helpers';
 import type { AppleNativeSchema } from './schema-types';
 export type { AppleNativeRequest, AppleNativeSchema } from './schema-types';
@@ -74,6 +75,10 @@ export function compileResponseSchema(
 }
 
 function compileSchema(raw: JsonObject, name: string): AppleNativeSchema {
+  return schemaMetadata(compileSchemaValue(raw, name), raw);
+}
+
+function compileSchemaValue(raw: JsonObject, name: string): AppleNativeSchema {
   const value = raw as Record<string, unknown>;
   const allowed = new Set([
     'type',
@@ -213,20 +218,19 @@ function compileSchema(raw: JsonObject, name: string): AppleNativeSchema {
       }
       return objectSchema(
         name,
-        Object.keys(properties)
-          .sort()
-          .map((key, index) => {
-            const schema = asSchema(properties[key]);
-            return {
-              name: key,
-              schema: compileSchema(schema, name + 'Field' + index),
-              optional: !required.has(key),
-              description:
-                typeof schema.description === 'string'
-                  ? schema.description
-                  : undefined,
-            };
-          }),
+        // Author order keeps discriminators before payloads during guided generation.
+        Object.keys(properties).map((key, index) => {
+          const schema = asSchema(properties[key]);
+          return {
+            name: key,
+            schema: compileSchema(schema, name + 'Field' + index),
+            optional: !required.has(key),
+            description:
+              typeof schema.description === 'string'
+                ? schema.description
+                : undefined,
+          };
+        }),
       );
     }
     default:

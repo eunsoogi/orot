@@ -8,3 +8,12 @@ export async function listLocalHealthObservations() {
     return byTime || left.id.localeCompare(right.id);
   });
 }
+
+/** Loads only the next visible batch; reading never triggers a HealthKit import. */
+export async function listLocalHealthObservationPage(
+  cursor: import('@orot/storage').HealthObservationCursor | null = null,
+) {
+  const { openLocalStorage } = await import('../storage/secureDatabase');
+  const repository = await openLocalStorage();
+  return repository.listHealthObservationPage(cursor);
+}

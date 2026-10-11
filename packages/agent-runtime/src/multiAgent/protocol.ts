@@ -10,6 +10,7 @@ import type {
 } from './contracts';
 import type { JsonObject } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
+import { guidedSchema } from './guidedSchema';
 
 export type TaskRoleOutput<TResult> =
   | { readonly type: 'result'; readonly value: TResult; readonly citations: readonly unknown[] }
@@ -41,26 +42,43 @@ export function isEvidenceNeed(value: unknown): value is EvidenceNeed {
   return typeof value === 'string' && EVIDENCE_NEEDS.includes(value as EvidenceNeed);
 }
 
-export function taskResponseSchema<TResult>(contract: TaskResponderContract<TResult>): JsonObject {
+export function taskResponseSchema<TResult>(
+  contract: TaskResponderContract<TResult>,
+  input?: TaskResponderInput,
+): JsonObject {
+  const ids = input?.evidence.items.map((item) => item.evidenceId) ?? [];
   return {
-    oneOf: [
+    title: 'TaskResponse',
+    description:
+      'Choose a task result or a necessary evidence request using the task instructions and supplied evidence.',
+    anyOf: [
       {
+        title: 'RequestAdditionalEvidence',
+        description:
+          'Use only when the task permits additional search and current evidence cannot support its result.',
         type: 'object',
         additionalProperties: false,
         required: ['type', 'need'],
         properties: {
-          type: { const: 'request_evidence' },
+          type: { type: 'string', enum: ['request_evidence'] },
           need: { enum: EVIDENCE_NEEDS },
         },
       },
       {
+        title: 'EvidenceGroundedResult',
+        description:
+          'Use when supplied evidence supports the task result, including task-defined uncertainty or clarification.',
         type: 'object',
         additionalProperties: false,
         required: ['type', 'value', 'citations'],
         properties: {
-          type: { const: 'result' },
-          value: contract.resultSchema,
-          citations: { type: 'array', items: { type: 'object' } },
+          type: { type: 'string', enum: ['result'] },
+          value: guidedSchema(contract.resultSchema),
+          citations: {
+            type: 'array',
+            items: ids.length ? { type: 'string', enum: ids } : { type: 'string' },
+            ...(ids.length ? {} : { maxItems: 0 }),
+          },
         },
       },
     ],
@@ -69,14 +87,16 @@ export function taskResponseSchema<TResult>(contract: TaskResponderContract<TRes
 
 export function researcherSchema(tools: readonly EvidenceSearchTool[]): JsonObject {
   return {
-    oneOf: tools.map((tool) => ({
+    anyOf: tools.map((tool) => ({
+      title: 'SearchWith' + tool.id,
+      description: tool.description,
       type: 'object',
       additionalProperties: false,
       required: ['toolId', 'sourceKind', 'input'],
       properties: {
-        toolId: { const: tool.id },
-        sourceKind: { const: tool.sourceKind },
-        input: tool.inputSchema,
+        toolId: { type: 'string', enum: [tool.id] },
+        sourceKind: { type: 'string', enum: [tool.sourceKind] },
+        input: guidedSchema(tool.inputSchema),
       },
     })),
   } as JsonObject;
@@ -132,6 +152,17 @@ export function citationReferences(
   const allowed = referencesFromBatch(evidence);
   const result: EvidenceReference[] = [];
   for (const citation of citations) {
+    // Guided providers return allowlisted IDs; bind them to exactly one current reference.
+    if (typeof citation === 'string') {
+      const matches = allowed.filter((reference) => reference.evidenceId === citation);
+      if (
+        matches.length !== 1 ||
+        result.some((prior) => canonicalJson(prior) === canonicalJson(matches[0]))
+      )
+        return undefined;
+      result.push(matches[0]!);
+      continue;
+    }
     if (!citation || typeof citation !== 'object' || Array.isArray(citation)) return undefined;
     const exact = allowed.find((reference) => canonicalJson(reference) === canonicalJson(citation));
     if (!exact || result.some((prior) => canonicalJson(prior) === canonicalJson(exact)))
@@ -144,6 +175,7 @@ export function citationReferences(
 export function buildTaskMessages<TResult>(
   contract: TaskResponderContract<TResult>,
   input: TaskResponderInput,
+  guided = false,
 ): ReturnType<TaskResponderContract<TResult>['createMessages']> | undefined {
   const messages = contract.createMessages(input);
   for (const message of messages) {
@@ -153,7 +185,8 @@ export function buildTaskMessages<TResult>(
     ...messages,
     {
       role: 'user',
-      content: `Allowed citation references (cite exact objects only):\n${JSON.stringify(referencesFromBatch(input.evidence))}`,
+      // Guided schemas already enumerate IDs; full revision/locator data stays in local validation.
+      content: `Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n${JSON.stringify(guided ? input.evidence.items.map((item) => item.evidenceId) : referencesFromBatch(input.evidence))}`,
     },
   ];
 }
@@ -168,6 +201,7 @@ export function researcherPrompt(
   return [
     'Role: EvidenceResearcher. Choose one bounded, read-only evidence tool and its schema-limited input.',
     'Return JSON with toolId, sourceKind, and input. Do not answer the user task or invent fields.',
+    'Search input must describe the missing task facts, not the protocol need label such as confirm_value.',
     `Need: ${need}`,
     `Task: ${request}`,
     `Allowed source scope: ${JSON.stringify(allowedScope)}`,

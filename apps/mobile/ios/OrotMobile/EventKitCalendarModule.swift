@@ -57,8 +57,7 @@ public final class EventKitCalendarModule: RCTEventEmitter {
     ) {
         eventQueue.async {
             let access = self.currentAccess()
-            let events = access == "fullAccess" ? self.upcomingEvents() : []
-            resolve(["access": access, "events": events] as NSDictionary)
+            resolve(self.upcomingEvents(access: access) as NSDictionary)
         }
     }
 
@@ -69,8 +68,7 @@ public final class EventKitCalendarModule: RCTEventEmitter {
     ) {
         eventQueue.async {
             self.requestAccessIfNeeded { access in
-                let events = access == "fullAccess" ? self.upcomingEvents() : []
-                resolve(["access": access, "events": events] as NSDictionary)
+                resolve(self.upcomingEvents(access: access) as NSDictionary)
             }
         }
     }
@@ -158,7 +156,7 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         return "denied"
     }
 
-    private func upcomingEvents() -> [[String: Any]] {
+    private func upcomingEvents(access: String) -> [String: Any] {
         let start = Date()
         let end = Calendar.current.date(byAdding: .year, value: 1, to: start) ?? start
         let predicate = eventStore.predicateForEvents(
@@ -166,7 +164,8 @@ public final class EventKitCalendarModule: RCTEventEmitter {
             end: end,
             calendars: nil,
         )
-        return eventStore.events(matching: predicate)
+        // All readable occurrences in this one-year window are returned, without a row cap.
+        let matching = (access == "fullAccess" ? eventStore.events(matching: predicate) : [])
             .filter { $0.startDate >= start && $0.startDate < end }
             .sorted {
                 if $0.startDate == $1.startDate {
@@ -174,8 +173,20 @@ public final class EventKitCalendarModule: RCTEventEmitter {
                 }
                 return $0.startDate < $1.startDate
             }
-            .prefix(100)
-            .compactMap(EventKitCalendarSnapshot.serialize)
+        let events = matching.compactMap(EventKitCalendarSnapshot.serialize)
+        // A missing stable identifier cannot be revalidated; disclose any omitted occurrence.
+        return [
+            "access": access,
+            "events": events,
+            "query": [
+                "fromInclusive": Self.fractionalTimestampFormatter.string(from: start),
+                "toExclusive": Self.fractionalTimestampFormatter.string(from: end),
+                "horizonYears": 1,
+                "resultLimit": NSNull(),
+                "complete": access == "fullAccess" && events.count == matching.count,
+                "omittedEventCount": matching.count - events.count,
+            ],
+        ]
     }
 
     private func findEvent(

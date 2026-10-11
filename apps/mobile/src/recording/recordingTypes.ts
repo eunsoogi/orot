@@ -9,6 +9,8 @@ export interface RecordingSnapshot {
   status: RecordingStatus;
   id: string | null;
   durationMs: number;
+  /** Linear microphone amplitude in [0, 1]; absent on older bridges and zero while paused. */
+  amplitude?: number;
   consentAcknowledged: boolean;
 }
 

@@ -148,4 +148,39 @@ describe('removeLocalSourceWithMemory', () => {
       transaction,
     );
   });
+
+  it('retries failed preparation before any destructive callback and reuses the database service', async () => {
+    jest.mocked(createLocalE5RagService).mockClear();
+    prepare.mockRejectedValueOnce(new Error('schema unavailable'));
+    const memory = {
+      removeSource: jest.fn(async () => ({
+        sourceDeleted: true,
+        memoriesDeleted: 0,
+      })),
+    } as unknown as AgentMemoryService;
+    await expect(removeLocalSourceWithMemory(sourceId, memory)).rejects.toThrow(
+      'schema unavailable',
+    );
+    expect(memory.removeSource).not.toHaveBeenCalled();
+    expect(deleteSource).not.toHaveBeenCalled();
+    await removeLocalSourceWithMemory(sourceId, memory);
+    expect(createLocalE5RagService).toHaveBeenCalledTimes(1);
+    expect(prepare).toHaveBeenCalledTimes(2);
+    expect(memory.removeSource).toHaveBeenCalledTimes(1);
+  });
+
+  it('prepares a new service after the database is reopened', async () => {
+    jest.mocked(createLocalE5RagService).mockClear();
+    const memory = {
+      removeSource: jest.fn(async () => ({
+        sourceDeleted: true,
+        memoriesDeleted: 0,
+      })),
+    } as unknown as AgentMemoryService;
+    await removeLocalSourceWithMemory(sourceId, memory);
+    jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({} as never);
+    await removeLocalSourceWithMemory(sourceId, memory);
+    expect(createLocalE5RagService).toHaveBeenCalledTimes(2);
+    expect(prepare).toHaveBeenCalledTimes(2);
+  });
 });

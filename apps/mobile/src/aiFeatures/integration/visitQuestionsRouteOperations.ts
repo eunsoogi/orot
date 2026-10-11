@@ -14,6 +14,7 @@ import type {
   GenerationOutcome,
 } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
+import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
 import type {
   VisitQuestionRouteSaveInput,
   VisitQuestionRouteSaveResult,
@@ -124,13 +125,18 @@ async function loadAppointment(now: string): Promise<Appointment | null> {
 async function generate(
   input: VisitQuestionRouteGenerationInput,
 ): Promise<VisitQuestionRouteGeneration> {
+  if (input.signal.aborted) return { status: 'cancelled' };
   const { prepareUpcomingVisitQuestionContext } =
-    await import('../../agent/visitQuestions/localContext');
+    await loadVisitQuestionsContext();
+  if (input.signal.aborted) return { status: 'cancelled' };
   const now = new Date().toISOString();
   const context = await prepareUpcomingVisitQuestionContext({
     now,
+    signal: input.signal,
     maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems - 3,
   });
+  if (input.signal.aborted || context.status === 'cancelled')
+    return { status: 'cancelled' };
   if (context.status !== 'ready') {
     return {
       status: 'unavailable',
@@ -168,6 +174,7 @@ async function generate(
     signal: input.signal,
   });
   const caveats = currentEvidenceCaveats(collections);
+  if (input.signal.aborted) return { status: 'cancelled' };
   if (result.status === 'ready') {
     return {
       status: 'ready',

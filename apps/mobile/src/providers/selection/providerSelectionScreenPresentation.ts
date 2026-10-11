@@ -20,15 +20,36 @@ export function resolutionMessage(
 }
 
 export const providerSelectionScreenStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: appColors.background },
+  footerContent: { maxHeight: 230 },
+  footerBody: { gap: 10 },
+  footer: {
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    backgroundColor: appColors.background,
+  },
+  summary: {
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    backgroundColor: appColors.surface,
+  },
   scrollView: { flex: 1 },
   // Account rows and disclosures must remain scrollable in short viewports.
   container: {
     flexGrow: 1,
     gap: 12,
-    padding: 24,
+    padding: 20,
     backgroundColor: appColors.background,
   },
-  title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
-  introduction: { color: appColors.secondary, fontSize: 15 },
+  title: {
+    color: appColors.text,
+    fontSize: 32,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  introduction: { color: appColors.secondary, fontSize: 17 },
   error: { color: appColors.danger },
 });

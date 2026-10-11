@@ -33,7 +33,11 @@ async function executeE2ECases(fileName) {
   const beforeEachHooks = [];
   const afterEachHooks = [];
   const calls = [];
-  const waitMatcher = () => ({ withTimeout: noOp });
+  // UI scrolling is exercised by Detox; this harness observes only launch/reset ordering.
+  const waitMatcher = () => ({
+    withTimeout: noOp,
+    whileElement: () => ({ scroll: noOp }),
+  });
   const elementHandle = {
     getAttributes: async () => ({
       enabled: true,

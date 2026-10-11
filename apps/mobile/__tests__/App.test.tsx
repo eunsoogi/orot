@@ -102,9 +102,7 @@ test('opens provider settings from Settings and returns there on Back', async ()
   expect(screen.getByTestId('settings-title')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('settings-open-provider'));
 
-  expect(
-    await screen.findByRole('header', { name: 'AI 제공자와 모델' }),
-  ).toBeTruthy();
+  expect(await screen.findByRole('header', { name: 'AI 선택' })).toBeTruthy();
   expect(screen.getByTestId('settings-provider-screen')).toBeTruthy();
   expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
@@ -124,7 +122,7 @@ test('keeps consent-gated recording reachable from Records', async () => {
   expect(screen.getByTestId('navigation-keyboard-avoiding-root')).toBeVisible();
   expect(screen.getByTestId('navigation-back')).toBeVisible();
   expect(screen.queryByTestId('recording-back')).toBeNull();
-  expect(screen.getByText(/녹음 전에/)).toBeTruthy();
+  expect(screen.getByRole('checkbox')).toBeVisible();
   expect(screen.getByTestId('recording-start')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));

@@ -1,3 +1,4 @@
+import { hasBlockingCoverage } from './coveragePolicy';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
 import type {
   TaskClarificationValue,
@@ -5,7 +6,7 @@ import type {
   TaskResponderInput,
   TaskResultValidation,
 } from './contracts';
-import { hasIncompleteCoverage, referencesFromBatch } from './evidence';
+import { referencesFromBatch } from './evidence';
 import {
   canonicalJson,
   citationReferences,
@@ -65,7 +66,7 @@ export function consumeResponderResponse<TResult>(
       pendingOperation: undefined,
     };
   }
-  if (hasIncompleteCoverage(input.evidence)) {
+  if (hasBlockingCoverage(input.evidence, context.options.task.allowBoundedExternalEvidence)) {
     let taskClarificationMessage: string | undefined;
     try {
       const validation = context.options.task.validateResult(decoded.value as JsonValue, input);

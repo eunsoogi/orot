@@ -67,7 +67,7 @@ async function collectStream(
   request: LanguageModelRequest,
   signal: AbortSignal,
 ): Promise<ProviderCallOutcome> {
-  const iterator = provider.stream!(request)[Symbol.asyncIterator]();
+  const iterator = provider.stream!(request, { signal })[Symbol.asyncIterator]();
   const operation = (async () => {
     let response: LanguageModelResponse | undefined;
     while (true) {
@@ -174,7 +174,12 @@ export async function callModel(
     }
   }
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
-  if (provider.capabilities.streaming && provider.stream) {
+  const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
+  if (
+    provider.capabilities.streaming &&
+    provider.stream &&
+    !(guided && provider.capabilities.structuredOutputStreaming === false)
+  ) {
     const startedAt = Date.now();
     let result: ProviderCallOutcome;
     try {
@@ -188,7 +193,7 @@ export async function callModel(
   const startedAt = Date.now();
   let result: ProviderCallOutcome;
   try {
-    const observed = await observeUntilAbort(provider.generate(request), signal);
+    const observed = await observeUntilAbort(provider.generate(request, { signal }), signal);
     if (observed.kind === 'cancelled') {
       result = { status: 'cancelled', providerStop: 'underlying_call_unconfirmed' };
     } else if (observed.kind === 'error') {

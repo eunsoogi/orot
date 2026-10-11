@@ -5,12 +5,9 @@ import type {
 import { compileResponseSchema, type AppleNativeRequest } from './schema';
 
 const safetyInstructions = [
-  'Help prepare questions the patient can ask at a medical visit.',
-  'Use only supplied evidence and answer in Korean.',
-  "The patient is the speaker and their clinician is the listener. Address the clinician as '선생님' and ask what to discuss or check about the supplied change. Do not ask the patient how they feel.",
-  'Write every string in structured output in Korean. Return one concise, polite question ending with a question mark.',
+  'Follow the supplied task instructions and use only supplied evidence.',
   'Do not diagnose or give medical or medication-change recommendations.',
-  'Preserve supplied source IDs exactly in structured output.',
+  'Preserve supplied source IDs and protocol enum values exactly in structured output.',
 ].join(' ');
 
 export function serializeAppleRequest(

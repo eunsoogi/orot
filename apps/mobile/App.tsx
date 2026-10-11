@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
-import type { AppointmentRepository } from '@orot/storage';
+import type {
+  AppointmentRepository,
+  HealthObservationCursor,
+  HealthObservationPage,
+} from '@orot/storage';
 import type { HealthObservation } from '@orot/domain';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
@@ -29,7 +33,7 @@ import { useAppHomeData } from './src/routes/useAppHomeData';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
-import { listLocalHealthObservations } from './src/healthkit/healthObservationLibrary';
+import { listLocalHealthObservationPage } from './src/healthkit/healthObservationLibrary';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -46,6 +50,9 @@ interface AppProps {
   /** Keeps older blood-pressure fixtures working while the library uses one shared reader. */
   loadBloodPressureObservations?: () => Promise<readonly HealthObservation[]>;
   loadHealthObservations?: () => Promise<readonly HealthObservation[]>;
+  loadHealthObservationPage?: (
+    cursor: HealthObservationCursor | null,
+  ) => Promise<HealthObservationPage>;
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
   /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
   renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
@@ -66,11 +73,26 @@ export default function App({
   importHealthObservations = importLocalCommonObservations,
   importBloodPressure = importLocalBloodPressure,
   loadBloodPressureObservations,
-  loadHealthObservations = loadBloodPressureObservations ??
-    listLocalHealthObservations,
+  loadHealthObservations,
+  loadHealthObservationPage,
   aiFeatureServiceDependencies,
   renderVisitQuestions,
 }: AppProps) {
+  const readHealthPage = useMemo(() => {
+    if (loadHealthObservationPage) return loadHealthObservationPage;
+    // Legacy injected fixtures remain supported; production always uses bounded SQL pages.
+    const fixture = loadHealthObservations ?? loadBloodPressureObservations;
+    return fixture
+      ? async (cursor: HealthObservationCursor | null) => ({
+          records: cursor ? [] : await fixture(),
+          nextCursor: null,
+        })
+      : listLocalHealthObservationPage;
+  }, [
+    loadHealthObservationPage,
+    loadHealthObservations,
+    loadBloodPressureObservations,
+  ]);
   const [aiInitialRoute, setAiInitialRoute] = useState<
     FeatureScreenRoute | 'provider-selection' | null
   >(null);
@@ -181,7 +203,7 @@ export default function App({
                 openRecording={openRecording}
                 importHealthObservations={importHealthObservations}
                 importBloodPressure={importBloodPressure}
-                loadHealthObservations={loadHealthObservations}
+                loadHealthObservations={readHealthPage}
               />
             )
           }

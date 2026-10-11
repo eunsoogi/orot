@@ -105,6 +105,21 @@ export function NavigationRouteAdapter<Name extends string>({
     [],
   );
 
+  const canNativeGoBack = (routeKey: string) => {
+    if (snapshot.isTransitioning) return false;
+    try {
+      const state = getLeaveStateSource(routeKey)?.readState();
+      return (
+        !!state &&
+        state.canLeave !== false &&
+        !state.hasUnsavedChanges &&
+        !state.isRecording &&
+        !state.hasOngoingOperation
+      );
+    } catch {
+      return false;
+    }
+  };
   const activeLeaveDisabled = (() => {
     const source = getLeaveStateSource(snapshot.currentRoute.key);
     if (snapshot.isTransitioning || !source) return true;
@@ -179,6 +194,7 @@ export function NavigationRouteAdapter<Name extends string>({
         <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
           <NativeRouteStack
             controller={controller}
+            canNativeGoBack={canNativeGoBack}
             isTransitioning={snapshot.isTransitioning}
             renderRoute={renderRoute}
             routes={snapshot.routes}

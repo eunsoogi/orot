@@ -20,14 +20,8 @@ describe('issue 108 App navigation on iOS Simulator', () => {
       .toBeVisible()
       .withTimeout(30000);
     await element(by.id('open-medical-appointments')).tap();
-    // This privacy notice appears only after App resolves the injected saved provider.
-    await waitFor(
-      element(
-        by.text(
-          '선택한 온디바이스 모델은 일정 제목과 시간을 기기에서 처리합니다.',
-        ),
-      ),
-    )
+    // The current local-processing notice identifies the resolved saved provider.
+    await waitFor(element(by.text('기기 안에서 분류해요.')))
       .toBeVisible()
       .withTimeout(30000);
     await waitFor(element(by.id('medical-appointment-manual')))

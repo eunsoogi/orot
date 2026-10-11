@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
 import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
-import { getRagConversationCopy } from '../../../ragConversation/copy';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { referenceOnly } from '../testSupport/personalEvidenceTestSupport';
 import {
@@ -29,7 +28,6 @@ jest.mock('../../../providers/selection/options', () => {
 
 test('preserves the conversation and answer after opening and returning from its citation', async () => {
   const source = localData([memoryRecord(1)]);
-  let citationLabel = '';
   const ragRunner = jest.fn(
     async (options: Parameters<typeof runRagConversationTurn>[0]) => {
       const current = await options.loadCurrentEvidence(
@@ -38,7 +36,6 @@ test('preserves the conversation and answer after opening and returning from its
       );
       const item = current.batch.items[0];
       if (!item) return { status: 'no_evidence' as const };
-      citationLabel = getRagConversationCopy().source(item.sourceId);
       return {
         status: 'answer' as const,
         answer: '근거를 확인한 대화 답변',
@@ -72,8 +69,12 @@ test('preserves the conversation and answer after opening and returning from its
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByText('근거를 확인한 대화 답변')).toBeTruthy();
-  await fireEvent.press(screen.getByText(citationLabel));
+  // The source card names the reviewed memo and date instead of exposing its opaque alias.
+  await fireEvent.press(
+    screen.getByRole('button', { name: /^원문 근거 열기 · 검토한 메모/ }),
+  );
   expect(await screen.findByTestId('ai-feature-source-detail')).toBeTruthy();
+  expect(await screen.findByText(memoryRecord(1).text)).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
 
   expect(screen.getByText('첫 질문')).toBeTruthy();

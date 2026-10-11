@@ -194,6 +194,7 @@ export default function RecordingScreen({
       stateReady={stateReady}
       status={snapshot.status}
       durationMs={snapshot.durationMs}
+      amplitude={snapshot.amplitude}
       consentAcknowledged={consentAcknowledged}
       onToggleConsent={() => setConsentAcknowledged(value => !value)}
       busy={busy}

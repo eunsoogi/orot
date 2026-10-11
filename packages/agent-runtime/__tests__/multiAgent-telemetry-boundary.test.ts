@@ -90,7 +90,7 @@ describe('model-call telemetry boundary', () => {
 
     expect(result.status).toBe('response');
     expect(consent.authorize).toHaveBeenCalledWith(expect.objectContaining({ payload }));
-    expect(model.generate).toHaveBeenCalledWith(payload);
+    expect(model.generate).toHaveBeenCalledWith(payload, { signal: expect.any(AbortSignal) });
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       operation: 'language-model.generate',

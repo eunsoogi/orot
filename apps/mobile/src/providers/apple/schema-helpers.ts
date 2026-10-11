@@ -1,6 +1,24 @@
 import type { JsonObject } from '@orot/model-runtime';
 import type { AppleNativeSchema } from './schema-types';
 
+/** Native named choices need their semantic guidance; retain path identity for siblings. */
+export function schemaMetadata(
+  schema: AppleNativeSchema,
+  raw: JsonObject,
+): AppleNativeSchema {
+  if (!('name' in schema)) return schema;
+  return {
+    ...schema,
+    name:
+      typeof raw.title === 'string'
+        ? schema.name + cleanName(raw.title)
+        : schema.name,
+    ...(typeof raw.description === 'string'
+      ? { description: raw.description }
+      : {}),
+  };
+}
+
 export function ensureOnly(
   value: Record<string, unknown>,
   allowed: readonly string[],

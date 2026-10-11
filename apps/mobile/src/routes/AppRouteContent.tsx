@@ -1,7 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
-import type { HealthObservation } from '@orot/domain';
+import type {
+  HealthObservationCursor,
+  HealthObservationPage,
+} from '@orot/storage';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
@@ -65,7 +68,9 @@ interface AppRouteContentProps {
     features: readonly CommonObservationFeature[],
   ) => Promise<CommonObservationsImportResult>;
   readonly importBloodPressure: () => Promise<BloodPressureSyncResult>;
-  readonly loadHealthObservations: () => Promise<readonly HealthObservation[]>;
+  readonly loadHealthObservations: (
+    cursor: HealthObservationCursor | null,
+  ) => Promise<HealthObservationPage>;
 }
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */

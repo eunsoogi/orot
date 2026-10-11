@@ -52,3 +52,5 @@ export type {
   SourceRecordRepository,
 } from './sourceEvidence';
 export type { SqlDatabase, SqlExecutor, SqlResult, SqlTransaction, SqlValue } from './sql';
+
+export type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';

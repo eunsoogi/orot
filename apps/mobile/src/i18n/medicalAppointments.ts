@@ -4,14 +4,12 @@
  */
 export const medicalAppointmentsKo = {
   'medicalAppointments.title': '진료 일정 분류',
-  'medicalAppointments.description':
-    'AI 분류를 검토하고 원하는 일정을 직접 선택할 수 있습니다.',
+  'medicalAppointments.description': '캘린더에서 병원 일정을 찾아 가져와요.',
   'medicalAppointments.queryLimit':
-    '캘린더에서 향후 1년의 일정을 최대 100건까지 불러옵니다.',
+    '향후 1년의 캘린더 일정을 건수 제한 없이 확인해요.',
   'medicalAppointments.incompleteCalendar':
-    '추가 일정 여부를 확인할 수 없어 전체 캘린더를 분류한 결과가 아닙니다.',
-  'medicalAppointments.localNotice':
-    '선택한 온디바이스 모델은 일정 제목과 시간을 기기에서 처리합니다.',
+    '일부 일정을 읽지 못해 전체 조회 범위를 확인하지 못했어요.',
+  'medicalAppointments.localNotice': '기기 안에서 분류해요.',
   'medicalAppointments.remoteNotice':
     '원격 제공자를 선택하면 일정 제목과 시간은 별도 동의 후 전송됩니다.',
   'medicalAppointments.inferenceDisclosure.title':
@@ -38,9 +36,9 @@ export const medicalAppointmentsKo = {
     '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
   'medicalAppointments.inferenceDisclosure.allow': '이 내용 전송 허용',
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
-  'medicalAppointments.actions.loadCalendar': '캘린더 일정 불러오기',
+  'medicalAppointments.actions.loadCalendar': '캘린더에서 진료 일정 가져오기',
   'medicalAppointments.actions.classify': '선택한 AI로 분류',
-  'medicalAppointments.actions.manual': '수동 입력 및 일정 편집',
+  'medicalAppointments.actions.manual': '일정 직접 입력',
   'medicalAppointments.status.loading': '캘린더 일정을 불러오는 중입니다.',
   'medicalAppointments.status.classifying': '일정을 분류하고 있습니다.',
   'medicalAppointments.status.noCandidates': '불러온 일정이 없습니다.',
@@ -53,12 +51,15 @@ export const medicalAppointmentsKo = {
     '선택한 AI를 확인하고 있어요.',
   'medicalAppointments.status.noProvider':
     'AI를 분류에 사용하려면 선택한 제공자와 실행 정보가 필요합니다.',
-  'medicalAppointments.status.emptyCoverage':
-    '불러온 후보가 없어 전체 캘린더를 확인했다고 볼 수 없습니다.',
+  'medicalAppointments.status.emptyCoverage': '조회한 기간에 일정이 없어요.',
   'medicalAppointments.status.manualReview':
-    'AI 결과를 사용할 수 없어 분류하지 않았습니다. 직접 확인해 주세요.',
+    '일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요.',
+  'medicalAppointments.status.noMedical': '진료 일정으로 분류된 일정이 없어요.',
+  'medicalAppointments.status.imported': '진료 일정 {count}건을 가져왔어요.',
+  'medicalAppointments.status.preserved':
+    '취소하거나 완료한 일정 {count}건은 그대로 유지했어요.',
   'medicalAppointments.status.notClassified': '아직 분류하지 않았습니다.',
-  'medicalAppointments.actions.save': '의료 일정으로 직접 선택',
+  'medicalAppointments.actions.save': '진료 일정으로 추가',
   'medicalAppointments.actions.saving': '저장 중입니다.',
   'medicalAppointments.status.saved': '일정을 저장했습니다.',
   'medicalAppointments.status.stale':
@@ -71,6 +72,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.unclassified': '미분류',
   'medicalAppointments.coverage':
     '불러온 일정 {returned}건 중 {classified}건을 분류했습니다.',
+  'medicalAppointments.coverageComplete': '일정 {returned}건 · 분류 완료',
   'medicalAppointments.labels.medical': '진료 일정',
   'medicalAppointments.labels.nonMedical': '진료 일정 아님',
   'medicalAppointments.labels.uncertain': '불확실',

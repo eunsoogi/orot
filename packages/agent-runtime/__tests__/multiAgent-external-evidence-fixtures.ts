@@ -33,6 +33,7 @@ export const reference: EvidenceReference = {
   evidenceRevision: 'updated:2025-03-15',
   locator: {
     provider: 'Europe PMC',
+    title: publication.title,
     source: 'MED',
     recordId: '12345',
     originalUrl: 'https://europepmc.org/article/MED/12345',

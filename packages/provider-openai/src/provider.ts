@@ -7,6 +7,7 @@ import {
 import type { ChatGPTPlanModelDescriptor, ChatGPTPlanNativeBridge } from './native-contract';
 import { toProviderError } from './errors';
 import { createChatGPTPlanStream } from './stream';
+import { cancellableStream } from './cancellable-stream';
 
 let requestSequence = 0;
 
@@ -65,8 +66,8 @@ export function createChatGPTPlanProvider(
       structuredOutput: false,
       toolCalling: true,
     },
-    async generate(request) {
-      for await (const result of provider.stream!(request)) {
+    async generate(request, execution) {
+      for await (const result of provider.stream!(request, execution)) {
         if (!result.ok) return result;
         if (result.value.type === 'completed') return providerSuccess(result.value.response);
       }
@@ -76,8 +77,11 @@ export function createChatGPTPlanProvider(
         retryable: false,
       });
     },
-    stream(request) {
-      return createChatGPTPlanStream(options, nextRequestID, request, continuationsByCallID);
+    stream(request, execution) {
+      return cancellableStream(
+        createChatGPTPlanStream(options, nextRequestID, request, continuationsByCallID),
+        execution?.signal,
+      );
     },
   };
   return provider;

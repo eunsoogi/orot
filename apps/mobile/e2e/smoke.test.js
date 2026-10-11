@@ -5,7 +5,6 @@ const { expect: jestExpect } = require('@jest/globals');
 const {
   expectNativeNavigationAction,
   openFeatureAndReturn,
-  confirmUnsavedLeave,
   openRootTab,
   tapNativeNavigationAction,
 } = require('./smokeHelpers');
@@ -63,9 +62,10 @@ describe('Orot mobile app', () => {
       .withTimeout(30000);
 
     await openRootTab('ai', 'ai-features-screen');
+    // Literature now belongs to conversation, the final action in the AI list.
     await expectContentAboveFloatingBar(
       'ai-features-screen',
-      'ai-feature-external-evidence',
+      'ai-feature-rag-conversation',
     );
     await element(by.id('ai-features-screen')).scrollTo('top', 0.5, 0.2);
     // The synthetic route operations isolate the keyboard/save assertion while preserving real App navigation.
@@ -135,7 +135,7 @@ describe('Orot mobile app', () => {
     await expect(element(by.text('다음 진료 질문'))).toExist();
     await expect(element(by.text('증상 정리'))).toExist();
     await expect(element(by.text('기록과 대화'))).toExist();
-    await expect(element(by.text('의학 자료 찾기'))).toExist();
+    await expect(element(by.id('ai-feature-external-evidence'))).not.toExist();
     await expect(element(by.id('navigation-tab-schedule'))).toHaveLabel(
       '일정 탭',
     );
@@ -165,6 +165,9 @@ describe('Orot mobile app', () => {
       async () => {
         // Component tests cover disabled state because Detox reports enabled=true for disabled React Native Buttons here.
         await expect(element(by.id('rag-conversation-send'))).toBeVisible();
+        await expect(
+          element(by.text('필요하면 동의를 받고 공개 의학 문헌도 찾아요.')),
+        ).toBeVisible();
         // A non-personal probe exercises the real route without selecting or contacting a provider.
         await element(by.id('rag-conversation-input')).typeText(
           'orot-no-provider-check',
@@ -184,36 +187,6 @@ describe('Orot mobile app', () => {
       },
       true,
     );
-
-    await element(by.id('ai-feature-external-evidence')).tap();
-    await waitFor(element(by.id('external-medical-evidence-screen')))
-      .toBeVisible()
-      .withTimeout(30000);
-    await expect(element(by.id('external-evidence-query'))).toBeVisible();
-    await expect(element(by.id('external-evidence-consent'))).toBeVisible();
-    // Use the consent guidance as the route-level boundary; this Detox surface reports disabled Buttons as enabled.
-    await element(by.id('external-evidence-query')).typeText(
-      'orot-consent-check',
-    );
-    await element(by.id('external-evidence-query')).tapReturnKey();
-    await expect(
-      element(by.text('검색어 전송에 동의한 뒤 검색할 수 있어요.')),
-    ).toBeVisible();
-    await element(by.id('external-evidence-consent')).tap();
-    await expect(
-      element(by.text('검색어 전송에 동의한 뒤 검색할 수 있어요.')),
-    ).not.toExist();
-    // Do not press search: this route check must not make a real literature request.
-    await element(by.id('external-medical-evidence-screen')).scrollTo(
-      'top',
-      0.5,
-      0.2,
-    );
-    await tapNativeNavigationAction('navigation-back');
-    await confirmUnsavedLeave();
-    await waitFor(element(by.id('ai-features-screen')))
-      .toBeVisible()
-      .withTimeout(30000);
 
     await openRootTab('settings', 'settings-title');
     await expectContentAboveFloatingBar(

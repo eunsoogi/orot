@@ -1,5 +1,10 @@
 import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
+import {
+  EUROPE_PMC_QUERY_GUIDANCE,
+  EUROPE_PMC_SOURCE_ID,
+  EUROPE_PMC_TOOL_ID,
+} from './literatureQueryGuidance';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -36,7 +41,6 @@ export interface EuropePmcEvidenceServicePort {
   ): Promise<EuropePmcAdapterSearchResult>;
 }
 
-const EUROPE_PMC_SOURCE_ID = 'europe-pmc';
 const EUROPE_PMC_RESULT_LIMIT = 5;
 const MAX_QUERY_LENGTH = 240;
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
@@ -46,7 +50,13 @@ const querySchema: JsonObject = {
   type: 'object',
   required: ['query'],
   properties: {
-    query: { type: 'string', minLength: 1, maxLength: MAX_QUERY_LENGTH },
+    query: {
+      type: 'string',
+      minLength: 1,
+      maxLength: MAX_QUERY_LENGTH,
+      // The same guidance reaches prompt-only and guided providers before exact-query consent.
+      description: EUROPE_PMC_QUERY_GUIDANCE,
+    },
   },
   additionalProperties: false,
 };
@@ -110,6 +120,7 @@ function normalizePublication(value: EuropePmcAdapterPublication): EvidenceItem 
     evidenceRevision,
     locator: {
       provider: 'Europe PMC',
+      title,
       source,
       recordId,
       originalUrl,
@@ -183,7 +194,7 @@ export function createEuropePmcEvidenceSearchTool(options: {
   readonly consent: ExternalMedicalQueryConsentPort;
 }): EvidenceSearchTool {
   return {
-    id: 'europe-pmc-publication-search',
+    id: EUROPE_PMC_TOOL_ID,
     sourceKind: 'external_medical',
     execution: 'external_read_only',
     description:

@@ -1,5 +1,6 @@
 import { AppText as Text } from '../../layout/AppText';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppSymbol } from '../../layout/AppSymbol';
 import { appColors } from '../../layout/appColors';
 import { isProviderSelectionOptionSelectable } from './providerSelection';
 import { providerSelectionText } from './text';
@@ -27,11 +28,6 @@ export default function ProviderSelectionOptionCard({
 }: ProviderSelectionOptionCardProps) {
   const blockedMessage = getBlockedMessage(option, requirements);
   const selectable = blockedMessage === null && !disabled;
-  const privacyText =
-    option.privacyBoundary === 'on-device'
-      ? providerSelectionText.onDevicePrivacy
-      : providerSelectionText.remotePrivacy;
-
   return (
     <Pressable
       key={`${option.provider.id}:${option.modelId}`}
@@ -42,18 +38,29 @@ export default function ProviderSelectionOptionCard({
       style={[styles.option, selected && styles.selectedOption]}
       testID={`provider-option-${index}`}
     >
-      <Text style={styles.optionTitle}>{option.displayName}</Text>
-      <Text style={styles.privacyHeading}>
-        {option.privacyBoundary === 'on-device'
-          ? providerSelectionText.onDeviceHeading
-          : providerSelectionText.remoteHeading}
-      </Text>
-      <Text>{privacyText}</Text>
-      {blockedMessage ? (
-        <Text accessibilityRole="alert" style={styles.unavailable}>
-          {blockedMessage}
+      <View style={styles.icon}>
+        <AppSymbol
+          name={option.privacyBoundary === 'on-device' ? 'sparkles' : 'brain'}
+          size={28}
+          color={appColors.primaryText}
+        />
+      </View>
+      <View style={styles.copy}>
+        <Text style={styles.optionTitle}>{option.displayName}</Text>
+        <Text style={styles.privacyHeading}>
+          {option.privacyBoundary === 'on-device'
+            ? '기기 안에서 처리'
+            : option.modelId}
         </Text>
-      ) : null}
+        {blockedMessage ? (
+          <Text accessibilityRole="alert" style={styles.unavailable}>
+            {blockedMessage}
+          </Text>
+        ) : null}
+      </View>
+      <View style={[styles.radio, selected && styles.radioSelected]}>
+        {selected ? <View style={styles.radioDot} /> : null}
+      </View>
     </Pressable>
   );
 }
@@ -74,15 +81,49 @@ function getBlockedMessage(
 
 const styles = StyleSheet.create({
   option: {
-    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    minHeight: 82,
     padding: 16,
     borderColor: appColors.border,
     borderWidth: 1,
     borderRadius: 20,
     backgroundColor: appColors.surface,
   },
-  selectedOption: { borderColor: appColors.primary, borderWidth: 2 },
+  selectedOption: {
+    borderColor: appColors.primary,
+    backgroundColor: appColors.primarySoft,
+  },
+  copy: { flex: 1, gap: 6 },
+  icon: {
+    width: 48,
+    height: 48,
+    borderRadius: 15,
+    backgroundColor: appColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: appColors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioSelected: {
+    borderColor: appColors.primaryAction,
+    backgroundColor: appColors.primaryAction,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: appColors.onPrimary,
+  },
   optionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
-  privacyHeading: { color: appColors.text, fontWeight: '600' },
+  privacyHeading: { color: appColors.secondary, fontSize: 14 },
   unavailable: { color: appColors.danger },
 });

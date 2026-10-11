@@ -2,7 +2,7 @@ import type { LanguageModelRequest } from '@orot/model-runtime';
 import { serializeAppleRequest } from '../serializeRequest';
 
 describe('Apple native request conversion', () => {
-  it('keeps visit guidance and source identifiers in the on-device request', () => {
+  it('preserves task instructions and identifiers without injecting visit-specific output', () => {
     const request: LanguageModelRequest = {
       messages: [
         { role: 'system', content: 'Use the record only.' },
@@ -29,15 +29,9 @@ describe('Apple native request conversion', () => {
 
     expect(result.mode).toBe('structured');
     expect(result.instructions).toContain(
-      'Help prepare questions the patient can ask at a medical visit.',
+      'Follow the supplied task instructions',
     );
-    expect(result.instructions).toContain(
-      'The patient is the speaker and their clinician is the listener.',
-    );
-    expect(result.instructions).toContain("Address the clinician as '선생님'");
-    expect(result.instructions).toContain(
-      'Write every string in structured output in Korean.',
-    );
+    expect(result.instructions).not.toContain('Return one concise');
     expect(result.instructions).toContain(
       'Do not diagnose or give medical or medication-change recommendations.',
     );

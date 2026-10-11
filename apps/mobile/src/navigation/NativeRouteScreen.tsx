@@ -1,6 +1,6 @@
 import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useContext, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import type { NavigationRoute } from './navigationController';
 import {
   NativeRouteRegistryContext,
@@ -13,7 +13,10 @@ type NativeRouteScreenProps = NativeStackScreenProps<
 >;
 
 /** Keeps UIKit-originated removals behind the app's current leave guard. */
-export default function NativeRouteScreen({ route }: NativeRouteScreenProps) {
+export default function NativeRouteScreen({
+  route,
+  navigation,
+}: NativeRouteScreenProps) {
   const registry = useContext(NativeRouteRegistryContext);
   if (!registry) {
     throw new Error('The native route stack has no route registry.');
@@ -28,9 +31,10 @@ export default function NativeRouteScreen({ route }: NativeRouteScreenProps) {
 
   const registryRef = useRef(registry);
   registryRef.current = registry;
-  // usePreventRemove lets UIKit gestures consult the same guard as app back buttons.
+  // Safe routes let UIKit finish or cancel interactively. Dirty routes retain the shared guard.
   usePreventRemove(
-    registry.routes.some(item => item.key === routeKey),
+    registry.routes.some(item => item.key === routeKey) &&
+      !registry.canNativeGoBack(routeKey),
     () => {
       const latest = registryRef.current;
       if (
@@ -40,6 +44,15 @@ export default function NativeRouteScreen({ route }: NativeRouteScreenProps) {
         void latest.requestBack();
       }
     },
+  );
+
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', () => {
+        // Capture permission before the native pop unmounts its leave-state owner.
+        registryRef.current.prepareNativeBack(routeKey);
+      }),
+    [navigation, routeKey],
   );
 
   const retainedRoute = lastRoute.current;

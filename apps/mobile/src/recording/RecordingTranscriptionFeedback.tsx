@@ -17,6 +17,17 @@ export default function RecordingTranscriptionFeedback({
   onRetry,
 }: RecordingTranscriptionFeedbackProps) {
   if (!snapshot || snapshot.status === 'complete') return null;
+  const reason = snapshot.failureReason ?? '';
+  // Never expose provider text: it can contain file paths or native diagnostics.
+  const help = reason.startsWith('PERMISSION_')
+    ? t('recording.transcript.permissionHelp')
+    : reason === 'MODEL_UNAVAILABLE'
+      ? t('recording.transcript.modelHelp')
+      : reason === 'UNSUPPORTED_DEVICE' || reason === 'UNSUPPORTED_LANGUAGE'
+        ? t('recording.transcript.unsupportedHelp')
+        : reason === 'TRANSCRIPTION_TIMEOUT'
+          ? t('recording.transcript.timeoutHelp')
+          : null;
 
   return (
     <View
@@ -38,6 +49,7 @@ export default function RecordingTranscriptionFeedback({
           <AppText accessibilityRole="alert" style={styles.error}>
             {t('recording.transcript.autoFailed')}
           </AppText>
+          {help ? <AppText>{help}</AppText> : null}
           <AppButton
             onPress={onRetry}
             testID="recording-transcription-retry"

@@ -15,34 +15,6 @@ final class NavigationGlassSurfaceView: UIView {
     private var actionButtons: [UIButton] = []
     private let actionGroup = UIStackView()
     private var groupWidth: NSLayoutConstraint?
-    /// Color values use 8-bit channels; UIColor expects normalized 0...1 components.
-    private static func rgbColor(red: Int, green: Int, blue: Int) -> UIColor {
-        UIColor(
-            red: CGFloat(red) / 255,
-            green: CGFloat(green) / 255,
-            blue: CGFloat(blue) / 255,
-            alpha: 1,
-        )
-    }
-
-    private static let primaryTint = UIColor { traits in
-        // Darken the brand tint in higher-contrast settings while retaining its hue.
-        traits.accessibilityContrast == .high
-            ? NavigationGlassSurfaceView.rgbColor(red: 31, green: 93, blue: 184)
-            : NavigationGlassSurfaceView.rgbColor(red: 49, green: 130, blue: 246)
-    }
-
-    private static let selectedRootTabBackground = UIColor.secondarySystemFill
-    private static let selectedRootTabForeground = UIColor { traits in
-        // Keep small selected labels readable by adapting the brand hue to appearance and contrast.
-        let color: (Int, Int, Int) = if traits.userInterfaceStyle == .dark {
-            traits.accessibilityContrast == .high ? (179, 208, 255) : (141, 187, 255)
-        } else {
-            (31, 93, 184)
-        }
-        return NavigationGlassSurfaceView.rgbColor(red: color.0, green: color.1, blue: color.2)
-    }
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         configure()
@@ -104,22 +76,33 @@ final class NavigationGlassSurfaceView: UIView {
         actionGroup.axis = .horizontal
         actionGroup.distribution = .fillEqually
         actionGroup.spacing = 4
-        actionButtons.forEach(actionGroup.addArrangedSubview)
+        let back = actionButtons.first { $0.accessibilityIdentifier == "navigation-back" }
+        let contextual = actionButtons.filter { $0 !== back }
+        contextual.forEach(actionGroup.addArrangedSubview)
         groupWidth?.isActive = false
         let width = actionGroup.widthAnchor.constraint(equalToConstant: groupContentWidth)
         width.isActive = true
         groupWidth = width
-        toolbar.setItems(
-            [.flexibleSpace(), UIBarButtonItem(customView: actionGroup), .flexibleSpace()],
-            animated: false,
-        )
+        // A flexible gap keeps back physically separate from the contextual home capsule.
+        var items: [UIBarButtonItem] = []
+        if let back {
+            items.append(UIBarButtonItem(customView: back))
+        }
+        items.append(.flexibleSpace())
+        if !contextual.isEmpty {
+            items.append(UIBarButtonItem(customView: actionGroup))
+        }
+        toolbar.setItems(items, animated: false)
         setNeedsLayout()
     }
 
     private var groupContentWidth: CGFloat {
         // Tighten the material's side gutters while keeping each native control at least 44 points wide.
-        max(CGFloat(actionButtons.count) * 44 + CGFloat(max(0, actionButtons.count - 1)) * 4,
-            bounds.width - 32)
+        if actionButtons.contains(where: { $0.accessibilityIdentifier == "navigation-back" }) {
+            return CGFloat(max(0, actionButtons.count - 1)) * 64
+        }
+        return max(CGFloat(actionButtons.count) * 44 + CGFloat(max(0, actionButtons.count - 1)) * 4,
+                   bounds.width - 32)
     }
 
     override func layoutSubviews() {
@@ -131,16 +114,17 @@ final class NavigationGlassSurfaceView: UIView {
         let button = UIButton(type: .system)
         let selectedRootTab = action.rootTab && action.selected
         var configuration: UIButton.Configuration = if #available(iOS 26.0, *) {
-            // Nonprimary icons share the toolbar's native material instead of drawing separate bubbles.
-            action.primary || selectedRootTab ? .prominentGlass() : .plain()
+            // Contextual back and home own separate glass surfaces; root tabs keep their shared material.
+            action.primary || selectedRootTab ? .prominentGlass() :
+                action.id == "back" || action.id == "home" ? .glass() : .plain()
         } else {
             action.primary || selectedRootTab ? .filled() : .plain()
         }
         if selectedRootTab {
             configuration.cornerStyle = .capsule
-            configuration.baseBackgroundColor = Self.selectedRootTabBackground
+            configuration.baseBackgroundColor = NavigationGlassPalette.selectedRootTabBackground
         }
-        if action.rootTab {
+        if action.rootTab || action.id == "home" || action.id == "back" {
             // Keep UIKit's glass background while drawing tab content in explicitly bounded native views.
             configuration.title = nil
             configuration.image = nil
@@ -179,15 +163,26 @@ final class NavigationGlassSurfaceView: UIView {
         configuration.baseForegroundColor = action.primary
             ? .white
             : selectedRootTab
-            ? Self.selectedRootTabForeground
-            : action.selected ? Self.primaryTint : .label
+            ? NavigationGlassPalette.selectedRootTabForeground
+            : action.selected ? NavigationGlassPalette.primaryTint : .label
+        if action.id == "back" {
+            configuration.title = nil
+            configuration.cornerStyle = .capsule
+        }
+        if action.id == "home" {
+            configuration.cornerStyle = .capsule
+        }
         button.configuration = configuration
-        if action.rootTab, let name = action.systemImageName {
+        if action.id == "back" {
+            NavigationBackContent.attach(to: button, testID: action.testID)
+        }
+        if action.rootTab || action.id == "home", let name = action.systemImageName {
             let content = NavigationRootTabContent.make(
                 label: action.label,
                 symbolName: name,
                 testID: action.testID,
-                foregroundColor: action.selected ? Self.selectedRootTabForeground : .label,
+                foregroundColor: action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label,
+                titleSize: action.rootTab ? 12 : 11,
             )
             button.addSubview(content)
             NSLayoutConstraint.activate([
@@ -200,16 +195,19 @@ final class NavigationGlassSurfaceView: UIView {
         button.isEnabled = !action.disabled
         button.tintColor =
             action.primary
-                ? Self.primaryTint
+                ? NavigationGlassPalette.primaryTint
                 : selectedRootTab
-                ? Self.selectedRootTabBackground
-                : action.selected ? Self.primaryTint : UIColor.label
+                ? NavigationGlassPalette.selectedRootTabBackground
+                : action.selected ? NavigationGlassPalette.primaryTint : UIColor.label
         button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
             button.heightAnchor.constraint(equalToConstant: action.rootTab ? 48 : 44),
         ])
+        if action.id == "back" {
+            button.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        }
         button.addAction(UIAction(title: action.label) { [weak self] _ in
             // Stable IDs keep UIKit input connected to the existing JS navigation handlers.
             self?.onAction?(["id": action.id])

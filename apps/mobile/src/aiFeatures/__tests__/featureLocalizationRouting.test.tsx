@@ -45,9 +45,6 @@ const featureScreens = [
       'aiFeatures.ragConversation.title',
       'aiFeatures.ragConversation.description',
       'aiFeatures.ragConversation.action',
-      'aiFeatures.externalEvidence.title',
-      'aiFeatures.externalEvidence.description',
-      'aiFeatures.externalEvidence.action',
     ],
   },
   {

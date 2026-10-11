@@ -6,7 +6,6 @@ import {
 } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import type { ExternalMedicalPublication } from '../../../externalMedicalEvidence/europePmc';
 
 /** Covers entry-only screens and article-launch errors through the production route. */
 
@@ -51,49 +50,18 @@ test('keeps next-visit questions explicitly unavailable until its screen is supp
   expect(screen.getByTestId('disease-hypotheses-screen')).toBeTruthy();
 });
 
-test('shows an error when the selected external article cannot be opened', async () => {
-  const publication: ExternalMedicalPublication = {
-    provider: 'Europe PMC',
-    recordId: '12345',
-    source: 'MED',
-    title: 'A sourced article',
-    authors: null,
-    journal: null,
-    publicationDate: null,
-    updatedDate: null,
-    abstract: null,
-    originalUrl: 'https://europepmc.org/article/MED/12345',
-    retrievedAt: '2026-10-08T00:00:00.000Z',
-  };
-  const externalEvidence = {
-    search: jest.fn(async () => ({
-      status: 'available' as const,
-      publications: [publication],
-    })),
-  };
-  const onOpenArticle = jest.fn(async () => {
-    throw new Error('No browser is available.');
-  });
+test('keeps literature inside conversation instead of exposing a standalone entry', async () => {
+  const search = jest.fn();
   await render(
     <AiFeatureRoute
       onBack={jest.fn()}
-      onOpenArticle={onOpenArticle}
-      serviceDependencies={{ externalEvidence }}
+      serviceDependencies={{ externalEvidence: { search } }}
     />,
   );
-
-  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
-  await fireEvent.changeText(
-    screen.getByTestId('external-evidence-query'),
-    'blood pressure',
-  );
-  await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  expect(await screen.findByText(publication.title)).toBeTruthy();
-  await fireEvent.press(screen.getByText('원문 열기'));
-
+  expect(screen.queryByTestId('ai-feature-external-evidence')).toBeNull();
+  await fireEvent.press(screen.getByTestId('ai-feature-rag-conversation'));
   expect(
-    await screen.findByTestId('external-article-open-error'),
-  ).toHaveTextContent('외부 문헌을 열지 못했어요. 링크를 확인해 주세요.');
-  expect(onOpenArticle).toHaveBeenCalledWith(publication);
+    screen.getByText('필요하면 동의를 받고 공개 의학 문헌도 찾아요.'),
+  ).toBeTruthy();
+  expect(search).not.toHaveBeenCalled();
 });

@@ -1,3 +1,4 @@
+import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import type { ReactElement } from 'react';
 import type {
   EvidenceItem,
@@ -122,6 +123,14 @@ export function AiFeatureFlowScreen({
     case 'rag-conversation':
       return (
         <ConversationScreen
+          providerSelection={
+            <AiProviderSelectorRow
+              embedded
+              onPress={onOpenProviderSelection}
+              resolveSelectedAi={resolveSelectedAi}
+              revision={selectedAiRevision}
+            />
+          }
           navigationRouteKey={navigationRouteKey}
           onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}

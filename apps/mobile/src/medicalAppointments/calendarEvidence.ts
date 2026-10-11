@@ -5,9 +5,13 @@ import type {
 } from '@orot/agent-runtime';
 import { calendarSnapshotsEqual } from '../calendar/calendarSnapshot';
 import type { CalendarBridge, CalendarEvent } from '../calendar/types';
-import type { CalendarAccessState } from '../calendar/types';
+import type {
+  CalendarQueryCoverage,
+  CalendarAccessState,
+} from '../calendar/types';
 
-export const CALENDAR_QUERY_EVENT_LIMIT = 100;
+// Null denotes no row cap; the explicit one-year time window still applies.
+export const CALENDAR_QUERY_EVENT_LIMIT = null;
 export const CALENDAR_QUERY_HORIZON_YEARS = 1;
 export const MAX_CLASSIFICATION_EVIDENCE_ITEMS = 8;
 
@@ -27,10 +31,11 @@ export interface CalendarCandidateSet {
   readonly events: readonly CalendarEvent[];
   readonly resultLimit: typeof CALENDAR_QUERY_EVENT_LIMIT;
   readonly horizonYears: typeof CALENDAR_QUERY_HORIZON_YEARS;
-  readonly complete: false;
+  readonly complete: boolean;
+  readonly query: CalendarQueryCoverage | null;
 }
 
-/** Reads the user-authorized bounded query and preserves its unknown overflow state. */
+/** Preserves native coverage without inventing completeness for older or synthetic adapters. */
 export async function readUpcomingCalendarCandidates(
   bridge: CalendarBridge,
 ): Promise<CalendarCandidateSet> {
@@ -40,13 +45,14 @@ export async function readUpcomingCalendarCandidates(
     events: result.access === 'fullAccess' ? result.events : [],
     resultLimit: CALENDAR_QUERY_EVENT_LIMIT,
     horizonYears: CALENDAR_QUERY_HORIZON_YEARS,
-    complete: false,
+    complete: result.access === 'fullAccess' && result.query?.complete === true,
+    query: result.query ?? null,
   };
 }
 
 /**
- * The EventKit bridge returns at most 100 events for the next year and exposes no
- * has-more flag; callers must describe this as a bounded candidate view.
+ * The query has no row cap within the next year. Model batches remain small;
+ * batch coverage describes only these items, not the entire Calendar history.
  */
 export function createCalendarEvidenceBatch(
   bridge: CalendarBridge,

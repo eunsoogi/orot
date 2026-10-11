@@ -35,7 +35,7 @@ jest.mock('../../../providers/selection/options', () => {
   };
 });
 
-test('routes all four entry actions through the integration and returns from visit questions', async () => {
+test('routes all entry actions through the integration and returns from visit questions', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const reference: EvidenceItem = {
     sourceKind: 'personal_record',
@@ -178,8 +178,7 @@ test('routes all four entry actions through the integration and returns from vis
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
 
-  await fireEvent.press(screen.getByTestId('ai-feature-external-evidence'));
-  expect(screen.getByTestId('external-medical-evidence-screen')).toBeTruthy();
+  expect(screen.queryByTestId('ai-feature-external-evidence')).toBeNull();
 });
 
 /** Models saved selection so the flow can resolve the committed choice again. */

@@ -46,6 +46,8 @@ const taskInstructions = [
   'Use only the supplied event title and time. Do not infer a diagnosis, give health advice, or invent missing details.',
   'Return exactly one item for every candidateId and no others. Use uncertain when the event is ambiguous.',
   'Give a short Korean reason and a low, medium, or high uncertainty rating for each candidate.',
+  // Confidence concerns appointment relevance, never the person's condition or diagnosis.
+  'Uncertainty measures only whether this is a medical appointment. Use low when the title explicitly names a clinic, hospital visit, examination, treatment, or consultation appointment; medium or high when that purpose is unclear. Do not increase uncertainty merely because clinical details are absent.',
   'Do not request more evidence; return uncertain when the supplied event text is insufficient.',
 ].join(' ');
 

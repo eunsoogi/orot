@@ -40,11 +40,18 @@ function priorMessages(
 /** Makes every turn cite fresh evidence; chat history is never treated as a source. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '1',
+  taskVersion: '2',
+  allowBoundedExternalEvidence: true,
   systemPrompt:
     'Answer the current question using only the supplied current evidence. Previous conversation is context, not evidence. ' +
-    'Cite exact current references in the top-level citations field. If evidence does not support an answer, request evidence or say that it is unavailable. ' +
-    'Do not invent records, diagnoses, or sources.',
+    'Cite exact current evidence IDs in the top-level citations field. ' +
+    // An empty personal library does not establish that public literature is unavailable.
+    'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +
+    'If research is denied, exhausted, or returned no supporting results, acknowledge insufficient evidence; do not invent an answer or repeatedly request the same search. ' +
+    'Do not invent records, diagnoses, or sources. External medical publications are general literature, not personal findings. ' +
+    'Describe external evidence as a limited search sample, never a complete review; include publication dates and limitations. Request literature evidence when relevant. ' +
+    'Give a concise grounded answer, avoiding repeated evidence metadata. Preserve relevant qualifications and uncertainty. ' +
+    'Write the user-facing answer in Korean. Keep publication titles and citation IDs in their original form.',
   resultSchema: {
     type: 'object',
     required: ['answer'],
@@ -58,11 +65,13 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         content: JSON.stringify({
           question: input.request,
           previousConversation: priorMessages(input.context),
+          // The runtime restores full references locally; generation needs content and citation IDs only.
           evidence: input.evidence.items.map(item => ({
+            evidenceId: item.evidenceId,
+            sourceKind: item.sourceKind,
+            effectiveTime: item.effectiveTime,
+            reviewState: item.reviewState,
             content: item.content,
-            reference: (({ content: _content, ...reference }) => reference)(
-              item,
-            ),
           })),
           coverage: input.evidence.coverage,
           conflicts: input.evidence.conflicts,

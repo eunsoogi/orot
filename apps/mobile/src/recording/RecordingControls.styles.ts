@@ -12,7 +12,7 @@ export const recordingControlStyles = StyleSheet.create({
     backgroundColor: appColors.background,
   },
   back: { alignSelf: 'flex-start' },
-  title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 32, fontWeight: '700' },
   copy: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
   consentRow: {
     flexDirection: 'row',

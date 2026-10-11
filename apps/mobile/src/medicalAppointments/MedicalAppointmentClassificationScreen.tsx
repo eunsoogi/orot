@@ -1,8 +1,4 @@
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { AppButton as Button } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
 import type { AppointmentRepository } from '@orot/storage';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
@@ -10,17 +6,12 @@ import { readUpcomingCalendarCandidates } from './calendarEvidence';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { classifyCalendarEvents } from './classificationWorkflow';
 import type { CandidateReview } from './classificationWorkflow';
-import type { CalendarBridge, CalendarEvent } from '../calendar/types';
-import { MedicalAppointmentCandidateCard } from './MedicalAppointmentCandidateCard';
-import { saveCalendarCandidate } from './saveCalendarCandidate';
-
-const styles = StyleSheet.create({
-  content: {
-    gap: 12,
-    padding: 24,
-  },
-  title: { fontSize: 30, fontWeight: '700' },
-});
+import type { CalendarBridge } from '../calendar/types';
+import { MedicalAppointmentReviewView } from './MedicalAppointmentReviewView';
+import {
+  isConfidentMedical,
+  saveCalendarCandidate,
+} from './saveCalendarCandidate';
 
 interface MedicalAppointmentClassificationScreenProps {
   readonly bridge: CalendarBridge;
@@ -32,7 +23,7 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly onOpenManual: () => void;
 }
 
-/** Keeps every imported candidate visible and leaves saving to an explicit user selection. */
+/** One import scans every returned event and saves only confidently medical occurrences. */
 export default function MedicalAppointmentClassificationScreen({
   bridge,
   repository,
@@ -41,207 +32,151 @@ export default function MedicalAppointmentClassificationScreen({
   selectedProviderUnavailable = false,
   onOpenManual,
 }: MedicalAppointmentClassificationScreenProps) {
-  // Remote batches use the same in-memory registry and prompt for each actual model request.
-  const navigationInset = useNavigationContentInset();
+  // Every remote request retains its own disclosure and authorization boundary.
   const { consent, disclosureSheet } = useInferenceConsent();
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [candidates, setCandidates] = useState<CandidateReview[]>([]);
   const [accessAvailable, setAccessAvailable] = useState(false);
+  const [queryComplete, setQueryComplete] = useState(true);
   const [loading, setLoading] = useState(false);
   const [classifying, setClassifying] = useState(false);
-  const [completedBatches, setCompletedBatches] = useState(0);
-  const [totalBatches, setTotalBatches] = useState(0);
+  const [eventCount, setEventCount] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState('');
   const activeRun = useRef<AbortController | null>(null);
 
-  useEffect(
-    () => () => {
-      // The screen owns this run; clear its state-update handle before abort is observed.
+  useEffect(() => {
+    setLoading(false);
+    setClassifying(false);
+    setSavingId(null);
+    return () => {
+      // Leaving or switching provider prevents subsequent imports and late results.
       activeRun.current?.abort();
       activeRun.current = null;
-    },
-    [],
-  );
+    };
+  }, [bridge, repository, selectedProvider, recipient]);
 
   const providerReady =
     selectedProvider?.availability.status === 'available' &&
     Boolean(recipient?.trim());
 
-  async function loadCandidates() {
-    // Candidate IDs are positional, so keep the list stable until an explicit save settles.
-    if (savingId !== null) return;
-    activeRun.current?.abort();
-    activeRun.current = null;
-    setClassifying(false);
-    setLoading(true);
-    setEvents([]);
-    setCandidates([]);
-    // Batch counts describe the current candidate set, so clear them with the list.
-    setCompletedBatches(0);
-    setTotalBatches(0);
-    setSavedIds(new Set());
-    setAccessAvailable(false);
-    setMessage('');
-    try {
-      const result = await readUpcomingCalendarCandidates(bridge);
-      const granted = result.access === 'fullAccess';
-      const nextEvents = [...result.events];
-      setAccessAvailable(granted);
-      setEvents(nextEvents);
-      setCandidates(
-        nextEvents.map((event, index) => ({
-          candidateId: `calendar-candidate-${index + 1}`,
-          event,
-          status: 'unclassified',
-          reason: copy.notClassified,
-        })),
-      );
-      if (!granted) setMessage(copy.permissionUnavailable);
-      else if (nextEvents.length === 0) setMessage(copy.noCandidates);
-    } catch {
-      setMessage(copy.permissionUnavailable);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function classifyCandidates() {
+  async function importAppointments() {
+    // Synchronous ownership prevents double taps before React renders busy state.
+    if (activeRun.current) return;
     if (!providerReady || !selectedProvider || !recipient) {
       setMessage(selectedProvider ? copy.providerUnavailable : copy.noProvider);
       return;
     }
     const controller = new AbortController();
-    activeRun.current?.abort();
     activeRun.current = controller;
-    setClassifying(true);
-    setMessage('');
-    const result = await classifyCalendarEvents({
-      bridge,
-      events,
-      provider: selectedProvider.provider,
-      modelId: selectedProvider.modelId,
-      recipient,
-      remoteProcessing:
-        selectedProvider.privacyBoundary === 'selected-context-remote',
-      consent,
-      signal: controller.signal,
-      onProgress: progress => {
-        if (activeRun.current !== controller || controller.signal.aborted)
-          return;
-        setCandidates([...progress.candidates]);
-        setCompletedBatches(progress.completedBatches);
-        setTotalBatches(progress.totalBatches);
-      },
-    });
-    if (activeRun.current !== controller || controller.signal.aborted) return;
-    setCandidates([...result.candidates]);
-    setCompletedBatches(result.completedBatches);
-    setTotalBatches(result.totalBatches);
-    setClassifying(false);
-    if (result.status === 'unavailable' || result.status === 'partial') {
-      setMessage(copy.manualReview);
-    }
-  }
-
-  async function saveAsAppointment(candidate: CandidateReview) {
-    setSavingId(candidate.candidateId);
+    const isCurrent = () =>
+      activeRun.current === controller && !controller.signal.aborted;
+    setLoading(true);
+    setCandidates([]);
+    setEventCount(0);
+    setSavedIds(new Set());
+    setAccessAvailable(false);
+    setQueryComplete(true);
     setMessage('');
     try {
-      const outcome = await saveCalendarCandidate(
-        candidate,
-        repository,
-        bridge,
-      );
-      setMessage(outcome === 'saved' ? copy.saved : copy.stale);
-      if (outcome === 'saved') {
-        setSavedIds(previous => new Set(previous).add(candidate.candidateId));
+      const source = await readUpcomingCalendarCandidates(bridge);
+      if (!isCurrent()) return;
+      setLoading(false);
+      setQueryComplete(source.complete);
+      setAccessAvailable(source.access === 'fullAccess');
+      setEventCount(source.events.length);
+      if (source.access !== 'fullAccess') {
+        setMessage(copy.permissionUnavailable);
+        return;
       }
+      if (!source.events.length) {
+        setMessage(copy.noCandidates);
+        return;
+      }
+      setClassifying(true);
+      const result = await classifyCalendarEvents({
+        bridge,
+        events: source.events,
+        provider: selectedProvider.provider,
+        modelId: selectedProvider.modelId,
+        recipient,
+        remoteProcessing:
+          selectedProvider.privacyBoundary === 'selected-context-remote',
+        consent,
+        signal: controller.signal,
+        onProgress: progress => {
+          if (!isCurrent()) return;
+          setCandidates([...progress.candidates]);
+        },
+      });
+      if (!isCurrent()) return;
+      setCandidates([...result.candidates]);
+      // Classification settles before import; unfinished and uncertain rows stay excluded.
+      const medical = result.candidates.filter(isConfidentMedical);
+      let imported = 0;
+      let preserved = 0;
+      let saveFailure = '';
+      for (const candidate of medical) {
+        if (!isCurrent()) return;
+        setSavingId(candidate.candidateId);
+        try {
+          const outcome = await saveCalendarCandidate(
+            candidate,
+            repository,
+            bridge,
+            controller.signal,
+          );
+          if (!isCurrent()) return;
+          if (outcome === 'saved') {
+            imported += 1;
+            setSavedIds(previous =>
+              new Set(previous).add(candidate.candidateId),
+            );
+          } else if (outcome === 'stale') saveFailure = copy.stale;
+          else if (outcome === 'preserved') preserved += 1;
+        } catch {
+          saveFailure = copy.saveError;
+        }
+      }
+      if (!isCurrent()) return;
+      const summary = medical.length
+        ? [copy.imported(imported), preserved ? copy.preserved(preserved) : '']
+            .filter(Boolean)
+            .join(' ')
+        : copy.noMedical;
+      const incomplete =
+        result.status !== 'complete' && result.status !== 'empty';
+      setMessage(saveFailure || (incomplete ? copy.manualReview : summary));
     } catch {
-      setMessage(copy.saveError);
+      if (isCurrent()) setMessage(copy.manualReview);
     } finally {
-      setSavingId(null);
+      if (isCurrent()) {
+        activeRun.current = null;
+        setLoading(false);
+        setClassifying(false);
+        setSavingId(null);
+      }
     }
   }
-
-  const classifiedCount = candidates.filter(
-    candidate => candidate.status === 'classified',
-  ).length;
-  const providerNotice = selectedProvider
-    ? selectedProvider.privacyBoundary === 'on-device'
-      ? copy.localNotice
-      : copy.remoteNotice
-    : '';
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={[styles.content, navigationInset]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text accessibilityRole="header" style={styles.title}>
-          {copy.title}
-        </Text>
-        <Text>{copy.description}</Text>
-        <Text>{copy.queryLimit}</Text>
-        <Text>{copy.incompleteCalendar}</Text>
-        {providerNotice ? <Text>{providerNotice}</Text> : null}
-        {!selectedProvider && !selectedProviderUnavailable ? (
-          <Text>{copy.noProvider}</Text>
-        ) : null}
-        {selectedProviderUnavailable ? (
-          <Text>{copy.providerUnavailable}</Text>
-        ) : null}
-        {selectedProvider?.availability.status === 'unavailable' ? (
-          <Text>{copy.providerUnavailable}</Text>
-        ) : null}
-        {selectedProvider?.availability.status === 'available' &&
-        !providerReady ? (
-          <Text>{copy.noProvider}</Text>
-        ) : null}
-        {message ? <Text accessibilityRole="alert">{message}</Text> : null}
-        <Button
-          disabled={loading || classifying || savingId !== null}
-          onPress={loadCandidates}
-          title={loading ? copy.loading : copy.loadCalendar}
-        />
-        <Button
-          disabled={
-            !providerReady ||
-            events.length === 0 ||
-            classifying ||
-            !accessAvailable
-          }
-          onPress={classifyCandidates}
-          title={classifying ? copy.classifying : copy.classify}
-        />
-        {events.length > 0 ? (
-          <Text>
-            {copy.coverage(events.length, classifiedCount)} {completedBatches}/
-            {totalBatches}
-          </Text>
-        ) : null}
-        {candidates.map(candidate => (
-          <MedicalAppointmentCandidateCard
-            key={candidate.candidateId}
-            candidate={candidate}
-            disabled={savingId !== null}
-            isSaved={savedIds.has(candidate.candidateId)}
-            isSaving={savingId === candidate.candidateId}
-            onSave={saveAsAppointment}
-          />
-        ))}
-        {events.length === 0 && accessAvailable ? (
-          <Text>{copy.emptyCoverage}</Text>
-        ) : null}
-        <Text>{copy.resultNotice}</Text>
-        <Button
-          onPress={onOpenManual}
-          testID="medical-appointment-manual"
-          title={copy.manual}
-        />
-      </ScrollView>
+      <MedicalAppointmentReviewView
+        provider={selectedProvider}
+        providerUnavailable={selectedProviderUnavailable}
+        providerReady={providerReady}
+        loading={loading}
+        classifying={classifying}
+        accessAvailable={accessAvailable}
+        queryComplete={queryComplete}
+        message={message}
+        eventCount={eventCount}
+        candidates={candidates}
+        savingId={savingId}
+        savedIds={savedIds}
+        onImport={importAppointments}
+        onOpenManual={onOpenManual}
+      />
       {disclosureSheet}
     </>
   );

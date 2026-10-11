@@ -2,10 +2,11 @@ import { useNavigationContentInset } from '../../navigation/useNavigationContent
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
+import { ProviderSelectionFooter } from './ProviderSelectionFooter';
 import { providerSelectionScreenStyles as styles } from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
@@ -166,49 +167,70 @@ export default function ProviderSelectionScreen({
           : providerSelectionText.selectPrompt;
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, navigationInset]}
-      style={styles.scrollView}
-      testID={
-        presentation === 'settings-provider'
-          ? 'settings-provider-screen'
-          : presentation === 'settings-accounts'
-            ? 'settings-accounts-screen'
-            : 'provider-selection-screen'
-      }
-    >
-      {onBack && !navigationRouteKey ? (
-        <Button
-          accessibilityLabel={navigationText.back.accessibilityLabel}
-          onPress={onBack}
-          testID="provider-selection-back"
-          title={navigationText.back.label}
-        />
-      ) : null}
-      {/* AI keeps combined controls; Settings exposes provider choices or account actions by route. */}
-      <Text accessibilityRole="header" style={styles.title}>
-        {screenTitle ?? providerSelectionText.title}
-      </Text>
-      <Text style={styles.introduction}>
-        {screenIntroduction ?? providerSelectionText.introduction}
-      </Text>
-      {presentation !== 'settings-accounts' ? (
-        <Text
-          accessibilityRole={loadError || saveError ? 'alert' : undefined}
-          style={loadError || saveError ? styles.error : undefined}
-          testID="provider-selection-current"
-        >
-          {saveError
-            ? providerSelectionText.storageSaveError
-            : selectionMessage}
+    <View style={styles.root}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          presentation === 'settings-accounts' && navigationInset,
+        ]}
+        style={styles.scrollView}
+        testID={
+          presentation === 'settings-provider'
+            ? 'settings-provider-screen'
+            : presentation === 'settings-accounts'
+              ? 'settings-accounts-screen'
+              : 'provider-selection-screen'
+        }
+      >
+        {onBack && !navigationRouteKey ? (
+          <Button
+            accessibilityLabel={navigationText.back.accessibilityLabel}
+            onPress={onBack}
+            testID="provider-selection-back"
+            title={navigationText.back.label}
+          />
+        ) : null}
+        {/* AI keeps combined controls; Settings exposes provider choices or account actions by route. */}
+        <Text accessibilityRole="header" style={styles.title}>
+          {presentation === 'settings-accounts' ? screenTitle : 'AI 선택'}
         </Text>
-      ) : null}
-      {chatGPTSetup ? <ChatGPTAccountSetupCard setup={chatGPTSetup} /> : null}
+        <Text style={styles.introduction}>
+          {presentation === 'settings-accounts'
+            ? screenIntroduction
+            : '질문에 답할 AI를 선택해 주세요.'}
+        </Text>
+        {chatGPTSetup && presentation === 'settings-accounts' ? (
+          <ChatGPTAccountSetupCard setup={chatGPTSetup} />
+        ) : null}
 
+        {presentation !== 'settings-accounts' ? (
+          <ProviderSelectionChoices
+            chatGPTSetup={chatGPTSetup}
+            loading={loading}
+            onChoose={option => {
+              publishNavigationState(
+                { hasPendingSelection: true, isSavingSelection: false },
+                true,
+              );
+              setPendingOption(option);
+              setSaveError(false);
+            }}
+            options={options}
+            pendingOption={pendingOption}
+            requirements={requirements}
+            saving={saving}
+            selectedOption={selectedOption}
+          />
+        ) : null}
+      </ScrollView>
       {presentation !== 'settings-accounts' ? (
-        <ProviderSelectionChoices
-          confirmationOption={confirmationOption ?? undefined}
-          loading={loading}
+        <ProviderSelectionFooter
+          message={selectionMessage}
+          saveError={saveError}
+          remoteAvailable={options.some(
+            option => option.privacyBoundary !== 'on-device',
+          )}
+          resolution={pendingResolution}
           onCancel={() => {
             publishNavigationState(
               { hasPendingSelection: false, isSavingSelection: false },
@@ -216,23 +238,11 @@ export default function ProviderSelectionScreen({
             );
             setPendingOption(null);
           }}
-          onChoose={option => {
-            publishNavigationState(
-              { hasPendingSelection: true, isSavingSelection: false },
-              true,
-            );
-            setPendingOption(option);
-            setSaveError(false);
-          }}
           onConfirm={confirmSelection}
-          options={options}
-          pendingOption={pendingOption}
-          pendingResolution={pendingResolution}
-          requirements={requirements}
+          option={pendingOption ? confirmationOption : null}
           saving={saving}
-          selectedOption={selectedOption}
         />
       ) : null}
-    </ScrollView>
+    </View>
   );
 }

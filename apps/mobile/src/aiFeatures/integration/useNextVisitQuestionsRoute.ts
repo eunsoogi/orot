@@ -17,6 +17,7 @@ import {
   visitQuestionsProviderState,
 } from './nextVisitQuestionsRoutePresentation';
 import { useVisitQuestionSourceOpener } from './useVisitQuestionSourceOpener';
+import { boundedVisitGeneration } from './boundedVisitGeneration';
 
 /** Owns the async appointment, provider, citation and save state behind the screen. */
 export function useNextVisitQuestionsRoute(
@@ -54,6 +55,7 @@ export function useNextVisitQuestionsRoute(
   const [savedRetry, setSavedRetry] = useState(0);
   const [saveNotice, setSaveNotice] = useState('');
   const appointmentRequest = useRef(0);
+  const generationRequest = useRef(0);
   const refreshAppointment = useCallback(async () => {
     const request = ++appointmentRequest.current;
     setAppointment({ status: 'loading' });
@@ -130,48 +132,56 @@ export function useNextVisitQuestionsRoute(
       selection: { providerId: string; modelId: string },
       signal: AbortSignal,
     ) => {
-      try {
-        // Re-resolve before inference; a stale screen selection cannot authorize a changed provider.
-        const resolved = await resolveSelectedAi();
-        setProvider(visitQuestionsProviderState(resolved));
-        if (resolved.status !== 'ready') {
+      const request = ++generationRequest.current;
+      return boundedVisitGeneration(signal, async activeSignal => {
+        try {
+          // Re-resolve before inference; a stale screen selection cannot authorize a changed provider.
+          const resolved = await resolveSelectedAi();
+          if (activeSignal.aborted || request !== generationRequest.current)
+            return { status: 'cancelled' as const };
+          setProvider(visitQuestionsProviderState(resolved));
+          if (resolved.status !== 'ready') {
+            return {
+              status: 'provider_unavailable' as const,
+              message:
+                resolved.status === 'selection-required'
+                  ? copy.provider.unselected
+                  : copy.generation.providerUnavailable,
+            };
+          }
+          if (!sameVisitQuestionSelection(selection, resolved.selection)) {
+            return {
+              status: 'provider_unavailable' as const,
+              message: copy.generation.providerChanged,
+            };
+          }
+          const result = await operations.generate({
+            appointment: currentAppointment,
+            selectedAi: resolved,
+            confirmConsent,
+            signal: activeSignal,
+          });
+          if (activeSignal.aborted || request !== generationRequest.current)
+            return { status: 'cancelled' as const };
+          if (result.status === 'ready') {
+            rememberValidator(result.validateSource);
+            return {
+              status: 'ready' as const,
+              questions: result.questions,
+              caveats: result.caveats,
+            };
+          }
+          if (result.status === 'refresh_required')
+            refreshAppointment().catch(() => undefined);
+          return result;
+        } catch {
+          if (activeSignal.aborted) return { status: 'cancelled' as const };
           return {
-            status: 'provider_unavailable' as const,
-            message:
-              resolved.status === 'selection-required'
-                ? copy.provider.unselected
-                : copy.generation.providerUnavailable,
+            status: 'unavailable' as const,
+            message: copy.generation.genericError,
           };
         }
-        if (!sameVisitQuestionSelection(selection, resolved.selection)) {
-          return {
-            status: 'provider_unavailable' as const,
-            message: copy.generation.providerChanged,
-          };
-        }
-        const result = await operations.generate({
-          appointment: currentAppointment,
-          selectedAi: resolved,
-          confirmConsent,
-          signal,
-        });
-        if (result.status === 'ready') {
-          rememberValidator(result.validateSource);
-          return {
-            status: 'ready' as const,
-            questions: result.questions,
-            caveats: result.caveats,
-          };
-        }
-        if (result.status === 'refresh_required')
-          refreshAppointment().catch(() => undefined);
-        return result;
-      } catch {
-        return {
-          status: 'unavailable' as const,
-          message: copy.generation.genericError,
-        };
-      }
+      });
     },
     [
       operations,

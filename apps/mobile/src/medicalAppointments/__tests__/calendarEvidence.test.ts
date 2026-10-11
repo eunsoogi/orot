@@ -33,12 +33,23 @@ function bridge(findEvent: CalendarBridge['findEvent']): CalendarBridge {
 }
 
 describe('Calendar evidence boundary', () => {
-  it('preserves the upcoming-event query limit and unknown overflow state', async () => {
-    const selected = event('private-calendar-id-1');
+  it('preserves every event beyond 100 and the native one-year coverage', async () => {
+    const selected = Array.from({ length: 137 }, (_, index) =>
+      event(`calendar-${index}`),
+    );
+    const query = {
+      fromInclusive: '2035-06-01T00:00:00.000Z',
+      toExclusive: '2036-06-01T00:00:00.000Z',
+      horizonYears: 1 as const,
+      resultLimit: null,
+      complete: true,
+      omittedEventCount: 0,
+    };
     const calendar: CalendarBridge = {
       requestAccessAndListUpcomingEvents: jest.fn(async () => ({
         access: 'fullAccess' as const,
-        events: [selected],
+        events: selected,
+        query,
       })),
       findEvent: jest.fn(),
       addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
@@ -48,10 +59,27 @@ describe('Calendar evidence boundary', () => {
       readUpcomingCalendarCandidates(calendar),
     ).resolves.toMatchObject({
       access: 'fullAccess',
-      events: [selected],
-      resultLimit: 100,
+      events: selected,
+      resultLimit: null,
+      horizonYears: 1,
+      complete: true,
+      query,
+    });
+  });
+
+  it('does not claim complete coverage for an older bridge with no native metadata', async () => {
+    const calendar = bridge(jest.fn());
+    jest.mocked(calendar.requestAccessAndListUpcomingEvents).mockResolvedValue({
+      access: 'fullAccess',
+      events: [event('legacy')],
+    });
+    await expect(
+      readUpcomingCalendarCandidates(calendar),
+    ).resolves.toMatchObject({
+      resultLimit: null,
       horizonYears: 1,
       complete: false,
+      query: null,
     });
   });
 

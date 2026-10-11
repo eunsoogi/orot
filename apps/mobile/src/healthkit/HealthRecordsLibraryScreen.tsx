@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
+import type {
+  HealthObservationCursor,
+  HealthObservationPage,
+} from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -11,7 +15,9 @@ import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
 
 interface HealthRecordsLibraryScreenProps {
-  readonly loadObservations: () => Promise<readonly HealthObservation[]>;
+  readonly loadObservations: (
+    cursor: HealthObservationCursor | null,
+  ) => Promise<HealthObservationPage>;
   readonly onBack: () => void;
 }
 
@@ -28,8 +34,12 @@ export function HealthRecordsLibraryScreen({
   >([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [revision, setRevision] = useState(0);
+  const [cursor, setCursor] = useState<HealthObservationCursor | null>(null);
+  const generation = useRef(0);
+  const pending = useRef(false);
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
-    canLeave: loadState !== 'loading',
+    // Reads do not own unsaved work and must never lock navigation.
+    canLeave: true,
     hasUnsavedChanges: false,
     isRecording: false,
     hasOngoingOperation: false,
@@ -37,72 +47,111 @@ export function HealthRecordsLibraryScreen({
     inputRevision: 0,
   } satisfies NavigationLeaveState);
 
-  const reload = useCallback(async () => {
-    setLoadState('loading');
-    try {
-      setObservations(await loadObservations());
-      setLoadState('ready');
-    } catch {
-      setLoadState('failed');
-    } finally {
-      setRevision(current => current + 1);
-    }
-  }, [loadObservations]);
+  const reload = useCallback(
+    async (after: HealthObservationCursor | null = null) => {
+      if (pending.current) return;
+      pending.current = true;
+      const request = ++generation.current;
+      setLoadState('loading');
+      try {
+        const page = await loadObservations(after);
+        if (request !== generation.current) return;
+        setObservations(current =>
+          after ? [...current, ...page.records] : page.records,
+        );
+        setCursor(page.nextCursor);
+        setLoadState('ready');
+      } catch {
+        if (request === generation.current) setLoadState('failed');
+      } finally {
+        if (request === generation.current) {
+          pending.current = false;
+          setRevision(current => current + 1);
+        }
+      }
+    },
+    [loadObservations],
+  );
 
   useEffect(() => {
-    reload().catch(() => undefined);
+    pending.current = false;
+    setObservations([]);
+    setCursor(null);
+    void reload();
+    // Late responses from a previous loader or an unmounted route must not repopulate it.
+    return () => {
+      generation.current += 1;
+    };
   }, [reload]);
 
   return (
-    <ScrollView
+    <FlatList
+      data={observations}
+      keyExtractor={item => item.id}
+      initialNumToRender={12}
+      maxToRenderPerBatch={12}
+      windowSize={5}
+      onEndReached={() => {
+        if (cursor && loadState === 'ready') void reload(cursor);
+      }}
+      onEndReachedThreshold={0.5}
       contentContainerStyle={[styles.container, navigationInset]}
       testID="health-records-scroll"
-    >
-      <View style={styles.topBar}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="health-records-title"
-        >
-          {t('healthRecords.title')}
-        </Text>
-        {hasSharedNavigation ? null : (
-          <AppButton
-            accessibilityLabel={navigationText.back.accessibilityLabel}
-            onPress={onBack}
-            testID="health-records-back"
-            title={navigationText.back.label}
-            variant="secondary"
-          />
-        )}
-      </View>
-      <Text style={styles.description}>{t('healthRecords.description')}</Text>
-      {loadState === 'loading' ? (
-        <Text testID="health-records-loading">
-          {t('healthRecords.loading')}
-        </Text>
-      ) : null}
-      {loadState === 'failed' ? (
-        <View>
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="health-records-error"
-          >
-            {t('healthRecords.error')}
+      ListHeaderComponent={
+        <>
+          <View style={styles.topBar}>
+            <Text
+              accessibilityRole="header"
+              style={styles.title}
+              testID="health-records-title"
+            >
+              {t('healthRecords.title')}
+            </Text>
+            {hasSharedNavigation ? null : (
+              <AppButton
+                accessibilityLabel={navigationText.back.accessibilityLabel}
+                onPress={onBack}
+                testID="health-records-back"
+                title={navigationText.back.label}
+                variant="secondary"
+              />
+            )}
+          </View>
+          <Text style={styles.description}>
+            {t('healthRecords.description')}
           </Text>
-          <AppButton
-            onPress={() => reload().catch(() => undefined)}
-            testID="health-records-retry"
-            title={t('healthRecords.retry')}
-            variant="secondary"
-          />
-        </View>
-      ) : null}
-      {loadState === 'ready' && observations.length === 0 ? (
-        <Text testID="health-records-empty">{t('healthRecords.empty')}</Text>
-      ) : null}
-      {observations.map((observation, index) => (
+          {loadState === 'loading' ? (
+            <Text testID="health-records-loading">
+              {t('healthRecords.loading')}
+            </Text>
+          ) : null}
+          {loadState === 'failed' ? (
+            <View>
+              <Text
+                accessibilityRole="alert"
+                style={styles.error}
+                testID="health-records-error"
+              >
+                {t('healthRecords.error')}
+              </Text>
+              <AppButton
+                onPress={() => {
+                  void reload(cursor);
+                }}
+                testID="health-records-retry"
+                title={t('healthRecords.retry')}
+                variant="secondary"
+              />
+            </View>
+          ) : null}
+          {loadState === 'ready' && observations.length === 0 ? (
+            <Text testID="health-records-empty">
+              {t('healthRecords.empty')}
+            </Text>
+          ) : null}
+        </>
+      }
+      renderItem={({ item: observation, index }) => (
         <View
           key={observation.id}
           style={styles.record}
@@ -123,8 +172,8 @@ export function HealthRecordsLibraryScreen({
             })}
           </Text>
         </View>
-      ))}
-    </ScrollView>
+      )}
+    />
   );
 }
 

@@ -1,167 +1,88 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { providerFailure } from '@orot/model-runtime';
-import type { LanguageModelProvider } from '@orot/model-runtime';
-import type { AppointmentRepository } from '@orot/storage';
-import type { CalendarBridge, CalendarEvent } from '../../calendar/types';
-import type { ProviderSelectionOption } from '../../providers/selection/types';
-import MedicalAppointmentClassificationScreen from '../MedicalAppointmentClassificationScreen';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { medicalAppointmentCopy as copy } from '../copy.ko';
+import {
+  event,
+  renderScreen,
+  repository,
+  selectedProvider,
+} from '../MedicalAppointmentClassificationScreenTestFixtures';
 
-function event(): CalendarEvent {
-  return {
-    calendarEventIdentifier: 'private-calendar-id',
-    effectiveAt: '2035-06-02T00:00:00.000Z',
-    endsAt: '2035-06-02T01:00:00.000Z',
-    calendarEventSnapshot: {
-      title: '치과 진료',
-      timeZoneIdentifier: 'Asia/Seoul',
-      isAllDay: false,
-      occurrenceDate: null,
-      isDetached: false,
-      recurrenceRules: [],
-    },
-  };
-}
+const importAction = () =>
+  screen.getByRole('button', { name: '캘린더에서 진료 일정 가져오기' });
 
-function provider(): LanguageModelProvider {
-  return {
-    kind: 'language-model',
-    id: 'selected-provider',
-    displayName: 'Selected provider',
-    capabilities: {
-      inputTypes: ['text'],
-      streaming: false,
-      structuredOutput: false,
-      toolCalling: false,
-    },
-    generate: jest.fn(async () =>
-      providerFailure({
-        code: 'provider_unavailable',
-        message: 'Provider unavailable.',
-        retryable: true,
-      }),
-    ),
-  };
-}
-
-function selectedProvider(): ProviderSelectionOption {
-  return {
-    provider: provider(),
-    modelId: 'selected-model',
-    displayName: 'Selected AI',
-    privacyBoundary: 'selected-context-remote',
-    availability: { status: 'available' },
-  };
-}
-
-describe('medical appointment review fallback', () => {
-  it('keeps manual candidate selection available after provider failure', async () => {
-    const selectedEvent = event();
-    const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
-      access: 'fullAccess' as const,
-      events: [selectedEvent],
-    }));
-    const findEvent = jest.fn(async (_identifier: string) => ({
-      access: 'fullAccess' as const,
-      event: selectedEvent,
-    }));
-    const bridge: CalendarBridge = {
-      requestAccessAndListUpcomingEvents,
-      findEvent,
-      addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
+test.each(['allow', 'cancel'] as const)(
+  'requires actual-request approval and keeps manual entry after %s',
+  async decision => {
+    const selected = selectedProvider();
+    const remote = {
+      ...selected,
+      privacyBoundary: 'selected-context-remote' as const,
     };
-    const repository = {
-      list: jest.fn(async () => []),
-      create: jest.fn(),
-      confirmCalendarEvent: jest.fn(),
-      reconfirmCalendarEvent: jest.fn(),
-      update: jest.fn(),
-      cancel: jest.fn(),
-    } as unknown as AppointmentRepository;
-    const onOpenManual = jest.fn();
-    const providerSelection = selectedProvider();
-
-    await render(
-      <MedicalAppointmentClassificationScreen
-        bridge={bridge}
-        repository={repository}
-        selectedProvider={providerSelection}
-        recipient="selected-account"
-        onOpenManual={onOpenManual}
-      />,
+    const appointments = repository();
+    const { onOpenManual } = await renderScreen(
+      [[event('private-calendar-id', '치과 진료', '2035-06-02')]],
+      appointments,
+      remote,
     );
-
-    await fireEvent.press(screen.getByText('캘린더 일정 불러오기'));
-    expect(await screen.findByText('치과 진료')).toBeTruthy();
-    // Let the resolved model workflow reach its pending consent prompt within act.
-    await act(async () => {
-      fireEvent.press(screen.getByText('선택한 AI로 분류'));
-      await new Promise<void>(resolve => setImmediate(resolve));
-    });
+    await fireEvent.press(importAction());
     expect(
       await screen.findByText('전송 전에 내용을 확인해 주세요'),
     ).toBeTruthy();
-    expect(screen.getByText(/"title":"치과 진료"/u)).toBeTruthy();
-    expect(screen.queryByText(/private-calendar-id/u)).toBeNull();
-    expect(providerSelection.provider.generate).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
-    expect(
-      await screen.findByText(
-        'AI 결과를 사용할 수 없어 분류하지 않았습니다. 직접 확인해 주세요.',
-      ),
-    ).toBeTruthy();
-
+    expect(screen.getByText(/"title":"치과 진료"/)).toBeTruthy();
+    expect(screen.queryByText(/private-calendar-id/)).toBeNull();
+    expect(selected.provider.generate).not.toHaveBeenCalled();
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     await fireEvent.press(
-      screen.getByTestId('medical-appointment-save-calendar-candidate-1'),
+      screen.getByTestId(`inference-disclosure-${decision}`),
     );
-
-    expect(findEvent).toHaveBeenCalledTimes(3);
-    expect(findEvent.mock.calls.map(([identifier]) => identifier)).toEqual(
-      Array(3).fill(selectedEvent.calendarEventIdentifier),
+    await waitFor(() => expect(importAction()).not.toBeDisabled());
+    expect(screen.getByText(copy.manualReview)).toBeTruthy();
+    expect(selected.provider.generate).toHaveBeenCalledTimes(
+      decision === 'allow' ? 1 : 0,
     );
-    expect(repository.confirmCalendarEvent).toHaveBeenCalledWith(selectedEvent);
     expect(
-      (await screen.findAllByText('일정을 저장했습니다.')).length,
-    ).toBeGreaterThan(0);
+      screen.queryByTestId('medical-appointment-save-calendar-candidate-1'),
+    ).toBeNull();
+    expect(screen.queryByText('치과 진료')).toBeNull();
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+    expect(appointments.reconfirmCalendarEvent).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
     expect(onOpenManual).toHaveBeenCalledTimes(1);
-  }, 60_000);
+  },
+  30000,
+);
 
-  it('keeps the separate manual entry route available when Calendar permission is denied', async () => {
-    const bridge = {
-      requestAccessAndListUpcomingEvents: jest.fn(async () => ({
-        access: 'denied' as const,
-        events: [],
-      })),
-      findEvent: jest.fn(),
-      addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
-    } as unknown as CalendarBridge;
-    const repository = {
-      list: jest.fn(async () => []),
-      create: jest.fn(),
-      confirmCalendarEvent: jest.fn(),
-      reconfirmCalendarEvent: jest.fn(),
-      update: jest.fn(),
-      cancel: jest.fn(),
-    } as unknown as AppointmentRepository;
-    const onOpenManual = jest.fn();
+test('keeps manual entry when Calendar permission is denied without invoking AI or saving', async () => {
+  const appointments = repository();
+  const selected = selectedProvider();
+  const { bridge, onOpenManual } = await renderScreen(
+    [[]],
+    appointments,
+    selected,
+  );
+  jest
+    .mocked(bridge.requestAccessAndListUpcomingEvents)
+    .mockResolvedValue({ access: 'denied', events: [] });
+  await fireEvent.press(importAction());
+  expect(await screen.findByText(copy.permissionUnavailable)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
+  expect(onOpenManual).toHaveBeenCalledTimes(1);
+  expect(selected.provider.generate).not.toHaveBeenCalled();
+  expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+  expect(appointments.create).not.toHaveBeenCalled();
+});
 
-    await render(
-      <MedicalAppointmentClassificationScreen
-        bridge={bridge}
-        repository={repository}
-        selectedProvider={null}
-        recipient={null}
-        onOpenManual={onOpenManual}
-      />,
-    );
-
-    await fireEvent.press(screen.getByText('캘린더 일정 불러오기'));
-    expect(
-      await screen.findByText(/캘린더 읽기 권한을 사용할 수 없습니다/u),
-    ).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-
-    expect(onOpenManual).toHaveBeenCalledTimes(1);
-    expect(repository.create).not.toHaveBeenCalled();
-  });
+test('does not save unclassified events when no AI has been selected', async () => {
+  const appointments = repository();
+  const { onOpenManual } = await renderScreen(
+    [[event('no-provider', '진료', '2035-06-02')]],
+    appointments,
+    null,
+  );
+  await fireEvent.press(importAction());
+  expect(await screen.findByText(copy.noProvider)).toBeTruthy();
+  expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+  expect(screen.queryByText('진료')).toBeNull();
+  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
+  expect(onOpenManual).toHaveBeenCalledTimes(1);
 });

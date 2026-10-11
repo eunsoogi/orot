@@ -177,7 +177,9 @@ describe('safe area routes on iOS Simulator', () => {
       .toBeVisible()
       .withTimeout(30000);
     const lastReading = element(by.id('health-record-row-23'));
-    await waitFor(lastReading).toExist().withTimeout(30000);
+    await waitFor(element(by.id('health-record-row-0')))
+      .toBeVisible()
+      .withTimeout(30000);
 
     await expect(element(by.id('navigation-route-scroll'))).not.toExist();
     await expectScrollInsideRootFrame(
@@ -186,8 +188,13 @@ describe('safe area routes on iOS Simulator', () => {
     );
 
     const recordsScroll = element(by.id('health-records-scroll'));
+    // Virtualized content grows as rows mount; incremental scrolling reaches the real final row.
+    await waitFor(lastReading)
+      .toBeVisible()
+      .whileElement(by.id('health-records-scroll'))
+      .scroll(300, 'down', 0.5, 0.5);
     await recordsScroll.scrollTo('bottom', 0.5, 0.5);
-    await expect(lastReading).toBeVisible();
+    await waitFor(lastReading).toBeVisible().withTimeout(30000);
     await expectElementAboveBottomInset(
       'health-record-row-23',
       'navigation-keyboard-avoiding-root',

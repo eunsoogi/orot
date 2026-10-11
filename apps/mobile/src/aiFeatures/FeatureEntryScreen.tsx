@@ -14,13 +14,12 @@ export interface FeatureEntryScreenProps {
   readonly onOpenExternalEvidence: () => void;
 }
 
-/** Keeps the four existing AI routes as one accessible, settings-free root list. */
+/** Keeps the AI routes with literature available inside conversation as one accessible, settings-free root list. */
 export function FeatureEntryScreen({
   embedded = false,
   onOpenVisitQuestions,
   onOpenDiseaseHypotheses,
   onOpenRagConversation,
-  onOpenExternalEvidence,
 }: FeatureEntryScreenProps) {
   const navigationInset = useNavigationContentInset();
   useNavigationLeaveStateRegistration({
@@ -36,7 +35,6 @@ export function FeatureEntryScreen({
     onOpenVisitQuestions,
     onOpenDiseaseHypotheses,
     onOpenRagConversation,
-    onOpenExternalEvidence,
   ];
   const symbols = [
     'bubble.left.and.text.bubble.right',

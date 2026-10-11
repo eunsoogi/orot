@@ -127,3 +127,34 @@ test('does not call a model when retrieval finds no current evidence', async () 
   expect(outcome).toEqual({ status: 'no_evidence' });
   expect(runMultiAgentWorkflow).not.toHaveBeenCalled();
 });
+
+test('allows literature-only research and makes limited-search attribution visible', async () => {
+  const external = {
+    ...baseReference,
+    sourceKind: 'external_medical' as const,
+    sourceId: 'europe-pmc',
+  };
+  jest.mocked(runMultiAgentWorkflow).mockClear();
+  jest
+    .mocked(runMultiAgentWorkflow)
+    .mockResolvedValueOnce(result(external, '문헌 답변'));
+  const outcome = await runRagConversationTurn({
+    question: '수면 관련 문헌은?',
+    previousMessages: [],
+    loadCurrentEvidence: async () => ({
+      batch: { items: [], coverage: [], conflicts: [] },
+      chunks: [],
+    }),
+    rag: {
+      search: jest.fn(async () => {
+        throw new Error('No local embedding needed');
+      }),
+    } as never,
+    workflow: { tools: [{ sourceKind: 'external_medical' }] } as never,
+  });
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
+  expect(outcome).toMatchObject({
+    status: 'answer',
+    answer: expect.stringContaining('일부 검색 결과'),
+  });
+});

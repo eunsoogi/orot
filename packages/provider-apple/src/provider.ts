@@ -31,6 +31,8 @@ export const APPLE_PROVIDER_CAPABILITIES: LanguageModelCapabilities = {
   streaming: true,
   structuredOutput: true,
   toolCalling: true,
+  requestControls: ['maxOutputTokens', 'temperature'],
+  structuredOutputStreaming: false,
 };
 
 let requestSequence = 0;
@@ -159,7 +161,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
       yield providerFailure(nativeFailure(error));
     } finally {
       options.signal?.removeEventListener('abort', cancel);
-      if (!completed) this.native.cancel(requestId);
+      if (!completed) cancel();
     }
   }
 
