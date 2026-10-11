@@ -8,9 +8,9 @@ import {
   readTagTarget,
 } from './github-api.mjs';
 import {
-  collectJobsForMainPushes,
-  latestMainPushRuns,
-  listWorkflowRunsForSourcePushes,
+  collectJobsForMainValidation,
+  latestMainValidationRuns,
+  listWorkflowRunsForSourceValidation,
   readWorkflowRunJobs,
 } from './ci.mjs';
 import { readCommitList } from './changelog.mjs';
@@ -38,10 +38,9 @@ export function collectReleaseContext(env = process.env) {
 
   const applicationVersion = readApplicationVersion();
   const currentMainSha = readMainSha(REPOSITORY);
-  const workflowRuns = listWorkflowRunsForSourcePushes(REPOSITORY, sourceSha, readGitHubJson);
-  const latestRuns = latestMainPushRuns(sourceSha, workflowRuns);
-  const ciRun = latestRuns.find((run) => run.path === '.github/workflows/e2e-test.yml') ?? null;
-  const ciJobs = collectJobsForMainPushes(sourceSha, workflowRuns, (runId) =>
+  const workflowRuns = listWorkflowRunsForSourceValidation(REPOSITORY, sourceSha, readGitHubJson);
+  const ciRuns = latestMainValidationRuns(sourceSha, workflowRuns);
+  const ciJobs = collectJobsForMainValidation(sourceSha, workflowRuns, (runId) =>
     readWorkflowRunJobs(REPOSITORY, runId, readGitHubJson),
   );
 
@@ -65,7 +64,7 @@ export function collectReleaseContext(env = process.env) {
     sha: sourceSha.toLowerCase(),
     sourceSha: sourceSha.toLowerCase(),
     currentMainSha,
-    ciRun,
+    ciRuns,
     ciJobs,
     previousTag,
     commits,

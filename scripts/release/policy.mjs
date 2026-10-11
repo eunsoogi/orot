@@ -1,4 +1,9 @@
-import { REQUIRED_CI_JOBS } from './ci-required-jobs.mjs';
+import {
+  ACCEPTED_CI_WORKFLOW_EVENTS,
+  REQUIRED_CI_JOB_WORKFLOW_PATH,
+  REQUIRED_CI_JOBS,
+  TRUSTED_CI_WORKFLOW_PATHS,
+} from './ci-required-jobs.mjs';
 import { compareVersions, isReleaseVersion } from './version-tags.mjs';
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
@@ -33,27 +38,50 @@ export function validateCandidate(context) {
   if (context.currentMainSha?.toLowerCase() !== context.sourceSha?.toLowerCase())
     errors.push('main advanced or no longer points to the workflow candidate');
 
-  const run = context.ciRun;
-  if (
-    !run ||
-    run.path !== '.github/workflows/e2e-test.yml' ||
-    run.event !== 'push' ||
-    run.head_branch !== 'main' ||
-    run.head_sha?.toLowerCase() !== context.sourceSha?.toLowerCase() ||
-    run.status !== 'completed' ||
-    run.conclusion !== 'success'
-  ) {
-    errors.push('a successful main-push E2E Test run for this exact source commit is required');
+  // A manual full run may replace path-filtered pushes only for its exact trusted main workflow.
+  const ciRuns = context.ciRuns ?? [];
+  const trustedPaths = new Set(TRUSTED_CI_WORKFLOW_PATHS);
+  const runByPath = new Map();
+  for (const run of ciRuns) {
+    if (!trustedPaths.has(run.path))
+      errors.push(`main CI evidence contains an untrusted workflow path: ${run.path}`);
+  }
+
+  for (const path of TRUSTED_CI_WORKFLOW_PATHS) {
+    const matches = ciRuns.filter((run) => run.path === path);
+    if (matches.length !== 1) {
+      errors.push(`trusted main validation workflow did not run exactly once: ${path}`);
+      continue;
+    }
+    const [run] = matches;
+    runByPath.set(path, run);
+    if (
+      !ACCEPTED_CI_WORKFLOW_EVENTS.includes(run.event) ||
+      run.head_branch !== 'main' ||
+      run.head_sha?.toLowerCase() !== context.sourceSha?.toLowerCase() ||
+      run.status !== 'completed' ||
+      run.conclusion !== 'success'
+    ) {
+      errors.push(
+        `trusted main validation workflow did not complete successfully for the exact source commit: ${path}`,
+      );
+    }
   }
 
   for (const name of REQUIRED_CI_JOBS) {
     const matches = (context.ciJobs ?? []).filter((job) => job.name === name);
+    const expectedPath = REQUIRED_CI_JOB_WORKFLOW_PATH[name];
+    const expectedRun = runByPath.get(expectedPath);
     if (
       matches.length !== 1 ||
+      matches[0].workflow_path !== expectedPath ||
+      matches[0].workflow_run_id !== expectedRun?.id ||
       matches[0].status !== 'completed' ||
       matches[0].conclusion !== 'success'
     ) {
-      errors.push(`required main-push check did not pass exactly once: ${name}`);
+      errors.push(
+        `required main check did not pass exactly once with its expected workflow path and selected run (${expectedPath}): ${name}`,
+      );
     }
   }
 

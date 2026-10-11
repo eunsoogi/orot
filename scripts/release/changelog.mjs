@@ -81,7 +81,7 @@ export function buildReleaseNotes({ version, sourceSha, previousTag, commits }) 
     ...commitLines,
     '',
     '## Verification',
-    `All ${REQUIRED_CI_JOBS.length} required main-push checks passed for this exact source commit.`,
+    `All ${REQUIRED_CI_JOBS.length} required main-branch checks passed for this exact source commit.`,
     '',
     '## Known limitations',
     ...KNOWN_LIMITATIONS.map((limitation) => `- ${limitation}`),

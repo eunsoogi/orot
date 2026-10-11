@@ -48,7 +48,7 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Verify version, current main, and required main-push checks
+      - name: Verify version, current main, and required main checks
         id: validate
         env:
           GH_TOKEN: ${{ github.token }}

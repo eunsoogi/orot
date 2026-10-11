@@ -7,10 +7,10 @@ The `Release` workflow publishes a GitHub source release for the version already
 After the 0.1.0 changes are merged and all required checks pass on `main`, the parent maintainer can dispatch **Release** from `main`:
 
 1. Enter the stable version as `MAJOR.MINOR.PATCH`, without a `v` prefix or prerelease suffix. It must match the root `package.json` version and both iOS `MARKETING_VERSION` values. The tag uses that exact input; `0.1.0` creates tag `0.1.0`.
-2. Run `dry-run` first. Its summary shows the candidate SHA, current `main` SHA, all 22 required main-push checks, the previous reachable version tag, and the complete generated commit-link list. Dry run makes no tag or release changes.
+2. Run `dry-run` first. Its summary shows the candidate SHA, current `main` SHA, the 22 required main-branch checks and the four trusted workflow runs, the previous reachable version tag, and the complete generated commit-link list. Dry run makes no tag or release changes.
 3. Choose `publish` only after reviewing that summary. The write job repeats the version, main, CI, tag, and release checks before it writes.
 
-The workflow uses the workflow's own SHA as its candidate; callers do not provide a source SHA, CI run ID, readiness JSON, or approval claim. It reads successful main-push runs from GitHub and requires every protected check on that exact commit. Release dispatches run serially. A tag that already points elsewhere is never moved. If the same exact tag and source already have a published, non-prerelease GitHub Release, a repeat dispatch leaves it unchanged; drafts and prereleases fail closed.
+The workflow uses the workflow's own SHA as its candidate; callers do not provide a source SHA, CI run ID, readiness JSON, or approval claim. For each allowlisted quality, unit, policy, and E2E workflow, it selects the newest `push` or `workflow_dispatch` run for `main` at that exact commit. Each selected workflow run and each of its required branch-protection jobs must be completed successfully, and every required job name must come from its mapped workflow path exactly once. A newer failed or incomplete run cannot be hidden by an older success; pull-request, other-branch, other-commit, and untrusted-workflow runs do not qualify. Release dispatches run serially. A tag that already points elsewhere is never moved. If the same exact tag and source already have a published, non-prerelease GitHub Release, a repeat dispatch leaves it unchanged; drafts and prereleases fail closed.
 
 ## Previous version and commit list
 

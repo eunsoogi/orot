@@ -1,13 +1,14 @@
 import { collectPaginatedItems } from './version-tags.mjs';
+import { ACCEPTED_CI_WORKFLOW_EVENTS, TRUSTED_CI_WORKFLOW_PATHS } from './ci-required-jobs.mjs';
 
 const RUN_PAGE_SIZE = 100;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 
-export function listWorkflowRunsForSourcePushes(repo, sourceSha, readJson) {
+export function listWorkflowRunsForSourceValidation(repo, sourceSha, readJson) {
   const runs = [];
   for (let page = 1; page <= 10; page += 1) {
     const response = readJson(
-      `repos/${repo}/actions/runs?head_sha=${sourceSha}&branch=main&event=push&per_page=${RUN_PAGE_SIZE}&page=${page}`,
+      `repos/${repo}/actions/runs?head_sha=${sourceSha}&branch=main&per_page=${RUN_PAGE_SIZE}&page=${page}`,
     );
     const pageRuns = Array.isArray(response.workflow_runs) ? response.workflow_runs : null;
     if (!pageRuns) throw new Error('GitHub returned an invalid workflow run list');
@@ -25,8 +26,9 @@ export function listWorkflowRunsForSourcePushes(repo, sourceSha, readJson) {
 }
 
 function runOrder(left, right) {
-  const leftTime = Date.parse(left.run_started_at ?? left.created_at ?? '') || 0;
-  const rightTime = Date.parse(right.run_started_at ?? right.created_at ?? '') || 0;
+  // Creation order keeps a delayed older run from hiding a newer queued result.
+  const leftTime = Date.parse(left.created_at ?? left.run_started_at ?? '') || 0;
+  const rightTime = Date.parse(right.created_at ?? right.run_started_at ?? '') || 0;
   return (
     leftTime - rightTime ||
     Number(left.run_number ?? 0) - Number(right.run_number ?? 0) ||
@@ -34,16 +36,18 @@ function runOrder(left, right) {
   );
 }
 
-// Protected checks span independent workflows; use each workflow's newest run for this exact commit.
-export function latestMainPushRuns(sourceSha, workflowRuns) {
+// Only trusted paths on the exact main SHA qualify; the newest event of either type wins.
+export function latestMainValidationRuns(sourceSha, workflowRuns) {
   if (!FULL_SHA.test(sourceSha ?? '')) throw new Error('source commit SHA is invalid');
+  const trustedPaths = new Set(TRUSTED_CI_WORKFLOW_PATHS);
+  const acceptedEvents = new Set(ACCEPTED_CI_WORKFLOW_EVENTS);
   const selected = new Map();
   for (const run of workflowRuns) {
     if (
-      run.event !== 'push' ||
+      !acceptedEvents.has(run.event) ||
       run.head_branch !== 'main' ||
       run.head_sha?.toLowerCase() !== sourceSha.toLowerCase() ||
-      typeof run.path !== 'string'
+      !trustedPaths.has(run.path)
     ) {
       continue;
     }
@@ -53,8 +57,8 @@ export function latestMainPushRuns(sourceSha, workflowRuns) {
   return [...selected.values()].sort((left, right) => left.path.localeCompare(right.path));
 }
 
-export function collectJobsForMainPushes(sourceSha, workflowRuns, readJobs) {
-  return latestMainPushRuns(sourceSha, workflowRuns).flatMap((run) => {
+export function collectJobsForMainValidation(sourceSha, workflowRuns, readJobs) {
+  return latestMainValidationRuns(sourceSha, workflowRuns).flatMap((run) => {
     const jobs = readJobs(run.id);
     if (!Array.isArray(jobs))
       throw new Error(`GitHub returned invalid jobs for workflow run ${run.id}`);

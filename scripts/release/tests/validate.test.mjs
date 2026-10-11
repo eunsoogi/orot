@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { latestMainValidationRuns } from '../ci.mjs';
 import { validateCandidate, REQUIRED_CI_JOBS } from '../policy.mjs';
 import { buildReleaseRequest } from '../release-request.mjs';
 import { sourceSha, validContext } from './fixtures.mjs';
@@ -45,12 +46,55 @@ test('requires the root and iOS version sources, main, and candidate SHA to agre
   assert.match(sourceMismatch.errors.join(' '), /workflow candidate SHA/);
 });
 
-test('requires a successful E2E main-push run and each required check exactly once', () => {
-  const badRun = validateCandidate(
-    validContext({ ciRun: { ...validContext().ciRun, conclusion: 'failure' } }),
-  );
-  assert.match(badRun.errors.join(' '), /successful main-push E2E Test/);
+test('accepts exact-main workflow dispatch runs when every trusted workflow and job succeeds', () => {
+  const context = validContext({
+    ciRuns: validContext().ciRuns.map((run) => ({ ...run, event: 'workflow_dispatch' })),
+  });
+  const result = validateCandidate(context);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.errors, []);
+});
 
+test('requires exactly one successful trusted workflow run for the exact main commit', () => {
+  const runs = validContext().ciRuns;
+  const invalidRunSets = [
+    runs.slice(1),
+    [...runs, runs[0]],
+    runs.map((run, index) => (index === 0 ? { ...run, status: 'in_progress' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, conclusion: 'failure' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, event: 'pull_request' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, head_branch: 'release' } : run)),
+    runs.map((run, index) => (index === 0 ? { ...run, head_sha: 'b'.repeat(40) } : run)),
+    runs.map((run, index) =>
+      index === 0 ? { ...run, path: '.github/workflows/untrusted.yml' } : run,
+    ),
+  ];
+  for (const ciRuns of invalidRunSets) {
+    const result = validateCandidate(validContext({ ciRuns }));
+    assert.equal(result.valid, false);
+    assert.equal(result.publicationAllowed, false);
+  }
+});
+
+test('rejects a required job attributed to the wrong trusted workflow path', () => {
+  const ciJobs = validContext().ciJobs.map((job, index) =>
+    index === 0 ? { ...job, workflow_path: '.github/workflows/unit-test.yml' } : job,
+  );
+  const result = validateCandidate(validContext({ ciJobs }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /expected workflow path/);
+});
+
+test('requires each job result to belong to its selected workflow run', () => {
+  const ciJobs = validContext().ciJobs.map((job, index) =>
+    index === 0 ? { ...job, workflow_run_id: 9999 } : job,
+  );
+  const result = validateCandidate(validContext({ ciJobs }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /expected workflow path and selected run/);
+});
+
+test('requires each required branch-protection job exactly once and completed successfully', () => {
   for (const jobs of [
     validContext().ciJobs.map((job, index) =>
       index === 0 ? { ...job, conclusion: 'failure' } : job,
@@ -66,6 +110,59 @@ test('requires a successful E2E main-push run and each required check exactly on
     assert.equal(result.publicationAllowed, false);
   }
   assert.equal(REQUIRED_CI_JOBS.length, 22);
+});
+
+test('a newer failed dispatch run supersedes an older successful push run', () => {
+  const goodRuns = validContext().ciRuns;
+  const path = '.github/workflows/code-quality.yml';
+  const previousPush = { ...goodRuns[0], id: 10, created_at: '2026-10-10T10:00:00Z' };
+  const failedDispatch = {
+    ...goodRuns[0],
+    id: 11,
+    event: 'workflow_dispatch',
+    status: 'completed',
+    conclusion: 'failure',
+    created_at: '2026-10-10T11:00:00Z',
+  };
+  const selected = latestMainValidationRuns(sourceSha, [
+    ...goodRuns.slice(1),
+    previousPush,
+    failedDispatch,
+  ]);
+  assert.equal(selected.find((run) => run.path === path)?.id, 11);
+  const result = validateCandidate(validContext({ ciRuns: selected }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /complete successfully/);
+});
+
+test('a newer queued run supersedes an older run that started later', () => {
+  const goodRuns = validContext().ciRuns;
+  const previousPush = {
+    ...goodRuns[0],
+    id: 10,
+    created_at: '2026-10-10T10:00:00Z',
+    run_started_at: '2026-10-10T10:30:00Z',
+  };
+  const queuedDispatch = {
+    ...goodRuns[0],
+    id: 11,
+    event: 'workflow_dispatch',
+    status: 'queued',
+    conclusion: null,
+    created_at: '2026-10-10T10:15:00Z',
+    run_started_at: null,
+  };
+  const selected = latestMainValidationRuns(sourceSha, [
+    ...goodRuns.slice(1),
+    previousPush,
+    queuedDispatch,
+  ]);
+
+  assert.equal(selected.find((run) => run.path === '.github/workflows/code-quality.yml')?.id, 11);
+
+  const result = validateCandidate(validContext({ ciRuns: selected }));
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' '), /did not complete successfully/);
 });
 
 test('refuses to move a version tag and rejects a release without its matching tag', () => {
