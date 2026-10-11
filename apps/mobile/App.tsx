@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { HealthObservation } from '@orot/domain';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -79,8 +79,19 @@ export default function App({
   const backupPreparation = useBackupPreparation();
 
   useEffect(() => {
-    // Later launches query only categories with a prior explicit import request.
+    let previousState = AppState.currentState;
+    // Launch and foreground refreshes query only categories with a prior explicit import request.
     void syncLocalPreviouslyRequestedHealthKit();
+    const subscription = AppState.addEventListener('change', nextState => {
+      const returnedToForeground =
+        (previousState === 'background' || previousState === 'inactive') &&
+        nextState === 'active';
+      previousState = nextState;
+      if (returnedToForeground) {
+        void syncLocalPreviouslyRequestedHealthKit();
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   function openRecording() {

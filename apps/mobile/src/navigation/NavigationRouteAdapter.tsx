@@ -54,6 +54,7 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly rootTabs?:
     | NavigationRootTabs
     | ((route: NavigationRoute<Name>) => NavigationRootTabs | undefined);
+  readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
 /** Binds route-local guards and shared actions to UIKit's native navigation stack. */
@@ -68,6 +69,7 @@ export function NavigationRouteAdapter<Name extends string>({
   contentSafeAreaHandledByChild = false,
   surface,
   rootTabs,
+  onNativeRouteRemovalComplete,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
@@ -180,6 +182,7 @@ export function NavigationRouteAdapter<Name extends string>({
             isTransitioning={snapshot.isTransitioning}
             renderRoute={renderRoute}
             routes={snapshot.routes}
+            onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
           />
         </NavigationViewport>
       </KeyboardAvoidingView>

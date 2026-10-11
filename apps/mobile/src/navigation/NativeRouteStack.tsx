@@ -1,5 +1,4 @@
 import {
-  CommonActions,
   NavigationContainer,
   StackActions,
   useNavigationContainerRef,
@@ -14,6 +13,7 @@ import type {
 } from './navigationController';
 import { appColors } from '../layout/appColors';
 import NativeRouteScreen from './NativeRouteScreen';
+import { useNativeRouteRemoval } from './useNativeRouteRemoval';
 import {
   NativeRouteRegistryContext,
   type NativeRouteParamList,
@@ -27,6 +27,7 @@ interface NativeRouteStackProps<Name extends string> {
   readonly routes: readonly NavigationRoute<Name>[];
   readonly isTransitioning: boolean;
   readonly renderRoute: (route: NavigationRoute<Name>) => ReactNode;
+  readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
 /** Mirrors the guarded app stack into UIKit's native navigation controller. */
@@ -35,13 +36,26 @@ export function NativeRouteStack<Name extends string>({
   routes,
   isTransitioning,
   renderRoute,
+  onNativeRouteRemovalComplete,
 }: NativeRouteStackProps<Name>) {
   const navigationRef = useNavigationContainerRef<NativeRouteParamList>();
   const [ready, setReady] = useState(false);
   const [nativeRevision, setNativeRevision] = useState(0);
-  const [removalSyncPending, setRemovalSyncPending] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const initialRouteKey = useRef(routes[0]?.key);
+  const {
+    getNativeRouteKeys,
+    markNativeTransitionComplete,
+    requestRemovalSync,
+    trackRemovedRoutes,
+  } = useNativeRouteRemoval({
+    navigationRef,
+    routes,
+    ready,
+    nativeRevision,
+    reduceMotion,
+    onNativeRouteRemovalComplete,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -71,15 +85,10 @@ export function NativeRouteStack<Name extends string>({
 
   useLayoutEffect(() => {
     if (!ready) return;
-    const nativeRoutes = navigationRef.getRootState()?.routes;
-    if (!nativeRoutes?.length) return;
-
-    const nativeKeys = nativeRoutes.map(item => {
-      const params = item.params as { readonly routeKey?: unknown } | undefined;
-      const routeKey = params?.routeKey;
-      return typeof routeKey === 'string' ? routeKey : null;
-    });
+    const nativeKeys = getNativeRouteKeys();
+    if (!nativeKeys?.length) return;
     const desiredKeys = routes.map(item => item.key);
+    trackRemovedRoutes(nativeKeys, desiredKeys);
     if (
       nativeKeys.length === desiredKeys.length &&
       nativeKeys.every((key, index) => key === desiredKeys[index])
@@ -109,67 +118,16 @@ export function NativeRouteStack<Name extends string>({
       return;
     }
 
-    setRemovalSyncPending(true);
-  }, [navigationRef, nativeRevision, ready, routes]);
-
-  useEffect(() => {
-    if (!ready || !removalSyncPending) return;
-    const nativeRoutes = navigationRef.getRootState()?.routes;
-    if (!nativeRoutes?.length) return;
-
-    const nativeKeys = nativeRoutes.map(item => {
-      const params = item.params as { readonly routeKey?: unknown } | undefined;
-      const routeKey = params?.routeKey;
-      return typeof routeKey === 'string' ? routeKey : null;
-    });
-    const desiredKeys = routes.map(item => item.key);
-    if (
-      nativeKeys.length === desiredKeys.length &&
-      nativeKeys.every((key, index) => key === desiredKeys[index])
-    ) {
-      setRemovalSyncPending(false);
-      return;
-    }
-
-    let sharedPrefix = 0;
-    while (
-      sharedPrefix < Math.min(nativeKeys.length, desiredKeys.length) &&
-      nativeKeys[sharedPrefix] === desiredKeys[sharedPrefix]
-    ) {
-      sharedPrefix += 1;
-    }
-
-    // Descendant usePreventRemove hooks must commit their new guard before a native removal dispatch.
-    if (
-      sharedPrefix === desiredKeys.length &&
-      nativeKeys.length > desiredKeys.length
-    ) {
-      navigationRef.dispatch(
-        StackActions.pop(nativeKeys.length - desiredKeys.length),
-      );
-    } else if (
-      nativeKeys.length === desiredKeys.length &&
-      sharedPrefix === desiredKeys.length - 1
-    ) {
-      const nextRoute = routes[desiredKeys.length - 1];
-      if (nextRoute) {
-        navigationRef.dispatch(
-          StackActions.replace('scene', { routeKey: nextRoute.key }),
-        );
-      }
-    } else {
-      navigationRef.dispatch(
-        CommonActions.reset({
-          index: desiredKeys.length - 1,
-          routes: desiredKeys.map(routeKey => ({
-            name: 'scene' as const,
-            params: { routeKey },
-          })),
-        }),
-      );
-    }
-    setRemovalSyncPending(false);
-  }, [navigationRef, ready, removalSyncPending, routes]);
+    requestRemovalSync();
+  }, [
+    getNativeRouteKeys,
+    navigationRef,
+    nativeRevision,
+    ready,
+    requestRemovalSync,
+    routes,
+    trackRemovedRoutes,
+  ]);
 
   return (
     <NativeRouteRegistryContext.Provider value={registry}>
@@ -179,6 +137,17 @@ export function NativeRouteStack<Name extends string>({
         onStateChange={() => setNativeRevision(revision => revision + 1)}
       >
         <Stack.Navigator
+          screenListeners={({ route }) => ({
+            transitionEnd: event => {
+              const params = route.params as
+                { readonly routeKey?: unknown } | undefined;
+              const routeKey = params?.routeKey;
+              if (typeof routeKey === 'string') {
+                // UIKit may report the revealed route as the completed side of a pop.
+                markNativeTransitionComplete(routeKey, event.data.closing);
+              }
+            },
+          })}
           screenOptions={{
             animation: reduceMotion ? 'none' : 'default',
             contentStyle: styles.content,

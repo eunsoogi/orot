@@ -1,4 +1,6 @@
+import { useIsFocused } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { ProviderSelectionFlow } from '../providers/selection';
 import type {
   ProviderSelection,
@@ -26,6 +28,9 @@ export function SettingsProviderRoute({
   serviceDependencies,
   onSelectionCommitted,
 }: SettingsProviderRouteProps) {
+  const isFocused = useIsFocused();
+  const wasFocused = useRef(isFocused);
+  const [accountRefreshKey, setAccountRefreshKey] = useState(0);
   const [state, setState] = useState<ProviderSelectionNavigationState>({
     hasPendingSelection: false,
     isSavingSelection: false,
@@ -34,6 +39,13 @@ export function SettingsProviderRoute({
     inputRevision: 0,
   });
   const [returnAfterSelection, setReturnAfterSelection] = useState(false);
+  useEffect(() => {
+    // The provider route is retained under Connected Accounts, so refresh its cache when it regains focus.
+    if (isFocused && !wasFocused.current) {
+      setAccountRefreshKey(key => key + 1);
+    }
+    wasFocused.current = isFocused;
+  }, [isFocused]);
   useEffect(() => {
     if (
       !returnAfterSelection ||
@@ -60,6 +72,7 @@ export function SettingsProviderRoute({
     <ProviderSelectionFlow
       presentation="settings-provider"
       navigationRouteKey={actions.route.key}
+      accountRefreshKey={accountRefreshKey}
       onBack={async () => {
         await actions.onBack().catch(() => undefined);
       }}

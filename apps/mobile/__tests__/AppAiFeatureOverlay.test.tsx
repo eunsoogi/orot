@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { AccessibilityInfo, Text } from 'react-native';
 import App from '../App';
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 
@@ -71,8 +71,12 @@ beforeEach(() => {
   mockFeatureEntryMount.mockClear();
   mockFeatureEntryUnmount.mockClear();
 });
+afterEach(() => jest.restoreAllMocks());
 
 test('keeps the app screen mounted underneath a guarded AI route', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
   await render(
     <App renderVisitQuestions={input => <VisitQuestionsProbe {...input} />} />,
   );

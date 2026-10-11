@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { AccessibilityInfo, Text } from 'react-native';
 import App from '../App';
 import type { VisitQuestionsRenderInput } from '../src/aiFeatures/integration/AiFeatureFlowScreen';
 
@@ -31,6 +31,8 @@ const aiFeatureRoutes = [
   ['ai-feature-external-evidence', 'external-medical-evidence-screen'],
 ] as const;
 
+afterEach(() => jest.restoreAllMocks());
+
 function VisitQuestionsHomeRouteProbe({
   onRouteStateChange,
 }: VisitQuestionsRenderInput) {
@@ -48,6 +50,10 @@ function VisitQuestionsHomeRouteProbe({
 }
 
 test('shows four explained AI actions on the AI tab and opens each route directly', async () => {
+  // Jest's native-stack does not emit UIKit transitionEnd; Detox covers animated completion.
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
   // Keep App and its shared navigator mounted to verify one-tap home routing.
   await render(
     <App
@@ -79,6 +85,10 @@ test('shows four explained AI actions on the AI tab and opens each route directl
 }, 30_000);
 
 test('keeps recording under Records when leaving an AI route', async () => {
+  // This host-level flow checks the route result; native animation completion is covered in Detox.
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
   await render(
     <App
       renderVisitQuestions={input => (

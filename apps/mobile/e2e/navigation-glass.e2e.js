@@ -148,10 +148,7 @@ describe('native navigation glass', () => {
         'Missing active route frames for safe-area verification.',
       );
     }
-    for (const [description, frame] of [
-      ['feature scroll', routeScroll.frame],
-      ['feature title', titleFrame],
-    ]) {
+    for (const frame of [routeScroll.frame, titleFrame]) {
       jestExpect(frame.y - routeRootFrame.y).toBeGreaterThanOrEqual(44);
     }
     // The shared backdrop must be an actual UIKit toolbar in the mounted app.

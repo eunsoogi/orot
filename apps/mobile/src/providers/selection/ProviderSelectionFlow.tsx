@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ProviderSelectionFlowShell } from './ProviderSelectionFlowShell';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -11,7 +11,8 @@ import {
 } from './options';
 import { providerSelectionText } from './text';
 import { providerSelectionStore } from './keychainSelectionStore';
-import { sortAccounts, useCancelSignInOnUnmount } from './flowHelpers';
+import { useCancelSignInOnUnmount } from './flowHelpers';
+import { useProviderSelectionAccounts } from './useProviderSelectionAccounts';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
@@ -19,7 +20,6 @@ import type {
   ProviderSelectionPresentation,
   ProviderSelectionStore,
 } from './types';
-import type { OpenAIAccountSummary } from '../openai';
 
 interface ProviderSelectionFlowProps {
   readonly presentation?: ProviderSelectionPresentation;
@@ -27,6 +27,7 @@ interface ProviderSelectionFlowProps {
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
+  readonly accountRefreshKey?: number;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
   readonly loadAppleOption?: () => Promise<ProviderSelectionOption>;
@@ -55,6 +56,7 @@ export default function ProviderSelectionFlow({
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
+  accountRefreshKey = 0,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
   loadAppleOption = loadAppleSelectionOption,
@@ -64,46 +66,24 @@ export default function ProviderSelectionFlow({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionFlowProps) {
-  const [appleOption, setAppleOption] =
-    useState<ProviderSelectionOption | null>(null);
-  const [options, setOptions] = useState<readonly ProviderSelectionOption[]>(
-    [],
-  );
-  const [accounts, setAccounts] = useState<readonly OpenAIAccountSummary[]>([]);
-  const [selectedAccountID, setSelectedAccountID] = useState<string | null>(
-    null,
-  );
-  const [accountListReady, setAccountListReady] = useState(false);
-  const [accountListError, setAccountListError] = useState(false);
+  const {
+    appleOption,
+    options,
+    setOptions,
+    accounts,
+    selectedAccountID,
+    setSelectedAccountID,
+    accountListReady,
+    accountListError,
+    setAccountListError,
+    setAccounts,
+    refreshAccounts,
+  } = useProviderSelectionAccounts({
+    chatGPTServices,
+    loadAppleOption,
+    refreshKey: accountRefreshKey,
+  });
   useCancelSignInOnUnmount(chatGPTServices.cancelSignIn);
-
-  useEffect(() => {
-    let mounted = true;
-    loadAppleOption().then(option => {
-      if (!mounted) return;
-      setAppleOption(option);
-      setOptions([option]);
-    });
-    chatGPTServices
-      .listAccounts()
-      .then(nextAccounts => {
-        if (!mounted) return;
-        const sorted = sortAccounts(nextAccounts);
-        setAccounts(sorted);
-        setSelectedAccountID(
-          sorted.length === 1 ? (sorted[0]?.issuedClientID ?? null) : null,
-        );
-      })
-      .catch(() => {
-        if (mounted) setAccountListError(true);
-      })
-      .finally(() => {
-        if (mounted) setAccountListReady(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [chatGPTServices, loadAppleOption]);
 
   const selectedAccount = accounts.find(
     account => account.issuedClientID === selectedAccountID,
@@ -118,28 +98,6 @@ export default function ProviderSelectionFlow({
       ? providerSelectionText.chatGPTReauthorize
       : providerSelectionText.chatGPTLoadModels;
   }, [accountListError, accountListReady, accounts.length, selectedAccount]);
-
-  async function refreshAccounts(
-    preferredID?: string,
-  ): Promise<readonly OpenAIAccountSummary[]> {
-    const nextAccounts = sortAccounts(await chatGPTServices.listAccounts());
-    setAccounts(nextAccounts);
-    setSelectedAccountID(currentID => {
-      if (
-        preferredID &&
-        nextAccounts.some(account => account.issuedClientID === preferredID)
-      ) {
-        return preferredID;
-      }
-      return nextAccounts.some(account => account.issuedClientID === currentID)
-        ? currentID
-        : nextAccounts.length === 1
-          ? (nextAccounts[0]?.issuedClientID ?? null)
-          : null;
-    });
-    setAccountListError(false);
-    return nextAccounts;
-  }
 
   const actions = useChatGPTSelectionActions({
     accountListError,

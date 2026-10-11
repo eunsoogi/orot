@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { NavigationLeaveStateSource } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
-import { useNavigationSnapshot } from '../../navigation/useNavigationSnapshot';
 import { openEuropePmcArticle } from './articleLinks';
 import { AiFeatureSharedNavigationStateProvider } from './AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from './featureServices';
@@ -49,7 +48,26 @@ export function AiFeatureRoute({
     navigation.push(initialRoute);
     return navigation;
   });
-  const snapshot = useNavigationSnapshot(controller);
+  const pendingExitIntent = useRef<'home' | null>(null);
+  const nativeExitHandled = useRef(false);
+  const completeNativeExit = useCallback(
+    (routeKey: string) => {
+      const current = controller.getSnapshot();
+      if (
+        current.routes.some(route => route.key === routeKey) ||
+        current.currentRoute.name !== 'app-home'
+      ) {
+        return;
+      }
+      if (nativeExitHandled.current) return;
+      nativeExitHandled.current = true;
+      const intent = pendingExitIntent.current;
+      pendingExitIntent.current = null;
+      if (intent === 'home' && onHome) onHome();
+      else onBack();
+    },
+    [controller, onBack, onHome],
+  );
   const rootLeaveState = useMemo<
     NavigationLeaveStateSource<AiFeatureRouteName>
   >(
@@ -72,11 +90,6 @@ export function AiFeatureRoute({
     [controller],
   );
 
-  useEffect(() => {
-    // The app owns the parent route; reaching its root closes this feature flow.
-    if (snapshot.currentRoute.name === 'app-home') onBack();
-  }, [onBack, snapshot.currentRoute.name]);
-
   return (
     // Native route scenes keep their own feature state; overlay routing lives above them.
     <AiFeatureSharedNavigationStateProvider>
@@ -84,12 +97,16 @@ export function AiFeatureRoute({
         <NavigationRouteAdapter
           controller={controller}
           leaveState={rootLeaveState}
+          onNativeRouteRemovalComplete={completeNativeExit}
           showHome
           homeAction={
             onHome
               ? async () => {
                   // Home remains a guarded exit while returning to the source is reserved for Back.
-                  if (await controller.requestHome()) onHome();
+                  pendingExitIntent.current = 'home';
+                  if (!(await controller.requestHome())) {
+                    pendingExitIntent.current = null;
+                  }
                 }
               : undefined
           }

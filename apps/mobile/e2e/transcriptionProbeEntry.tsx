@@ -1,6 +1,7 @@
 import '../src/agent/polyfills';
 import { AppRegistry, NativeModules } from 'react-native';
 import { name as appName } from '../app.json';
+import { RecordingLibraryVisualProbe } from './transcription/RecordingLibraryVisualProbe';
 import { RecordingExportProbeHarness } from './transcription/RecordingExportProbeHarness';
 import { TranscriptEvidenceProbe } from './transcription/transcriptEvidenceProbe';
 import { TranscriptionProbe } from './transcription/transcriptionProbe';
@@ -17,11 +18,13 @@ const configuredProbeMode =
   settingsManager?.settings?.OROT_TRANSCRIPTION_PROBE_MODE ??
   settingsManager?.getConstants?.().settings?.OROT_TRANSCRIPTION_PROBE_MODE;
 const probeEntry =
-  configuredProbeMode === 'transcript-evidence'
-    ? TranscriptEvidenceProbe
-    : configuredProbeMode === 'recording-export'
-      ? RecordingExportProbeHarness
-      : TranscriptionProbe;
+  configuredProbeMode === 'recording-library-visual'
+    ? RecordingLibraryVisualProbe
+    : configuredProbeMode === 'transcript-evidence'
+      ? TranscriptEvidenceProbe
+      : configuredProbeMode === 'recording-export'
+        ? RecordingExportProbeHarness
+        : TranscriptionProbe;
 
 // Keep transcript evidence, export lifecycle, and native speech checks on separate app routes.
 AppRegistry.registerComponent(appName, () => probeEntry);
