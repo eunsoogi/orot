@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ProviderSelectionFlowShell } from './ProviderSelectionFlowShell';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -11,23 +11,28 @@ import {
 } from './options';
 import { providerSelectionText } from './text';
 import { providerSelectionStore } from './keychainSelectionStore';
-import { sortAccounts, useCancelSignInOnUnmount } from './flowHelpers';
+import { useCancelSignInOnUnmount } from './flowHelpers';
+import { useProviderSelectionAccounts } from './useProviderSelectionAccounts';
 import type {
   ChatGPTAccountSetup,
   ProviderSelection,
   ProviderSelectionOption,
+  ProviderSelectionPresentation,
   ProviderSelectionStore,
 } from './types';
-import type { OpenAIAccountSummary } from '../openai';
 
 interface ProviderSelectionFlowProps {
-  // Settings keeps the same guarded actions while exposing an account-specific entry.
+  readonly presentation?: ProviderSelectionPresentation;
+  // Settings uses route-specific screens; AI keeps the combined feature flow.
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
+  readonly accountRefreshKey?: number;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
+  readonly loadAppleOption?: () => Promise<ProviderSelectionOption>;
   readonly safeAreaHandledByParent?: boolean;
+  readonly onOpenAccounts?: () => void;
   readonly onBack: () => void;
   readonly onSelectionCommitted?: (
     selection: ProviderSelection,
@@ -47,56 +52,38 @@ export interface ProviderSelectionNavigationState {
 }
 
 export default function ProviderSelectionFlow({
+  presentation = 'feature',
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
+  accountRefreshKey = 0,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
+  loadAppleOption = loadAppleSelectionOption,
   safeAreaHandledByParent = false,
+  onOpenAccounts,
   onBack,
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionFlowProps) {
-  const [appleOption, setAppleOption] =
-    useState<ProviderSelectionOption | null>(null);
-  const [options, setOptions] = useState<readonly ProviderSelectionOption[]>(
-    [],
-  );
-  const [accounts, setAccounts] = useState<readonly OpenAIAccountSummary[]>([]);
-  const [selectedAccountID, setSelectedAccountID] = useState<string | null>(
-    null,
-  );
-  const [accountListReady, setAccountListReady] = useState(false);
-  const [accountListError, setAccountListError] = useState(false);
+  const {
+    appleOption,
+    options,
+    setOptions,
+    accounts,
+    selectedAccountID,
+    setSelectedAccountID,
+    accountListReady,
+    accountListError,
+    setAccountListError,
+    setAccounts,
+    refreshAccounts,
+  } = useProviderSelectionAccounts({
+    chatGPTServices,
+    loadAppleOption,
+    refreshKey: accountRefreshKey,
+  });
   useCancelSignInOnUnmount(chatGPTServices.cancelSignIn);
-
-  useEffect(() => {
-    let mounted = true;
-    loadAppleSelectionOption().then(option => {
-      if (!mounted) return;
-      setAppleOption(option);
-      setOptions([option]);
-    });
-    chatGPTServices
-      .listAccounts()
-      .then(nextAccounts => {
-        if (!mounted) return;
-        const sorted = sortAccounts(nextAccounts);
-        setAccounts(sorted);
-        setSelectedAccountID(
-          sorted.length === 1 ? (sorted[0]?.issuedClientID ?? null) : null,
-        );
-      })
-      .catch(() => {
-        if (mounted) setAccountListError(true);
-      })
-      .finally(() => {
-        if (mounted) setAccountListReady(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [chatGPTServices]);
 
   const selectedAccount = accounts.find(
     account => account.issuedClientID === selectedAccountID,
@@ -111,28 +98,6 @@ export default function ProviderSelectionFlow({
       ? providerSelectionText.chatGPTReauthorize
       : providerSelectionText.chatGPTLoadModels;
   }, [accountListError, accountListReady, accounts.length, selectedAccount]);
-
-  async function refreshAccounts(
-    preferredID?: string,
-  ): Promise<readonly OpenAIAccountSummary[]> {
-    const nextAccounts = sortAccounts(await chatGPTServices.listAccounts());
-    setAccounts(nextAccounts);
-    setSelectedAccountID(currentID => {
-      if (
-        preferredID &&
-        nextAccounts.some(account => account.issuedClientID === preferredID)
-      ) {
-        return preferredID;
-      }
-      return nextAccounts.some(account => account.issuedClientID === currentID)
-        ? currentID
-        : nextAccounts.length === 1
-          ? (nextAccounts[0]?.issuedClientID ?? null)
-          : null;
-    });
-    setAccountListError(false);
-    return nextAccounts;
-  }
 
   const actions = useChatGPTSelectionActions({
     accountListError,
@@ -194,6 +159,7 @@ export default function ProviderSelectionFlow({
           ? providerSelectionText.chatGPTChooseAccount
           : '';
   const chatGPTSetup: ChatGPTAccountSetup = {
+    presentation,
     accounts,
     selectedAccountID,
     statusMessage: accountListError
@@ -216,28 +182,26 @@ export default function ProviderSelectionFlow({
     onAction: actions.onAction,
     onSignOut: actions.onSignOut,
     onCancelSignIn: chatGPTServices.cancelSignIn,
+    onOpenAccounts,
   };
-
-  const screen = (
-    <ProviderSelectionScreen
-      navigationRouteKey={navigationRouteKey}
-      screenTitle={screenTitle}
-      screenIntroduction={screenIntroduction}
-      chatGPTSetup={chatGPTSetup}
-      onBack={onBack}
-      onNavigationStateChange={reportSelectionState}
-      onSelectionCommitted={onSelectionCommitted}
-      options={options}
-      requirements={visitRecommendationRequirements}
-      selectionStore={selectionStore}
-    />
-  );
 
   return (
     <ProviderSelectionFlowShell
       safeAreaHandledByParent={safeAreaHandledByParent}
     >
-      {screen}
+      <ProviderSelectionScreen
+        presentation={presentation}
+        navigationRouteKey={navigationRouteKey}
+        screenTitle={screenTitle}
+        screenIntroduction={screenIntroduction}
+        chatGPTSetup={chatGPTSetup}
+        onBack={onBack}
+        onNavigationStateChange={reportSelectionState}
+        onSelectionCommitted={onSelectionCommitted}
+        options={options}
+        requirements={visitRecommendationRequirements}
+        selectionStore={selectionStore}
+      />
     </ProviderSelectionFlowShell>
   );
 }

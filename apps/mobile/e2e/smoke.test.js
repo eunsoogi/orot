@@ -222,7 +222,8 @@ describe('Orot mobile app', () => {
     );
     await element(by.id('navigation-route-scroll')).scrollTo('top', 0.5, 0.2);
     await element(by.id('settings-open-provider')).tap();
-    await waitFor(element(by.id('provider-selection-screen')))
+    // Provider/model settings has its own route marker, separate from linked accounts.
+    await waitFor(element(by.id('settings-provider-screen')))
       .toBeVisible()
       .withTimeout(30000);
     await expectNativeNavigationAction('navigation-back');

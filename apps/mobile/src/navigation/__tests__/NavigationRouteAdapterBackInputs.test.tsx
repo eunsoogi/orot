@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
+import { StackActions, useNavigation } from '@react-navigation/native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
 import type { NavigationRouteActions } from '../NavigationRouteAdapter';
@@ -44,29 +45,16 @@ jest.mock('react-native-safe-area-context', () => {
 
 type TestRoute = 'home' | 'editor';
 
-function createPanEvent(
-  timestamp: number,
-  previousX: number,
-  currentX: number,
-) {
-  return {
-    nativeEvent: { pageX: currentX, touches: [{}] },
-    touchHistory: {
-      indexOfSingleActiveTouch: 0,
-      mostRecentTimeStamp: timestamp,
-      numberActiveTouches: 1,
-      touchBank: [
-        {
-          currentPageX: currentX,
-          currentPageY: 20,
-          currentTimeStamp: timestamp,
-          previousPageX: previousX,
-          previousPageY: 20,
-          touchActive: true,
-        },
-      ],
-    },
-  } as never;
+function NativeBackTrigger() {
+  const navigation = useNavigation();
+  return (
+    <Pressable
+      onPress={() => navigation.dispatch(StackActions.pop())}
+      testID="native-back-trigger"
+    >
+      <Text>Native back</Text>
+    </Pressable>
+  );
 }
 
 function TestSurface({ children, testID }: NavigationSurfaceProps) {
@@ -107,7 +95,17 @@ function LeaveStateOwner({
 }
 
 describe('shared back inputs', () => {
-  it('reflects route leave denial in the bar and the edge-swipe guard', async () => {
+  beforeEach(() => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('reflects route leave denial in the bar and the native-stack removal guard', async () => {
     const controller = createNavigationController<TestRoute>('home');
     const editor = controller.push('editor');
     if (!editor) throw new Error('Editor route was unexpectedly rejected.');
@@ -117,27 +115,18 @@ describe('shared back inputs', () => {
       <NavigationRouteAdapter controller={controller} surface={TestSurface}>
         {({ route, registerLeaveState }) =>
           route.name === 'editor' ? (
-            <LeaveStateOwner registerLeaveState={registerLeaveState} />
+            <>
+              <LeaveStateOwner registerLeaveState={registerLeaveState} />
+              <NativeBackTrigger />
+            </>
           ) : null
         }
       </NavigationRouteAdapter>,
     );
 
     expect(screen.getByTestId('navigation-back')).toBeDisabled();
-    const edgeRegion = screen.getByTestId('edge-swipe-back-region');
-    const startEvent = createPanEvent(1, 12, 12);
-    const claimEvent = createPanEvent(2, 12, 42);
-    const releaseEvent = createPanEvent(3, 42, 87);
-    edgeRegion.props.onStartShouldSetResponderCapture?.(startEvent);
-    expect(edgeRegion.props.onMoveShouldSetResponderCapture?.(claimEvent)).toBe(
-      true,
-    );
-    edgeRegion.props.onResponderGrant?.(claimEvent);
-    edgeRegion.props.onResponderMove?.(releaseEvent);
-    await act(async () => {
-      edgeRegion.props.onResponderRelease?.(releaseEvent);
-      await Promise.resolve();
-    });
+    // A stack pop exercises the same native removal event emitted by iOS back gestures.
+    await fireEvent.press(screen.getByTestId('native-back-trigger'));
 
     expect(controller.getSnapshot().currentRoute.name).toBe('editor');
     expect(requestBack).toHaveBeenCalledTimes(1);
@@ -145,12 +134,12 @@ describe('shared back inputs', () => {
 
     await fireEvent.press(screen.getByTestId('allow-navigation-leave'));
     expect(screen.getByTestId('navigation-back')).toBeEnabled();
-    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await fireEvent.press(screen.getByTestId('native-back-trigger'));
     expect(controller.getSnapshot().currentRoute.name).toBe('home');
     expect(requestBack).toHaveBeenCalledTimes(2);
   });
 
-  it('uses the same operation leave guard for button and accepted edge swipe', async () => {
+  it('uses the same operation leave guard for button and native-stack removal', async () => {
     const controller = createNavigationController<TestRoute>('home');
     const editor = controller.push('editor');
     if (!editor) throw new Error('Editor route was unexpectedly rejected.');
@@ -177,7 +166,12 @@ describe('shared back inputs', () => {
         leaveState={{ readState, confirm }}
         surface={TestSurface}
       >
-        {({ route }) => <Text testID="route-content">{route.name}</Text>}
+        {({ route }) => (
+          <>
+            <Text testID="route-content">{route.name}</Text>
+            {route.name === 'editor' ? <NativeBackTrigger /> : null}
+          </>
+        )}
       </NavigationRouteAdapter>,
     );
 
@@ -200,27 +194,10 @@ describe('shared back inputs', () => {
     });
     expect(controller.getSnapshot().currentRoute.name).toBe('editor');
 
-    const edgeRegion = screen.getByTestId('edge-swipe-back-region');
-    expect(edgeRegion).toBeVisible();
-    // PanResponder x0 is zero until grant, so the edge start must be tracked directly.
-    const centerStartEvent = createPanEvent(1, 120, 120);
-    const centerMoveEvent = createPanEvent(2, 120, 150);
-    edgeRegion.props.onStartShouldSetResponderCapture?.(centerStartEvent);
-    expect(
-      edgeRegion.props.onMoveShouldSetResponderCapture?.(centerMoveEvent),
-    ).toBe(false);
-
-    const startEvent = createPanEvent(3, 12, 12);
-    const claimEvent = createPanEvent(4, 12, 42);
-    const releaseEvent = createPanEvent(5, 42, 87);
-    edgeRegion.props.onStartShouldSetResponderCapture?.(startEvent);
-    expect(edgeRegion.props.onMoveShouldSetResponderCapture?.(claimEvent)).toBe(
-      true,
-    );
-    edgeRegion.props.onResponderGrant?.(claimEvent);
-    edgeRegion.props.onResponderMove?.(releaseEvent);
+    // The navigator owns gesture recognition; dispatch its stack action to test the guard.
+    await fireEvent.press(screen.getByTestId('native-back-trigger'));
+    expect(confirm).toHaveBeenCalledTimes(2);
     await act(async () => {
-      edgeRegion.props.onResponderRelease?.(releaseEvent);
       confirmationDecisions[1]?.(true);
       await Promise.resolve();
       await Promise.resolve();

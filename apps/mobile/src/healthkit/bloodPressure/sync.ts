@@ -3,9 +3,12 @@ import {
   BLOOD_PRESSURE_CHECKPOINT_KEY,
 } from './importChanges';
 import type {
+  BloodPressureRepository,
   BloodPressureSyncOptions,
   BloodPressureSyncResult,
 } from './types';
+import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
+import { resolveHealthKitSyncAuthorization } from '../syncAuthorization';
 
 export const BLOOD_PRESSURE_PAGE_SIZE = 200;
 
@@ -15,25 +18,57 @@ const pageRequest = {
   limit: BLOOD_PRESSURE_PAGE_SIZE,
 } as const;
 
-/** Applies anchored HealthKit pages before fetching the next cursor. */
-export async function syncHealthKitBloodPressure(
+const syncTails = new WeakMap<BloodPressureRepository, Promise<void>>();
+
+/** Serializes imports so each blood-pressure cursor has one active writer. */
+export function syncHealthKitBloodPressure(
   options: BloodPressureSyncOptions,
 ): Promise<BloodPressureSyncResult> {
-  let authorization: import('../types').HealthKitAuthorizationResult;
-  if (options.authorization) {
-    authorization = options.authorization;
-  } else if ('requestReadAuthorization' in options.healthKit) {
-    authorization =
-      await options.healthKit.requestReadAuthorization('bloodPressure');
-  } else {
-    throw new Error(
+  const previous = syncTails.get(options.repository) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const tail = previous.then(() => gate);
+  syncTails.set(options.repository, tail);
+
+  return previous
+    .then(() => syncHealthKitBloodPressureExclusive(options))
+    .finally(() => {
+      release();
+      if (syncTails.get(options.repository) === tail) {
+        syncTails.delete(options.repository);
+      }
+    });
+}
+
+/** Applies anchored pages and commits each cursor before requesting the next page. */
+async function syncHealthKitBloodPressureExclusive(
+  options: BloodPressureSyncOptions,
+): Promise<BloodPressureSyncResult> {
+  const healthKit = options.healthKit;
+  const authorization = await resolveHealthKitSyncAuthorization({
+    permissionPreviouslyRequested: options.permissionPreviouslyRequested,
+    authorization: options.authorization,
+    requestAuthorization:
+      'requestReadAuthorization' in healthKit
+        ? () => healthKit.requestReadAuthorization('bloodPressure')
+        : undefined,
+    onRequestCompleted: options.rememberForAutoSync
+      ? () =>
+          rememberHealthKitAutoSyncRequest(
+            options.repository,
+            'bloodPressure',
+            options.now,
+          )
+      : undefined,
+    missingRequestMessage:
       'A batch authorization result is required before blood-pressure sync.',
-    );
-  }
-  // HealthKit keeps read grants opaque; request completion is not a grant result.
+  });
   if (
-    authorization.availability !== 'available' ||
-    authorization.requestStatus !== 'completed'
+    authorization &&
+    (authorization.availability !== 'available' ||
+      authorization.requestStatus !== 'completed')
   ) {
     return {
       status: 'notRun',

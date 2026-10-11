@@ -1,22 +1,22 @@
 import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
+import type { HealthObservation } from '@orot/domain';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
 import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
 import RecordingScreen from '../recording/RecordingScreen';
+import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import type { CommonObservationsImportResult } from '../healthkit/commonObservations/CommonObservationsImportScreen';
 import type { CommonObservationFeature } from '../healthkit/commonObservations/types';
 import { CommonObservationsImportScreen } from '../healthkit/commonObservations/CommonObservationsImportScreen';
 import { commonObservationsCopy } from '../healthkit/commonObservations/copy';
 import { BloodPressureImportScreen } from '../healthkit/bloodPressure/BloodPressureImportScreen';
-import type {
-  BloodPressureObservation,
-  BloodPressureSyncResult,
-} from '../healthkit/bloodPressure/types';
+import { HealthRecordsLibraryScreen } from '../healthkit/HealthRecordsLibraryScreen';
+import type { BloodPressureSyncResult } from '../healthkit/bloodPressure/types';
 import WelcomeRoute from './WelcomeRoute';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
@@ -65,9 +65,7 @@ interface AppRouteContentProps {
     features: readonly CommonObservationFeature[],
   ) => Promise<CommonObservationsImportResult>;
   readonly importBloodPressure: () => Promise<BloodPressureSyncResult>;
-  readonly loadBloodPressureObservations: () => Promise<
-    readonly BloodPressureObservation[]
-  >;
+  readonly loadHealthObservations: () => Promise<readonly HealthObservation[]>;
 }
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
@@ -96,7 +94,7 @@ export function AppRouteContent({
   openRecording,
   importHealthObservations,
   importBloodPressure,
-  loadBloodPressureObservations,
+  loadHealthObservations,
 }: AppRouteContentProps) {
   if (actions.route.name === 'home') {
     switch (activeTab) {
@@ -123,6 +121,7 @@ export function AppRouteContent({
             onOpenRecording={openRecording}
             onOpenUnifiedImport={() => actions.push('unified-import')}
             onOpenHealthImport={() => actions.push('common-observations')}
+            onOpenHealthLibrary={() => actions.push('health-records')}
             onOpenBloodPressure={() => actions.push('blood-pressure')}
           />
         );
@@ -166,7 +165,13 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'recording':
-      return <RecordingScreen onBack={actions.onBack} />;
+      // The screen and review panel share one job registry to coalesce automatic and manual transcription.
+      return (
+        <RecordingScreen
+          onBack={actions.onBack}
+          transcriptService={transcriptEvidenceService}
+        />
+      );
     case 'common-observations':
       return (
         <View style={styles.container}>
@@ -181,8 +186,17 @@ export function AppRouteContent({
         <View style={styles.container}>
           <BloodPressureImportScreen
             onBack={actions.onBack}
+            onOpenLibrary={() => actions.push('health-records')}
             importBloodPressure={importBloodPressure}
-            loadObservations={loadBloodPressureObservations}
+          />
+        </View>
+      );
+    case 'health-records':
+      return (
+        <View style={styles.container}>
+          <HealthRecordsLibraryScreen
+            loadObservations={loadHealthObservations}
+            onBack={actions.onBack}
           />
         </View>
       );
@@ -200,6 +214,7 @@ export function AppRouteContent({
         />
       );
     case 'settings-accounts':
+    case 'settings-provider':
     case 'settings-backup':
     case 'settings-privacy':
       return (

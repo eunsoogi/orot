@@ -17,6 +17,12 @@ const {
 const {
   switchToTranscriptEvidenceMode,
 } = require('./transcription/transcriptProbeModeDetoxHelpers');
+const {
+  selectSavedRecordingTranscriptPanel,
+} = require('./transcription/recordingSelectionDetoxHelpers');
+const {
+  transcriptRangeMilliseconds,
+} = require('./transcription/transcriptRangeDetoxHelpers');
 
 describe('Apple Korean transcription and recording export on iOS Simulator', () => {
   it('verifies transcript export, share-sheet cancellation, and source preservation', async () => {
@@ -41,13 +47,14 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
       const setupStatus = element(by.id('transcript-evidence-setup-status'));
       assertionStage = 'wait for recording setup';
       await waitFor(setupStatus).toHaveText('ready').withTimeout(30000);
-      assertionStage = 'reveal transcript panel';
-      await waitFor(element(by.id('transcript-panel')))
-        .toBeVisible()
-        .whileElement(by.id('recording-controls-scroll'))
-        .scroll(120, 'down', 0.5, 0.35);
+
+      // The transcript editor belongs to the saved row selected from the real library.
+      assertionStage = 'select saved recording and open transcript panel';
+      await selectSavedRecordingTranscriptPanel({ by, element, waitFor });
       assertionStage = 'create transcript';
-      await element(by.id('transcript-create')).tap();
+      const createTranscript = element(by.id('transcript-create'));
+      await scrollToTranscriptControl(createTranscript);
+      await createTranscript.tap();
 
       assertionStage = 'read transcript metadata';
       const transcript = element(by.id('transcript-text-0'));
@@ -66,29 +73,20 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
         'transcript-evidence-before-playback',
       );
       console.log('TRANSCRIPT_EVIDENCE_SCREENSHOT ' + transcriptScreen);
-      const engineAttributes = await element(
-        by.id('transcript-engine-0'),
-      ).getAttributes();
-      const runtimeAttributes = await element(
-        by.id('transcript-runtime-0'),
-      ).getAttributes();
+      // Keep technical provenance in saved evidence without displaying it in the review row.
+      await waitFor(element(by.id('transcript-engine-0')))
+        .not.toExist()
+        .withTimeout(5000);
+      await waitFor(element(by.id('transcript-runtime-0')))
+        .not.toExist()
+        .withTimeout(5000);
       const rangeAttributes = await element(
         by.id('transcript-range-0'),
       ).getAttributes();
-      const engine = accessibilityText(engineAttributes);
-      const runtime = accessibilityText(runtimeAttributes);
       const rangeLabel = rangeAttributes.label || rangeAttributes.text;
-      jestExpect(engine).toBe('엔진: synthetic-fixture-adapter');
-      jestExpect(runtime).toBe('시스템 버전: fixture-v1');
-      jestExpect(typeof rangeLabel).toBe('string');
-      const range = /^(\d{2}):(\d{2})\.(\d{3})–(\d{2}):(\d{2})\.(\d{3})$/.exec(
-        rangeLabel,
-      );
-      jestExpect(range).not.toBeNull();
-      const startMs =
-        Number(range[1]) * 60_000 + Number(range[2]) * 1000 + Number(range[3]);
-      const endMs =
-        Number(range[4]) * 60_000 + Number(range[5]) * 1000 + Number(range[6]);
+      const engineMetadataVisible = false;
+      const runtimeMetadataVisible = false;
+      const { startMs, endMs } = transcriptRangeMilliseconds(rangeLabel);
 
       assertionStage = 'play selected audio range';
       // Scroll the evidence row's bounded list so its action remains hittable on compact Simulator screens.
@@ -178,8 +176,10 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
           JSON.stringify({
             transcript: {
               originalText,
-              engine,
-              runtime,
+              implementationMetadataVisible: {
+                engine: engineMetadataVisible,
+                runtime: runtimeMetadataVisible,
+              },
               range: rangeLabel,
               originalReviewState,
               correctedText,
@@ -191,7 +191,6 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
               ),
             },
             playback,
-            transcriptSource: 'synthetic-fixture-adapter',
           }),
       );
     } catch (failure) {

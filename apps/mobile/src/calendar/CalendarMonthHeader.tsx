@@ -53,7 +53,7 @@ export function CalendarMonthHeader({
 /** Weekdays move with the date grid so narrow screens retain aligned columns. */
 export function CalendarWeekdayHeader() {
   return (
-    <View style={styles.calendarWeekdayRow}>
+    <View style={styles.calendarWeekdayRow} testID="calendar-weekday-row">
       {calendarWeekdays().map((weekday, index) => (
         <Text key={`${weekday}-${index}`} style={styles.calendarWeekday}>
           {weekday}

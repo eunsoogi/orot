@@ -18,6 +18,7 @@ export async function importLocalBloodPressure(): Promise<BloodPressureSyncResul
     healthKit,
     repository,
     now: () => new Date().toISOString(),
+    rememberForAutoSync: true,
   });
 }
 

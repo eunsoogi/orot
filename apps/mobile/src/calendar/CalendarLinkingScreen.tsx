@@ -9,10 +9,10 @@ import { CalendarMonthView } from './CalendarMonthView';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarQueryWindow } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
+import { CalendarQuickActions } from './CalendarQuickActions';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarBridge } from './types';
 import { calendarAccessMessage as accessMessage } from './calendarAccessMessage';
-import { medicalAppointmentCopy } from '../medicalAppointments/copy.ko';
 import { useCalendarLinking } from './useCalendarLinking';
 import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
 import { navigationText } from '../i18n/navigation';
@@ -88,26 +88,17 @@ export default function CalendarLinkingScreen({
         >
           {heading}
         </Text>
-        {onOpenAppointments ? (
-          <Button
-            disabled={calendar.saving || hasUnsavedSelection}
-            onPress={onOpenAppointments}
-            testID="schedule-open-appointments"
-            title={t('schedule.manageAppointments')}
-          />
-        ) : null}
-        {onOpenMedicalAppointments ? (
-          <Button
-            disabled={calendar.saving || hasUnsavedSelection}
-            onPress={onOpenMedicalAppointments}
-            testID="open-medical-appointments"
-            title={medicalAppointmentCopy.title}
-          />
-        ) : null}
-        <Text style={styles.message}>{t('calendar.description')}</Text>
-        <Text style={styles.message}>
-          {t('calendar.permissionExplanation')}
-        </Text>
+        <CalendarQuickActions
+          disabled={calendar.saving || hasUnsavedSelection}
+          onOpenAppointments={onOpenAppointments}
+          onOpenMedicalAppointments={onOpenMedicalAppointments}
+        />
+        <View style={styles.calendarPrivacyInfo}>
+          <Text style={styles.message}>{t('calendar.description')}</Text>
+          <Text style={styles.message}>
+            {t('calendar.permissionExplanation')}
+          </Text>
+        </View>
         {calendar.loadingAppointments ? (
           <Text testID="calendar-storage-loading">
             {t('appointments.opening')}

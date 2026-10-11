@@ -21,7 +21,11 @@ export const calendarStyles = StyleSheet.create({
   eventTitle: { color: appColors.text, fontSize: 17, fontWeight: '600' },
   warning: { color: appColors.warning, fontSize: 15 },
   error: { color: appColors.danger, fontSize: 15 },
-  calendarMonth: { gap: 12 },
+  // Cancel most of the screen's 24pt horizontal padding so seven 44pt date targets fit at 320pt.
+  calendarMonth: { gap: 12, marginHorizontal: -20 },
+  calendarQuickActions: { alignItems: 'stretch', flexDirection: 'row', gap: 8 },
+  calendarQuickActionCell: { flex: 1 },
+  calendarPrivacyInfo: { gap: 4 },
   calendarMonthHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -56,10 +60,8 @@ export const calendarStyles = StyleSheet.create({
     textAlign: 'center',
     width: '14.2857142857%',
   },
-  // Keep weekday labels and date buttons aligned while narrow screens scroll sideways.
-  calendarDateGridScroll: { flexGrow: 0, width: '100%' },
-  // Seven 44pt day targets stay on one row at the narrowest supported screen width.
-  calendarDateGridContent: { gap: 12, minWidth: 308, width: '100%' },
+  // Percent widths keep all weekday and date rows in the same seven-column viewport.
+  calendarDateGridContent: { gap: 12, width: '100%' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', width: '100%' },
   // Content-driven height lets larger accessibility text expand within the ScrollView.
   calendarDay: {
@@ -68,10 +70,8 @@ export const calendarStyles = StyleSheet.create({
     borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 1,
-    flexShrink: 0,
     gap: 2,
     minHeight: 54,
-    minWidth: 44,
     padding: 4,
     width: '14.2857142857%',
   },

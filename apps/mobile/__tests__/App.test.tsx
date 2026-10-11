@@ -103,9 +103,10 @@ test('opens provider settings from Settings and returns there on Back', async ()
   await fireEvent.press(screen.getByTestId('settings-open-provider'));
 
   expect(
-    await screen.findByRole('header', { name: '추천에 사용할 AI 선택' }),
+    await screen.findByRole('header', { name: 'AI 제공자와 모델' }),
   ).toBeTruthy();
-  expect(screen.getByTestId('chatgpt-account-setup')).toBeTruthy();
+  expect(screen.getByTestId('settings-provider-screen')).toBeTruthy();
+  expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),

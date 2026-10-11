@@ -5,7 +5,9 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
+import { appColors } from '../../layout/appColors';
 import TranscriptEvidencePanel from '../TranscriptEvidencePanel';
+import { transcriptEvidenceStyles } from '../TranscriptEvidencePanel.styles';
 import type {
   TranscriptEvidenceService,
   TranscriptRecordingView,
@@ -64,7 +66,7 @@ const correction: TranscriptEvidenceSegment = {
   },
 };
 
-test('shows provenance and range, preserves correction history, and plays the selected evidence', async () => {
+test('shows review provenance and range, preserves correction history, and plays evidence', async () => {
   let view: TranscriptRecordingView = {
     source,
     segments: [original],
@@ -106,11 +108,20 @@ test('shows provenance and range, preserves correction history, and plays the se
   expect(
     screen.getByTestId('transcript-clinician-verification-0'),
   ).toHaveTextContent('의료진 확인 기록 없음');
-  expect(screen.getByText('엔진: dictation_transcriber')).toBeTruthy();
-  expect(screen.getByText('시스템 버전: iOS 26.2 (23C54)')).toBeTruthy();
+  expect(screen.queryByTestId('transcript-engine-0')).toBeNull();
+  expect(screen.queryByTestId('transcript-runtime-0')).toBeNull();
   expect(screen.getByText('00:00.250–00:01.801')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('transcript-play-0'));
   expect(service.play).toHaveBeenCalledWith(original);
+  expect(service.play).toHaveBeenCalledWith(
+    expect.objectContaining({
+      provenance: expect.objectContaining({
+        source: expect.objectContaining({
+          sourceIdentifier: 'dictation_transcriber',
+        }),
+      }),
+    }),
+  );
 
   await fireEvent.press(screen.getByTestId('transcript-edit-0'));
   const transcriptInput = screen.getByTestId('transcript-input-0');
@@ -133,4 +144,18 @@ test('shows provenance and range, preserves correction history, and plays the se
     '사용자 수정',
   );
   expect(service.correct).toHaveBeenCalledWith(original.id, correction.text);
+});
+
+test('uses appearance-aware colors for transcript content and editing surfaces', () => {
+  expect(transcriptEvidenceStyles.container.borderTopColor).toBe(
+    appColors.border,
+  );
+  expect(transcriptEvidenceStyles.title.color).toBe(appColors.text);
+  expect(transcriptEvidenceStyles.copy.color).toBe(appColors.secondary);
+  expect(transcriptEvidenceStyles.text.color).toBe(appColors.text);
+  expect(transcriptEvidenceStyles.metadata.color).toBe(appColors.secondary);
+  expect(transcriptEvidenceStyles.input.color).toBe(appColors.text);
+  expect(transcriptEvidenceStyles.input.borderColor).toBe(appColors.border);
+  expect(transcriptEvidenceStyles.history.color).toBe(appColors.secondary);
+  expect(transcriptEvidenceStyles.error.color).toBe(appColors.danger);
 });

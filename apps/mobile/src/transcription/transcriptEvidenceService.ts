@@ -71,6 +71,106 @@ export function createTranscriptEvidenceService(
   const provider = options.provider ?? appleOnDeviceSpeechTranscriptionProvider;
   const playRange = options.playRange ?? recordingService.playRange;
   const now = options.now ?? (() => new Date());
+  const activeTranscriptions = new Map<
+    string,
+    Promise<TranscriptEvidenceSegment[]>
+  >();
+
+  async function transcribeRecording(
+    recordingSourceId: string,
+    signal?: AbortSignal,
+  ): Promise<TranscriptEvidenceSegment[]> {
+    if (signal?.aborted) throw new Error('Transcription was canceled.');
+    const repository = await loadRepository();
+    const source = await repository.get('source_record', recordingSourceId);
+    if (!source || source.sourceKind !== 'audio_recording') {
+      throw new Error('Transcript evidence requires a saved audio recording.');
+    }
+    const existing = await repository.transcripts.listForRecording(source.id);
+    if (existing.length > 0) return existing;
+
+    const result = await provider.transcribeRecording({
+      recordingId: source.id,
+      language: 'ko-KR',
+      ...(signal ? { signal } : {}),
+    });
+    if (signal?.aborted) throw new Error('Transcription was canceled.');
+    if (!result.ok) throw new Error(result.error.message);
+    const currentSource = await repository.get('source_record', source.id);
+    if (!currentSource || currentSource.sourceKind !== 'audio_recording') {
+      throw new Error('The saved recording was removed during transcription.');
+    }
+    // Another request may have committed while this provider call was running.
+    const committed = await repository.transcripts.listForRecording(source.id);
+    if (committed.length > 0) return committed;
+    const recognizedSegments = result.value.segments ?? [];
+    if (recognizedSegments.length === 0) {
+      throw new Error(
+        'The on-device speech engine returned no timestamped segments.',
+      );
+    }
+    const recordedAt = now().toISOString();
+    const segments = recognizedSegments.map((segment, segmentOrdinal) => {
+      const audio = audioRange(
+        segment.startSeconds,
+        segment.endSeconds,
+        result.value.recordingDurationMs,
+      );
+      const transcriptId = `${source.id}:segment:${segmentOrdinal}`;
+      const effectiveAt = new Date(
+        Date.parse(source.effectiveAt) + audio.startMs,
+      ).toISOString();
+      return {
+        id: `${transcriptId}:r1`,
+        transcriptId,
+        recordingSourceId: source.id,
+        segmentOrdinal,
+        revision: 1,
+        text: segment.text,
+        language: result.value.language ?? 'ko-KR',
+        recordingDurationMs: result.value.recordingDurationMs,
+        audioRange: audio,
+        effectiveAt,
+        recordedAt,
+        ingestedAt: recordedAt,
+        provenance: {
+          origin: 'derived' as const,
+          sourceRecordIds: [source.id],
+          source: {
+            system: 'Apple Speech',
+            sourceIdentifier: result.value.engine,
+            sourceVersion: result.value.runtimeVersion,
+            productType: 'on-device-speech-transcription',
+          },
+        },
+        reviewState: { status: 'unreviewed' as const },
+      };
+    });
+    if (signal?.aborted) throw new Error('Transcription was canceled.');
+    await repository.transcripts.append(segments);
+    return repository.transcripts.listForRecording(source.id);
+  }
+
+  function transcribe(
+    recordingSourceId: string,
+    signal?: AbortSignal,
+  ): Promise<TranscriptEvidenceSegment[]> {
+    if (signal?.aborted) {
+      return Promise.reject(new Error('Transcription was canceled.'));
+    }
+    const active = activeTranscriptions.get(recordingSourceId);
+    if (active) return active;
+    const pending = transcribeRecording(recordingSourceId, signal);
+    activeTranscriptions.set(recordingSourceId, pending);
+    const clear = () => {
+      if (activeTranscriptions.get(recordingSourceId) === pending) {
+        activeTranscriptions.delete(recordingSourceId);
+      }
+    };
+    // A rejection handler clears the map without creating an unhandled promise.
+    void pending.then(clear, clear);
+    return pending;
+  }
 
   return {
     async load(recordingSourceId) {
@@ -115,69 +215,7 @@ export function createTranscriptEvidenceService(
       ];
       return { source, segments, staleArtifacts };
     },
-    async transcribe(recordingSourceId, signal) {
-      const repository = await loadRepository();
-      const source = await repository.get('source_record', recordingSourceId);
-      if (!source || source.sourceKind !== 'audio_recording') {
-        throw new Error(
-          'Transcript evidence requires a saved audio recording.',
-        );
-      }
-      const existing = await repository.transcripts.listForRecording(source.id);
-      if (existing.length > 0) return existing;
-
-      const result = await provider.transcribeRecording({
-        recordingId: source.id,
-        language: 'ko-KR',
-        ...(signal ? { signal } : {}),
-      });
-      if (!result.ok) throw new Error(result.error.message);
-      const recognizedSegments = result.value.segments ?? [];
-      if (recognizedSegments.length === 0) {
-        throw new Error(
-          'The on-device speech engine returned no timestamped segments.',
-        );
-      }
-      const recordedAt = now().toISOString();
-      const segments = recognizedSegments.map((segment, segmentOrdinal) => {
-        const audio = audioRange(
-          segment.startSeconds,
-          segment.endSeconds,
-          result.value.recordingDurationMs,
-        );
-        const transcriptId = `${source.id}:segment:${segmentOrdinal}`;
-        const effectiveAt = new Date(
-          Date.parse(source.effectiveAt) + audio.startMs,
-        ).toISOString();
-        return {
-          id: `${transcriptId}:r1`,
-          transcriptId,
-          recordingSourceId: source.id,
-          segmentOrdinal,
-          revision: 1,
-          text: segment.text,
-          language: result.value.language ?? 'ko-KR',
-          recordingDurationMs: result.value.recordingDurationMs,
-          audioRange: audio,
-          effectiveAt,
-          recordedAt,
-          ingestedAt: recordedAt,
-          provenance: {
-            origin: 'derived' as const,
-            sourceRecordIds: [source.id],
-            source: {
-              system: 'Apple Speech',
-              sourceIdentifier: result.value.engine,
-              sourceVersion: result.value.runtimeVersion,
-              productType: 'on-device-speech-transcription',
-            },
-          },
-          reviewState: { status: 'unreviewed' as const },
-        };
-      });
-      await repository.transcripts.append(segments);
-      return repository.transcripts.listForRecording(source.id);
-    },
+    transcribe,
     async correct(segmentId, text) {
       const repository = await loadRepository();
       return repository.transcripts.correct(

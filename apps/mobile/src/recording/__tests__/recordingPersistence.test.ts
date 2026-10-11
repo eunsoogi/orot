@@ -34,6 +34,7 @@ test('persists one unreviewed audio source with the native recording identity an
     provenance: { origin: 'user_reported', sourceRecordIds: [] },
     reviewState: { status: 'unreviewed' },
     title: '상담 녹음',
+    recordingDurationMs: recording.durationMs,
   });
   expect(store.get).toHaveBeenCalledWith('source_record', recording.id);
   expect(store.put).toHaveBeenCalledWith('source_record', source);
@@ -83,6 +84,7 @@ test('allows an exact metadata retry and rejects an identity collision', async (
     sourceKind: 'audio_recording',
     effectiveAt: recording.startedAt,
     recordedAt: recording.completedAt,
+    recordingDurationMs: recording.durationMs,
   };
   const retryStore = repository(existing);
   await expect(
@@ -94,6 +96,27 @@ test('allows an exact metadata retry and rejects an identity collision', async (
   await expect(
     saveRecordingSource(recording, async () => collisionStore),
   ).rejects.toThrow('recording source identifier is already in use');
+});
+
+test('backfills only a missing measured duration on an exact metadata retry', async () => {
+  const existing = {
+    id: recording.id,
+    sourceKind: 'audio_recording',
+    effectiveAt: recording.startedAt,
+    recordedAt: recording.completedAt,
+  };
+  const store = repository(existing);
+
+  await expect(
+    saveRecordingSource(recording, async () => store),
+  ).resolves.toMatchObject({
+    ...existing,
+    recordingDurationMs: recording.durationMs,
+  });
+  expect(store.put).toHaveBeenCalledWith(
+    'source_record',
+    expect.objectContaining({ recordingDurationMs: recording.durationMs }),
+  );
 });
 
 test('propagates repository failures so the screen can retry metadata linking', async () => {

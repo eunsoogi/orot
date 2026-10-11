@@ -6,6 +6,7 @@ import { medicalAppointmentsKo } from './medicalAppointments';
 import { backupKo } from './backupKo';
 import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
+import { healthRecordsKo } from './healthRecords';
 
 export const ko = {
   ...backupKo,
@@ -154,4 +155,5 @@ export const ko = {
   ...aiFeatureCatalogsKo,
   ...medicalAppointmentsKo,
   ...providerAccountsKo,
+  ...healthRecordsKo,
 } as const;

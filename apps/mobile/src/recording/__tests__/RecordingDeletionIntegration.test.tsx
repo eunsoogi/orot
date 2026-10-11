@@ -8,6 +8,10 @@ import type { TranscriptEvidenceService } from '../../transcription/transcriptEv
 import RecordingScreen from '../RecordingScreen';
 import type { RecordingLibraryService } from '../recordingLibraryService';
 import {
+  confirmNativeDeletion,
+  mockNativeDeletionAlert,
+} from '../testSupport/nativeDeletionAlert';
+import {
   completed,
   createService,
   savedSource,
@@ -48,6 +52,7 @@ function createTranscriptService(): TranscriptEvidenceService {
 }
 
 test('deleting the latest recording from its detail clears the screen source', async () => {
+  const alert = mockNativeDeletionAlert();
   const recording = createService().service;
   const library = createLibraryService();
   await render(
@@ -69,7 +74,8 @@ test('deleting the latest recording from its detail clears the screen source', a
     screen.getByTestId(`recording-details-${savedSource.id}`),
   );
   await fireEvent.press(screen.getByTestId('recording-detail-delete'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   await waitFor(() => {
     expect(
@@ -89,6 +95,7 @@ test('prevents a new capture while a confirmed recording deletion is in flight',
   const pendingDeletion = new Promise<void>(resolve => {
     finishDeletion = resolve;
   });
+  const alert = mockNativeDeletionAlert();
   const recording = createService().service;
   const library = createLibraryService(() => pendingDeletion);
   await render(
@@ -105,17 +112,20 @@ test('prevents a new capture while a confirmed recording deletion is in flight',
     screen.getByTestId('recording-delete-' + savedSource.id),
   );
 
-  const confirm = fireEvent.press(
-    await screen.findByTestId('recording-delete-confirm'),
-  );
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
   await waitFor(() => expect(library.deleteRecording).toHaveBeenCalled());
   expect(screen.getByTestId('recording-start')).toBeDisabled();
+  expect(screen.getByTestId('recording-delete-progress')).toBeTruthy();
   expect(finishDeletion).toBeDefined();
   finishDeletion?.();
-  await confirm;
   await waitFor(() => {
     expect(
       screen.queryByTestId('recording-library-item-' + savedSource.id),
     ).toBeNull();
   });
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });

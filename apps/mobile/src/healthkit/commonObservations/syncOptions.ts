@@ -59,10 +59,20 @@ export type SyncCommonObservationChangesOptions =
     (
       | {
           readonly authorization: HealthKitAuthorizationResult;
+          readonly permissionPreviouslyRequested?: never;
+          readonly rememberForAutoSync?: true;
           readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'>;
         }
       | {
           readonly authorization?: undefined;
+          readonly permissionPreviouslyRequested: true;
+          readonly rememberForAutoSync?: never;
+          readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'>;
+        }
+      | {
+          readonly authorization?: undefined;
+          readonly permissionPreviouslyRequested?: false;
+          readonly rememberForAutoSync?: true;
           readonly healthKit: Pick<
             HealthKitNativeModule,
             'requestReadAuthorization' | 'querySampleChanges'

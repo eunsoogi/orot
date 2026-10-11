@@ -60,6 +60,9 @@ test('edits saved questions through one shell action even while the provider is 
   expect(screen.getByText('합성 진료 예약')).toBeTruthy();
   expect(screen.queryByTestId('next-visit-provider')).toBeNull();
   expect(screen.getAllByTestId('next-visit-review-save')).toHaveLength(1);
+  expect(
+    screen.getByTestId('next-visit-question-priority-indicator-0'),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('next-visit-question-priority-0'));
   expect(
     screen.getByTestId('next-visit-question-priority-0').props

@@ -1,14 +1,9 @@
 import type { ReactNode } from 'react';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationViewport } from './NavigationViewport';
-import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import { NavigationActionBar } from './NavigationActionBar';
-import { NavigationRouteScrollView } from './NavigationRouteScrollView';
-import { EdgeSwipeBackRegion } from './EdgeSwipeBackRegion';
-import { NavigationLeaveStateRegistrationProvider } from './useNavigationLeaveStateRegistration';
-import { createNavigationLeaveGuard } from './navigationLeaveGuard';
 import type {
   NavigationController,
   NavigationRoute,
@@ -16,13 +11,12 @@ import type {
 import type { NavigationLeaveGuardOptions } from './navigationLeaveGuard';
 import type { NavigationSurface } from './NavigationActionBar';
 import type { NavigationPrimaryAction } from './NavigationActionBar';
-import { useNavigationSnapshot } from './useNavigationSnapshot';
 import type { NavigationRootTabs } from './rootTabs';
+import { useNavigationSnapshot } from './useNavigationSnapshot';
+import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
+import { NativeRouteStack } from './NativeRouteStack';
+import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
-import {
-  NavigationPrimaryActionContext,
-  useNavigationPrimaryActionHost,
-} from './useNavigationPrimaryAction';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -37,12 +31,11 @@ export interface NavigationRouteActions<Name extends string> {
 
 export type NavigationLeaveStateSource<Name extends string> = Pick<
   NavigationLeaveGuardOptions<Name>,
-  'readState' | 'stopRecording'
+  'readState'
 > &
-  Partial<Pick<NavigationLeaveGuardOptions<Name>, 'confirm'>>;
+  Partial<Pick<NavigationLeaveGuardOptions<Name>, 'confirm' | 'stopRecording'>>;
 
 interface RegisteredLeaveState<Name extends string> {
-  readonly routeKey: string;
   readonly token: symbol;
   readonly source: NavigationLeaveStateSource<Name>;
 }
@@ -61,9 +54,10 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly rootTabs?:
     | NavigationRootTabs
     | ((route: NavigationRoute<Name>) => NavigationRootTabs | undefined);
+  readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
-/** Binds the active app route, its real leave state, and both shared back inputs. */
+/** Binds route-local guards and shared actions to UIKit's native navigation stack. */
 export function NavigationRouteAdapter<Name extends string>({
   controller,
   leaveState,
@@ -75,127 +69,98 @@ export function NavigationRouteAdapter<Name extends string>({
   contentSafeAreaHandledByChild = false,
   surface,
   rootTabs,
+  onNativeRouteRemovalComplete,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
   const leaveStateRef = useRef(leaveState);
-  const registeredLeaveState = useRef<RegisteredLeaveState<Name> | null>(null);
+  const registeredLeaveStates = useRef(
+    new Map<string, RegisteredLeaveState<Name>>(),
+  );
   leaveStateRef.current = leaveState;
-  const getLeaveStateSource = useCallback(() => {
-    const registration = registeredLeaveState.current;
-    return registration?.routeKey === snapshot.currentRoute.key
-      ? registration.source
-      : leaveStateRef.current;
-  }, [snapshot.currentRoute.key]);
+
+  const getLeaveStateSource = useCallback((routeKey: string) => {
+    return (
+      registeredLeaveStates.current.get(routeKey)?.source ??
+      leaveStateRef.current
+    );
+  }, []);
   const registerLeaveState = useCallback(
-    (source: NavigationLeaveStateSource<Name>) => {
-      const registration: RegisteredLeaveState<Name> = {
-        routeKey: snapshot.currentRoute.key,
-        token: Symbol('navigation-leave-state'),
-        source,
-      };
-      registeredLeaveState.current = registration;
+    (routeKey: string, source: NavigationLeaveStateSource<Name>) => {
+      const registration = { token: Symbol('navigation-leave-state'), source };
+      registeredLeaveStates.current.set(routeKey, registration);
       setLeaveStateVersion(version => version + 1);
       return () => {
-        if (registeredLeaveState.current?.token === registration.token) {
-          registeredLeaveState.current = null;
-          setLeaveStateVersion(version => version + 1);
+        if (
+          registeredLeaveStates.current.get(routeKey)?.token !==
+          registration.token
+        ) {
+          return;
         }
+        registeredLeaveStates.current.delete(routeKey);
+        setLeaveStateVersion(version => version + 1);
       };
     },
-    [snapshot.currentRoute.key],
+    [],
   );
-  const leaveGuard = useMemo(
-    () =>
-      createNavigationLeaveGuard<Name>({
-        readState: () => {
-          const source = getLeaveStateSource();
-          if (!source) {
-            throw new Error('The active route has no leave-state owner.');
-          }
-          return source.readState();
-        },
-        confirm: async request => {
-          const source = getLeaveStateSource();
-          if (!source) return false;
-          const approved = await (source.confirm ?? confirmNavigationLeave)(
-            request,
-          );
-          return approved && getLeaveStateSource() === source;
-        },
-        stopRecording: async () => {
-          const source = getLeaveStateSource();
-          if (!source?.stopRecording) {
-            throw new Error('The active route cannot stop its recording.');
-          }
-          await source.stopRecording();
-        },
-      }),
-    [getLeaveStateSource],
-  );
-  const actions = useMemo<NavigationRouteActions<Name>>(
-    () => ({
-      route: snapshot.currentRoute,
-      onBack: controller.requestBack,
-      onHome: controller.requestHome,
-      push: controller.push,
-      replace: controller.replace,
-      registerLeaveState,
-    }),
-    [controller, registerLeaveState, snapshot.currentRoute],
-  );
-  const leaveDisabled = (() => {
-    const source = getLeaveStateSource();
-    if (!source) return true;
+
+  const activeLeaveDisabled = (() => {
+    const source = getLeaveStateSource(snapshot.currentRoute.key);
+    if (snapshot.isTransitioning || !source) return true;
     try {
       return source.readState().canLeave === false;
     } catch {
       return true;
     }
   })();
+  const renderRoute = useCallback(
+    (route: NavigationRoute<Name>) => {
+      const active = route.key === snapshot.currentRoute.key;
+      const routeIsScrollable =
+        typeof scrollable === 'function' ? scrollable(route) : scrollable;
+      const routeHandlesSafeArea =
+        typeof contentSafeAreaHandledByChild === 'function'
+          ? contentSafeAreaHandledByChild(route)
+          : contentSafeAreaHandledByChild;
+      const routeRootTabs =
+        typeof rootTabs === 'function' ? rootTabs(route) : rootTabs;
 
-  useLayoutEffect(
-    () => controller.registerLeaveGuard(snapshot.currentRoute.key, leaveGuard),
-    [controller, leaveGuard, snapshot.currentRoute.key],
+      return (
+        <NavigationRouteScene
+          active={active}
+          childHandlesSafeArea={routeHandlesSafeArea}
+          controller={controller}
+          getLeaveStateSource={() => getLeaveStateSource(route.key)}
+          key={route.key}
+          primaryActionHost={primary.host}
+          registerLeaveStateForRoute={registerLeaveState}
+          rootTabs={routeRootTabs}
+          route={route}
+          scrollable={routeIsScrollable}
+        >
+          {children}
+        </NavigationRouteScene>
+      );
+    },
+    [
+      children,
+      contentSafeAreaHandledByChild,
+      controller,
+      getLeaveStateSource,
+      primary.host,
+      registerLeaveState,
+      rootTabs,
+      scrollable,
+      snapshot.currentRoute.key,
+    ],
   );
-
-  const routeContent = (
-    <NavigationLeaveStateRegistrationProvider
-      registerLeaveState={registerLeaveState}
-    >
-      <NavigationPrimaryActionContext.Provider value={primary.host}>
-        {children(actions)}
-      </NavigationPrimaryActionContext.Provider>
-    </NavigationLeaveStateRegistrationProvider>
-  );
-  const routeIsScrollable =
-    typeof scrollable === 'function'
-      ? scrollable(snapshot.currentRoute)
-      : scrollable;
-  const routeContentSafeAreaHandledByChild =
-    typeof contentSafeAreaHandledByChild === 'function'
-      ? contentSafeAreaHandledByChild(snapshot.currentRoute)
-      : contentSafeAreaHandledByChild;
   const routeRootTabs =
     typeof rootTabs === 'function' ? rootTabs(snapshot.currentRoute) : rootTabs;
-  // Each destination starts at its own heading instead of inheriting another tab's scroll offset.
-  const body = routeIsScrollable ? (
-    <NavigationRouteScrollView
-      key={`${snapshot.currentRoute.key}:${routeRootTabs?.activeTab ?? ''}`}
-    >
-      {routeContent}
-    </NavigationRouteScrollView>
-  ) : (
-    <View style={styles.fill}>{routeContent}</View>
-  );
-  const gestureRegion = (
-    <EdgeSwipeBackRegion controller={controller}>{body}</EdgeSwipeBackRegion>
-  );
   const actionBar = (
     <NavigationActionBar
       controller={controller}
-      leaveDisabled={leaveDisabled}
+      leaveDisabled={activeLeaveDisabled}
       showHome={showHome}
       homeAction={homeAction}
       primaryAction={primary.action ?? primaryAction}
@@ -206,17 +171,19 @@ export function NavigationRouteAdapter<Name extends string>({
 
   return (
     <SafeAreaProvider style={styles.fill}>
-      {/* Resize the route column so the shared action bar remains above the keyboard. */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.fill}
         testID="navigation-keyboard-avoiding-root"
       >
-        <NavigationViewport
-          actionBar={actionBar}
-          childHandlesSafeArea={routeContentSafeAreaHandledByChild}
-        >
-          {gestureRegion}
+        <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
+          <NativeRouteStack
+            controller={controller}
+            isTransitioning={snapshot.isTransitioning}
+            renderRoute={renderRoute}
+            routes={snapshot.routes}
+            onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
+          />
         </NavigationViewport>
       </KeyboardAvoidingView>
     </SafeAreaProvider>

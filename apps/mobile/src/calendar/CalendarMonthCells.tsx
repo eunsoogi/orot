@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { formatCalendarEventRange } from './dateTime';
 import { calendarStyles as styles } from './calendarStyles';
@@ -85,6 +86,7 @@ export function CalendarMonthEventRow({
   item,
   onSelectEvent,
 }: CalendarMonthEventRowProps) {
+  // The shared wrapper supplies an appearance-aware color for the unstyled event time.
   const title =
     item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
   const time = formatCalendarEventRange(item.event);

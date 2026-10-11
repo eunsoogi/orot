@@ -18,7 +18,8 @@ describe('Settings navigation', () => {
     await device.takeScreenshot('settings-root-light');
 
     await element(by.id('settings-open-accounts')).tap();
-    await waitFor(element(by.id('provider-selection-screen')))
+    // Account management is a distinct settings route from provider/model selection.
+    await waitFor(element(by.id('settings-accounts-screen')))
       .toBeVisible()
       .withTimeout(30000);
     await expect(element(by.text('연결된 계정'))).toExist();

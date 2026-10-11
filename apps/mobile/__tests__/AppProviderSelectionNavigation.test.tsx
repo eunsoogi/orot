@@ -66,12 +66,15 @@ async function openProviderSettings() {
   await fireEvent.press(screen.getByTestId('settings-open-provider'));
 }
 
-test('routes Settings provider controls through shared Back and edge swipe', async () => {
+test('routes Settings provider controls through shared Back', async () => {
   await renderApp();
   await openProviderSettings();
   await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
+    expect(screen.getByTestId('settings-provider-screen')).toBeTruthy(),
   );
+  expect(await screen.findByTestId('provider-option-0')).toBeTruthy();
+  expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
+  expect(screen.queryByTestId('chatgpt-account-sign-out')).toBeNull();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
@@ -80,9 +83,9 @@ test('routes Settings provider controls through shared Back and edge swipe', asy
 
   await fireEvent.press(screen.getByTestId('settings-open-provider'));
   await waitFor(() =>
-    expect(screen.getByTestId('provider-selection-screen')).toBeTruthy(),
+    expect(screen.getByTestId('settings-provider-screen')).toBeTruthy(),
   );
-  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.getByTestId('settings-title')).toBeTruthy(),
   );
@@ -106,7 +109,7 @@ test('updates the Settings provider summary after a committed selection', async 
   );
 });
 
-test('guards a pending provider choice through button and edge-swipe back', async () => {
+test('guards a pending provider choice through shared Back', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const store = selectionStore(null);
   await renderApp({
@@ -125,10 +128,10 @@ test('guards a pending provider choice through button and edge-swipe back', asyn
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
   await pressAlertButton(alert, 0);
-  expect(screen.getByTestId('provider-selection-screen')).toBeTruthy();
+  expect(screen.getByTestId('settings-provider-screen')).toBeTruthy();
   expect(store.save).not.toHaveBeenCalled();
 
-  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
   await pressAlertButton(alert, 1);
   await waitFor(() =>
@@ -157,47 +160,6 @@ async function pressAlertButton(alert: jest.SpyInstance, index: number) {
   if (!press) throw new Error(`Alert button ${index} was not registered.`);
   await act(async () => {
     press();
-    await Promise.resolve();
-  });
-}
-
-function createPanEvent(
-  timestamp: number,
-  previousX: number,
-  currentX: number,
-) {
-  return {
-    nativeEvent: { pageX: currentX, touches: [{}] },
-    touchHistory: {
-      indexOfSingleActiveTouch: 0,
-      mostRecentTimeStamp: timestamp,
-      numberActiveTouches: 1,
-      touchBank: [
-        {
-          currentPageX: currentX,
-          currentPageY: 20,
-          currentTimeStamp: timestamp,
-          previousPageX: previousX,
-          previousPageY: 20,
-          touchActive: true,
-        },
-      ],
-    },
-  } as never;
-}
-
-async function performEdgeSwipe(
-  edgeRegion: ReturnType<typeof screen.getByTestId>,
-) {
-  const start = createPanEvent(1, 12, 12);
-  const claim = createPanEvent(2, 12, 42);
-  const release = createPanEvent(3, 42, 87);
-  await act(async () => {
-    edgeRegion.props.onStartShouldSetResponderCapture?.(start);
-    edgeRegion.props.onMoveShouldSetResponderCapture?.(claim);
-    edgeRegion.props.onResponderGrant?.(claim);
-    edgeRegion.props.onResponderMove?.(release);
-    edgeRegion.props.onResponderRelease?.(release);
     await Promise.resolve();
   });
 }

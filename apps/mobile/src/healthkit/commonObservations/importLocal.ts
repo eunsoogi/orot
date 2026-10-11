@@ -13,5 +13,6 @@ export async function importLocalCommonObservations(
     healthKit,
     repository,
     now: () => new Date().toISOString(),
+    rememberForAutoSync: true,
   });
 }

@@ -18,6 +18,8 @@ import { recordingControlStyles } from './RecordingControls.styles';
 import RecordingControlsProbe from './RecordingControlsProbe';
 import { useRecordingNavigationLeaveState } from './useRecordingNavigationLeaveState';
 import RecordingSessionPanel from './RecordingSessionPanel';
+import RecordingTranscriptionFeedback from './RecordingTranscriptionFeedback';
+import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
 
 interface RecordingControlsProps {
   onBack: () => void;
@@ -44,6 +46,8 @@ interface RecordingControlsProps {
   onSendInterruption: (phase: 'began' | 'ended') => void;
   probeError: string;
   transcriptService?: TranscriptEvidenceService;
+  automaticTranscription?: AutomaticTranscriptionSnapshot | null;
+  onRetryTranscription?: () => void;
   recordingLibraryService?: RecordingLibraryService;
   onRecordingSourceDeleted?: (sourceId: string) => void;
 }
@@ -71,6 +75,8 @@ export default function RecordingControls({
   onSendInterruption,
   probeError,
   transcriptService,
+  automaticTranscription = null,
+  onRetryTranscription = () => {},
   recordingLibraryService = defaultRecordingLibraryService,
   onRecordingSourceDeleted,
 }: RecordingControlsProps) {
@@ -125,7 +131,9 @@ export default function RecordingControls({
         durationMs={durationMs}
         consentAcknowledged={consentAcknowledged}
         onToggleConsent={onToggleConsent}
-        controlsBusy={controlsBusy}
+        controlsBusy={
+          controlsBusy || automaticTranscription?.status === 'running'
+        }
         sourceRetryPending={sourceRetryPending}
         onStart={onStart}
         onPause={onPause}
@@ -161,6 +169,10 @@ export default function RecordingControls({
           ) : null}
         </View>
       ) : null}
+      <RecordingTranscriptionFeedback
+        snapshot={automaticTranscription}
+        onRetry={onRetryTranscription}
+      />
       {showRecordingLibrary ? (
         <RecordingLibraryPanel
           actionsDisabled={busy}
@@ -171,6 +183,7 @@ export default function RecordingControls({
           onSourceDeleted={onRecordingSourceDeleted}
           service={recordingLibraryService}
           transcriptService={transcriptService}
+          automaticTranscription={automaticTranscription}
         />
       ) : null}
       {error ? (

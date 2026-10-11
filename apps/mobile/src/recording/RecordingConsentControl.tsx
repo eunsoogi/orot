@@ -1,4 +1,5 @@
 import { Pressable } from 'react-native';
+import { CheckboxIndicator } from '../layout/CheckboxIndicator';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { recordingControlStyles } from './RecordingControls.styles';
@@ -22,7 +23,11 @@ export function RecordingConsentControl({
       style={recordingControlStyles.consentRow}
       testID="recording-consent"
     >
-      <Text style={recordingControlStyles.checkbox}>{checked ? '☑' : '☐'}</Text>
+      <CheckboxIndicator
+        checked={checked}
+        disabled={disabled}
+        testID="recording-consent-indicator"
+      />
       <Text style={recordingControlStyles.copy}>
         {t('recording.consent.acknowledgement')}
       </Text>

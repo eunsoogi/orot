@@ -18,6 +18,10 @@ jest.mock('../e2e/transcription/RecordingExportProbeHarness', () => ({
   RecordingExportProbeHarness: 'RecordingExportProbeHarness',
 }));
 
+jest.mock('../e2e/transcription/RecordingLibraryVisualProbe', () => ({
+  RecordingLibraryVisualProbe: 'RecordingLibraryVisualProbe',
+}));
+
 function loadProbeEntry(settings: Record<string, unknown>) {
   jest.resetModules();
   const reactNative = require('react-native');
@@ -41,4 +45,13 @@ test('launches recording export in its dedicated probe route', () => {
   expect(
     loadProbeEntry({ OROT_TRANSCRIPTION_PROBE_MODE: 'recording-export' }),
   ).toBe('RecordingExportProbeHarness');
+});
+
+test('launches the saved-recording visual probe only when requested', () => {
+  // This route-selection test isolates the fixture UI and its native dependencies.
+  expect(
+    loadProbeEntry({
+      OROT_TRANSCRIPTION_PROBE_MODE: 'recording-library-visual',
+    }),
+  ).toBe('RecordingLibraryVisualProbe');
 });

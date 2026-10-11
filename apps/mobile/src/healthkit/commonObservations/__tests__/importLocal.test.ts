@@ -47,6 +47,7 @@ describe('local common-observation app importer', () => {
         features: ['heartRate'],
         healthKit,
         repository,
+        rememberForAutoSync: true,
         now: expect.any(Function),
       }),
     );

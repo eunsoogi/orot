@@ -45,7 +45,14 @@ async function openRecords() {
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 }
 
-test('routes recording from Records through the shared button and edge swipe', async () => {
+// Recording and import routes publish leave permission after their state is ready.
+async function waitForNavigationBackEnabled() {
+  await waitFor(() =>
+    expect(screen.getByTestId('navigation-back')).toBeEnabled(),
+  );
+}
+
+test('routes recording from Records through the shared back button', async () => {
   await renderApp();
 
   await openRecords();
@@ -53,18 +60,13 @@ test('routes recording from Records through the shared button and edge swipe', a
   expect(await screen.findByRole('header', { name: '상담 녹음' })).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('recording-back')).toBeNull();
+  await waitForNavigationBackEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
-
-  await fireEvent.press(screen.getByTestId('records-new-recording'));
-  await waitFor(() =>
-    expect(screen.getByTestId('navigation-back')).toBeTruthy(),
-  );
-  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
-test('uses the same unsaved-selection confirmation for button and edge swipe', async () => {
+// Native-stack gesture removal is covered by NavigationRouteAdapterBackInputs.
+test('uses shared unsaved-selection confirmation for the back button', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   await renderApp({ importHealthObservations: jest.fn() });
 
@@ -75,6 +77,7 @@ test('uses the same unsaved-selection confirmation for button and edge swipe', a
   ).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('common-observations-back')).toBeNull();
+  await waitForNavigationBackEnabled();
   await fireEvent.press(screen.getByTestId('common-observations-toggle-steps'));
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
@@ -87,7 +90,7 @@ test('uses the same unsaved-selection confirmation for button and edge swipe', a
       .accessibilityState.checked,
   ).toBe(true);
 
-  await performEdgeSwipe(screen.getByTestId('edge-swipe-back-region'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
   expect(alert.mock.calls[1]?.[0]).toBe(navigationText.leaveUnsaved.title);
   expect(alert.mock.calls[1]?.[1]).toBe(navigationText.leaveUnsaved.message);
@@ -96,13 +99,14 @@ test('uses the same unsaved-selection confirmation for button and edge swipe', a
 });
 
 test('routes blood pressure through the shared back action', async () => {
-  await renderApp({ loadBloodPressureObservations: async () => [] });
+  await renderApp();
 
   await openRecords();
   await fireEvent.press(screen.getByTestId('records-open-blood-pressure'));
   expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
   expect(screen.queryByTestId('blood-pressure-back')).toBeNull();
+  await waitForNavigationBackEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
@@ -113,47 +117,6 @@ async function pressAlertButton(alert: jest.SpyInstance, index: number) {
   if (!press) throw new Error(`Alert button ${index} was not registered.`);
   await act(async () => {
     press();
-    await Promise.resolve();
-  });
-}
-
-function createPanEvent(
-  timestamp: number,
-  previousX: number,
-  currentX: number,
-) {
-  return {
-    nativeEvent: { pageX: currentX, touches: [{}] },
-    touchHistory: {
-      indexOfSingleActiveTouch: 0,
-      mostRecentTimeStamp: timestamp,
-      numberActiveTouches: 1,
-      touchBank: [
-        {
-          currentPageX: currentX,
-          currentPageY: 20,
-          currentTimeStamp: timestamp,
-          previousPageX: previousX,
-          previousPageY: 20,
-          touchActive: true,
-        },
-      ],
-    },
-  } as never;
-}
-
-async function performEdgeSwipe(
-  edgeRegion: ReturnType<typeof screen.getByTestId>,
-) {
-  const start = createPanEvent(1, 12, 12);
-  const claim = createPanEvent(2, 12, 42);
-  const release = createPanEvent(3, 42, 87);
-  await act(async () => {
-    edgeRegion.props.onStartShouldSetResponderCapture?.(start);
-    edgeRegion.props.onMoveShouldSetResponderCapture?.(claim);
-    edgeRegion.props.onResponderGrant?.(claim);
-    edgeRegion.props.onResponderMove?.(release);
-    edgeRegion.props.onResponderRelease?.(release);
     await Promise.resolve();
   });
 }

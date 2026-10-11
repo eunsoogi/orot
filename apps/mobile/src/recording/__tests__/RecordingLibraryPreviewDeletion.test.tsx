@@ -8,6 +8,10 @@ import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
 import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import type { RecordingLibraryService } from '../recordingLibraryService';
+import {
+  confirmNativeDeletion,
+  mockNativeDeletionAlert,
+} from '../testSupport/nativeDeletionAlert';
 
 const remainingSource: SourceRecord = {
   id: 'recording-remaining',
@@ -56,7 +60,8 @@ const latestSegment: TranscriptEvidenceSegment = {
   provenance: { origin: 'derived', sourceRecordIds: [latestSource.id] },
 };
 
-test('latest transcript preview switches to the remaining recording after deletion', async () => {
+test('shows transcript only after selecting a recording and follows the remaining selection', async () => {
+  const alert = mockNativeDeletionAlert();
   let sources = [latestSource, remainingSource];
   const library: RecordingLibraryService = {
     list: jest.fn(async () => sources),
@@ -89,15 +94,31 @@ test('latest transcript preview switches to the remaining recording after deleti
   await render(
     <RecordingLibraryPanel service={library} transcriptService={transcript} />,
   );
-  expect(await screen.findByText(latestSegment.text)).toBeTruthy();
+  await screen.findByTestId(`recording-library-item-${latestSource.id}`);
+  expect(screen.queryByText(latestSegment.text)).toBeNull();
 
-  await fireEvent.press(screen.getByTestId('recording-transcript-delete'));
-  await fireEvent.press(await screen.findByTestId('recording-delete-confirm'));
+  await fireEvent.press(
+    screen.getByTestId(`recording-details-${latestSource.id}`),
+  );
+  expect(await screen.findByText(latestSegment.text)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('recording-detail-delete'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+  await confirmNativeDeletion(alert);
 
   await waitFor(() => {
     expect(screen.queryByText(latestSegment.text)).toBeNull();
-    expect(screen.getByText(remainingSegment.text)).toBeTruthy();
+    expect(
+      screen.getByTestId(`recording-library-item-${remainingSource.id}`),
+    ).toBeTruthy();
   });
+  await fireEvent.press(
+    screen.getByTestId(`recording-details-${remainingSource.id}`),
+  );
+  expect(await screen.findByText(remainingSegment.text)).toBeTruthy();
   expect(library.deleteRecording).toHaveBeenCalledWith(latestSource.id);
-  expect(transcript.load).toHaveBeenLastCalledWith(undefined);
+  expect(transcript.load).toHaveBeenLastCalledWith(remainingSource.id);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
