@@ -4,11 +4,15 @@ function textValue(attributes) {
   return attributes.label || attributes.text || '';
 }
 
-async function reveal(target, { by: detoxBy, waitFor: detoxWaitFor }) {
+async function reveal(
+  target,
+  { by: detoxBy, waitFor: detoxWaitFor },
+  direction = 'down',
+) {
   await detoxWaitFor(target)
     .toBeVisible()
     .whileElement(detoxBy.id('recording-controls-scroll'))
-    .scroll(100, 'down', 0.5, 0.35);
+    .scroll(100, direction, 0.5, 0.35);
 }
 
 /** Drives transcript deletion; the spec supplies its Jest-scoped Detox APIs explicitly. */
@@ -37,7 +41,8 @@ async function runTranscriptDeletionFlow(detoxApi) {
 
   // Selecting a saved row moves deletion to its detail actions and hides the transcript fallback.
   const detailDelete = detoxElement(detoxBy.id('recording-detail-delete'));
-  await reveal(detailDelete, detoxApi);
+  // The detail action is above transcript evidence in the shared scroll view.
+  await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
   // Alert.alert renders native accessibility labels instead of React Native test IDs.
   const confirmation = detoxElement(detoxBy.label('녹음을 삭제할까요?'));
@@ -50,7 +55,7 @@ async function runTranscriptDeletionFlow(detoxApi) {
     .toExist()
     .withTimeout(10000);
 
-  await reveal(detailDelete, detoxApi);
+  await reveal(detailDelete, detoxApi, 'up');
   await detailDelete.tap();
   await detoxWaitFor(confirmation).toBeVisible().withTimeout(10000);
   await detoxElement(detoxBy.label('삭제')).tap();

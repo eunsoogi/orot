@@ -5,7 +5,7 @@ const { expect: jestExpect } = require('@jest/globals');
 
 test('uses the selected detail action and native deletion confirmation', async () => {
   const selectors = [];
-  const scrollContainerIds = [];
+  const scrollAttempts = [];
   const sourceId = '123e4567-e89b-12d3-a456-426614174000';
   const by = {
     id: value => {
@@ -18,18 +18,23 @@ test('uses the selected detail action and native deletion confirmation', async (
     },
   };
   const element = selector => ({
+    selector,
     tap: async () => {},
     getAttributes: async () =>
       selector.value === 'transcript-evidence-source-id'
         ? { text: sourceId }
         : { label: selector.value },
   });
-  const waitFor = () => ({
+  const waitFor = target => ({
     toBeVisible: () => ({
       withTimeout: async () => {},
       whileElement: container => ({
-        scroll: async () => {
-          scrollContainerIds.push(container.value);
+        scroll: async (_, direction) => {
+          scrollAttempts.push({
+            target: target.selector.value,
+            container: container.value,
+            direction,
+          });
         },
       }),
     }),
@@ -63,6 +68,16 @@ test('uses the selected detail action and native deletion confirmation', async (
     jestExpect.arrayContaining(['녹음을 삭제할까요?', '취소', '삭제']),
   );
   jestExpect(
-    scrollContainerIds.every(id => id === 'recording-controls-scroll'),
+    scrollAttempts.every(
+      attempt => attempt.container === 'recording-controls-scroll',
+    ),
   ).toBe(true);
+  // The seed sits below the selected detail, so the probe must return upward to its delete action.
+  jestExpect(
+    scrollAttempts.map(({ target, direction }) => [target, direction]),
+  ).toEqual([
+    ['transcript-evidence-seed-deletion', 'down'],
+    ['recording-detail-delete', 'up'],
+    ['recording-detail-delete', 'up'],
+  ]);
 });
