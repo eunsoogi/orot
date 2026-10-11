@@ -58,7 +58,8 @@ function expectRootTabContentLayout(hierarchyXml, testID) {
     };
     if (values.class === 'UIImageView' || values.class === 'UILabel')
       contentViews.push(content);
-    if (!markup.trimEnd().endsWith('/>'))
+    // The tag matcher excludes `>`, so the trailing slash marks a self-closing view.
+    if (!markup.trimEnd().endsWith('/'))
       ancestors.push({ name, x: content.x, y: content.y });
   }
 
