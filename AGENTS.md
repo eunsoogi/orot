@@ -1,17 +1,17 @@
-# 저장소 작업 지침
+# Repository instructions
 
-이 파일은 저장소 전체와 모든 하위 디렉터리에 적용됩니다. 시스템·개발자·직접 사용자 지시는 이 지침보다 우선하고, 더 깊은 경로의 `AGENTS.md`는 해당 하위 경로에서 부모 지침을 덮어씁니다. 안정적인 하위 전용 규칙이 없으면 별도 `AGENTS.md`를 만들지 마세요(`MUST NOT`).
+This file applies to the entire repository and all subdirectories. System, developer, and direct user instructions take precedence over these instructions. More deeply nested `AGENTS.md` files override this file within their subtree. If no stable rule is specific to a subtree, MUST NOT create a separate `AGENTS.md` file.
 
-## 구조와 기준 문서
+## Structure and source-of-truth documentation
 
-- iOS 앱은 `apps/mobile/`에 있고, 공유 workspace 패키지는 `packages/*/`에 있습니다.
-- 제품 개요와 사용자 기능은 [`README.md`](README.md), 개발 환경과 검사 절차는 [`docs/development.md`](docs/development.md)를 기준으로 삼아야 합니다(`MUST`).
-- 품질 검사 범위와 도구 설명은 [`docs/code-quality.md`](docs/code-quality.md), 릴리즈 검증의 실제 동작은 `.github/workflows/release.yml`과 `scripts/release/`의 구현을 기준으로 확인해야 합니다(`MUST`). 세부 절차를 이 파일에 복사하지 마세요(`MUST NOT`).
+- The iOS app is in `apps/mobile/`, and shared workspace packages are in `packages/*/`.
+- [`README.md`](README.md) is the source of truth for the product overview and user-facing features; [`docs/development.md`](docs/development.md) is the source of truth for the development environment and check procedures (`MUST`).
+- [`docs/code-quality.md`](docs/code-quality.md) is the source of truth for quality-check scope and tools; [`docs/releasing.md`](docs/releasing.md) is the source of truth for release verification, and `.github/workflows/release.yml` and the implementations in `scripts/release/` are the source of truth for its actual behavior (`MUST`). Do not copy detailed procedures into this file (`MUST NOT`).
 
-## 변경과 검증
+## Changes and verification
 
-- 작업을 시작하기 전에 현재 변경 상태와 요청된 범위를 확인해야 합니다(`MUST`). 담당 범위 안에서 필요한 파일만 수정하고 다른 작업자의 변경을 보존해야 합니다(`MUST`). 무관한 변경을 포함하지 마세요(`MUST NOT`).
-- 동작을 바꾸면 해당 동작을 입증하는 테스트를 추가하거나 갱신하고, 변경에 맞는 검사를 실행해야 합니다(`MUST`). 개발 의존성 설치와 기본 검사는 저장소 루트에서 다음 명령을 사용해야 합니다(`MUST`).
+- Before starting work, confirm the current changes and requested scope (`MUST`). Edit only the files needed within the assigned scope and preserve other contributors' changes (`MUST`). Do not include unrelated changes (`MUST NOT`).
+- When changing behavior, add or update tests that demonstrate it and run checks appropriate to the change (`MUST`). From the repository root, use these commands to install development dependencies and run baseline checks (`MUST`):
 
   ```sh
   pnpm install --frozen-lockfile
@@ -23,12 +23,21 @@
   pnpm test:unit
   ```
 
-- `pnpm format:write`는 검사 대상 파일을 수정합니다. 실행한 경우 결과 diff를 확인하고 `pnpm lint`와 `pnpm format:check`를 다시 실행해야 합니다(`MUST`).
-- iOS Simulator 빌드와 Detox 검증이 필요한 변경은 `docs/development.md`의 준비 조건과 명령을 따라야 합니다(`MUST`). 변경 파일의 줄 수 검사는 같은 문서의 Source line policy를 사용해야 합니다(`MUST`).
-- 검사 범위를 임의로 줄이거나 실패를 건너뛰지 마세요(`MUST NOT`). 제외가 필요한 경우에는 승인된 경로 제한을 사용하고 생략된 파일을 명시해야 합니다(`MUST`).
+- `pnpm format:write` modifies files included in formatting checks. If you run it, inspect the resulting diff and rerun `pnpm lint` and `pnpm format:check` (`MUST`).
+- For changes that require an iOS Simulator build and Detox validation, follow the preparation requirements and commands in [`docs/development.md`](docs/development.md) (`MUST`). For changed-file line-count checks, use the same document's Source line policy (`MUST`).
+- Do not arbitrarily narrow the check scope or skip failures (`MUST NOT`). If an exclusion is necessary, use an approved path restriction and state which files were omitted (`MUST`).
 
-## 코드 주석
+## Pull request requirements
 
-- 코드를 새로 작성하거나 수정하는 작성자는 관련된 유용한 주석을 추가하거나 갱신해야 합니다(`MUST`). 주석은 함수·모듈의 역할과 구현 의도를 설명하고, 해당되는 경우 비자명한 알고리즘, 도메인 제약, 시간대·기간·단위, 권한·동의·개인정보 경계, 실패 및 복구 처리, 외부 시스템의 가정이나 제약을 밝혀야 합니다(`MUST`).
-- 주석은 코드만으로 분명하지 않은 이유, 불변 조건, 경계를 설명하세요. 코드를 그대로 되풀이하거나 변경된 동작과 맞지 않는 주석을 남기지 마세요(`MUST NOT`).
-- 리뷰어는 변경된 코드와 관련 주석이 서로 일치하는지 확인해야 합니다(`MUST`). 근거 없는 보장, 비밀정보, 인증정보, 개인 건강정보를 주석에 넣지 마세요(`MUST NOT`).
+- Pull request (PR) titles and bodies MUST be written in English. This requirement applies to PR metadata and MUST NOT change the existing language of Korean product documentation.
+- Repository documentation and PR titles and bodies MUST use clear, natural prose, ordinary punctuation, and standard Markdown. They MUST NOT use unnecessary special characters or decorative symbols; meaningful code syntax, identifiers, commands, and URLs MUST be preserved.
+- PR titles MUST follow the existing Conventional Commit convention, using `type(scope): description` or `type: description`. The type and description MUST be nonempty; scope is optional.
+- An issue-owned PR MUST include an accurate closing reference to its issue, such as `Fixes #<issue-number>`, and MUST use the correct assignee, milestone, and applicable existing `type/*`, `area/*`, and `priority/*` labels.
+- After creating or updating an issue-owned PR, MUST use authenticated GitHub readback to verify its title and body, assignee, milestone, applicable labels, linked issue and closing reference, base branch, head branch and commit, and open/draft state before reporting completion or handing it off.
+- PRs with incomplete required validation MUST remain drafts. When editing a PR body, preserve the PR's existing metadata and state, and verify them again afterward (`MUST`).
+
+## Code comments
+
+- Authors who write or modify code MUST add or update relevant, useful comments. Comments MUST explain the role and implementation intent of a function or module and, where applicable, non-obvious algorithms, domain constraints, time zones, durations or units, permission, consent or privacy boundaries, failure and recovery handling, and assumptions or limitations of external systems.
+- Comments MUST explain reasons, invariants, or boundaries that are not clear from the code. Do not merely repeat the code or leave comments that no longer match the changed behavior (`MUST NOT`).
+- Reviewers MUST check that changed code and its related comments agree. Do not put unsupported guarantees, secrets, credentials, or personal health information in comments (`MUST NOT`).
