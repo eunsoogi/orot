@@ -1,4 +1,4 @@
-import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import { RAG_CONVERSATION_BUDGET } from '../src/ragConversation/budget';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
 import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
@@ -161,7 +161,7 @@ export async function runIssue189RagProbe(
                   sourceKinds: ['external_medical'],
                   sourceIds: ['europe-pmc'],
                 },
-                budget: DEFAULT_MULTI_AGENT_BUDGET,
+                budget: RAG_CONVERSATION_BUDGET,
               },
               tools: [external.tool],
               consent: {
@@ -209,7 +209,7 @@ export async function runIssue189RagProbe(
     outcome,
     failure,
     elapsedMs: Date.now() - startedAt,
-    workflowBudgetMs: DEFAULT_MULTI_AGENT_BUDGET.timeoutMs,
+    workflowBudgetMs: RAG_CONVERSATION_BUDGET.timeoutMs,
     parentAborted: controller.signal.aborted,
   };
 }

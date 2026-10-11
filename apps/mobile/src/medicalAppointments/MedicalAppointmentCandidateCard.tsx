@@ -10,7 +10,7 @@ import type { CandidateReview } from './classificationWorkflow';
 const styles = StyleSheet.create({
   card: {
     gap: 6,
-    padding: 12,
+    padding: 16,
     backgroundColor: appColors.surface,
     borderBottomColor: appColors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   identity: { flex: 1, gap: 4 },
-  title: { fontSize: 16, lineHeight: 23, fontWeight: '600' },
+  title: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
   badge: {
     backgroundColor: appColors.primarySoft,
     borderRadius: 20,

@@ -6,12 +6,22 @@ describe('issue 189 actual Apple calendar import with synthetic sources', () => 
   it('classifies all three events and imports one medical occurrence without duplicating it', async () => {
     await device.launchApp({ newInstance: true });
     await device.disableSynchronization();
+    await waitFor(element(by.id('home-open-schedule')))
+      .toBeVisible()
+      .withTimeout(30000);
     await element(by.id('home-open-schedule')).tap();
+    await waitFor(element(by.id('open-medical-appointments')))
+      .toBeVisible()
+      .withTimeout(30000);
     await element(by.id('open-medical-appointments')).tap();
     const action = element(by.id('medical-appointment-import'));
     await waitFor(action).toBeVisible().withTimeout(30000);
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       await action.tap();
+      // Wait for this run to clear the previous result before observing its completion.
+      await waitFor(element(by.text('진료 일정 1건을 가져왔어요.')))
+        .not.toExist()
+        .withTimeout(10000);
       await waitFor(element(by.text('진료 일정 1건을 가져왔어요.')))
         .toBeVisible()
         .withTimeout(120000);
@@ -44,6 +54,9 @@ describe('issue 189 actual Apple calendar import with synthetic sources', () => 
     ).tap();
     await expect(element(by.text('불확실성: 낮음'))).toExist();
     await tapNativeNavigationAction('navigation-back');
+    await waitFor(element(by.id('schedule-open-appointments')))
+      .toBeVisible()
+      .withTimeout(10000);
     await element(by.id('schedule-open-appointments')).tap();
     await waitFor(
       element(by.id('appointment-edit-issue189-synthetic-appointment-1')),

@@ -1,5 +1,6 @@
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
 import type {
   EvidenceReference,
   EvidenceSearchTool,
@@ -56,7 +57,10 @@ export function executionOptions(input: {
             ] as const)
           : (['personal_record', 'reviewed_memory'] as const),
       },
-      budget: DEFAULT_MULTI_AGENT_BUDGET,
+      // Only the literature-enabled conversation opts into the longer finite deadline.
+      budget: input.external
+        ? RAG_CONVERSATION_BUDGET
+        : DEFAULT_MULTI_AGENT_BUDGET,
     },
     provider: input.selected.provider,
     tools: input.tools,
