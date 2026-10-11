@@ -61,3 +61,21 @@ test('requires the matching English issue link and draft PR readback', () => {
     /did not match/,
   );
 });
+
+test('rejects a similarly prefixed issue number in the final PR readback', () => {
+  const details = versionPrDetails('0.1.1');
+  const pullRequest = {
+    html_url: 'https://github.com/eunsoogi/orot/pull/200',
+    title: details.title,
+    base: { ref: 'main' },
+    head: { ref: details.branch, repo: { full_name: 'eunsoogi/orot' } },
+    state: 'open',
+    draft: true,
+    body: `Updates version.\nFixes #1710\n${details.marker}`,
+  };
+
+  assert.throws(
+    () => assertVersionPrReadback(pullRequest, details, 'eunsoogi/orot', pullRequest.html_url),
+    /did not match/,
+  );
+});

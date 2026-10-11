@@ -1,5 +1,28 @@
+import { replaceTopLevelJsonStringProperty } from './manifest-text.mjs';
+
 const VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const MARKETING_VERSION_LINE = /^([\t ]*MARKETING_VERSION = )([^;\r\n]+);([\t ]*)$/gm;
+const ISSUE_171_CLOSING_REFERENCE = 'Fixes #171';
+
+function parseManifest(source, path) {
+  let manifest;
+  try {
+    manifest = JSON.parse(source);
+  } catch {
+    throw new Error(`invalid JSON in ${path}`);
+  }
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw new Error(`expected a JSON object in ${path}`);
+  }
+  return manifest;
+}
+
+function hasExactClosingReference(body) {
+  return (
+    typeof body === 'string' &&
+    body.split(/\r?\n/).some((line) => line.trim() === ISSUE_171_CLOSING_REFERENCE)
+  );
+}
 
 export function parseVersion(value) {
   if (typeof value !== 'string' || !VERSION_PATTERN.test(value)) {
@@ -51,24 +74,25 @@ export function readAuthoritativeVersion({ rootManifest, projectFile }) {
   return rootVersion;
 }
 
-function renderManifest(manifest, version, path) {
-  if (!manifest || typeof manifest !== 'object' || typeof manifest.version !== 'string') {
+function renderManifest(source, version, path) {
+  const manifest = parseManifest(source, path);
+  if (typeof manifest.version !== 'string') {
     throw new Error(`version field is missing from ${path}`);
   }
   parseVersion(manifest.version);
 
-  // Workspace package versions are release mirrors; dependencies and lockfiles stay untouched.
-  return `${JSON.stringify({ ...manifest, version }, null, 2)}\n`;
+  return replaceTopLevelJsonStringProperty(source, 'version', version, path);
 }
 
 export function planVersionUpdate({
   version,
-  rootManifest,
-  mobileManifest,
+  rootManifestSource,
+  mobileManifestSource,
   workspaceManifests,
   projectFile,
 }) {
   parseVersion(version);
+  const rootManifest = parseManifest(rootManifestSource, 'package.json');
   const currentVersion = readAuthoritativeVersion({ rootManifest, projectFile });
   const comparison = compareVersions(version, currentVersion);
 
@@ -79,11 +103,12 @@ export function planVersionUpdate({
     return { status: 'current', currentVersion, version, updates: [] };
   }
 
+  // Workspace package versions mirror the root release; dependency ranges and lockfiles stay intact.
   const updates = [
-    { path: 'package.json', content: renderManifest(rootManifest, version, 'package.json') },
+    { path: 'package.json', content: renderManifest(rootManifestSource, version, 'package.json') },
     {
       path: 'apps/mobile/package.json',
-      content: renderManifest(mobileManifest, version, 'apps/mobile/package.json'),
+      content: renderManifest(mobileManifestSource, version, 'apps/mobile/package.json'),
     },
   ];
 
@@ -92,7 +117,7 @@ export function planVersionUpdate({
   )) {
     updates.push({
       path: entry.path,
-      content: renderManifest(entry.manifest, version, entry.path),
+      content: renderManifest(entry.source, version, entry.path),
     });
   }
 
@@ -161,7 +186,7 @@ export function assertVersionPrReadback(pullRequest, details, repository, url) {
     pullRequest.head?.repo?.full_name !== repository ||
     pullRequest.state !== 'open' ||
     pullRequest.draft !== true ||
-    !pullRequest.body?.includes('Fixes #171') ||
+    !hasExactClosingReference(pullRequest.body) ||
     !pullRequest.body?.includes(details.marker)
   ) {
     throw new Error(
@@ -185,7 +210,7 @@ export function classifyExistingVersionPr({ pullRequests, branchExists, reposito
       pullRequest.title === expected.title &&
       typeof pullRequest.body === 'string' &&
       pullRequest.body.includes(expected.marker) &&
-      pullRequest.body.includes('Fixes #171');
+      hasExactClosingReference(pullRequest.body);
 
     if (!matches)
       throw new Error(

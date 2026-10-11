@@ -21,13 +21,24 @@ const projectFile = [
 function planFor(version, overrides = {}) {
   return planVersionUpdate({
     version,
-    rootManifest: { name: 'orot', version: '0.1.0', dependencies: { react: '19.2.3' } },
-    mobileManifest: { name: '@orot/mobile', version: '0.0.1', dependencies: { react: '19.2.3' } },
+    rootManifestSource: JSON.stringify(
+      { name: 'orot', version: '0.1.0', dependencies: { react: '19.2.3' } },
+      null,
+      2,
+    ),
+    mobileManifestSource: JSON.stringify(
+      { name: '@orot/mobile', version: '0.0.1', dependencies: { react: '19.2.3' } },
+      null,
+      2,
+    ),
     workspaceManifests: [
-      { path: 'packages/zeta/package.json', manifest: { name: '@orot/zeta', version: '0.1.0' } },
+      {
+        path: 'packages/zeta/package.json',
+        source: JSON.stringify({ name: '@orot/zeta', version: '0.1.0' }, null, 2),
+      },
       {
         path: 'packages/domain/package.json',
-        manifest: { name: '@orot/domain', version: '0.1.0' },
+        source: JSON.stringify({ name: '@orot/domain', version: '0.1.0' }, null, 2),
       },
     ],
     projectFile,
@@ -123,6 +134,17 @@ test('updates only version fields and leaves dependencies, build counters, and l
   assert.ok(plan.updates.every((update) => !update.path.includes('pnpm-lock')));
 });
 
+test('preserves unrelated manifest formatting while changing its version', () => {
+  const rootManifestSource =
+    '{\r\n  "name": "orot",\r\n  "version" : "0.1.0",\r\n  "keywords": ["orot", "health"],\r\n  "metadata": {"version":"nested"},\r\n  "dependencies": {"react": "19.2.3"}\r\n}\r\n';
+  const plan = planFor('0.1.1', { rootManifestSource });
+
+  assert.equal(
+    plan.updates[0].content,
+    rootManifestSource.replace('"version" : "0.1.0"', '"version" : "0.1.1"'),
+  );
+});
+
 test('reuses only the matching open version PR and refuses conflicting refs', () => {
   const details = versionPrDetails('0.1.1');
   const matchingPullRequest = {
@@ -175,6 +197,28 @@ test('reuses only the matching open version PR and refuses conflicting refs', ()
     () =>
       classifyExistingVersionPr({
         pullRequests: [{ ...matchingPullRequest, body: details.marker }],
+        branchExists: true,
+        repository: 'eunsoogi/orot',
+        version: '0.1.1',
+      }),
+    /does not match/,
+  );
+});
+
+test('rejects a similarly prefixed issue number when reusing a version PR', () => {
+  const details = versionPrDetails('0.1.1');
+  const pullRequest = {
+    base: { ref: 'main' },
+    head: { ref: details.branch, repo: { full_name: 'eunsoogi/orot' } },
+    title: details.title,
+    body: `Version update\nFixes #1710\n${details.marker}`,
+    html_url: 'https://github.com/eunsoogi/orot/pull/200',
+  };
+
+  assert.throws(
+    () =>
+      classifyExistingVersionPr({
+        pullRequests: [pullRequest],
         branchExists: true,
         repository: 'eunsoogi/orot',
         version: '0.1.1',

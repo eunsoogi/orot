@@ -22,8 +22,8 @@ function run(command, args) {
   return result;
 }
 
-function readJson(relativePath) {
-  return JSON.parse(readFileSync(resolve(root, relativePath), 'utf8'));
+function readJsonSource(relativePath) {
+  return readFileSync(resolve(root, relativePath), 'utf8');
 }
 
 function readWorkspaceManifests() {
@@ -32,14 +32,14 @@ function readWorkspaceManifests() {
     .filter((entry) => entry.isDirectory())
     .map((entry) => `packages/${entry.name}/package.json`)
     .filter((path) => existsSync(resolve(root, path)))
-    .map((path) => ({ path, manifest: readJson(path) }));
+    .map((path) => ({ path, source: readJsonSource(path) }));
 }
 
 function createPlan() {
   return planVersionUpdate({
     version,
-    rootManifest: readJson('package.json'),
-    mobileManifest: readJson('apps/mobile/package.json'),
+    rootManifestSource: readJsonSource('package.json'),
+    mobileManifestSource: readJsonSource('apps/mobile/package.json'),
     workspaceManifests: readWorkspaceManifests(),
     projectFile: readFileSync(
       resolve(root, 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj'),
