@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useInferenceConsent } from '../../agent/execution/useInferenceConsent';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { NavigationLeaveStateSource } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import { useNavigationSnapshot } from '../../navigation/useNavigationSnapshot';
 import { openEuropePmcArticle } from './articleLinks';
+import { AiFeatureSharedNavigationStateProvider } from './AiFeatureSharedNavigationState';
+import { createAiFeatureServices } from './featureServices';
+import type { AiFeatureServices } from './featureServices';
 import { AiFeatureFlow } from './AiFeatureFlow';
 import type { AiFeatureFlowProps } from './AiFeatureFlow';
 import type {
@@ -13,7 +17,7 @@ import type {
 
 export interface AiFeatureRouteProps extends Omit<
   AiFeatureFlowProps,
-  'navigation' | 'onOpenArticle'
+  'navigation' | 'onOpenArticle' | 'services' | 'consent'
 > {
   readonly initialRoute?: FeatureScreenRoute | 'provider-selection';
   readonly onBack: () => void;
@@ -32,6 +36,12 @@ export function AiFeatureRoute({
   serviceDependencies,
   onProviderSelectionCommitted,
 }: AiFeatureRouteProps) {
+  const { consent, disclosureSheet } = useInferenceConsent();
+  // Evidence references are valid only within their registry, so every retained scene shares one service set.
+  const services = useMemo<AiFeatureServices>(
+    () => createAiFeatureServices(consent, serviceDependencies),
+    [consent, serviceDependencies],
+  );
   const [controller] = useState(() => {
     const navigation =
       createNavigationController<AiFeatureRouteName>('app-home');
@@ -68,31 +78,39 @@ export function AiFeatureRoute({
   }, [onBack, snapshot.currentRoute.name]);
 
   return (
-    <NavigationRouteAdapter
-      controller={controller}
-      leaveState={rootLeaveState}
-      showHome
-      homeAction={
-        onHome
-          ? async () => {
-              // Home remains a guarded exit while returning to the source is reserved for Back.
-              if (await controller.requestHome()) onHome();
-            }
-          : undefined
-      }
-    >
-      {navigation =>
-        navigation.route.name === 'app-home' ? null : (
-          <AiFeatureFlow
-            navigation={navigation}
-            onOpenArticle={onOpenArticle}
-            renderVisitQuestions={renderVisitQuestions}
-            serviceDependencies={serviceDependencies}
-            // The app stores only a display label outside the selected-provider store.
-            onProviderSelectionCommitted={onProviderSelectionCommitted}
-          />
-        )
-      }
-    </NavigationRouteAdapter>
+    // Native route scenes keep their own feature state; overlay routing lives above them.
+    <AiFeatureSharedNavigationStateProvider>
+      <>
+        <NavigationRouteAdapter
+          controller={controller}
+          leaveState={rootLeaveState}
+          showHome
+          homeAction={
+            onHome
+              ? async () => {
+                  // Home remains a guarded exit while returning to the source is reserved for Back.
+                  if (await controller.requestHome()) onHome();
+                }
+              : undefined
+          }
+        >
+          {navigation =>
+            navigation.route.name === 'app-home' ? null : (
+              <AiFeatureFlow
+                consent={consent}
+                navigation={navigation}
+                onOpenArticle={onOpenArticle}
+                renderVisitQuestions={renderVisitQuestions}
+                serviceDependencies={serviceDependencies}
+                services={services}
+                // The app stores only a display label outside the selected-provider store.
+                onProviderSelectionCommitted={onProviderSelectionCommitted}
+              />
+            )
+          }
+        </NavigationRouteAdapter>
+        {disclosureSheet}
+      </>
+    </AiFeatureSharedNavigationStateProvider>
   );
 }

@@ -1,42 +1,11 @@
 /* global beforeAll, by, describe, device, element, expect, it, waitFor */
 
 const { expect: jestExpect } = require('@jest/globals');
-const { openRootTab, expectNativeNavigationAction } = require('./smokeHelpers');
-
-async function tapNativeNavigationAction(testID) {
-  const action = element(by.id(testID));
-  const toolbar = element(by.id('navigation-native-toolbar'));
-  const attributes = await action.getAttributes();
-  const toolbarAttributes = await toolbar.getAttributes();
-  const hierarchyXml = await device.generateViewHierarchyXml(true);
-  const frame = attributes.frame;
-  const toolbarFrame = toolbarAttributes.frame;
-  const actionNode = hierarchyXml
-    .split('\n')
-    .find(line => line.includes(`id="${testID}"`));
-  const actionVisibleInHierarchy = actionNode?.includes('visibility="visible"');
-
-  // iOS 27 hides visible toolbar buttons in XCUI attributes; verify UIKit visibility and the mounted toolbar.
-  if (
-    !actionVisibleInHierarchy ||
-    !toolbarAttributes.visible ||
-    !toolbarAttributes.hittable ||
-    !frame ||
-    frame.width + 0.001 < 44 ||
-    frame.height + 0.001 < 44 ||
-    !toolbarFrame
-  ) {
-    throw new Error(
-      `Native navigation action ${testID} must be visible in UIKit, inside a visible and hittable toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
-    );
-  }
-
-  // Detox misreports the child activation point, so tap its measured center through the native toolbar.
-  await toolbar.tap({
-    x: frame.x + frame.width / 2 - toolbarFrame.x,
-    y: frame.y + frame.height / 2 - toolbarFrame.y,
-  });
-}
+const {
+  openRootTab,
+  expectNativeNavigationAction,
+  tapNativeNavigationAction,
+} = require('./smokeHelpers');
 
 describe('AI visit questions through the app navigation', () => {
   beforeAll(async () => {

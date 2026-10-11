@@ -9,7 +9,6 @@ import type {
 import { BLOOD_PRESSURE_CHECKPOINT_KEY } from '../src/healthkit/bloodPressure/importChanges';
 import { syncHealthKitBloodPressure } from '../src/healthkit/bloodPressure';
 import type { BloodPressureSyncResult } from '../src/healthkit/bloodPressure/types';
-import { listLocalBloodPressureObservations } from '../src/healthkit/bloodPressure/importLocal';
 import {
   getCipherVersion,
   openLocalStorage,
@@ -34,14 +33,14 @@ export function BloodPressureProbe() {
   const loadObservations = useCallback(async () => {
     const repository = await openLocalStorage();
     const [observations, checkpoint, cipherVersion] = await Promise.all([
-      listLocalBloodPressureObservations(),
+      repository.list('health_observation'),
       repository.getSyncCheckpoint(BLOOD_PRESSURE_CHECKPOINT_KEY),
       getCipherVersion(),
     ]);
     // Expose only whether the fixture cursor returned, never a raw HealthKit anchor.
     setStorageEvidence(
       `sqlCipher=${cipherVersion ? 'available' : 'unavailable'}; ` +
-        `rows=${observations.length}; ` +
+        `rows=${observations.filter(item => item.concept.startsWith('blood pressure ')).length}; ` +
         `cursor=${checkpoint?.value === syntheticCursor ? 'fixture-anchor' : 'missing-or-mismatch'}`,
     );
     return observations;
@@ -60,7 +59,7 @@ export function BloodPressureProbe() {
     <View style={styles.root}>
       <App
         importBloodPressure={importBloodPressure}
-        loadBloodPressureObservations={loadObservations}
+        loadHealthObservations={loadObservations}
       />
       <View pointerEvents="none" style={styles.evidence}>
         <Text style={styles.evidenceText} testID="blood-pressure-probe-storage">

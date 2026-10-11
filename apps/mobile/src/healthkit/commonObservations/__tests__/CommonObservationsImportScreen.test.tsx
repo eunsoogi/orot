@@ -44,10 +44,18 @@ test('keeps HealthKit copy readable and uses a high-contrast primary import acti
   ).toBe(appColors.text);
   const importAction = screen.getByTestId('common-observations-import');
   expect(importAction).toBeDisabled();
+  expect(
+    screen.getByTestId('common-observations-indicator-heartRate'),
+  ).toBeTruthy();
+  expect(screen.queryByText('☐ 심박수')).toBeNull();
 
   await fireEvent.press(
     screen.getByTestId('common-observations-toggle-heartRate'),
   );
+  expect(
+    screen.getByTestId('common-observations-toggle-heartRate').props
+      .accessibilityState.checked,
+  ).toBe(true);
   expect(importAction).not.toBeDisabled();
   expect(StyleSheet.flatten(importAction.props.style).backgroundColor).toBe(
     appColors.primaryAction,

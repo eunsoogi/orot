@@ -162,7 +162,7 @@ export function NavigationActionBar<Name extends string>({
     </Surface>
   );
 
-  // Keep the inset here so the overlay reserves the system home area exactly once.
+  // Keep one home-indicator inset and a narrow side gutter around the native bar.
   return safeAreaHandledByParent ? (
     <View pointerEvents="box-none" style={styles.safeArea}>
       {surface}
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flexShrink: 0,
     backgroundColor: 'transparent',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingTop: NAVIGATION_ACTION_TOP_PADDING,
     paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
   },

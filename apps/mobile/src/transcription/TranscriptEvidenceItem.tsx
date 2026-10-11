@@ -61,7 +61,6 @@ export default function TranscriptEvidenceItem({
   onPlay,
   onEdit,
 }: TranscriptEvidenceItemProps) {
-  const source = segment.provenance.source;
   return (
     <View
       style={styles.segment}
@@ -80,22 +79,7 @@ export default function TranscriptEvidenceItem({
       >
         {originLabel(segment)}
       </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-engine-${segment.segmentOrdinal}`}
-      >
-        {t('recording.transcript.engine', {
-          engine: source?.sourceIdentifier ?? '',
-        })}
-      </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-runtime-${segment.segmentOrdinal}`}
-      >
-        {t('recording.transcript.runtime', {
-          version: source?.sourceVersion ?? '',
-        })}
-      </Text>
+      {/* Stored engine and runtime provenance remains available without crowding user-facing review. */}
       <Text
         style={styles.metadata}
         testID={`transcript-range-${segment.segmentOrdinal}`}

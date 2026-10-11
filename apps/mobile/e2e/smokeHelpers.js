@@ -43,43 +43,59 @@ async function openRootTab(tabId, screenID) {
 
 async function expectNativeNavigationAction(testID) {
   const action = element(by.id(testID));
-  const toolbar = element(by.id('navigation-native-toolbar'));
+  const toolbarMatches = element(by.id('navigation-native-toolbar'));
   const attributes = await action.getAttributes();
-  const toolbarAttributes = await toolbar.getAttributes();
+  const toolbarAttributes = await toolbarMatches.getAttributes();
   const hierarchyXml = await device.generateViewHierarchyXml(true);
-  const { frame } = attributes;
-  const toolbarFrame = toolbarAttributes.frame;
+  const actionCandidates = attributes.elements ?? [attributes];
+  const toolbarCandidates = toolbarAttributes.elements ?? [toolbarAttributes];
   const actionNode = hierarchyXml
     .split('\n')
-    .find(line => line.includes(`id="${testID}"`));
-  const actionVisibleInHierarchy = actionNode?.includes('visibility="visible"');
+    .find(
+      line =>
+        line.includes(`id="${testID}"`) &&
+        line.includes('visibility="visible"'),
+    );
+  const contains = (outer, inner) =>
+    inner &&
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width + 1 &&
+    inner.y + inner.height <= outer.y + outer.height + 1;
+  // Retained native stacks expose hidden parent bars with the same ID; select the visible bar containing this action.
+  const activeToolbar = toolbarCandidates
+    .map((candidate, index) => ({ candidate, index }))
+    .find(
+      ({ candidate }) =>
+        candidate.visible &&
+        candidate.hittable &&
+        candidate.frame &&
+        actionCandidates.some(item => contains(candidate.frame, item.frame)),
+    );
+  const toolbarFrame = activeToolbar?.candidate.frame;
+  const frame = actionCandidates.find(
+    item => toolbarFrame && contains(toolbarFrame, item.frame),
+  )?.frame;
 
   // iOS 27 reports visible native toolbar children as hidden in XCUI attributes; verify the UIKit node and parent instead.
   if (
-    !actionVisibleInHierarchy ||
-    !toolbarAttributes.visible ||
-    !toolbarAttributes.hittable ||
+    !actionNode ||
+    !activeToolbar ||
     !frame ||
     frame.width + 0.001 < 44 ||
     frame.height + 0.001 < 44 ||
     !toolbarFrame
   ) {
     throw new Error(
-      `Native navigation action ${testID} must be visible in UIKit, inside a visible and hittable toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
+      `Native navigation action ${testID} must be visible in UIKit, inside its active toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
     );
   }
 
-  if (
-    frame.x < toolbarFrame.x ||
-    frame.y < toolbarFrame.y ||
-    frame.x + frame.width > toolbarFrame.x + toolbarFrame.width + 1 ||
-    frame.y + frame.height > toolbarFrame.y + toolbarFrame.height + 1
-  ) {
-    throw new Error(
-      `Native navigation action ${testID} extends outside its toolbar.`,
-    );
-  }
-  return { toolbar, frame, toolbarFrame };
+  return {
+    toolbar: toolbarMatches.atIndex(activeToolbar.index),
+    frame,
+    toolbarFrame,
+  };
 }
 
 async function tapNativeNavigationAction(testID) {

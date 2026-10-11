@@ -31,6 +31,7 @@ export interface ImportCommonObservationsOptions {
   >;
   readonly repository: CommonObservationRepository;
   readonly now: () => string;
+  readonly rememberForAutoSync?: boolean;
 }
 
 const pendingImports = new WeakMap<
@@ -87,6 +88,9 @@ async function importSelectedFeatures(
         healthKit: options.healthKit,
         repository: options.repository,
         now: options.now,
+        ...(options.rememberForAutoSync
+          ? { rememberForAutoSync: true as const }
+          : {}),
       }),
     );
   }

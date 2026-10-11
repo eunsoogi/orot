@@ -16,18 +16,22 @@ import type {
   ChatGPTAccountSetup,
   ProviderSelection,
   ProviderSelectionOption,
+  ProviderSelectionPresentation,
   ProviderSelectionStore,
 } from './types';
 import type { OpenAIAccountSummary } from '../openai';
 
 interface ProviderSelectionFlowProps {
-  // Settings keeps the same guarded actions while exposing an account-specific entry.
+  readonly presentation?: ProviderSelectionPresentation;
+  // Settings uses route-specific screens; AI keeps the combined feature flow.
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
+  readonly loadAppleOption?: () => Promise<ProviderSelectionOption>;
   readonly safeAreaHandledByParent?: boolean;
+  readonly onOpenAccounts?: () => void;
   readonly onBack: () => void;
   readonly onSelectionCommitted?: (
     selection: ProviderSelection,
@@ -47,12 +51,15 @@ export interface ProviderSelectionNavigationState {
 }
 
 export default function ProviderSelectionFlow({
+  presentation = 'feature',
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
+  loadAppleOption = loadAppleSelectionOption,
   safeAreaHandledByParent = false,
+  onOpenAccounts,
   onBack,
   onSelectionCommitted,
   onNavigationStateChange,
@@ -72,7 +79,7 @@ export default function ProviderSelectionFlow({
 
   useEffect(() => {
     let mounted = true;
-    loadAppleSelectionOption().then(option => {
+    loadAppleOption().then(option => {
       if (!mounted) return;
       setAppleOption(option);
       setOptions([option]);
@@ -96,7 +103,7 @@ export default function ProviderSelectionFlow({
     return () => {
       mounted = false;
     };
-  }, [chatGPTServices]);
+  }, [chatGPTServices, loadAppleOption]);
 
   const selectedAccount = accounts.find(
     account => account.issuedClientID === selectedAccountID,
@@ -194,6 +201,7 @@ export default function ProviderSelectionFlow({
           ? providerSelectionText.chatGPTChooseAccount
           : '';
   const chatGPTSetup: ChatGPTAccountSetup = {
+    presentation,
     accounts,
     selectedAccountID,
     statusMessage: accountListError
@@ -216,28 +224,26 @@ export default function ProviderSelectionFlow({
     onAction: actions.onAction,
     onSignOut: actions.onSignOut,
     onCancelSignIn: chatGPTServices.cancelSignIn,
+    onOpenAccounts,
   };
-
-  const screen = (
-    <ProviderSelectionScreen
-      navigationRouteKey={navigationRouteKey}
-      screenTitle={screenTitle}
-      screenIntroduction={screenIntroduction}
-      chatGPTSetup={chatGPTSetup}
-      onBack={onBack}
-      onNavigationStateChange={reportSelectionState}
-      onSelectionCommitted={onSelectionCommitted}
-      options={options}
-      requirements={visitRecommendationRequirements}
-      selectionStore={selectionStore}
-    />
-  );
 
   return (
     <ProviderSelectionFlowShell
       safeAreaHandledByParent={safeAreaHandledByParent}
     >
-      {screen}
+      <ProviderSelectionScreen
+        presentation={presentation}
+        navigationRouteKey={navigationRouteKey}
+        screenTitle={screenTitle}
+        screenIntroduction={screenIntroduction}
+        chatGPTSetup={chatGPTSetup}
+        onBack={onBack}
+        onNavigationStateChange={reportSelectionState}
+        onSelectionCommitted={onSelectionCommitted}
+        options={options}
+        requirements={visitRecommendationRequirements}
+        selectionStore={selectionStore}
+      />
     </ProviderSelectionFlowShell>
   );
 }

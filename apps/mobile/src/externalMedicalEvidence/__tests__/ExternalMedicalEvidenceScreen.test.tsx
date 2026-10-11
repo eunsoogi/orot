@@ -37,6 +37,13 @@ test('requires query consent and presents provenance and dates', async () => {
       onOpenArticle={onOpenArticle}
     />,
   );
+  expect(
+    screen.getByTestId('external-evidence-consent').props.accessibilityRole,
+  ).toBe('checkbox');
+  expect(screen.queryByText(/☐|☑/)).toBeNull();
+  expect(
+    screen.getByTestId('external-evidence-consent-indicator'),
+  ).toBeTruthy();
   const description = screen.getByText(
     getExternalMedicalEvidenceCopy().description,
   );

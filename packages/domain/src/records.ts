@@ -63,7 +63,16 @@ export const SourceRecordSchema = RecordMetadataSchema.safeExtend({
   title: NonEmptyTextSchema.optional(),
   externalReference: NonEmptyTextSchema.optional(),
   contentHash: SourceContentHashSchema.optional(),
+  // Legacy audio rows remain valid until their measured file length is available.
+  recordingDurationMs: NonNegativeIntegerSchema.optional(),
 }).superRefine((record, context) => {
+  if (record.recordingDurationMs !== undefined && record.sourceKind !== 'audio_recording') {
+    context.addIssue({
+      code: 'custom',
+      path: ['recordingDurationMs'],
+      message: 'Only audio recording sources can store a recording duration.',
+    });
+  }
   if (record.provenance.origin === 'derived') {
     context.addIssue({
       code: 'custom',

@@ -2,9 +2,20 @@ import type { AgentMemoryService } from '@orot/agent-memory';
 import type { RecordRepository } from '@orot/storage';
 import type { RecordingSourceRecord } from './recordingTypes';
 import type { SourceMemoryDeletionResult } from '../memory/removeSourceWithMemory';
+import type { TranscriptEvidenceSegment } from '@orot/domain';
+
+export type RecordingTranscriptReviewState =
+  'notTranscribed' | 'unreviewed' | 'needsReview' | 'reviewed' | 'unavailable';
+
+export interface RecordingLibrarySummary {
+  readonly source: RecordingSourceRecord;
+  readonly durationMs: number | null;
+  readonly transcriptReviewState: RecordingTranscriptReviewState;
+}
 
 export interface RecordingLibraryService {
   list(): Promise<readonly RecordingSourceRecord[]>;
+  readonly listSummaries?: () => Promise<readonly RecordingLibrarySummary[]>;
   deleteRecording(sourceId: string): Promise<RecordingDeletionResult>;
 }
 
@@ -103,18 +114,79 @@ export function createRecordingLibraryService(
   const ensureStopped =
     dependencies.assertRecordingStopped ?? assertRecordingStopped;
 
-  return {
-    async list() {
-      const repository = await loadRepository();
-      const sources = await repository.list('source_record');
-      const recordings = sources.filter(
-        source => source.sourceKind === 'audio_recording',
-      );
-      await audioDeletion.reconcile(recordings.map(source => source.id));
-      return recordings.sort(
+  async function loadRecordings() {
+    const repository = await loadRepository();
+    const sources = await repository.list('source_record');
+    const recordings = sources
+      .filter(source => source.sourceKind === 'audio_recording')
+      .sort(
         (left, right) =>
           Date.parse(right.recordedAt) - Date.parse(left.recordedAt),
       );
+    await audioDeletion.reconcile(recordings.map(source => source.id));
+    return { repository, recordings };
+  }
+
+  return {
+    async list() {
+      const { recordings } = await loadRecordings();
+      return recordings;
+    },
+    // One transcript-table read supplies latest revisions for every row without loading segment text into the UI.
+    async listSummaries() {
+      const { repository, recordings } = await loadRecordings();
+      let transcriptSegments: readonly TranscriptEvidenceSegment[] | null;
+      try {
+        transcriptSegments = await repository.list('transcript_segment');
+      } catch {
+        // Keep audio visible if transcript metadata cannot be read; do not claim no transcript exists.
+        transcriptSegments = null;
+      }
+
+      const latestByTranscript = new Map<string, TranscriptEvidenceSegment>();
+      for (const segment of transcriptSegments ?? []) {
+        const latest = latestByTranscript.get(segment.transcriptId);
+        if (!latest || segment.revision > latest.revision) {
+          latestByTranscript.set(segment.transcriptId, segment);
+        }
+      }
+      const segmentsBySource = new Map<string, TranscriptEvidenceSegment[]>();
+      for (const segment of latestByTranscript.values()) {
+        const current = segmentsBySource.get(segment.recordingSourceId) ?? [];
+        current.push(segment);
+        segmentsBySource.set(segment.recordingSourceId, current);
+      }
+
+      return recordings.map(source => {
+        const segments = segmentsBySource.get(source.id) ?? [];
+        const durations = [
+          ...new Set(segments.map(segment => segment.recordingDurationMs)),
+        ];
+        const transcriptDuration = durations.length === 1 ? durations[0] : null;
+        let transcriptReviewState: RecordingTranscriptReviewState;
+        if (transcriptSegments === null) {
+          transcriptReviewState = 'unavailable';
+        } else if (segments.length === 0) {
+          transcriptReviewState = 'notTranscribed';
+        } else if (
+          segments.some(
+            segment => segment.reviewState.status === 'needs_review',
+          )
+        ) {
+          transcriptReviewState = 'needsReview';
+        } else if (
+          segments.some(segment => segment.reviewState.status === 'unreviewed')
+        ) {
+          transcriptReviewState = 'unreviewed';
+        } else {
+          transcriptReviewState = 'reviewed';
+        }
+        return {
+          source,
+          durationMs: source.recordingDurationMs ?? transcriptDuration,
+          transcriptReviewState,
+        };
+      });
     },
     async deleteRecording(sourceId) {
       const repository = await loadRepository();

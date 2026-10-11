@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { CheckboxIndicator } from '../../layout/CheckboxIndicator';
 import { appColors } from '../../layout/appColors';
 import type { NavigationPrimaryAction } from '../../navigation/NavigationActionBar';
 import { unifiedImportStyles as styles } from './unifiedImportStyles';
@@ -134,9 +135,10 @@ export function EventKitImportSection({
               {t('healthkit.unifiedImport.calendarLabel')}
             </Text>
           </View>
-          <AppSymbol
-            name={selected ? 'checkmark.square.fill' : 'square'}
-            color={appColors.primaryText}
+          <CheckboxIndicator
+            checked={selected}
+            disabled={disabled || saving}
+            testID="unified-import-indicator-eventKit"
           />
         </Pressable>
       ) : (

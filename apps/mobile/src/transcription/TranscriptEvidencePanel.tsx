@@ -14,6 +14,7 @@ interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
   deletionBusy?: boolean;
+  automaticTranscriptionStatus?: 'running' | 'failed' | 'complete';
   onRequestDelete?: (sourceId: string) => void;
 }
 
@@ -51,6 +52,7 @@ export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
   deletionBusy = false,
+  automaticTranscriptionStatus,
   onRequestDelete,
 }: TranscriptEvidencePanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
@@ -149,16 +151,20 @@ export default function TranscriptEvidencePanel({
           title={t('recording.library.delete')}
         />
       ) : null}
-      {loading ? <Text>{t('recording.transcript.loading')}</Text> : null}
+      {loading ? (
+        <Text style={styles.copy}>{t('recording.transcript.loading')}</Text>
+      ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {errorLabel(error)}
         </Text>
       ) : null}
       {!view && !loading ? (
-        <Text>{t('recording.transcript.noRecording')}</Text>
+        <Text style={styles.copy}>{t('recording.transcript.noRecording')}</Text>
       ) : null}
-      {view && latest.length === 0 ? (
+      {view &&
+      latest.length === 0 &&
+      automaticTranscriptionStatus !== 'running' ? (
         <>
           <Text style={styles.copy}>{t('recording.transcript.empty')}</Text>
           <Button

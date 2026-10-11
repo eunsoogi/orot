@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { navigationText } from '../i18n/navigation';
+import { CheckboxIndicator } from '../layout/CheckboxIndicator';
 import { appColors } from '../layout/appColors';
 import { getExternalMedicalEvidenceCopy } from './copy';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -142,11 +143,14 @@ export function ExternalMedicalEvidenceScreen({
           inputRevision.current += 1;
           setConsented(value => !value);
         }}
+        style={styles.consent}
         testID="external-evidence-consent"
       >
-        <Text>
-          {consented ? '☑' : '☐'} {copy.consent}
-        </Text>
+        <CheckboxIndicator
+          checked={consented}
+          testID="external-evidence-consent-indicator"
+        />
+        <Text>{copy.consent}</Text>
       </Pressable>
       <Button
         disabled={!consented || !query.trim() || state.status === 'loading'}
@@ -217,6 +221,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 12,
   },
+  consent: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   error: { color: appColors.danger },
   // Focus remains visible for keyboard users in both system appearances.
   inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },

@@ -8,6 +8,7 @@ import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapte
 import { SettingsAccountsRoute } from './SettingsAccountsRoute';
 import { SettingsBackupRoute } from './SettingsBackupRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
+import { SettingsProviderRoute } from './SettingsProviderRoute';
 import type { AppNavigationRoute } from './appNavigationRoute';
 
 interface SettingsDetailsRouteProps {
@@ -32,6 +33,14 @@ export function SettingsDetailsRoute({
   onSelectionCommitted,
 }: SettingsDetailsRouteProps) {
   switch (route) {
+    case 'settings-provider':
+      return (
+        <SettingsProviderRoute
+          actions={actions}
+          onSelectionCommitted={onSelectionCommitted}
+          serviceDependencies={serviceDependencies}
+        />
+      );
     case 'settings-accounts':
       return (
         <SettingsAccountsRoute

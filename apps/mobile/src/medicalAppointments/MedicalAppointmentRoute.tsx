@@ -74,6 +74,12 @@ export default function MedicalAppointmentRoute({
   }, [loadAppointments, repositoryLoadAttempt]);
 
   useEffect(() => {
+    if (manual) {
+      // Manual entry is local-only and must not trigger provider/account reads.
+      setSelectedAi(null);
+      return;
+    }
+
     let active = true;
     setSelectedAi(null);
     // Provider and account lookups are independent from the local manual repository.
@@ -88,7 +94,7 @@ export default function MedicalAppointmentRoute({
     return () => {
       active = false;
     };
-  }, [selectedAiResolverOptions]);
+  }, [manual, selectedAiResolverOptions]);
 
   if (repositoryLoadError) {
     return (

@@ -42,6 +42,10 @@ test('a late confirmation failure is hidden after a new run takes ownership', as
       selected
     />,
   );
+  expect(
+    view.getByTestId('unified-import-toggle-eventKit').props.accessibilityRole,
+  ).toBe('checkbox');
+  expect(view.getByTestId('unified-import-indicator-eventKit')).toBeTruthy();
 
   // Drive the component buttons so the test covers the UI's async state owner.
   await fireEvent.press(view.getByTestId('unified-import-eventkit-select-0'));

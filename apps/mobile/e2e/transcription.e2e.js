@@ -66,20 +66,19 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
         'transcript-evidence-before-playback',
       );
       console.log('TRANSCRIPT_EVIDENCE_SCREENSHOT ' + transcriptScreen);
-      const engineAttributes = await element(
-        by.id('transcript-engine-0'),
-      ).getAttributes();
-      const runtimeAttributes = await element(
-        by.id('transcript-runtime-0'),
-      ).getAttributes();
+      // Keep technical provenance in saved evidence without displaying it in the review row.
+      await waitFor(element(by.id('transcript-engine-0')))
+        .not.toExist()
+        .withTimeout(5000);
+      await waitFor(element(by.id('transcript-runtime-0')))
+        .not.toExist()
+        .withTimeout(5000);
       const rangeAttributes = await element(
         by.id('transcript-range-0'),
       ).getAttributes();
-      const engine = accessibilityText(engineAttributes);
-      const runtime = accessibilityText(runtimeAttributes);
       const rangeLabel = rangeAttributes.label || rangeAttributes.text;
-      jestExpect(engine).toBe('엔진: synthetic-fixture-adapter');
-      jestExpect(runtime).toBe('시스템 버전: fixture-v1');
+      const engineMetadataVisible = false;
+      const runtimeMetadataVisible = false;
       jestExpect(typeof rangeLabel).toBe('string');
       const range = /^(\d{2}):(\d{2})\.(\d{3})–(\d{2}):(\d{2})\.(\d{3})$/.exec(
         rangeLabel,
@@ -178,8 +177,10 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
           JSON.stringify({
             transcript: {
               originalText,
-              engine,
-              runtime,
+              implementationMetadataVisible: {
+                engine: engineMetadataVisible,
+                runtime: runtimeMetadataVisible,
+              },
               range: rangeLabel,
               originalReviewState,
               correctedText,
@@ -191,7 +192,6 @@ describe('Apple Korean transcription and recording export on iOS Simulator', () 
               ),
             },
             playback,
-            transcriptSource: 'synthetic-fixture-adapter',
           }),
       );
     } catch (failure) {
