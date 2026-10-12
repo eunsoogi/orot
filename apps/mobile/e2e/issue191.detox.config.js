@@ -3,6 +3,9 @@ if (!simulatorId)
   throw new Error('A dedicated issue 191 Simulator is required.');
 
 module.exports = {
+  // Reinstallation removes SQLCipher data but retains its keychain key. Install
+  // builds with simctl install and preserve this dedicated fixture across runs.
+  behavior: { init: { reinstallApp: false } },
   testRunner: {
     args: { $0: 'jest', config: 'e2e/issue191.jest.config.js' },
     jest: { setupTimeout: 240000 },
