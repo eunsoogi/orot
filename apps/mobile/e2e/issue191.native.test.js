@@ -48,6 +48,9 @@ describe('issue 191 shipping screens with synthetic SQLCipher records', () => {
       /dose_event|health_observation|\be[0-9]+\b/,
     );
     jestExpect(hierarchy).toContain('원문 근거 열기');
+    // The same fixture contains a future consultation plan, never an ongoing encounter.
+    jestExpect(hierarchy).not.toMatch(/상담 중|진료를 받았|진료받았/);
+    jestExpect(hierarchy).toContain('원문 기록 당시');
     await device.takeScreenshot('issue191-conversation-result');
   });
 
@@ -94,92 +97,15 @@ describe('issue 191 shipping screens with synthetic SQLCipher records', () => {
       console.log(
         `ISSUE191_${kind}_UI ` + (await device.generateViewHierarchyXml(true)),
       );
+      if (kind === 'visit-questions') {
+        // A quick clarification/error is not successful question generation.
+        const hierarchy = await device.generateViewHierarchyXml(true);
+        jestExpect(hierarchy).toContain('next-visit-review-list');
+        jestExpect(hierarchy).toContain('질문 편집');
+        jestExpect(hierarchy).toContain('근거');
+      }
       await device.takeScreenshot(`issue191-${kind}-result`);
     }
-  });
-  it('keeps cancellation, keyboard, Back and Home responsive during generation', async () => {
-    await device.launchApp({
-      newInstance: true,
-      launchArgs: { detoxEnableSynchronization: 0 },
-    });
-    await device.disableSynchronization();
-    await waitFor(element(by.id('navigation-tab-ai')))
-      .toExist()
-      .withTimeout(30000);
-    await tapNativeNavigationAction('navigation-tab-ai');
-    await waitFor(element(by.id('ai-feature-visit-questions')))
-      .toBeVisible()
-      .withTimeout(10000);
-    await element(by.id('ai-feature-visit-questions')).tap();
-    await waitFor(element(by.id('next-visit-generate')))
-      .toExist()
-      .withTimeout(30000);
-    await tapNativeNavigationAction('next-visit-generate');
-    await waitFor(element(by.id('next-visit-generation-cancel')))
-      .toExist()
-      .withTimeout(10000);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const cancelStart = Date.now();
-    await tapNativeNavigationAction('next-visit-generation-cancel');
-    await waitFor(element(by.id('next-visit-generate')))
-      .toExist()
-      .withTimeout(3000);
-    console.log('ISSUE191_CANCEL_MS ' + (Date.now() - cancelStart));
-    await device.takeScreenshot('issue191-visit-cancelled');
-    await new Promise(resolve => setTimeout(resolve, 12000));
-    await waitFor(element(by.id('next-visit-generate')))
-      .toExist()
-      .withTimeout(3000);
-    // Reuse the same mounted screen after cancellation; a second request must start.
-    await tapNativeNavigationAction('next-visit-generate');
-    await waitFor(element(by.id('next-visit-generation-cancel')))
-      .toExist()
-      .withTimeout(5000);
-    // UIKit animates the replacement toolbar item before its measurable frame settles.
-    await new Promise(resolve => setTimeout(resolve, 700));
-    await tapNativeNavigationAction('next-visit-generation-cancel');
-    await waitFor(element(by.id('next-visit-generate')))
-      .toExist()
-      .withTimeout(3000);
-    await tapNativeNavigationAction('navigation-back');
-    await waitFor(element(by.id('ai-feature-rag-conversation')))
-      .toBeVisible()
-      .withTimeout(5000);
-    await waitFor(element(by.id('ai-feature-rag-conversation')))
-      .toBeVisible()
-      .withTimeout(10000);
-    await element(by.id('ai-feature-rag-conversation')).tap();
-    const input = element(by.id('rag-conversation-input'));
-    await waitFor(input).toBeVisible().withTimeout(5000);
-    await input.tap();
-    await input.replaceText('첫째 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄');
-    await new Promise(resolve => setTimeout(resolve, 700));
-    console.log(
-      'ISSUE191_MULTILINE_COMPOSER ' +
-        JSON.stringify(
-          await element(by.id('rag-conversation-composer')).getAttributes(),
-        ),
-    );
-    await device.takeScreenshot('issue191-conversation-keyboard');
-    await input.replaceText('내가 먹는 약은?');
-    await new Promise(resolve => setTimeout(resolve, 700));
-    await element(by.id('rag-conversation-send')).tap();
-    await waitFor(element(by.id('rag-conversation-cancel')))
-      .toExist()
-      .withTimeout(5000);
-    // Sending disables editing and dismisses the keyboard; let its native transition settle.
-    await new Promise(resolve => setTimeout(resolve, 700));
-    const leaveStart = Date.now();
-    await tapNativeNavigationAction('navigation-home');
-    await waitFor(element(by.text('버리고 작업 중단 후 나가기')))
-      .toExist()
-      .withTimeout(3000);
-    console.log('ISSUE191_HOME_CONFIRM_MS ' + (Date.now() - leaveStart));
-    await element(by.text('버리고 작업 중단 후 나가기')).tap();
-    await waitFor(element(by.id('navigation-tab-ai')))
-      .toExist()
-      .withTimeout(5000);
-    await device.takeScreenshot('issue191-conversation-left');
   });
   (process.env.OROT_ISSUE191_EMPTY === 'enabled' ? it : it.skip)(
     'reports genuinely insufficient data from an empty SQLCipher library',

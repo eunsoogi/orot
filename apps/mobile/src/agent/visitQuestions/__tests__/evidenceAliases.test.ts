@@ -62,6 +62,12 @@ describe('visit-question evidence aliases', () => {
       'The evidence contains a material conflict.',
     ]);
     expect(aliases.originalOf(laterBatch.items[0]!)).toEqual(later);
+    expect(
+      aliases.originalOf({
+        ...laterBatch.items[0]!,
+        evidenceRevision: 'wrong',
+      }),
+    ).toBeUndefined();
     expect(aliases.aliasOf(later)).toEqual(laterBatch.items[0]);
     expect(
       aliases.aliasBatch({

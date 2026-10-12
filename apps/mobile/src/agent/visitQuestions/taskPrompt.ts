@@ -10,7 +10,7 @@ const QUESTION_SCHEMA: JsonObject = {
       minLength: 2,
       maxLength: 300,
       description:
-        '의료진에게 물어볼 한국어 질문 한 문장. 40자 안팎으로 짧게 쓰고 반드시 ?로 끝내세요.',
+        '기록의 의미, 관찰할 변화, 다음 방문까지 준비할 점을 의료진에게 묻는 짧은 한국어 한 문장. 이미 적힌 사실의 여부를 되묻지 말고 ?로 끝내세요.',
     },
     rationale: {
       type: 'string',

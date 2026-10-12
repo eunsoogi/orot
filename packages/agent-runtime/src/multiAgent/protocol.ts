@@ -76,6 +76,9 @@ export function taskResponseSchema<TResult>(
           value: guidedSchema(contract.resultSchema),
           citations: {
             type: 'array',
+            // Generated last: cite the result already written, not every available source.
+            description:
+              'Only evidenceId values actually used in this result. If the result contains nested evidence ID arrays, return their exact unique union. Never add unused IDs.',
             items: ids.length ? { type: 'string', enum: ids } : { type: 'string' },
             ...(ids.length ? {} : { maxItems: 0 }),
           },

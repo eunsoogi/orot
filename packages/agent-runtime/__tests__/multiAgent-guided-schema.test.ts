@@ -89,5 +89,6 @@ test('guided citation appendix sends only allowlisted IDs and leaves reference v
     throw new Error('Expected appendix');
   expect(JSON.parse(appendix.content.split('\n')[1]!)).toEqual(['evidence-1']);
   expect(appendix.content).not.toContain('sourceRevision');
+  expect(JSON.stringify(request.request.responseFormat?.schema)).toContain('exact unique union');
   expect(citationReferences(['evidence-1'], batch)?.[0]?.sourceRevision).toBe('revision-1');
 });

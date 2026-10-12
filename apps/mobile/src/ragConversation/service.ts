@@ -138,7 +138,7 @@ export async function runRagConversationTurn(
       if (!result.citations.length) return { status: 'insufficient' };
       return {
         status: 'answer',
-        // The app always displays this boundary even if the model omits its requested caveat.
+        // Label source-relative time even when the model omits that qualifier in its prose.
         answer: result.citations.some(
           reference => reference.sourceKind === 'external_medical',
         )
@@ -148,8 +148,8 @@ export async function runRagConversationTurn(
                   coverage.truncated &&
                   coverage.selectionMethod === 'ranked_retrieval',
               )
-            ? `${result.value.answer}\n\n관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
-            : result.value.answer,
+            ? `${result.value.answer}\n\n원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
+            : `${result.value.answer}\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.`,
         citations: result.citations,
       };
     }
