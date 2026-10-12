@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import React
 
-/// Keeps transcript range playback on the protected-file boundary and recording queue.
+/// Keeps saved and transcript-range playback on the protected-file boundary and recording queue.
 public extension RecordingModule {
     @objc(playRecordingRange:startMs:endMs:syntheticFixture:resolver:rejecter:)
     func playRecordingRange(
@@ -25,62 +25,218 @@ public extension RecordingModule {
                 return
             }
             self.stopPlayback()
+
+            let url: URL
             do {
-                // Resolve only protected files so transcript seeking uses the same local storage boundary as transcription.
-                let url = try RecordingFileSecurity.existingFileURL(
+                // Only the dedicated Simulator fixture path may tolerate unavailable protection metadata.
+                url = try RecordingFileSecurity.existingFileURL(
                     id: recordingID,
                     allowUnverifiedProtectionForSimulator: syntheticFixture,
                 )
-                let player = try AVAudioPlayer(contentsOf: url)
-                guard player.duration.isFinite,
-                      Double(end) / 1000 <= player.duration + 0.01,
-                      Double(start) / 1000 < player.duration
-                else {
-                    reject("INVALID_AUDIO_RANGE", "The audio range exceeds its recording.", nil)
-                    return
-                }
+            } catch {
+                let failure = Self.fileFailure(for: error)
+                reject(failure.code, failure.message, error as NSError)
+                return
+            }
+
+            let player: AVAudioPlayer
+            do {
+                player = try AVAudioPlayer(contentsOf: url)
+            } catch {
+                reject(
+                    "RECORDING_FILE_INVALID",
+                    "The saved audio file could not be decoded.",
+                    error as NSError,
+                )
+                return
+            }
+            guard player.duration.isFinite,
+                  player.duration > 0,
+                  Double(end) / 1000 <= player.duration + 0.01,
+                  Double(start) / 1000 < player.duration
+            else {
+                reject("INVALID_AUDIO_RANGE", "The audio range exceeds its recording.", nil)
+                return
+            }
+
+            do {
                 try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
                 try AVAudioSession.sharedInstance().setActive(true)
-                guard player.prepareToPlay() else {
-                    self.deactivateAudioSession()
-                    reject("RECORDING_PLAYBACK_FAILED", "The recording could not be prepared for playback.", nil)
-                    return
-                }
-                player.currentTime = Double(start) / 1000
-                let actualStart = Int((player.currentTime * 1000).rounded())
-                guard player.play() else {
-                    self.deactivateAudioSession()
-                    reject("RECORDING_PLAYBACK_FAILED", "The recording could not start playing.", nil)
-                    return
-                }
-                self.playbackPlayer = player
-                self.playbackResolve = resolve
-                self.playbackResult = ["startMs": start, "endMs": end, "actualStartMs": actualStart]
-                let timer = DispatchSource.makeTimerSource(queue: self.workQueue)
-                timer.schedule(deadline: .now() + .milliseconds(end - start))
-                timer.setEventHandler { [weak self] in self?.stopPlayback() }
-                self.playbackTimer = timer
-                timer.resume()
             } catch {
                 self.deactivateAudioSession()
-                reject("RECORDING_PLAYBACK_FAILED", "The protected recording could not be played.", error as NSError)
+                reject("RECORDING_AUDIO_SESSION_FAILED", error.localizedDescription, error as NSError)
+                return
+            }
+            guard player.prepareToPlay() else {
+                self.deactivateAudioSession()
+                reject(
+                    "RECORDING_FILE_INVALID",
+                    "The saved audio file could not be prepared for playback.",
+                    nil,
+                )
+                return
+            }
+
+            player.currentTime = Double(start) / 1000
+            player.delegate = self
+            self.playbackPlayer = player
+            self.playbackResolve = resolve
+            self.playbackReject = reject
+            self.playbackRecordingID = recordingID
+            self.playbackEndMs = end
+            self.playbackResult = [
+                "startMs": start,
+                "endMs": end,
+                "actualStartMs": Int((player.currentTime * 1000).rounded()),
+            ]
+
+            guard player.play() else {
+                self.stopPlayback(
+                    code: "RECORDING_PLAYBACK_FAILED",
+                    message: "The recording could not start playing.",
+                )
+                return
+            }
+            self.startPlaybackProgressTimer(for: player)
+            self.emitPlaybackState()
+        }
+    }
+
+    /// Lets a user stop immediately; resolving the pending play promise keeps it distinct from a player failure.
+    @objc(stopRecordingPlayback:rejecter:)
+    func stopRecordingPlayback(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter _: @escaping RCTPromiseRejectBlock,
+    ) {
+        workQueue.async {
+            self.stopPlayback()
+            resolve(nil)
+        }
+    }
+
+    func startPlaybackProgressTimer(for player: AVAudioPlayer) {
+        let timer = DispatchSource.makeTimerSource(queue: workQueue)
+        // Sample the player clock and stop at the requested excerpt end instead of trusting wall time.
+        timer.schedule(
+            deadline: .now() + .milliseconds(50),
+            repeating: .milliseconds(50),
+            leeway: .milliseconds(10),
+        )
+        timer.setEventHandler { [weak self, weak player] in
+            guard let self, let player, playbackPlayer === player else { return }
+            if let endMs = playbackEndMs,
+               player.currentTime * 1000 >= Double(endMs)
+            {
+                player.currentTime = Double(endMs) / 1000
+                stopPlayback()
+                return
+            }
+            emitPlaybackState()
+        }
+        playbackTimer = timer
+        timer.resume()
+    }
+
+    func stopPlayback(
+        code: String? = nil,
+        message: String? = nil,
+        error: NSError? = nil,
+    ) {
+        let player = playbackPlayer
+        let hadPlayback = player != nil || playbackTimer != nil || playbackResolve != nil
+        guard hadPlayback else { return }
+
+        playbackTimer?.cancel()
+        playbackTimer = nil
+        player?.delegate = nil
+        player?.stop()
+        playbackPlayer = nil
+        deactivateAudioSession()
+
+        let resolve = playbackResolve
+        let reject = playbackReject
+        let result = playbackResult
+        playbackResolve = nil
+        playbackReject = nil
+        playbackResult = nil
+        playbackRecordingID = nil
+        playbackEndMs = nil
+        emitPlaybackState()
+
+        if let code, let reject {
+            reject(code, message ?? "The recording could not be played.", error)
+        } else {
+            resolve?(result)
+        }
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        workQueue.async { [weak self, weak player] in
+            guard let self, let player, playbackPlayer === player else { return }
+            if flag {
+                stopPlayback()
+            } else {
+                stopPlayback(
+                    code: "RECORDING_PLAYBACK_FAILED",
+                    message: "The recording stopped before playback completed.",
+                )
             }
         }
     }
 
-    func stopPlayback() {
-        let hadPlayback = playbackTimer != nil || playbackPlayer != nil
-        playbackTimer?.cancel()
-        playbackTimer = nil
-        playbackPlayer?.stop()
-        playbackPlayer = nil
-        if hadPlayback {
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        workQueue.async { [weak self, weak player] in
+            guard let self, let player, playbackPlayer === player else { return }
+            stopPlayback(
+                code: "RECORDING_FILE_INVALID",
+                message: "The saved audio file could not be decoded.",
+                error: error as NSError?,
+            )
         }
-        let resolve = playbackResolve
-        let result = playbackResult
-        playbackResolve = nil
-        playbackResult = nil
-        resolve?(result)
     }
+
+    private static func fileFailure(for error: Error) -> (code: String, message: String) {
+        guard let fileError = error as? RecordingFileSecurityError else {
+            return ("RECORDING_PLAYBACK_FAILED", "The protected recording could not be opened.")
+        }
+        switch fileError {
+        case .recordingNotFound:
+            return ("RECORDING_FILE_MISSING", "The saved recording file could not be found.")
+        case .invalidAudioFile:
+            return ("RECORDING_FILE_INVALID", "The saved audio file is invalid.")
+        case .invalidIdentifier:
+            return ("RECORDING_FILE_INVALID", "The saved recording identifier is invalid.")
+        case .directoryUnavailable, .protectionNotApplied, .backupEligibilityNotApplied:
+            return ("RECORDING_PLAYBACK_FAILED", "The protected recording could not be opened.")
+        }
+    }
+
+    #if targetEnvironment(simulator)
+        /// Posts a route-loss notification only when the dedicated test build is enabled.
+        @objc(simulatePlaybackRouteLoss:rejecter:)
+        func simulatePlaybackRouteLoss(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter reject: @escaping RCTPromiseRejectBlock,
+        ) {
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST
+                workQueue.async {
+                    guard self.playbackPlayer != nil else {
+                        reject("PLAYBACK_NOT_ACTIVE", "Playback must be active for this probe.", nil)
+                        return
+                    }
+                    NotificationCenter.default.post(
+                        name: AVAudioSession.routeChangeNotification,
+                        object: AVAudioSession.sharedInstance(),
+                        userInfo: [
+                            AVAudioSessionRouteChangeReasonKey:
+                                AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue,
+                        ],
+                    )
+                    self.workQueue.async { resolve(nil) }
+                }
+            #else
+                reject("PLAYBACK_PROBE_UNAVAILABLE", "The route probe is unavailable in this build.", nil)
+            #endif
+        }
+    #endif
 }

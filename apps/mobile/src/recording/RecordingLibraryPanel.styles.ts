@@ -19,11 +19,23 @@ export const recordingLibraryStyles = StyleSheet.create({
     padding: 12,
     backgroundColor: appColors.surface,
   },
+  summaryActionRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   summaryAction: {
     alignItems: 'center',
+    flex: 1,
     flexDirection: 'row',
     gap: 12,
     minHeight: 44,
+  },
+  listPlaybackButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.border,
+    backgroundColor: appColors.surface,
   },
   summaryIcon: {
     alignItems: 'center',
@@ -94,6 +106,17 @@ export const recordingLibraryStyles = StyleSheet.create({
     fontWeight: '600',
   },
   playbackTimes: { flexDirection: 'row', justifyContent: 'space-between' },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: appColors.border,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: appColors.primaryAction,
+  },
   deleteProgress: {
     alignItems: 'center',
     flexDirection: 'row',
