@@ -163,8 +163,8 @@ test('passes resolved fingerprints into cache validation and preserves profile b
       recordCacheIndex < buildStepIndex &&
       buildStepIndex < manifestStepIndex,
   );
-  assert.match(prepareCache, /detox-derived-data-cache\.mjs prepare/);
-  assert.match(prepareCache, /DETOX_CACHE_RUNNER_OS: \$\{\{ runner\.os \}\}/);
+  assert.match(prepareCache, /uses: \.\/\.github\/actions\/detox-profile-app-cache\/prepare/);
+  assert.match(prepareCache, /workflow_steps: \$\{\{ toJSON\(steps\) \}\}/);
   assert.match(
     recordCache,
     /run: scripts\/ci\/record-detox-cache-state\.sh artifacts\/detox\/native-cache\.log/,

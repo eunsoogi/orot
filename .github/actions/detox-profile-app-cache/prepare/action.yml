@@ -1,0 +1,80 @@
+name: Prepare Detox profile app cache
+description: Validate the restored app cache and install a verified run-bound Release artifact when supplied.
+inputs:
+  workflow_inputs:
+    description: Inputs passed to the reusable profile workflow.
+    required: true
+  workflow_steps:
+    description: Outputs from the completed profile setup steps.
+    required: true
+  runner_context:
+    description: The runner identity used by the app build.
+    required: true
+  workflow_env:
+    description: Expected toolchain identity from the reusable profile workflow.
+    required: true
+outputs:
+  app_reusable:
+    description: Whether a validated profile app is available for the test job.
+    value: ${{ steps.prepare.outputs.app_reusable == 'true' || steps.verify_release_app.outputs.release_app_reusable == 'true' }}
+  derived_data_cache_app_reusable:
+    description: Whether the restored DerivedData cache already contained a valid app.
+    value: ${{ steps.prepare.outputs.app_reusable }}
+  detox_artifacts_reusable:
+    description: Whether restored Detox runtime artifacts are reusable.
+    value: ${{ steps.prepare.outputs.detox_artifacts_reusable }}
+  app_reuse_reason:
+    description: Why the app cache or run-bound artifact was accepted.
+    value: ${{ steps.verify_release_app.outputs.release_app_reusable == 'true' && 'verified_run_bound_release_app_artifact' || steps.prepare.outputs.app_reuse_reason }}
+  derived_data_cache_classification:
+    description: Classification of the restored DerivedData cache.
+    value: ${{ steps.prepare.outputs.derived_data_cache_classification }}
+  derived_data_cache_diagnostic:
+    description: Diagnostic for the restored DerivedData cache.
+    value: ${{ steps.prepare.outputs.derived_data_cache_diagnostic }}
+  release_app_reusable:
+    description: Whether the current run's producer artifact passed provenance and bundle verification.
+    value: ${{ steps.verify_release_app.outputs.release_app_reusable }}
+runs:
+  using: composite
+  steps:
+    # Classify and clear an unusable cache before installing the verified app; the caller writes a fresh cache manifest afterward.
+    - name: Prepare restored Detox DerivedData cache
+      id: prepare
+      shell: bash
+      env:
+        DETOX_CACHE_RUNNER_OS: ${{ fromJSON(inputs.runner_context).os }}
+        DETOX_CACHE_RUNNER_ARCH: ${{ fromJSON(inputs.runner_context).arch }}
+        MACOS_VERSION: ${{ fromJSON(inputs.workflow_steps).verify_toolchain.outputs.macos_version }}
+        EXPECTED_XCODE_VERSION: ${{ fromJSON(inputs.workflow_env).EXPECTED_XCODE_VERSION }}
+        EXPECTED_IOS_SIMULATOR_SDK: ${{ fromJSON(inputs.workflow_env).EXPECTED_IOS_SIMULATOR_SDK }}
+      run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ fromJSON(inputs.workflow_inputs).profile }}"
+    - name: Require complete run-bound Release artifact inputs
+      if: ${{ fromJSON(inputs.workflow_inputs).profile == 'release' && (!fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).artifact_name || !fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).archive_sha256 || !fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).manifest_sha256) }}
+      shell: bash
+      run: |
+        echo "::error::The Release profile requires complete producer artifact outputs."
+        exit 1
+    - name: Download run-bound Release app artifact
+      if: ${{ fromJSON(inputs.workflow_inputs).profile == 'release' }}
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: ${{ fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).artifact_name }}
+        path: artifacts/detox/release-app
+    - name: Verify run-bound Release app artifact
+      if: ${{ fromJSON(inputs.workflow_inputs).profile == 'release' }}
+      id: verify_release_app
+      shell: bash
+      env:
+        DETOX_CACHE_RUNNER_OS: ${{ fromJSON(inputs.runner_context).os }}
+        DETOX_CACHE_RUNNER_ARCH: ${{ fromJSON(inputs.runner_context).arch }}
+        MACOS_VERSION: ${{ fromJSON(inputs.workflow_steps).verify_toolchain.outputs.macos_version }}
+        XCODEBUILD_FINGERPRINT: ${{ fromJSON(inputs.workflow_steps).verify_toolchain.outputs.xcodebuild_fingerprint }}
+        EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ fromJSON(inputs.workflow_steps).profile_derived_data_cache.outputs.build_inputs }}
+        EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ fromJSON(inputs.workflow_steps).profile_derived_data_cache.outputs.native_dependencies }}
+        EXPECTED_XCODE_VERSION: ${{ fromJSON(inputs.workflow_env).EXPECTED_XCODE_VERSION }}
+        EXPECTED_IOS_SIMULATOR_SDK: ${{ fromJSON(inputs.workflow_env).EXPECTED_IOS_SIMULATOR_SDK }}
+        DEVELOPER_DIR: ${{ fromJSON(inputs.workflow_env).DEVELOPER_DIR }}
+        EXPECTED_ARCHIVE_SHA256: ${{ fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).archive_sha256 }}
+        EXPECTED_MANIFEST_SHA256: ${{ fromJSON(fromJSON(inputs.workflow_inputs).release_app_artifact).manifest_sha256 }}
+      run: node scripts/ci/detox-release-app-artifact.mjs verify artifacts/detox/release-app "$EXPECTED_ARCHIVE_SHA256" "$EXPECTED_MANIFEST_SHA256"

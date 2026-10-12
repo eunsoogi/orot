@@ -9,6 +9,8 @@ on:
         type: string
       # One explicit Release wrapper runs on this dedicated Simulator.
       release_shard: { required: false, type: string, default: '' }
+      # Release shard callers pass the shared per-run artifact's producer outputs.
+      release_app_artifact: { required: false, type: string, default: '{}' }
       fingerprints:
         description: Shared source and build fingerprints from the profile workflow.
         required: true
@@ -38,27 +40,27 @@ permissions:
 env:
   CI: 'true'
   TZ: UTC
-  DEVELOPER_DIR: ${{ inputs.profile == 'transcription' && '/Applications/Xcode_26.2.app/Contents/Developer' || '/Applications/Xcode.app/Contents/Developer' }}
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
   EXPECTED_NODE_VERSION: '22.23.2'
   EXPECTED_PNPM_VERSION: '12.3.4'
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  EXPECTED_XCODE_VERSION: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
-  EXPECTED_IOS_SIMULATOR_SDK: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
+  EXPECTED_XCODE_VERSION: '27.0'
+  EXPECTED_IOS_SIMULATOR_SDK: '27.0'
   EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: ${{ inputs.profile == 'transcription' && 'iOS 26.2' || 'iOS 27.0' }}
   EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
-  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-device-iphone17pro' || '' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-build23C54-device-iphone17pro' || '' }}
 
 jobs:
   detox_profile:
     # The status workflow owns the protected check name so this executor may skip cleanly.
     name: Execute Detox profile
     if: ${{ inputs.run_profile }}
-    # Only the speech probe selects the installed image containing its measured model-compatible runtime.
-    runs-on: ${{ inputs.profile == 'transcription' && 'macos-26' || 'xcode-27' }}
+    # Native safety-error types require SDK 27 in every app bundle, including the speech probe.
+    runs-on: xcode-27
     timeout-minutes: 75
     outputs:
       profile: ${{ steps.run_detox_tests.outputs.e2e_profile }}
@@ -66,10 +68,10 @@ jobs:
       test_suites: ${{ steps.run_detox_tests.outputs.e2e_test_suites }}
     steps:
       # A selector failure must reach each required E2E leaf instead of becoming a skip.
-      - name: Fail if changed-path selection was unavailable
-        if: ${{ inputs.path_selection_failed }}
+      - name: Fail if path selection or Release artifact inputs are unavailable
+        if: ${{ inputs.path_selection_failed || (inputs.profile == 'release' && (!fromJSON(inputs.release_app_artifact).artifact_name || !fromJSON(inputs.release_app_artifact).archive_sha256 || !fromJSON(inputs.release_app_artifact).manifest_sha256)) }}
         run: |
-          echo "::error::Changed-path selection failed; refusing to skip this required E2E check."
+          echo "::error::Changed-path selection failed or the Release app artifact inputs are incomplete."
           exit 1
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -92,7 +94,8 @@ jobs:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       - name: Verify runner toolchain # Validate before Simulator boot.
         id: verify_toolchain
-        run: scripts/ci/verify-toolchain.sh
+        timeout-minutes: 20
+        run: bash scripts/ci/prepare-detox-runtime.sh "${{ inputs.profile }}" && scripts/ci/verify-toolchain.sh
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"
@@ -118,13 +121,12 @@ jobs:
       - name: Prepare restored Detox DerivedData cache
         id: prepare_derived_data_cache
         timeout-minutes: 5
-        env:
-          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
-          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
-          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
-          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
-        run: node scripts/ci/detox-derived-data-cache.mjs prepare "${{ inputs.profile }}"
+        uses: ./.github/actions/detox-profile-app-cache/prepare
+        with:
+          workflow_inputs: ${{ toJSON(inputs) }}
+          workflow_steps: ${{ toJSON(steps) }}
+          runner_context: ${{ toJSON(runner) }}
+          workflow_env: ${{ toJSON(env) }}
       - name: Cache Detox framework outputs # Only app-cache misses use the standalone fallback.
         id: detox_framework_cache
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
@@ -206,7 +208,7 @@ jobs:
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}" --skip-pods
       - name: Write Detox DerivedData cache manifest
         id: write_derived_data_cache
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
+        if: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_app_reusable != 'true' }}
         timeout-minutes: 5
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}

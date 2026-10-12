@@ -152,9 +152,10 @@ test('keeps Release UI/storage and stateful-data as separate checked shard jobs'
     );
   }
   assert.match(profileWorkflow, /OROT_DETOX_RELEASE_SHARD: \$\{\{ inputs\.release_shard \}\}/);
+  // The shared fingerprint input feeds the producer and both independent Release shards.
   assert.equal(
     [...releaseWorkflow.matchAll(/fingerprints: \$\{\{ inputs\.fingerprints \}\}/g)].length,
-    2,
+    3,
   );
 });
 
