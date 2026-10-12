@@ -9,7 +9,14 @@ const read = (path) => readFileSync(fileURLToPath(new URL(path, root)), 'utf8');
 const ciWorkflow = read('.github/workflows/e2e-test.yml');
 const profilesWorkflow = read('.github/workflows/detox-e2e-profiles.yml');
 const releaseWorkflow = read('.github/workflows/detox-e2e-release.yml');
+const releasePublicationWorkflow = read('.github/workflows/release.yml');
 const profileWorkflow = read('.github/workflows/detox-e2e-profile.yml');
+const focusedWorkflow = read('.github/workflows/detox-e2e-focused.yml');
+const cancelFocusedWorkflowPath = '.github/workflows/cancel-stale-focused-detox.yml';
+const cancelFocusedWorkflowExists = existsSync(
+  fileURLToPath(new URL(cancelFocusedWorkflowPath, root)),
+);
+const cancelFocusedWorkflow = cancelFocusedWorkflowExists ? read(cancelFocusedWorkflowPath) : '';
 const profileStatusWorkflowExists = existsSync(
   fileURLToPath(new URL('.github/workflows/detox-e2e-profile-status.yml', root)),
 );
@@ -39,6 +46,29 @@ test('exposes profile scenario results without CI summary wrapper jobs', () => {
   );
   assert.doesNotMatch(profilesWorkflow, /require-detox-e2e-aggregate\.mjs/);
   assert.doesNotMatch(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
+});
+
+test('cancels a focused run when its PR head changes without crossing PR boundaries', () => {
+  assert.ok(cancelFocusedWorkflowExists, 'missing focused-run cancellation workflow');
+  const cancelJob = jobBlock(cancelFocusedWorkflow, 'cancel_superseded_focus');
+  const focusGroup = /group: (focused-detox-[^\n]+)/.exec(focusedWorkflow)?.[1];
+  const cancelGroup = /group: (focused-detox-[^\n]+)/.exec(cancelJob)?.[1];
+  const groupFor = (template, prNumber) =>
+    template
+      ?.replace(/\$\{\{\s*inputs\.pr_number\s*\}\}/, String(prNumber))
+      .replace(/\$\{\{\s*github\.event\.pull_request\.number\s*\}\}/, String(prNumber));
+
+  assert.match(cancelFocusedWorkflow, /types: \[synchronize\]/);
+  assert.match(cancelJob, /if: \$\{\{ github\.event\.action == 'synchronize' \}\}/);
+  assert.match(cancelJob, /runs-on: ubuntu-24\.04/);
+  assert.match(cancelJob, /cancel-in-progress: true/);
+  assert.match(cancelFocusedWorkflow, /permissions: \{\}/);
+  assert.doesNotMatch(cancelFocusedWorkflow, /actions\/checkout|workflow_run:/);
+  assert.equal(groupFor(focusGroup, 198), groupFor(cancelGroup, 198));
+  assert.notEqual(groupFor(focusGroup, 198), groupFor(cancelGroup, 199));
+  assert.doesNotMatch(releaseWorkflow, /focused-detox-/);
+  assert.match(releasePublicationWorkflow, /group: orot-release-publication/);
+  assert.doesNotMatch(releasePublicationWorkflow, /focused-detox-/);
 });
 
 test('keeps required E2E check names resolved when profile work is skipped', () => {

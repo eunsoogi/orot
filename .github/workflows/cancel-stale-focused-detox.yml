@@ -1,0 +1,22 @@
+name: Cancel superseded focused Detox runs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions: {}
+
+jobs:
+  cancel_superseded_focus:
+    name: Cancel stale focused run for updated PR
+    if: ${{ github.event.action == 'synchronize' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    concurrency:
+      # Match the reusable focus workflow's PR-scoped group to cancel only its stale run.
+      group: focused-detox-${{ github.event.pull_request.number }}-scenario
+      cancel-in-progress: true
+    steps:
+      - name: Record focused run supersession
+        run: echo "A new pull request head supersedes any prior focused scenario for this PR."
