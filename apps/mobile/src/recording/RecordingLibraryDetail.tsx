@@ -6,12 +6,14 @@ import { formatRecordedAt } from './formatRecordedAt';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import RecordingPlaybackControls from './RecordingPlaybackControls';
 import type { RecordingLibrarySummary } from './recordingLibraryService';
-import type { RecordingService } from './recordingTypes';
+import type { RecordingPlaybackService } from './recordingTypes';
 
 interface RecordingLibraryDetailProps {
   readonly summary: RecordingLibrarySummary;
   readonly disabled: boolean;
-  readonly playbackService: Pick<RecordingService, 'playRange'>;
+  readonly playbackService: RecordingPlaybackService;
+  readonly autoPlay?: boolean;
+  readonly onAutoPlayConsumed?: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
 }
@@ -21,6 +23,8 @@ export default function RecordingLibraryDetail({
   summary,
   disabled,
   playbackService,
+  autoPlay = false,
+  onAutoPlayConsumed,
   onClose,
   onDelete,
 }: RecordingLibraryDetailProps) {
@@ -33,10 +37,14 @@ export default function RecordingLibraryDetail({
       <Text style={styles.detailMetadata} testID="recording-detail-date">
         {formatRecordedAt(source.recordedAt)}
       </Text>
+      {/* A new source gets fresh pending state so its autoplay cannot be blocked by the prior recording. */}
       <RecordingPlaybackControls
+        key={source.id}
         durationMs={summary.durationMs}
         playbackService={playbackService}
         recordingId={source.id}
+        autoPlay={autoPlay}
+        onAutoPlayConsumed={onAutoPlayConsumed}
       />
       <View style={styles.actions}>
         <AppButton

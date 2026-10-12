@@ -12,5 +12,8 @@ export const recordingService: RecordingService = {
   stop: () => nativeRecordingBridge.stop(),
   playRange: (recordingId, startMs, endMs) =>
     nativeRecordingBridge.playRange(recordingId, startMs, endMs),
+  stopPlayback: () => nativeRecordingBridge.stopPlayback(),
+  subscribePlayback: listener =>
+    nativeRecordingBridge.subscribePlayback(listener),
   saveSource: recording => saveRecordingSource(recording),
 };

@@ -29,18 +29,34 @@ export interface RecordingPlaybackRange {
   readonly actualStartMs: number;
 }
 
-export interface RecordingService {
+/** Current native player state; positions and durations are milliseconds. */
+export interface RecordingPlaybackState {
+  readonly status: 'idle' | 'playing';
+  readonly recordingId: string | null;
+  readonly positionMs: number;
+  readonly durationMs: number;
+}
+
+/** Keeps playback controls independent from capture while exposing optional native events and stop. */
+export interface RecordingPlaybackService {
+  playRange(
+    recordingId: string,
+    startMs: number,
+    endMs: number,
+  ): Promise<RecordingPlaybackRange>;
+  stopPlayback?(): Promise<void>;
+  subscribePlayback?(
+    listener: (state: RecordingPlaybackState) => void,
+  ): () => void;
+}
+
+export interface RecordingService extends RecordingPlaybackService {
   getState(): Promise<RecordingSnapshot>;
   subscribe(listener: (snapshot: RecordingSnapshot) => void): () => void;
   start(consentAcknowledged: boolean): Promise<RecordingSnapshot>;
   pause(): Promise<RecordingSnapshot>;
   resume(): Promise<RecordingSnapshot>;
   stop(): Promise<CompletedRecording>;
-  playRange(
-    recordingId: string,
-    startMs: number,
-    endMs: number,
-  ): Promise<RecordingPlaybackRange>;
   saveSource(recording: CompletedRecording): Promise<RecordingSourceRecord>;
 }
 

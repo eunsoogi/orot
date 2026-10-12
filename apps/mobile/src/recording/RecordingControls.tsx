@@ -12,6 +12,7 @@ import type { RecordingLibraryService } from './recordingLibraryService';
 import {
   formatRecordingDuration,
   type CompletedRecording,
+  type RecordingPlaybackService,
   type RecordingStatus,
 } from './recordingTypes';
 import { recordingControlStyles } from './RecordingControls.styles';
@@ -50,6 +51,7 @@ interface RecordingControlsProps {
   automaticTranscription?: AutomaticTranscriptionSnapshot | null;
   onRetryTranscription?: () => void;
   recordingLibraryService?: RecordingLibraryService;
+  playbackService?: RecordingPlaybackService;
   onRecordingSourceDeleted?: (sourceId: string) => void;
 }
 
@@ -80,6 +82,7 @@ export default function RecordingControls({
   automaticTranscription = null,
   onRetryTranscription = () => {},
   recordingLibraryService = defaultRecordingLibraryService,
+  playbackService,
   onRecordingSourceDeleted,
 }: RecordingControlsProps) {
   const navigationInset = useNavigationContentInset();
@@ -186,6 +189,7 @@ export default function RecordingControls({
           onSourceDeleted={onRecordingSourceDeleted}
           service={recordingLibraryService}
           transcriptService={transcriptService}
+          playbackService={playbackService}
           automaticTranscription={automaticTranscription}
         />
       ) : null}
