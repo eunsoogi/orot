@@ -4,7 +4,7 @@ import React
 import UIKit
 
 @objc(RecordingModule)
-public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
+public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
     enum Status: String {
         case idle
         case recording
@@ -28,7 +28,10 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     var playbackPlayer: AVAudioPlayer?
     var playbackTimer: DispatchSourceTimer?
     var playbackResolve: RCTPromiseResolveBlock?
+    var playbackReject: RCTPromiseRejectBlock?
     var playbackResult: NSDictionary?
+    var playbackRecordingID: String?
+    var playbackEndMs: Int?
     var observers: [NSObjectProtocol] = []
     #if DEBUG && targetEnvironment(simulator)
         var syntheticCapture: RecordingSyntheticCapture?
@@ -41,7 +44,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     }
 
     override public func supportedEvents() -> [String]! {
-        ["RecordingStateChanged"]
+        ["RecordingStateChanged", "RecordingPlaybackStateChanged"]
     }
 
     override init() {
@@ -64,6 +67,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
         ) { [weak self] _ in
             self?.workQueue.async { [weak self] in self?.pauseForBackgrounding() }
         })
+        observePlaybackRouteChanges()
     }
 
     deinit {
@@ -76,6 +80,13 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     func handle(_ interruption: AVAudioSession.InterruptionType) {
         switch interruption {
         case .began:
+            // An interruption has no reliable resume point, so release playback and offer an explicit retry.
+            if playbackPlayer != nil {
+                stopPlayback(
+                    code: "RECORDING_PLAYBACK_INTERRUPTED",
+                    message: "Playback was interrupted. Try playing the recording again.",
+                )
+            }
             guard status == .recording else { return }
             recorder?.pause()
             deactivateAudioSession()
@@ -94,6 +105,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate {
     }
 
     func pauseForBackgrounding() {
+        // Saved playback does not resume behind another screen; release its player and session together.
         stopPlayback()
         guard status == .recording else { return }
         recorder?.pause()

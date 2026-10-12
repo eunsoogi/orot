@@ -4,21 +4,24 @@ import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
-import type { RecordingService, RecordingSourceRecord } from './recordingTypes';
+import type {
+  RecordingPlaybackService,
+  RecordingSourceRecord,
+} from './recordingTypes';
 import { recordingService } from './recordingService';
 import RecordingDeletionNotice from './RecordingDeletionNotice';
 import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
-import type {
-  RecordingLibraryService,
-  RecordingLibrarySummary,
-} from './recordingLibraryService';
+import {
+  loadRecordingLibrarySummaries,
+  type RecordingDeleteNotice,
+  type RecordingLibraryService,
+  type RecordingLibrarySummary,
+} from './recordingLibraryPanelHelpers';
 import RecordingExportPanel from './RecordingExportPanel';
 import RecordingLibrarySummaryRow from './RecordingLibrarySummaryRow';
 import RecordingLibraryDetail from './RecordingLibraryDetail';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
-
-type DeleteNotice = 'error' | 'cleanup-pending' | null;
 
 interface RecordingLibraryPanelProps {
   readonly service: RecordingLibraryService;
@@ -29,19 +32,7 @@ interface RecordingLibraryPanelProps {
   readonly onSourceDeleted?: (sourceId: string) => void;
   readonly actionsDisabled?: boolean;
   readonly onBusyChange?: (busy: boolean) => void;
-  readonly playbackService?: Pick<RecordingService, 'playRange'>;
-}
-
-async function loadSummaries(
-  service: RecordingLibraryService,
-): Promise<readonly RecordingLibrarySummary[]> {
-  if (service.listSummaries) return service.listSummaries();
-  // Older test adapters can still render rows without making an unsupported review-state claim.
-  return (await service.list()).map(source => ({
-    source,
-    durationMs: source.recordingDurationMs ?? null,
-    transcriptReviewState: 'unavailable',
-  }));
+  readonly playbackService?: RecordingPlaybackService;
 }
 
 /** Shows real saved-audio summaries and one selected detail with shared delete recovery. */
@@ -60,19 +51,22 @@ export default function RecordingLibraryPanel({
     readonly RecordingLibrarySummary[]
   >([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [playbackRequestSourceId, setPlaybackRequestSourceId] = useState<
+    string | null
+  >(null);
   const [deleteTarget, setDeleteTarget] =
     useState<RecordingSourceRecord | null>(null);
   const [deletedIds] = useState(() => new Set<string>());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [deleteNotice, setDeleteNotice] = useState<DeleteNotice>(null);
+  const [deleteNotice, setDeleteNotice] = useState<RecordingDeleteNotice>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    loadSummaries(service)
+    loadRecordingLibrarySummaries(service)
       .then(next => {
         if (!active) return;
         setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
@@ -117,7 +111,7 @@ export default function RecordingLibraryPanel({
 
   async function refreshAfterDelete(targetId: string): Promise<boolean> {
     try {
-      const next = await loadSummaries(service);
+      const next = await loadRecordingLibrarySummaries(service);
       setRecordings(next.filter(item => !deletedIds.has(item.source.id)));
       setSelectedSourceId(current =>
         current &&
@@ -202,7 +196,15 @@ export default function RecordingLibraryPanel({
               key={summary.source.id}
               summary={summary}
               disabled={disabled}
-              onOpen={() => setSelectedSourceId(summary.source.id)}
+              onOpen={() => {
+                setPlaybackRequestSourceId(null);
+                setSelectedSourceId(summary.source.id);
+              }}
+              onPlay={() => {
+                // Route list playback through the detail control so progress and recovery share one state path.
+                setPlaybackRequestSourceId(summary.source.id);
+                setSelectedSourceId(summary.source.id);
+              }}
               onDelete={() => requestDelete(summary.source)}
             />
           ))}
@@ -213,6 +215,8 @@ export default function RecordingLibraryPanel({
           summary={selected}
           disabled={disabled}
           playbackService={playbackService}
+          autoPlay={playbackRequestSourceId === selected.source.id}
+          onAutoPlayConsumed={() => setPlaybackRequestSourceId(null)}
           onClose={() => setSelectedSourceId(null)}
           onDelete={() => requestDelete(selected.source)}
         />

@@ -1,7 +1,9 @@
 import { NativeEventEmitter } from 'react-native';
 import type {
   CompletedRecording,
+  RecordingPlaybackService,
   RecordingPlaybackRange,
+  RecordingPlaybackState,
   RecordingSnapshot,
 } from './recordingTypes';
 import {
@@ -20,18 +22,17 @@ export {
   shareRecordingTranscript,
 } from './recordingExportNativeBridge';
 
-export interface RecordingBridge {
+export interface RecordingBridge extends RecordingPlaybackService {
+  stopPlayback(): Promise<void>;
+  subscribePlayback(
+    listener: (state: RecordingPlaybackState) => void,
+  ): () => void;
   getState(): Promise<RecordingSnapshot>;
   subscribe(listener: (snapshot: RecordingSnapshot) => void): () => void;
   start(consentAcknowledged: boolean): Promise<RecordingSnapshot>;
   pause(): Promise<RecordingSnapshot>;
   resume(): Promise<RecordingSnapshot>;
   stop(): Promise<CompletedRecording>;
-  playRange(
-    recordingId: string,
-    startMs: number,
-    endMs: number,
-  ): Promise<RecordingPlaybackRange>;
 }
 
 export const nativeRecordingBridge: RecordingBridge = {
@@ -46,6 +47,16 @@ export const nativeRecordingBridge: RecordingBridge = {
     );
     return () => subscription.remove();
   },
+  subscribePlayback(listener: (state: RecordingPlaybackState) => void) {
+    // Progress events are optional in non-native renders; playback actions still report a missing native module.
+    const module = getNativeRecordingModule();
+    if (!module) return () => {};
+    const subscription = new NativeEventEmitter(module).addListener(
+      'RecordingPlaybackStateChanged',
+      value => listener(value as unknown as RecordingPlaybackState),
+    );
+    return () => subscription.remove();
+  },
   start(consentAcknowledged) {
     return requireNativeModule().startRecording(consentAcknowledged);
   },
@@ -57,6 +68,15 @@ export const nativeRecordingBridge: RecordingBridge = {
   },
   stop() {
     return requireNativeModule().stopRecording();
+  },
+  stopPlayback() {
+    const module = requireNativeModule();
+    if (!module.stopRecordingPlayback) {
+      throw new Error(
+        'Native recording playback cannot be stopped in this build.',
+      );
+    }
+    return module.stopRecordingPlayback();
   },
   playRange(recordingId, startMs, endMs) {
     const module = requireNativeModule();
@@ -142,6 +162,16 @@ export async function playSyntheticTranscriptionRange(
     throw new Error('The native recording playback method is unavailable.');
   }
   return module.playRecordingRange(recordingId, startMs, endMs, true);
+}
+
+export async function simulateSyntheticPlaybackRouteLoss(): Promise<void> {
+  const module = requireNativeModule();
+  if (!module.simulatePlaybackRouteLoss) {
+    throw new Error(
+      'Synthetic playback route changes are unavailable in this build.',
+    );
+  }
+  return module.simulatePlaybackRouteLoss();
 }
 
 export function isSyntheticRecordingProbeAvailable(): boolean {

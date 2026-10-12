@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
 import type { RecordingService } from '../recordingTypes';
 import type { RecordingLibraryService } from '../recordingLibraryService';
@@ -15,6 +20,14 @@ const source: SourceRecord = {
   reviewState: { status: 'unreviewed' },
   title: '상담 녹음',
   recordingDurationMs: 372000,
+};
+
+const secondSource: SourceRecord = {
+  ...source,
+  id: 'recording-ui-2',
+  recordedAt: '2026-10-05T10:16:12.000Z',
+  ingestedAt: '2026-10-05T10:16:13.000Z',
+  title: '두 번째 상담 녹음',
 };
 
 const segment: TranscriptEvidenceSegment = {
@@ -105,4 +118,56 @@ test('shows saved audio review details, plays the recording and segment, and hid
   expect(screen.getByTestId('transcript-input-0')).toBeTruthy();
   expect(screen.getByTestId('recording-export-audio')).toBeTruthy();
   expect(screen.getByTestId('recording-detail-delete')).toBeTruthy();
+});
+
+test('starts the newly selected recording when the prior library playback is pending', async () => {
+  let finishFirstPlayback: (() => void) | undefined;
+  const playbackService: Pick<RecordingService, 'playRange'> = {
+    playRange: jest.fn((recordingId, startMs, endMs) => {
+      if (recordingId === source.id) {
+        return new Promise(resolve => {
+          // Keep the first clip pending like native playback until it is replaced or stopped.
+          finishFirstPlayback = () =>
+            resolve({ startMs, endMs, actualStartMs: startMs });
+        });
+      }
+      finishFirstPlayback?.();
+      return Promise.resolve({ startMs, endMs, actualStartMs: startMs });
+    }),
+  };
+  const multiRecordingLibrary: RecordingLibraryService = {
+    ...library,
+    list: async () => [source, secondSource],
+    listSummaries: async () =>
+      [source, secondSource].map(item => ({
+        source: item,
+        durationMs: item.recordingDurationMs ?? null,
+        transcriptReviewState: 'unreviewed' as const,
+      })),
+  };
+
+  await render(
+    <RecordingLibraryPanel
+      playbackService={playbackService}
+      service={multiRecordingLibrary}
+    />,
+  );
+
+  await fireEvent.press(
+    await screen.findByTestId('recording-playback-list-button-recording-ui-1'),
+  );
+  expect(playbackService.playRange).toHaveBeenCalledWith(source.id, 0, 372000);
+  expect(screen.getByLabelText('녹음 재생 중…')).toBeTruthy();
+
+  await fireEvent.press(
+    screen.getByTestId('recording-playback-list-button-recording-ui-2'),
+  );
+
+  await waitFor(() =>
+    expect(playbackService.playRange).toHaveBeenCalledWith(
+      secondSource.id,
+      0,
+      372000,
+    ),
+  );
 });
