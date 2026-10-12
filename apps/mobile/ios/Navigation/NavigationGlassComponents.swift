@@ -1,7 +1,7 @@
 import UIKit
 
 /// Decodes the React Native toolbar payload and supplies defaults for optional action flags.
-struct NavigationActionDescriptor {
+struct NavigationActionDescriptor: Equatable {
     let id: String
     let label: String
     let accessibilityLabel: String
@@ -36,6 +36,23 @@ struct NavigationActionDescriptor {
         rootTab = payload["rootTab"] as? Bool ?? false
         showsTitleWithSystemImage = payload["showsTitleWithSystemImage"] as? Bool ?? false
         titleBelowImage = payload["titleBelowImage"] as? Bool ?? false
+    }
+}
+
+/** Cross-fades native navigation action updates from their current state and honors Reduce Motion. */
+enum NavigationToolbarTransition {
+    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
+        guard animated, !UIAccessibility.isReduceMotionEnabled else {
+            changes()
+            return
+        }
+
+        UIView.transition(
+            with: view,
+            duration: 0.14,
+            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent],
+            animations: changes,
+        )
     }
 }
 

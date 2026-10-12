@@ -107,6 +107,9 @@ describe('native bottom navigation toolbar', () => {
       true,
       true,
     ]);
+    expect(actions.filter(action => action.selected).map(action => action.id)).toEqual([
+      'tab-home',
+    ]);
     expect(actions[0]).toEqual(
       expect.objectContaining({
         id: 'tab-home',

@@ -66,7 +66,14 @@ async function openRootTab(tabId, screenID) {
 
 async function expectNativeNavigationAction(testID) {
   const action = element(by.id(testID));
-  const toolbarMatches = element(by.id('navigation-native-toolbar'));
+  const isRootTab = testID.startsWith('navigation-tab-');
+  const toolbarMatches = element(
+    by.id(
+      isRootTab
+        ? 'navigation-bar-native-surface'
+        : 'navigation-native-toolbar',
+    ),
+  );
   const attributes = await action.getAttributes();
   const toolbarAttributes = await toolbarMatches.getAttributes();
   const hierarchyXml = await device.generateViewHierarchyXml(true);
@@ -85,20 +92,26 @@ async function expectNativeNavigationAction(testID) {
     inner.y >= outer.y &&
     inner.x + inner.width <= outer.x + outer.width + 1 &&
     inner.y + inner.height <= outer.y + outer.height + 1;
-  // Retained native stacks expose hidden parent bars with the same ID; select the visible bar containing this action.
+  // Root controls sit above the toolbar in the glass container; contextual actions stay inside the visible toolbar.
   const activeToolbar = toolbarCandidates
     .map((candidate, index) => ({ candidate, index }))
     .find(
       ({ candidate }) =>
-        candidate.visible &&
-        candidate.hittable &&
+        (isRootTab || (candidate.visible && candidate.hittable)) &&
         candidate.frame &&
         actionCandidates.some(item => contains(candidate.frame, item.frame)),
     );
   const toolbarFrame = activeToolbar?.candidate.frame;
-  const frame = actionCandidates.find(
-    item => toolbarFrame && contains(toolbarFrame, item.frame),
-  )?.frame;
+  const actionIndex = actionCandidates.findIndex(
+    item => item.visible && item.hittable && toolbarFrame && contains(toolbarFrame, item.frame),
+  );
+  const frameIndex =
+    actionIndex >= 0
+      ? actionIndex
+      : actionCandidates.findIndex(
+          item => toolbarFrame && contains(toolbarFrame, item.frame),
+        );
+  const frame = actionCandidates[frameIndex]?.frame;
 
   // iOS 27 reports visible native toolbar children as hidden in XCUI attributes; verify the UIKit node and parent instead.
   if (
@@ -110,11 +123,13 @@ async function expectNativeNavigationAction(testID) {
     !toolbarFrame
   ) {
     throw new Error(
-      `Native navigation action ${testID} must be visible in UIKit, inside its active toolbar, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
+      `Native navigation action ${testID} must be visible in UIKit, inside its active navigation surface, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
     );
   }
 
   return {
+    action: actionIndex >= 0 ? action.atIndex(actionIndex) : action,
+    canTapActionDirectly: actionIndex >= 0,
     toolbar: toolbarMatches.atIndex(activeToolbar.index),
     frame,
     toolbarFrame,
@@ -123,10 +138,15 @@ async function expectNativeNavigationAction(testID) {
 }
 
 async function tapNativeNavigationAction(testID) {
-  const { toolbar, frame, toolbarFrame } =
+  const { action, canTapActionDirectly, toolbar, frame, toolbarFrame } =
     await expectNativeNavigationAction(testID);
 
-  // Tap the measured button center through the toolbar because XCUI misreports the child's activation point.
+  if (canTapActionDirectly) {
+    await action.tap();
+    return;
+  }
+
+  // Contextual toolbar children need a measured tap because XCTest misreports their activation points.
   await toolbar.tap({
     x: frame.x + frame.width / 2 - toolbarFrame.x,
     y: frame.y + frame.height / 2 - toolbarFrame.y,
@@ -137,9 +157,11 @@ async function tapNativeNavigationAction(testID) {
 async function tapRapidNativeNavigationActions(testIDs) {
   const targets = [];
   for (const testID of testIDs) {
-    const { toolbar, frame, toolbarFrame } =
+    const { action, canTapActionDirectly, toolbar, frame, toolbarFrame } =
       await expectNativeNavigationAction(testID);
     targets.push({
+      action,
+      canTapActionDirectly,
       toolbar,
       x: frame.x + frame.width / 2 - toolbarFrame.x,
       y: frame.y + frame.height / 2 - toolbarFrame.y,
@@ -150,7 +172,11 @@ async function tapRapidNativeNavigationActions(testIDs) {
   await device.disableSynchronization();
   try {
     for (const target of targets) {
-      await target.toolbar.tap({ x: target.x, y: target.y });
+      if (target.canTapActionDirectly) {
+        await target.action.tap();
+      } else {
+        await target.toolbar.tap({ x: target.x, y: target.y });
+      }
     }
   } finally {
     await device.enableSynchronization();

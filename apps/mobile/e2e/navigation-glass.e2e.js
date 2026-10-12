@@ -67,13 +67,12 @@ describe('native navigation glass', () => {
       by.id('navigation-keyboard-avoiding-root'),
     ).getAttributes();
     const recent = await element(by.id('home-open-records')).getAttributes();
-    const toolbar = await element(
-      by.id('navigation-native-toolbar'),
-    ).getAttributes();
-    if (!recent.frame || !toolbar.frame || !root.frame)
-      throw new Error('Missing Home content or toolbar frame.');
-    expectActionAboveRootTabSurface(recent.frame, toolbar.frame);
-    expectRootTabScreenEdgeClearance(root.frame, toolbar.frame);
+    const { toolbarFrame: rootTabSurfaceFrame } =
+      await expectNativeNavigationAction('navigation-tab-home');
+    if (!recent.frame || !rootTabSurfaceFrame || !root.frame)
+      throw new Error('Missing Home content or root tab surface frame.');
+    expectActionAboveRootTabSurface(recent.frame, rootTabSurfaceFrame);
+    expectRootTabScreenEdgeClearance(root.frame, rootTabSurfaceFrame);
     await device.takeScreenshot('home-native-glass');
     await openRootTab('records', 'records-title');
     await expect(element(by.id('records-new-recording'))).toBeVisible();
