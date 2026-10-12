@@ -147,6 +147,8 @@ export async function createVisitQuestionEvidenceCollection(input: {
           ],
           // A completed empty search is known absence, not an unsearched coverage gap.
           gaps: [],
+          // All eligible chunks were searched; a top-k page is not an unread source.
+          selectionMethod: 'ranked_retrieval',
           truncated:
             input.recordSearchTruncated === true ||
             input.transcriptSearchTruncated === true ||
@@ -165,6 +167,7 @@ export async function createVisitQuestionEvidenceCollection(input: {
                 ],
                 // A completed search with no matching memory is a known empty result, not a gap.
                 gaps: [],
+                selectionMethod: 'ranked_retrieval' as const,
                 truncated:
                   input.memorySearchTruncated === true ||
                   (input.memoryHits?.length ?? 0) > input.memoryResultLimit,

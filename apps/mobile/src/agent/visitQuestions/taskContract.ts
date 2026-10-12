@@ -39,6 +39,7 @@ export interface VisitQuestionEvidenceCoverage {
   };
   readonly gaps: readonly string[];
   readonly truncated: boolean;
+  readonly selectionMethod?: 'ranked_retrieval';
   readonly resultLimit: number;
   readonly returnedCount: number;
 }
@@ -79,6 +80,7 @@ export function createVisitQuestionTaskResponder() {
   return {
     taskType: 'visit-question-recommendation',
     taskVersion: '1',
+    allowRankedLocalEvidence: true,
     systemPrompt: visitQuestionSystemPrompt,
     resultSchema: visitQuestionResultSchema,
     createMessages(
@@ -100,6 +102,7 @@ export function createVisitQuestionTaskResponder() {
             `예약 및 사용자 맥락: ${JSON.stringify(input.context ?? null)}`,
             `사용 가능한 근거: ${JSON.stringify(evidence)}`,
             `기록 간 충돌: ${JSON.stringify(input.evidence.conflicts)}`,
+            `검색 범위와 한계: ${JSON.stringify(input.evidence.coverage)}`,
           ].join('\n'),
         },
       ];

@@ -97,9 +97,15 @@ final class NavigationGlassSurfaceView: UIView {
     }
 
     private var groupContentWidth: CGFloat {
-        // Tighten the material's side gutters while keeping each native control at least 44 points wide.
+        // Measure contextual titles so Korean generate/cancel labels fit on one line inside the glass.
         if actionButtons.contains(where: { $0.accessibilityIdentifier == "navigation-back" }) {
-            return CGFloat(max(0, actionButtons.count - 1)) * 64
+            let contextual = actionButtons.filter { $0.accessibilityIdentifier != "navigation-back" }
+            let titledWidths = contextual.compactMap { button -> CGFloat? in
+                guard let title = button.configuration?.title else { return nil }
+                return (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13)]).width + 24
+            }
+            let width = max(88, titledWidths.max() ?? 64)
+            return CGFloat(contextual.count) * width + CGFloat(max(0, contextual.count - 1)) * 4
         }
         return max(CGFloat(actionButtons.count) * 44 + CGFloat(max(0, actionButtons.count - 1)) * 4,
                    bounds.width - 32)
@@ -145,13 +151,12 @@ final class NavigationGlassSurfaceView: UIView {
             }
             configuration.imagePlacement = action.titleBelowImage ? .top : .leading
             configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
-            if action.showsTitleWithSystemImage {
-                configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-                    var updated = attributes
-                    let titleSize: CGFloat = action.titleBelowImage ? 10 : 14
-                    updated.font = .systemFont(ofSize: titleSize, weight: .medium)
-                    return updated
-                }
+            configuration.titleLineBreakMode = .byClipping
+            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                var updated = attributes
+                let titleSize: CGFloat = action.titleBelowImage ? 10 : 13
+                updated.font = .systemFont(ofSize: titleSize, weight: .medium)
+                return updated
             }
             configuration.contentInsets = NSDirectionalEdgeInsets(
                 top: action.showsTitleWithSystemImage ? 5 : 12,
@@ -203,7 +208,7 @@ final class NavigationGlassSurfaceView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            button.heightAnchor.constraint(equalToConstant: action.rootTab ? 48 : 44),
+            button.heightAnchor.constraint(equalToConstant: action.rootTab || action.primary ? 48 : 44),
         ])
         if action.id == "back" {
             button.widthAnchor.constraint(equalToConstant: 44).isActive = true

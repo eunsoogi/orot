@@ -130,6 +130,7 @@ export function validateEvidenceBatch(
   for (const coverage of batch.coverage) {
     if (
       !isSourceAllowed(scope, coverage.sourceKind) ||
+      (coverage.selectionMethod !== undefined && coverage.selectionMethod !== 'ranked_retrieval') ||
       !Number.isInteger(coverage.resultLimit) ||
       coverage.resultLimit < 1 ||
       coverage.resultLimit > budget.maxEvidenceItems ||

@@ -67,6 +67,7 @@ const featureScreens = [
       'diseaseHypotheses.loading',
       'diseaseHypotheses.insufficient',
       'diseaseHypotheses.error',
+      'diseaseHypotheses.unsupportedInput',
       'diseaseHypotheses.uncertainty',
       'diseaseHypotheses.missingData',
       'diseaseHypotheses.supporting',

@@ -8,34 +8,8 @@ import type {
 } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
 
-// Model output is accepted only when every citation resolves to this turn's current evidence batch.
-const referenceSchema: JsonObject = {
-  type: 'object',
-  required: [
-    'sourceKind',
-    'sourceId',
-    'sourceRevision',
-    'evidenceId',
-    'evidenceRevision',
-    'locator',
-    'effectiveTime',
-    'reviewState',
-  ],
-  properties: {
-    sourceKind: {
-      enum: ['personal_record', 'reviewed_memory', 'external_medical'],
-    },
-    sourceId: { type: 'string' },
-    sourceRevision: { type: 'string' },
-    evidenceId: { type: 'string' },
-    evidenceRevision: { type: 'string' },
-    locator: {},
-    effectiveTime: { type: ['string', 'null'] },
-    reviewState: { enum: ['reviewed', 'unreviewed', 'unknown'] },
-    unit: { type: 'string' },
-  },
-  additionalProperties: false,
-};
+// The model emits opaque IDs; the app restores exact, current references after validation.
+const referenceSchema: JsonObject = { type: 'string', minLength: 1 };
 
 export const diseaseHypothesisSchema: JsonObject = {
   type: 'object',
@@ -142,6 +116,10 @@ function referenceFor(
   value: unknown,
   evidence: EvidenceBatch,
 ): EvidenceReference | undefined {
+  if (typeof value === 'string') {
+    const matches = evidence.items.filter(item => item.evidenceId === value);
+    return matches.length === 1 ? referenceOnly(matches[0]!) : undefined;
+  }
   if (!isObject(value)) return undefined;
   const serialized = stableJson(value);
   const match = evidence.items.find(

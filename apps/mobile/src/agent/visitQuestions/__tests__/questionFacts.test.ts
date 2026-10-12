@@ -61,6 +61,20 @@ function expectClarification(questionText: string, evidenceText: string) {
 }
 
 describe('visit-question numeric fact validation', () => {
+  it('compares heart-rate quantities with their complete denominator', () => {
+    const evidence =
+      'health_observation: {"value":{"amount":72,"unit":"count/min"}}';
+    for (const unit of ['count/min', '회/분']) {
+      expect(
+        validation(
+          `심박수 72 ${unit} 기록을 어떻게 해석하면 좋을까요?`,
+          evidence,
+        ),
+      ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
+    }
+    expectClarification('심박수 73 회/분 기록을 확인할까요?', evidence);
+    expectClarification('심박수 72 회/초 기록을 확인할까요?', evidence);
+  });
   it('preserves an amount and unit stored as separate structured fields', () => {
     const doseEvent = DoseEventSchema.parse({
       id: 'dose-event-1',

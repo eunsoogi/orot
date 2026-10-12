@@ -78,6 +78,8 @@ function resultCoverage(
   const base = snapshot.coverage.find(value => value.sourceKind === sourceKind);
   return {
     sourceKind,
+    // Only the application snapshot can attest that ranked selection covered a complete local inventory.
+    ...(base?.selectionMethod ? { selectionMethod: base.selectionMethod } : {}),
     searchedSourceIds: [...new Set(items.map(item => item.sourceId))],
     ...(request.allowedScope.timeRange
       ? { requestedTimeRange: request.allowedScope.timeRange }

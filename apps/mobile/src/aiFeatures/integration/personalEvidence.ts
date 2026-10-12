@@ -225,6 +225,7 @@ export function buildPersonalEvidence(input: {
         record.reviewState as ReviewState,
         persisted?.metadata.recordType ?? 'evidence_span',
         persisted?.id,
+        persisted,
       ),
     );
   }

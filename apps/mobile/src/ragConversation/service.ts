@@ -143,7 +143,13 @@ export async function runRagConversationTurn(
           reference => reference.sourceKind === 'external_medical',
         )
           ? `${result.value.answer}\n\n공개 의학 문헌의 일부 검색 결과를 참고했어요. 개인의 진단이나 전체 문헌 검토를 대신하지 않아요.`
-          : result.value.answer,
+          : result.coverage.some(
+                coverage =>
+                  coverage.truncated &&
+                  coverage.selectionMethod === 'ranked_retrieval',
+              )
+            ? `${result.value.answer}\n\n관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
+            : result.value.answer,
         citations: result.citations,
       };
     }

@@ -3,9 +3,7 @@ import { ragConversationTask } from '../task';
 test('guides Korean literature questions to research before declaring missing sources unavailable', () => {
   const prompt = ragConversationTask.systemPrompt;
   expect(prompt).toContain('Write the user-facing answer in Korean');
-  expect(prompt).toContain(
-    'Keep publication titles and citation IDs in their original form',
-  );
+  expect(prompt).toContain('Keep publication titles in their original form');
   expect(prompt).toContain('explicitly asks for literature');
   expect(prompt).toContain('request evidence before declaring it unavailable');
   expect(prompt).toContain(
@@ -115,5 +113,7 @@ test('keeps evidence content and coverage while leaving full citation identity f
   ]);
   expect(body.coverage).toEqual(input.evidence.coverage);
   expect(message.content).not.toContain('private-validation-revision');
-  expect(ragConversationTask.systemPrompt).toContain('concise grounded answer');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'one to three short Korean sentences',
+  );
 });

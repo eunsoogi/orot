@@ -28,7 +28,7 @@ type ScreenState =
   | { readonly status: 'idle' | 'loading' }
   | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
   | { readonly status: 'insufficient' }
-  | { readonly status: 'error' };
+  | { readonly status: 'error'; readonly unsupportedInput?: boolean };
 
 function EvidenceLinks({
   title,
@@ -102,7 +102,13 @@ export function DiseaseHypothesesScreen({
         setState({ status: 'result', value: outcome.result.value });
       else if (outcome.result.status === 'needs_clarification')
         setState({ status: 'insufficient' });
-      else setState({ status: 'error' });
+      else
+        setState({
+          status: 'error',
+          unsupportedInput:
+            outcome.result.status === 'unavailable' &&
+            outcome.result.providerErrorCode === 'unsupported_input',
+        });
     } catch {
       if (!controller.signal.aborted) setState({ status: 'error' });
     } finally {
@@ -147,11 +153,15 @@ export function DiseaseHypothesesScreen({
       ) : null}
       {state.status === 'error' ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {copy.error}
+          {state.unsupportedInput ? copy.unsupportedInput : copy.error}
         </Text>
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
+          <Text testID="disease-hypotheses-search-scope">
+            관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한
+            진단은 아니에요.
+          </Text>
           {state.value.hypotheses.map((hypothesis, index) => (
             <View key={`${hypothesis.title}-${index}`} style={styles.card}>
               <Text accessibilityRole="header" style={styles.title}>
