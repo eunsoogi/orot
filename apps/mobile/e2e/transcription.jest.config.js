@@ -2,6 +2,7 @@ module.exports = {
   ...require('./jest.config.js'),
   testMatch: ['<rootDir>/e2e/transcription.e2e.js'],
   testPathIgnorePatterns: [],
-  // Bound both sequential Simulator phases while leaving time for native Speech readiness.
-  testTimeout: 600000,
+  // A freshly provisioned runtime can spend several minutes on first launch.
+  // Bound the full native, review/deletion, and export scenario; retain each operation deadline.
+  testTimeout: 1200000,
 };

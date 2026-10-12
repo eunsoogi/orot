@@ -34,7 +34,13 @@ function evidenceCoverage(
       ...value,
       searchedSourceIds: [...new Set(selected.map(item => item.sourceId))],
       gaps,
-      truncated: value.truncated || payloadLimited,
+      // Retain honest top-k limits without conflating them with unread or unsafe records.
+      truncated:
+        value.truncated ||
+        payloadLimited ||
+        selected.length <
+          snapshot.items.filter(item => item.sourceKind === value.sourceKind)
+            .length,
       resultLimit,
       returnedCount: selected.length,
     };

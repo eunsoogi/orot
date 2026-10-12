@@ -21,6 +21,27 @@ const reference = {
   reviewState: 'reviewed' as const,
 };
 
+test('keeps short input compact and scrolls long drafts within a bounded height', async () => {
+  await render(
+    <ConversationScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onSend={jest.fn()}
+    />,
+  );
+  const input = screen.getByTestId('rag-conversation-input');
+  expect(StyleSheet.flatten(input.props.style).height).toBe(44);
+  await fireEvent(input, 'contentSizeChange', {
+    nativeEvent: { contentSize: { height: 300 } },
+  });
+  expect(StyleSheet.flatten(input.props.style).height).toBe(96);
+  expect(input.props.scrollEnabled).toBe(true);
+  await fireEvent(input, 'contentSizeChange', {
+    nativeEvent: { contentSize: { height: 32 } },
+  });
+  expect(StyleSheet.flatten(input.props.style).height).toBe(44);
+});
+
 test('cancel releases the composer and discards a late answer', async () => {
   let finish!: (value: RagConversationOutcome) => void;
   let signal: AbortSignal | undefined;

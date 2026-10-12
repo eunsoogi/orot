@@ -38,27 +38,27 @@ permissions:
 env:
   CI: 'true'
   TZ: UTC
-  DEVELOPER_DIR: ${{ inputs.profile == 'transcription' && '/Applications/Xcode_26.2.app/Contents/Developer' || '/Applications/Xcode.app/Contents/Developer' }}
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
   EXPECTED_NODE_VERSION: '22.23.2'
   EXPECTED_PNPM_VERSION: '12.3.4'
   EXPECTED_RUBY_VERSION: '4.0.7'
   EXPECTED_COCOAPODS_VERSION: '1.17.0'
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  EXPECTED_XCODE_VERSION: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
-  EXPECTED_IOS_SIMULATOR_SDK: ${{ inputs.profile == 'transcription' && '26.2' || '27.0' }}
+  EXPECTED_XCODE_VERSION: '27.0'
+  EXPECTED_IOS_SIMULATOR_SDK: '27.0'
   EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: ${{ inputs.profile == 'transcription' && 'iOS 26.2' || 'iOS 27.0' }}
   EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
-  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-device-iphone17pro' || '' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-build23C54-device-iphone17pro' || '' }}
 
 jobs:
   detox_profile:
     # The status workflow owns the protected check name so this executor may skip cleanly.
     name: Execute Detox profile
     if: ${{ inputs.run_profile }}
-    # Only the speech probe selects the installed image containing its measured model-compatible runtime.
-    runs-on: ${{ inputs.profile == 'transcription' && 'macos-26' || 'xcode-27' }}
+    # Native safety-error types require SDK 27 in every app bundle, including the speech probe.
+    runs-on: xcode-27
     timeout-minutes: 75
     outputs:
       profile: ${{ steps.run_detox_tests.outputs.e2e_profile }}
@@ -92,7 +92,8 @@ jobs:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       - name: Verify runner toolchain # Validate before Simulator boot.
         id: verify_toolchain
-        run: scripts/ci/verify-toolchain.sh
+        timeout-minutes: 20
+        run: bash scripts/ci/prepare-detox-runtime.sh "${{ inputs.profile }}" && scripts/ci/verify-toolchain.sh
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"

@@ -92,7 +92,7 @@ actual_xcodebuild_fingerprint="$(printf '%s\n' "$actual_xcode_details" | shasum 
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 [[ "$actual_simulator_sdk" == "$expected_simulator_sdk" ]] || fail_version iOS-Simulator-SDK "$expected_simulator_sdk" "$actual_simulator_sdk"
-# Check the installed runtime and device type before profile setup creates its dedicated Simulator.
+# Check runtime and device-type support; profile setup creates the dedicated device afterward.
 actual_simulator_runtime="$(xcrun simctl list runtimes --json | node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -104,17 +104,16 @@ const runtime = data.runtimes.find((entry) =>
 process.stdout.write(runtime?.identifier ?? "");
 ')"
 [[ "$actual_simulator_runtime" == "$expected_simulator_runtime_id" ]] || fail_version iOS-Simulator-runtime "$expected_simulator_runtime_name ($expected_simulator_runtime_id)" unavailable
-actual_simulator_device="$(xcrun simctl list devices available --json | node -e '
+actual_simulator_device="$(xcrun simctl list devicetypes --json | node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
-const devices = data.devices[process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER] ?? [];
+const devices = data.devicetypes ?? [];
 const device = devices.find((entry) =>
   entry.name === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_NAME &&
-  entry.deviceTypeIdentifier === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID &&
-  entry.isAvailable
+  entry.identifier === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID
 );
 process.stdout.write(
-  device ? device.name + " (" + device.deviceTypeIdentifier + ")" : ""
+  device ? device.name + " (" + device.identifier + ")" : ""
 );
 ')"
 expected_simulator_device="$expected_simulator_device_name ($expected_simulator_device_type_id)"

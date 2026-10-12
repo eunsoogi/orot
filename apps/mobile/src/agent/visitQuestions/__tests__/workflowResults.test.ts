@@ -18,6 +18,38 @@ function incompleteCoverageResult(
 }
 
 describe('visit-question workflow result mapping', () => {
+  it.each([false, true])(
+    'requires the exact question-citation union (unused citation: %s)',
+    async extra => {
+      const prepared = preparedContext();
+      const aliases = createVisitQuestionEvidenceAliases({
+        ...prepared.evidence.batch,
+        items: [prepared.initialEvidence, prepared.supplementalEvidence],
+      });
+      const [used, unused] = aliases.batch.items;
+      const result = await mapVisitQuestionWorkflowResult({
+        aliases,
+        prepared,
+        result: {
+          status: 'result',
+          value: {
+            status: 'suggestions',
+            questions: [0, 1, 2].map(() => ({
+              questionText: '다음 진료까지 어떤 변화를 기록할까요?',
+              rationale: '기록한 변화의 의미를 확인해요.',
+              priority: 'routine' as const,
+              citations: [used!],
+            })),
+          },
+          citations: extra ? [used!, unused!] : [used!],
+          coverage: aliases.batch.coverage,
+          checkpoint: {} as never,
+        },
+      });
+      expect(result.status).toBe(extra ? 'unavailable' : 'ready');
+    },
+  );
+
   it('preserves the runtime-validated clarification message for incomplete coverage', async () => {
     const prepared = preparedContext();
     const message =

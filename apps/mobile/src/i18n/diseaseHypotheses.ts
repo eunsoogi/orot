@@ -7,6 +7,11 @@ export const diseaseHypothesesKo = {
   'diseaseHypotheses.loading': '근거를 확인하고 있어요.',
   'diseaseHypotheses.insufficient':
     '현재 자료만으로는 가능성을 정리하기 어려워요. 더 많은 기록이나 근거가 필요해요.',
+  'diseaseHypotheses.unsupportedInput':
+    '선택한 AI가 이 요청에 응답할 수 없어요. 기록 부족을 뜻하지는 않아요. 기록을 의료진과 함께 확인해 주세요.',
+  'diseaseHypotheses.safetyRefusal':
+    'Apple Intelligence의 안전 정책으로 이 질환 가능성 요청에 응답할 수 없어요. 기록 부족이나 앱 오류를 뜻하지는 않아요. 다른 AI를 선택하거나 기록을 의료진과 함께 확인해 주세요.',
+  'diseaseHypotheses.selectProvider': '다른 AI 선택',
   'diseaseHypotheses.error':
     '가능성을 정리하지 못했어요. 잠시 후 다시 시도해 주세요.',
   'diseaseHypotheses.uncertainty': '불확실한 점',

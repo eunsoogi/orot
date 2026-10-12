@@ -13,7 +13,6 @@ import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/de
 import {
   containsEvidenceReference,
   diseaseHypothesisSchema,
-  referenceOnly,
   validateDiseaseHypothesisResult,
 } from './resultValidation';
 import type {
@@ -32,10 +31,12 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
   {
     taskType: 'disease_hypothesis_review',
     taskVersion: '1',
+    allowRankedLocalEvidence: true,
     systemPrompt:
       'Review possible disease hypotheses from the supplied app evidence. This is not a diagnosis. ' +
       'Never recommend starting, stopping, or changing medication. Use only supplied evidence, ' +
-      'cite exact references for supporting and contrary evidence, state uncertainty, and list missing data.',
+      'cite exact references for supporting and contrary evidence, state uncertainty, and list missing data. ' +
+      'The ranked evidence is not an exhaustive history. Do not treat omitted records as absent findings. Write user-facing text in Korean.',
     resultSchema: {
       type: 'object',
       required: ['hypotheses'],
@@ -57,12 +58,15 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
             request: input.request,
             evidence: input.evidence.items.map(item => ({
               content: item.content,
-              reference: referenceOnly(item),
+              evidenceId: item.evidenceId,
+              sourceKind: item.sourceKind,
+              effectiveTime: item.effectiveTime,
+              reviewState: item.reviewState,
             })),
             coverage: input.evidence.coverage,
             conflicts: input.evidence.conflicts,
             outputInstructions:
-              'Return hypotheses with exact nested references and top-level citations.',
+              'Return supportingEvidence and contraryEvidence as arrays of exact evidenceId strings. Top-level citations must contain the same cited IDs, without duplicates or extra IDs.',
           }),
         },
       ];

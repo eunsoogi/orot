@@ -77,6 +77,9 @@ export async function createLocalEvidenceSnapshot(input: {
       ],
       gaps: personalGaps,
       truncated: !input.inventory.inventoryComplete,
+      ...(input.inventory.inventoryComplete
+        ? { selectionMethod: 'ranked_retrieval' as const }
+        : {}),
       resultLimit: 8,
       returnedCount: 0,
     },
@@ -87,6 +90,9 @@ export async function createLocalEvidenceSnapshot(input: {
       ],
       gaps: memoryGaps,
       truncated: memory.excludedCount > 0,
+      ...(memory.excludedCount === 0
+        ? { selectionMethod: 'ranked_retrieval' as const }
+        : {}),
       resultLimit: 8,
       returnedCount: 0,
     },

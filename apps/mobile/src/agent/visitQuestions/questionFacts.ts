@@ -35,8 +35,18 @@ function normalizeNumericValue(value: string): string {
   return Number.isFinite(numeric) ? numeric.toString() : normalized;
 }
 
+// Preserve the denominator; Korean display units and their stored UCUM-like spelling are equivalent.
+function normalizeUnit(unit: string): string {
+  const normalized = unit.replaceAll(/\s+/gu, '').toLowerCase();
+  return normalized === '회/분'
+    ? 'count/min'
+    : normalized === '회/초'
+      ? 'count/s'
+      : normalized;
+}
+
 const NUMERIC_FACT_PATTERN =
-  /(?<![\d.,])([+\-−]?\d+(?:[.,]\d+)?(?:\s*\/\s*[+\-−]?\d+(?:[.,]\d+)?)?)(?:\s*(mmol\s*\/\s*l|mg\s*\/\s*(?:dl|kg|day|d)|ml\s*\/\s*day|mmhg|mcg|μg|µg|mg|kg|g|ml|l|cm|mm|°c|°f|℃|%|개월|시간|분|초|회|정|알|개|번|주|일|년|월))?(?![\d.,])/giu;
+  /(?<![\d.,])([+\-−]?\d+(?:[.,]\d+)?(?:\s*\/\s*[+\-−]?\d+(?:[.,]\d+)?)?)(?:\s*(count\s*\/\s*(?:min|s)|회\s*\/\s*(?:분|초)|mmol\s*\/\s*l|mg\s*\/\s*(?:dl|kg|day|d)|ml\s*\/\s*day|mmhg|mcg|μg|µg|mg|kg|g|ml|l|cm|mm|°c|°f|℃|%|개월|시간|분|초|회|정|알|개|번|주|일|년|월))?(?![\d.,])/giu;
 
 function structuredQuantityFacts(text: string): string[] {
   const separator = text.indexOf(': ');
@@ -60,7 +70,7 @@ function structuredQuantityFacts(text: string): string[] {
         object.unit.trim()
       ) {
         facts.push(
-          `${normalizeNumericValue(String(object.amount))}\u0000${object.unit.replaceAll(/\s+/gu, '').toLowerCase()}`,
+          `${normalizeNumericValue(String(object.amount))}\u0000${normalizeUnit(object.unit)}`,
         );
       }
       Object.values(object).forEach(visit);
@@ -96,7 +106,7 @@ function numericFacts(text: string): Set<string> {
           .split('/')
           .map(value => normalizeNumericValue(value.trim()))
           .join('/');
-        return `${normalizedExpression}\u0000${(unit ?? '').replaceAll(/\s+/gu, '').toLowerCase()}`;
+        return `${normalizedExpression}\u0000${normalizeUnit(unit ?? '')}`;
       },
     ),
   );

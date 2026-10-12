@@ -228,6 +228,9 @@ describe('createAiFeatureServices local evidence integration', () => {
     if ('items' in boundedResult) {
       expect(boundedResult.items).toHaveLength(2);
       expect(boundedResult.coverage[0]?.truncated).toBe(true);
+      expect(boundedResult.coverage[0]?.selectionMethod).toBe(
+        'ranked_retrieval',
+      );
     }
   });
 });

@@ -1,5 +1,6 @@
 /** Route identifiers kept by the guarded app navigation controller. */
 export type AppNavigationRoute =
+  | AiFeatureRouteName
   | 'home'
   | 'recording'
   | 'unified-import'
@@ -13,3 +14,4 @@ export type AppNavigationRoute =
   | 'settings-accounts'
   | 'settings-backup'
   | 'settings-privacy';
+import type { AiFeatureRouteName } from '../aiFeatures/integration/aiFeatureNavigation';

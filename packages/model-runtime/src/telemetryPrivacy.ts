@@ -25,6 +25,7 @@ const providerErrorCodes = new Set<ProviderErrorCode>([
   'invalid_request',
   'provider_unavailable',
   'rate_limited',
+  'safety_refusal',
   'unsupported_capability',
   'unsupported_input',
 ]);

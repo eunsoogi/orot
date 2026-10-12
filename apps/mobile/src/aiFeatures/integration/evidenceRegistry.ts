@@ -77,6 +77,7 @@ function stableReference(reference: EvidenceReference): string {
 /** Keeps raw local identifiers behind a turn-local citation that can be revalidated before use. */
 export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
+  private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
   private readonly sensitiveIds = new Map<string, string>();
 
@@ -130,6 +131,7 @@ export class LocalEvidenceReferenceRegistry {
     reviewState: ReviewState,
     recordType: ChunkRecordType = 'evidence_span',
     persistedId?: string,
+    persisted?: EvidenceChunk,
   ): EvidenceChunk {
     const safeText = this.redactText(text);
     // Hash stable local identity so fresh snapshots reuse vectors without exposing record IDs.
@@ -142,7 +144,7 @@ export class LocalEvidenceReferenceRegistry {
         sourceId: original?.sourceId ?? item.sourceId,
         evidenceId: original?.evidenceId ?? item.evidenceId,
       })}`;
-    return {
+    const chunk: EvidenceChunk = {
       id,
       text: safeText,
       metadata: {
@@ -159,6 +161,41 @@ export class LocalEvidenceReferenceRegistry {
         reviewState,
       },
     };
+    if (!original) throw new Error('Search evidence must be registered.');
+    const locator = original.locator;
+    const sourceIds =
+      locator && typeof locator === 'object' && !Array.isArray(locator)
+        ? (locator as { readonly sourceIds?: unknown }).sourceIds
+        : undefined;
+    this.searchChunks.set(
+      chunk,
+      persisted ?? {
+        ...chunk,
+        metadata: {
+          ...chunk.metadata,
+          sourceId: original.sourceId,
+          evidenceId: original.evidenceId,
+          sourceRecordIds: Array.isArray(sourceIds)
+            ? sourceIds.filter(
+                (value): value is string => typeof value === 'string',
+              )
+            : [original.sourceId],
+          evidenceLocator:
+            original.sourceKind === 'reviewed_memory'
+              ? chunk.metadata.evidenceLocator
+              : { kind: 'structured_record', recordId: original.evidenceId },
+        },
+      },
+    );
+    return chunk;
+  }
+
+  /** Only the local encrypted index receives storage identities; provider references stay opaque. */
+  localSearchChunk(chunk: EvidenceChunk): EvidenceChunk {
+    const local = this.searchChunks.get(chunk);
+    if (!local)
+      throw new Error('Search chunk is outside the current registry.');
+    return local;
   }
 
   resolve(reference: EvidenceReference): EvidenceReference | undefined {
