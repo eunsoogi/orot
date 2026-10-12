@@ -2,7 +2,7 @@ name: Cancel superseded focused Detox runs
 
 on:
   pull_request:
-    branches: [main]
+    # A stacked PR's new head also supersedes its previous focused selection.
     types: [synchronize]
 
 permissions: {}

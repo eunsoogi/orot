@@ -157,14 +157,14 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
 
 test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
   const staticTriggers =
-    'on:\n  pull_request:\n    branches: [main]\n    types: [opened, synchronize, reopened, ready_for_review]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+    'on:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n  push:\n    branches: [main]\n  workflow_dispatch:';
 
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
   assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
   assert.match(e2eWorkflow, /^name: E2E Test$/m);
   for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow]) {
-    assert.ok(workflow.includes(staticTriggers));
+    assert.ok(workflow.replace(/^ {4}#.*\n/gm, '').includes(staticTriggers));
     assert.ok(
       workflow.includes(
         'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
@@ -175,8 +175,8 @@ test('uses singular workflow names and matching paths with direct checks and can
     assert.doesNotMatch(workflow, /workflow_call/);
   }
   assert.match(
-    e2eWorkflow,
-    /pull_request:\n\s+branches: \[main\]\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
+    e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
+    /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
   assert.match(
     e2eWorkflow,

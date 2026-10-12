@@ -2,7 +2,7 @@ name: E2E Test
 
 on:
   pull_request:
-    branches: [main]
+    # Stacked PRs must receive the draft, focused and full validation gates at their own event head.
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]

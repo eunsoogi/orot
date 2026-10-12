@@ -2,7 +2,7 @@ name: Code Quality
 
 on:
   pull_request:
-    branches: [main]
+    # Stacked PRs target feature branches and need the same check contexts before their parent reaches main.
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]

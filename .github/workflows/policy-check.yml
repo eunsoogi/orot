@@ -2,7 +2,7 @@ name: Policy Check
 
 on:
   pull_request:
-    branches: [main]
+    # Policy checks also gate feature-branch parents used by stacked PRs.
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
