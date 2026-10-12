@@ -62,11 +62,10 @@ env:
 
 jobs:
   ios-simulator-build:
-    # Focus runs use different check names so skipped full-suite jobs cannot satisfy protected contexts.
-    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') && 'Focus dispatch routing' || 'iOS Simulator Build' }}
+    name: iOS Simulator Build
     # Preserve the production/OAuth build independently of Linux leaf failures.
-    if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) }}
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'ubuntu-latest' || 'xcode-27' }}
+    if: ${{ !cancelled() }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true || github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) && 'ubuntu-latest' || 'xcode-27' }}
     timeout-minutes: 75
     outputs:
       selection_complete: ${{ steps.select.outputs.selection_complete }}
@@ -100,6 +99,12 @@ jobs:
       - name: Select checks for changed paths
         id: select
         run: node scripts/ci/select-changed-paths.mjs
+      # A focused run is diagnostic and cannot satisfy this protected full-suite check.
+      - name: Fail when focused validation is selected
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
+        run: |
+          echo "::error::Focused Detox validation cannot satisfy the full iOS validation gate."
+          exit 1
       # A draft must leave a failing required context until a full PR event runs.
       - name: Fail when full validation is deferred
         if: ${{ steps.select.outputs.full_validation_deferred == 'true' }}

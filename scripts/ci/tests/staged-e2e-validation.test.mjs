@@ -52,7 +52,7 @@ test('PR E2E workflow separates draft deferral from the full required gate', () 
   assert.match(e2e, /Fail when full validation is deferred/);
   assert.match(
     e2e,
-    /github\.event\.pull_request\.draft == true && 'ubuntu-latest' \|\| 'xcode-27'/,
+    /github\.event\.pull_request\.draft == true \|\| github\.event_name == 'workflow_dispatch'.*'ubuntu-latest' \|\| 'xcode-27'/s,
   );
   assert.match(e2e, /pull_request\.draft == true && 'draft' \|\| 'full'/);
   assert.match(e2e, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
@@ -66,7 +66,7 @@ test('PR E2E workflow separates draft deferral from the full required gate', () 
   }
 });
 
-test('focused validation is dispatched through the existing E2E workflow with separate check names', () => {
+test('focused validation uses the existing dispatch and leaves the full gate failing', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
   const focus = read('.github/workflows/detox-e2e-focused.yml');
   assert.equal(
@@ -81,12 +81,15 @@ test('focused validation is dispatched through the existing E2E workflow with se
     e2e,
     /focused_detox_scenario:[\s\S]*uses: \.\/\.github\/workflows\/detox-e2e-focused\.yml/,
   );
-  assert.match(e2e, /'Focus dispatch routing' \|\| 'iOS Simulator Build'/);
   assert.match(e2e, /'Focus profile routing' \|\| 'Detox E2E profiles'/);
+  assert.match(e2e, /name: iOS Simulator Build/);
+  assert.match(e2e, /Fail when focused validation is selected/);
+  assert.match(e2e, /Focused Detox validation cannot satisfy the full iOS validation gate/);
   assert.match(
     e2e,
     /inputs\.focus_pr_number != '' \|\| inputs\.focus_profile != '' \|\| inputs\.focus_scenario_file != '' \|\| inputs\.focus_scenario_name != ''/,
   );
+  assert.match(e2e, /runs-on:.*inputs\.focus_pr_number.*'ubuntu-latest'.*'xcode-27'/s);
   assert.match(e2e, /pull-requests: read/);
   assert.match(focus, /^name: Focused Detox scenario$/m);
   assert.match(focus, /workflow_call:/);
