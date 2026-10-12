@@ -3,6 +3,7 @@ name: E2E Test
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
   workflow_dispatch:
@@ -22,8 +23,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ github.event.pull_request.draft == true && 'draft' || 'full' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: 'true'
@@ -42,10 +43,11 @@ jobs:
     name: iOS Simulator Build
     # Preserve the production/OAuth build independently of Linux leaf failures.
     if: ${{ !cancelled() }}
-    runs-on: xcode-27
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'ubuntu-latest' || 'xcode-27' }}
     timeout-minutes: 75
     outputs:
       selection_complete: ${{ steps.select.outputs.selection_complete }}
+      full_validation_deferred: ${{ steps.select.outputs.full_validation_deferred }}
       ios_build: ${{ steps.select.outputs.ios_build }}
       detox_release: ${{ steps.select.outputs.detox_release }}
       detox_openai: ${{ steps.select.outputs.detox_openai }}
@@ -75,6 +77,12 @@ jobs:
       - name: Select checks for changed paths
         id: select
         run: node scripts/ci/select-changed-paths.mjs
+      # A draft must leave a failing required context until a full PR event runs.
+      - name: Fail when full validation is deferred
+        if: ${{ steps.select.outputs.full_validation_deferred == 'true' }}
+        run: |
+          echo "::error::Full iOS validation is deferred while this pull request is a draft."
+          exit 1
       - name: Cache pnpm lockfile verification
         if: ${{ steps.select.outputs.ios_build == 'true' }}
         uses: ./.github/actions/pnpm-lockfile-verification
@@ -178,8 +186,9 @@ jobs:
     with:
       trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
       resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
-      run_release: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_release == 'true' }}
-      run_openai: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_openai == 'true' }}
-      run_transcription: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_transcription == 'true' }}
-      run_next_visit: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_next_visit == 'true' }}
+      full_validation_deferred: ${{ needs.ios-simulator-build.outputs.full_validation_deferred == 'true' }}
+      run_release: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_release == 'true') }}
+      run_openai: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_openai == 'true') }}
+      run_transcription: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_transcription == 'true') }}
+      run_next_visit: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_next_visit == 'true') }}
       path_selection_failed: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' }}

@@ -6,6 +6,7 @@ on:
       profile: { required: true, type: string }
       run_profile: { required: true, type: boolean }
       path_selection_failed: { required: true, type: boolean }
+      full_validation_deferred: { required: false, type: boolean, default: false }
       execution_result: { required: true, type: string }
 
 permissions:
@@ -19,6 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Keep this protected context failing while a draft skips the full profile runner.
+      - name: Fail when full validation is deferred
+        if: ${{ inputs.full_validation_deferred }}
+        run: |
+          echo "::error::Full E2E validation is deferred for this draft pull request."
+          exit 1
       - name: Fail if changed-path selection was unavailable
         if: ${{ inputs.path_selection_failed }}
         run: |

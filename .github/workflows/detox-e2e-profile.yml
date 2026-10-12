@@ -3,18 +3,14 @@ name: Detox iOS E2E profile
 on:
   workflow_call:
     inputs:
-      profile:
-        description: The isolated Detox app configuration to build and test.
-        required: true
-        type: string
+      profile: { description: Isolated app profile., required: true, type: string }
       # One explicit Release wrapper runs on this dedicated Simulator.
       release_shard: { required: false, type: string, default: '' }
       # Release and transcription callers pass their own profile's producer outputs.
       app_artifact: { required: false, type: string, default: '{}' }
-      fingerprints:
-        description: Shared source and build fingerprints from the profile workflow.
-        required: true
-        type: string
+      fingerprints: { description: Shared build fingerprint JSON., required: true, type: string }
+      scenario_name:
+        { description: Focused Jest test title or fragment., type: string, default: '' }
       resource_sampling:
         description: Collect bounded process and memory samples for diagnosis.
         required: false
@@ -239,6 +235,7 @@ jobs:
           OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
           OROT_DETOX_RELEASE_FRESH_SIMULATOR: ${{ inputs.profile == 'release' }}
           OROT_DETOX_RELEASE_SHARD: ${{ inputs.release_shard }}
+          OROT_DETOX_FOCUSED_SCENARIO_NAME: ${{ inputs.scenario_name }}
         run: OROT_DETOX_TEST_LOG_LEVEL="${{ inputs.trace_logging && 'trace' || 'info' }}" scripts/ci/run-test-suite.sh "e2e-${{ inputs.profile }}" artifacts/detox
       - name: Collect and preserve Detox diagnostics
         # Selection failure happens before Simulator setup, so there is nothing to tear down.

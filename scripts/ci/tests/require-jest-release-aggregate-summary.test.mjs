@@ -99,3 +99,18 @@ test('validates every Release shard before publishing the profile total', () => 
   assert.equal(combined.status, 0, combined.stderr);
   assert.match(combined.stdout, /22\/22 tests passed across 3 suites in 3 Jest runs/);
 });
+
+test('accepts one selected Release case inside the sharded profile summary guard', () => {
+  const focused = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
+    'e2e-release',
+    false,
+    {
+      OROT_DETOX_RELEASE_SHARDING: 'true',
+      OROT_DETOX_RELEASE_SHARD: 'release-e2e-data.test.js',
+      OROT_DETOX_FOCUSED_SCENARIO_NAME: 'creates, edits, and cancels an appointment',
+    },
+  );
+  assert.equal(focused.status, 0, focused.stderr);
+  assert.match(focused.stdout, /1\/1 tests passed across 1 suites in 1 Jest runs/);
+});

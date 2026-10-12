@@ -14,6 +14,12 @@ case "$profile" in
     ;;
 esac
 
+focused_scenario_name="${OROT_DETOX_FOCUSED_SCENARIO_NAME:-}"
+if [[ -n "$focused_scenario_name" && "$profile" == both ]]; then
+  printf 'Focused Detox validation must select one profile.\n' >&2
+  exit 2
+fi
+
 if [[ -z "${DETOX_ARTIFACTS_LOCATION:-}" ]]; then
   printf 'DETOX_ARTIFACTS_LOCATION is required.\n' >&2
   exit 2
@@ -162,6 +168,13 @@ run_profile_for_configuration() {
   local artifact_name="$3"
   shift 3
   export OROT_DETOX_TEST_PROFILE="$name"
+  if [[ -n "$focused_scenario_name" ]]; then
+    # Apply a one-test selector before profile routing can invoke a full Release shard wrapper.
+    run_profile "$name" "$simulator_id" "$artifact_name" \
+      node scripts/ci/focused-detox-scenario.mjs run "$name" "${OROT_DETOX_RELEASE_SHARD:-}" \
+      "$focused_scenario_name" -- "$@"
+    return $?
+  fi
   if [[ "$name" == release && ("${OROT_DETOX_RELEASE_SHARDING:-false}" == true || -n "${OROT_DETOX_RELEASE_DATA_SIMULATOR_UDID:-}") ]]; then
     # Any explicit worker assignment routes through the full Release shard preflight.
     run_profile "$name" "$simulator_id" "$artifact_name" \

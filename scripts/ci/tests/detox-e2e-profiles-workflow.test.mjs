@@ -47,6 +47,7 @@ test('keeps required E2E check names resolved when profile work is skipped', () 
   assert.match(statusJob, /name: Detox \$\{\{ inputs\.profile \}\} iOS E2E/);
   assert.match(statusJob, /if: \$\{\{ always\(\) \}\}/);
   assert.match(profileStatusWorkflow, /inputs\.path_selection_failed/);
+  assert.match(profileStatusWorkflow, /inputs\.full_validation_deferred/);
   assert.match(profileStatusWorkflow, /inputs\.execution_result/);
 
   const profiles = [
@@ -73,6 +74,7 @@ test('keeps required E2E check names resolved when profile work is skipped', () 
     assert.match(status, /if: \$\{\{ always\(\) \}\}/);
     assert.match(status, /uses: \.\/\.github\/workflows\/detox-e2e-profile-status\.yml/);
     assert.ok(status.includes(`execution_result: \${{ needs.${runnerId}.result }}`));
+    assert.ok(status.includes('full_validation_deferred: ${{ inputs.full_validation_deferred }}'));
     // Keep these resolved reusable-workflow names aligned with branch protection.
     assert.ok(
       REQUIRED_CI_JOBS.includes(`Detox E2E profiles / ${name} / Detox ${profile} iOS E2E`),
@@ -90,7 +92,11 @@ test('runs each selected profile independently and continues after fingerprint f
     const job = jobBlock(profilesWorkflow, jobId);
     assert.ok(job, `missing ${profile} E2E executor`);
     assert.match(job, /needs: \[detox_cache_fingerprint\]/);
-    assert.ok(job.includes(`if: \${{ !cancelled() && inputs.${runInput} }}`));
+    assert.ok(
+      job.includes(
+        `if: \${{ !cancelled() && inputs.${runInput} && !inputs.full_validation_deferred }}`,
+      ),
+    );
     assert.ok(job.includes('uses: ./.github/workflows/detox-e2e-profile.yml'));
     assert.match(job, new RegExp(`profile: ${profile}`));
     assert.match(
@@ -103,10 +109,13 @@ test('runs each selected profile independently and continues after fingerprint f
   assert.match(speechProducer, /profile: transcription/);
   assert.match(
     speechProducer,
-    /if: \$\{\{ !cancelled\(\) && inputs\.run_transcription && !inputs\.path_selection_failed \}\}/,
+    /if: \$\{\{ !cancelled\(\) && inputs\.run_transcription && !inputs\.path_selection_failed && !inputs\.full_validation_deferred \}\}/,
   );
   assert.match(speechConsumer, /needs: \[detox_cache_fingerprint, produce_transcription_app\]/);
-  assert.match(speechConsumer, /if: \$\{\{ always\(\) && inputs\.run_transcription \}\}/);
+  assert.match(
+    speechConsumer,
+    /if: \$\{\{ always\(\) && inputs\.run_transcription && !inputs\.full_validation_deferred \}\}/,
+  );
   assert.match(speechConsumer, /profile: transcription/);
   assert.match(
     speechConsumer,
@@ -152,6 +161,9 @@ test('keeps Release UI/storage and stateful-data as separate checked shard jobs'
   assert.match(dataStatus, /name: Release stateful-data/);
   assert.match(dataStatus, /uses: \.\/\.github\/workflows\/detox-e2e-profile-status\.yml/);
   assert.match(dataStatus, /if: \$\{\{ always\(\) \}\}/);
+  for (const status of [uiStatus, dataStatus]) {
+    assert.ok(status.includes('full_validation_deferred: ${{ inputs.full_validation_deferred }}'));
+  }
   for (const name of ['Release UI and storage', 'Release stateful-data']) {
     assert.ok(
       REQUIRED_CI_JOBS.includes(

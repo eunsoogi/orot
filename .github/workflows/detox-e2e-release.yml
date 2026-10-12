@@ -19,6 +19,7 @@ on:
         default: false
       run_profile: { required: false, type: boolean, default: true }
       path_selection_failed: { required: false, type: boolean, default: false }
+      full_validation_deferred: { required: false, type: boolean, default: false }
 
 permissions:
   contents: read
@@ -27,7 +28,7 @@ jobs:
   # The required status jobs keep static shard names while profile runners skip irrelevant paths.
   produce_release_app:
     name: Produce shared Release app artifact
-    if: ${{ inputs.run_profile && !inputs.path_selection_failed }}
+    if: ${{ inputs.run_profile && !inputs.path_selection_failed && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile-app-producer.yml
     with:
       profile: release
@@ -36,7 +37,7 @@ jobs:
   run_detox_release_ui_shard:
     name: Execute Release UI and storage profile
     needs: [produce_release_app]
-    if: ${{ always() && inputs.run_profile }}
+    if: ${{ always() && inputs.run_profile && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
@@ -57,12 +58,13 @@ jobs:
       profile: release
       run_profile: ${{ inputs.run_profile }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
       execution_result: ${{ needs.run_detox_release_ui_shard.result }}
 
   run_detox_release_data_shard:
     name: Execute Release stateful-data profile
     needs: [produce_release_app]
-    if: ${{ always() && inputs.run_profile }}
+    if: ${{ always() && inputs.run_profile && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: release
@@ -83,4 +85,5 @@ jobs:
       profile: release
       run_profile: ${{ inputs.run_profile }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
       execution_result: ${{ needs.run_detox_release_data_shard.result }}

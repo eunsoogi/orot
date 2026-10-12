@@ -7,6 +7,7 @@ import {
   resolveSelectedReleaseShard,
   validateReleaseJestConfig,
 } from './release-jest-summary.mjs';
+import { resolveFocusedDetoxScenario } from './focused-detox-scenario.mjs';
 
 const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
 if (!logPath || !suiteName) {
@@ -54,14 +55,24 @@ if (
   );
 }
 
-const releaseShardBlocks = readReleaseShardBlocks(log);
 const releaseShardingRequired = process.env.OROT_DETOX_RELEASE_SHARDING === 'true';
-const selectedReleaseShardExpectation = resolveSelectedReleaseShard({
-  suiteName,
-  releaseShardBlocks,
-  releaseShardingRequired,
-});
-if (releaseShardingRequired && !releaseShardBlocks) {
+const focusedScenarioName = process.env.OROT_DETOX_FOCUSED_SCENARIO_NAME ?? '';
+const profileName = suiteName.replace(/^e2e-/, '');
+const focusedScenario = focusedScenarioName
+  ? resolveFocusedDetoxScenario(
+      profileName,
+      process.env.OROT_DETOX_RELEASE_SHARD ?? '',
+      focusedScenarioName,
+    )
+  : null;
+// Focused runs use one scenario summary and do not emit aggregate Release shard markers.
+const releaseShardBlocks = focusedScenario ? null : readReleaseShardBlocks(log);
+const selectedReleaseShardExpectation = focusedScenario
+  ? profileName === 'release'
+    ? { testMatch: `<rootDir>/${focusedScenario.relativePath}` }
+    : null
+  : resolveSelectedReleaseShard({ suiteName, releaseShardBlocks, releaseShardingRequired });
+if (releaseShardingRequired && !releaseShardBlocks && !focusedScenario) {
   throw new Error('e2e-release: required Release shard summary markers are missing');
 }
 if (releaseShardBlocks && !['e2e', 'e2e-release'].includes(suiteName)) {
@@ -146,11 +157,13 @@ if (e2eSuites.includes(suiteName)) {
       throw new Error(`${suiteName}: summary count does not match its explicit Release shards`);
     }
   } else {
-    expectedE2ESuites = selectedReleaseShardExpectation
-      ? [selectedReleaseShardExpectation]
-      : suiteName === 'e2e'
-        ? profiles.slice(0, 2)
-        : [expectedProfile[suiteName]];
+    expectedE2ESuites = focusedScenario
+      ? [{ configuration: 'Focused Detox scenario', suites: 1, tests: 1 }]
+      : selectedReleaseShardExpectation
+        ? [selectedReleaseShardExpectation]
+        : suiteName === 'e2e'
+          ? profiles.slice(0, 2)
+          : [expectedProfile[suiteName]];
   }
   if (testSummaries.length !== expectedE2ESuites.length) {
     if (suiteName === 'e2e') {

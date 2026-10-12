@@ -18,6 +18,7 @@ on:
       run_transcription: { required: false, type: boolean, default: true }
       run_next_visit: { required: false, type: boolean, default: true }
       path_selection_failed: { required: false, type: boolean, default: false }
+      full_validation_deferred: { required: false, type: boolean, default: false }
 
 permissions:
   contents: read
@@ -26,7 +27,7 @@ jobs:
   # Fingerprinting improves cache reuse; each profile has a synchronous fallback when it fails.
   detox_cache_fingerprint:
     name: Compute shared Detox cache fingerprints
-    if: ${{ !inputs.path_selection_failed && (inputs.run_release || inputs.run_openai || inputs.run_transcription || inputs.run_next_visit) }}
+    if: ${{ !inputs.path_selection_failed && !inputs.full_validation_deferred && (inputs.run_release || inputs.run_openai || inputs.run_transcription || inputs.run_next_visit) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -52,7 +53,7 @@ jobs:
   detox_release_e2e:
     name: Release shards
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() }}
+    if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/detox-e2e-release.yml
     with:
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
@@ -60,11 +61,12 @@ jobs:
       resource_sampling: ${{ inputs.resource_sampling }}
       run_profile: ${{ inputs.run_release }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
 
   run_detox_openai_provider_profile:
     name: Execute OpenAI Debug profile
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() && inputs.run_openai }}
+    if: ${{ !cancelled() && inputs.run_openai && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: openai-provider
@@ -83,12 +85,13 @@ jobs:
       profile: openai-provider
       run_profile: ${{ inputs.run_openai }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
       execution_result: ${{ needs.run_detox_openai_provider_profile.result }}
 
   produce_transcription_app:
     name: Produce Speech transcription app artifact
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() && inputs.run_transcription && !inputs.path_selection_failed }}
+    if: ${{ !cancelled() && inputs.run_transcription && !inputs.path_selection_failed && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile-app-producer.yml
     with:
       profile: transcription
@@ -97,7 +100,7 @@ jobs:
   run_detox_transcription_profile:
     name: Execute Speech Transcription profile
     needs: [detox_cache_fingerprint, produce_transcription_app]
-    if: ${{ always() && inputs.run_transcription }}
+    if: ${{ always() && inputs.run_transcription && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: transcription
@@ -117,12 +120,13 @@ jobs:
       profile: transcription
       run_profile: ${{ inputs.run_transcription }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
       execution_result: ${{ needs.run_detox_transcription_profile.result }}
 
   run_detox_next_visit_profile:
     name: Execute Next Visit Questions profile
     needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() && inputs.run_next_visit }}
+    if: ${{ !cancelled() && inputs.run_next_visit && !inputs.full_validation_deferred }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: next-visit-questions
@@ -141,4 +145,5 @@ jobs:
       profile: next-visit-questions
       run_profile: ${{ inputs.run_next_visit }}
       path_selection_failed: ${{ inputs.path_selection_failed }}
+      full_validation_deferred: ${{ inputs.full_validation_deferred }}
       execution_result: ${{ needs.run_detox_next_visit_profile.result }}

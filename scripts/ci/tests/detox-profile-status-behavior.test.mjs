@@ -14,6 +14,7 @@ const profileStatus = workflow.slice(workflow.indexOf('  profile_status:\n'));
 
 // Cases use the parsed workflow conditions and actual shell bodies so gate edits stay covered.
 const conditions = new Map([
+  ['inputs.full_validation_deferred', (inputs) => inputs.full_validation_deferred],
   ['inputs.path_selection_failed', (inputs) => inputs.path_selection_failed],
   [
     "inputs.run_profile && inputs.execution_result != 'success' && !inputs.path_selection_failed",
@@ -64,6 +65,7 @@ function runStatusGate(inputs) {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), 'orot-detox-status-'));
   const summaryPath = join(temporaryDirectory, 'summary.md');
   const steps = [
+    'Fail when full validation is deferred',
     'Fail if changed-path selection was unavailable',
     'Propagate selected profile failure',
     'Record unselected profile',
@@ -90,6 +92,7 @@ function runStatusGate(inputs) {
             E2E_PROFILE: inputs.profile,
             GITHUB_STEP_SUMMARY: summaryPath,
             PROFILE_EXECUTION_RESULT: inputs.execution_result,
+            FULL_VALIDATION_DEFERRED: String(inputs.full_validation_deferred ?? false),
           },
         },
       );
@@ -113,6 +116,7 @@ function runStatusGate(inputs) {
 test('passes when an unselected profile executor is skipped', () => {
   const result = runStatusGate({
     execution_result: 'skipped',
+    full_validation_deferred: false,
     path_selection_failed: false,
     profile: 'openai-provider',
     run_profile: false,
@@ -125,6 +129,7 @@ test('passes when an unselected profile executor is skipped', () => {
 test('passes when the selected profile succeeds', () => {
   const result = runStatusGate({
     execution_result: 'success',
+    full_validation_deferred: false,
     path_selection_failed: false,
     profile: 'openai-provider',
     run_profile: true,
@@ -136,6 +141,7 @@ test('passes when the selected profile succeeds', () => {
 test('fails closed when changed-path selection fails', () => {
   const result = runStatusGate({
     execution_result: 'skipped',
+    full_validation_deferred: false,
     path_selection_failed: true,
     profile: 'openai-provider',
     run_profile: false,
@@ -148,6 +154,7 @@ for (const executionResult of ['failure', 'cancelled', 'skipped']) {
   test(`fails when a selected profile is ${executionResult}`, () => {
     const result = runStatusGate({
       execution_result: executionResult,
+      full_validation_deferred: false,
       path_selection_failed: false,
       profile: 'openai-provider',
       run_profile: true,
@@ -156,3 +163,15 @@ for (const executionResult of ['failure', 'cancelled', 'skipped']) {
     assert.deepEqual(result.executed, ['Propagate selected profile failure']);
   });
 }
+
+test('fails the protected profile status when full validation was deferred for a draft', () => {
+  const result = runStatusGate({
+    execution_result: 'skipped',
+    full_validation_deferred: true,
+    path_selection_failed: false,
+    profile: 'openai-provider',
+    run_profile: false,
+  });
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(result.executed, ['Fail when full validation is deferred']);
+});
