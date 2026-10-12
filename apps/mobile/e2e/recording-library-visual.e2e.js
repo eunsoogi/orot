@@ -118,7 +118,8 @@ async function inspectSavedRecordingLibrary(
       await saveButton.tap();
       const history = element(by.id('transcript-history-0-1'));
       await waitFor(history).toExist().withTimeout(30000);
-      await scrollToTranscriptControl(history, 'up');
+      // The saved revision follows the current transcript, including at XXXL text size.
+      await scrollToTranscriptControl(history, 'down');
       await waitFor(history).toBeVisible().withTimeout(30000);
       jestExpect(accessibilityText(await history.getAttributes())).toContain(
         '이전 버전 1:',
