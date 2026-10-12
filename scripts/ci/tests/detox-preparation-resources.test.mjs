@@ -12,6 +12,12 @@ function fixture() {
   const directory = mkdtempSync(join(tmpdir(), 'orot-preparation-resources-'));
   const bin = join(directory, 'bin');
   mkdirSync(bin);
+  // Keep sampling deterministic on busy hosts; ownership checks still inspect the real child process.
+  writeFileSync(
+    join(bin, 'ps'),
+    '#!/bin/sh\nif [ "$1" = "-A" ]; then\n  printf "123 1 64 fixture-sampler\\n"\nelse\n  exec /bin/ps "$@"\nfi\n',
+    { mode: 0o755 },
+  );
   for (const command of ['vm_stat', 'sysctl']) {
     writeFileSync(join(bin, command), '#!/usr/bin/env bash\nprintf "fixture memory\\n"\n', {
       mode: 0o755,
@@ -68,6 +74,7 @@ test('samples preparation independently and stops only its identified child', as
     await waitForLog(context, /DETOX_PREPARATION_RESOURCE_END/);
     assert.equal(existsSync(context.identity), false);
     assert.match(readFileSync(context.log, 'utf8'), /ps -A -o pid= -o ppid= -o rss= -o comm=/);
+    assert.match(readFileSync(context.log, 'utf8'), /123 1 64 fixture-sampler/);
   } finally {
     context.cleanup();
   }

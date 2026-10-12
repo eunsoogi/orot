@@ -39,7 +39,7 @@ export function OpenAIToolsProviderProbe() {
   const [result, setResult] = useState('ChatGPT local tool probe running');
 
   useEffect(() => {
-    runProbe().then(
+    runOpenAIToolsIntegrationProbe().then(
       () =>
         setResult(
           'ChatGPT local tool probe passed: definitions=mapped, stream=normalized, result=round-trip, hostedTools=rejected, realAccount=unverified',
@@ -67,7 +67,8 @@ export function OpenAIToolsProviderProbe() {
   );
 }
 
-async function runProbe() {
+/** Assert the original tool protocol through the native Simulator transport, independently of UI startup. */
+export async function runOpenAIToolsIntegrationProbe() {
   let fixtureInstalled = false;
   try {
     const fixture =

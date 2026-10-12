@@ -70,14 +70,20 @@ jobs:
           retention-days: 7
 
   native_execution:
-    name: Execute iOS ${{ matrix.profile }} tests
+    name: Execute iOS ${{ matrix.profile }} ${{ matrix.suite }} tests
     needs: native_products
     runs-on: xcode-27
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        profile: [speech, core]
+        include:
+          - profile: core
+            suite: all
+          - profile: speech
+            suite: native
+          - profile: speech
+            suite: ui
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -114,6 +120,7 @@ jobs:
       - name: Execute without compilation or retry
         env:
           PROFILE: ${{ matrix.profile }}
+          OROT_IOS_TEST_SUITE: ${{ matrix.suite }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
           scripts/ci/run-command.sh ios-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/results.xcresult
@@ -125,7 +132,7 @@ jobs:
             xcrun xcresulttool export attachments --path artifacts/ios-tests/results.xcresult --output-path artifacts/ios-tests/attachments
           fi
       - name: Verify actual Korean Speech observations
-        if: ${{ success() && matrix.profile == 'speech' }}
+        if: ${{ success() && matrix.profile == 'speech' && matrix.suite == 'native' }}
         run: node scripts/ci/speech-test-evidence.mjs artifacts/ios-tests/attachments artifacts/ios-tests/speech-accuracy.json
       - name: Tear down the owned destination
         if: always()
@@ -139,7 +146,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: native-${{ matrix.profile }}-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          name: native-${{ matrix.profile }}-${{ matrix.suite }}-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/ios-tests/*.log
             artifacts/ios-tests/*.json

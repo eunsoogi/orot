@@ -17,7 +17,9 @@ if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
   throw new Error('Native tests require their booted owned simulator');
 if (!existsSync(runFile) || existsSync(results))
   throw new Error('Missing products or existing native results');
-const tests = selected.length ? selected : iosTestInventory(profile);
+const tests = selected.length
+  ? selected
+  : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 if (
   tests.some(
     (test) =>

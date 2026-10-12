@@ -3,6 +3,20 @@ import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
+test('separate Speech runners cover every original case without duplication or silent subsets', () => {
+  const all = iosTestInventory('speech');
+  const native = iosTestInventory('speech', 'native');
+  const ui = iosTestInventory('speech', 'ui');
+  assert.equal(native.length, 6);
+  assert.equal(ui.length, 2);
+  assert.deepEqual([...native, ...ui].sort(), [...all].sort());
+  assert.equal(new Set([...native, ...ui]).size, all.length);
+  assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));
+  assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
+  assert.throws(() => iosTestInventory('speech', 'unknown'));
+  assert.throws(() => iosTestInventory('core', 'ui'));
+});
+
 test('each profile declares unique existing cases and every test method is scheduled', () => {
   const seen = new Set();
   for (const profile of ['core', 'speech', 'provider-data']) {

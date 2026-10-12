@@ -46,7 +46,8 @@ export function verifyIosTestResults(report, expected) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [profile, bundle, output, ...selected] = process.argv.slice(2);
-  const expected = selected.length ? selected : iosTestInventory(profile);
+  const suite = selected.length ? 'selected' : (process.env.OROT_IOS_TEST_SUITE ?? 'all');
+  const expected = selected.length ? selected : iosTestInventory(profile, suite);
   const report = JSON.parse(
     execFileSync(
       'xcrun',
@@ -57,7 +58,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const observations = verifyIosTestResults(report, expected);
   writeFileSync(
     output,
-    JSON.stringify({ profile, observations, devices: report.devices }, null, 2) + '\n',
+    JSON.stringify({ profile, suite, observations, devices: report.devices }, null, 2) + '\n',
   );
   console.log(`IOS_TEST_RESULTS_VERIFIED profile=${profile} passed=${observations.length}`);
 }

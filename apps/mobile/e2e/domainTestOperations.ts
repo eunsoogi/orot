@@ -23,8 +23,33 @@ export async function runDomainTestOperation(
   switch (operation) {
     case 'connection':
       return { connected: true };
+    case 'render-application': {
+      const { renderApplicationForTest } =
+        await import('./testApplicationRenderer');
+      return renderApplicationForTest();
+    }
     case 'graph':
       return runGraphIntegrationProbe();
+    case 'openai-provider': {
+      const { runOpenAIProviderIntegrationProbe } =
+        require('./openaiProviderProbe') as typeof import('./openaiProviderProbe');
+      await runOpenAIProviderIntegrationProbe();
+      return {
+        synthetic: true,
+        realAccount: 'unverified',
+        assertions: 'catalog-stream-rate-limit-cancellation',
+      };
+    }
+    case 'openai-tools': {
+      const { runOpenAIToolsIntegrationProbe } =
+        require('./openaiToolsProviderProbe') as typeof import('./openaiToolsProviderProbe');
+      await runOpenAIToolsIntegrationProbe();
+      return {
+        synthetic: true,
+        realAccount: 'unverified',
+        assertions: 'definitions-stream-tool-result-hosted-rejection',
+      };
+    }
     case 'healthkit': {
       const { runHealthKitIntegrationProbe } = await import('./healthkitProbe');
       return { summary: await runHealthKitIntegrationProbe(), synthetic: true };

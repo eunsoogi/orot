@@ -5,11 +5,12 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 // Executable fixtures exercise CLI exit propagation without booting a simulator or invoking Xcode.
-function fixture(status) {
+function fixture(status, profile = 'core', suite = 'all') {
   const directory = mkdtempSync(join(tmpdir(), 'orot-test-runner-'));
-  const spec = iosTestConfig('core');
+  const spec = iosTestConfig(profile);
   const owner = { ...spec, name: 'owned-fixture', udid: 'fixture-udid' };
   const calls = join(directory, 'calls.jsonl');
   const program = `#!${process.execPath}
@@ -18,7 +19,7 @@ const args = process.argv.slice(2);
 const name = require('node:path').basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args})+'\\n');
 if (name === 'xcodebuild') process.exit(${status});
-if (args[1] === 'list' && args[2] === 'runtimes') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},isAvailable:true}]}));
+if (args[1] === 'list' && args[2] === 'runtimes') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));
 else if (args[1] === 'list' && args[2] === 'devices') console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:'fixture-udid',name:'owned-fixture',deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));
 else console.log('fixture app diagnostic');
 `;
@@ -33,13 +34,18 @@ else console.log('fixture app diagnostic');
     process.execPath,
     [
       resolve('scripts/ci/run-ios-tests.mjs'),
-      'core',
+      profile,
       runFile,
       ownerFile,
       result,
-      'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
+      ...(profile === 'core'
+        ? ['OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode']
+        : []),
     ],
-    { encoding: 'utf8', env: { ...process.env, PATH: directory + ':' + process.env.PATH } },
+    {
+      encoding: 'utf8',
+      env: { ...process.env, OROT_IOS_TEST_SUITE: suite, PATH: directory + ':' + process.env.PATH },
+    },
   );
   return {
     directory,
@@ -47,6 +53,23 @@ else console.log('fixture app diagnostic');
     calls: readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse),
     result,
   };
+}
+
+for (const suite of ['native', 'ui']) {
+  test(`executes the mandatory Speech ${suite} inventory once on its own runner`, () => {
+    const result = fixture(0, 'speech', suite);
+    try {
+      assert.equal(result.outcome.status, 0, result.outcome.stderr);
+      const runs = result.calls.filter((call) => call.name === 'xcodebuild');
+      assert.equal(runs.length, 1);
+      assert.deepEqual(
+        runs[0].args.filter((arg) => arg.startsWith('-only-testing:')),
+        iosTestInventory('speech', suite).map((id) => '-only-testing:' + id),
+      );
+    } finally {
+      rmSync(result.directory, { recursive: true, force: true });
+    }
+  });
 }
 
 for (const status of [0, 65]) {
