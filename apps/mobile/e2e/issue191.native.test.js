@@ -103,8 +103,23 @@ describe('issue 191 shipping screens with synthetic SQLCipher records', () => {
         jestExpect(hierarchy).toContain('next-visit-review-list');
         jestExpect(hierarchy).toContain('질문 편집');
         jestExpect(hierarchy).toContain('근거');
+        jestExpect(hierarchy).not.toMatch(/확인했나요|반영되었나요|\?\s+\?/);
       }
       await device.takeScreenshot(`issue191-${kind}-result`);
+      if (kind === 'disease-hypotheses') {
+        const refusal = await device.generateViewHierarchyXml(true);
+        jestExpect(refusal).toContain('Apple Intelligence의 안전 정책');
+        jestExpect(refusal).not.toContain('disease-hypotheses-insufficient');
+        await element(by.id('disease-hypotheses-select-provider')).tap();
+        await waitFor(element(by.id('provider-selection-screen')))
+          .toBeVisible()
+          .withTimeout(5000);
+        await device.takeScreenshot('issue191-disease-provider-selection');
+        console.log(
+          'ISSUE191_PROVIDER_SELECTION_UI ' +
+            (await device.generateViewHierarchyXml(true)),
+        );
+      }
     }
   });
   (process.env.OROT_ISSUE191_EMPTY === 'enabled' ? it : it.skip)(

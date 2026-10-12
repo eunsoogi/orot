@@ -50,6 +50,8 @@ export function nativeFailure(error: unknown): ProviderError {
   if (code === 'APPLE_MODEL_UNAVAILABLE' && isAvailabilityStatus(status)) {
     return unavailableFailure(status);
   }
+  // Native safety decisions are distinct from unsupported modalities or malformed app requests.
+  if (code === 'SAFETY_REFUSAL') return { code: 'safety_refusal', message, retryable: false };
   if (code === 'UNSUPPORTED_INPUT') return { code: 'unsupported_input', message, retryable: false };
   if (code === 'UNSUPPORTED_CAPABILITY')
     return { code: 'unsupported_capability', message, retryable: false };

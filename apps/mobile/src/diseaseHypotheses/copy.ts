@@ -9,6 +9,8 @@ export function getDiseaseHypothesisCopy() {
     loading: t('diseaseHypotheses.loading'),
     insufficient: t('diseaseHypotheses.insufficient'),
     error: t('diseaseHypotheses.error'),
+    safetyRefusal: t('diseaseHypotheses.safetyRefusal'),
+    selectProvider: t('diseaseHypotheses.selectProvider'),
     unsupportedInput: t('diseaseHypotheses.unsupportedInput'),
     uncertainty: t('diseaseHypotheses.uncertainty'),
     missingData: t('diseaseHypotheses.missingData'),

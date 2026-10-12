@@ -151,3 +151,34 @@ test('distinguishes provider input refusal from missing health records', async (
   ).toBeTruthy();
   expect(screen.queryByTestId('disease-hypotheses-insufficient')).toBeNull();
 });
+
+test('explains native safety refusal and opens provider selection without automatic retry', async () => {
+  const selectProvider = jest.fn();
+  const generate = jest.fn(async () => ({
+    status: 'workflow' as const,
+    result: {
+      status: 'unavailable' as const,
+      reason: 'Model declined',
+      providerErrorCode: 'safety_refusal' as const,
+      checkpoint: {} as never,
+    },
+  }));
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onGenerate={generate}
+      onOpenProviderSelection={selectProvider}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(
+    await screen.findByText(/Apple Intelligence의 안전 정책/),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('disease-hypotheses-insufficient')).toBeNull();
+  await fireEvent.press(
+    screen.getByTestId('disease-hypotheses-select-provider'),
+  );
+  expect(selectProvider).toHaveBeenCalledTimes(1);
+  expect(generate).toHaveBeenCalledTimes(1);
+});

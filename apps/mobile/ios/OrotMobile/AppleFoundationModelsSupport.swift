@@ -28,19 +28,19 @@ func appleFoundationModelsFailure(_ code: String, _ message: String, _ status: S
 }
 
 func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
-    // A safety refusal is an unsupported request, not missing records or a retryable engine failure.
+    // Preserve native safety refusals separately from app input errors and missing records.
     #if canImport(FoundationModels)
         if #available(iOS 27.0, *), let modelError = error as? LanguageModelError {
             switch modelError {
             case .refusal, .guardrailViolation:
-                return appleFoundationModelsFailure("UNSUPPORTED_INPUT", "The selected model declined this request.", nil)
+                return appleFoundationModelsFailure("SAFETY_REFUSAL", "The selected model declined this request.", nil)
             default: break
             }
         }
         if #available(iOS 26.0, *), let modelError = error as? LanguageModelSession.GenerationError {
             switch modelError {
             case .refusal, .guardrailViolation:
-                return appleFoundationModelsFailure("UNSUPPORTED_INPUT", "The selected model declined this request.", nil)
+                return appleFoundationModelsFailure("SAFETY_REFUSAL", "The selected model declined this request.", nil)
             default: break
             }
         }

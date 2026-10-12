@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
 import { appColors } from '../layout/appColors';
+import type { ProviderErrorCode } from '@orot/model-runtime';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -18,6 +19,7 @@ interface DiseaseHypothesesScreenProps {
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
+  readonly onOpenProviderSelection?: () => void;
   readonly onGenerate: (
     signal?: AbortSignal,
   ) => Promise<DiseaseHypothesisRunOutcome>;
@@ -28,7 +30,10 @@ type ScreenState =
   | { readonly status: 'idle' | 'loading' }
   | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
   | { readonly status: 'insufficient' }
-  | { readonly status: 'error'; readonly unsupportedInput?: boolean };
+  | {
+      readonly status: 'error';
+      readonly providerErrorCode?: ProviderErrorCode;
+    };
 
 function EvidenceLinks({
   title,
@@ -60,6 +65,7 @@ export function DiseaseHypothesesScreen({
   navigationRouteKey,
   onNavigationStateChange,
   onBack,
+  onOpenProviderSelection,
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
@@ -105,9 +111,10 @@ export function DiseaseHypothesesScreen({
       else
         setState({
           status: 'error',
-          unsupportedInput:
-            outcome.result.status === 'unavailable' &&
-            outcome.result.providerErrorCode === 'unsupported_input',
+          providerErrorCode:
+            outcome.result.status === 'unavailable'
+              ? outcome.result.providerErrorCode
+              : undefined,
         });
     } catch {
       if (!controller.signal.aborted) setState({ status: 'error' });
@@ -153,8 +160,21 @@ export function DiseaseHypothesesScreen({
       ) : null}
       {state.status === 'error' ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {state.unsupportedInput ? copy.unsupportedInput : copy.error}
+          {state.providerErrorCode === 'safety_refusal'
+            ? copy.safetyRefusal
+            : state.providerErrorCode === 'unsupported_input'
+              ? copy.unsupportedInput
+              : copy.error}
         </Text>
+      ) : null}
+      {state.status === 'error' &&
+      state.providerErrorCode === 'safety_refusal' &&
+      onOpenProviderSelection ? (
+        <Button
+          testID="disease-hypotheses-select-provider"
+          onPress={onOpenProviderSelection}
+          title={copy.selectProvider}
+        />
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
