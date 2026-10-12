@@ -22,6 +22,10 @@ jest.mock('../e2e/transcription/RecordingLibraryVisualProbe', () => ({
   RecordingLibraryVisualProbe: 'RecordingLibraryVisualProbe',
 }));
 
+jest.mock('../e2e/NativeSpeechJourneyProbe', () => ({
+  NativeSpeechJourneyProbe: 'NativeSpeechJourneyProbe',
+}));
+
 function loadProbeEntry(settings: Record<string, unknown>) {
   jest.resetModules();
   const reactNative = require('react-native');
@@ -33,6 +37,12 @@ function loadProbeEntry(settings: Record<string, unknown>) {
 
 test('keeps native speech as the default Simulator probe entry', () => {
   expect(loadProbeEntry({})).toBe('NativeSpeechProbe');
+});
+
+test('selects the real native-to-saved-state journey only when requested', () => {
+  expect(
+    loadProbeEntry({ OROT_TRANSCRIPTION_PROBE_MODE: 'speech-journey' }),
+  ).toBe('NativeSpeechJourneyProbe');
 });
 
 test('launches transcript evidence without mounting the native speech probe', () => {

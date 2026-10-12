@@ -62,7 +62,11 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     }
 
     override func bundleURL() -> URL? {
-        #if DEBUG
+        #if OROT_NATIVE_TESTS
+            // Native test products embed their own entry, including Debug provider fixtures;
+            // a consumer must not depend on a producer's Metro process or rebuild the app.
+            Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+        #elseif DEBUG
             RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
         #else
             Bundle.main.url(forResource: "main", withExtension: "jsbundle")
