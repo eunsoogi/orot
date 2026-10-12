@@ -1,27 +1,20 @@
 name: Focused Detox scenario
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       pr_number:
         description: Open pull request number whose current head will be validated.
         required: true
-        type: number
+        type: string
       profile:
         description: E2E profile that owns the selected scenario.
         required: true
-        type: choice
-        options: [release, openai-provider, transcription, next-visit-questions]
+        type: string
       scenario_file:
         description: Test file selected from the profile's allowlist.
         required: true
-        type: choice
-        options:
-          - release-e2e.test.js
-          - release-e2e-data.test.js
-          - openai-provider.e2e.js
-          - transcription.e2e.js
-          - next-visit-questions.e2e.js
+        type: string
       scenario_name:
         description: Exact Jest test title or unique literal fragment.
         required: true
@@ -32,7 +25,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.pr_number }}-focused
+  group: focused-detox-${{ inputs.pr_number }}-scenario
   cancel-in-progress: true
 
 env:

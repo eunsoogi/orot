@@ -66,17 +66,37 @@ test('PR E2E workflow separates draft deferral from the full required gate', () 
   }
 });
 
-test('focused workflow validates the current PR head without replacing required checks', () => {
-  const path = '.github/workflows/detox-e2e-focused.yml';
-  assert.equal(existsSync(fileURLToPath(new URL(path, root))), true);
-  const focus = read(path);
+test('focused validation is dispatched through the existing E2E workflow with separate check names', () => {
+  const e2e = read('.github/workflows/e2e-test.yml');
+  const focus = read('.github/workflows/detox-e2e-focused.yml');
+  assert.equal(
+    existsSync(fileURLToPath(new URL('.github/workflows/detox-e2e-focused.yml', root))),
+    true,
+  );
+  assert.match(
+    e2e,
+    /focus_pr_number:[\s\S]*focus_profile:[\s\S]*focus_scenario_file:[\s\S]*focus_scenario_name:/,
+  );
+  assert.match(
+    e2e,
+    /focused_detox_scenario:[\s\S]*uses: \.\/\.github\/workflows\/detox-e2e-focused\.yml/,
+  );
+  assert.match(e2e, /'Focus dispatch routing' \|\| 'iOS Simulator Build'/);
+  assert.match(e2e, /'Focus profile routing' \|\| 'Detox E2E profiles'/);
+  assert.match(
+    e2e,
+    /inputs\.focus_pr_number != '' \|\| inputs\.focus_profile != '' \|\| inputs\.focus_scenario_file != '' \|\| inputs\.focus_scenario_name != ''/,
+  );
+  assert.match(e2e, /pull-requests: read/);
   assert.match(focus, /^name: Focused Detox scenario$/m);
+  assert.match(focus, /workflow_call:/);
+  assert.doesNotMatch(focus, /workflow_dispatch:/);
   assert.match(focus, /pull-requests: read/);
   assert.match(focus, /head\.sha.*GITHUB_SHA|head\.sha.*EXPECTED_SHA/);
   assert.match(focus, /inputs\.scenario_file/);
   assert.match(focus, /inputs\.scenario_name/);
   assert.match(focus, /resource_sampling: true/);
-  assert.match(focus, /inputs\.pr_number.*focused/);
+  assert.match(focus, /group: focused-detox-\$\{\{ inputs\.pr_number \}\}-scenario/);
   assert.match(focus, /cancel-in-progress: true/);
   assert.doesNotMatch(focus, /detox-e2e-profile-status\.yml/);
   assert.match(focus, /detox-e2e-profile-app-producer\.yml/);

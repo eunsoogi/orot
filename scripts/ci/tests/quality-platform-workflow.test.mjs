@@ -188,10 +188,13 @@ test('uses singular workflow names and matching paths with direct checks and can
     /runs-on: \$\{\{ github\.event_name == 'pull_request'.*'xcode-27' \}\}/,
   );
   assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);
+  assert.match(e2eWorkflow, /^ {2}pull-requests: read$/m);
   assert.doesNotMatch(e2eWorkflow, /workflow_call/);
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
-  assert.match(e2eWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
+  const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios-simulator-build:\n'));
+  assert.match(buildJob, /'Focus dispatch routing'/);
+  assert.match(buildJob, /'iOS Simulator Build'/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });

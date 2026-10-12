@@ -28,10 +28,10 @@ function jobBlock(source, jobId) {
 }
 
 test('exposes profile scenario results without CI summary wrapper jobs', () => {
-  assert.match(
-    ciWorkflow,
-    /detox_profiles:[\s\S]*?name: Detox E2E profiles[\s\S]*?uses: \.\/\.github\/workflows\/detox-e2e-profiles\.yml/,
-  );
+  const profileJob = jobBlock(ciWorkflow, 'detox_profiles');
+  assert.match(profileJob, /Focus profile routing/);
+  assert.match(profileJob, /Detox E2E profiles/);
+  assert.match(profileJob, /uses: \.\/\.github\/workflows\/detox-e2e-profiles\.yml/);
   assert.doesNotMatch(ciWorkflow, /name: Detox iOS E2E|detox_ios_e2e:/);
   assert.doesNotMatch(
     profilesWorkflow,

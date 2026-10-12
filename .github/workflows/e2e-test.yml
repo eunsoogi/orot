@@ -18,9 +18,31 @@ on:
         required: false
         type: boolean
         default: false
+      # Keep candidate-head focus available through this default-branch workflow.
+      focus_pr_number:
+        description: Pull request number for one focused scenario run.
+        required: false
+        type: string
+        default: ''
+      focus_profile:
+        description: E2E profile for the selected scenario.
+        required: false
+        type: string
+        default: ''
+      focus_scenario_file:
+        description: Allowlisted profile test file for the selected scenario.
+        required: false
+        type: string
+        default: ''
+      focus_scenario_name:
+        description: Exact test title or unique literal fragment.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ github.event.pull_request.draft == true && 'draft' || 'full' }}
@@ -40,9 +62,10 @@ env:
 
 jobs:
   ios-simulator-build:
-    name: iOS Simulator Build
+    # Focus runs use different check names so skipped full-suite jobs cannot satisfy protected contexts.
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') && 'Focus dispatch routing' || 'iOS Simulator Build' }}
     # Preserve the production/OAuth build independently of Linux leaf failures.
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) }}
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && 'ubuntu-latest' || 'xcode-27' }}
     timeout-minutes: 75
     outputs:
@@ -179,9 +202,9 @@ jobs:
           retention-days: 14
 
   detox_profiles:
-    name: Detox E2E profiles
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') && 'Focus profile routing' || 'Detox E2E profiles' }}
     needs: ios-simulator-build
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && !(github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) }}
     uses: ./.github/workflows/detox-e2e-profiles.yml
     with:
       trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
@@ -192,3 +215,13 @@ jobs:
       run_transcription: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_transcription == 'true') }}
       run_next_visit: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_next_visit == 'true') }}
       path_selection_failed: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' }}
+
+  focused_detox_scenario:
+    name: Focused Detox scenario
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
+    uses: ./.github/workflows/detox-e2e-focused.yml
+    with:
+      pr_number: ${{ inputs.focus_pr_number }}
+      profile: ${{ inputs.focus_profile }}
+      scenario_file: ${{ inputs.focus_scenario_file }}
+      scenario_name: ${{ inputs.focus_scenario_name }}

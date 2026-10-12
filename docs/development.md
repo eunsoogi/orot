@@ -82,14 +82,14 @@ Speech transcription은 별도의 Release 앱 producer와 test consumer를 사�
 
 초안 PR 업데이트에서는 정적 검사와 단위 테스트를 실행하고, 전체 iOS/E2E 필수 check는 초안 상태를 분명히 표시하며 Simulator 빌드와 프로필 실행을 건너뜁니다. PR을 검토 준비 상태로 바꾸거나 이후 커밋을 올리면 변경 경로에 맞는 필수 검증이 실행됩니다. 초안 또는 집중 실행의 결과는 병합에 필요한 전체 검증을 대신하지 않습니다.
 
-한 E2E 실패를 재현할 때는 GitHub Actions의 `Focused Detox scenario`를 수동 실행하고 PR 번호, 프로필, 테스트 파일, Jest 테스트 이름 또는 고유한 이름 일부를 지정합니다. 실행 전에 PR이 열려 있고 `main`을 대상으로 하며, 같은 저장소와 현재 branch/SHA를 가리키는지 확인합니다. 집중 실행은 해당 테스트 하나만 실행하고 프로세스·메모리 샘플을 수집합니다. Release와 Speech는 각자 별도의 앱 producer를 사용합니다.
+한 E2E 실패를 재현할 때는 기본 브랜치에 있는 `E2E Test` workflow를 PR branch에서 수동 실행하고 `focus_pr_number`, `focus_profile`, `focus_scenario_file`, `focus_scenario_name`을 지정합니다. 실행 전에 PR이 열려 있고 `main`을 대상으로 하며, 같은 저장소와 현재 branch/SHA를 가리키는지 확인합니다. 집중 실행은 해당 테스트 하나만 실행하고 프로세스·메모리 샘플을 수집합니다. Release와 Speech는 각자 별도의 앱 producer를 사용합니다.
 
 ```sh
-gh workflow run detox-e2e-focused.yml --ref <PR-branch> \
-  -f pr_number=<PR-number> \
-  -f profile=release \
-  -f scenario_file=release-e2e-data.test.js \
-  -f scenario_name='creates, edits, and cancels an appointment that survives process restarts'
+gh workflow run e2e-test.yml --ref <PR-branch> \
+  -f focus_pr_number=<PR-number> \
+  -f focus_profile=release \
+  -f focus_scenario_file=release-e2e-data.test.js \
+  -f focus_scenario_name='creates, edits, and cancels an appointment that survives process restarts'
 ```
 
 포커스 실행은 원인을 분리하는 진단용이며 보호된 전체 E2E check를 통과 처리하지 않습니다. 실패한 테스트는 먼저 이 방식으로 분리해 로그와 원인을 확인하고, 수정 후 새 커밋에서 PR의 전체 필수 검증 결과를 확인합니다. 원인이 확인되지 않으면 같은 전체 실행을 반복하거나 제한 시간을 늘리지 말고, 실패한 Actions 실행과 단계, 현재 커밋, 관련 로그와 샘플을 함께 기록해 원인 조사를 이어갑니다.
