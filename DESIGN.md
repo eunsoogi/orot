@@ -1,12 +1,12 @@
 # Orot Design System
 
-This document defines the visual, interaction, and accessibility rules for new and existing screens and links them to the current implementation. See [README.md](README.md) for the product overview, [docs/development.md](docs/development.md) for development procedures, and [design-qa.md](design-qa.md) for visual verification evidence.
+This document defines the visual, interaction, and accessibility rules for new and existing screens and links them to the current implementation. See [README.md](README.md) for the product overview and [docs/development.md](docs/development.md) for development procedures.
 
 ## Basis and scope
 
 Orot uses clear hierarchy, generous spacing, and familiar iOS controls. Branding, colors, and icon choices follow this design system. Screens show actual records, appointments, permissions, and errors. Example health information and availability states must never appear as real user data.
 
-Repository source defines implemented color values and shared APIs. Use this document for reusable design rules. Keep release history, implementation progress, review ownership, and verification results in their dedicated reports and issue discussions.
+Repository source defines implemented color values and shared APIs. Use this document for reusable design rules. Keep release history and implementation progress out of this guide; record revision-specific verification evidence in the owning PR or issue.
 
 ## Visual principles
 
@@ -150,4 +150,4 @@ Runtime records, model names, availability, progress, and errors must be real. W
 - Do controls have accessible names, roles, and states, with touch targets of at least 44pt?
 - Do safe areas, bottom navigation, and the keyboard leave final content and primary actions accessible?
 - Has the running screen been inspected in light, dark, and large-text modes, and where relevant, increased contrast and Reduce Transparency?
-- Are design references compared with authentic app captures, with functional and accessibility checks recorded separately in the QA report?
+- Are design references compared with authentic app captures, and are interaction and accessibility claims backed by checks recorded in the implementation PR or issue?
