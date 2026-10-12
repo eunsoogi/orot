@@ -36,7 +36,7 @@ test('builds with SDK 27 while isolating the measured transcription runtime', ()
   const simulatorPreparation = workflowStep('Prepare dedicated Detox Simulator');
   const toolchainVerification = workflowStep('Verify runner toolchain');
 
-  // Compile native safety-error types on SDK 27 while preserving the speech probe's measured runtime.
+  // Keep the configured build SDK independent from the transcription Simulator runtime.
   assert.match(profileWorkflow, /runs-on: xcode-27/);
   assert.match(profileWorkflow, /DEVELOPER_DIR: \/Applications\/Xcode\.app\/Contents\/Developer/);
   assert.match(profileWorkflow, /EXPECTED_XCODE_VERSION: '27\.0'/);

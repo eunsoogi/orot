@@ -102,3 +102,20 @@ test('reuses only the exact production app while selected iOS paths run OAuth ch
   assert.doesNotMatch(oauthBuild, /app_reusable/);
   assert.match(mobilePackage, /"ios:build"[\s\S]*?ios\/build/);
 });
+
+test('uploads iOS build logs only for full validation and keeps missing artifacts fatal', () => {
+  const cocoapods = workflowStep(ciWorkflow, 'Install CocoaPods');
+  const upload = workflowStep(ciWorkflow, 'Upload iOS build log');
+
+  // The command wrapper creates its log before execution; earlier fast-path gates skip this step.
+  assert.match(cocoapods, /id: install_cocoapods/);
+  assert.match(
+    cocoapods,
+    /run-command\.sh cocoapods-install artifacts\/ios-build\/cocoapods-install\.log/,
+  );
+  assert.match(
+    upload,
+    /if: \$\{\{ always\(\) && steps\.select\.outputs\.ios_build == 'true' && steps\.install_cocoapods\.outcome != 'skipped' \}\}/,
+  );
+  assert.match(upload, /if-no-files-found: error/);
+});

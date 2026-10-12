@@ -55,7 +55,6 @@ jobs:
     # The status workflow owns the protected check name so this executor may skip cleanly.
     name: Execute Detox profile
     if: ${{ inputs.run_profile }}
-    # Native safety-error types require SDK 27 in every app bundle, including the speech probe.
     runs-on: xcode-27
     timeout-minutes: 75
     outputs:

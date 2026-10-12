@@ -123,6 +123,7 @@ jobs:
           ruby-version: '4.0.7'
           bundler-cache: false
       - name: Install CocoaPods
+        id: install_cocoapods
         if: ${{ steps.select.outputs.ios_build == 'true' }}
         run: |
           scripts/ci/run-command.sh cocoapods-install artifacts/ios-build/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
@@ -198,7 +199,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build
 
       - name: Upload iOS build log
-        if: ${{ always() && steps.select.outputs.ios_build == 'true' }}
+        # The first run-command creates this directory; earlier fast-path gates do not.
+        if: ${{ always() && steps.select.outputs.ios_build == 'true' && steps.install_cocoapods.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-ios-build-${{ github.run_id }}-${{ github.run_attempt }}
