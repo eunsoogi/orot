@@ -14,6 +14,7 @@ import type {
   NavigationController,
   NavigationRoute,
 } from './navigationController';
+import { NavigationContentTransition } from './NavigationContentTransition';
 import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
@@ -37,7 +38,7 @@ export interface NavigationRouteSceneProps<Name extends string> {
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
 }
 
-/** Binds a retained native route to its own draft state and guarded actions. */
+/** Binds retained route state, guarded actions, and root-tab content transitions. */
 export function NavigationRouteScene<Name extends string>({
   route,
   controller,
@@ -122,7 +123,7 @@ export function NavigationRouteScene<Name extends string>({
     <View style={styles.fill}>{routeContent}</View>
   );
 
-  return (
+  const scene = (
     <View style={styles.fill} testID={`navigation-route-scene-${route.key}`}>
       {childHandlesSafeArea ? (
         body
@@ -132,6 +133,14 @@ export function NavigationRouteScene<Name extends string>({
         </SafeAreaView>
       )}
     </View>
+  );
+
+  return rootTabs ? (
+    <NavigationContentTransition transitionKey={rootTabs.activeTab}>
+      {scene}
+    </NavigationContentTransition>
+  ) : (
+    scene
   );
 }
 

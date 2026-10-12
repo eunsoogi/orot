@@ -22,6 +22,7 @@ import {
 import {
   NAVIGATION_ACTION_TOP_PADDING,
   NAVIGATION_ACTION_BOTTOM_PADDING,
+  ROOT_TAB_SAFE_AREA_TRANSLATION,
 } from './navigationLayout';
 import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
@@ -51,6 +52,7 @@ export interface NavigationActionBarProps<Name extends string> {
   readonly rootTabs?: NavigationRootTabs;
 }
 
+/** Keeps contextual actions fixed while root tabs reclaim a keyboard-hidden bottom inset. */
 export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
@@ -152,6 +154,11 @@ export function NavigationActionBar<Name extends string>({
     <Surface
       actions={nativeBindings.actions}
       onAction={nativeBindings.onAction}
+      style={
+        rootTabs && !isKeyboardVisible && !safeAreaHandledByParent
+          ? styles.rootTabOverlap
+          : undefined
+      }
       testID={
         Surface === NavigationGlassSurface && Platform.OS === 'ios'
           ? 'navigation-bar-native-surface'
@@ -186,6 +193,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: NAVIGATION_ACTION_TOP_PADDING,
     paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
+  },
+  // Reclaim part of the home-indicator inset for root tabs without moving contextual actions.
+  rootTabOverlap: {
+    transform: [{ translateY: ROOT_TAB_SAFE_AREA_TRANSLATION }],
   },
   actions: {
     flexDirection: 'row',

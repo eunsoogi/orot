@@ -1,19 +1,22 @@
 /* global by, describe, device, element, expect, it, waitFor */
 
-const { expect: jestExpect } = require('@jest/globals');
 const {
+  expectActionAboveRootTabSurface,
+  expectActiveRouteSafeArea,
   expectRootTabContentLayout,
+  expectRootTabScreenEdgeClearance,
 } = require('./navigationGlassLayoutAssertions');
+const {
+  expectOnlyRootTabSelected,
+  expectContextActionUnselected,
+} = require('./navigationGlassAccessibilityAssertions');
 const {
   expectNativeNavigationAction,
   openRootTab,
+  scrollRouteToBottom,
+  tapRapidNativeNavigationActions,
   tapNativeNavigationAction,
 } = require('./smokeHelpers');
-
-async function scrollRouteToBottom() {
-  // Scroll the route viewport independently of its fixed bottom action bar.
-  await element(by.id('navigation-route-scroll')).scrollTo('bottom', 0.5, 0.5);
-}
 
 describe('native navigation glass', () => {
   // Diagnostics can cover controls, so leave them off; tap the visible roof instead of the hollow glyph center.
@@ -40,11 +43,21 @@ describe('native navigation glass', () => {
       const testID = `navigation-tab-${tab}`;
       const { hierarchyXml } = await expectNativeNavigationAction(testID);
       expectRootTabContentLayout(hierarchyXml, testID);
+      expectOnlyRootTabSelected(hierarchyXml, tab);
       await expect(element(by.id(`navigation-tab-${tab}`))).toHaveLabel(
         accessibilityLabel,
       );
       await device.takeScreenshot(`selected-root-tab-${tab}`);
     }
+    await tapRapidNativeNavigationActions([
+      'navigation-tab-home',
+      'navigation-tab-records',
+      'navigation-tab-settings',
+      'navigation-tab-home',
+    ]);
+    const { hierarchyXml: interruptedHierarchy } =
+      await expectNativeNavigationAction('navigation-tab-home');
+    expectOnlyRootTabSelected(interruptedHierarchy, 'home');
     await openRootTab('home', [
       'welcome-title',
       'home-empty-recordings',
@@ -59,13 +72,8 @@ describe('native navigation glass', () => {
     ).getAttributes();
     if (!recent.frame || !toolbar.frame || !root.frame)
       throw new Error('Missing Home content or toolbar frame.');
-    jestExpect(recent.frame.y + recent.frame.height).toBeLessThanOrEqual(
-      toolbar.frame.y,
-    );
-    // The iPhone simulator's 34pt home area is the only space below the toolbar.
-    jestExpect(
-      root.frame.y + root.frame.height - toolbar.frame.y - toolbar.frame.height,
-    ).toBeLessThanOrEqual(34);
+    expectActionAboveRootTabSurface(recent.frame, toolbar.frame);
+    expectRootTabScreenEdgeClearance(root.frame, toolbar.frame);
     await device.takeScreenshot('home-native-glass');
     await openRootTab('records', 'records-title');
     await expect(element(by.id('records-new-recording'))).toBeVisible();
@@ -180,28 +188,23 @@ describe('native navigation glass', () => {
         frame.y + frame.height >= scrollFrame.y + scrollFrame.height
       );
     });
-    const routeRootFrame = routeRoot?.frame;
-    const routeRootTopInset = routeRoot?.safeAreaInsets?.top;
-    if (
-      !routeScroll.frame ||
-      !titleFrame ||
-      !routeRootFrame ||
-      !Number.isFinite(routeRootTopInset)
-    ) {
-      throw new Error(
-        'Missing active route frames for safe-area verification.',
-      );
-    }
-    // The scroll viewport starts at the actual safe area, which varies by device size.
-    jestExpect(routeScroll.frame.y - routeRootFrame.y).toBeGreaterThanOrEqual(
-      routeRootTopInset,
+    expectActiveRouteSafeArea(
+      routeScroll.frame,
+      titleFrame,
+      routeRoot?.frame,
+      routeRoot?.safeAreaInsets?.top,
     );
-    jestExpect(titleFrame.y).toBeGreaterThanOrEqual(routeScroll.frame.y);
     // The shared backdrop must be an actual UIKit toolbar in the mounted app.
     await expect(element(by.id('navigation-native-toolbar'))).toExist();
+    const { hierarchyXml: backHierarchy } =
+      await expectNativeNavigationAction('navigation-back');
+    expectContextActionUnselected(backHierarchy, 'navigation-back');
     await expect(element(by.id('navigation-back'))).toHaveLabel(
       '이전 화면으로 돌아가기',
     );
+    const { hierarchyXml: homeHierarchy } =
+      await expectNativeNavigationAction('navigation-home');
+    expectContextActionUnselected(homeHierarchy, 'navigation-home');
     await expect(element(by.id('navigation-home'))).toHaveLabel(
       '홈 화면으로 이동',
     );

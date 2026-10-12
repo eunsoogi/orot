@@ -133,6 +133,30 @@ async function tapNativeNavigationAction(testID) {
   });
 }
 
+/** Fires root-tab taps without waiting for route content so interrupted motion is exercised. */
+async function tapRapidNativeNavigationActions(testIDs) {
+  const targets = [];
+  for (const testID of testIDs) {
+    const { toolbar, frame, toolbarFrame } =
+      await expectNativeNavigationAction(testID);
+    targets.push({
+      toolbar,
+      x: frame.x + frame.width / 2 - toolbarFrame.x,
+      y: frame.y + frame.height / 2 - toolbarFrame.y,
+    });
+  }
+
+  // Skip Detox idle waits between taps so an in-flight transition can be interrupted.
+  await device.disableSynchronization();
+  try {
+    for (const target of targets) {
+      await target.toolbar.tap({ x: target.x, y: target.y });
+    }
+  } finally {
+    await device.enableSynchronization();
+  }
+}
+
 async function scrollHomeActionIntoView(testID) {
   const scrollID = 'navigation-route-scroll';
   const target = element(by.id(testID));
@@ -144,11 +168,18 @@ async function scrollHomeActionIntoView(testID) {
     .scroll(100, 'down', 0.5, 0.35);
 }
 
+async function scrollRouteToBottom() {
+  // Scroll the route viewport independently of its fixed bottom action bar.
+  await element(by.id('navigation-route-scroll')).scrollTo('bottom', 0.5, 0.5);
+}
+
 module.exports = {
   expectNativeNavigationAction,
   confirmUnsavedLeave,
   openRootTab,
   openFeatureAndReturn,
   scrollHomeActionIntoView,
+  scrollRouteToBottom,
+  tapRapidNativeNavigationActions,
   tapNativeNavigationAction,
 };

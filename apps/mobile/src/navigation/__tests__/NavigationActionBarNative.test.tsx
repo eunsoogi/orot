@@ -74,6 +74,12 @@ describe('native bottom navigation toolbar', () => {
         primary: true,
       }),
     ]);
+    const actions = toolbar.props.actions as Array<Record<string, unknown>>;
+    expect(
+      actions.every(
+        action => action.rootTab !== true && action.selected !== true,
+      ),
+    ).toBe(true);
 
     await act(async () => {
       toolbar.props.onAction({ nativeEvent: { id: 'back' } });
@@ -116,7 +122,7 @@ describe('native bottom navigation toolbar', () => {
       }),
     );
     expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
-      expect.objectContaining({ height: 56 }),
+      expect.objectContaining({ height: 60 }),
     );
   });
 

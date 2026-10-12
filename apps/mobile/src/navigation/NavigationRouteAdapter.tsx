@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react';
-import { useCallback, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationViewport } from './NavigationViewport';
 import { NavigationActionBar } from './NavigationActionBar';
@@ -17,6 +22,7 @@ import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
+import { NavigationMotionContext } from './NavigationMotionContext';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -57,7 +63,7 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
-/** Binds route-local guards and shared actions to UIKit's native navigation stack. */
+/** Shares route guards and Reduce Motion state with the native stack and action bar. */
 export function NavigationRouteAdapter<Name extends string>({
   controller,
   leaveState,
@@ -72,8 +78,37 @@ export function NavigationRouteAdapter<Name extends string>({
   onNativeRouteRemovalComplete,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotionRef = useRef(false);
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    let changeObserved = false;
+    const updateReduceMotion = (enabled: boolean) => {
+      changeObserved = true;
+      if (!mounted || reduceMotionRef.current === enabled) return;
+      reduceMotionRef.current = enabled;
+      setReduceMotion(enabled);
+    };
+
+    // Subscribe before the asynchronous snapshot so a later settings change wins if it returns late.
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      updateReduceMotion,
+    );
+    AccessibilityInfo.isReduceMotionEnabled().then(
+      enabled => {
+        if (mounted && !changeObserved) updateReduceMotion(enabled);
+      },
+      () => undefined,
+    );
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
   const leaveStateRef = useRef(leaveState);
   const registeredLeaveStates = useRef(
     new Map<string, RegisteredLeaveState<Name>>(),
@@ -185,24 +220,27 @@ export function NavigationRouteAdapter<Name extends string>({
   );
 
   return (
-    <SafeAreaProvider style={styles.fill}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.fill}
-        testID="navigation-keyboard-avoiding-root"
-      >
-        <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
-          <NativeRouteStack
-            controller={controller}
-            canNativeGoBack={canNativeGoBack}
-            isTransitioning={snapshot.isTransitioning}
-            renderRoute={renderRoute}
-            routes={snapshot.routes}
-            onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
-          />
-        </NavigationViewport>
-      </KeyboardAvoidingView>
-    </SafeAreaProvider>
+    <NavigationMotionContext.Provider value={reduceMotion}>
+      <SafeAreaProvider style={styles.fill}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.fill}
+          testID="navigation-keyboard-avoiding-root"
+        >
+          <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
+            <NativeRouteStack
+              controller={controller}
+              canNativeGoBack={canNativeGoBack}
+              isTransitioning={snapshot.isTransitioning}
+              reduceMotion={reduceMotion}
+              renderRoute={renderRoute}
+              routes={snapshot.routes}
+              onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
+            />
+          </NavigationViewport>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
+    </NavigationMotionContext.Provider>
   );
 }
 

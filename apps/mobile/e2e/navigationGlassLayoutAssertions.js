@@ -90,10 +90,10 @@ function expectRootTabContentLayout(hierarchyXml, testID) {
   const topInset = iconFrame.y;
   const iconToLabelGap = labelFrame.y - iconFrame.y - iconFrame.height;
   const bottomInset = buttonFrame.height - labelFrame.y - labelFrame.height;
-  // Keep the symbol and title inside the 48pt control with visible spacing and breathing room.
+  // Keep the symbol and title inside the taller root-tab target with visible spacing and breathing room.
   if (
     buttonFrame.width < 44 ||
-    buttonFrame.height < 44 ||
+    buttonFrame.height < 52 ||
     iconFrame.width > 23 ||
     // XCTest rounds frame extents outward; the 22pt constrained symbol can report as 23pt.
     iconFrame.height > 23 ||
@@ -105,7 +105,7 @@ function expectRootTabContentLayout(hierarchyXml, testID) {
     bottomInset < 3
   ) {
     throw new Error(
-      `Native root tab ${testID} content must fit inside its padded 44pt+ target: ${JSON.stringify({ buttonFrame, iconFrame, labelFrame, topInset, iconToLabelGap, bottomInset })}`,
+      `Native root tab ${testID} content must fit inside its padded 52pt+ target: ${JSON.stringify({ buttonFrame, iconFrame, labelFrame, topInset, iconToLabelGap, bottomInset })}`,
     );
   }
 
@@ -119,4 +119,47 @@ function expectRootTabContentLayout(hierarchyXml, testID) {
   };
 }
 
-module.exports = { expectRootTabContentLayout };
+/** Ensures the root bar reclaims inset space without reaching the screen edge. */
+function expectRootTabScreenEdgeClearance(rootFrame, toolbarFrame) {
+  const clearance =
+    rootFrame.y + rootFrame.height - toolbarFrame.y - toolbarFrame.height;
+  if (clearance < 22 || clearance > 26) {
+    throw new Error(
+      `Root tab bar screen-edge clearance must stay between 22pt and 26pt: ${clearance}.`,
+    );
+  }
+  return clearance;
+}
+
+/** Keeps the final scroll control above the root bar's native hit area. */
+function expectActionAboveRootTabSurface(actionFrame, toolbarFrame) {
+  if (actionFrame.y + actionFrame.height > toolbarFrame.y) {
+    throw new Error('The final route action overlaps the root tab bar.');
+  }
+}
+
+/** Checks that a contextual route begins below the live inset and its own scroll viewport. */
+function expectActiveRouteSafeArea(
+  scrollFrame,
+  titleFrame,
+  rootFrame,
+  topInset,
+) {
+  if (
+    !scrollFrame ||
+    !titleFrame ||
+    !rootFrame ||
+    !Number.isFinite(topInset) ||
+    scrollFrame.y - rootFrame.y < topInset ||
+    titleFrame.y < scrollFrame.y
+  ) {
+    throw new Error('The active route must begin below its top safe area.');
+  }
+}
+
+module.exports = {
+  expectActiveRouteSafeArea,
+  expectActionAboveRootTabSurface,
+  expectRootTabContentLayout,
+  expectRootTabScreenEdgeClearance,
+};

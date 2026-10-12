@@ -5,6 +5,7 @@ module.exports = {
   // Package Jest configs reuse this one with another rootDir, so keep the app mock resolvable.
   setupFilesAfterEnv: [
     path.resolve(__dirname, 'test-support/navigationGlassViewMock.js'),
+    path.resolve(__dirname, 'test-support/navigationMotionMock.js'),
   ],
   transformIgnorePatterns: [
     'node_modules/(?!(?:((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens)/|\\.pnpm/(?:react-native@|@react-native(?:-community)?\\+|@react-navigation\\+|react-native-screens@)[^/]+/node_modules/))',
