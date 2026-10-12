@@ -79,7 +79,9 @@ export function taskResponseSchema<TResult>(
             // Generated last: cite the result already written, not every available source.
             description:
               'Only evidenceId values actually used in this result. If the result contains nested evidence ID arrays, return their exact unique union. Never add unused IDs.',
-            items: ids.length ? { type: 'string', enum: ids } : { type: 'string' },
+            // The native generator can expand an enum into every available ID.
+            // Prompt guidance selects IDs; citationReferences enforces the allowlist locally.
+            items: { type: 'string' },
             ...(ids.length ? {} : { maxItems: 0 }),
           },
         },
