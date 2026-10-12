@@ -30,6 +30,39 @@ export async function runDomainTestOperation(
     }
     case 'graph':
       return runGraphIntegrationProbe();
+    case 'local-query': {
+      const { runLocalQueryIntegrationProbe } =
+        require('./localRecordQueryProbe') as typeof import('./localRecordQueryProbe');
+      if (typeof parameters.queryIdentifier !== 'string')
+        throw new Error(
+          'Native local query tests require an isolated fixture identifier',
+        );
+      return {
+        summary: await runLocalQueryIntegrationProbe(
+          parameters.queryIdentifier,
+        ),
+        synthetic: true,
+      };
+    }
+    case 'apple-model': {
+      const { runAppleFoundationModelsProbe } =
+        require('./appleFoundationModelsProbe') as typeof import('./appleFoundationModelsProbe');
+      const { validateVisitQuestionText } =
+        require('./appleFoundationModelsProbeValidation') as typeof import('./appleFoundationModelsProbeValidation');
+      const result = await runAppleFoundationModelsProbe();
+      if (result.availability === 'available') {
+        // Keep the original available-branch assertions, including exact text and synthetic source preservation.
+        if (result.sourceIdPreserved !== 'passed')
+          throw new Error(
+            'Generated output did not preserve the synthetic source ID',
+          );
+        if (
+          validateVisitQuestionText(result.questionText) !== result.questionText
+        )
+          throw new Error('Generated question changed during validation');
+      }
+      return { ...result };
+    }
     case 'openai-provider': {
       const { runOpenAIProviderIntegrationProbe } =
         require('./openaiProviderProbe') as typeof import('./openaiProviderProbe');

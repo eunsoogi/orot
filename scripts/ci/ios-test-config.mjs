@@ -73,4 +73,5 @@ export const representativeSpeechTests = [
   'OrotIntegrationTests/SpeechCancellationTests/testProductionDeadlineCancellationPropagatesAndCancelsWorker',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/SpeechJourneyUITests/testTranscriptionReachesSavedRecordingAndSurvivesRelaunch',
+  'OrotUITests/RecordingExportUITests/testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart',
 ];

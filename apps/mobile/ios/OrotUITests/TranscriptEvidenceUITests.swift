@@ -55,6 +55,7 @@ final class TranscriptEvidenceUITests: XCTestCase {
         }
         let correction = "사용자가 확인한 전사 수정"
         input.typeText(correction)
+        UITestConditions.value(input, equals: correction)
         tap(app, "transcript-save-0")
         value(app, "transcript-evidence-correction-status", "saved")
         XCTAssertEqual(text(app, "transcript-text-0"), correction)
@@ -95,7 +96,7 @@ final class TranscriptEvidenceUITests: XCTestCase {
         let target = element(app, id)
         let scroll = element(app, "recording-controls-scroll")
         for _ in 0 ..< 12 {
-            if target.exists, target.isHittable {
+            if unobscured(app, target) {
                 return target
             }
             // Stay inside the production screen's bounded scroll viewport, above the keyboard.
@@ -103,8 +104,18 @@ final class TranscriptEvidenceUITests: XCTestCase {
             let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.35 : 0.15))
             start.press(forDuration: 0.05, thenDragTo: end)
         }
-        XCTAssertTrue(target.exists && target.isHittable, app.debugDescription)
+        XCTAssertTrue(unobscured(app, target), app.debugDescription)
         return target
+    }
+
+    @MainActor
+    private func unobscured(_ app: XCUIApplication, _ target: XCUIElement) -> Bool {
+        guard target.exists, target.isHittable else { return false }
+        let frame = target.frame
+        let keyboard = app.keyboards.firstMatch
+        let bottom = keyboard.exists ? min(app.frame.maxY, keyboard.frame.minY) : app.frame.maxY
+        // AX reported the covered save button hittable while the failure video showed it below the keyboard.
+        return !frame.isEmpty && frame.minY >= app.frame.minY && frame.maxY <= bottom
     }
 
     @MainActor

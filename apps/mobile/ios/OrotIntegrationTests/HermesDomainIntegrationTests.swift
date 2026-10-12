@@ -15,6 +15,13 @@ final class HermesDomainIntegrationTests: XCTestCase {
         XCTAssertEqual(result["duplicateNodes"] as? Int, 0)
     }
 
+    func testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures() async throws {
+        let result = try await operation("local-query", parameters: ["queryIdentifier": "test-query-\(UUID().uuidString)"])
+        XCTAssertEqual(result["synthetic"] as? Bool, true)
+        XCTAssertEqual(result["summary"] as? String,
+                       "healthQueries=5; healthRecords=6; bloodPressure=2; sleep=asleepDeep; dose=not_logged; medication=timeBasis:local_ingest; appointment=confirmed; transcript=source-linked; cipher=available; wrongKey=rejected; cleanup=true")
+    }
+
     func testEncryptedSourceEvidenceAndRagRelationships() async throws {
         let parameters = ["storageIdentifier": "test-storage-\(UUID().uuidString)"]
         let created = try await operation("storage-create", parameters: parameters)

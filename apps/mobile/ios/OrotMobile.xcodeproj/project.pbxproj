@@ -13,6 +13,7 @@
 		2146D45967B80DEB2A06F0CA /* PersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C38E3DB082E0B5803C7D6B5 /* PersistenceUITests.swift */; };
 		251D8DD5C2413086401EAB78 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
 		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
+		33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F894914E4F39E9162E577E /* RecordingExportUITests.swift */; };
 		403636589BB5F1697E88C9F7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
 		6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -62,6 +63,7 @@
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
 		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
+		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
@@ -91,6 +93,7 @@
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 		E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */; };
+		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
 		F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */; };
 		F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000012 /* LocalE5EmbeddingModule.m */; };
 		F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */; };
@@ -127,7 +130,9 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = OrotMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.release.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.release.xcconfig"; sourceTree = "<group>"; };
+		2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelIntegrationTests.swift; sourceTree = "<group>"; };
 		35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HermesDomainIntegrationTests.swift; sourceTree = "<group>"; };
+		38F894914E4F39E9162E577E /* RecordingExportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportUITests.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.debug.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		418ED459FC663BD5BF8F8725 /* synthetic-korean.json */ = {isa = PBXFileReference; includeInIndex = 1; path = "synthetic-korean.json"; sourceTree = "<group>"; };
 		4C38E3DB082E0B5803C7D6B5 /* PersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PersistenceUITests.swift; sourceTree = "<group>"; };
@@ -141,6 +146,7 @@
 		71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechIntegrationTests.swift; sourceTree = "<group>"; };
 		722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestOperationBroker.swift; path = OrotMobile/TestOperationBroker.swift; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OrotMobile/AppDelegate.swift; sourceTree = "<group>"; };
+		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
@@ -391,6 +397,8 @@
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */,
+				2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */,
+				81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */,
 			);
 			name = OrotIntegrationTests;
 			path = OrotIntegrationTests;
@@ -436,6 +444,7 @@
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
+				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
 			);
 			name = OrotUITests;
 			path = OrotUITests;
@@ -773,6 +782,7 @@
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,
+				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -788,6 +798,8 @@
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */,
+				AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */,
+				E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

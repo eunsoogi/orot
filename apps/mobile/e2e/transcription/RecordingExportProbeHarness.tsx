@@ -17,6 +17,8 @@ import {
 } from './transcriptEvidenceProbeSupport';
 import { installAudioExportProbeDiagnostics } from './recordingExportProbeDiagnostics';
 import { RecordingExportAuthorizationStatus } from './RecordingExportAuthorizationStatus';
+import { RecordingExportProbeControls } from './RecordingExportProbeControls';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
@@ -39,6 +41,7 @@ export function RecordingExportProbeHarness() {
   const [correctionStatus, setCorrectionStatus] =
     useState<CorrectionStatus>('idle');
   const [error, setError] = useState('');
+  const [cancellationStatus, setCancellationStatus] = useState('idle');
   const service: TranscriptEvidenceProbeService = useMemo(
     () =>
       createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
@@ -116,114 +119,114 @@ export function RecordingExportProbeHarness() {
   }
 
   async function armExportCancellation(): Promise<void> {
+    setCancellationStatus('arming');
     try {
       await armSyntheticExportCancellation();
+      setCancellationStatus('armed');
     } catch (failure) {
+      setCancellationStatus('failed');
       setError(failure instanceof Error ? failure.message : String(failure));
     }
   }
 
   return (
-    <View style={recordingSourceId ? styles.recordingScreen : undefined}>
-      <Button
-        disabled={
-          status === 'preparing' ||
-          status === 'cleaning' ||
-          status === 'cleaned' ||
-          recordingSourceId !== null
-        }
-        onPress={prepare}
-        testID="transcript-evidence-open"
-        title="Open transcript evidence check"
-      />
-      <Text testID="transcript-evidence-setup-status">{status}</Text>
-      {error ? (
-        <Text testID="transcript-evidence-setup-error">{error}</Text>
-      ) : null}
-      <Text testID="transcript-evidence-cleanup-available">
-        {recordingSourceId ? 'yes' : 'no'}
-      </Text>
-      {/* Simulator-only controls verify cleanup of temporary export files across a fresh app process. */}
-      <Button
-        onPress={prepareExportResidue}
-        testID="recording-export-prepare-residue"
-        title="Prepare interrupted export cleanup"
-      />
-      <Button
-        onPress={refreshExportResidue}
-        testID="recording-export-read-residue"
-        title="Read export temp files"
-      />
-      <Button
-        onPress={armExportCancellation}
-        testID="recording-export-arm-simulated-cancel"
-        title="Simulate export cancellation"
-      />
-      <Text testID="recording-export-residue-count">{exportResidueCount}</Text>
-      <Text testID="recording-export-source-status">{exportSourceStatus}</Text>
-      <RecordingExportAuthorizationStatus recordingId={recordingSourceId} />
-      {syntheticRecording ? (
-        // This is fixture metadata only; Simulator values are not device protection evidence.
-        <Text testID="transcript-evidence-source-security">
-          fixture-protection={syntheticRecording.fileProtection}{' '}
-          backup-excluded=
-          {String(syntheticRecording.excludedFromBackup)}
-        </Text>
-      ) : null}
-      <Text testID="recording-export-probe-diagnostic">
-        {audioExportDiagnostic}
-      </Text>
-      <Text testID="transcript-evidence-correction-status">
-        {correctionStatus}
-      </Text>
-      {playback ? (
-        <Text testID="transcript-evidence-playback-result">
-          {JSON.stringify(playback)}
-        </Text>
-      ) : null}
-      {recordingSourceId ? (
-        <Button
-          disabled={status === 'cleaning'}
-          onPress={cleanup}
-          testID="transcript-evidence-cleanup"
-          title="Clean up test recording"
-        />
-      ) : null}
-      {recordingSourceId &&
-      status === 'ready' &&
-      syntheticCompletedRecording ? (
-        // A completed synthetic recording drives the same controls branch as a saved user recording.
-        // No recorder is active in this probe, so the shared async stop contract resolves without work.
-        <RecordingControls
-          onBack={() => {}}
-          stateReady
-          status="completed"
-          durationMs={syntheticCompletedRecording.durationMs}
-          consentAcknowledged
-          onToggleConsent={() => {}}
-          busy={false}
-          onStart={() => {}}
-          onPause={() => {}}
-          onResume={() => {}}
-          onStop={() => Promise.resolve()}
-          lastRecording={syntheticCompletedRecording}
-          sourceSaved
-          onRetrySourceSave={() => {}}
-          error=""
-          syntheticProbeAvailable={false}
-          syntheticProbeReady={false}
-          onPrepareSyntheticProbe={() => {}}
-          onPrepareSyntheticStartFailure={() => {}}
-          onSendInterruption={() => {}}
-          probeError=""
-          transcriptService={service}
-        />
-      ) : null}
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <View style={recordingSourceId ? styles.recordingScreen : undefined}>
+          <Button
+            disabled={
+              status === 'preparing' ||
+              status === 'cleaning' ||
+              status === 'cleaned' ||
+              recordingSourceId !== null
+            }
+            onPress={prepare}
+            testID="transcript-evidence-open"
+            title="Open transcript evidence check"
+          />
+          <Text testID="transcript-evidence-setup-status">{status}</Text>
+          {error ? (
+            <Text testID="transcript-evidence-setup-error">{error}</Text>
+          ) : null}
+          <Text testID="transcript-evidence-cleanup-available">
+            {recordingSourceId ? 'yes' : 'no'}
+          </Text>
+          {/* Simulator-only controls verify cleanup of temporary export files across a fresh app process. */}
+          <RecordingExportProbeControls
+            onPrepareResidue={prepareExportResidue}
+            onReadResidue={refreshExportResidue}
+            onArmCancellation={armExportCancellation}
+            residueCount={exportResidueCount}
+            sourceStatus={exportSourceStatus}
+            cancellationStatus={cancellationStatus}
+            sourceId={recordingSourceId}
+          />
+          <RecordingExportAuthorizationStatus recordingId={recordingSourceId} />
+          {syntheticRecording ? (
+            // This is fixture metadata only; Simulator values are not device protection evidence.
+            <Text testID="transcript-evidence-source-security">
+              fixture-protection={syntheticRecording.fileProtection}{' '}
+              backup-excluded=
+              {String(syntheticRecording.excludedFromBackup)}
+            </Text>
+          ) : null}
+          <Text testID="recording-export-probe-diagnostic">
+            {audioExportDiagnostic}
+          </Text>
+          <Text testID="transcript-evidence-correction-status">
+            {correctionStatus}
+          </Text>
+          {playback ? (
+            <Text testID="transcript-evidence-playback-result">
+              {JSON.stringify(playback)}
+            </Text>
+          ) : null}
+          {recordingSourceId ? (
+            <Button
+              disabled={status === 'cleaning'}
+              onPress={cleanup}
+              testID="transcript-evidence-cleanup"
+              title="Clean up test recording"
+            />
+          ) : null}
+          {recordingSourceId &&
+          status === 'ready' &&
+          syntheticCompletedRecording ? (
+            // A completed synthetic recording drives the same controls branch as a saved user recording.
+            // No recorder is active in this probe, so the shared async stop contract resolves without work.
+            <RecordingControls
+              onBack={() => {}}
+              stateReady
+              status="completed"
+              durationMs={syntheticCompletedRecording.durationMs}
+              consentAcknowledged
+              onToggleConsent={() => {}}
+              busy={false}
+              onStart={() => {}}
+              onPause={() => {}}
+              onResume={() => {}}
+              onStop={() => Promise.resolve()}
+              lastRecording={syntheticCompletedRecording}
+              sourceSaved
+              onRetrySourceSave={() => {}}
+              error=""
+              syntheticProbeAvailable={false}
+              syntheticProbeReady={false}
+              onPrepareSyntheticProbe={() => {}}
+              onPrepareSyntheticStartFailure={() => {}}
+              onSendInterruption={() => {}}
+              probeError=""
+              transcriptService={service}
+            />
+          ) : null}
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  // Keep production recording controls in a bounded parent so Detox can reach export actions on short screens.
+  // Test controls respect system insets; the production recording controls retain their inner scroll region.
+  root: { flex: 1 },
   recordingScreen: { flex: 1, width: '100%' },
 });

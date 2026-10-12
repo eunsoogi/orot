@@ -6,14 +6,15 @@ import {
   openLocalStorage,
   verifyWrongKeyRejected,
 } from '../src/storage/secureDatabase';
-import {
-  createLocalQueryProbeFixtures,
-  localQueryWindow,
-} from './localRecordQueryProbeFixtures';
+import { localQueryWindow } from './localRecordQueryProbeFixtures';
+import { createScopedQueryProbeFixtures } from './scopedQueryProbeFixtures';
 
-async function runQueryProbe(): Promise<string> {
+/** The native host calls the same encrypted-query and cleanup assertions without a status view. */
+export async function runLocalQueryIntegrationProbe(
+  identifier?: string,
+): Promise<string> {
+  const fixture = createScopedQueryProbeFixtures(identifier);
   const repository = await openLocalStorage();
-  const fixture = createLocalQueryProbeFixtures();
   const types = [
     'blood_pressure',
     'sleep',
@@ -138,7 +139,7 @@ export function LocalRecordQueryProbe() {
     'probe=ready; storage=encrypted-local',
   );
   useEffect(() => {
-    runQueryProbe()
+    runLocalQueryIntegrationProbe()
       .then(setSummary)
       .catch(error => {
         setSummary('probe=failed; storage=encrypted-local');

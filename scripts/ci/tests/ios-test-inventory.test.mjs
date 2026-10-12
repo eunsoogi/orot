@@ -8,7 +8,7 @@ test('separate Speech runners cover every original case without duplication or s
   const native = iosTestInventory('speech', 'native');
   const ui = iosTestInventory('speech', 'ui');
   assert.equal(native.length, 6);
-  assert.equal(ui.length, 2);
+  assert.equal(ui.length, 3);
   assert.deepEqual([...native, ...ui].sort(), [...all].sort());
   assert.equal(new Set([...native, ...ui]).size, all.length);
   assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));

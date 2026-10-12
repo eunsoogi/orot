@@ -117,6 +117,11 @@ jobs:
         env:
           PROFILE: ${{ matrix.profile }}
         run: scripts/ci/run-command.sh ios-test-simulator artifacts/ios-tests/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-tests/simulator-owner.json
+      - name: Request the selected Xcode Simulator UI
+        if: matrix.profile == 'speech'
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: scripts/ci/run-command.sh ios-ui-preparation artifacts/ios-tests/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests
       - name: Execute without compilation or retry
         env:
           PROFILE: ${{ matrix.profile }}
@@ -151,6 +156,7 @@ jobs:
             artifacts/ios-tests/*.log
             artifacts/ios-tests/*.json
             artifacts/ios-tests/*.jsonl
+            artifacts/ios-tests/*.png
             artifacts/ios-tests/*.xcresult
             artifacts/ios-tests/attachments
             artifacts/ios-tests/product-artifact/manifest.json
