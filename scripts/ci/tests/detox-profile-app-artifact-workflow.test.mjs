@@ -148,7 +148,11 @@ test('gives Speech its separate artifact and a fresh consumer that samples resou
   );
   assert.match(
     profileWorkflow,
-    /steps\.prepare_derived_data_cache\.outputs\.derived_data_cache_app_reusable != 'true'/,
+    /steps\.prepare_derived_data_cache\.outputs\.detox_artifacts_reusable != 'true'/,
+  );
+  assert.match(
+    profileWorkflow,
+    /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/,
   );
 });
 

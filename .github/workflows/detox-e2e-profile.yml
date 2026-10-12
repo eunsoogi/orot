@@ -127,9 +127,9 @@ jobs:
           workflow_steps: ${{ toJSON(steps) }}
           runner_context: ${{ toJSON(runner) }}
           workflow_env: ${{ toJSON(env) }}
-      - name: Cache Detox framework outputs # Only app-cache misses use the standalone fallback.
+      - name: Cache Detox framework outputs # A profile app artifact omits these runtime outputs.
         id: detox_framework_cache
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
+        if: ${{ steps.prepare_derived_data_cache.outputs.detox_artifacts_reusable != 'true' }}
         timeout-minutes: 10
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -139,7 +139,7 @@ jobs:
           key: >-
             orot-detox-framework-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-xcode-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-lock-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Build Detox iOS framework cache
-        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' && steps.detox_framework_cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.prepare_derived_data_cache.outputs.detox_artifacts_reusable != 'true' && steps.detox_framework_cache.outputs.cache-hit != 'true' }}
         timeout-minutes: 20
         run: scripts/ci/run-command.sh detox-framework-cache artifacts/detox/framework-cache.log -- pnpm --filter @orot/mobile exec -- detox build-framework-cache
       - name: Prepare React Native artifact cache fingerprint
@@ -206,9 +206,9 @@ jobs:
         if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         timeout-minutes: 45
         run: scripts/ci/run-command.sh detox-build artifacts/detox/build.log -- bash scripts/ci/build-detox-apps.sh "${{ inputs.profile }}" --skip-pods
-      - name: Write Detox DerivedData cache manifest
+      - name: Write Detox DerivedData cache manifest # Artifact-only installs are not complete DerivedData caches.
         id: write_derived_data_cache
-        if: ${{ steps.prepare_derived_data_cache.outputs.derived_data_cache_app_reusable != 'true' }}
+        if: ${{ steps.prepare_derived_data_cache.outputs.app_reusable != 'true' }}
         timeout-minutes: 5
         env:
           DETOX_CACHE_RUNNER_OS: ${{ runner.os }}

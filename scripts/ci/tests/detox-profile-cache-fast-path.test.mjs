@@ -74,8 +74,12 @@ test('resolves validated fingerprints before optional native dependency preparat
 
 test('skips build-only setup on an exact validated cache and keeps tests unconditional', () => {
   const cacheMiss = /steps\.prepare_derived_data_cache\.outputs\.app_reusable != 'true'/;
+  const runtimeCacheMiss =
+    /steps\.prepare_derived_data_cache\.outputs\.detox_artifacts_reusable != 'true'/;
+  // A verified app artifact does not carry the separate Detox framework outputs.
+  assert.match(step('Cache Detox framework outputs'), runtimeCacheMiss);
+  assert.match(step('Build Detox iOS framework cache'), runtimeCacheMiss);
   for (const name of [
-    'Cache Detox framework outputs',
     'Cache React Native artifact archives',
     'Set up Ruby',
     'Cache Detox CocoaPods intermediates',
