@@ -80,7 +80,10 @@ test('routes both Release shards through one artifact and keeps their stable sta
   const producer = workflowJob(releaseWorkflow, 'produce_release_app');
   assert.match(producer, /detox-e2e-profile-app-producer\.yml/);
   assert.match(producer, /profile: release/);
-  assert.match(producer, /if: \$\{\{ inputs\.run_profile && !inputs\.path_selection_failed \}\}/);
+  assert.match(
+    producer,
+    /if: \$\{\{ inputs\.run_profile && !inputs\.path_selection_failed && !inputs\.full_validation_deferred \}\}/,
+  );
 
   for (const [jobId, statusJobId] of [
     ['run_detox_release_ui_shard', 'detox_release_ui_shard'],
@@ -88,7 +91,10 @@ test('routes both Release shards through one artifact and keeps their stable sta
   ]) {
     const consumer = workflowJob(releaseWorkflow, jobId);
     assert.match(consumer, /needs: \[produce_release_app\]/);
-    assert.match(consumer, /if: \$\{\{ always\(\) && inputs\.run_profile \}\}/);
+    assert.match(
+      consumer,
+      /if: \$\{\{ always\(\) && inputs\.run_profile && !inputs\.full_validation_deferred \}\}/,
+    );
     assert.match(
       consumer,
       /app_artifact: \$\{\{ toJSON\(needs\.produce_release_app\.outputs\) \}\}/,
@@ -121,10 +127,13 @@ test('gives Speech its separate artifact and a fresh consumer that samples resou
   assert.match(producer, /detox-e2e-profile-app-producer\.yml/);
   assert.match(
     producer,
-    /if: \$\{\{ !cancelled\(\) && inputs\.run_transcription && !inputs\.path_selection_failed \}\}/,
+    /if: \$\{\{ !cancelled\(\) && inputs\.run_transcription && !inputs\.path_selection_failed && !inputs\.full_validation_deferred \}\}/,
   );
   assert.match(consumer, /needs: \[detox_cache_fingerprint, produce_transcription_app\]/);
-  assert.match(consumer, /if: \$\{\{ always\(\) && inputs\.run_transcription \}\}/);
+  assert.match(
+    consumer,
+    /if: \$\{\{ always\(\) && inputs\.run_transcription && !inputs\.full_validation_deferred \}\}/,
+  );
   assert.match(
     consumer,
     /app_artifact: \$\{\{ toJSON\(needs\.produce_transcription_app\.outputs\) \}\}/,

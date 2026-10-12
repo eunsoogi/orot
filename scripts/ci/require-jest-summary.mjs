@@ -7,6 +7,7 @@ import {
   resolveSelectedReleaseShard,
   validateReleaseJestConfig,
 } from './release-jest-summary.mjs';
+import { summarizeFocusedJestRun, validateFullJestRun } from './focused-jest-summary.mjs';
 import { resolveFocusedDetoxScenario } from './focused-detox-scenario.mjs';
 
 const [logPath, suiteName, githubOutputPath] = process.argv.slice(2);
@@ -182,18 +183,12 @@ if (e2eSuites.includes(suiteName)) {
 let totalTests = 0;
 let totalSuites = 0;
 let passedTests = 0;
+let focusedSummary = '';
 for (const [index, testSummary] of testSummaries.entries()) {
   const suiteSummary = suiteSummaries[index];
   const testTotal = total(testSummary);
   const suiteTotal = total(suiteSummary);
   const passed = count(testSummary, 'passed');
-  const failed = count(testSummary, 'failed');
-  const pending = count(testSummary, 'pending');
-  const skipped = count(testSummary, 'skipped');
-  const todo = count(testSummary, 'todo');
-  const failedSuites = count(suiteSummary, 'failed');
-  const pendingSuites = count(suiteSummary, 'pending');
-  const skippedSuites = count(suiteSummary, 'skipped');
 
   if (testTotal < 1 || suiteTotal < 1) {
     throw new Error(`${suiteName}: Jest run ${index + 1} discovered zero tests or suites`);
@@ -204,32 +199,22 @@ for (const [index, testSummary] of testSummaries.entries()) {
       `e2e: ${expected.configuration} summary expected ${expected.suites} configured suites, received ${suiteTotal}`,
     );
   }
-  if (expected && testTotal !== expected.tests) {
+  if (expected && !focusedScenario && testTotal !== expected.tests) {
     throw new Error(
       `e2e: ${expected.configuration} summary expected ${expected.tests} test cases, received ${testTotal}`,
     );
   }
-  if (
-    passed !== testTotal ||
-    failed !== 0 ||
-    pending !== 0 ||
-    skipped !== 0 ||
-    todo !== 0 ||
-    failedSuites !== 0 ||
-    pendingSuites !== 0 ||
-    skippedSuites !== 0
-  ) {
-    throw new Error(
-      `${suiteName}: Jest run ${index + 1} includes a failure, skip, pending test, or todo`,
-    );
-  }
-  totalTests += testTotal;
+  if (focusedScenario) focusedSummary = summarizeFocusedJestRun(testSummary, suiteSummary);
+  else validateFullJestRun(testSummary, suiteSummary, suiteName, index + 1);
+  totalTests += focusedScenario ? passed : testTotal;
   totalSuites += suiteTotal;
   passedTests += passed;
 }
 
 console.log(
-  `${suiteName}: ${passedTests}/${totalTests} tests passed across ${totalSuites} suites in ${testSummaries.length} Jest runs; no skipped or pending tests`,
+  focusedScenario
+    ? `${suiteName}: ${focusedSummary}`
+    : `${suiteName}: ${passedTests}/${totalTests} tests passed across ${totalSuites} suites in ${testSummaries.length} Jest runs; no skipped or pending tests`,
 );
 
 if (githubOutputPath) {

@@ -182,3 +182,41 @@ test('rejects skipped, pending, and todo tests even when another test passed', (
     assert.match(result.stderr, /failure, skip, pending test, or todo/);
   }
 });
+
+test('focused Jest summaries allow only name-filtered skips around one passing scenario', () => {
+  const scenarioName =
+    'manual appointments > creates, edits, and cancels an appointment that survives process restarts';
+  const focusedEnv = {
+    OROT_DETOX_FOCUSED_SCENARIO_NAME: scenarioName,
+    OROT_DETOX_RELEASE_SHARD: 'release-e2e-data.test.js',
+  };
+  const focused = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 5 skipped, 1 passed, 6 total\n',
+    'e2e-release',
+    true,
+    focusedEnv,
+  );
+  assert.equal(focused.status, 0, focused.stderr);
+  assert.match(focused.stdout, /1 selected test passed; 5 nonmatching tests skipped/);
+  assert.equal(focused.githubOutput, 'e2e_profile=release\ne2e_test_cases=1\ne2e_test_suites=1\n');
+
+  for (const summary of [
+    'Test Suites: 1 passed, 1 total\nTests: 6 skipped, 6 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 2 passed, 4 skipped, 6 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 failed, 4 skipped, 6 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 pending, 4 skipped, 6 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 todo, 4 skipped, 6 total\n',
+    'Test Suites: 1 skipped, 1 total\nTests: 1 passed, 5 skipped, 6 total\n',
+  ]) {
+    const rejected = runGuard(summary, 'e2e-release', false, focusedEnv);
+    assert.notEqual(rejected.status, 0, `accepted focused summary: ${summary}`);
+  }
+
+  const unfiltered = runGuard(
+    'Test Suites: 1 passed, 1 total\nTests: 5 skipped, 1 passed, 6 total\n',
+    'e2e-release',
+    false,
+    { OROT_DETOX_RELEASE_SHARD: 'release-e2e-data.test.js' },
+  );
+  assert.notEqual(unfiltered.status, 0, 'full profile accepted skipped tests');
+});

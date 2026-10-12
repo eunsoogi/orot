@@ -102,7 +102,7 @@ test('validates every Release shard before publishing the profile total', () => 
 
 test('accepts one selected Release case inside the sharded profile summary guard', () => {
   const focused = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
+    'Test Suites: 1 passed, 1 total\nTests: 5 skipped, 1 passed, 6 total\n',
     'e2e-release',
     false,
     {
@@ -112,5 +112,5 @@ test('accepts one selected Release case inside the sharded profile summary guard
     },
   );
   assert.equal(focused.status, 0, focused.stderr);
-  assert.match(focused.stdout, /1\/1 tests passed across 1 suites in 1 Jest runs/);
+  assert.match(focused.stdout, /1 selected test passed; 5 nonmatching tests skipped/);
 });

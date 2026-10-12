@@ -92,7 +92,10 @@ test('computes common app fingerprints once and shares them with every profile',
     const job = workflowJob(profilesWorkflow, jobId);
     // Speech adds its artifact producer and runs on its failure so the required check can fail.
     assert.match(job, /needs: \[detox_cache_fingerprint(?:, produce_transcription_app)?\]/);
-    assert.match(job, /if: \$\{\{(?: !cancelled\(\)| always\(\) && inputs\.run_transcription)/);
+    assert.match(
+      job,
+      /if: \$\{\{(?: always\(\) && !cancelled\(\)| !cancelled\(\) && inputs\.run_openai && !inputs\.full_validation_deferred| always\(\) && inputs\.run_transcription && !inputs\.full_validation_deferred| !cancelled\(\) && inputs\.run_next_visit && !inputs\.full_validation_deferred) \}\}/,
+    );
     assert.match(
       job,
       /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
@@ -132,7 +135,7 @@ test('passes resolved fingerprints into cache validation and preserves profile b
 
   assert.match(
     profileWorkflow,
-    /fingerprints:\n\s+description: Shared source and build fingerprints from the profile workflow\.\n\s+required: true\n\s+type: string/,
+    /fingerprints: \{ description: Shared build fingerprint JSON\., required: true, type: string \}/,
   );
   assert.doesNotMatch(profileWorkflow, /detox-cache-fingerprint-cli\.mjs --derived-data-only/);
   assert.match(
