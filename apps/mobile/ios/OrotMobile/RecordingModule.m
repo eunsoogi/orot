@@ -18,6 +18,8 @@ RCT_EXTERN_METHOD(playRecordingRange : (NSString *)recordingID startMs : (NSNumb
                       startMs endMs : (NSNumber *)endMs syntheticFixture : (BOOL)
                           syntheticFixture resolver : (RCTPromiseResolveBlock)
                               resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stopRecordingPlayback : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(installSyntheticTranscriptionFixture : (NSString *)base64 resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeSyntheticTranscriptionFixture : (NSString *)recordingID resolver : (
@@ -46,6 +48,8 @@ RCT_EXTERN_METHOD(simulateInterruption : (NSString *)phase resolver : (RCTPromis
 #endif
 
 #if TARGET_OS_SIMULATOR
+RCT_EXTERN_METHOD(simulatePlaybackRouteLoss : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(verifySyntheticRecordingExportAuthorization : (NSString *)recordingID resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(prepareSyntheticExportResidue : (RCTPromiseResolveBlock)

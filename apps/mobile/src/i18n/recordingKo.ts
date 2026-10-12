@@ -111,8 +111,16 @@ export const recordingKo = {
   'recording.library.transcriptNotStarted': '전사 전',
   'recording.library.transcriptStatusUnavailable': '검토 상태 확인 불가',
   'recording.library.playAudio': '녹음 전체 듣기',
+  'recording.library.playAudioHint': '상세 화면을 열고 녹음 전체를 재생합니다.',
   'recording.library.playingAudio': '녹음 재생 중…',
+  'recording.library.stopAudio': '재생 중지',
   'recording.library.playbackError': '녹음을 재생하지 못했어요.',
+  'recording.library.playbackMissing':
+    '녹음 파일을 찾지 못했어요. 백업에서 복원한 뒤 다시 시도해 주세요.',
+  'recording.library.playbackInvalid':
+    '녹음 파일이 손상되었거나 지원하지 않는 형식이에요. 파일을 복구한 뒤 다시 시도해 주세요.',
+  'recording.library.playbackInterrupted':
+    '오디오 연결이 바뀌어 재생이 중단됐어요. 오디오 기기를 확인하고 다시 재생해 주세요.',
   'recording.library.confirmTitle': '녹음을 삭제할까요?',
   'recording.library.confirmMessage':
     '“{title}” 녹음과 전사 및 연결된 자료를 이 기기에서 삭제합니다.',

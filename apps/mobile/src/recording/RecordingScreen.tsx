@@ -8,6 +8,7 @@ import {
 import { recordingService } from './recordingService';
 import type {
   CompletedRecording,
+  RecordingPlaybackService,
   RecordingService,
   RecordingSnapshot,
 } from './recordingTypes';
@@ -21,6 +22,7 @@ import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions
 interface RecordingScreenProps {
   onBack: () => void;
   service?: RecordingService;
+  playbackService?: RecordingPlaybackService;
   /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
   transcriptService?: TranscriptEvidenceService;
   recordingLibraryService?: RecordingLibraryService;
@@ -36,6 +38,7 @@ const initialSnapshot: RecordingSnapshot = {
 export default function RecordingScreen({
   onBack,
   service = recordingService,
+  playbackService = service,
   transcriptService,
   recordingLibraryService = defaultRecordingLibraryService,
 }: RecordingScreenProps) {
@@ -213,6 +216,7 @@ export default function RecordingScreen({
       onSendInterruption={probeActions.sendInterruption}
       probeError={probeActions.error}
       transcriptService={transcriptService}
+      playbackService={playbackService}
       recordingLibraryService={recordingLibraryService}
       automaticTranscription={automaticTranscription.state}
       onRetryTranscription={retryTranscription}

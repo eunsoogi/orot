@@ -1,16 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import RecordingScreen from '../../src/recording/RecordingScreen';
 import {
   createTranscriptEvidenceProbeService,
   prepareSyntheticTranscriptRecording,
 } from './transcriptEvidenceProbeSupport';
+import {
+  playSyntheticTranscriptionRange,
+  removeSyntheticTranscriptionRecording,
+  simulateSyntheticPlaybackRouteLoss,
+} from '../../src/recording/nativeRecordingBridge';
+import { recordingService } from '../../src/recording/recordingService';
+import { recordingLibraryService } from '../../src/recording/recordingLibraryService';
 
 const ignorePlayback = () => {};
 const ignoreCorrectionStatus = () => {};
 
 /** Seeds one synthetic source, then renders the production screen without probe controls. */
 export function RecordingLibraryVisualProbe() {
+  const routeLossRequested = useRef(false);
   const [status, setStatus] = useState('preparing');
   const [recordingSourceId, setRecordingSourceId] = useState<string | null>(
     null,
@@ -45,10 +53,40 @@ export function RecordingLibraryVisualProbe() {
     Number.isFinite(requestedWidth) && requestedWidth > 0
       ? requestedWidth
       : '100%';
+  const playbackProbeMode =
+    settingsManager?.settings?.OROT_RECORDING_PLAYBACK_PROBE ??
+    settingsManager?.getConstants?.().settings?.OROT_RECORDING_PLAYBACK_PROBE;
+  const playbackProbeEnabled =
+    playbackProbeMode === 'seed' ||
+    playbackProbeMode === 'resume' ||
+    playbackProbeMode === 'missing' ||
+    playbackProbeMode === 'route';
+  const playbackService = useMemo(
+    () => ({
+      ...recordingService,
+      playRange: playSyntheticTranscriptionRange,
+    }),
+    [],
+  );
 
   useEffect(() => {
     let active = true;
-    prepareSyntheticTranscriptRecording().then(
+    const prepare = async () => {
+      if (playbackProbeMode === 'resume' || playbackProbeMode === 'missing') {
+        const source = (await recordingLibraryService.list()).find(
+          item => item.title === 'Synthetic transcription test recording',
+        );
+        if (!source) {
+          throw new Error('The saved synthetic recording was not restored.');
+        }
+        if (playbackProbeMode === 'missing') {
+          await removeSyntheticTranscriptionRecording(source.id);
+        }
+        return { id: source.id };
+      }
+      return prepareSyntheticTranscriptRecording();
+    };
+    prepare().then(
       recording => {
         if (active) {
           setRecordingSourceId(recording.id);
@@ -68,7 +106,24 @@ export function RecordingLibraryVisualProbe() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [playbackProbeMode]);
+
+  useEffect(() => {
+    if (playbackProbeMode !== 'route') return;
+    const unsubscribe = recordingService.subscribePlayback?.(state => {
+      if (state.status !== 'playing' || routeLossRequested.current) return;
+      routeLossRequested.current = true;
+      simulateSyntheticPlaybackRouteLoss().catch(failure => {
+        console.error('RECORDING_PLAYBACK_ROUTE_PROBE_FAILED', failure);
+      });
+    });
+    if (!unsubscribe) {
+      setSetupError('Native playback state events are unavailable.');
+      setStatus('failed');
+      return;
+    }
+    return unsubscribe;
+  }, [playbackProbeMode]);
 
   // The dedicated E2E simulator is uninstalled after capture to discard fixture data.
   if (status !== 'ready' || recordingSourceId === null) {
@@ -83,6 +138,7 @@ export function RecordingLibraryVisualProbe() {
       <RecordingScreen
         onBack={() => {}}
         transcriptService={transcriptService}
+        playbackService={playbackProbeEnabled ? playbackService : undefined}
       />
     </View>
   );
