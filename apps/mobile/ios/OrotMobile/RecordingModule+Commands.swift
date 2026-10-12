@@ -3,6 +3,46 @@ import Foundation
 import React
 
 public extension RecordingModule {
+    /// Registers audio-route changes and serializes player recovery with native playback operations.
+    func observePlaybackRouteChanges() {
+        observers.append(NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil,
+        ) { [weak self] notification in
+            guard
+                let rawValue = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                let reason = AVAudioSession.RouteChangeReason(rawValue: rawValue)
+            else { return }
+            self?.workQueue.async { [weak self] in self?.handlePlaybackRouteChange(reason) }
+        })
+    }
+
+    func handlePlaybackRouteChange(_ reason: AVAudioSession.RouteChangeReason) {
+        guard reason == .oldDeviceUnavailable, playbackPlayer != nil else { return }
+        stopPlayback(
+            code: "RECORDING_PLAYBACK_ROUTE_CHANGED",
+            message: "The audio route changed. Reconnect your audio device and try again.",
+        )
+    }
+
+    /// Publishes the native player clock so saved-recording controls do not guess from wall time.
+    func emitPlaybackState() {
+        let state: NSDictionary = if let player = playbackPlayer, let playbackRecordingID {
+            [
+                "status": "playing",
+                "recordingId": playbackRecordingID,
+                "positionMs": max(0, Int((player.currentTime * 1000).rounded())),
+                "durationMs": max(0, Int((player.duration * 1000).rounded())),
+            ] as NSDictionary
+        } else {
+            ["status": "idle", "recordingId": NSNull(), "positionMs": 0, "durationMs": 0] as NSDictionary
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.sendEvent(withName: "RecordingPlaybackStateChanged", body: state)
+        }
+    }
+
     @objc(getState:rejecter:)
     func getState(
         _ resolve: @escaping RCTPromiseResolveBlock,

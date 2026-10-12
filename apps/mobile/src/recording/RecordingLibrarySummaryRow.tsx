@@ -13,6 +13,7 @@ interface RecordingLibrarySummaryRowProps {
   readonly summary: RecordingLibrarySummary;
   readonly disabled: boolean;
   readonly onOpen: () => void;
+  readonly onPlay: () => void;
   readonly onDelete: () => void;
 }
 
@@ -57,11 +58,12 @@ function reviewTextStyle(summary: RecordingLibrarySummary) {
   return styles.reviewUnavailableText;
 }
 
-/** Keeps date, measured duration, and transcript review state in one accessible row. */
+/** Keeps metadata with the row while offering separate open, play, and delete actions. */
 export default function RecordingLibrarySummaryRow({
   summary,
   disabled,
   onOpen,
+  onPlay,
   onDelete,
 }: RecordingLibrarySummaryRowProps) {
   const { source } = summary;
@@ -76,25 +78,54 @@ export default function RecordingLibrarySummaryRow({
   return (
     <View style={styles.item} testID={`recording-library-item-${source.id}`}>
       {/* Keep the row's real metadata together; export and deletion remain secondary actions. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${title}, ${recordedAt}, ${duration}, ${review}`}
-        accessibilityHint={t('recording.library.openDetailsHint')}
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        onPress={onOpen}
-        style={styles.summaryAction}
-        testID={`recording-details-${source.id}`}
-      >
-        <View style={styles.summaryIcon}>
-          <AppSymbol name="waveform" size={24} color={appColors.primaryText} />
-        </View>
-        <View style={styles.summaryText}>
-          <Text style={styles.summaryTitle}>{title}</Text>
-          <Text style={styles.copy}>{recordedAt}</Text>
-        </View>
-        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
-      </Pressable>
+      <View style={styles.summaryActionRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${title}, ${recordedAt}, ${duration}, ${review}`}
+          accessibilityHint={t('recording.library.openDetailsHint')}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onOpen}
+          style={styles.summaryAction}
+          testID={`recording-details-${source.id}`}
+        >
+          <View style={styles.summaryIcon}>
+            <AppSymbol
+              name="waveform"
+              size={24}
+              color={appColors.primaryText}
+            />
+          </View>
+          <View style={styles.summaryText}>
+            <Text style={styles.summaryTitle}>{title}</Text>
+            <Text style={styles.copy}>{recordedAt}</Text>
+          </View>
+          <AppSymbol
+            name="chevron.right"
+            size={16}
+            color={appColors.secondary}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('recording.library.playAudio')}
+          accessibilityHint={t('recording.library.playAudioHint')}
+          accessibilityState={{
+            disabled:
+              disabled ||
+              summary.durationMs === null ||
+              summary.durationMs <= 0,
+          }}
+          disabled={
+            disabled || summary.durationMs === null || summary.durationMs <= 0
+          }
+          onPress={onPlay}
+          style={styles.listPlaybackButton}
+          testID={`recording-playback-list-button-${source.id}`}
+        >
+          <AppSymbol name="play.fill" size={16} color={appColors.primaryText} />
+        </Pressable>
+      </View>
       <View style={styles.summaryMetadata}>
         <Text style={styles.copy}>{duration}</Text>
         <View style={reviewStyle(summary)}>
@@ -102,13 +133,15 @@ export default function RecordingLibrarySummaryRow({
         </View>
       </View>
       <View style={styles.itemActions}>
-        <AppButton
-          disabled={disabled}
-          onPress={onDelete}
-          testID={`recording-delete-${source.id}`}
-          title={t('recording.library.delete')}
-          variant="secondary"
-        />
+        <View style={styles.actions}>
+          <AppButton
+            disabled={disabled}
+            onPress={onDelete}
+            testID={`recording-delete-${source.id}`}
+            title={t('recording.library.delete')}
+            variant="secondary"
+          />
+        </View>
       </View>
     </View>
   );
