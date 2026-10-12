@@ -122,7 +122,9 @@ run_profile() {
   local process_id
   local sample_index=0
   local sample_elapsed=0
-  local resource_sample_limit=4
+  # Cover the entire 45-minute test step: late model installation and recognition
+  # must remain observable, while the fixed cap bounds diagnostic volume.
+  local resource_sample_limit=180
   local status=0
 
   mkdir -p "$DETOX_ARTIFACTS_LOCATION/$artifact_name"

@@ -18,6 +18,7 @@ export function runRunner({
   nextVisitStatus = '0',
   ci = '',
   resourceLog = false,
+  sustainedSampling = false,
   logLevel = 'info',
   focusedScenarioName = '',
   releaseShard = '',
@@ -39,6 +40,16 @@ export function runRunner({
       '#!/usr/bin/env bash',
       'printf \'profile=%s %s\\n\' "${OROT_DETOX_TEST_PROFILE:-}" "$*" >> "$DETOX_CALL_LOG"',
       "printf 'Test Suites: 1 passed, 1 total\\nTests: 1 passed, 1 total\\n'",
+      ...(sustainedSampling
+        ? [
+            // End the fake workload at the observed sampling boundary, not a host-dependent wall time.
+            'for ((tick=0; tick<1000; tick++)); do',
+            '  samples=$(<"$OROT_DETOX_RESOURCE_LOG_PATH")',
+            '  [[ "$samples" == *"phase=running sample=5 "* ]] && break',
+            '  /bin/sleep 0.01',
+            'done',
+          ]
+        : []),
       'if [[ "$*" == *"ios.sim.release.transcription"* ]]; then exit "$TRANSCRIPTION_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.release"* ]]; then exit "$RELEASE_STATUS"; fi',
       'if [[ "$*" == *"ios.sim.debug.openai-provider"* ]]; then exit "$DEBUG_STATUS"; fi',
@@ -48,6 +59,12 @@ export function runRunner({
     { mode: 0o755 },
   );
   installDetoxHostSamplerStubs(directory);
+  if (sustainedSampling) {
+    // Advance the sampler's logical seconds without a minute-long wrapper test.
+    writeFileSync(join(directory, 'sleep'), '#!/usr/bin/env bash\n/bin/sleep 0.01\n', {
+      mode: 0o755,
+    });
+  }
 
   const args = profile === 'both' ? [] : [profile];
   const result = spawnSync('bash', [runner, ...args], {

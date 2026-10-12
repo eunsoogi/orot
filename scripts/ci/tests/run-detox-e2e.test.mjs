@@ -130,7 +130,7 @@ test('can record bounded process and memory samples when explicitly enabled', ()
   assert.match(resourceSamples, /Pages free:/);
   assert.match(resourceSamples, /Pageins:/);
   assert.match(resourceSamples, /Pageouts:/);
-  assert.match(runnerSource, /resource_sample_limit=4/);
+  assert.match(runnerSource, /resource_sample_limit=180/);
   assert.match(runnerSource, /sample_index < resource_sample_limit/);
   assert.match(resourceSamples, /DETOX_TOP_SAMPLE cpu_is_delta_between_two_samples/);
   assert.match(resourceSamples, /CPU usage:/);
@@ -138,6 +138,19 @@ test('can record bounded process and memory samples when explicitly enabled', ()
   for (const command of ['ps', 'top', 'vm_stat', 'sysctl', 'uname']) {
     assert.match(samplerCalls, new RegExp(`^${command}(?: |$)`, 'm'));
   }
+});
+
+test('keeps sampling after the first minute so late Speech work remains observable', () => {
+  const { result, resourceSamples } = runRunner({
+    profile: 'transcription',
+    resourceLog: true,
+    sustainedSampling: true,
+  });
+  assert.equal(result.status, 0, result.stderr + result.stdout);
+  const running = [...resourceSamples.matchAll(/phase=running sample=(\d+)/g)];
+  assert.ok(running.length > 4, resourceSamples);
+  assert.match(resourceSamples, /profile=transcription phase=running sample=5/);
+  assert.match(resourceSamples, /profile=transcription phase=after/);
 });
 
 test('still runs Debug after a Release failure and fails if either invocation fails', () => {

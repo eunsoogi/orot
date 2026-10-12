@@ -151,6 +151,6 @@ test('leaves heavy resource sampling off unless a manual run requests it and cap
     profileWorkflow,
     /OROT_DETOX_RESOURCE_SAMPLING: \$\{\{ inputs\.resource_sampling \}\}/,
   );
-  assert.match(runner, /resource_sample_limit=4/);
+  assert.match(runner, /resource_sample_limit=180/);
   assert.match(runner, /sample_index < resource_sample_limit/);
 });
