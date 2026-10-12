@@ -37,7 +37,9 @@ export default function RecordingLibraryDetail({
       <Text style={styles.detailMetadata} testID="recording-detail-date">
         {formatRecordedAt(source.recordedAt)}
       </Text>
+      {/* A new source gets fresh pending state so its autoplay cannot be blocked by the prior recording. */}
       <RecordingPlaybackControls
+        key={source.id}
         durationMs={summary.durationMs}
         playbackService={playbackService}
         recordingId={source.id}
