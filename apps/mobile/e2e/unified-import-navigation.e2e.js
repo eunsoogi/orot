@@ -40,6 +40,8 @@ describe('unified import through Records', () => {
       'unified-import-scroll',
       'unified-import-status',
     );
+    // Preserve the scrolled-end geometry, where root-to-detail bar offsets can cover the final status.
+    await device.takeScreenshot('unified-import-content-clearance');
     // Selection does not invoke providers; starting a real import is outside this visual route test.
     await tapNativeNavigationAction('navigation-back');
     await waitFor(element(by.id('records-title')))

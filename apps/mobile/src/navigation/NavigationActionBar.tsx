@@ -151,22 +151,28 @@ export function NavigationActionBar<Name extends string>({
   );
 
   const surface = (
-    <Surface
-      actions={nativeBindings.actions}
-      onAction={nativeBindings.onAction}
+    // Keep transforms outside the legacy native host: removing one from that
+    // host can leave its UIKit content offset from the measured React frame.
+    <View
+      pointerEvents="box-none"
       style={
         rootTabs && !isKeyboardVisible && !safeAreaHandledByParent
           ? styles.rootTabOverlap
           : undefined
       }
-      testID={
-        Surface === NavigationGlassSurface && Platform.OS === 'ios'
-          ? 'navigation-bar-native-surface'
-          : 'navigation-bar-fallback'
-      }
     >
-      {actions}
-    </Surface>
+      <Surface
+        actions={nativeBindings.actions}
+        onAction={nativeBindings.onAction}
+        testID={
+          Surface === NavigationGlassSurface && Platform.OS === 'ios'
+            ? 'navigation-bar-native-surface'
+            : 'navigation-bar-fallback'
+        }
+      >
+        {actions}
+      </Surface>
+    </View>
   );
 
   // Keep one home-indicator inset and a narrow side gutter around the native bar.
