@@ -1,6 +1,6 @@
 #import <TargetConditionals.h>
 
-#if defined(OROT_CALENDAR_DETOX) && TARGET_OS_SIMULATOR
+#if (defined(OROT_CALENDAR_DETOX) || defined(OROT_TESTS)) && TARGET_OS_SIMULATOR
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 

@@ -5,6 +5,7 @@ import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
+import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -21,14 +22,24 @@ const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
+const fixtureSelection = tests.some((test) => iosTestInventory('fixtures').includes(test));
+const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
 if (
   (profile === 'backup' &&
+    !hostPreparation &&
     (tests.length !== 1 || !iosTestInventory('backup').includes(tests[0]))) ||
   (backupSelection && profile !== 'backup')
 )
   throw new Error(
     'Backup cases require isolated host-orchestrated phases on the backup destination',
   );
+if (
+  (profile === 'fixtures' &&
+    !hostPreparation &&
+    (selected.length !== 1 || !iosTestInventory(profile).includes(tests[0]))) ||
+  (fixtureSelection && profile !== 'fixtures')
+)
+  throw new Error('Fresh fixture cases require their dedicated host-orchestrated destination');
 if (
   tests.some(
     (test) =>

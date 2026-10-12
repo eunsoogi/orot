@@ -86,6 +86,8 @@ jobs:
             suite: ui
           - profile: backup
             suite: all
+          - profile: fixtures
+            suite: all
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -119,11 +121,12 @@ jobs:
         env:
           PROFILE: ${{ matrix.profile }}
         run: scripts/ci/run-command.sh ios-test-simulator artifacts/ios-tests/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-tests/simulator-owner.json
-      - name: Request the selected Xcode Simulator UI
-        if: matrix.profile == 'speech'
+      - name: Verify app-host preparation before cold UI execution
+        if: matrix.suite == 'ui' || matrix.profile == 'backup' || matrix.profile == 'fixtures'
         env:
           PROFILE: ${{ matrix.profile }}
-        run: scripts/ci/run-command.sh ios-ui-preparation artifacts/ios-tests/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: scripts/ci/run-command.sh ios-ui-preparation artifacts/ios-tests/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests
       - name: Execute without compilation or retry
         env:
           PROFILE: ${{ matrix.profile }}
@@ -132,6 +135,8 @@ jobs:
         run: |
           if [[ "$PROFILE" == backup ]]; then
             scripts/ci/run-command.sh ios-backup-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/backup
+          elif [[ "$PROFILE" == fixtures ]]; then
+            scripts/ci/run-command.sh ios-fixture-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/fixtures
           else
             scripts/ci/run-command.sh ios-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/results.xcresult
             node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-tests/results.xcresult artifacts/ios-tests/results.json
@@ -166,6 +171,7 @@ jobs:
             artifacts/ios-tests/*.xcresult
             artifacts/ios-tests/attachments
             artifacts/ios-tests/backup
+            artifacts/ios-tests/fixtures
             artifacts/ios-tests/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

@@ -8,6 +8,7 @@ import { iosTestConfig } from './ios-test-config.mjs';
 import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
 import { executeBackupPhases, readBackupAttachment } from './backup-test-phases.mjs';
+import { resetIosTestFixtureContainer } from './ios-test-fixture-container.mjs';
 
 const snapshotTools = createRequire(import.meta.url)(
   '../../apps/mobile/e2e/backupContainerSnapshot.js',
@@ -19,7 +20,6 @@ const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
 const directory = resolve(output);
 const products = dirname(resolve(runFile));
 const app = join(products, 'Release-iphonesimulator/Orot.app');
-const bundle = 'com.orot.mobile';
 const spec = iosTestConfig('backup');
 const runData = JSON.parse(
   execFileSync('plutil', ['-convert', 'json', '-o', '-', runFile], { encoding: 'utf8' }),
@@ -29,10 +29,6 @@ if (!existsSync(app)) throw new Error('Backup Release application product is mis
 function verifyOwner() {
   if (verifyIosTestSimulator(owner, 'backup').state !== 'Booted')
     throw new Error('Backup execution requires its booted dedicated destination');
-}
-function simctl(...args) {
-  verifyOwner();
-  return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', timeout: 30000 }).trim();
 }
 verifyOwner();
 mkdirSync(directory, { recursive: true });
@@ -54,15 +50,7 @@ const results = await executeBackupPhases({
   reset({ preserveKeychain }) {
     // Independent cases reset the dedicated destination's Keychain, matching the original fresh-install contract.
     // Snapshot reinstall intentionally retains it: file transfer cannot substitute for the separate key restore boundary.
-    const apps = JSON.parse(
-      execFileSync('plutil', ['-convert', 'json', '-o', '-', '-'], {
-        input: simctl('listapps', owner.udid),
-        encoding: 'utf8',
-      }),
-    );
-    if (Object.hasOwn(apps, bundle)) simctl('uninstall', owner.udid, bundle);
-    if (!preserveKeychain) simctl('keychain', owner.udid, 'reset');
-    simctl('install', owner.udid, app);
+    resetIosTestFixtureContainer('backup', owner, app, { preserveKeychain });
   },
   run(identifier, recordingID) {
     verifyOwner();

@@ -13,7 +13,7 @@ export function iosTestConfig(profile) {
     preprocessorFlags: '$(inherited) OROT_TESTS=1',
     testability: 'YES',
   };
-  if (profile === 'core' || profile === 'backup') {
+  if (['core', 'backup', 'fixtures'].includes(profile)) {
     return {
       ...common,
       profile,
@@ -60,7 +60,9 @@ export function iosTestBuildSpec(profile) {
     productProfile: execution.configuration === 'Release' ? 'ios-test-release' : 'ios-test-debug',
     signing: { allowed: 'YES', identity: '-', team: 'OROTSIM000' },
     compatibleExecutions:
-      execution.configuration === 'Release' ? ['core', 'speech', 'backup'] : ['provider-data'],
+      execution.configuration === 'Release'
+        ? ['core', 'speech', 'backup', 'fixtures']
+        : ['provider-data'],
   };
 }
 

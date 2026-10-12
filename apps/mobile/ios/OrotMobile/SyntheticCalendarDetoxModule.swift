@@ -1,8 +1,8 @@
-#if OROT_CALENDAR_DETOX && targetEnvironment(simulator)
+#if (OROT_CALENDAR_DETOX || OROT_TESTS) && targetEnvironment(simulator)
     import Foundation
     import React
 
-    /// Synthetic-only EventKit substitute for the independent Calendar Detox entry.
+    /// Synthetic-only EventKit substitute for isolated calendar test entries.
     /// It has no EventKit dependency and cannot inspect or modify system calendars.
     @objc(SyntheticCalendarDetoxModule)
     public final class SyntheticCalendarDetoxModule: RCTEventEmitter {

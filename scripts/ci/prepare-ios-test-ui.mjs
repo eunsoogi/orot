@@ -2,8 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { hostConnectionTest } from './ios-test-preparation-contract.mjs';
+import { verifyIosTestResults } from './ios-test-results.mjs';
 
-const [profile, ownerFile, directory] = process.argv.slice(2);
+const [profile, runFile, ownerFile, directory] = process.argv.slice(2);
 if (!directory || process.env.GITHUB_ACTIONS !== 'true')
   throw new Error('Simulator UI preparation requires its hosted Actions execution');
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
@@ -20,11 +22,41 @@ const started = Date.now();
 const developer = process.env.DEVELOPER_DIR;
 if (!developer || !isAbsolute(developer))
   throw new Error('Simulator UI preparation requires the explicit selected Xcode directory');
-// Use the same selected Developer directory as product verification. A tool binary's location does not identify an application bundle.
-const simulator = resolve(developer, 'Applications/Simulator.app');
-if (!existsSync(simulator)) throw new Error('Selected Xcode Simulator application is unavailable');
-// Request the matching Xcode UI for this destination after its single boot. No device or service is restarted.
-execFileSync('open', [simulator, '--args', '-CurrentDeviceUDID', owner.udid], { timeout: 30000 });
+// Core's native-first executions reached XCUI while cold standalone UI runners failed before their cases.
+// Exercise the same real app-host/JS boundary as a separate preparation result, without another boot or retry.
+const nativeResult = resolve(evidence, 'host-preparation.xcresult');
+execFileSync(
+  'scripts/ci/run-command.sh',
+  [
+    'ios-host-preparation',
+    resolve(evidence, 'host-preparation.log'),
+    '--',
+    process.execPath,
+    'scripts/ci/run-ios-tests.mjs',
+    profile,
+    runFile,
+    ownerFile,
+    nativeResult,
+    hostConnectionTest,
+  ],
+  { stdio: 'inherit', env: { ...process.env, OROT_IOS_TEST_PHASE: 'prepare-ui' } },
+);
+const report = JSON.parse(
+  execFileSync(
+    'xcrun',
+    ['xcresulttool', 'get', 'test-results', 'tests', '--path', nativeResult, '--compact'],
+    { encoding: 'utf8' },
+  ),
+);
+const observations = verifyIosTestResults(report, [hostConnectionTest]);
+writeFileSync(
+  resolve(evidence, 'host-preparation.json'),
+  JSON.stringify({ profile, observations }, null, 2) + '\n',
+);
+// Xcode 27 ships Device Hub. Its installed bundle is diagnostic information; no unsupported device-selection argument is sent.
+const guiApplication = existsSync(resolve(developer, '../Applications/DeviceHub.app'))
+  ? 'DeviceHub'
+  : 'unavailable';
 let screenshot = 'unavailable';
 try {
   execFileSync(
@@ -51,7 +83,9 @@ writeFileSync(
     {
       profile,
       udid: owner.udid,
-      simulatorAppOpenRequested: true,
+      hostConnectionVerified: true,
+      guiApplication,
+      targetedGuiLaunch: 'unsupported',
       selectedXcodeDeveloperDirectory: developer,
       screenshot,
       elapsedMs: Date.now() - started,

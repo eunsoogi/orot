@@ -34,6 +34,11 @@ export const backupTests = [
   'OrotUITests/BackupPersistenceUITests/testSeedAppContainerSnapshot',
   'OrotUITests/BackupPersistenceUITests/testRecoverAppContainerSnapshot',
 ];
+export const fixtureTests = [
+  'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
+  'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
+  'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
+];
 
 /** Execution and result verification consume the same exact list, so unselected tests cannot silently disappear. */
 export function iosTestInventory(profile, suite = 'all') {
@@ -47,7 +52,9 @@ export function iosTestInventory(profile, suite = 'all') {
         ? coreTests
         : profile === 'backup'
           ? backupTests
-          : providerTests),
+          : profile === 'fixtures'
+            ? fixtureTests
+            : providerTests),
   ];
   // Cold Speech and XCUI framework initialization run on distinct hosted machines.
   // Both subsets remain mandatory and their union is the original complete inventory.
