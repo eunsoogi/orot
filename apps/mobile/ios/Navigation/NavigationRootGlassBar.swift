@@ -60,13 +60,23 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         for (button, action) in zip(buttons, actions) {
             button.isEnabled = !action.disabled
             button.isSelected = action.selected
+            button.accessibilityLabel = action.accessibilityLabel
             button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
             let color = action.selected ? NavigationGlassPalette.selectedRootTabForeground : UIColor.label
             button.tintColor = color
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {
                 for child in content.arrangedSubviews {
-                    (child as? UIImageView)?.tintColor = color
-                    (child as? UILabel)?.textColor = color
+                    if let icon = child as? UIImageView, let symbolName = action.systemImageName {
+                        // Filled and outline symbols change with selection even though button identity stays stable.
+                        icon.image = UIImage(systemName: symbolName, withConfiguration: UIImage.SymbolConfiguration(
+                            pointSize: 22, weight: .medium,
+                        ))
+                        icon.tintColor = color
+                    }
+                    if let label = child as? UILabel {
+                        label.text = action.label
+                        label.textColor = color
+                    }
                 }
             }
         }
