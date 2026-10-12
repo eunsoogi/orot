@@ -46,9 +46,10 @@ env:
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
   EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: ${{ inputs.profile == 'transcription' && 'iOS 26.2' || 'iOS 27.0' }}
   EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
-  EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
-  EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
-  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-build23C54-device-iphone17pro' || '' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone SE (3rd generation)' || 'iPhone 18 Pro' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-build23C54-device-iphonese3' || '' }}
+  OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
 
 jobs:
   detox_profile:
@@ -90,7 +91,7 @@ jobs:
       - name: Verify runner toolchain # Validate before Simulator boot.
         id: verify_toolchain
         timeout-minutes: 20
-        run: bash scripts/ci/prepare-detox-runtime.sh "${{ inputs.profile }}" && scripts/ci/verify-toolchain.sh
+        run: node scripts/ci/detox-preparation-resources.mjs start "${{ inputs.profile }}" artifacts/detox && bash scripts/ci/prepare-detox-runtime.sh "${{ inputs.profile }}" && scripts/ci/verify-toolchain.sh
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"
@@ -225,13 +226,12 @@ jobs:
           key: ${{ steps.profile_derived_data_cache.outputs.cache-hit != 'true' && steps.write_derived_data_cache.outcome == 'success' && steps.profile_derived_data_cache.outputs.cache-primary-key || '' }}
       - name: Wait for dedicated Detox Simulator
         timeout-minutes: 20
-        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/wait-detox-simulator.sh "${{ steps.prepare_detox_simulator.outputs.udid }}" artifacts/detox/simulator-baseline.json
+        run: scripts/ci/run-command.sh detox-simulator-boot artifacts/detox/simulator-boot.log -- bash scripts/ci/ready-detox-simulator.sh "${{ inputs.profile }}" "${{ steps.prepare_detox_simulator.outputs.udid }}" artifacts/detox/simulator.udid artifacts/detox/simulator-baseline.json
 
       - name: Run Detox iOS Simulator tests
         id: run_detox_tests
         timeout-minutes: 45
         env:
-          OROT_DETOX_RESOURCE_SAMPLING: ${{ inputs.resource_sampling }}
           OROT_DETOX_RELEASE_FRESH_SIMULATOR: ${{ inputs.profile == 'release' }}
           OROT_DETOX_RELEASE_SHARD: ${{ inputs.release_shard }}
           OROT_DETOX_FOCUSED_SCENARIO_NAME: ${{ inputs.scenario_name }}

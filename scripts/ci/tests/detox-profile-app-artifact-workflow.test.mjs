@@ -169,9 +169,12 @@ test('keeps SDK 27 and the pinned Speech runtime/device contract on the Xcode 27
   assert.match(profileWorkflow, /DEVELOPER_DIR: \/Applications\/Xcode\.app\/Contents\/Developer/);
   assert.match(profileWorkflow, /EXPECTED_XCODE_VERSION: '27\.0'/);
   assert.match(profileWorkflow, /EXPECTED_IOS_SIMULATOR_SDK: '27\.0'/);
-  assert.match(profileWorkflow, /-runtime-ios26\.2-build23C54-device-iphone17pro/);
+  assert.match(profileWorkflow, /-runtime-ios26\.2-build23C54-device-iphonese3/);
   assert.match(profileWorkflow, /EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:.*iOS-26-2/);
-  assert.match(profileWorkflow, /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:.*iPhone-17-Pro/);
+  assert.match(
+    profileWorkflow,
+    /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:.*iPhone-SE-3rd-generation/,
+  );
   assert.match(profileWorkflow, /runs-on: xcode-27/);
   assert.match(
     profileWorkflow,

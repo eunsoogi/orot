@@ -11,6 +11,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Stop preparation resource sampler
+      if: ${{ always() }}
+      shell: bash
+      run: node scripts/ci/detox-preparation-resources.mjs stop "${{ inputs.profile }}" artifacts/detox
     # Test failures still require simulator teardown and diagnostic upload.
     - name: Collect simulator logs
       if: ${{ always() }}

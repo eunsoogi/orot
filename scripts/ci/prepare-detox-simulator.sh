@@ -104,7 +104,9 @@ fi
 
 printf 'Created %s with runtime %s (%s), device type %s, and UDID %s.\n' \
   "$simulator_name" "$runtime_name" "$runtime_id" "$device_type_id" "$simulator_udid" >>"$log_path"
-if ! run_simctl boot "$simulator_udid" >>"$log_path" 2>&1; then
+# Speech postpones its only boot until artifact and framework preparation finish,
+# avoiding overlap between guest first-boot work and host preparation on the 7 GB runner.
+if [[ "$profile" != transcription ]] && ! run_simctl boot "$simulator_udid" >>"$log_path" 2>&1; then
   printf 'Simulator boot request failed for %s.\n' "$simulator_udid" >>"$log_path"
   exit 1
 fi

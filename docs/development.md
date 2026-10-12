@@ -76,7 +76,13 @@ Detox는 `.detoxrc.js`에 지정된 iOS Simulator에서 앱을 실행하고 시�
 
 GitHub Actions의 Release UI/storage 및 stateful-data shard는 Release 앱 producer가 준비한 동일한 artifact를 공유합니다. 각 shard는 workflow run과 attempt, 소스 커밋, 프로필별 빌드 설정, Xcode/SDK, 앱 bundle 무결성을 확인한 뒤 앱을 사용합니다. Artifact 확인에 실패하면 해당 shard가 실패하며 앱 빌드 단계는 실행되지 않습니다. 두 shard는 Simulator와 테스트 데이터를 계속 분리해서 사용합니다.
 
-Speech transcription은 별도의 Release 앱 producer와 test consumer를 사용합니다. Consumer는 새 job에서 transcription artifact의 프로필과 무결성을 확인한 뒤 앱을 실행하며, Release artifact를 사용하지 않거나 앱을 다시 빌드하지 않습니다. 두 프로필의 native 설정, entitlements, entry point와 DerivedData 경로는 각각 유지됩니다. Speech 실행의 프로세스 및 메모리 샘플을 수집하려면 workflow의 `resource_sampling` 입력을 활성화합니다.
+Speech transcription은 별도의 Release 앱 producer와 test consumer를 사용합니다. Consumer는 새 job에서 transcription artifact의 프로필과 무결성을 확인한 뒤 앱을 실행하며, Release artifact를 사용하지 않고 앱을 다시 빌드하지 않습니다. 두 프로필의 native 설정, entitlements, entry point와 DerivedData 경로는 각각 유지됩니다. Speech 실행의 프로세스 및 메모리 샘플을 수집하려면 workflow의 `resource_sampling` 입력을 활성화합니다.
+
+CI는 기존 headless 모드로 전용 Simulator 한 대를 사용합니다. Speech는 iPhone SE 3세대 기기를 생성해 UDID를 기록하고, 앱 artifact와 framework 준비가 끝난 뒤 한 번만 부팅합니다. 현재 Speech의 iOS 26.2 runtime(build 23C54)과 SDK 27을 유지하며, 해당 runner에서 기기 유형과 runtime의 조합이 사용 가능하지 않으면 실패합니다. 실행 ID, 기록된 UDID, runtime과 기기 유형이 일치하지 않아도 부팅하지 않고 실패합니다. 부팅 후 baseline inventory를 기록하며, 앱 artifact manifest에도 runtime·기기 유형·캐시 식별자를 포함해 producer와 consumer의 조건을 비교합니다. 더 작은 기기가 메모리를 줄인다는 보장은 없습니다.
+
+`resource_sampling`을 활성화한 Speech 실행에서는 toolchain 준비부터 종료까지 호스트 프로세스 RSS, `vm_stat`와 swap을 별도 로그로 수집합니다. 테스트 구간의 기존 리소스 샘플도 유지합니다. RSS에는 공유 메모리와 다른 호스트 프로세스가 포함되므로 Simulator의 private footprint나 연속 peak로 해석하지 않습니다. 부팅 로그에는 부팅 전후 메모리 상태가 남습니다. 로그와 실제 테스트 결과를 함께 비교하며, 시스템 서비스, 권한, 한국어 모델 설치와 테스트 제한 시간은 유지합니다. Release의 대표 화면 크기와 부팅 순서도 유지합니다.
+
+경량 실행 후보인 [simless](https://github.com/abacusai/simless)는 SwiftUI 앱을 Mac의 Designed for iPad 환경에서 실행하는 도구입니다. 현재 React Native workspace의 Detox 실행을 대체하지 못하며, 도구 자체도 키보드, 시스템 권한 UI와 share sheet를 검증하지 않는다고 명시합니다. 따라서 해당 검증이 필요한 이 프로젝트의 E2E에서는 Apple Simulator를 사용합니다. [Apple의 Simulator 소개](https://developer.apple.com/videos/play/wwdc2019/418/)와 현재 runner의 `simctl help boot`, `simctl help shutdown`에 있는 전용 기기 부팅·종료 명령으로 준비 순서를 조정합니다. 더 작은 기기 모델의 효과는 실제 측정 없이 가정하지 않습니다.
 
 ## 초안 PR과 집중 E2E 검증
 

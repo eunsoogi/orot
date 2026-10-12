@@ -79,4 +79,7 @@ runs:
         DETOX_APP_PROFILE: ${{ fromJSON(inputs.workflow_inputs).profile }}
         EXPECTED_ARCHIVE_SHA256: ${{ fromJSON(fromJSON(inputs.workflow_inputs).app_artifact).archive_sha256 }}
         EXPECTED_MANIFEST_SHA256: ${{ fromJSON(fromJSON(inputs.workflow_inputs).app_artifact).manifest_sha256 }}
+        EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ fromJSON(inputs.workflow_env).EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER }}
+        EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ fromJSON(inputs.workflow_env).EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID }}
+        DETOX_CACHE_RUNTIME_SUFFIX: ${{ fromJSON(inputs.workflow_env).DETOX_CACHE_RUNTIME_SUFFIX }}
       run: node scripts/ci/detox-profile-app-artifact.mjs verify "$DETOX_APP_PROFILE" "artifacts/detox/$DETOX_APP_PROFILE-app" "$EXPECTED_ARCHIVE_SHA256" "$EXPECTED_MANIFEST_SHA256"

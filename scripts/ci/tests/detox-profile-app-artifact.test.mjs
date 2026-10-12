@@ -102,6 +102,30 @@ test('rejects artifacts when run, source, or build-input fingerprints change', a
   }
 });
 
+test('rejects a Speech artifact from a different runtime, device, or cache contract', async () => {
+  const fixture = prepareFixture({ profile: 'transcription' });
+  try {
+    const artifact = await produce(fixture);
+    assert.equal(artifact.manifest.schemaVersion, 3);
+    assert.equal(
+      artifact.manifest.buildContext.simulatorTestTarget.deviceType,
+      'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation',
+    );
+    for (const name of [
+      'EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER',
+      'EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID',
+      'DETOX_CACHE_RUNTIME_SUFFIX',
+    ]) {
+      await assert.rejects(
+        consume(fixture, artifact, { ...fixture.environment, [name]: 'different' }),
+        /provenance does not match/,
+      );
+    }
+  } finally {
+    clean(fixture);
+  }
+});
+
 test('produces and reuses a distinct Speech app with its profile-specific native settings', async () => {
   const fixture = prepareFixture({ profile: 'transcription' });
   try {

@@ -73,7 +73,7 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
   const prepareStep = workflowStep('Prepare dedicated Detox Simulator');
   const teardownStep = cleanupStep('Delete dedicated Detox Simulator');
 
-  // Finish dependency materialization before boot, then overlap boot with native and cache preparation.
+  // Other profiles overlap boot with cache preparation; Speech publishes identity here and boots at readiness.
   assert.ok(
     nodeSetup >= 0 &&
       nodeSetup < toolchain &&
@@ -104,6 +104,8 @@ test('keeps profile build, Simulator lifecycle, E2E, failure diagnostics, cleanu
     /fingerprints: \$\{\{ steps\.prepare_detox_simulator\.outputs\.fingerprints \}\}/,
   );
   assert.match(bootStep, /simulator-baseline\.json/);
+  assert.match(bootStep, /ready-detox-simulator\.sh "\$\{\{ inputs\.profile \}\}"/);
+  assert.match(bootStep, /artifacts\/detox\/simulator\.udid/);
   assert.equal(profileWorkflow.includes('- name: Prepare Release worker Simulators'), false);
   assert.match(
     diagnosticsStep,

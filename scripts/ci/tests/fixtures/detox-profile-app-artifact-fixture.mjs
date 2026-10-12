@@ -135,6 +135,16 @@ export function prepareFixture({ buildApp = true, profile = 'release' } = {}) {
     EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: 'b'.repeat(64),
     EXPECTED_XCODE_VERSION: '27.0',
     EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:
+      profile === 'transcription'
+        ? 'com.apple.CoreSimulator.SimRuntime.iOS-26-2'
+        : 'com.apple.CoreSimulator.SimRuntime.iOS-27-0',
+    EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:
+      profile === 'transcription'
+        ? 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation'
+        : 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro',
+    DETOX_CACHE_RUNTIME_SUFFIX:
+      profile === 'transcription' ? '-runtime-ios26.2-build23C54-device-iphonese3' : '',
     XCODEBUILD_FINGERPRINT: sha256(fixtureXcode),
     DETOX_CACHE_RUNNER_OS: 'macOS',
     DETOX_CACHE_RUNNER_ARCH: architecture,

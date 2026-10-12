@@ -8,7 +8,7 @@ import { getProfile } from './ios-derived-data-cache-paths.mjs';
 
 export const MANIFEST_NAME = 'manifest.json';
 export const ARCHIVE_NAME = 'profile-app.tar';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const profileContracts = {
   release: {
@@ -210,6 +210,13 @@ export function collectBuildContext(repositoryRoot, environment, profile) {
       fingerprint: xcodeFingerprint,
     },
     simulatorSdk: actualSdk,
+    // The generic binary can support multiple devices, but run artifacts stay bound
+    // to the producer/consumer runtime and device contract used for this experiment.
+    simulatorTestTarget: {
+      runtime: requiredValue(environment, 'EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER'),
+      deviceType: requiredValue(environment, 'EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID'),
+      cacheRuntimeSuffix: environment.DETOX_CACHE_RUNTIME_SUFFIX ?? '',
+    },
     build: loadProfileBuildSettings(repositoryRoot, profile),
   };
 }

@@ -76,14 +76,14 @@ test('builds with SDK 27 while isolating the measured transcription runtime', ()
   );
   assert.match(
     profileWorkflow,
-    /EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: \$\{\{ inputs\.profile == 'transcription' && 'iPhone 17 Pro' \|\| 'iPhone 18 Pro' \}\}/,
+    /EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: \$\{\{ inputs\.profile == 'transcription' && 'iPhone SE \(3rd generation\)' \|\| 'iPhone 18 Pro' \}\}/,
   );
   assert.match(
     profileWorkflow,
-    /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: \$\{\{ inputs\.profile == 'transcription' && 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-17-Pro' \|\| 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-18-Pro' \}\}/,
+    /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: \$\{\{ inputs\.profile == 'transcription' && 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-SE-3rd-generation' \|\| 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-18-Pro' \}\}/,
   );
   assert.match(profileWorkflow, /DETOX_CACHE_RUNTIME_SUFFIX/);
-  assert.match(profileWorkflow, /-runtime-ios26\.2-build23C54-device-iphone17pro/);
+  assert.match(profileWorkflow, /-runtime-ios26\.2-build23C54-device-iphonese3/);
   assert.match(podsCache, /DETOX_CACHE_RUNTIME_SUFFIX/);
   assert.match(
     appCache,
