@@ -5,6 +5,7 @@ import { NavigationMotionContext } from '../NavigationMotionContext';
 
 type AnimationResult = { readonly finished: boolean };
 type PendingAnimation = {
+  readonly value: Animated.Value;
   readonly toValue: number;
   readonly duration: number | undefined;
   readonly complete: (result: AnimationResult) => void;
@@ -15,11 +16,12 @@ const pendingAnimations: PendingAnimation[] = [];
 
 beforeEach(() => {
   pendingAnimations.length = 0;
-  jest.spyOn(Animated, 'timing').mockImplementation((_, config) => {
+  jest.spyOn(Animated, 'timing').mockImplementation((value, config) => {
     const stop = jest.fn();
     return {
       start: (callback?: (result: AnimationResult) => void) => {
         pendingAnimations.push({
+          value: value as Animated.Value,
           toValue: config.toValue as number,
           duration: config.duration,
           complete: callback ?? (() => undefined),
@@ -90,4 +92,40 @@ test('switches immediately without animation when Reduce Motion is enabled', asy
   expect(screen.queryByText('Home')).toBeNull();
   expect(screen.getByText('Records')).toBeVisible();
   expect(Animated.timing).not.toHaveBeenCalled();
+});
+
+test('restores full opacity when rapid navigation returns to the still-displayed tab', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  const fadeOut = pendingAnimations[0]!;
+  let opacity = 1;
+  const listener = fadeOut.value.addListener(state => {
+    opacity = state.value;
+  });
+  // Represent a real intermediate frame, rather than treating cancellation as if nothing moved.
+  await act(async () => {
+    fadeOut.value.setValue(0.4);
+  });
+  await view.rerender(transition('home', 'Home'));
+  expect(opacity).toBe(1);
+  expect(fadeOut.stop).toHaveBeenCalled();
+  await act(async () => {
+    fadeOut.complete({ finished: true });
+  });
+  expect(screen.getByText('Home')).toBeVisible();
+  expect(screen.queryByText('Records')).toBeNull();
+  fadeOut.value.removeListener(listener);
+});
+
+test('settles the latest content if Reduce Motion changes during a fade', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  await view.rerender(transition('schedule', 'Schedule', true));
+  await act(async () => {
+    pendingAnimations[0]!.complete({ finished: true });
+  });
+  expect(screen.getByText('Schedule')).toBeVisible();
+  expect(screen.queryByText('Home')).toBeNull();
+  expect(screen.queryByText('Records')).toBeNull();
+  expect(pendingAnimations).toHaveLength(1);
 });

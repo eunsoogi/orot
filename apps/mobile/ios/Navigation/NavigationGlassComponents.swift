@@ -50,7 +50,7 @@ enum NavigationToolbarTransition {
         UIView.transition(
             with: view,
             duration: 0.14,
-            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent],
+            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
             animations: changes,
         )
     }
@@ -108,7 +108,7 @@ enum NavigationRootTabContent {
     }
 }
 
-/// Bounds the chevron independently from its 44pt glass target so UIKit cannot enlarge it.
+/// Bounds the chevron independently from its 48pt glass target so UIKit cannot enlarge it.
 enum NavigationBackContent {
     static func attach(to button: UIButton, testID: String) {
         let icon = UIImageView(image: UIImage(

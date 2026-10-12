@@ -64,21 +64,34 @@ async function openRootTab(tabId, screenID) {
     .withTimeout(30000);
 }
 
+/** Requires an actual visible, hittable UIKit button inside the active native surface. */
 async function expectNativeNavigationAction(testID) {
   const action = element(by.id(testID));
-  const isRootTab = testID.startsWith('navigation-tab-');
-  const toolbarMatches = element(
-    by.id(
-      isRootTab
-        ? 'navigation-bar-native-surface'
-        : 'navigation-native-toolbar',
-    ),
-  );
+  const toolbarMatches = element(by.id('navigation-bar-native-surface'));
   const attributes = await action.getAttributes();
   const toolbarAttributes = await toolbarMatches.getAttributes();
   const hierarchyXml = await device.generateViewHierarchyXml(true);
-  const actionCandidates = attributes.elements ?? [attributes];
-  const toolbarCandidates = toolbarAttributes.elements ?? [toolbarAttributes];
+  const actions = attributes.elements ?? [attributes];
+  const surfaces = toolbarAttributes.elements ?? [toolbarAttributes];
+  const contains = (outer, inner) =>
+    inner &&
+    outer &&
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width + 1 &&
+    inner.y + inner.height <= outer.y + outer.height + 1;
+  const actionIndex = actions.findIndex(
+    item =>
+      item.visible &&
+      item.hittable &&
+      item.frame?.width >= 44 &&
+      item.frame?.height >= 44 &&
+      surfaces.some(surface => contains(surface.frame, item.frame)),
+  );
+  const frame = actions[actionIndex]?.frame;
+  const surfaceIndex = surfaces.findIndex(surface =>
+    contains(surface.frame, frame),
+  );
   const actionNode = hierarchyXml
     .split('\n')
     .find(
@@ -86,98 +99,34 @@ async function expectNativeNavigationAction(testID) {
         line.includes(`id="${testID}"`) &&
         line.includes('visibility="visible"'),
     );
-  const contains = (outer, inner) =>
-    inner &&
-    inner.x >= outer.x &&
-    inner.y >= outer.y &&
-    inner.x + inner.width <= outer.x + outer.width + 1 &&
-    inner.y + inner.height <= outer.y + outer.height + 1;
-  // Root controls sit above the toolbar in the glass container; contextual actions stay inside the visible toolbar.
-  const activeToolbar = toolbarCandidates
-    .map((candidate, index) => ({ candidate, index }))
-    .find(
-      ({ candidate }) =>
-        (isRootTab || (candidate.visible && candidate.hittable)) &&
-        candidate.frame &&
-        actionCandidates.some(item => contains(candidate.frame, item.frame)),
-    );
-  const toolbarFrame = activeToolbar?.candidate.frame;
-  const actionIndex = actionCandidates.findIndex(
-    item => item.visible && item.hittable && toolbarFrame && contains(toolbarFrame, item.frame),
-  );
-  const frameIndex =
-    actionIndex >= 0
-      ? actionIndex
-      : actionCandidates.findIndex(
-          item => toolbarFrame && contains(toolbarFrame, item.frame),
-        );
-  const frame = actionCandidates[frameIndex]?.frame;
-
-  // iOS 27 reports visible native toolbar children as hidden in XCUI attributes; verify the UIKit node and parent instead.
-  if (
-    !actionNode ||
-    !activeToolbar ||
-    !frame ||
-    frame.width + 0.001 < 44 ||
-    frame.height + 0.001 < 44 ||
-    !toolbarFrame
-  ) {
+  if (actionIndex < 0 || surfaceIndex < 0 || !actionNode) {
     throw new Error(
-      `Native navigation action ${testID} must be visible in UIKit, inside its active navigation surface, and at least 44 points in both dimensions: ${JSON.stringify({ attributes, toolbarAttributes, actionNode })}`,
+      `Native navigation action ${testID} must be visible, hittable, at least 44pt, and contained by its surface: ${JSON.stringify({ attributes, toolbarAttributes })}`,
     );
   }
-
   return {
-    action: actionIndex >= 0 ? action.atIndex(actionIndex) : action,
-    canTapActionDirectly: actionIndex >= 0,
-    toolbar: toolbarMatches.atIndex(activeToolbar.index),
+    action: action.atIndex(actionIndex),
+    toolbar: toolbarMatches.atIndex(surfaceIndex),
     frame,
-    toolbarFrame,
+    toolbarFrame: surfaces[surfaceIndex].frame,
     hierarchyXml,
   };
 }
 
 async function tapNativeNavigationAction(testID) {
-  const { action, canTapActionDirectly, toolbar, frame, toolbarFrame } =
-    await expectNativeNavigationAction(testID);
-
-  if (canTapActionDirectly) {
-    await action.tap();
-    return;
-  }
-
-  // Contextual toolbar children need a measured tap because XCTest misreports their activation points.
-  await toolbar.tap({
-    x: frame.x + frame.width / 2 - toolbarFrame.x,
-    y: frame.y + frame.height / 2 - toolbarFrame.y,
-  });
+  const { action } = await expectNativeNavigationAction(testID);
+  await action.tap();
 }
 
-/** Fires root-tab taps without waiting for route content so interrupted motion is exercised. */
+/** Sends root-tab taps without idle waits so the native indicator is interrupted while moving. */
 async function tapRapidNativeNavigationActions(testIDs) {
   const targets = [];
   for (const testID of testIDs) {
-    const { action, canTapActionDirectly, toolbar, frame, toolbarFrame } =
-      await expectNativeNavigationAction(testID);
-    targets.push({
-      action,
-      canTapActionDirectly,
-      toolbar,
-      x: frame.x + frame.width / 2 - toolbarFrame.x,
-      y: frame.y + frame.height / 2 - toolbarFrame.y,
-    });
+    targets.push((await expectNativeNavigationAction(testID)).action);
   }
-
-  // Skip Detox idle waits between taps so an in-flight transition can be interrupted.
   await device.disableSynchronization();
   try {
-    for (const target of targets) {
-      if (target.canTapActionDirectly) {
-        await target.action.tap();
-      } else {
-        await target.toolbar.tap({ x: target.x, y: target.y });
-      }
-    }
+    for (const action of targets) await action.tap();
   } finally {
     await device.enableSynchronization();
   }

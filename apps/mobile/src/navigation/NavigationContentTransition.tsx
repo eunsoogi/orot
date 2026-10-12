@@ -30,7 +30,14 @@ export function NavigationContentTransition({
   latestContent.current = { transitionKey, children };
 
   useEffect(() => {
-    if (displayed.transitionKey === transitionKey) return;
+    if (displayed.transitionKey === transitionKey) {
+      // Returning to the still-mounted tab cancels its partial fade instead of leaving it dimmed.
+      if (!fadeInPending) {
+        opacity.stopAnimation();
+        opacity.setValue(1);
+      }
+      return;
+    }
     if (reduceMotion) {
       opacity.stopAnimation();
       opacity.setValue(1);
@@ -57,7 +64,13 @@ export function NavigationContentTransition({
       transitionGeneration.current += 1;
       fadeOut.stop();
     };
-  }, [displayed.transitionKey, opacity, reduceMotion, transitionKey]);
+  }, [
+    displayed.transitionKey,
+    fadeInPending,
+    opacity,
+    reduceMotion,
+    transitionKey,
+  ]);
 
   useEffect(() => {
     if (!fadeInPending) return;

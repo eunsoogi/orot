@@ -1,4 +1,8 @@
 /* global by, describe, device, element, expect, it, waitFor */
+const {
+  expectRootIndicatorAt,
+  exerciseKeyboardNavigation,
+} = require('./navigationMotionAssertions');
 
 const {
   expectActionAboveRootTabSurface,
@@ -43,7 +47,8 @@ describe('native navigation glass', () => {
       const testID = `navigation-tab-${tab}`;
       const { hierarchyXml } = await expectNativeNavigationAction(testID);
       expectRootTabContentLayout(hierarchyXml, testID);
-      expectOnlyRootTabSelected(hierarchyXml, tab);
+      await expectOnlyRootTabSelected(hierarchyXml, tab);
+      await expectRootIndicatorAt(testID);
       await expect(element(by.id(`navigation-tab-${tab}`))).toHaveLabel(
         accessibilityLabel,
       );
@@ -57,7 +62,7 @@ describe('native navigation glass', () => {
     ]);
     const { hierarchyXml: interruptedHierarchy } =
       await expectNativeNavigationAction('navigation-tab-home');
-    expectOnlyRootTabSelected(interruptedHierarchy, 'home');
+    await expectOnlyRootTabSelected(interruptedHierarchy, 'home');
     await openRootTab('home', [
       'welcome-title',
       'home-empty-recordings',
@@ -193,17 +198,17 @@ describe('native navigation glass', () => {
       routeRoot?.frame,
       routeRoot?.safeAreaInsets?.top,
     );
-    // The shared backdrop must be an actual UIKit toolbar in the mounted app.
+    // The independent actions must be mounted in the shipping native navigation host.
     await expect(element(by.id('navigation-native-toolbar'))).toExist();
     const { hierarchyXml: backHierarchy } =
       await expectNativeNavigationAction('navigation-back');
-    expectContextActionUnselected(backHierarchy, 'navigation-back');
+    await expectContextActionUnselected(backHierarchy, 'navigation-back');
     await expect(element(by.id('navigation-back'))).toHaveLabel(
       '이전 화면으로 돌아가기',
     );
     const { hierarchyXml: homeHierarchy } =
       await expectNativeNavigationAction('navigation-home');
-    expectContextActionUnselected(homeHierarchy, 'navigation-home');
+    await expectContextActionUnselected(homeHierarchy, 'navigation-home');
     await expect(element(by.id('navigation-home'))).toHaveLabel(
       '홈 화면으로 이동',
     );
@@ -238,5 +243,6 @@ describe('native navigation glass', () => {
     await waitFor(element(by.id('welcome-title')))
       .toBeVisible()
       .withTimeout(30000);
+    await exerciseKeyboardNavigation();
   });
 });
