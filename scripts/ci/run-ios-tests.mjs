@@ -20,6 +20,15 @@ if (!existsSync(runFile) || existsSync(results))
 const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
+const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
+if (
+  (profile === 'backup' &&
+    (tests.length !== 1 || !iosTestInventory('backup').includes(tests[0]))) ||
+  (backupSelection && profile !== 'backup')
+)
+  throw new Error(
+    'Backup cases require isolated host-orchestrated phases on the backup destination',
+  );
 if (
   tests.some(
     (test) =>

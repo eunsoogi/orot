@@ -84,6 +84,8 @@ jobs:
             suite: native
           - profile: speech
             suite: ui
+          - profile: backup
+            suite: all
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -128,8 +130,12 @@ jobs:
           OROT_IOS_TEST_SUITE: ${{ matrix.suite }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
-          scripts/ci/run-command.sh ios-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/results.xcresult
-          node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-tests/results.xcresult artifacts/ios-tests/results.json
+          if [[ "$PROFILE" == backup ]]; then
+            scripts/ci/run-command.sh ios-backup-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/backup
+          else
+            scripts/ci/run-command.sh ios-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/results.xcresult
+            node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-tests/results.xcresult artifacts/ios-tests/results.json
+          fi
       - name: Export native evidence attachments
         if: always()
         run: |
@@ -159,6 +165,7 @@ jobs:
             artifacts/ios-tests/*.png
             artifacts/ios-tests/*.xcresult
             artifacts/ios-tests/attachments
+            artifacts/ios-tests/backup
             artifacts/ios-tests/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

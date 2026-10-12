@@ -8,7 +8,7 @@ import { iosTestConfig } from '../ios-test-config.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 // Executable fixtures exercise CLI exit propagation without booting a simulator or invoking Xcode.
-function fixture(status, profile = 'core', suite = 'all') {
+function fixture(status, profile = 'core', suite = 'all', selected) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-test-runner-'));
   const spec = iosTestConfig(profile);
   const owner = { ...spec, name: 'owned-fixture', udid: 'fixture-udid' };
@@ -38,9 +38,12 @@ else console.log('fixture app diagnostic');
       runFile,
       ownerFile,
       result,
-      ...(profile === 'core'
-        ? ['OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode']
-        : []),
+      ...(selected ??
+        (profile === 'core'
+          ? [
+              'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
+            ]
+          : [])),
     ],
     {
       encoding: 'utf8',
@@ -54,6 +57,29 @@ else console.log('fixture app diagnostic');
     result,
   };
 }
+
+test('backup mutations cannot run as a shared Core selection or an unsequenced backup suite', () => {
+  for (const [profile, selected] of [
+    ['core', [iosTestInventory('backup')[0]]],
+    ['backup', []],
+  ]) {
+    const result = fixture(0, profile, 'all', selected);
+    try {
+      assert.notEqual(result.outcome.status, 0);
+      assert.match(result.outcome.stderr, /isolated host-orchestrated phases/);
+      assert.ok(!result.calls.some((call) => call.name === 'xcodebuild'));
+    } finally {
+      rmSync(result.directory, { recursive: true, force: true });
+    }
+  }
+  const allowed = fixture(0, 'backup', 'all', [iosTestInventory('backup')[0]]);
+  try {
+    assert.equal(allowed.outcome.status, 0, allowed.outcome.stderr);
+    assert.equal(allowed.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+  } finally {
+    rmSync(allowed.directory, { recursive: true, force: true });
+  }
+});
 
 for (const suite of ['native', 'ui']) {
   test(`executes the mandatory Speech ${suite} inventory once on its own runner`, () => {

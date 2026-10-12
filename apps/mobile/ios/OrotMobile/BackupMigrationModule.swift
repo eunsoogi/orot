@@ -77,7 +77,7 @@ public final class BackupMigrationModule: NSObject {
         }
     }
 
-    #if OROT_BACKUP_PROBE_TEST
+    #if OROT_BACKUP_PROBE_TEST || OROT_TESTS
         static func backupKeyAccessibilityForProbe() throws -> String {
             guard let item = try readDatabaseKey() else { return "missing" }
             if item.accessibility == oldAccessibility {
@@ -154,7 +154,7 @@ public final class BackupMigrationModule: NSObject {
                 kSecValueData as String: previous.data,
             ] as CFDictionary,
         )
-        #if OROT_BACKUP_PROBE_TEST
+        #if OROT_BACKUP_PROBE_TEST || OROT_TESTS
             // Hide only the first post-update readback so the real rollback path runs.
             let updated = try BackupMigrationProbeSupport.readAfterSuccessfulUpdate(status: status) {
                 try readDatabaseKey()

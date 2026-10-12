@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const bundleIdentifier = 'com.orot.mobile';
+const ownedSnapshots = new Set();
 // Keep SQLite sidecars paired with the database; temporary transcription/share paths stay out.
 const databasePaths = [
   'Library/orot-secure.db',
@@ -109,6 +110,7 @@ function snapshotFixtureFiles(sourceRoot, recordingId, options = {}) {
   const snapshotRoot =
     options.snapshotRoot ??
     fs.mkdtempSync(path.join(os.tmpdir(), 'orot-backup-fixture-'));
+  if (ownsSnapshotRoot) ownedSnapshots.add(snapshotRoot);
   try {
     const { copiedPaths, extension } = copyFixtureFiles(
       sourceRoot,
@@ -118,8 +120,7 @@ function snapshotFixtureFiles(sourceRoot, recordingId, options = {}) {
     );
     return { snapshotRoot, copiedPaths, extension, ownsSnapshotRoot };
   } catch (error) {
-    if (ownsSnapshotRoot)
-      fs.rmSync(snapshotRoot, { recursive: true, force: true });
+    if (ownsSnapshotRoot) removeSnapshot(snapshotRoot);
     throw error;
   }
 }
@@ -140,7 +141,11 @@ function restoreFixtureFiles(
 }
 
 function removeSnapshot(snapshotRoot) {
+  // Only this process's successful allocation grants recursive cleanup authority.
+  if (!ownedSnapshots.has(snapshotRoot))
+    throw new Error('Cleanup requires an owned snapshot directory.');
   fs.rmSync(snapshotRoot, { recursive: true, force: true });
+  ownedSnapshots.delete(snapshotRoot);
 }
 
 function snapshotInstalledApp(deviceId, recordingId, options = {}) {
