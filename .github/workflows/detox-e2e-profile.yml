@@ -50,7 +50,7 @@ env:
   EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
   EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
-  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-device-iphone17pro' || '' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-build23C54-device-iphone17pro' || '' }}
 
 jobs:
   detox_profile:

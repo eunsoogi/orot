@@ -17,7 +17,7 @@ function runPreparation(profile, options = {}) {
     const log = join(directory, 'commands');
     writeFileSync(log, '');
     const installed = join(directory, 'installed');
-    if (options.installed) writeFileSync(installed, 'yes');
+    if (options.installed) writeFileSync(installed, options.installedBuild ?? '23C54');
     const command = (name, body) =>
       writeFileSync(join(bin, name), `#!/usr/bin/env bash\nset -eu\n${body}\n`, { mode: 0o755 });
     command(
@@ -27,7 +27,7 @@ printf '%s\\n' "xcrun $*" >> "$COMMAND_LOG"
 [[ "$*" == 'simctl list runtimes --json' ]] || exit 97
 [[ "$LIST_FAILURE" != true ]] || exit 9
 if [[ -f "$INSTALLED" ]]; then
-  printf '%s\\n' '{"runtimes":[{"identifier":"com.apple.CoreSimulator.SimRuntime.iOS-26-2","isAvailable":true}]}'
+  printf '{"runtimes":[{"identifier":"com.apple.CoreSimulator.SimRuntime.iOS-26-2","buildversion":"%s","isAvailable":true}]}\\n' "$(cat "$INSTALLED")"
 else
   printf '%s\\n' '{"runtimes":[]}'
 fi`,
@@ -36,9 +36,9 @@ fi`,
       'xcodebuild',
       `
 printf '%s\\n' "xcodebuild $*" >> "$COMMAND_LOG"
-[[ "$*" == '-downloadPlatform iOS -buildVersion 26.2 -architectureVariant arm64' ]] || exit 97
+[[ "$*" == '-downloadPlatform iOS -buildVersion 23C54 -architectureVariant universal' ]] || exit 97
 [[ "$DOWNLOAD_FAILURE" != true ]] || exit 8
-if [[ "$MISSING_AFTER_DOWNLOAD" != true ]]; then touch "$INSTALLED"; fi`,
+if [[ "$MISSING_AFTER_DOWNLOAD" != true ]]; then printf '%s' "$DOWNLOADED_BUILD" > "$INSTALLED"; fi`,
     );
     const result = spawnSync('bash', [script, profile], {
       encoding: 'utf8',
@@ -51,6 +51,7 @@ if [[ "$MISSING_AFTER_DOWNLOAD" != true ]]; then touch "$INSTALLED"; fi`,
         LIST_FAILURE: String(options.listFailure ?? false),
         DOWNLOAD_FAILURE: String(options.downloadFailure ?? false),
         MISSING_AFTER_DOWNLOAD: String(options.missingAfterDownload ?? false),
+        DOWNLOADED_BUILD: options.downloadedBuild ?? '23C54',
       },
     });
     return { ...result, commands: readFileSync(log, 'utf8') };
@@ -66,7 +67,7 @@ test('installs the pinned speech runtime only when missing and verifies it after
     result.commands,
     [
       'xcrun simctl list runtimes --json',
-      'xcodebuild -downloadPlatform iOS -buildVersion 26.2 -architectureVariant arm64',
+      'xcodebuild -downloadPlatform iOS -buildVersion 23C54 -architectureVariant universal',
       'xcrun simctl list runtimes --json',
       '',
     ].join('\n'),
@@ -88,8 +89,19 @@ test('does not interpret inventory failure as permission to download', () => {
   assert.doesNotMatch(result.commands, /xcodebuild/);
 });
 
+test('rejects a different build with the same iOS version without replacing it', () => {
+  const result = runPreparation('transcription', { installed: true, installedBuild: '23C52' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /23C54/);
+  assert.doesNotMatch(result.commands, /xcodebuild/);
+});
+
 test('fails on download failure or a runtime still unavailable afterward', () => {
-  for (const options of [{ downloadFailure: true }, { missingAfterDownload: true }]) {
+  for (const options of [
+    { downloadFailure: true },
+    { missingAfterDownload: true },
+    { downloadedBuild: '23C52' },
+  ]) {
     const result = runPreparation('transcription', options);
     assert.notEqual(result.status, 0);
     assert.match(result.commands, /xcodebuild -downloadPlatform/);
