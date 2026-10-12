@@ -42,6 +42,10 @@ describe('Orot mobile app', () => {
       .toBeVisible()
       .withTimeout(30000);
 
+    // Home renders its title before the fresh-install recording query reaches the empty state.
+    await waitFor(element(by.id('home-empty-recordings')))
+      .toBeVisible()
+      .withTimeout(30000);
     await expectContentAboveFloatingBar(
       'navigation-route-scroll',
       'home-empty-recordings',
