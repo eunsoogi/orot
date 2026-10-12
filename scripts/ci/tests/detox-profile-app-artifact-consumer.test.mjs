@@ -5,6 +5,8 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { computeDetoxCacheFingerprints } from '../detox-cache-fingerprint.mjs';
+import { readCocoapodsInputHashes } from '../detox-cocoapods-input-provenance.mjs';
 import { runCacheCommand } from './fixtures/detox-derived-data-cache.mjs';
 import {
   clean,
@@ -52,13 +54,23 @@ for (const profile of ['release', 'transcription']) {
   test(`${profile} artifact consumers prepare runtime outputs without compiling or publishing DerivedData`, async () => {
     const fixture = prepareFixture({ profile });
     try {
+      const cocoapodsInputHashes = readCocoapodsInputHashes(fixture.repositoryRoot);
+      const fingerprints = computeDetoxCacheFingerprints(fixture.repositoryRoot, {
+        privacyManifestInputHash: cocoapodsInputHashes.privacyManifest,
+        cocoapodsProjectInputHash: cocoapodsInputHashes.projectFile,
+      });
+      // Isolate GitHub's required provenance snapshot from the real runner's environment file.
       Object.assign(fixture.environment, {
+        GITHUB_ENV: join(fixture.repositoryRoot, 'github-env.txt'),
         RUNNER_TEMP: join(fixture.repositoryRoot, 'runner-temp'),
         MACOS_VERSION: '27.0.1',
         EXPECTED_NODE_VERSION: '22.23.2',
         EXPECTED_PNPM_VERSION: '12.3.4',
         EXPECTED_RUBY_VERSION: '4.0.7',
         EXPECTED_COCOAPODS_VERSION: '1.17.0',
+        EXPECTED_COCOAPODS_INPUT_HASHES_JSON: JSON.stringify(cocoapodsInputHashes),
+        EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: fingerprints.buildInputs,
+        EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: fingerprints.nativeDependencies,
         OROT_DETOX_FRAMEWORK_CACHE_ROOT: join(fixture.repositoryRoot, 'detox-framework'),
       });
       mkdirSync(fixture.environment.RUNNER_TEMP, { recursive: true });
