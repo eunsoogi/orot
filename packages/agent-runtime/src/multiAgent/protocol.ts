@@ -190,7 +190,7 @@ export function buildTaskMessages<TResult>(
     ...messages,
     {
       role: 'user',
-      // Guided schemas already enumerate IDs; full revision/locator data stays in local validation.
+      // Guided prompts supply IDs; full revision/locator data stays in local validation.
       content: `Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n${JSON.stringify(guided ? input.evidence.items.map((item) => item.evidenceId) : referencesFromBatch(input.evidence))}`,
     },
   ];
