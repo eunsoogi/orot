@@ -45,7 +45,7 @@ test('installs CocoaPods only when the validated app cache cannot be reused', ()
 
   assert.ok(baseToolchainIndex >= 0 && baseToolchainIndex < simulatorPreparationIndex);
   // Device availability enumeration can wait on an in-flight boot, so run it before requesting one.
-  assert.match(baseToolchain, /run: scripts\/ci\/verify-toolchain\.sh(?:\r?\n|$)/);
+  assert.match(baseToolchain, /&& scripts\/ci\/verify-toolchain\.sh(?:\r?\n|$)/);
   assert.doesNotMatch(baseToolchain, /--cocoapods/);
   const fingerprintIndex = profileWorkflow.indexOf(
     '- name: Compute stable Detox cache fingerprints',

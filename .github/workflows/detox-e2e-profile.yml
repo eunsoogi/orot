@@ -46,11 +46,11 @@ env:
   EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
   EXPECTED_XCODE_VERSION: '27.0'
   EXPECTED_IOS_SIMULATOR_SDK: '27.0'
-  EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 27.0'
-  EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: 'com.apple.CoreSimulator.SimRuntime.iOS-27-0'
-  EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: 'iPhone 18 Pro'
-  EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro'
-  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios27.0-device-iphone18pro' || '' }}
+  EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: ${{ inputs.profile == 'transcription' && 'iOS 26.2' || 'iOS 27.0' }}
+  EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimRuntime.iOS-26-2' || 'com.apple.CoreSimulator.SimRuntime.iOS-27-0' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: ${{ inputs.profile == 'transcription' && 'iPhone 17 Pro' || 'iPhone 18 Pro' }}
+  EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: ${{ inputs.profile == 'transcription' && 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro' || 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro' }}
+  DETOX_CACHE_RUNTIME_SUFFIX: ${{ inputs.profile == 'transcription' && '-runtime-ios26.2-device-iphone17pro' || '' }}
 
 jobs:
   detox_profile:
@@ -92,7 +92,8 @@ jobs:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
       - name: Verify runner toolchain # Validate before Simulator boot.
         id: verify_toolchain
-        run: scripts/ci/verify-toolchain.sh
+        timeout-minutes: 20
+        run: bash scripts/ci/prepare-detox-runtime.sh "${{ inputs.profile }}" && scripts/ci/verify-toolchain.sh
       - name: Install dependencies and check Speech readiness
         timeout-minutes: 15
         run: scripts/ci/run-command.sh install artifacts/detox/install.log -- scripts/ci/install-detox-profile-dependencies.sh "${{ inputs.profile }}"

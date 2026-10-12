@@ -31,7 +31,7 @@ run_simctl() {
 runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
 device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
 
-# The speech probe uses the runner image's installed model-compatible runtime; it never downloads Simulator assets.
+# Runtime provisioning precedes this step; create only the dedicated device used by this profile.
 runtime_id="$(run_simctl list runtimes --json 2>>"$log_path" | EXPECTED_IOS_SIMULATOR_RUNTIME_NAME="$runtime_name" node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));

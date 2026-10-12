@@ -24,7 +24,7 @@ function workflowStep(name) {
   return profileWorkflow.slice(start, end < 0 ? undefined : end);
 }
 
-test('builds every profile with SDK 27 and retains isolated transcription caches', () => {
+test('builds with SDK 27 while isolating the measured transcription runtime', () => {
   const podsCache = workflowStep('Cache Detox CocoaPods intermediates');
   const appCache = workflowStep('Cache Detox profile app product');
   const cacheRecord = workflowStep('Record Detox cache state');
@@ -37,9 +37,14 @@ test('builds every profile with SDK 27 and retains isolated transcription caches
   assert.match(profileWorkflow, /DEVELOPER_DIR: \/Applications\/Xcode\.app\/Contents\/Developer/);
   assert.match(profileWorkflow, /EXPECTED_XCODE_VERSION: '27\.0'/);
   assert.match(profileWorkflow, /EXPECTED_IOS_SIMULATOR_SDK: '27\.0'/);
-  assert.doesNotMatch(profileWorkflow, /Xcode_26|iOS-26-2|ios26\.2/);
+  assert.doesNotMatch(profileWorkflow, /Xcode_26/);
   assert.doesNotMatch(profileWorkflow, /EXPECTED_MACOS_VERSION/);
   assert.match(toolchainVerification, /id: verify_toolchain/);
+  assert.match(toolchainVerification, /timeout-minutes: 20/);
+  assert.match(
+    toolchainVerification,
+    /prepare-detox-runtime\.sh[\s\S]*?&& scripts\/ci\/verify-toolchain\.sh/,
+  );
   assert.match(
     profileDependencySetup,
     /if \[\[ "\$profile" == "transcription" \]\]; then[\s\S]*?run-command\.sh speech-readiness-regression[\s\S]*?run-readiness-regression\.sh/,
@@ -57,15 +62,21 @@ test('builds every profile with SDK 27 and retains isolated transcription caches
       /macos-\$\{\{\s*steps\.verify_toolchain\.outputs\.macos_version\s*\}\}/,
     );
   }
-  assert.match(profileWorkflow, /EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 27\.0'/);
   assert.match(
     profileWorkflow,
-    /EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-27-0'/,
+    /EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: \$\{\{ inputs\.profile == 'transcription' && 'iOS 26\.2' \|\| 'iOS 27\.0' \}\}/,
   );
-  assert.match(profileWorkflow, /EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: 'iPhone 18 Pro'/);
   assert.match(
     profileWorkflow,
-    /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-18-Pro'/,
+    /EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: \$\{\{ inputs\.profile == 'transcription' && 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-26-2' \|\| 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-27-0' \}\}/,
+  );
+  assert.match(
+    profileWorkflow,
+    /EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: \$\{\{ inputs\.profile == 'transcription' && 'iPhone 17 Pro' \|\| 'iPhone 18 Pro' \}\}/,
+  );
+  assert.match(
+    profileWorkflow,
+    /EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: \$\{\{ inputs\.profile == 'transcription' && 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-17-Pro' \|\| 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-18-Pro' \}\}/,
   );
   assert.match(profileWorkflow, /DETOX_CACHE_RUNTIME_SUFFIX/);
   assert.match(podsCache, /DETOX_CACHE_RUNTIME_SUFFIX/);
