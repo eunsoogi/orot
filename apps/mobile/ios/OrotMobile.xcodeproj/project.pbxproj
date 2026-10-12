@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62450000000000000000002 /* HealthIntegrationTests.swift */; };
-		A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62440000000000000000002 /* TranscriptEvidenceUITests.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		0C80B921A6F3F58F76C31292 /* libPods-OrotMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
@@ -28,6 +26,8 @@
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
 		A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */; };
+		A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62440000000000000000002 /* TranscriptEvidenceUITests.swift */; };
+		A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62450000000000000000002 /* HealthIntegrationTests.swift */; };
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
@@ -117,8 +117,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
-		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Orot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = OrotMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
@@ -141,6 +139,8 @@
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9422961FF39A9392CEC9AE63 /* TestControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControl.swift; path = OrotMobile/TestControl.swift; sourceTree = "<group>"; };
+		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
+		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
 		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };

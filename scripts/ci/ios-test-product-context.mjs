@@ -50,7 +50,8 @@ export function productContext(root, profile, env = process.env) {
     ],
     { encoding: 'utf8' },
   ).trim();
-  if (changes) throw new Error('Native product source inputs differ from the committed head');
+  if (changes)
+    throw new Error('Native product source inputs differ from the committed head:\n' + changes);
   const runId = Number(env.GITHUB_RUN_ID);
   const attempt = Number(env.GITHUB_RUN_ATTEMPT);
   const sha = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();

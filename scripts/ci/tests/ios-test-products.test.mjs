@@ -51,7 +51,11 @@ test('rejects missing, stale-run, changed-source and incompatible Debug consumer
     );
     await assert.rejects(verify('provider-data'), /provenance mismatch/);
     writeFileSync(join(fixture.source, 'apps/mobile/uncommitted-source.ts'), 'modified source');
-    await assert.rejects(verify('core'), /source inputs differ/);
+    await assert.rejects(verify('core'), (error) => {
+      assert.match(error.message, /source inputs differ/);
+      assert.match(error.message, /\?\? apps\/mobile\/uncommitted-source\.ts/);
+      return true;
+    });
   } finally {
     fixture.dispose();
   }
