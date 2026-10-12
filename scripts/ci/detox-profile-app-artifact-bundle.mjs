@@ -14,7 +14,7 @@ import {
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { getProfile, inspectCachedApp } from './ios-derived-data-cache-paths.mjs';
-import { PROFILE, fail } from './detox-release-app-artifact-context.mjs';
+import { fail } from './detox-profile-app-artifact-context.mjs';
 
 export function fileSha256(path) {
   return new Promise((resolveDigest, reject) => {
@@ -82,8 +82,8 @@ export function assertArtifactDirectory(path, create) {
     fail('artifact location must be a real directory.');
 }
 
-export function validateArchivePaths(archivePath, environment) {
-  const productPath = getProfile(PROFILE).productPath;
+export function validateArchivePaths(archivePath, environment, profile) {
+  const productPath = getProfile(profile).productPath;
   const entries = execFileSync('tar', ['-tf', archivePath], {
     encoding: 'utf8',
     env: environment,
@@ -128,8 +128,8 @@ function ensureRealDirectory(root, relativePath) {
 }
 
 // Keep the previous app until the imported product passes tree and Detox metadata validation.
-export async function installVerifiedApp(dataRoot, stagedRoot, manifest) {
-  const profileConfig = getProfile(PROFILE);
+export async function installVerifiedApp(profile, dataRoot, stagedRoot, manifest) {
+  const profileConfig = getProfile(profile);
   const productPath = profileConfig.productPath;
   const stagedProduct = join(stagedRoot, productPath);
   const productParent = ensureRealDirectory(dataRoot, dirname(productPath));
@@ -146,7 +146,7 @@ export async function installVerifiedApp(dataRoot, stagedRoot, manifest) {
     renameSync(stagedProduct, destination);
     installed = true;
     const treeSha256 = await hashAppBundle(destination);
-    const app = inspectCachedApp(PROFILE, dataRoot, manifest.app.cacheArtifacts);
+    const app = inspectCachedApp(profile, dataRoot, manifest.app.cacheArtifacts);
     if (treeSha256 !== manifest.app.treeSha256 || app.reason) {
       fail('installed app bundle failed its integrity or metadata check.');
     }

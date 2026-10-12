@@ -20,7 +20,11 @@ export const transcriptionSimulator = {
 };
 
 // Stub host tools so the recorded runner release and pinned-tool checks stay deterministic.
-export function runToolchainCheck(profile, { availableRuntimes, availableDevices }, args = []) {
+export function runToolchainCheck(
+  profile,
+  { availableRuntimes, availableDevices, availableDeviceTypes },
+  args = [],
+) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-toolchain-'));
   try {
     const githubOutputPath = join(directory, 'github-output');
@@ -55,7 +59,7 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
         '  printf \'%s\\n\' "$EXPECTED_IOS_SIMULATOR_SDK"',
         'elif [[ "$*" == "simctl list runtimes --json" ]]; then',
         '  cat "$SIMULATOR_RUNTIMES_JSON"',
-        'elif [[ "$*" == "simctl list devices available --json" ]]; then',
+        'elif [[ "$*" == "simctl list devicetypes --json" ]]; then',
         '  cat "$SIMULATOR_DEVICES_JSON"',
         'else',
         '  exit 97',
@@ -70,7 +74,17 @@ export function runToolchainCheck(profile, { availableRuntimes, availableDevices
     const runtimesPath = join(directory, 'runtimes.json');
     const devicesPath = join(directory, 'devices.json');
     writeFileSync(runtimesPath, JSON.stringify({ runtimes: availableRuntimes }));
-    writeFileSync(devicesPath, JSON.stringify({ devices: availableDevices }));
+    writeFileSync(
+      devicesPath,
+      JSON.stringify({
+        devicetypes:
+          availableDeviceTypes ??
+          Object.values(availableDevices)
+            .flat()
+            .filter((device) => device.isAvailable)
+            .map((device) => ({ name: device.name, identifier: device.deviceTypeIdentifier })),
+      }),
+    );
     const result = spawnSync('bash', [verifyScript, ...args], {
       encoding: 'utf8',
       env: {

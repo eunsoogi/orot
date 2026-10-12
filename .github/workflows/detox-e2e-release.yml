@@ -28,8 +28,9 @@ jobs:
   produce_release_app:
     name: Produce shared Release app artifact
     if: ${{ inputs.run_profile && !inputs.path_selection_failed }}
-    uses: ./.github/workflows/detox-e2e-release-app-producer.yml
+    uses: ./.github/workflows/detox-e2e-profile-app-producer.yml
     with:
+      profile: release
       fingerprints: ${{ inputs.fingerprints }}
 
   run_detox_release_ui_shard:
@@ -41,7 +42,7 @@ jobs:
       profile: release
       release_shard: release-e2e.test.js
       fingerprints: ${{ inputs.fingerprints }}
-      release_app_artifact: ${{ toJSON(needs.produce_release_app.outputs) }}
+      app_artifact: ${{ toJSON(needs.produce_release_app.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
       run_profile: ${{ inputs.run_profile }}
@@ -67,7 +68,7 @@ jobs:
       profile: release
       release_shard: release-e2e-data.test.js
       fingerprints: ${{ inputs.fingerprints }}
-      release_app_artifact: ${{ toJSON(needs.produce_release_app.outputs) }}
+      app_artifact: ${{ toJSON(needs.produce_release_app.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}
       run_profile: ${{ inputs.run_profile }}

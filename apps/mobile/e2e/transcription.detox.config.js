@@ -22,9 +22,10 @@ module.exports = {
       type: 'ios.app',
       binaryPath:
         derivedDataPath + '/Build/Products/Release-iphonesimulator/Orot.app',
-      // Match the host-only architecture checked by the CI builder and avoid compiling both Simulator slices.
+      // Build for the Simulator platform; the consumer chooses its dedicated device when tests start.
+      // Match the host architecture checked by CI and avoid compiling both Simulator slices.
       build:
-        'DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -derivedDataPath ' +
+        "DEVELOPMENT_TEAM=OROTSIM000 FORCE_BUNDLING=1 xcodebuild -workspace ios/OrotMobile.xcworkspace -scheme OrotMobile -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath " +
         derivedDataPath +
         ' CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES OROT_SIMULATOR_ENTITLEMENTS=OrotMobile/OrotMobile.simulator.entitlements OTHER_SWIFT_FLAGS=\'$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST\' ENTRY_FILE=e2e/transcriptionProbeEntry.tsx',
     },

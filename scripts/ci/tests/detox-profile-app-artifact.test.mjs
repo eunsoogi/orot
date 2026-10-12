@@ -11,7 +11,7 @@ import {
   prepareFixture,
   produce,
   sha256,
-} from './fixtures/detox-release-app-artifact-fixture.mjs';
+} from './fixtures/detox-profile-app-artifact-fixture.mjs';
 
 test('rejects an empty downloaded artifact location', async () => {
   const fixture = prepareFixture({ buildApp: false });
@@ -33,7 +33,7 @@ test('produces and installs one verified Release app artifact for the same run',
     const consumed = await consume(fixture, artifact);
     assert.equal(consumed.treeSha256, artifact.manifest.app.treeSha256);
     assert.equal(readFileSync(join(fixture.appRoot, 'main.jsbundle'), 'utf8'), 'release-bundle');
-    assert.match(readFileSync(fixture.outputPath, 'utf8'), /release_app_reusable=true/);
+    assert.match(readFileSync(fixture.outputPath, 'utf8'), /profile_app_reusable=true/);
     for (const name of artifactFiles) {
       assert.ok(readFileSync(join(fixture.artifactDirectory, name)));
     }
@@ -96,6 +96,77 @@ test('rejects artifacts when run, source, or build-input fingerprints change', a
     await assert.rejects(
       consume(fixture, artifact, { ...fixture.environment, GITHUB_SHA: 'd'.repeat(40) }),
       /GITHUB_SHA does not match/,
+    );
+  } finally {
+    clean(fixture);
+  }
+});
+
+test('produces and reuses a distinct Speech app with its profile-specific native settings', async () => {
+  const fixture = prepareFixture({ profile: 'transcription' });
+  try {
+    const artifact = await produce(fixture);
+    const consumed = await consume(fixture, artifact);
+    assert.equal(artifact.manifest.profile, 'transcription');
+    assert.equal(
+      artifact.manifest.buildContext.build.configurationName,
+      'ios.sim.release.transcription',
+    );
+    assert.equal(
+      artifact.manifest.buildContext.build.entryPoint,
+      'e2e/transcriptionProbeEntry.tsx',
+    );
+    assert.deepEqual(artifact.manifest.buildContext.build.nativeFlags, {
+      developmentTeam: 'OROTSIM000',
+      forceBundling: '1',
+      codeSigningAllowed: 'YES',
+      codeSigningIdentity: '-',
+      architecture: '$(uname -m)',
+      onlyActiveArchitecture: 'YES',
+      simulatorEntitlements: 'OrotMobile/OrotMobile.simulator.entitlements',
+      otherSwiftFlags: '$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST',
+    });
+    assert.equal(consumed.treeSha256, artifact.manifest.app.treeSha256);
+    assert.equal(
+      readFileSync(join(fixture.appRoot, 'main.jsbundle'), 'utf8'),
+      'transcription-bundle',
+    );
+    assert.match(readFileSync(fixture.outputPath, 'utf8'), /profile_app_reusable=true/);
+  } finally {
+    clean(fixture);
+  }
+});
+
+test('rejects an artifact from another compatible profile', async () => {
+  const fixture = prepareFixture();
+  try {
+    const artifact = await produce(fixture);
+    await assert.rejects(
+      consume(fixture, artifact, fixture.environment, 'transcription'),
+      /manifest is incomplete or uses an incompatible profile/,
+    );
+  } finally {
+    clean(fixture);
+  }
+});
+
+test('rejects Speech build-setting drift before installing a downloaded artifact', async () => {
+  const fixture = prepareFixture({ profile: 'transcription' });
+  try {
+    const artifact = await produce(fixture);
+    const configurationPath = join(
+      fixture.repositoryRoot,
+      'apps/mobile/e2e/transcription.detox.config.js',
+    );
+    const original = readFileSync(configurationPath, 'utf8');
+    writeFixtureFile(
+      fixture.repositoryRoot,
+      'apps/mobile/e2e/transcription.detox.config.js',
+      original.replace('-DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST', '-DOTHER_SIMULATOR_TEST'),
+    );
+    await assert.rejects(
+      consume(fixture, artifact),
+      /transcription profile, entry point, or native build flags changed/,
     );
   } finally {
     clean(fixture);

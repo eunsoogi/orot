@@ -1,4 +1,4 @@
-// Collect exact source, build, and runner identity so consumers can reject incompatible products.
+// Collect exact source, profile, build, and runner identity for artifact compatibility checks.
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
@@ -6,15 +6,51 @@ import { execFileSync } from 'node:child_process';
 import { join, relative, resolve } from 'node:path';
 import { getProfile } from './ios-derived-data-cache-paths.mjs';
 
-export const PROFILE = 'release';
-export const CONFIGURATION_NAME = 'ios.sim.release';
 export const MANIFEST_NAME = 'manifest.json';
-export const ARCHIVE_NAME = 'release-app.tar';
-export const SCHEMA_VERSION = 1;
-const requireFromRepository = (root) => createRequire(join(root, 'apps/mobile/package.json'));
+export const ARCHIVE_NAME = 'profile-app.tar';
+export const SCHEMA_VERSION = 2;
+
+const profileContracts = {
+  release: {
+    configPath: 'apps/mobile/.detoxrc.js',
+    appKey: 'ios.release',
+    configurationName: 'ios.sim.release',
+    entryPoint: 'e2e/e2eRouterEntry.tsx',
+    nativeFlags: {
+      developmentTeam: null,
+      forceBundling: '1',
+      codeSigningAllowed: 'YES',
+      codeSigningIdentity: '-',
+      architecture: '$(uname -m)',
+      onlyActiveArchitecture: 'YES',
+      simulatorEntitlements: null,
+      otherSwiftFlags: null,
+    },
+  },
+  transcription: {
+    configPath: 'apps/mobile/e2e/transcription.detox.config.js',
+    appKey: 'ios.speech-transcription',
+    configurationName: 'ios.sim.release.transcription',
+    entryPoint: 'e2e/transcriptionProbeEntry.tsx',
+    nativeFlags: {
+      developmentTeam: 'OROTSIM000',
+      forceBundling: '1',
+      codeSigningAllowed: 'YES',
+      codeSigningIdentity: '-',
+      architecture: '$(uname -m)',
+      onlyActiveArchitecture: 'YES',
+      simulatorEntitlements: 'OrotMobile/OrotMobile.simulator.entitlements',
+      otherSwiftFlags: '$(inherited) -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST',
+    },
+  },
+};
 
 export function fail(message) {
-  throw new Error('Detox Release app artifact: ' + message);
+  throw new Error('Detox profile app artifact: ' + message);
+}
+
+function requireFromRepository(root) {
+  return createRequire(join(root, 'apps/mobile/package.json'));
 }
 
 function requiredValue(environment, name) {
@@ -29,58 +65,66 @@ function requiredHash(environment, name) {
   return value;
 }
 
-// Bind reuse to the same checked-in Release profile that the shard workflow builds.
-function loadReleaseBuildSettings(repositoryRoot) {
-  const configPath = resolve(repositoryRoot, 'apps/mobile/.detoxrc.js');
+// Read the checked-in Detox profile so a fingerprint cannot silently cross app configurations.
+export function loadProfileBuildSettings(repositoryRoot, profile) {
+  const contract = profileContracts[profile];
+  if (!contract) fail('unsupported artifact profile: ' + profile + '.');
+  const profileConfig = getProfile(profile);
+  const configPath = resolve(repositoryRoot, contract.configPath);
   const require = requireFromRepository(repositoryRoot);
   const resolvedConfigPath = require.resolve(configPath);
   delete require.cache[resolvedConfigPath];
   const config = require(resolvedConfigPath);
-  const app = config.apps?.['ios.release'];
-  const appConfiguration = config.configurations?.[CONFIGURATION_NAME];
-  const profileConfig = getProfile(PROFILE);
+  const app = config.apps?.[contract.appKey];
+  const appConfiguration = config.configurations?.[contract.configurationName];
   const expectedBinaryPath = relative(
     resolve(repositoryRoot, 'apps/mobile'),
     resolve(repositoryRoot, profileConfig.derivedDataPath, profileConfig.productPath),
   );
   if (!app?.build || !appConfiguration || app.binaryPath !== expectedBinaryPath) {
-    fail('the current Detox Release app configuration is incomplete or incompatible.');
+    fail('the current ' + profile + ' Detox app configuration is incomplete or incompatible.');
   }
 
   const capture = (pattern, label) => {
     const match = app.build.match(pattern);
-    if (!match) fail('the Release build command is missing ' + label + '.');
+    if (!match) fail('the ' + profile + ' build command is missing ' + label + '.');
     return match[1];
   };
+  const captureOptional = (pattern) => app.build.match(pattern)?.[1] ?? null;
   const nativeFlags = {
+    developmentTeam: captureOptional(/(?:^|\s)DEVELOPMENT_TEAM=([^\s]+)/),
     forceBundling: capture(/(?:^|\s)FORCE_BUNDLING=([^\s]+)/, 'FORCE_BUNDLING'),
     codeSigningAllowed: capture(/(?:^|\s)CODE_SIGNING_ALLOWED=([^\s]+)/, 'CODE_SIGNING_ALLOWED'),
     codeSigningIdentity: capture(/(?:^|\s)CODE_SIGN_IDENTITY=([^\s]+)/, 'CODE_SIGN_IDENTITY'),
     architecture: capture(/(?:^|\s)ARCHS="([^"]+)"/, 'ARCHS'),
     onlyActiveArchitecture: capture(/(?:^|\s)ONLY_ACTIVE_ARCH=([^\s]+)/, 'ONLY_ACTIVE_ARCH'),
+    simulatorEntitlements: captureOptional(/(?:^|\s)OROT_SIMULATOR_ENTITLEMENTS=([^\s]+)/),
+    otherSwiftFlags: captureOptional(/(?:^|\s)OTHER_SWIFT_FLAGS='([^']+)'/),
   };
   const configuration = capture(/(?:^|\s)-configuration\s+([^\s]+)/, 'Xcode configuration');
   const sdk = capture(/(?:^|\s)-sdk\s+([^\s]+)/, 'SDK');
+  const destination = capture(/(?:^|\s)-destination\s+'([^']+)'/, 'Simulator destination');
   const entryPoint = capture(/(?:^|\s)ENTRY_FILE=([^\s]+)/, 'ENTRY_FILE');
+  const flagsMatch = Object.entries(contract.nativeFlags).every(
+    ([name, expected]) => nativeFlags[name] === expected,
+  );
   if (
     configuration !== 'Release' ||
     sdk !== 'iphonesimulator' ||
-    entryPoint !== 'e2e/e2eRouterEntry.tsx' ||
-    nativeFlags.forceBundling !== '1' ||
-    nativeFlags.codeSigningAllowed !== 'YES' ||
-    nativeFlags.codeSigningIdentity !== '-' ||
-    nativeFlags.architecture !== '$(uname -m)' ||
-    nativeFlags.onlyActiveArchitecture !== 'YES' ||
+    destination !== 'generic/platform=iOS Simulator' ||
+    entryPoint !== contract.entryPoint ||
+    !flagsMatch ||
     appConfiguration.device !== 'simulator' ||
-    appConfiguration.app !== 'ios.release'
+    appConfiguration.app !== contract.appKey
   ) {
-    fail('the Release profile, entry point, or native build flags changed.');
+    fail('the ' + profile + ' profile, entry point, or native build flags changed.');
   }
   return {
-    profile: PROFILE,
-    configurationName: CONFIGURATION_NAME,
+    profile,
+    configurationName: contract.configurationName,
     configuration,
     sdk,
+    destination,
     binaryPath: app.binaryPath,
     appConfiguration,
     simulatorType: config.devices?.simulator?.type,
@@ -90,7 +134,8 @@ function loadReleaseBuildSettings(repositoryRoot) {
   };
 }
 
-export function collectBuildContext(repositoryRoot, environment) {
+export function collectBuildContext(repositoryRoot, environment, profile) {
+  if (!profileContracts[profile]) fail('unsupported artifact profile: ' + profile + '.');
   const runId = Number(requiredValue(environment, 'GITHUB_RUN_ID'));
   const runAttempt = Number(requiredValue(environment, 'GITHUB_RUN_ATTEMPT'));
   if (
@@ -144,6 +189,7 @@ export function collectBuildContext(repositoryRoot, environment) {
 
   return {
     workflow: { runId, runAttempt, sourceSha },
+    profile,
     fingerprints: {
       buildInputs: requiredHash(environment, 'EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT'),
       nativeDependencies: requiredHash(environment, 'EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT'),
@@ -164,7 +210,7 @@ export function collectBuildContext(repositoryRoot, environment) {
       fingerprint: xcodeFingerprint,
     },
     simulatorSdk: actualSdk,
-    build: loadReleaseBuildSettings(repositoryRoot),
+    build: loadProfileBuildSettings(repositoryRoot, profile),
   };
 }
 

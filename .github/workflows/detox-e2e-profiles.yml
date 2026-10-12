@@ -85,13 +85,23 @@ jobs:
       path_selection_failed: ${{ inputs.path_selection_failed }}
       execution_result: ${{ needs.run_detox_openai_provider_profile.result }}
 
+  produce_transcription_app:
+    name: Produce Speech transcription app artifact
+    needs: [detox_cache_fingerprint]
+    if: ${{ !cancelled() && inputs.run_transcription && !inputs.path_selection_failed }}
+    uses: ./.github/workflows/detox-e2e-profile-app-producer.yml
+    with:
+      profile: transcription
+      fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
+
   run_detox_transcription_profile:
     name: Execute Speech Transcription profile
-    needs: [detox_cache_fingerprint]
-    if: ${{ !cancelled() && inputs.run_transcription }}
+    needs: [detox_cache_fingerprint, produce_transcription_app]
+    if: ${{ always() && inputs.run_transcription }}
     uses: ./.github/workflows/detox-e2e-profile.yml
     with:
       profile: transcription
+      app_artifact: ${{ toJSON(needs.produce_transcription_app.outputs) }}
       fingerprints: ${{ toJSON(needs.detox_cache_fingerprint.outputs) }}
       trace_logging: ${{ inputs.trace_logging }}
       resource_sampling: ${{ inputs.resource_sampling }}

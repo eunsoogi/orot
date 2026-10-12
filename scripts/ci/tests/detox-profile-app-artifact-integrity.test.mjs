@@ -12,7 +12,7 @@ import {
   productPath,
   produce,
   sha256,
-} from './fixtures/detox-release-app-artifact-fixture.mjs';
+} from './fixtures/detox-profile-app-artifact-fixture.mjs';
 
 test('rejects a changed app bundle after archive and manifest checks pass', async () => {
   const fixture = prepareFixture();
@@ -25,14 +25,14 @@ test('rejects a changed app bundle after archive and manifest checks pass', asyn
     );
     execFileSync('tar', [
       '-cf',
-      join(fixture.artifactDirectory, 'release-app.tar'),
+      join(fixture.artifactDirectory, 'profile-app.tar'),
       '-C',
       join(fixture.repositoryRoot, 'apps/mobile/ios/build-detox-release'),
       productPath,
     ]);
     const manifest = JSON.parse(readFileSync(artifact.manifestPath, 'utf8'));
     manifest.app.archiveSha256 = sha256(
-      readFileSync(join(fixture.artifactDirectory, 'release-app.tar')),
+      readFileSync(join(fixture.artifactDirectory, 'profile-app.tar')),
     );
     const manifestBytes = JSON.stringify(manifest, null, 2) + '\n';
     writeFixtureFile(

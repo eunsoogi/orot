@@ -90,8 +90,9 @@ test('computes common app fingerprints once and shares them with every profile',
   }
   for (const jobId of fingerprintConsumers) {
     const job = workflowJob(profilesWorkflow, jobId);
-    assert.match(job, /needs: \[detox_cache_fingerprint\]/);
-    assert.match(job, /if: \$\{\{ !cancelled\(\)/);
+    // Speech adds its artifact producer and runs on its failure so the required check can fail.
+    assert.match(job, /needs: \[detox_cache_fingerprint(?:, produce_transcription_app)?\]/);
+    assert.match(job, /if: \$\{\{(?: !cancelled\(\)| always\(\) && inputs\.run_transcription)/);
     assert.match(
       job,
       /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,

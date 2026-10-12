@@ -72,6 +72,8 @@ pnpm e2e:test:ios
 
 Detox는 `.detoxrc.js`에 지정된 iOS Simulator에서 앱을 실행하고 시작 화면이 표시되는지 확인합니다. 러너 설정과 테스트는 `apps/mobile/e2e`에 있습니다.
 
-## Release E2E 앱 재사용
+## Release 및 Speech E2E 앱 재사용
 
-GitHub Actions의 Release UI/storage 및 stateful-data shard는 한 번 빌드한 Release 앱 artifact를 공유합니다. 각 shard는 현재 workflow run과 attempt, 소스 커밋, 빌드 설정, Xcode/SDK, 앱 bundle 무결성을 확인한 뒤 앱을 사용합니다. Artifact 확인에 실패하면 해당 shard가 실패하며 별도로 앱을 다시 빌드하지 않습니다. 두 shard는 Simulator와 테스트 데이터를 계속 분리해서 사용합니다.
+GitHub Actions의 Release UI/storage 및 stateful-data shard는 Release 앱 producer가 준비한 동일한 artifact를 공유합니다. 각 shard는 workflow run과 attempt, 소스 커밋, 프로필별 빌드 설정, Xcode/SDK, 앱 bundle 무결성을 확인한 뒤 앱을 사용합니다. Artifact 확인에 실패하면 해당 shard가 실패하며 앱 빌드 단계는 실행되지 않습니다. 두 shard는 Simulator와 테스트 데이터를 계속 분리해서 사용합니다.
+
+Speech transcription은 별도의 Release 앱 producer와 test consumer를 사용합니다. Consumer는 새 job에서 transcription artifact의 프로필과 무결성을 확인한 뒤 앱을 실행하며, Release artifact를 사용하지 않거나 앱을 다시 빌드하지 않습니다. 두 프로필의 native 설정, entitlements, entry point와 DerivedData 경로는 각각 유지됩니다. Speech 실행의 프로세스 및 메모리 샘플을 수집하려면 workflow의 `resource_sampling` 입력을 활성화합니다.

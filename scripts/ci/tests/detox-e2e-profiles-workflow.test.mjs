@@ -57,12 +57,6 @@ test('keeps required E2E check names resolved when profile work is skipped', () 
       'openai-provider',
     ],
     [
-      'run_detox_transcription_profile',
-      'detox_transcription_e2e',
-      'Speech Transcription E2E',
-      'transcription',
-    ],
-    [
       'run_detox_next_visit_profile',
       'detox_next_visit_e2e',
       'Next Visit Questions E2E',
@@ -90,7 +84,6 @@ test('keeps required E2E check names resolved when profile work is skipped', () 
 test('runs each selected profile independently and continues after fingerprint failure', () => {
   const profiles = [
     ['run_detox_openai_provider_profile', 'openai-provider', 'run_openai'],
-    ['run_detox_transcription_profile', 'transcription', 'run_transcription'],
     ['run_detox_next_visit_profile', 'next-visit-questions', 'run_next_visit'],
   ];
   for (const [jobId, profile, runInput] of profiles) {
@@ -105,6 +98,22 @@ test('runs each selected profile independently and continues after fingerprint f
       /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
     );
   }
+  const speechProducer = jobBlock(profilesWorkflow, 'produce_transcription_app');
+  const speechConsumer = jobBlock(profilesWorkflow, 'run_detox_transcription_profile');
+  assert.match(speechProducer, /profile: transcription/);
+  assert.match(
+    speechProducer,
+    /if: \$\{\{ !cancelled\(\) && inputs\.run_transcription && !inputs\.path_selection_failed \}\}/,
+  );
+  assert.match(speechConsumer, /needs: \[detox_cache_fingerprint, produce_transcription_app\]/);
+  assert.match(speechConsumer, /if: \$\{\{ always\(\) && inputs\.run_transcription \}\}/);
+  assert.match(speechConsumer, /profile: transcription/);
+  assert.match(
+    speechConsumer,
+    /app_artifact: \$\{\{ toJSON\(needs\.produce_transcription_app\.outputs\) \}\}/,
+  );
+  assert.match(speechConsumer, /resource_sampling: \$\{\{ inputs\.resource_sampling \}\}/);
+
   assert.match(
     jobBlock(profilesWorkflow, 'detox_release_e2e'),
     /uses: \.\/\.github\/workflows\/detox-e2e-release\.yml/,

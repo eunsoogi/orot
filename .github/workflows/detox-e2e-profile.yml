@@ -9,8 +9,8 @@ on:
         type: string
       # One explicit Release wrapper runs on this dedicated Simulator.
       release_shard: { required: false, type: string, default: '' }
-      # Release shard callers pass the shared per-run artifact's producer outputs.
-      release_app_artifact: { required: false, type: string, default: '{}' }
+      # Release and transcription callers pass their own profile's producer outputs.
+      app_artifact: { required: false, type: string, default: '{}' }
       fingerprints:
         description: Shared source and build fingerprints from the profile workflow.
         required: true
@@ -68,10 +68,10 @@ jobs:
       test_suites: ${{ steps.run_detox_tests.outputs.e2e_test_suites }}
     steps:
       # A selector failure must reach each required E2E leaf instead of becoming a skip.
-      - name: Fail if path selection or Release artifact inputs are unavailable
-        if: ${{ inputs.path_selection_failed || (inputs.profile == 'release' && (!fromJSON(inputs.release_app_artifact).artifact_name || !fromJSON(inputs.release_app_artifact).archive_sha256 || !fromJSON(inputs.release_app_artifact).manifest_sha256)) }}
+      - name: Fail if path selection or app artifact inputs are unavailable
+        if: ${{ inputs.path_selection_failed || ((inputs.profile == 'release' || inputs.profile == 'transcription') && (!fromJSON(inputs.app_artifact).artifact_name || !fromJSON(inputs.app_artifact).archive_sha256 || !fromJSON(inputs.app_artifact).manifest_sha256)) }}
         run: |
-          echo "::error::Changed-path selection failed or the Release app artifact inputs are incomplete."
+          echo "::error::Changed-path selection failed or the profile app artifact inputs are incomplete."
           exit 1
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

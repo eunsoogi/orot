@@ -68,6 +68,12 @@ test('routes only the dedicated transcription test and native configuration', ()
     ),
     'the transcription build must target the host architecture checked by the CI builder',
   );
+  assert.ok(
+    transcription.apps['ios.speech-transcription'].build.includes(
+      "-destination 'generic/platform=iOS Simulator'",
+    ),
+    'build for the Simulator platform without selecting an arbitrary booted device',
+  );
   assert.notEqual(
     transcription.apps['ios.speech-transcription'].binaryPath,
     requireFromRepository('./apps/mobile/.detoxrc.js').apps['ios.release'].binaryPath,
