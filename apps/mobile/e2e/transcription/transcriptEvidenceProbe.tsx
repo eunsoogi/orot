@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, NativeModules, StyleSheet, Text, View } from 'react-native';
+import { Button, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import RecordingScreen from '../../src/recording/RecordingScreen';
+import { probeSourceIdentifier } from './transcriptProbeSettings';
 import {
   cleanupSyntheticTranscriptRecording,
   createTranscriptEvidenceProbeService,
@@ -16,24 +18,13 @@ type SetupStatus =
   'idle' | 'preparing' | 'ready' | 'failed' | 'cleaning' | 'cleaned';
 type CorrectionStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
-function deletionVerificationSourceId(): string | null {
-  const settingsManager = (
-    NativeModules as unknown as {
-      SettingsManager?: {
-        settings?: Record<string, unknown>;
-        getConstants?: () => { settings?: Record<string, unknown> };
-      };
-    }
-  ).SettingsManager;
-  const value =
-    settingsManager?.settings?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID ??
-    settingsManager?.getConstants?.().settings
-      ?.OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID;
-  return typeof value === 'string' ? value : null;
-}
-
 export function TranscriptEvidenceProbe() {
-  const deletionVerificationId = deletionVerificationSourceId();
+  const deletionVerificationId = probeSourceIdentifier(
+    'OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID',
+  );
+  const cleanupSourceId = probeSourceIdentifier(
+    'OROT_TEST_TRANSCRIPT_CLEANUP_ID',
+  );
   const [status, setStatus] = useState<SetupStatus>('idle');
   const [recordingSourceId, setRecordingSourceId] = useState<string | null>(
     null,
@@ -51,16 +42,50 @@ export function TranscriptEvidenceProbe() {
     deletionVerificationId ? 'checking' : 'not-requested',
   );
   const [error, setError] = useState('');
-  const service: TranscriptEvidenceProbeService = useMemo(
-    () =>
-      createTranscriptEvidenceProbeService(setPlayback, setCorrectionStatus),
-    [setCorrectionStatus, setPlayback],
-  );
+  const service: TranscriptEvidenceProbeService = useMemo(() => {
+    const delegate = createTranscriptEvidenceProbeService(
+      setPlayback,
+      setCorrectionStatus,
+    );
+    return {
+      ...delegate,
+      async transcribe(id: string) {
+        try {
+          return await delegate.transcribe(id);
+        } catch (failure) {
+          setError(
+            failure instanceof Error ? failure.message : String(failure),
+          );
+          throw failure;
+        }
+      },
+    };
+  }, [setCorrectionStatus, setPlayback]);
   // On relaunch, wait for persisted deletion checks before opening the real recording list.
   const showRecordingScreen = Boolean(
     (recordingSourceId && status === 'ready') ||
     (deletionVerificationId && deletionStatus === 'passed'),
   );
+
+  useEffect(() => {
+    if (!cleanupSourceId) return;
+    // A failed UI assertion still owns its UUID fixture; never reset another case's database.
+    if (!/^[a-f0-9-]{36}$/i.test(cleanupSourceId)) {
+      setStatus('failed');
+      return;
+    }
+    setStatus('cleaning');
+    cleanupSyntheticTranscriptRecording(cleanupSourceId).then(
+      () => {
+        setStatus('cleaned');
+        console.info('TRANSCRIPT_FIXTURE_CLEANUP_COMPLETE', cleanupSourceId);
+      },
+      failure => {
+        setStatus('failed');
+        setError(failure instanceof Error ? failure.message : String(failure));
+      },
+    );
+  }, [cleanupSourceId]);
 
   useEffect(() => {
     if (!deletionVerificationId) return;
@@ -135,75 +160,80 @@ export function TranscriptEvidenceProbe() {
   }
 
   return (
-    <View style={showRecordingScreen ? styles.recordingScreen : undefined}>
-      <Button
-        disabled={
-          status === 'preparing' ||
-          status === 'cleaning' ||
-          status === 'cleaned' ||
-          recordingSourceId !== null
-        }
-        onPress={prepare}
-        testID="transcript-evidence-open"
-        title="Open transcript evidence check"
-      />
-      <Text testID="transcript-evidence-setup-status">{status}</Text>
-      {error ? (
-        <Text testID="transcript-evidence-setup-error">{error}</Text>
-      ) : null}
-      <Text testID="transcript-evidence-cleanup-available">
-        {recordingSourceId ? 'yes' : 'no'}
-      </Text>
-      <Text testID="transcript-evidence-source-id">
-        {recordingSourceId ?? ''}
-      </Text>
-      <Text testID="transcript-evidence-deletion-seed-status">
-        {deletionSeedStatus}
-      </Text>
-      <Text testID="transcript-evidence-deletion-status">{deletionStatus}</Text>
-      <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
-      <Text testID="transcript-evidence-correction-status">
-        {correctionStatus}
-      </Text>
-      {recordingSourceId ? (
-        <Button
-          disabled={memoryStatus === 'checking' || memoryStatus === 'passed'}
-          onPress={verifyMemoryInvalidation}
-          testID="transcript-evidence-verify-memory"
-          title="Verify transcript memory invalidation"
-        />
-      ) : null}
-      {recordingSourceId ? (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.recordingScreen}>
         <Button
           disabled={
-            deletionSeedStatus === 'seeding' || deletionSeedStatus === 'seeded'
+            status === 'preparing' ||
+            status === 'cleaning' ||
+            status === 'cleaned' ||
+            recordingSourceId !== null
           }
-          onPress={seedDeletionEvidence}
-          testID="transcript-evidence-seed-deletion"
-          title="Seed deletion search evidence"
+          onPress={prepare}
+          testID="transcript-evidence-open"
+          title="Open transcript evidence check"
         />
-      ) : null}
-      {playback ? (
-        <Text testID="transcript-evidence-playback-result">
-          {JSON.stringify(playback)}
+        <Text testID="transcript-evidence-setup-status">{status}</Text>
+        {error ? (
+          <Text testID="transcript-evidence-setup-error">{error}</Text>
+        ) : null}
+        <Text testID="transcript-evidence-cleanup-available">
+          {recordingSourceId ? 'yes' : 'no'}
         </Text>
-      ) : null}
-      {recordingSourceId ? (
-        <Button
-          disabled={status === 'cleaning'}
-          onPress={cleanup}
-          testID="transcript-evidence-cleanup"
-          title="Clean up test recording"
-        />
-      ) : null}
-      {showRecordingScreen ? (
-        <RecordingScreen onBack={() => {}} transcriptService={service} />
-      ) : null}
-    </View>
+        <Text testID="transcript-evidence-source-id">
+          {recordingSourceId ?? ''}
+        </Text>
+        <Text testID="transcript-evidence-deletion-seed-status">
+          {deletionSeedStatus}
+        </Text>
+        <Text testID="transcript-evidence-deletion-status">
+          {deletionStatus}
+        </Text>
+        <Text testID="transcript-evidence-memory-status">{memoryStatus}</Text>
+        <Text testID="transcript-evidence-correction-status">
+          {correctionStatus}
+        </Text>
+        {recordingSourceId ? (
+          <Button
+            disabled={memoryStatus === 'checking' || memoryStatus === 'passed'}
+            onPress={verifyMemoryInvalidation}
+            testID="transcript-evidence-verify-memory"
+            title="Verify transcript memory invalidation"
+          />
+        ) : null}
+        {recordingSourceId ? (
+          <Button
+            disabled={
+              deletionSeedStatus === 'seeding' ||
+              deletionSeedStatus === 'seeded'
+            }
+            onPress={seedDeletionEvidence}
+            testID="transcript-evidence-seed-deletion"
+            title="Seed deletion search evidence"
+          />
+        ) : null}
+        {playback ? (
+          <Text testID="transcript-evidence-playback-result">
+            {JSON.stringify(playback)}
+          </Text>
+        ) : null}
+        {recordingSourceId ? (
+          <Button
+            disabled={status === 'cleaning'}
+            onPress={cleanup}
+            testID="transcript-evidence-cleanup"
+            title="Clean up test recording"
+          />
+        ) : null}
+        {showRecordingScreen ? (
+          <RecordingScreen onBack={() => {}} transcriptService={service} />
+        ) : null}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  // Give the production screen a bounded parent so its own recording-controls scroll can reach the transcript.
+  // Keep test actions below system insets and give the production screen a bounded scroll viewport.
   recordingScreen: { flex: 1, width: '100%' },
 });

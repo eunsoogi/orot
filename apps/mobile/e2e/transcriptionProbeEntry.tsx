@@ -5,7 +5,7 @@ import { RecordingLibraryVisualProbe } from './transcription/RecordingLibraryVis
 import { RecordingExportProbeHarness } from './transcription/RecordingExportProbeHarness';
 import { TranscriptEvidenceProbe } from './transcription/transcriptEvidenceProbe';
 import { TranscriptionProbe } from './transcription/transcriptionProbe';
-import { NativeSpeechJourneyProbe } from './NativeSpeechJourneyProbe';
+import { SpeechJourneyProbe } from './SpeechJourneyProbe';
 
 const settingsManager = (
   NativeModules as unknown as {
@@ -20,7 +20,7 @@ const configuredProbeMode =
   settingsManager?.getConstants?.().settings?.OROT_TRANSCRIPTION_PROBE_MODE;
 const probeEntry =
   configuredProbeMode === 'speech-journey'
-    ? NativeSpeechJourneyProbe
+    ? SpeechJourneyProbe
     : configuredProbeMode === 'recording-library-visual'
       ? RecordingLibraryVisualProbe
       : configuredProbeMode === 'transcript-evidence'

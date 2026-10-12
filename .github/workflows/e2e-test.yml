@@ -8,7 +8,7 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      native_validation:
+      ios_test_validation:
         description: Run intermediate native target and product verification.
         type: boolean
         default: false
@@ -69,7 +69,7 @@ jobs:
     name: iOS Simulator Build
     # Preserve the production/OAuth build independently of Linux leaf failures.
     if: ${{ !cancelled() }}
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true || github.event_name == 'workflow_dispatch' && (inputs.native_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) && 'ubuntu-latest' || 'xcode-27' }}
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true || github.event_name == 'workflow_dispatch' && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) && 'ubuntu-latest' || 'xcode-27' }}
     timeout-minutes: 75
     outputs:
       selection_complete: ${{ steps.select.outputs.selection_complete }}
@@ -105,7 +105,7 @@ jobs:
         run: node scripts/ci/select-changed-paths.mjs
       # A focused run is diagnostic and cannot satisfy this protected full-suite check.
       - name: Fail when focused validation is selected
-        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.native_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
         run: |
           echo "::error::Focused Detox validation cannot satisfy the full iOS validation gate."
           exit 1
@@ -213,9 +213,9 @@ jobs:
           retention-days: 14
 
   detox_profiles:
-    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.native_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') && 'Focus profile routing' || 'Detox E2E profiles' }}
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') && 'Focus profile routing' || 'Detox E2E profiles' }}
     needs: ios-simulator-build
-    if: ${{ always() && !cancelled() && !(github.event_name == 'workflow_dispatch' && (inputs.native_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) }}
+    if: ${{ always() && !cancelled() && !(github.event_name == 'workflow_dispatch' && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '')) }}
     uses: ./.github/workflows/detox-e2e-profiles.yml
     with:
       trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
@@ -229,7 +229,7 @@ jobs:
 
   focused_detox_scenario:
     name: Focused Detox scenario
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_validation != true && (inputs.native_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_test_validation != true && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
     uses: ./.github/workflows/detox-e2e-focused.yml
     with:
       pr_number: ${{ inputs.focus_pr_number }}
@@ -237,7 +237,7 @@ jobs:
       scenario_file: ${{ inputs.focus_scenario_file }}
       scenario_name: ${{ inputs.focus_scenario_name }}
 
-  native_tests:
+  ios_tests:
     name: Intermediate native validation
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_validation == true }}
-    uses: ./.github/workflows/native-test-validation.yml
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_test_validation == true }}
+    uses: ./.github/workflows/ios-test-validation.yml

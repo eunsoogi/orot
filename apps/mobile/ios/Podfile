@@ -24,7 +24,7 @@ target 'OrotMobile' do
   )
 
   # The hosted test bundle imports production native services and resolves React headers through its app host.
-  target 'OrotNativeIntegrationTests' do
+  target 'OrotIntegrationTests' do
     inherit! :search_paths
   end
 

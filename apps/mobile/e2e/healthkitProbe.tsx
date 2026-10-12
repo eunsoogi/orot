@@ -26,7 +26,7 @@ export function HealthKitProbe() {
   );
 
   useEffect(() => {
-    runProbe().then(setResult, (error: unknown) => {
+    runHealthKitIntegrationProbe().then(setResult, (error: unknown) => {
       const detail =
         error instanceof Error ? (error.stack ?? error.message) : String(error);
       console.error('HealthKit Simulator probe failed:', error);
@@ -43,7 +43,8 @@ export function HealthKitProbe() {
   );
 }
 
-async function runProbe(): Promise<string> {
+/** Retains native permission-scope and synthetic fixture assertions for both UI and app-hosted tests. */
+export async function runHealthKitIntegrationProbe(): Promise<string> {
   let fixtureInstalled = false;
   try {
     // This is the real store availability; permission and sample results use fixtures.

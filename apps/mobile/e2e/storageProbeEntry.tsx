@@ -30,13 +30,20 @@ function getStorageProbeMode(): StorageProbeMode | null {
 }
 
 function StorageProbe({ mode }: { mode: StorageProbeMode }) {
+  const settingsManager = NativeModules.SettingsManager;
+  const fixtureIdentifier =
+    settingsManager?.settings?.OROT_TEST_STORAGE_FIXTURE ??
+    settingsManager?.getConstants?.().settings?.OROT_TEST_STORAGE_FIXTURE;
   const [result, setResult] = useState<{
     status: 'running' | 'success' | 'failure';
     message?: string;
   }>({ status: 'running' });
 
   useEffect(() => {
-    runStorageProbe(mode).then(
+    runStorageProbe(
+      mode,
+      typeof fixtureIdentifier === 'string' ? fixtureIdentifier : undefined,
+    ).then(
       () => setResult({ status: 'success' }),
       error => {
         const message = error instanceof Error ? error.message : String(error);
@@ -44,7 +51,7 @@ function StorageProbe({ mode }: { mode: StorageProbeMode }) {
         setResult({ status: 'failure', message });
       },
     );
-  }, [mode]);
+  }, [mode, fixtureIdentifier]);
 
   const label = result.message
     ? 'Storage probe failure: ' + result.message

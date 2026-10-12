@@ -36,7 +36,7 @@ export function SleepImportProbe() {
   );
 
   useEffect(() => {
-    runProbe().then(setResult, (error: unknown) => {
+    runSleepIntegrationProbe().then(setResult, (error: unknown) => {
       const detail =
         error instanceof Error ? (error.stack ?? error.message) : String(error);
       console.error('Sleep import Simulator probe failed:', error);
@@ -53,7 +53,8 @@ export function SleepImportProbe() {
   );
 }
 
-async function runProbe(): Promise<string> {
+/** Checks the real bridge's synthetic sleep normalization without treating it as access to real samples. */
+export async function runSleepIntegrationProbe(): Promise<string> {
   let fixtureInstalled = false;
   try {
     // Availability reads the real store; sleep samples come only from the Debug Simulator adapter.

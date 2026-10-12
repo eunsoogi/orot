@@ -29,8 +29,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "C3381A7416339E895E9FCEB3"
-               BuildableName = "OrotNativeIntegrationTests.xctest"
-               BlueprintName = "OrotNativeIntegrationTests"
+               BuildableName = "OrotIntegrationTests.xctest"
+               BlueprintName = "OrotIntegrationTests"
                ReferencedContainer = "container:OrotMobile.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -47,8 +47,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "C3381A7416339E895E9FCEB3"
-               BuildableName = "OrotNativeIntegrationTests.xctest"
-               BlueprintName = "OrotNativeIntegrationTests"
+               BuildableName = "OrotIntegrationTests.xctest"
+               BlueprintName = "OrotIntegrationTests"
                ReferencedContainer = "container:OrotMobile.xcodeproj">
             </BuildableReference>
          </TestableReference>

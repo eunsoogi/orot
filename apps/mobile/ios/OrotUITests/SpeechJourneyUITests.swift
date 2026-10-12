@@ -2,17 +2,17 @@ import XCTest
 
 final class SpeechJourneyUITests: XCTestCase {
     @MainActor
-    func testNativeTranscriptionReachesSavedRecordingAndSurvivesRelaunch() throws {
+    func testTranscriptionReachesSavedRecordingAndSurvivesRelaunch() throws {
         let app = XCUIApplication()
-        let arguments = ["-OROT_NATIVE_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "speech-journey"]
+        let arguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "speech-journey"]
         app.launchArguments = arguments
         app.launch()
-        let status = UITestConditions.element(app, "native-speech-status")
+        let status = UITestConditions.element(app, "speech-journey-status")
         UITestConditions.value(status, equals: "ready")
-        UITestConditions.element(app, "native-speech-start").tap()
+        UITestConditions.element(app, "speech-journey-start").tap()
         // Recognition has the unchanged native 120-second deadline; this UI wait only observes its saved result.
         UITestConditions.value(status, equals: "saved", timeout: 150)
-        let resultElement = UITestConditions.element(app, "native-speech-result")
+        let resultElement = UITestConditions.element(app, "speech-journey-result")
         let bytes = try XCTUnwrap(UITestConditions.text(resultElement).data(using: .utf8))
         let result = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
         let sourceId = try XCTUnwrap(result["sourceId"] as? String)
@@ -31,16 +31,16 @@ final class SpeechJourneyUITests: XCTestCase {
         add(attachment)
 
         app.terminate()
-        app.launchArguments = arguments + ["-OROT_NATIVE_RECORDING_ID", sourceId]
+        app.launchArguments = arguments + ["-OROT_TEST_RECORDING_ID", sourceId]
         app.launch()
-        UITestConditions.value(UITestConditions.element(app, "native-speech-status"), equals: "restored")
-        let restored = UITestConditions.text(UITestConditions.element(app, "native-speech-result"))
+        UITestConditions.value(UITestConditions.element(app, "speech-journey-status"), equals: "restored")
+        let restored = UITestConditions.text(UITestConditions.element(app, "speech-journey-result"))
         XCTAssertEqual(restored, String(decoding: bytes, as: UTF8.self))
         verifyProductionTranscript(app, sourceId: sourceId, text: firstSegmentText)
-        let cleanup = UITestConditions.element(app, "native-speech-cleanup")
+        let cleanup = UITestConditions.element(app, "speech-journey-cleanup")
         UITestConditions.scrollTo(cleanup, in: app)
         cleanup.tap()
-        UITestConditions.value(UITestConditions.element(app, "native-speech-status"), equals: "cleaned")
+        UITestConditions.value(UITestConditions.element(app, "speech-journey-status"), equals: "cleaned")
         app.terminate()
     }
 
