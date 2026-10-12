@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 
 const [profile, ownerFile, directory] = process.argv.slice(2);
@@ -17,11 +17,11 @@ mkdirSync(evidence, { recursive: true });
 const metadata = resolve(evidence, 'ui-bootstrap.json');
 if (existsSync(metadata)) throw new Error('Existing Simulator UI preparation evidence');
 const started = Date.now();
-const simctl = execFileSync('xcrun', ['--find', 'simctl'], {
-  encoding: 'utf8',
-  timeout: 30000,
-}).trim();
-const simulator = resolve(dirname(dirname(dirname(simctl))), 'Applications/Simulator.app');
+const developer = process.env.DEVELOPER_DIR;
+if (!developer || !isAbsolute(developer))
+  throw new Error('Simulator UI preparation requires the explicit selected Xcode directory');
+// Use the same selected Developer directory as product verification. A tool binary's location does not identify an application bundle.
+const simulator = resolve(developer, 'Applications/Simulator.app');
 if (!existsSync(simulator)) throw new Error('Selected Xcode Simulator application is unavailable');
 // Request the matching Xcode UI for this destination after its single boot. No device or service is restarted.
 execFileSync('open', [simulator, '--args', '-CurrentDeviceUDID', owner.udid], { timeout: 30000 });
@@ -52,6 +52,7 @@ writeFileSync(
       profile,
       udid: owner.udid,
       simulatorAppOpenRequested: true,
+      selectedXcodeDeveloperDirectory: developer,
       screenshot,
       elapsedMs: Date.now() - started,
     },

@@ -6,7 +6,13 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
-function fixture({ github = true, screenshotFailure = false, state = 'Booted' } = {}) {
+function fixture({
+  github = true,
+  screenshotFailure = false,
+  state = 'Booted',
+  sharedSimctl = false,
+  selectedDeveloper = 'provided',
+} = {}) {
   const root = mkdtempSync(join(tmpdir(), 'orot-ui-preparation-'));
   const spec = iosTestConfig('speech');
   const owner = { ...spec, name: 'owned-ui-fixture', udid: '11111111-2222-4333-8444-555555555555' };
@@ -18,7 +24,7 @@ function fixture({ github = true, screenshotFailure = false, state = 'Booted' } 
 const fs=require('node:fs');const args=process.argv.slice(2);const name=require('node:path').basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
 if(name==='open')process.exit(0);
-if(args[0]==='--find')console.log(${JSON.stringify(join(developer, 'usr/bin/simctl'))});
+if(args[0]==='--find')console.log(${JSON.stringify(sharedSimctl ? join(root, 'SharedCoreSimulator.framework/Resources/bin/simctl') : join(developer, 'usr/bin/simctl'))});
 else if(args[1]==='list'&&args[2]==='runtimes')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));
 else if(args[1]==='list'&&args[2]==='devices')console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
 else if(args[1]==='io'){if(${screenshotFailure})process.exit(1);fs.writeFileSync(args.at(-1),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64'));}
@@ -32,7 +38,17 @@ else if(args[1]==='io'){if(${screenshotFailure})process.exit(1);fs.writeFileSync
     [resolve('scripts/ci/prepare-ios-test-ui.mjs'), 'speech', ownerFile, output],
     {
       encoding: 'utf8',
-      env: { ...process.env, GITHUB_ACTIONS: String(github), PATH: root + ':' + process.env.PATH },
+      env: {
+        ...process.env,
+        DEVELOPER_DIR:
+          selectedDeveloper === 'provided'
+            ? developer
+            : selectedDeveloper === 'missing'
+              ? undefined
+              : 'relative/Developer',
+        GITHUB_ACTIONS: String(github),
+        PATH: root + ':' + process.env.PATH,
+      },
     },
   );
   return {
@@ -46,7 +62,7 @@ else if(args[1]==='io'){if(${screenshotFailure})process.exit(1);fs.writeFileSync
 }
 
 test('opens only the owned destination in the verified Xcode application without another boot', () => {
-  const value = fixture();
+  const value = fixture({ sharedSimctl: true });
   try {
     assert.equal(value.outcome.status, 0, value.outcome.stderr);
     assert.deepEqual(
@@ -88,6 +104,19 @@ test('refuses local or inactive destinations before requesting the Simulator app
     const value = fixture(options);
     try {
       assert.notEqual(value.outcome.status, 0);
+      assert.ok(!value.calls.some((call) => call.name === 'open'));
+    } finally {
+      rmSync(value.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('refuses absent or relative selected Xcode directories before opening any application', () => {
+  for (const selectedDeveloper of ['missing', 'relative']) {
+    const value = fixture({ selectedDeveloper });
+    try {
+      assert.notEqual(value.outcome.status, 0);
+      assert.match(value.outcome.stderr, /explicit selected Xcode directory/);
       assert.ok(!value.calls.some((call) => call.name === 'open'));
     } finally {
       rmSync(value.root, { recursive: true, force: true });
