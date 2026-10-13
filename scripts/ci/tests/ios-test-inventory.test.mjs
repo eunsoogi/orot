@@ -30,6 +30,7 @@ test('each profile declares unique existing cases and every test method is sched
     'health-import',
     'microphone',
     'local-model',
+    'provider-selection',
   ]) {
     const inventory = iosTestInventory(profile);
     assert.ok(inventory.length > 0);

@@ -11,6 +11,7 @@ import {
   visitRecommendationRequirements,
 } from '../src/providers/selection/options';
 import { providerSelectionStore } from '../src/providers/selection/keychainSelectionStore';
+import { t } from '../src/i18n';
 import {
   completeSyntheticAuthReturn,
   prepareSyntheticSignOutLifecycle,
@@ -59,7 +60,7 @@ export function ProviderSelectionProbe() {
                 startSyntheticSignOutResponse(setSignOutResponseState)
               }
               testID="provider-selection-sign-out-request"
-              title="합성 추론 진행 검사"
+              title={t('probe.provider.request')}
             />
             <Text testID="provider-selection-sign-out-response">
               {signOutResponseState}
@@ -95,12 +96,12 @@ export function ProviderSelectionProbe() {
             )
         }
         testID="provider-selection-native-auth-cancel"
-        title="네이티브 인증 창 취소 검사"
+        title={t('probe.provider.nativeCancel')}
       />
       <Button
         onPress={() => setAuthFlow('cancel')}
         testID="provider-selection-auth-cancel"
-        title="합성 ChatGPT 로그인 취소 검사"
+        title={t('probe.provider.loginCancel')}
       />
       <Button
         onPress={() => {
@@ -109,7 +110,7 @@ export function ProviderSelectionProbe() {
           setAuthFlow('success');
         }}
         testID="provider-selection-auth-success"
-        title="합성 ChatGPT 로그인 복귀 검사"
+        title={t('probe.provider.loginReturn')}
       />
       <Button
         onPress={() =>
@@ -125,7 +126,7 @@ export function ProviderSelectionProbe() {
             )
         }
         testID="provider-selection-sign-out-start"
-        title="합성 ChatGPT 로그아웃 흐름 시작"
+        title={t('probe.provider.signOutStart')}
       />
       <Button
         onPress={() =>
@@ -141,7 +142,7 @@ export function ProviderSelectionProbe() {
             )
         }
         testID="provider-selection-sign-out-reopen"
-        title="합성 ChatGPT 로그아웃 흐름 다시 열기"
+        title={t('probe.provider.signOutReopen')}
       />
       <Button
         onPress={() =>
@@ -158,7 +159,7 @@ export function ProviderSelectionProbe() {
           })
         }
         testID="provider-selection-probe-reset"
-        title="Reset synthetic selection"
+        title={t('probe.provider.reset')}
       />
       <ProviderSelectionScreen
         options={options}

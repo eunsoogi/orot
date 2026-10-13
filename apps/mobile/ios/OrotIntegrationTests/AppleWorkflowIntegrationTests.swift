@@ -4,6 +4,43 @@ import XCTest
 
 /// Uses the actual Apple provider with synthetic source/context boundaries; unavailable models cannot satisfy this workflow requirement.
 final class AppleWorkflowIntegrationTests: XCTestCase {
+    func testThreeActualCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence() async throws {
+        let result = try await TestOperationBroker.shared.request("calendar-classification", timeout: 255)
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
+        attachment.name = "actual-apple-calendar-classifications-and-two-imports"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertEqual(result["availability"] as? String, "available")
+        let runs = try XCTUnwrap(result["runs"] as? [[String: Any]])
+        XCTAssertEqual(runs.count, 2)
+        for (index, run) in runs.enumerated() {
+            XCTAssertEqual(run["importNumber"] as? Int, index + 1)
+            let classification = try XCTUnwrap(run["classification"] as? [String: Any])
+            XCTAssertEqual(classification["status"] as? String, "complete")
+            let candidates = try XCTUnwrap(classification["candidates"] as? [[String: Any]])
+            XCTAssertEqual(candidates.count, 3)
+            XCTAssertTrue(candidates.allSatisfy { $0["status"] as? String == "classified" })
+            let medical = candidates.filter { $0["classification"] as? String == "medical" && $0["uncertainty"] as? String == "low" }
+            XCTAssertEqual(medical.count, 1)
+            let selected = try XCTUnwrap(medical.first)
+            XCTAssertEqual(selected["status"] as? String, "classified")
+            XCTAssertEqual(selected["candidateId"] as? String, "calendar-candidate-1")
+            XCTAssertEqual(run["saves"] as? [String], ["saved"])
+            try verifySingleOccurrence(run["stored"])
+        }
+        try verifySingleOccurrence(result["stored"])
+    }
+
+    private func verifySingleOccurrence(_ value: Any?) throws {
+        let stored = try XCTUnwrap(value as? [[String: Any]])
+        XCTAssertEqual(stored.count, 1)
+        let appointment = try XCTUnwrap(stored.first)
+        XCTAssertEqual(appointment["id"] as? String, "synthetic-appointment-1")
+        XCTAssertEqual(appointment["calendarEventIdentifier"] as? String, "synthetic-calendar-0")
+        let snapshot = try XCTUnwrap(appointment["calendarEventSnapshot"] as? [String: Any])
+        XCTAssertEqual(snapshot["title"] as? String, "내과 진료")
+    }
+
     func testActualCalendarClassificationCitedQuestionsAndWorkflowCancellation() async throws {
         let result = try await TestOperationBroker.shared.request("apple-workflow", timeout: 300)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")

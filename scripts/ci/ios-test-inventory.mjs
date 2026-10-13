@@ -11,6 +11,7 @@ const coreTests = [
   'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandTimesOut',
   'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirNativeTouchTargets',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testDisabledAccessibilityTracksNativeStateAndPreservesSelectionAcrossUpdates',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
@@ -25,6 +26,7 @@ const providerTests = [
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
   'OrotIntegrationTests/AppleModelIntegrationTests/testAvailabilityAndSupportedGenerationKeepRuntimeLimitationsExplicit',
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testActualCalendarClassificationCitedQuestionsAndWorkflowCancellation',
+  'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeActualCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseNativeBridge',
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseNativeBridge',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
@@ -53,7 +55,25 @@ export const microphoneTests = [
   'OrotUITests/MicrophoneMeteringUITests/testNativeEventsPauseResumeAndExplicitCleanup',
   'OrotUITests/MicrophoneMeteringUITests/testWallClockDeadlineEndsCaptureAndCleansItsArtifact',
 ];
+export const providerSelectionTests = [
+  'OrotUITests/ProviderSelectionUITests/testNativeAuthCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
+  'OrotUITests/ProviderSelectionUITests/testExplicitSelectionAndKeychainRestoreNeverChooseAnAutomaticFallback',
+  'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
+];
 export const fixtureTests = [
+  'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
+  'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
+  'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack',
+  'OrotUITests/RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
+  'OrotUITests/RecordingLibraryUITests/testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText',
+  'OrotUITests/RecordingLibraryUITests/testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport',
+  'OrotUITests/RecordingPlaybackUITests/testSavedAudioPlaybackStopsCompletesAndReopensBeforeMissingFileRecovery',
+  'OrotUITests/RecordingPlaybackUITests/testPlaybackRecoversAfterTheNativeSimulatedOutputRouteLoss',
+  'OrotUITests/UnifiedImportUITests/testProviderSelectionUsesTheRealRecordsRouteAcrossAppearanceChangesBeforeImport',
+  'OrotUITests/NextVisitReviewUITests/testNativeSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
+  'OrotUITests/RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable',
+  'OrotUITests/NextVisitReviewUITests/testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges',
+  'OrotUITests/KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
   'OrotUITests/PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteNativeBackSwipe',
   'OrotUITests/HealthImportUITests/testDisplayOnlyBloodPressureCompletionCounts',
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
@@ -91,7 +111,9 @@ export function iosTestInventory(profile, suite = 'all') {
                 ? microphoneTests
                 : profile === 'health-import'
                   ? healthImportTests
-                  : providerTests),
+                  : profile === 'provider-selection'
+                    ? providerSelectionTests
+                    : providerTests),
   ];
   // Cold Speech and XCUI framework initialization run on distinct hosted machines.
   // Both subsets remain mandatory and their union is the original complete inventory.

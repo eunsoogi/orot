@@ -22,7 +22,7 @@ const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
-const fixtureProfiles = ['fixtures', 'health-import', 'microphone'];
+const fixtureProfiles = ['fixtures', 'health-import', 'microphone', 'provider-selection'];
 const fixtureSelection = fixtureProfiles.find((candidate) =>
   tests.some((test) => iosTestInventory(candidate).includes(test)),
 );

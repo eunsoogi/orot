@@ -199,7 +199,12 @@ final class NavigationGlassSurfaceView: UIView {
                 : selectedRootTab
                 ? NavigationGlassPalette.selectedRootTabBackground
                 : action.selected ? NavigationGlassPalette.primaryTint : UIColor.label
-        button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
+        // Custom traits replace UIKit's defaults, so mirror the disabled state for accessibility as well as touch handling.
+        var traits: UIAccessibilityTraits = action.selected ? [.button, .selected] : [.button]
+        if action.disabled {
+            traits.insert(.notEnabled)
+        }
+        button.accessibilityTraits = traits
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),

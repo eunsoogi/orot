@@ -20,6 +20,6 @@ The release body links each commit to its GitHub commit page. It also records th
 
 ## GitHub source versus iOS distribution
 
-A GitHub Release contains the repository source snapshot, tag, and generated notes. This workflow uploads no IPA and does not make the iOS app installable on an iPhone. Simulator builds and Detox checks do not establish a distribution signature.
+A GitHub Release contains the repository source snapshot, tag, and generated notes. This workflow uploads no IPA and does not make the iOS app installable on an iPhone. Simulator builds, XCTest/XCUITest results and retained Detox checks do not establish a distribution signature. Synthetic account, Calendar or HealthKit results remain distinct from real account and physical-device validation.
 
 Apple documents TestFlight and App Store distribution through App Store Connect and the Apple Developer Program in its [Xcode distribution guide](https://developer.apple.com/documentation/xcode/distributing-your-app-for-beta-testing-and-releases) and [TestFlight overview](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/). The project does not have the paid Apple Developer Program membership or App Store Connect signing/upload setup needed for that route. TestFlight and App Store distribution are deferred to issue #174 for 0.2.0.

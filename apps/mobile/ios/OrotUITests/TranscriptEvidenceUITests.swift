@@ -46,8 +46,13 @@ final class TranscriptEvidenceUITests: XCTestCase {
         tap(app, "transcript-edit-0")
         let input = reveal(app, "transcript-input-0")
         input.tap()
+        // Focusing changes the keyboard viewport. Recheck the real input frame before opening its edit menu.
+        _ = reveal(app, "transcript-input-0")
+        let viewport = element(app, "recording-controls-scroll")
+        let offset = CGVector(dx: input.frame.midX - viewport.frame.minX,
+                              dy: input.frame.midY - viewport.frame.minY)
         // Select the original text through the native editor before entering a replacement.
-        input.press(forDuration: 1.2)
+        viewport.coordinate(withNormalizedOffset: .zero).withOffset(offset).press(forDuration: 1.2)
         if app.menuItems["Select All"].waitForExistence(timeout: 2) {
             app.menuItems["Select All"].tap()
         } else {

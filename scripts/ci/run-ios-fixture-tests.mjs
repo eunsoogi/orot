@@ -6,11 +6,14 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
-import { resetIosTestFixtureContainer } from './ios-test-fixture-container.mjs';
+import {
+  resetIosTestFixtureContainer,
+  removeIosTestFixtureContainer,
+} from './ios-test-fixture-container.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
 if (
-  !['fixtures', 'health-import', 'microphone'].includes(profile) ||
+  !['fixtures', 'health-import', 'microphone', 'provider-selection'].includes(profile) ||
   !output ||
   !existsSync(runFile) ||
   existsSync(output)
@@ -44,39 +47,54 @@ for (const [index, identifier] of expected.entries()) {
   resetIosTestFixtureContainer(profile, owner, app);
   const name = String(index + 1).padStart(2, '0');
   const resultBundle = join(directory, name + '.xcresult');
-  execFileSync(
-    'scripts/ci/run-command.sh',
-    [
-      'fixture-phase-' + name,
-      join(directory, name + '.log'),
-      '--',
-      process.execPath,
-      'scripts/ci/run-ios-tests.mjs',
-      profile,
-      runFile,
-      ownerFile,
-      resultBundle,
-      identifier,
-    ],
-    { stdio: 'inherit' },
-  );
-  const report = JSON.parse(
+  try {
     execFileSync(
-      'xcrun',
-      ['xcresulttool', 'get', 'test-results', 'tests', '--path', resultBundle, '--compact'],
-      { encoding: 'utf8' },
-    ),
-  );
-  observations.push(...verifyIosTestResults(report, [identifier]));
-  execFileSync('xcrun', [
-    'xcresulttool',
-    'export',
-    'attachments',
-    '--path',
-    resultBundle,
-    '--output-path',
-    join(directory, name + '-attachments'),
-  ]);
+      'scripts/ci/run-command.sh',
+      [
+        'fixture-phase-' + name,
+        join(directory, name + '.log'),
+        '--',
+        process.execPath,
+        'scripts/ci/run-ios-tests.mjs',
+        profile,
+        runFile,
+        ownerFile,
+        resultBundle,
+        identifier,
+      ],
+      { stdio: 'inherit' },
+    );
+    const report = JSON.parse(
+      execFileSync(
+        'xcrun',
+        ['xcresulttool', 'get', 'test-results', 'tests', '--path', resultBundle, '--compact'],
+        { encoding: 'utf8' },
+      ),
+    );
+    observations.push(...verifyIosTestResults(report, [identifier]));
+    execFileSync('xcrun', [
+      'xcresulttool',
+      'export',
+      'attachments',
+      '--path',
+      resultBundle,
+      '--output-path',
+      join(directory, name + '-attachments'),
+    ]);
+  } finally {
+    // run-ios-tests preserves logs and xcresult before returning. Remove only this owned synthetic app, even when its first execution fails.
+    const cleanupStarted = Date.now();
+    const cleanup = removeIosTestFixtureContainer(profile, owner);
+    console.log(
+      'IOS_FIXTURE_CLEANUP_VERIFIED ' +
+        JSON.stringify({
+          profile,
+          device: owner.udid,
+          ...cleanup,
+          elapsedMs: Date.now() - cleanupStarted,
+        }),
+    );
+  }
 }
 if (observations.length !== expected.length)
   throw new Error('Fresh fixture inventory is incomplete');

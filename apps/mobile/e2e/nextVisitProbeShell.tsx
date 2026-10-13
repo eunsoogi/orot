@@ -5,6 +5,7 @@ import { createNavigationController } from '../src/navigation/navigationControll
 import { AppButton } from '../src/layout/AppButton';
 import { AppSymbol } from '../src/layout/AppSymbol';
 import { appColors } from '../src/layout/appColors';
+import { t } from '../src/i18n';
 import type { NextVisitQuestionsRouteState } from '../src/nextVisitQuestions/types';
 
 /** Fixture controls live in a separate modal; the product uses the real safe-area and Glass shell. */
@@ -60,13 +61,13 @@ export function NextVisitProbeShell({
             children(onState)
           ) : (
             <AppButton
-              title="질문 화면 열기"
+              title={t('probe.nextVisit.open')}
               onPress={() => actions.push('questions')}
             />
           )}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="합성 검증 도구 열기"
+            accessibilityLabel={t('probe.nextVisit.tools')}
             onPress={() => setToolsOpen(true)}
             style={styles.tools}
             testID="next-visit-probe-tools"
@@ -80,7 +81,7 @@ export function NextVisitProbeShell({
           >
             <View style={styles.modal}>
               <Text style={styles.text} testID="next-visit-probe-boundary">
-                합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음
+                {t('probe.nextVisit.boundary')}
               </Text>
               <Text
                 style={styles.text}
@@ -90,7 +91,7 @@ export function NextVisitProbeShell({
               </Text>
               {adapterStatus === 'synthetic-generating' ? (
                 <AppButton
-                  title="합성 질문 생성 완료"
+                  title={t('probe.nextVisit.complete')}
                   testID="next-visit-probe-complete-generation"
                   onPress={() => {
                     onComplete();
@@ -100,7 +101,7 @@ export function NextVisitProbeShell({
               ) : null}
               {canReload ? (
                 <AppButton
-                  title="합성 저장 목록 다시 불러오기"
+                  title={t('probe.nextVisit.reload')}
                   testID="next-visit-probe-reload-screen"
                   onPress={() => {
                     onReload();
@@ -109,7 +110,7 @@ export function NextVisitProbeShell({
                 />
               ) : null}
               <AppButton
-                title="화면 보기"
+                title={t('probe.nextVisit.closeTools')}
                 testID="next-visit-probe-close-tools"
                 onPress={() => setToolsOpen(false)}
               />

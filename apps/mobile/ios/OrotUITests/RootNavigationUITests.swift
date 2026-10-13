@@ -75,12 +75,90 @@ final class RootNavigationUITests: XCTestCase {
     }
 
     @MainActor
+    func testLargeTextKeepsRootTabsAndRecordingActionsReachable() throws {
+        let normal = launch()
+        let normalTitleHeight = UITestConditions.element(normal, "welcome-title").frame.height
+        normal.terminate()
+        let app = launch(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        defer { app.terminate() }
+        // Observe the actual rendered enlargement, rather than treating the launch argument as proof of large text.
+        XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
+        try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
+        try NavigationUITestConditions.openTab(app, "home", markers: ["home-empty-recordings", "home-recordings-retry"])
+        _ = try NavigationUITestConditions.nativeAction(app, "navigation-tab-home")
+        capture(app, "home-xxxl-native-glass-tabs")
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tap(app, "records-new-recording")
+        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        try NavigationUITestConditions.scrollToBottom(app, "recording-controls-scroll")
+        let start = UITestConditions.element(app, "recording-start")
+        XCTAssertTrue(start.exists && start.isHittable)
+        capture(app, "recording-xxxl-native-navigation")
+        try NavigationUITestConditions.tapNative(app, "navigation-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+    }
+
+    @MainActor
     private func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + arguments
         app.launch()
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
         return app
+    }
+
+    @MainActor
+    func testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        let action = UITestConditions.element(app, "ai-feature-visit-questions")
+        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        action.tap()
+        let scroll = UITestConditions.element(app, "next-visit-questions-scroll")
+        XCTAssertTrue(UITestConditions.exists(scroll))
+        let observed = try NavigationUITestConditions.safeArea(app, testCase: self)
+        let roots = app.descendants(matching: .any).matching(identifier: "navigation-keyboard-avoiding-root").allElementsBoundByIndex
+        let root = try XCTUnwrap(roots.first { $0.frame.contains(scroll.frame) && $0.frame.intersects(observed.frame) })
+        // The native listener must measure this full route root, not a different viewport or a guessed device constant.
+        XCTAssertEqual(root.frame.minX, observed.frame.minX, accuracy: 0.5)
+        XCTAssertEqual(root.frame.minY, observed.frame.minY, accuracy: 0.5)
+        XCTAssertEqual(root.frame.width, observed.frame.width, accuracy: 0.5)
+        XCTAssertEqual(root.frame.height, observed.frame.height, accuracy: 0.5)
+        XCTAssertGreaterThan(observed.top, 0)
+        XCTAssertGreaterThanOrEqual(scroll.frame.minY - root.frame.minY, observed.top)
+        let title = UITestConditions.element(app, "next-visit-title")
+        XCTAssertTrue(title.exists && !title.frame.isEmpty)
+        XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
+        XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-back").control.label, "이전 화면으로 돌아가기")
+        XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-home").control.label, "홈 화면으로 이동")
+        capture(app, "visit-questions-native-safe-area")
+        edgeBack(scroll, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
+        XCTAssertTrue(scroll.exists && scroll.isHittable)
+        capture(app, "edge-back-cancelled")
+        edgeBack(scroll, in: app, fraction: 0.85, velocity: .fast)
+        let ai = UITestConditions.element(app, "ai-features-screen")
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 30), .completed, app.debugDescription)
+        capture(app, "edge-back-completed")
+        FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
+        action.tap()
+        XCTAssertTrue(UITestConditions.exists(scroll))
+        try NavigationUITestConditions.tapNative(app, "navigation-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+    }
+
+    @MainActor
+    private func edgeBack(_ scroll: XCUIElement, in app: XCUIApplication, fraction: CGFloat, velocity: XCUIGestureVelocity) {
+        let frame = scroll.frame
+        XCTAssertFalse(frame.isEmpty)
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(CGVector(dx: frame.minX + frame.width * 0.01, dy: frame.midY))
+        let end = origin.withOffset(CGVector(dx: frame.minX + frame.width * (0.01 + fraction), dy: frame.midY))
+        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
     }
 
     @MainActor

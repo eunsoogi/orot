@@ -4,6 +4,26 @@ import XCTest
 
 final class NavigationLayoutIntegrationTests: XCTestCase {
     @MainActor
+    func testDisabledAccessibilityTracksNativeStateAndPreservesSelectionAcrossUpdates() throws {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
+        // Exercise the real production constructor without a fabricated AX snapshot or a JS-only disabled assertion.
+        for (disabled, selected) in [(true, false), (false, true), (true, true), (false, false)] {
+            surface.actions = [[
+                "id": "primary", "label": "Synthetic action", "testID": "synthetic-native-action",
+                "accessibilityLabel": "Synthetic action", "primary": true,
+                "disabled": disabled, "selected": selected,
+            ]] as NSArray
+            let toolbar = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIToolbar }.first)
+            let group = try XCTUnwrap(toolbar.items?.compactMap(\.customView).compactMap { $0 as? UIStackView }.first)
+            let button = try XCTUnwrap(group.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+            XCTAssertEqual(button.isEnabled, !disabled)
+            XCTAssertTrue(button.accessibilityTraits.contains(.button))
+            XCTAssertEqual(button.accessibilityTraits.contains(.notEnabled), disabled)
+            XCTAssertEqual(button.accessibilityTraits.contains(.selected), selected)
+        }
+    }
+
+    @MainActor
     func testProductionRootTabSymbolsAndLabelsFitTheirNativeTouchTargets() async throws {
         let result = try await TestOperationBroker.shared.request("render-application")
         XCTAssertEqual(result["requested"] as? Bool, true)

@@ -138,7 +138,7 @@ test('failure log collection has a finite budget and cannot replace the test exi
 });
 
 test('fresh fixture selections cannot mutate Core or bypass their phase inventory', () => {
-  for (const fixtureProfile of ['fixtures', 'health-import', 'microphone']) {
+  for (const fixtureProfile of ['fixtures', 'health-import', 'microphone', 'provider-selection']) {
     const identifier = iosTestInventory(fixtureProfile)[0];
     for (const [profile, selected] of [
       ['core', [identifier]],

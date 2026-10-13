@@ -79,6 +79,24 @@ test('isolated health import and microphone consume the exact Debug producer and
         fixture.env,
       );
     assert.ok(existsSync(await verify('health-import')));
+    const providerSelectionDirectory = fixture.artifact('debug-provider-selection');
+    const providerSelectionManifest = await createIosTestProducts(
+      'provider-data',
+      fixture.products,
+      providerSelectionDirectory,
+      fixture.env,
+    );
+    assert.ok(
+      existsSync(
+        await verifyIosTestProducts(
+          'provider-selection',
+          providerSelectionDirectory,
+          providerSelectionManifest.archiveDigest,
+          providerSelectionManifest.manifestDigest,
+          fixture.env,
+        ),
+      ),
+    );
     const microphoneDirectory = fixture.artifact('debug-microphone');
     const microphoneManifest = await createIosTestProducts(
       'provider-data',

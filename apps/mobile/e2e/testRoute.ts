@@ -11,6 +11,8 @@ export const capabilityScenarios = [
   'automatic-transcription',
   'metering',
   'paged-records',
+  'safe-area',
+  'ai-feature-visit-questions',
   'local-e5',
   'local-query',
   'provider-selection',

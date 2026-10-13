@@ -39,6 +39,12 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
     case 'paged-records':
       require('./pagedRecordsProbeEntry');
       break;
+    case 'safe-area':
+      require('./safeAreaProbeEntry');
+      break;
+    case 'ai-feature-visit-questions':
+      require('./aiFeatureVisitQuestionsProbeEntry');
+      break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');
       break;

@@ -30,6 +30,12 @@ describe('native test entry routing', () => {
   });
 
   it('selects explicit capability scenarios while the integration host remains isolated', () => {
+    expect(
+      selectTestRoute({ OROT_TEST_SCENARIO: 'ai-feature-visit-questions' }),
+    ).toBe('ai-feature-visit-questions');
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'safe-area' })).toBe(
+      'safe-area',
+    );
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'backup' })).toBe('backup');
     expect(selectTestRoute({ OROT_TEST_SCENARIO: 'healthkit' })).toBe(
       'healthkit',

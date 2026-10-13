@@ -33,7 +33,7 @@ export function iosTestConfig(profile) {
       device: 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation',
     };
   }
-  if (['provider-data', 'health-import', 'microphone'].includes(profile)) {
+  if (['provider-data', 'health-import', 'microphone', 'provider-selection'].includes(profile)) {
     return {
       ...common,
       profile,
@@ -62,7 +62,7 @@ export function iosTestBuildSpec(profile) {
     compatibleExecutions:
       execution.configuration === 'Release'
         ? ['core', 'speech', 'backup', 'fixtures', 'local-model']
-        : ['provider-data', 'health-import', 'microphone'],
+        : ['provider-data', 'health-import', 'microphone', 'provider-selection'],
   };
 }
 

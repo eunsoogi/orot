@@ -69,6 +69,11 @@ export async function runDomainTestOperation(
       // The same real-provider workflows and their original deadlines run without a diagnostic screen or substituted output.
       return runAppleWorkflowProbe(() => {});
     }
+    case 'calendar-classification': {
+      const { runCalendarClassificationTestOperation } =
+        require('./calendarClassificationTestOperation') as typeof import('./calendarClassificationTestOperation');
+      return runCalendarClassificationTestOperation();
+    }
     case 'rag-workflow': {
       const { runRagWorkflowProbe } =
         require('./ragWorkflowProbe') as typeof import('./ragWorkflowProbe');

@@ -26,11 +26,13 @@ final class PagedHealthRecordsUITests: XCTestCase {
         FormUITestConditions.reveal(row, in: app, scrollID: "health-records-scroll")
         UITestConditions.value(UITestConditions.element(app, "health-record-row-55-value"), equals: "85 count/min")
         capture(app, "health-second-page-row-55")
-        backSwipe(list, fraction: 0.1)
-        XCTAssertTrue(list.exists && list.isHittable, app.debugDescription)
-        XCTAssertFalse(library.isHittable, app.debugDescription)
+        backSwipe(list, in: app, fraction: 0.1)
+        let preserved = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in list.exists && list.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [preserved], timeout: 10), .completed, app.debugDescription)
+        let underlying = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !library.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [underlying], timeout: 10), .completed, app.debugDescription)
         capture(app, "health-short-edge-swipe-preserves-route")
-        backSwipe(list, fraction: 0.9)
+        backSwipe(list, in: app, fraction: 0.9)
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             library.exists && library.isHittable && !list.exists
         }, object: nil)
@@ -39,12 +41,17 @@ final class PagedHealthRecordsUITests: XCTestCase {
     }
 
     @MainActor
-    private func backSwipe(_ list: XCUIElement, fraction: CGFloat) {
+    private func backSwipe(_ list: XCUIElement, in app: XCUIApplication, fraction: CGFloat) {
         XCTAssertTrue(!list.frame.isEmpty)
         // Retain the original measured list-edge origin, short 10% cancellation, and long 90% completion.
-        let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
-        let end = list.coordinate(withNormalizedOffset: CGVector(dx: 0.01 + fraction, dy: 0.5))
-        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0)
+        // The list moves during interactive pop. Freeze both screen points against the app window so the endpoint cannot follow it.
+        let frame = list.frame
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(CGVector(dx: frame.minX + frame.width * 0.01, dy: frame.midY))
+        let end = origin.withOffset(CGVector(dx: frame.minX + frame.width * (0.01 + fraction), dy: frame.midY))
+        // The hosted 500-pixel/second short gesture completed the pop. Retain a controlled slow partial drag, not a velocity-driven flick.
+        let velocity = XCUIGestureVelocity(rawValue: fraction <= 0.1 ? 80 : 500)
+        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
     }
 
     @MainActor

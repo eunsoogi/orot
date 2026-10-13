@@ -1,7 +1,20 @@
 import '../src/agent/polyfills';
-import { AppRegistry, NativeModules, StyleSheet, View } from 'react-native';
-import { useEffect, useState, type ComponentType } from 'react';
+import {
+  AppRegistry,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  useEffect,
+  useState,
+  type ComponentType,
+  type PropsWithChildren,
+} from 'react';
+import { SafeAreaListener, type Metrics } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
+import { t } from '../src/i18n';
 import { selectTestRoute } from './testRoute';
 import { startTestOperationRunner } from './testOperationRunner';
 import { registerCapabilityTestEntry } from './capabilityTestEntry';
@@ -16,6 +29,11 @@ const settingsManager = NativeModules.SettingsManager as
 const settings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 const route = selectTestRoute(settings);
+
+// XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.
+if (settings.OROT_TEST_UI_GEOMETRY === 'YES') {
+  AppRegistry.setWrapperComponentProvider(() => NativeGeometryTestWrapper);
+}
 
 // This entry is bundled only for native test products. An app-hosted XCTest must
 // call the production services without starting an unrelated JS Speech probe.
@@ -53,4 +71,29 @@ function IntegrationTestHost() {
   );
 }
 
-const styles = StyleSheet.create({ host: { flex: 1 } });
+function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  return (
+    <SafeAreaListener onChange={setMetrics}>
+      {children}
+      {metrics ? (
+        <View pointerEvents="none" style={styles.geometryMarker}>
+          <Text
+            accessible
+            accessibilityLabel={JSON.stringify(metrics)}
+            style={styles.geometryMarkerText}
+            testID="native-safe-area-observation"
+          >
+            {t('probe.layout.nativeObservation')}
+          </Text>
+        </View>
+      ) : null}
+    </SafeAreaListener>
+  );
+}
+
+const styles = StyleSheet.create({
+  host: { flex: 1 },
+  geometryMarker: { position: 'absolute', left: 0, top: 0 },
+  geometryMarkerText: { fontSize: 1 },
+});
