@@ -105,3 +105,30 @@ test('every cohort boots only once after verification and preserves the original
     77,
   );
 });
+
+test('production rejects mismatched actual tools before cache preparation, Pods and either build', () => {
+  const action = workflow('.github/actions/ios-test-products-build/action.yml');
+  const steps = action.runs.steps;
+  const guard = steps.findIndex((step) => /verify-toolchain\.sh --cocoapods/.test(step.run ?? ''));
+  assert.ok(guard >= 0, 'Actual production tools must be verified');
+  assert.equal(steps[guard].if, "inputs.production_build == 'true'");
+  assert.equal(steps[guard]['continue-on-error'], undefined);
+  for (const command of [
+    'detox-derived-data-cache.mjs prepare production',
+    'ios:pods',
+    'build-ios-simulator-app.sh build',
+    'swift test --package-path',
+    'build-ios-tests.mjs',
+  ])
+    assert.ok(guard < steps.findIndex((step) => (step.run ?? '').includes(command)), command);
+});
+
+test('preparation failure preserves its raw bundle even when cohort results do not exist', () => {
+  const execution = workflow('.github/workflows/ios-test-cohort-execution.yml');
+  const upload = execution.jobs.execution.steps.find(
+    (step) => step.name === 'Preserve all first-attempt diagnostics',
+  );
+  assert.equal(upload.if, 'always()');
+  // Preparation lives outside results/, so that directory alone cannot retain its first failure.
+  assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/*.xcresult'));
+});

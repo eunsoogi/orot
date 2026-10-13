@@ -40,14 +40,11 @@ runs:
       id: production_fingerprints
       shell: bash
       run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
-    - name: Read actual production toolchain metadata
+    - name: Verify actual production toolchain before cache and builds
       if: inputs.production_build == 'true'
       id: production_toolchain
       shell: bash
-      run: |
-        printf 'macos_version=%s\n' "$(sw_vers -productVersion)" >> "$GITHUB_OUTPUT"
-        xcodebuild -version > artifacts/native-focus/production-toolchain.log
-        printf 'xcodebuild_fingerprint=%s\n' "$(shasum -a 256 artifacts/native-focus/production-toolchain.log | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      run: scripts/ci/run-command.sh production-toolchain artifacts/native-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
     - name: Prepare the isolated production DerivedData boundary
       if: inputs.production_build == 'true'
       id: production_cache

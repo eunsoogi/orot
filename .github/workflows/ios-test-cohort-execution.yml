@@ -88,6 +88,7 @@ jobs:
             artifacts/ios-cohort/*.json
             artifacts/ios-cohort/*.jsonl
             artifacts/ios-cohort/*.png
+            artifacts/ios-cohort/*.xcresult
             artifacts/ios-cohort/results
             artifacts/ios-cohort/product-artifact/manifest.json
           if-no-files-found: warn
