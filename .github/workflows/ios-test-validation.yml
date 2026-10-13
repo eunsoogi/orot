@@ -73,7 +73,8 @@ jobs:
     name: Execute iOS ${{ matrix.profile }} ${{ matrix.suite }} tests
     needs: native_products
     runs-on: xcode-27
-    timeout-minutes: 45
+    # Original per-operation model budgets total 50 minutes; keep a separate setup allowance without increasing them.
+    timeout-minutes: ${{ matrix.profile == 'local-model' && 65 || 45 }}
     strategy:
       fail-fast: false
       matrix:
@@ -87,6 +88,8 @@ jobs:
           - profile: backup
             suite: all
           - profile: fixtures
+            suite: all
+          - profile: local-model
             suite: all
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -127,6 +130,13 @@ jobs:
           PROFILE: ${{ matrix.profile }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: scripts/ci/run-command.sh ios-ui-preparation artifacts/ios-tests/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests
+      - name: Install Korean Speech assets without recognizing a fixture
+        if: matrix.profile == 'speech'
+        env:
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: |
+          scripts/ci/run-command.sh ios-speech-assets artifacts/ios-tests/speech-assets.log -- node scripts/ci/run-ios-tests.mjs speech "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/speech-assets.xcresult OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+          node scripts/ci/ios-test-results.mjs speech artifacts/ios-tests/speech-assets.xcresult artifacts/ios-tests/speech-assets.json OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
       - name: Execute without compilation or retry
         env:
           PROFILE: ${{ matrix.profile }}
@@ -135,6 +145,8 @@ jobs:
         run: |
           if [[ "$PROFILE" == backup ]]; then
             scripts/ci/run-command.sh ios-backup-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/backup
+          elif [[ "$PROFILE" == local-model ]]; then
+            scripts/ci/run-command.sh ios-local-model-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/local-model
           elif [[ "$PROFILE" == fixtures ]]; then
             scripts/ci/run-command.sh ios-fixture-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/fixtures
           else
@@ -172,6 +184,7 @@ jobs:
             artifacts/ios-tests/attachments
             artifacts/ios-tests/backup
             artifacts/ios-tests/fixtures
+            artifacts/ios-tests/local-model
             artifacts/ios-tests/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

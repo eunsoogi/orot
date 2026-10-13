@@ -8,11 +8,13 @@ test('separate Speech runners cover every original case without duplication or s
   const native = iosTestInventory('speech', 'native');
   const ui = iosTestInventory('speech', 'ui');
   assert.equal(native.length, 6);
-  assert.equal(ui.length, 3);
+  assert.equal(ui.length, 4);
   assert.deepEqual([...native, ...ui].sort(), [...all].sort());
   assert.equal(new Set([...native, ...ui]).size, all.length);
   assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));
   assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
+  assert.equal(iosTestInventory('speech', 'preparation').length, 1);
+  assert.throws(() => iosTestInventory('core', 'preparation'));
   assert.throws(() => iosTestInventory('speech', 'unknown'));
   assert.throws(() => iosTestInventory('core', 'ui'));
 });
@@ -26,6 +28,8 @@ test('each profile declares unique existing cases and every test method is sched
     'backup',
     'fixtures',
     'health-import',
+    'microphone',
+    'local-model',
   ]) {
     const inventory = iosTestInventory(profile);
     assert.ok(inventory.length > 0);
@@ -36,6 +40,12 @@ test('each profile declares unique existing cases and every test method is sched
       const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
       assert.ok(source.includes(`func ${method}(`), identifier);
     }
+  }
+  for (const identifier of iosTestInventory('speech', 'preparation')) {
+    seen.add(identifier);
+    const [target, suite, method] = identifier.split('/');
+    const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
+    assert.ok(source.includes(`func ${method}(`), identifier);
   }
   for (const target of ['OrotIntegrationTests', 'OrotUITests']) {
     for (const file of readdirSync(`apps/mobile/ios/${target}`).filter((file) =>

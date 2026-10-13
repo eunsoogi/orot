@@ -1,5 +1,8 @@
 import type { SourceRecord } from '@orot/domain';
-import { installSyntheticTranscriptionRecording } from '../src/recording/nativeRecordingBridge';
+import {
+  installSyntheticTranscriptionRecording,
+  removeSyntheticTranscriptionRecording,
+} from '../src/recording/nativeRecordingBridge';
 import { saveRecordingSource } from '../src/recording/recordingPersistence';
 import { isSyntheticTranscriptionFixtureUnchanged } from '../src/recording/syntheticRecordingExportProbeBridge';
 import type {
@@ -23,6 +26,21 @@ export async function readAutomaticProbeSource(sourceId: string) {
     throw new Error('PROBE_SOURCE_MISSING');
   const segments = await repository.transcripts.listForRecording(sourceId);
   return { source, segments };
+}
+
+/** A relaunch may remove only this exact synthetic audio source and its dependent segments. */
+export async function cleanupAutomaticProbeSource(sourceId: string) {
+  const { source } = await readAutomaticProbeSource(sourceId);
+  if (source.sourceKind !== 'audio_recording')
+    throw new Error('PROBE_SOURCE_KIND_INVALID');
+  const repository = await openLocalStorage();
+  await repository.sourceRecords.delete(sourceId);
+  await removeSyntheticTranscriptionRecording(sourceId);
+  if (
+    (await repository.get('source_record', sourceId)) ||
+    (await repository.transcripts.listForRecording(sourceId)).length > 0
+  )
+    throw new Error('PROBE_CLEANUP_INCOMPLETE');
 }
 
 /** The fixture adapter replaces microphone capture and source linking only. */
@@ -65,6 +83,7 @@ export async function prepareAutomaticProbe() {
     throw new Error('PROBE_PRODUCTION_REFUSAL_FAILED');
   }
   const refusal = {
+    fixtureId: recording.id,
     rejectionCode,
     absentSource,
     absentSegments,
@@ -180,6 +199,12 @@ export async function prepareAutomaticProbe() {
     service,
     transcription,
     library,
+    async cleanup() {
+      // Before the screen saves a row, ownership comes from the fixture installed in this same invocation.
+      if (await repository.get('source_record', recording.id))
+        await cleanupAutomaticProbeSource(recording.id);
+      else await removeSyntheticTranscriptionRecording(recording.id);
+    },
     async report() {
       await assertFixture(recording.id);
       const persisted = await readAutomaticProbeSource(recording.id);

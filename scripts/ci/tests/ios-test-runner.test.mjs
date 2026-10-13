@@ -138,7 +138,7 @@ test('failure log collection has a finite budget and cannot replace the test exi
 });
 
 test('fresh fixture selections cannot mutate Core or bypass their phase inventory', () => {
-  for (const fixtureProfile of ['fixtures', 'health-import']) {
+  for (const fixtureProfile of ['fixtures', 'health-import', 'microphone']) {
     const identifier = iosTestInventory(fixtureProfile)[0];
     for (const [profile, selected] of [
       ['core', [identifier]],
@@ -162,5 +162,31 @@ test('fresh fixture selections cannot mutate Core or bypass their phase inventor
     } finally {
       rmSync(allowed.directory, { recursive: true, force: true });
     }
+  }
+});
+
+test('local model selection requires exactly one corpus phase on its dedicated destination', () => {
+  const identifier = iosTestInventory('local-model')[0];
+  for (const [profile, selected] of [
+    ['core', [identifier]],
+    ['local-model', []],
+    ['local-model', [identifier, iosTestInventory('local-model')[1]]],
+    ['local-model', ['OrotIntegrationTests/UnknownTests/testUnknown']],
+  ]) {
+    const result = fixture(0, profile, 'all', selected);
+    try {
+      assert.notEqual(result.outcome.status, 0);
+      assert.match(result.outcome.stderr, /isolated corpus and process phases/);
+      assert.ok(!result.calls.some((call) => call.name === 'xcodebuild'));
+    } finally {
+      rmSync(result.directory, { recursive: true, force: true });
+    }
+  }
+  const allowed = fixture(65, 'local-model', 'all', [identifier]);
+  try {
+    assert.equal(allowed.outcome.status, 65, allowed.outcome.stderr);
+    assert.equal(allowed.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+  } finally {
+    rmSync(allowed.directory, { recursive: true, force: true });
   }
 });

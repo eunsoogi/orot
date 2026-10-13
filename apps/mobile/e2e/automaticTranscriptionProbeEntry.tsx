@@ -3,6 +3,7 @@ import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
 import {
   AppRegistry,
+  Button,
   NativeModules,
   StyleSheet,
   Text,
@@ -10,10 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
+import { t } from '../src/i18n';
 import RecordingScreen from '../src/recording/RecordingScreen';
 import { getAutomaticTranscriptionStore } from '../src/recording/automaticTranscriptionStore';
 import {
   prepareAutomaticProbe,
+  cleanupAutomaticProbeSource,
   readAutomaticProbeSource,
 } from './automaticTranscriptionProbeSupport';
 
@@ -36,6 +39,7 @@ function ProbeEntry() {
   const [probe, setProbe] = useState<Probe | null>(null);
   const [phase, setPhase] = useState('preparing');
   const [result, setResult] = useState('');
+  const [restoredId, setRestoredId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     let unsubscribe = () => {};
@@ -48,6 +52,7 @@ function ProbeEntry() {
     if (id) {
       readAutomaticProbeSource(id).then(value => {
         if (!active) return;
+        setRestoredId(id);
         setResult(
           JSON.stringify({
             ...value,
@@ -113,6 +118,29 @@ function ProbeEntry() {
             recordingLibraryService={probe.library}
           />
         </View>
+      ) : null}
+      {probe || restoredId ? (
+        <Button
+          title={t('probe.cleanup')}
+          testID="automatic-transcription-cleanup"
+          disabled={
+            !['ready', 'complete', 'relaunch-complete', 'failed'].includes(
+              phase,
+            )
+          }
+          onPress={() => {
+            const cleanup = probe
+              ? probe.cleanup()
+              : cleanupAutomaticProbeSource(restoredId!);
+            cleanup.then(
+              () => setPhase('cleaned'),
+              error => {
+                setResult(String(error));
+                setPhase('failed');
+              },
+            );
+          }}
+        />
       ) : null}
     </SafeAreaView>
   );

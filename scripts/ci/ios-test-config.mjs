@@ -13,7 +13,7 @@ export function iosTestConfig(profile) {
     preprocessorFlags: '$(inherited) OROT_TESTS=1',
     testability: 'YES',
   };
-  if (['core', 'backup', 'fixtures'].includes(profile)) {
+  if (['core', 'backup', 'fixtures', 'local-model'].includes(profile)) {
     return {
       ...common,
       profile,
@@ -33,7 +33,7 @@ export function iosTestConfig(profile) {
       device: 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation',
     };
   }
-  if (['provider-data', 'health-import'].includes(profile)) {
+  if (['provider-data', 'health-import', 'microphone'].includes(profile)) {
     return {
       ...common,
       profile,
@@ -61,8 +61,8 @@ export function iosTestBuildSpec(profile) {
     signing: { allowed: 'YES', identity: '-', team: 'OROTSIM000' },
     compatibleExecutions:
       execution.configuration === 'Release'
-        ? ['core', 'speech', 'backup', 'fixtures']
-        : ['provider-data', 'health-import'],
+        ? ['core', 'speech', 'backup', 'fixtures', 'local-model']
+        : ['provider-data', 'health-import', 'microphone'],
   };
 }
 
@@ -76,4 +76,5 @@ export const representativeSpeechTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/SpeechJourneyUITests/testTranscriptionReachesSavedRecordingAndSurvivesRelaunch',
   'OrotUITests/RecordingExportUITests/testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart',
+  'OrotUITests/AutomaticTranscriptionUITests/testScreenStopPersistsNativeSpeechSegmentsAndReopensWithoutRecognition',
 ];

@@ -10,7 +10,7 @@ import { resetIosTestFixtureContainer } from './ios-test-fixture-container.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
 if (
-  !['fixtures', 'health-import'].includes(profile) ||
+  !['fixtures', 'health-import', 'microphone'].includes(profile) ||
   !output ||
   !existsSync(runFile) ||
   existsSync(output)

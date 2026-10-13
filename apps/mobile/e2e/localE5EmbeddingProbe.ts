@@ -7,6 +7,7 @@ import {
 } from '../src/rag/localE5NativeBackend';
 import { SqlCipherRagEmbeddingStorage } from '../src/storage/ragEmbeddingStorage';
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
+import { prepareRetrievalCorpus } from './retrievalCorpusPersistence';
 
 export type LocalE5ProbeMode = 'fresh' | 'restart';
 
@@ -84,6 +85,7 @@ export async function runLocalE5EmbeddingProbe(
       'The native model identity does not match the provider identity.',
     );
 
+  await prepareRetrievalCorpus(corpus, mode);
   const progress: EmbeddingIndexProgress[] = [];
   let cancellation: LocalE5ProbeResult['cancellation'];
   let cancellationResponseMilliseconds: number | undefined;
@@ -192,16 +194,26 @@ export async function runLocalE5EmbeddingProbe(
     cancellationSettlementMilliseconds,
     runtime,
   };
-  if (!progressMonotonic)
-    throw new Error('Model download progress moved backwards.');
-  if (top1 < 4 || result.meanReciprocalRank < 0.8) {
+  if (!progressMonotonic) {
+    // These fixed-corpus progress pairs expose resets or regressions without changing the monotonicity gate.
+    const backwards = progressSteps.flatMap((item, index) =>
+      index > 0 && item.completed < progressSteps[index - 1].completed
+        ? [{ previous: progressSteps[index - 1], current: item }]
+        : [],
+    );
     throw new Error(
-      'The Korean retrieval fixture did not meet its top-1 and reciprocal-rank targets.',
+      `Model download progress moved backwards. result=${JSON.stringify(result)}; backwards=${JSON.stringify(backwards)}`,
+    );
+  }
+  if (top1 < 4 || result.meanReciprocalRank < 0.8) {
+    // This fixed synthetic corpus contains no personal records. Preserve measured failure values without relaxing its quality gates.
+    throw new Error(
+      `The Korean retrieval fixture did not meet its top-1 and reciprocal-rank targets. result=${JSON.stringify(result)}`,
     );
   }
   if (recallAt3 !== retrievalCases.length) {
     throw new Error(
-      'The Korean retrieval fixture did not find every expected record in the top three.',
+      `The Korean retrieval fixture did not find every expected record in the top three. result=${JSON.stringify(result)}`,
     );
   }
   return result;

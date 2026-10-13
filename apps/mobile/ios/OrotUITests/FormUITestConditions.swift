@@ -6,14 +6,18 @@ enum FormUITestConditions {
     /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
     static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5) {
         let scroll = UITestConditions.element(app, scrollID)
-        XCTAssertTrue(scroll.waitForExistence(timeout: 30))
-        for _ in 0 ..< 16 {
+        XCTAssertTrue(UITestConditions.exists(scroll))
+        // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
+        for attempt in 0 ... 16 {
             let keyboard = app.keyboards.firstMatch
             let bottom = keyboard.exists ? min(scroll.frame.maxY, keyboard.frame.minY) : scroll.frame.maxY
             if target.exists, target.isHittable, !target.frame.isEmpty,
                target.frame.minY >= scroll.frame.minY, target.frame.maxY <= bottom
             {
                 return
+            }
+            if attempt == 16 {
+                break
             }
             let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: horizontalPosition, dy: towardTop ? 0.2 : 0.65))
             let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: horizontalPosition, dy: towardTop ? 0.65 : 0.2))
@@ -29,19 +33,19 @@ enum FormUITestConditions {
         if !current.isEmpty, current != input.placeholderValue {
             input.press(forDuration: 1)
             let selectAll = app.menuItems["Select All"]
-            XCTAssertTrue(selectAll.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(UITestConditions.exists(selectAll, timeout: 5), app.debugDescription)
             selectAll.tap()
             input.typeText(XCUIKeyboardKey.delete.rawValue)
         }
         if !text.isEmpty {
             // One native paste event avoids controlled-input character loss and per-key XCTest idling on a cold hosted runner.
-            // This is the owned Simulator's pasteboard; restore its prior contents without logging or retaining them.
-            let previous = UIPasteboard.general.items
-            defer { UIPasteboard.general.items = previous }
+            // The runner uses a dedicated fixture Simulator. Readback of another app's pasteboard can require permission and stall;
+            // write only this test's synthetic input, then clear it instead of inspecting or retaining prior clipboard data.
+            defer { UIPasteboard.general.string = nil }
             UIPasteboard.general.string = text
             input.press(forDuration: 1)
             let paste = app.menuItems["Paste"]
-            XCTAssertTrue(paste.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(UITestConditions.exists(paste, timeout: 5), app.debugDescription)
             paste.tap()
             exactValue(input, equals: text)
         }

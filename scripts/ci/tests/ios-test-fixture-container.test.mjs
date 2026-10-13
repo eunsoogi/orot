@@ -45,7 +45,7 @@ else console.log('synthetic fixture response');
 }
 
 test('fresh isolated cases reset only their owned app and Keychain without booting another device', () => {
-  for (const profile of ['fixtures', 'health-import']) {
+  for (const profile of ['fixtures', 'health-import', 'microphone', 'local-model']) {
     const value = fixture(profile);
     try {
       assert.equal(value.outcome.status, 0, value.outcome.stderr);
@@ -87,6 +87,10 @@ test('refuses shared Core, mismatched ownership, inactive devices and unsupporte
     ['fixtures', { preserveKeychain: true }],
     ['health-import', { preserveKeychain: true }],
     ['health-import', { ownerProfile: 'provider-data' }],
+    ['microphone', { preserveKeychain: true }],
+    ['microphone', { ownerProfile: 'provider-data' }],
+    ['local-model', { preserveKeychain: true }],
+    ['local-model', { ownerProfile: 'core' }],
   ]) {
     const value = fixture(profile, options);
     try {

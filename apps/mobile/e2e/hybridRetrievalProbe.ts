@@ -2,6 +2,7 @@ import { isSQLCipher } from '@op-engineering/op-sqlite';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import { openLocalE5RagService } from '../src/rag/localE5RagService';
 import { SqlCipherRagEmbeddingStorage } from '../src/storage/ragEmbeddingStorage';
+import { prepareRetrievalCorpus } from './retrievalCorpusPersistence';
 import {
   getCipherVersion,
   openLocalAgentMemoryDatabase,
@@ -102,7 +103,7 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
   const cipherVersion = await getCipherVersion();
   if (!isSQLCipher() || !cipherVersion) {
     throw new Error(
-      'The issue-25 probe requires the native SQLCipher database.',
+      'The hybrid retrieval probe requires the native SQLCipher database.',
     );
   }
 
@@ -148,6 +149,10 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
     );
   }
 
+  await prepareRetrievalCorpus(
+    corpus,
+    mode === 'indexed' ? 'fresh' : 'restart',
+  );
   const ftsHits = await service.search('혈압약', corpus, 2, {
     filters: {
       timeRange: {
@@ -234,7 +239,7 @@ export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
     !result.temporaryTablesCleaned
   ) {
     throw new Error(
-      `The issue-25 SQLCipher/FTS result is incomplete: ${JSON.stringify(result)}`,
+      `The hybrid retrieval SQLCipher/FTS result is incomplete: ${JSON.stringify(result)}`,
     );
   }
   return result;

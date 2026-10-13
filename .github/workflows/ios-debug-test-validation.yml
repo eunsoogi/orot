@@ -82,6 +82,8 @@ jobs:
             suite: all
           - profile: health-import
             suite: all
+          - profile: microphone
+            suite: all
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -113,7 +115,7 @@ jobs:
           PROFILE: ${{ matrix.profile }}
         run: scripts/ci/run-command.sh ios-test-simulator artifacts/ios-tests/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-tests/simulator-owner.json
       - name: Verify app-host preparation before cold UI execution
-        if: matrix.profile == 'health-import'
+        if: matrix.profile == 'health-import' || matrix.profile == 'microphone'
         env:
           PROFILE: ${{ matrix.profile }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
@@ -124,8 +126,8 @@ jobs:
           OROT_IOS_TEST_SUITE: ${{ matrix.suite }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
-          if [[ "$PROFILE" == health-import ]]; then
-            scripts/ci/run-command.sh ios-health-import-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/fixtures
+          if [[ "$PROFILE" == health-import || "$PROFILE" == microphone ]]; then
+            scripts/ci/run-command.sh ios-isolated-capability-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/fixtures
           else
             scripts/ci/run-command.sh ios-tests artifacts/ios-tests/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-tests/simulator-owner.json artifacts/ios-tests/results.xcresult
             node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-tests/results.xcresult artifacts/ios-tests/results.json

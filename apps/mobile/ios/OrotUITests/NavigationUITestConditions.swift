@@ -9,7 +9,7 @@ enum NavigationUITestConditions {
 
     static func nativeAction(_ app: XCUIApplication, _ identifier: String) throws -> NativeAction {
         let query = app.buttons.matching(identifier: identifier)
-        XCTAssertTrue(query.firstMatch.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(query.firstMatch), app.debugDescription)
         let bars = app.toolbars.matching(identifier: "navigation-native-toolbar").allElementsBoundByIndex
         for bar in bars where bar.exists && bar.isHittable {
             for control in query.allElementsBoundByIndex where control.exists {
@@ -38,6 +38,9 @@ enum NavigationUITestConditions {
                 return element.exists && !element.frame.isEmpty && element.frame.intersects(app.frame)
             }
         }
+        if predicate.evaluate(with: nil) {
+            return
+        }
         let ready = XCTNSPredicateExpectation(predicate: predicate, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed, app.debugDescription)
     }
@@ -49,7 +52,7 @@ enum NavigationUITestConditions {
 
     static func scrollToBottom(_ app: XCUIApplication, _ scrollID: String) throws {
         let scroll = UITestConditions.element(app, scrollID)
-        XCTAssertTrue(scroll.waitForExistence(timeout: 30))
+        XCTAssertTrue(UITestConditions.exists(scroll))
         let viewport = scroll.scrollViews.firstMatch.exists ? scroll.scrollViews.firstMatch : scroll
         guard let anchor = viewport.children(matching: .any).allElementsBoundByIndex.first(where: {
             $0.frame.height >= viewport.frame.height && !$0.frame.isEmpty

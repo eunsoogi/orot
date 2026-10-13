@@ -60,7 +60,7 @@ test('rejects missing, stale-run, changed-source and incompatible Debug consumer
     fixture.dispose();
   }
 });
-test('isolated health import consumes the exact Debug producer and rejects Release consumers', async () => {
+test('isolated health import and microphone consume the exact Debug producer and rejects Release consumers', async () => {
   const fixture = createProductFixture('provider-data');
   try {
     const directory = fixture.artifact('debug-health-import');
@@ -79,6 +79,24 @@ test('isolated health import consumes the exact Debug producer and rejects Relea
         fixture.env,
       );
     assert.ok(existsSync(await verify('health-import')));
+    const microphoneDirectory = fixture.artifact('debug-microphone');
+    const microphoneManifest = await createIosTestProducts(
+      'provider-data',
+      fixture.products,
+      microphoneDirectory,
+      fixture.env,
+    );
+    assert.ok(
+      existsSync(
+        await verifyIosTestProducts(
+          'microphone',
+          microphoneDirectory,
+          microphoneManifest.archiveDigest,
+          microphoneManifest.manifestDigest,
+          fixture.env,
+        ),
+      ),
+    );
     assert.equal(fixture.readManifest(directory).context.profile, 'ios-test-debug');
     await assert.rejects(verify('fixtures'), /provenance mismatch/);
   } finally {

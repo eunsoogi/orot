@@ -22,11 +22,16 @@ const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
 const backupSelection = tests.some((test) => test.includes('/BackupPersistenceUITests/'));
-const fixtureProfiles = ['fixtures', 'health-import'];
+const fixtureProfiles = ['fixtures', 'health-import', 'microphone'];
 const fixtureSelection = fixtureProfiles.find((candidate) =>
   tests.some((test) => iosTestInventory(candidate).includes(test)),
 );
 const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
+// The manual appointment scenario already has a 180-second budget. Enforce it in XCTest as well as its assertions, so a stalled AX call cannot bypass it.
+const appointmentTimeLimit =
+  tests.length === 1 &&
+  tests[0] ===
+    'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts';
 if (
   (profile === 'backup' &&
     !hostPreparation &&
@@ -43,6 +48,13 @@ if (
   (fixtureSelection && profile !== fixtureSelection)
 )
   throw new Error('Fresh fixture cases require their dedicated host-orchestrated destination');
+if (
+  (profile === 'local-model' &&
+    (selected.length !== 1 || !iosTestInventory(profile).includes(tests[0]))) ||
+  (tests.some((test) => iosTestInventory('local-model').includes(test)) &&
+    profile !== 'local-model')
+)
+  throw new Error('Local model cases require their isolated corpus and process phases');
 if (
   tests.some(
     (test) =>
@@ -70,6 +82,16 @@ const outcome = spawn(
     '-maximum-concurrent-test-simulator-destinations',
     '1',
     '-disableAutomaticPackageResolution',
+    ...(appointmentTimeLimit
+      ? [
+          '-test-timeouts-enabled',
+          'YES',
+          '-default-test-execution-time-allowance',
+          '180',
+          '-maximum-test-execution-time-allowance',
+          '180',
+        ]
+      : []),
     // Xcode's verbose simctl diagnose stalled for its full 600-second collection
     // budget after a failed assertion. Preserve xcresult/screenshots and collect
     // a bounded app log below; recognition and assertion deadlines are unchanged.

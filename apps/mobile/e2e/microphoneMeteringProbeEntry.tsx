@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
+import { t } from '../src/i18n';
 import RecordingWaveform from '../src/recording/RecordingWaveform';
 import {
   addMeterSample,
@@ -81,12 +82,12 @@ function Probe() {
   const report = JSON.stringify({ state, statistics });
   return (
     <SafeAreaView style={styles.screen}>
-      <Text>실제 마이크 진단 (최대 25초)</Text>
-      <Text>
-        오디오는 저장하거나 전사하지 않습니다. 시작 전 마이크 사용에 동의하세요.
-      </Text>
+      <Text>{t('probe.microphone.title', { seconds: 25 })}</Text>
+      <Text>{t('probe.microphone.notice')}</Text>
       <Button
-        title={consent ? '마이크 사용 동의함' : '마이크 사용 동의'}
+        title={t(
+          consent ? 'probe.microphone.consented' : 'probe.microphone.consent',
+        )}
         testID="metering-consent"
         disabled={state?.status !== 'idle'}
         onPress={() => setConsent(!consent)}
@@ -102,25 +103,25 @@ function Probe() {
         />
       </View>
       <Button
-        title="시작"
+        title={t('probe.microphone.start')}
         testID="metering-start"
         disabled={!consent || busy || state?.status !== 'idle'}
         onPress={() => act('start')}
       />
       <Button
-        title="일시 정지"
+        title={t('recording.pause')}
         testID="metering-pause"
         disabled={busy || state?.status !== 'recording'}
         onPress={() => act('pause')}
       />
       <Button
-        title="재개"
+        title={t('probe.microphone.resume')}
         testID="metering-resume"
         disabled={busy || state?.status !== 'paused'}
         onPress={() => act('resume')}
       />
       <Button
-        title="종료 및 정리"
+        title={t('probe.microphone.finish')}
         testID="metering-finish"
         disabled={
           busy || !['recording', 'paused'].includes(state?.status ?? '')

@@ -1,4 +1,4 @@
-#if OROT_RECORDING_METERING_SIMULATOR_TEST && targetEnvironment(simulator)
+#if (OROT_RECORDING_METERING_SIMULATOR_TEST || OROT_TESTS) && targetEnvironment(simulator)
     import AVFoundation
     import Foundation
     import React
@@ -19,6 +19,15 @@
         private var durationMs = 0
         private var ticks = 0
         private var cleanupComplete = true
+        private var captureBeganAt: TimeInterval?
+        private var interruptionOrigin = "none"
+        private var interruptionType: UInt?
+
+        /// Queue delivery may follow recorder preparation. A pre-capture permission-sheet event cannot interrupt a capture that did not yet exist.
+        static func interruptionApplies(observedAt: TimeInterval, captureBeganAt: TimeInterval?) -> Bool {
+            guard let captureBeganAt else { return false }
+            return observedAt >= captureBeganAt
+        }
 
         override static func requiresMainQueueSetup() -> Bool {
             false
@@ -31,9 +40,15 @@
         override init() {
             super.init()
             for name in [UIApplication.willResignActiveNotification, AVAudioSession.interruptionNotification] {
-                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] notification in
+                    let observedAt = ProcessInfo.processInfo.systemUptime
+                    let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
                     self?.queue.async { [weak self] in
-                        guard let self, status == "recording" || status == "paused" else { return }
+                        guard let self, status == "recording" || status == "paused",
+                              Self.interruptionApplies(observedAt: observedAt, captureBeganAt: captureBeganAt) else { return }
+                        // Fixed notification identity and type diagnose the permission boundary without exposing audio or arbitrary userInfo.
+                        interruptionOrigin = name == UIApplication.willResignActiveNotification ? "application-inactive" : "audio-session"
+                        interruptionType = type
                         finishSession(reason: "interruption")
                     }
                 })
@@ -110,6 +125,7 @@
             try ownedFile.secureAndUnlink()
             stage = "recorder-start"
             guard capture.record() else { throw RecordingMeteringProbeError.record }
+            captureBeganAt = ProcessInfo.processInfo.systemUptime
             stage = "verify-unlinked"
             try ownedFile.assertUnlinked()
             stage = "started"
@@ -199,7 +215,9 @@
              "ticks": ticks, "cleanupComplete": cleanupComplete,
              "fileProtection": file?.protection ?? "unverified",
              "excludedFromBackup": file?.excludedFromBackup ?? false,
-             "unlinked": file?.unlinked ?? false] as NSDictionary
+             "unlinked": file?.unlinked ?? false,
+             "interruptionOrigin": interruptionOrigin,
+             "interruptionType": interruptionType.map { $0 as Any } ?? NSNull()] as NSDictionary
         }
 
         private func emit() {

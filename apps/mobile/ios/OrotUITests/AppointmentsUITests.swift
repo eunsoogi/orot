@@ -77,7 +77,7 @@ final class AppointmentsUITests: XCTestCase {
     private func fill(_ app: XCUIApplication, clinic: String, date: String, time: String, note: String) {
         for (field, value) in [("clinic", clinic), ("date", date), ("time", time), ("note", note)] {
             let input = app.textFields.matching(identifier: "appointment-\(field)-input").firstMatch
-            XCTAssertTrue(input.waitForExistence(timeout: 30))
+            XCTAssertTrue(UITestConditions.exists(input))
             FormUITestConditions.replace(input, with: value, in: app, scrollID: "appointments-scroll")
         }
         capture(app, "appointment-editor-keyboard")
@@ -88,7 +88,7 @@ final class AppointmentsUITests: XCTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = UITestConditions.element(app, identifier)
-        XCTAssertTrue(target.waitForExistence(timeout: 30))
+        XCTAssertTrue(UITestConditions.exists(target))
         FormUITestConditions.reveal(target, in: app, scrollID: "appointments-scroll")
         target.tap()
     }
@@ -96,7 +96,7 @@ final class AppointmentsUITests: XCTestCase {
     @MainActor
     private func visible(_ app: XCUIApplication, _ text: String) {
         let target = app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         FormUITestConditions.reveal(target, in: app, scrollID: "appointments-scroll", towardTop: true)
         XCTAssertTrue(target.isHittable)
     }

@@ -63,6 +63,39 @@ export async function runDomainTestOperation(
       }
       return { ...result };
     }
+    case 'apple-workflow': {
+      const { runAppleWorkflowProbe } =
+        require('./appleWorkflowProbe') as typeof import('./appleWorkflowProbe');
+      // The same real-provider workflows and their original deadlines run without a diagnostic screen or substituted output.
+      return runAppleWorkflowProbe(() => {});
+    }
+    case 'rag-workflow': {
+      const { runRagWorkflowProbe } =
+        require('./ragWorkflowProbe') as typeof import('./ragWorkflowProbe');
+      // The original public-query authorization, real Europe PMC retrieval, provider calls and 120-second deadline remain owned by the probe.
+      return {
+        ...(await runRagWorkflowProbe(() => {}, new AbortController().signal)),
+      };
+    }
+    case 'local-e5': {
+      if (parameters.mode !== 'fresh' && parameters.mode !== 'restart')
+        throw new Error('Native local model tests require a valid E5 mode');
+      const { runLocalE5EmbeddingProbe } =
+        require('./localE5EmbeddingProbe') as typeof import('./localE5EmbeddingProbe');
+      // Nest native measurements so the command transport's Hermes runtime label cannot overwrite memory and inference metrics.
+      return {
+        result: await runLocalE5EmbeddingProbe(parameters.mode),
+        syntheticCorpus: true,
+      };
+    }
+    case 'hybrid-retrieval': {
+      const { runHybridRetrievalProbe } =
+        require('./hybridRetrievalProbe') as typeof import('./hybridRetrievalProbe');
+      return {
+        result: await runHybridRetrievalProbe(),
+        syntheticCorpus: true,
+      };
+    }
     case 'openai-provider': {
       const { runOpenAIProviderIntegrationProbe } =
         require('./openaiProviderProbe') as typeof import('./openaiProviderProbe');

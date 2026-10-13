@@ -10,7 +10,7 @@ export function resetIosTestFixtureContainer(
   application,
   { preserveKeychain = false } = {},
 ) {
-  if (!['backup', 'fixtures', 'health-import'].includes(profile))
+  if (!['backup', 'fixtures', 'health-import', 'microphone', 'local-model'].includes(profile))
     throw new Error('Fresh fixture state requires a dedicated execution profile');
   if (preserveKeychain && profile !== 'backup')
     throw new Error('Only backup snapshot restore may retain fixture Keychain state');
