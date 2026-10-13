@@ -158,6 +158,8 @@ export function validateVisitQuestionTaskResult(
     input.evidence.items.map(item => [item.evidenceId, item]),
   );
   const questions: VisitQuestionCandidate[] = [];
+  // Only expose formatting as retryable after every question passes its other checks.
+  let missingQuestionMark = false;
   for (const rawQuestion of result.questions) {
     const question = asObject(rawQuestion);
     if (
@@ -183,12 +185,7 @@ export function validateVisitQuestionTaskResult(
       };
     }
     // Keep the validator strict; the task contract may request one bounded regeneration.
-    if (!questionText.endsWith('?')) {
-      return {
-        status: 'invalid',
-        reason: 'A visit question must end with a question mark.',
-      };
-    }
+    if (!questionText.endsWith('?')) missingQuestionMark = true;
     if (
       !rationale ||
       (question.priority !== 'routine' && question.priority !== 'important')
@@ -237,6 +234,12 @@ export function validateVisitQuestionTaskResult(
       priority: question.priority,
       citations: exactCitations,
     });
+  }
+  if (missingQuestionMark) {
+    return {
+      status: 'invalid',
+      reason: 'A visit question must end with a question mark.',
+    };
   }
   return { status: 'valid', value: { status: 'suggestions', questions } };
 }

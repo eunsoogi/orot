@@ -9,6 +9,7 @@ import { runVisitQuestionWorkflow } from '../workflow';
 function suggestionOutput(
   firstQuestion: string,
   citations: readonly string[] = ['evidence-1'],
+  secondQuestionEvidenceIds: readonly string[] = ['evidence-1'],
 ): string {
   const questions = [
     {
@@ -21,7 +22,7 @@ function suggestionOutput(
       questionText: '수면 변화와 관련해 어떤 점을 더 살펴보면 좋을까요?',
       rationale: '진료에서 관찰할 변화를 의료진과 정리할 수 있어요.',
       priority: 'important',
-      evidenceIds: ['evidence-1'],
+      evidenceIds: secondQuestionEvidenceIds,
     },
     {
       questionText: '다음 방문 전 기록할 점이 있을까요?',
@@ -118,6 +119,28 @@ describe('visit-question response correction', () => {
       suggestionOutput('수면 변화와 관련해 어떤 점을 살펴보면 좋을까요?', [
         'unknown-evidence',
       ]),
+    ]);
+    const { selection, option } = selectedOption(provider, 'on-device');
+
+    const result = await runVisitQuestionWorkflow({
+      prepared,
+      selection,
+      providerOptions: [option],
+    });
+
+    expect(result.status).toBe('unavailable');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('does not regenerate formatting when another question has an invalid evidence citation', async () => {
+    const prepared = preparedContext();
+    const { provider, requests } = makeProvider([
+      suggestionOutput(
+        '수면 패턴의 변화를 더 구체적으로 확인해야 합니다.',
+        ['evidence-1'],
+        ['unknown-evidence'],
+      ),
+      suggestionOutput('수면 변화와 관련해 어떤 점을 관찰하면 좋을까요?'),
     ]);
     const { selection, option } = selectedOption(provider, 'on-device');
 
