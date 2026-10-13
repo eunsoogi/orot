@@ -21,4 +21,14 @@ test('provider data prewarms only the host SDK and still executes the original n
   assert.ok(!preparation.includes('.respond(') && !preparation.includes('sleep('));
   // Preparation output is diagnostic; there is no generated answer or forced "available" outcome.
   assert.match(preparation, /case \.modelNotReady:\s*(?:return )?"modelNotReady"/);
+  // Read-only host metadata separates this host's eligibility from its selected iOS Simulator; no setting or account change is attempted.
+  assert.match(preparation, /hostString\("hw\.model"\)/);
+  assert.match(preparation, /hostString\("machdep\.cpu\.brand_string"\)/);
+  assert.match(preparation, /sysctlbyname\("kern\.hv_vmm_present"[^\n]*nil, 0\)/);
+  assert.match(preparation, /"physicalMemoryBytes": ProcessInfo\.processInfo\.physicalMemory/);
+  assert.match(preparation, /virtualizationHint\(\)\.map \{ \$0 as Any \} \?\? NSNull\(\)/);
+  assert.doesNotMatch(
+    preparation,
+    /UserDefaults|setenv|accept-license|ComputerName|IOPlatformSerialNumber/,
+  );
 });
