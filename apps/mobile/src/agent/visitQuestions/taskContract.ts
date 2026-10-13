@@ -104,6 +104,17 @@ export function createVisitQuestionTaskResponder() {
         },
       ];
     },
+    correctionInstructionForInvalidResult(reason: string): string | undefined {
+      // Only retry question form; citation, safety and other validation failures remain terminal.
+      if (reason !== 'A visit question must end with a question mark.')
+        return undefined;
+      return [
+        '이전 응답은 질문 필드의 로컬 검증을 통과하지 못했습니다.',
+        '같은 근거와 작업 제약을 사용해 구조화 응답 전체를 다시 작성하세요.',
+        '각 questionText를 물음표 하나로 끝나는 짧은 한국어 의문문으로 작성하세요.',
+        'evidenceIds로 뒷받침되는 내용만 쓰고 불확실성과 안전 규칙을 지키며 요청된 JSON만 반환하세요.',
+      ].join('\n');
+    },
     validateResult(value: JsonValue, input: VisitQuestionResponderInput) {
       return validateVisitQuestionTaskResult(value, input);
     },

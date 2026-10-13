@@ -165,6 +165,27 @@ test('fresh fixture selections cannot mutate Core or bypass their phase inventor
   }
 });
 
+test('fresh-install storage refuses shared Core state and runs only as an isolated fixture phase', () => {
+  // The original storage requirement resets the app and Keychain before creation, then preserves both only for its in-case restart.
+  const identifier =
+    'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart';
+  const shared = fixture(0, 'core', 'all', [identifier]);
+  try {
+    assert.notEqual(shared.outcome.status, 0);
+    assert.match(shared.outcome.stderr, /dedicated host-orchestrated destination/);
+    assert.ok(!shared.calls.some((call) => call.name === 'xcodebuild'));
+  } finally {
+    rmSync(shared.directory, { recursive: true, force: true });
+  }
+  const isolated = fixture(0, 'fixtures', 'all', [identifier]);
+  try {
+    assert.equal(isolated.outcome.status, 0, isolated.outcome.stderr);
+    assert.equal(isolated.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+  } finally {
+    rmSync(isolated.directory, { recursive: true, force: true });
+  }
+});
+
 test('local model selection requires exactly one corpus phase on its dedicated destination', () => {
   const identifier = iosTestInventory('local-model')[0];
   for (const [profile, selected] of [

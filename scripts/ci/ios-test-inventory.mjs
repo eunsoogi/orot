@@ -17,7 +17,6 @@ const coreTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndNativeRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
-  'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart',
   'OrotUITests/PersistenceUITests/testRemovedMemoryAndHybridEvidenceDoNotReturnAfterRelaunch',
   'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
   'OrotUITests/TranscriptEvidenceUITests/testReviewCorrectionHistoryPlaybackAndDeletionSurviveRelaunch',
@@ -61,6 +60,8 @@ export const providerSelectionTests = [
   'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
 ];
 export const fixtureTests = [
+  // Creation must begin with a fresh app and Keychain, while its in-case process restart retains them.
+  'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart',
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack',

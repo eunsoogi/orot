@@ -130,6 +130,12 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
     capabilities: native.capabilities,
     async generate(request, options) {
       const requestPhase = phase;
+      // Keep dispatch distinct from completion when a bounded workflow aborts an outstanding synthetic request; timestamps are epoch milliseconds.
+      diagnostics.push({
+        phase: requestPhase,
+        stage: 'requested',
+        atMs: Date.now(),
+      });
       const pending = native.generate(request, options);
       const result = await pending;
       // All requests contain only synthetic fixtures, so exact diagnostics can be retained.

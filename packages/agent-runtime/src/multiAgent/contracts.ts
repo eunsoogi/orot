@@ -66,6 +66,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
   readonly allowBoundedExternalEvidence?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
+  /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
+  correctionInstructionForInvalidResult?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
 

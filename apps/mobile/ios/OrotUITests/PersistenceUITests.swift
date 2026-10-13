@@ -8,6 +8,7 @@ final class PersistenceUITests: XCTestCase {
 
     @MainActor
     func testEncryptedSourceAndEvidenceSurviveProcessRestart() {
+        // The isolated fixture runner owns a fresh app and Keychain before this case; keep that state for the in-case relaunch only.
         let app = XCUIApplication()
         let fixture = ["-OROT_TEST_STORAGE_FIXTURE", "test-storage-\(UUID().uuidString)"]
         launch(app, arguments: ["-OROT_STORAGE_PROBE", "fresh"] + fixture)

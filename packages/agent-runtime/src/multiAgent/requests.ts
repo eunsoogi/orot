@@ -30,9 +30,14 @@ export function buildTaskRequest<TResult>(
   contract: TaskResponderContract<TResult>,
   input: TaskResponderInput,
   budget: MultiAgentBudget,
+  correctionInstruction?: string,
 ): TaskRequestBuild {
   try {
-    const messages = buildTaskMessages(contract, input, provider.capabilities.structuredOutput);
+    const taskMessages = buildTaskMessages(contract, input, provider.capabilities.structuredOutput);
+    const messages =
+      taskMessages && correctionInstruction
+        ? [...taskMessages, { role: 'user' as const, content: correctionInstruction }]
+        : taskMessages;
     if (!messages || !messages.some((message) => message.role === 'user'))
       return { status: 'invalid' };
     const supportsMessages = messages.every((message) => {
