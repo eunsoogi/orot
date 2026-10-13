@@ -112,7 +112,10 @@ final class RootNavigationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        defer { app.terminate() }
+        defer {
+            captureNavigationObservation(app, "final-edge-back-observation")
+            app.terminate()
+        }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         let action = UITestConditions.element(app, "ai-feature-visit-questions")
@@ -145,7 +148,10 @@ final class RootNavigationUITests: XCTestCase {
         captureNavigationObservation(app, "after-full-edge-back")
         let ai = UITestConditions.element(app, "ai-features-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 30), .completed, app.debugDescription)
+        let returnResult = XCTWaiter.wait(for: [returned], timeout: 30)
+        // Preserve the failed ordering too: XCTest's assertion exception can bypass Swift defer.
+        captureNavigationObservation(app, "after-return-wait")
+        XCTAssertEqual(returnResult, .completed, app.debugDescription)
         captureNavigationObservation(app, "after-returned-route")
         capture(app, "edge-back-completed")
         FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)

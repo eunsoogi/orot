@@ -22,13 +22,30 @@ final class RecordingExportUITests: XCTestCase {
             app.terminate()
         }
         launch(app)
-        defer { app.terminate() }
+        addTeardownBlock { @MainActor in
+            // XCTest may bypass defer on failure; collect before the earlier registered source cleanup.
+            guard app.state != .notRunning else { return }
+            let marker = UITestConditions.element(app, "native-navigation-observation")
+            let attachment = XCTAttachment(data: Data(UITestConditions.text(marker).utf8), uniformTypeIdentifier: "public.json")
+            attachment.name = "export-final-lifecycle-observation"
+            attachment.lifetime = .keepAlways
+            self.add(attachment)
+        }
+        defer {
+            let observation = UITestConditions.element(app, "native-navigation-observation")
+            let attachment = XCTAttachment(data: Data(UITestConditions.text(observation).utf8), uniformTypeIdentifier: "public.json")
+            attachment.name = "export-lifecycle-observation"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            app.terminate()
+        }
         try prepare(app)
         tap(app, "recording-export-arm-simulated-cancel")
         // Observe the native arm response before export. A tap alone cannot prove the Promise completed.
         value(app, "recording-export-cancellation-status", "armed")
         tap(app, "recording-export-transcript")
         value(app, "recording-export-status", "내보내기를 취소했어요.")
+        captureLifecycle(app, "export-synthetic-cancellation-observation")
         tap(app, "recording-export-read-residue")
         value(app, "recording-export-residue-count", "0")
         tap(app, "transcript-evidence-cleanup")
@@ -73,8 +90,17 @@ final class RecordingExportUITests: XCTestCase {
     }
 
     @MainActor
+    private func captureLifecycle(_ app: XCUIApplication, _ name: String) {
+        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let attachment = XCTAttachment(data: Data(UITestConditions.text(marker).utf8), uniformTypeIdentifier: "public.json")
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
     private func launch(_ app: XCUIApplication) {
-        app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "recording-export", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "recording-export", "-OROT_TEST_EXPORT_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         XCTAssertTrue(element(app, "transcript-evidence-open").waitForExistence(timeout: 30))
     }

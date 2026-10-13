@@ -21,6 +21,7 @@ import { selectTestRoute } from './testRoute';
 import { startTestOperationRunner } from './testOperationRunner';
 import { registerCapabilityTestEntry } from './capabilityTestEntry';
 import { registerTestApplicationRenderer } from './testApplicationRenderer';
+import { registerNavigationTestObserver } from '../src/navigation/navigationTestObservation';
 
 const settingsManager = NativeModules.SettingsManager as
   | {
@@ -31,9 +32,17 @@ const settingsManager = NativeModules.SettingsManager as
 const settings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 const route = selectTestRoute(settings);
+const lifecycleObservation =
+  settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ||
+  settings.OROT_TEST_EXPORT_OBSERVATION === 'YES';
+if (lifecycleObservation) {
+  registerNavigationTestObserver(value =>
+    NativeModules.OrotTestControl.recordObservation(value),
+  );
+}
 
 // XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.
-if (settings.OROT_TEST_UI_GEOMETRY === 'YES') {
+if (settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation) {
   AppRegistry.setWrapperComponentProvider(() => NativeGeometryTestWrapper);
 }
 
@@ -77,7 +86,7 @@ function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const navigationMarker = useRef<ComponentRef<typeof Text>>(null);
   useEffect(() => {
-    if (settings.OROT_TEST_NAVIGATION_OBSERVATION !== 'YES') return;
+    if (!lifecycleObservation) return;
     let active = true;
     // Update only the diagnostic native label; avoid a React render loop during UIKit transitions.
     const timer = setInterval(() => {
@@ -98,7 +107,7 @@ function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
   return (
     <SafeAreaListener onChange={setMetrics}>
       {children}
-      {settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ? (
+      {lifecycleObservation ? (
         <View pointerEvents="none" style={styles.geometryMarker}>
           <Text
             ref={navigationMarker}

@@ -2,6 +2,7 @@ import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useContext, useEffect, useRef } from 'react';
 import type { NavigationRoute } from './navigationController';
+import { observeNavigationTest } from './navigationTestObservation';
 import {
   NativeRouteRegistryContext,
   type NativeRouteParamList,
@@ -49,6 +50,7 @@ export default function NativeRouteScreen({
   useEffect(
     () =>
       navigation.addListener('beforeRemove', () => {
+        observeNavigationTest('beforeRemove-listener', { routeKey });
         // Capture permission before the native pop unmounts its leave-state owner.
         registryRef.current.prepareNativeBack(routeKey);
       }),

@@ -14,6 +14,7 @@ import type {
 import { appColors } from '../layout/appColors';
 import NativeRouteScreen from './NativeRouteScreen';
 import { useNativeRouteRemoval } from './useNativeRouteRemoval';
+import { observeNavigationTest } from './navigationTestObservation';
 import {
   NativeRouteRegistryContext,
   type NativeRouteParamList,
@@ -82,14 +83,27 @@ export function NativeRouteStack<Name extends string>({
       isTransitioning,
       canNativeGoBack,
       prepareNativeBack: routeKey => {
-        allowedNativeRemoval.current = canNativeGoBack(routeKey)
-          ? routeKey
-          : null;
+        const permitted = canNativeGoBack(routeKey);
+        allowedNativeRemoval.current = permitted ? routeKey : null;
+        observeNavigationTest('beforeRemove-permission', {
+          routeKey,
+          permitted,
+          allowance: allowedNativeRemoval.current,
+          logicalKeys: controller.getSnapshot().routes.map(item => item.key),
+          nativeKeys: getNativeRouteKeys(),
+        });
       },
       requestBack: controller.requestBack,
       renderRoute: route => renderRoute(route as NavigationRoute<Name>),
     }),
-    [canNativeGoBack, controller, isTransitioning, renderRoute, routes],
+    [
+      canNativeGoBack,
+      controller,
+      getNativeRouteKeys,
+      isTransitioning,
+      renderRoute,
+      routes,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -97,6 +111,11 @@ export function NativeRouteStack<Name extends string>({
     const nativeKeys = getNativeRouteKeys();
     if (!nativeKeys?.length) return;
     const desiredKeys = routes.map(item => item.key);
+    observeNavigationTest('layout-sync', {
+      logicalKeys: desiredKeys,
+      nativeKeys,
+      allowance: allowedNativeRemoval.current,
+    });
     trackRemovedRoutes(nativeKeys, desiredKeys);
     if (
       nativeKeys.length === desiredKeys.length &&
@@ -147,6 +166,11 @@ export function NativeRouteStack<Name extends string>({
           const current = controller.getSnapshot().routes;
           const nativeKeys = getNativeRouteKeys();
           const removed = current[current.length - 1];
+          observeNavigationTest('state-change', {
+            logicalKeys: current.map(item => item.key),
+            nativeKeys,
+            allowance: allowedNativeRemoval.current,
+          });
           // Cancelled gestures keep native state intact. Reconcile only one matching tail removal.
           if (
             removed &&
@@ -154,8 +178,18 @@ export function NativeRouteStack<Name extends string>({
             nativeKeys.every((key, index) => key === current[index]?.key) &&
             allowedNativeRemoval.current === removed.key
           ) {
-            controller.reconcileNativeBack(removed.key);
+            const reconciled = controller.reconcileNativeBack(removed.key);
+            observeNavigationTest('reconcile-native-back', {
+              routeKey: removed.key,
+              reconciled,
+              logicalKeys: controller
+                .getSnapshot()
+                .routes.map(item => item.key),
+            });
           }
+          observeNavigationTest('allowance-clear', {
+            allowance: allowedNativeRemoval.current,
+          });
           allowedNativeRemoval.current = null;
           setNativeRevision(revision => revision + 1);
         }}
@@ -167,6 +201,10 @@ export function NativeRouteStack<Name extends string>({
                 { readonly routeKey?: unknown } | undefined;
               const routeKey = params?.routeKey;
               if (typeof routeKey === 'string') {
+                observeNavigationTest('transition-end', {
+                  routeKey,
+                  closing: event.data.closing,
+                });
                 // UIKit may report the revealed route as the completed side of a pop.
                 markNativeTransitionComplete(routeKey, event.data.closing);
               }
