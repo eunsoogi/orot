@@ -196,6 +196,15 @@ export function NativeRouteStack<Name extends string>({
       >
         <Stack.Navigator
           screenListeners={({ route }) => ({
+            transitionStart: event =>
+              observeNavigationTest('transition-start', {
+                routeKey: route.params?.routeKey ?? null,
+                closing: event.data.closing,
+              }),
+            gestureCancel: () =>
+              observeNavigationTest('gesture-cancel', {
+                routeKey: route.params?.routeKey ?? null,
+              }),
             transitionEnd: event => {
               const params = route.params as
                 { readonly routeKey?: unknown } | undefined;

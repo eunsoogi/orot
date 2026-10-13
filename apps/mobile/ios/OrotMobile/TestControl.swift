@@ -32,7 +32,11 @@
     /// The test entry consumes commands and returns observations through the normal RN native bridge.
     @objc(OrotTestControl)
     final class OrotTestControl: NSObject {
-        private var observedGestures: Set<ObjectIdentifier> = []
+        // Weak UIKit identity keeps IDs stable while alive without extending a controller or recognizer's lifetime.
+        private let observationIDs = NSMapTable<NSObject, NSString>(keyOptions: [.weakMemory, .objectPointerPersonality], valueOptions: .strongMemory)
+        private let observedNavigations = NSHashTable<UINavigationController>.weakObjects()
+        private let observedGestures = NSHashTable<UIGestureRecognizer>.weakObjects()
+        private var observationSequence = 0
         private var gestureEvents: [[String: Any]] = []
         private let navigationObservationID = UUID().uuidString
 
@@ -78,20 +82,25 @@
                 let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
                 windows.filter(\.isKeyWindow).compactMap(\.rootViewController).forEach(visit)
                 let observations = controllers.map { navigation -> [String: Any] in
+                    let navigationID = self.observationIdentifier(navigation, prefix: "navigation")
+                    self.observedNavigations.add(navigation)
                     let view = navigation.viewIfLoaded
                     let recognizers = view?.gestureRecognizers ?? []
                     for recognizer in recognizers where recognizer is UIPanGestureRecognizer {
-                        if self.observedGestures.insert(ObjectIdentifier(recognizer)).inserted {
+                        if !self.observedGestures.contains(recognizer) {
+                            self.observedGestures.add(recognizer)
                             // An additional observation target never grants or overrides gesture permission.
                             recognizer.addTarget(self, action: #selector(self.observeNavigationGesture(_:)))
                         }
                     }
                     return [
                         "controller": String(describing: type(of: navigation)),
+                        "controllerID": navigationID,
                         "depth": navigation.viewControllers.count,
                         "visible": view?.window != nil && view?.isHidden == false,
+                        "viewBounds": view.map { ["width": $0.bounds.width, "height": $0.bounds.height] } ?? [:],
                         "transition": navigation.transitionCoordinator.map { ["interactive": $0.isInteractive, "cancelled": $0.isCancelled, "percentComplete": $0.percentComplete] as [String: Any] } ?? [:],
-                        "gestures": recognizers.map { ["type": String(describing: type(of: $0)), "enabled": $0.isEnabled, "state": $0.state.rawValue] as [String: Any] },
+                        "gestures": recognizers.map { ["recognizerID": self.observationIdentifier($0, prefix: "gesture"), "roles": self.publicPopRoles($0, navigation: navigation), "type": String(describing: type(of: $0)), "enabled": $0.isEnabled, "state": $0.state.rawValue] as [String: Any] },
                     ]
                 }
                 resolve(["navigation": observations, "events": self.gestureEvents,
@@ -101,12 +110,58 @@
         }
 
         @objc private func observeNavigationGesture(_ recognizer: UIGestureRecognizer) {
-            TestLifecycleObservation.record("uikit-gesture", fields: ["type": String(describing: type(of: recognizer)), "state": recognizer.state.rawValue])
+            // Resolve current public view ownership: a recognizer may move after its observation target was installed.
+            let knownNavigations = observedNavigations.allObjects
+            let owners = recognizer.view.map { view in knownNavigations.filter { $0.viewIfLoaded === view } } ?? []
+            let owner = owners.count == 1 ? owners.first : nil
+            var fields: [String: Any] = [
+                "type": String(describing: type(of: recognizer)), "state": recognizer.state.rawValue,
+                "recognizerID": observationIdentifier(recognizer, prefix: "gesture"),
+                "controllerID": owner.map { observationIdentifier($0, prefix: "navigation") } ?? (owners.isEmpty ? "unknown" : "ambiguous"),
+                "viewOwnerControllerIDs": owners.map { observationIdentifier($0, prefix: "navigation") },
+                "controllerDepth": owner.map(\.viewControllers.count) as Any? ?? NSNull(),
+                "publicPopControllers": knownNavigations.compactMap { navigation -> [String: Any]? in
+                    let roles = publicPopRoles(recognizer, navigation: navigation)
+                    return roles.isEmpty ? nil : ["controllerID": observationIdentifier(navigation, prefix: "navigation"), "roles": roles]
+                },
+            ]
+            if let pan = recognizer as? UIPanGestureRecognizer, let view = pan.view {
+                // UIKit reports distance and velocity in this owning view's points and points/second, not screenshot pixels.
+                fields["translationX"] = pan.translation(in: view).x
+                fields["translationY"] = pan.translation(in: view).y
+                fields["velocityX"] = pan.velocity(in: view).x
+                fields["velocityY"] = pan.velocity(in: view).y
+                fields["viewWidth"] = view.bounds.width
+                fields["viewHeight"] = view.bounds.height
+            }
+            fields["atMs"] = Date().timeIntervalSince1970 * 1000
+            TestLifecycleObservation.record("uikit-gesture", fields: fields)
             // Retain bounded structural events only; no screen text or health data is observed.
-            gestureEvents.append(["type": String(describing: type(of: recognizer)), "state": recognizer.state.rawValue])
+            gestureEvents.append(fields)
             if gestureEvents.count > 32 {
                 gestureEvents.removeFirst(gestureEvents.count - 32)
             }
+        }
+
+        private func observationIdentifier(_ object: NSObject, prefix: String) -> String {
+            if let existing = observationIDs.object(forKey: object) {
+                return existing as String
+            }
+            observationSequence += 1
+            let identifier = "\(prefix)-\(observationSequence)"
+            observationIDs.setObject(identifier as NSString, forKey: object)
+            return identifier
+        }
+
+        private func publicPopRoles(_ recognizer: UIGestureRecognizer, navigation: UINavigationController) -> [String] {
+            var roles: [String] = []
+            if recognizer === navigation.interactivePopGestureRecognizer {
+                roles.append("edge-pop")
+            }
+            if #available(iOS 26, *), recognizer === navigation.interactiveContentPopGestureRecognizer {
+                roles.append("content-pop")
+            }
+            return roles
         }
     }
 #endif
