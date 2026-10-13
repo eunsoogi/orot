@@ -33,7 +33,7 @@ export function iosTestConfig(profile) {
       device: 'com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation',
     };
   }
-  if (profile === 'provider-data') {
+  if (['provider-data', 'health-import'].includes(profile)) {
     return {
       ...common,
       profile,
@@ -62,7 +62,7 @@ export function iosTestBuildSpec(profile) {
     compatibleExecutions:
       execution.configuration === 'Release'
         ? ['core', 'speech', 'backup', 'fixtures']
-        : ['provider-data'],
+        : ['provider-data', 'health-import'],
   };
 }
 

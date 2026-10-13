@@ -19,7 +19,14 @@ test('separate Speech runners cover every original case without duplication or s
 
 test('each profile declares unique existing cases and every test method is scheduled', () => {
   const seen = new Set();
-  for (const profile of ['core', 'speech', 'provider-data', 'backup', 'fixtures']) {
+  for (const profile of [
+    'core',
+    'speech',
+    'provider-data',
+    'backup',
+    'fixtures',
+    'health-import',
+  ]) {
     const inventory = iosTestInventory(profile);
     assert.ok(inventory.length > 0);
     assert.equal(new Set(inventory).size, inventory.length);

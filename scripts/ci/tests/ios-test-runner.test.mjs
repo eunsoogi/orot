@@ -138,27 +138,29 @@ test('failure log collection has a finite budget and cannot replace the test exi
 });
 
 test('fresh fixture selections cannot mutate Core or bypass their phase inventory', () => {
-  const identifier = iosTestInventory('fixtures')[0];
-  for (const [profile, selected] of [
-    ['core', [identifier]],
-    ['fixtures', []],
-    ['fixtures', [identifier, iosTestInventory('fixtures')[1]]],
-    ['fixtures', ['OrotUITests/UnknownTests/testUnknown']],
-  ]) {
-    const result = fixture(0, profile, 'all', selected);
-    try {
-      assert.notEqual(result.outcome.status, 0);
-      assert.match(result.outcome.stderr, /dedicated host-orchestrated destination/);
-      assert.ok(!result.calls.some((call) => call.name === 'xcodebuild'));
-    } finally {
-      rmSync(result.directory, { recursive: true, force: true });
+  for (const fixtureProfile of ['fixtures', 'health-import']) {
+    const identifier = iosTestInventory(fixtureProfile)[0];
+    for (const [profile, selected] of [
+      ['core', [identifier]],
+      [fixtureProfile, []],
+      [fixtureProfile, [identifier, iosTestInventory(fixtureProfile)[1]]],
+      [fixtureProfile, ['OrotUITests/UnknownTests/testUnknown']],
+    ]) {
+      const result = fixture(0, profile, 'all', selected);
+      try {
+        assert.notEqual(result.outcome.status, 0);
+        assert.match(result.outcome.stderr, /dedicated host-orchestrated destination/);
+        assert.ok(!result.calls.some((call) => call.name === 'xcodebuild'));
+      } finally {
+        rmSync(result.directory, { recursive: true, force: true });
+      }
     }
-  }
-  const allowed = fixture(0, 'fixtures', 'all', [identifier]);
-  try {
-    assert.equal(allowed.outcome.status, 0, allowed.outcome.stderr);
-    assert.equal(allowed.calls.filter((call) => call.name === 'xcodebuild').length, 1);
-  } finally {
-    rmSync(allowed.directory, { recursive: true, force: true });
+    const allowed = fixture(0, fixtureProfile, 'all', [identifier]);
+    try {
+      assert.equal(allowed.outcome.status, 0, allowed.outcome.stderr);
+      assert.equal(allowed.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+    } finally {
+      rmSync(allowed.directory, { recursive: true, force: true });
+    }
   }
 });

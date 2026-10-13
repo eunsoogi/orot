@@ -175,3 +175,7 @@ jobs:
             artifacts/ios-tests/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7
+
+  debug_validation:
+    name: Debug provider and isolated health import
+    uses: ./.github/workflows/ios-debug-test-validation.yml

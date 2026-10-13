@@ -60,6 +60,31 @@ test('rejects missing, stale-run, changed-source and incompatible Debug consumer
     fixture.dispose();
   }
 });
+test('isolated health import consumes the exact Debug producer and rejects Release consumers', async () => {
+  const fixture = createProductFixture('provider-data');
+  try {
+    const directory = fixture.artifact('debug-health-import');
+    const manifest = await createIosTestProducts(
+      'provider-data',
+      fixture.products,
+      directory,
+      fixture.env,
+    );
+    const verify = (profile) =>
+      verifyIosTestProducts(
+        profile,
+        directory,
+        manifest.archiveDigest,
+        manifest.manifestDigest,
+        fixture.env,
+      );
+    assert.ok(existsSync(await verify('health-import')));
+    assert.equal(fixture.readManifest(directory).context.profile, 'ios-test-debug');
+    await assert.rejects(verify('fixtures'), /provenance mismatch/);
+  } finally {
+    fixture.dispose();
+  }
+});
 test('rejects tampered manifests and product archives before installing any verified products', async () => {
   const fixture = createProductFixture();
   try {

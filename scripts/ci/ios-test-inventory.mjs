@@ -34,7 +34,17 @@ export const backupTests = [
   'OrotUITests/BackupPersistenceUITests/testSeedAppContainerSnapshot',
   'OrotUITests/BackupPersistenceUITests/testRecoverAppContainerSnapshot',
 ];
+export const healthImportTests = [
+  'OrotUITests/HealthImportUITests/testSyntheticBloodPressurePersistsAndReplaysAfterProcessRestart',
+  'OrotUITests/HealthImportUITests/testCommonObservationsUseEncryptedStorageAndIdempotentReplay',
+  'OrotUITests/UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation',
+  'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
+];
 export const fixtureTests = [
+  'OrotUITests/HealthImportUITests/testDisplayOnlyBloodPressureCompletionCounts',
+  'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
+  'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
+  'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
   'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts',
   'OrotUITests/CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab',
@@ -54,7 +64,9 @@ export function iosTestInventory(profile, suite = 'all') {
           ? backupTests
           : profile === 'fixtures'
             ? fixtureTests
-            : providerTests),
+            : profile === 'health-import'
+              ? healthImportTests
+              : providerTests),
   ];
   // Cold Speech and XCUI framework initialization run on distinct hosted machines.
   // Both subsets remain mandatory and their union is the original complete inventory.

@@ -1,9 +1,10 @@
+import UIKit
 import XCTest
 
 @MainActor
 enum FormUITestConditions {
     /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false) {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5) {
         let scroll = UITestConditions.element(app, scrollID)
         XCTAssertTrue(scroll.waitForExistence(timeout: 30))
         for _ in 0 ..< 16 {
@@ -14,8 +15,8 @@ enum FormUITestConditions {
             {
                 return
             }
-            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: towardTop ? 0.2 : 0.65))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: towardTop ? 0.65 : 0.2))
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: horizontalPosition, dy: towardTop ? 0.2 : 0.65))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: horizontalPosition, dy: towardTop ? 0.65 : 0.2))
             start.press(forDuration: 0.05, thenDragTo: end)
         }
         XCTFail("Control did not enter the measured form viewport: \(target.debugDescription)")
@@ -32,12 +33,17 @@ enum FormUITestConditions {
             selectAll.tap()
             input.typeText(XCUIKeyboardKey.delete.rawValue)
         }
-        // A fast synthetic string lost characters in the controlled React input. Observe each real key before the next event.
-        var entered = ""
-        for character in text {
-            entered.append(character)
-            input.typeText(String(character))
-            exactValue(input, equals: entered)
+        if !text.isEmpty {
+            // One native paste event avoids controlled-input character loss and per-key XCTest idling on a cold hosted runner.
+            // This is the owned Simulator's pasteboard; restore its prior contents without logging or retaining them.
+            let previous = UIPasteboard.general.items
+            defer { UIPasteboard.general.items = previous }
+            UIPasteboard.general.string = text
+            input.press(forDuration: 1)
+            let paste = app.menuItems["Paste"]
+            XCTAssertTrue(paste.waitForExistence(timeout: 5), app.debugDescription)
+            paste.tap()
+            exactValue(input, equals: text)
         }
         exactValue(input, equals: text)
     }

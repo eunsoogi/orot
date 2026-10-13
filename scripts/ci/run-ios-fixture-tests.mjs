@@ -9,7 +9,12 @@ import { verifyIosTestResults } from './ios-test-results.mjs';
 import { resetIosTestFixtureContainer } from './ios-test-fixture-container.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
-if (profile !== 'fixtures' || !output || !existsSync(runFile) || existsSync(output))
+if (
+  !['fixtures', 'health-import'].includes(profile) ||
+  !output ||
+  !existsSync(runFile) ||
+  existsSync(output)
+)
   throw new Error(
     'Fresh fixture execution requires its profile, products, ownership and new evidence directory',
   );
@@ -35,7 +40,7 @@ const expected = selected.length ? selected : inventory;
 const observations = [];
 const started = Date.now();
 for (const [index, identifier] of expected.entries()) {
-  // Independent destructive schema/form fixtures never share a prior database or its initialization marker.
+  // Independent schema, form and import fixtures never share a prior database or its initialization marker.
   resetIosTestFixtureContainer(profile, owner, app);
   const name = String(index + 1).padStart(2, '0');
   const resultBundle = join(directory, name + '.xcresult');

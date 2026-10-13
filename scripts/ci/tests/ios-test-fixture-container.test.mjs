@@ -45,23 +45,25 @@ else console.log('synthetic fixture response');
 }
 
 test('fresh isolated cases reset only their owned app and Keychain without booting another device', () => {
-  const value = fixture('fixtures');
-  try {
-    assert.equal(value.outcome.status, 0, value.outcome.stderr);
-    const mutations = value.calls.filter((call) =>
-      ['uninstall', 'keychain', 'install'].includes(call.args[1]),
-    );
-    assert.deepEqual(
-      mutations.map((call) => call.args),
-      [
-        ['simctl', 'uninstall', value.owner.udid, 'com.orot.mobile'],
-        ['simctl', 'keychain', value.owner.udid, 'reset'],
-        ['simctl', 'install', value.owner.udid, value.app],
-      ],
-    );
-    assert.ok(!value.calls.some((call) => ['boot', 'shutdown', 'delete'].includes(call.args[1])));
-  } finally {
-    rmSync(value.root, { recursive: true, force: true });
+  for (const profile of ['fixtures', 'health-import']) {
+    const value = fixture(profile);
+    try {
+      assert.equal(value.outcome.status, 0, value.outcome.stderr);
+      const mutations = value.calls.filter((call) =>
+        ['uninstall', 'keychain', 'install'].includes(call.args[1]),
+      );
+      assert.deepEqual(
+        mutations.map((call) => call.args),
+        [
+          ['simctl', 'uninstall', value.owner.udid, 'com.orot.mobile'],
+          ['simctl', 'keychain', value.owner.udid, 'reset'],
+          ['simctl', 'install', value.owner.udid, value.app],
+        ],
+      );
+      assert.ok(!value.calls.some((call) => ['boot', 'shutdown', 'delete'].includes(call.args[1])));
+    } finally {
+      rmSync(value.root, { recursive: true, force: true });
+    }
   }
 });
 
@@ -83,6 +85,8 @@ test('refuses shared Core, mismatched ownership, inactive devices and unsupporte
     ['fixtures', { ownerProfile: 'core' }],
     ['fixtures', { state: 'Shutdown' }],
     ['fixtures', { preserveKeychain: true }],
+    ['health-import', { preserveKeychain: true }],
+    ['health-import', { ownerProfile: 'provider-data' }],
   ]) {
     const value = fixture(profile, options);
     try {

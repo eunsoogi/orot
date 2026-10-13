@@ -99,22 +99,22 @@ final class RecordingExportUITests: XCTestCase {
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = element(app, identifier)
         XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
-        if !target.isHittable {
-            let scroll = element(app, "recording-controls-scroll")
-            for _ in 0 ..< 12 {
-                if target.isHittable {
-                    break
-                }
-                scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.65)).press(forDuration: 0.05,
-                                                                                           thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)))
-            }
+        if ["recording-export-transcript", "recording-export-audio"].contains(identifier) {
+            FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll")
         }
         XCTAssertTrue(target.isHittable, app.debugDescription)
-        target.tap()
+        let frame = target.frame
+        XCTAssertTrue(!frame.isEmpty && app.frame.contains(frame), target.debugDescription)
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: frame.midX - app.frame.minX,
+                                                                        dy: frame.midY - app.frame.minY)).tap()
     }
 
     @MainActor
     private func value(_ app: XCUIApplication, _ identifier: String, _ expected: String) {
+        if identifier == "recording-export-status" {
+            // The fixed diagnostic controls leave a short viewport on SE. The result follows both export buttons and can be clipped from AX.
+            FormUITestConditions.reveal(element(app, identifier), in: app, scrollID: "recording-controls-scroll")
+        }
         UITestConditions.value(element(app, identifier), equals: expected)
     }
 

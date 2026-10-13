@@ -2,9 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { iosTestConfig } from '../ios-test-config.mjs';
 
 /** These are transport fixtures, not compiled binaries or authentic hosted-run evidence. */
-export function createProductFixture() {
+export function createProductFixture(profile = 'core') {
   const root = mkdtempSync(join(tmpdir(), 'ios-product-fixture-'));
   const bin = join(root, 'bin');
   mkdirSync(bin);
@@ -38,7 +39,7 @@ export function createProductFixture() {
     execFileSync('git', args, { cwd: source });
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim();
   const products = join(root, 'input-products');
-  const configuration = 'Release-iphonesimulator';
+  const configuration = iosTestConfig(profile).configuration + '-iphonesimulator';
   const app = `__TESTROOT__/${configuration}/Orot.app`;
   const runner = `__TESTROOT__/${configuration}/OrotUITests-Runner.app`;
   const dependencies = [
