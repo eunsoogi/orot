@@ -26,6 +26,21 @@ describe('unified import through Records', () => {
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(false);
+    // Appearance changes must not enable import while the provider selection is still empty.
+    execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'dark']);
+    await expect(
+      element(by.id('unified-import-toggle-healthKit')),
+    ).toBeVisible();
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(false);
+    execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'light']);
+    await expect(
+      element(by.id('unified-import-toggle-healthKit')),
+    ).toBeVisible();
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(false);
     await element(by.id('unified-import-toggle-healthKit')).tap();
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
@@ -35,7 +50,15 @@ describe('unified import through Records', () => {
     await expect(
       element(by.id('unified-import-toggle-eventKit')),
     ).toBeVisible();
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(true);
     await device.takeScreenshot('unified-import-dark');
+    // Clearing the only provider must disable the same native action again.
+    await element(by.id('unified-import-toggle-healthKit')).tap();
+    jestExpect(
+      (await element(by.id('unified-import-start')).getAttributes()).enabled,
+    ).toBe(false);
     await expectContentAboveFloatingBar(
       'unified-import-scroll',
       'unified-import-status',
