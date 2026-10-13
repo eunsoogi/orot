@@ -12,7 +12,7 @@ const approvedQuery = 'sleep duration adults';
 const question =
   'This is a synthetic general-literature question, with no personal health records. Search Europe PMC using the exact query "sleep duration adults". Summarize what the returned publications say about adult sleep duration, cite their supplied evidence IDs and publication dates, and explain the limits of this search sample. Do not give individual medical advice.';
 
-export interface Issue189RagProbeResult {
+export interface RagWorkflowProbeResult {
   readonly availability: string;
   readonly terminal: string;
   readonly retrieval: 'observed' | 'notobserved';
@@ -30,10 +30,10 @@ export interface Issue189RagProbeResult {
 }
 
 /** Executes the shipping RAG chain with real network/model calls and an empty personal library. */
-export async function runIssue189RagProbe(
+export async function runRagWorkflowProbe(
   onPhase: (phase: string) => void,
   parentSignal: AbortSignal,
-): Promise<Issue189RagProbeResult> {
+): Promise<RagWorkflowProbeResult> {
   const startedAt = Date.now();
   const controller = new AbortController();
   const abort = () => controller.abort();

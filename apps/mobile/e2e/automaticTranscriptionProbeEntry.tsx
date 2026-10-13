@@ -15,7 +15,7 @@ import { getAutomaticTranscriptionStore } from '../src/recording/automaticTransc
 import {
   prepareAutomaticProbe,
   readAutomaticProbeSource,
-} from './issue189AutomaticTranscriptionProbeSupport';
+} from './automaticTranscriptionProbeSupport';
 
 type Probe = Awaited<ReturnType<typeof prepareAutomaticProbe>>;
 function verificationSourceId(): string | null {
@@ -26,9 +26,8 @@ function verificationSourceId(): string | null {
       }
     | undefined;
   const value =
-    manager?.settings?.OROT_ISSUE189_AUTOMATIC_VERIFY_SOURCE_ID ??
-    manager?.getConstants?.().settings
-      ?.OROT_ISSUE189_AUTOMATIC_VERIFY_SOURCE_ID;
+    manager?.settings?.OROT_AUTOMATIC_VERIFY_SOURCE_ID ??
+    manager?.getConstants?.().settings?.OROT_AUTOMATIC_VERIFY_SOURCE_ID;
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
@@ -86,10 +85,10 @@ function ProbeEntry() {
   }, []);
   return (
     <SafeAreaView style={styles.fill}>
-      <Text testID="issue189-automatic-phase">{phase}</Text>
+      <Text testID="automatic-transcription-phase">{phase}</Text>
       {probe ? (
         <Text
-          testID="issue189-automatic-refusal"
+          testID="automatic-transcription-refusal"
           numberOfLines={2}
           accessibilityLabel={JSON.stringify(probe.refusal)}
         >
@@ -98,7 +97,7 @@ function ProbeEntry() {
       ) : null}
       {result ? (
         <Text
-          testID="issue189-automatic-result"
+          testID="automatic-transcription-result"
           accessibilityLabel={result}
           numberOfLines={2}
         >

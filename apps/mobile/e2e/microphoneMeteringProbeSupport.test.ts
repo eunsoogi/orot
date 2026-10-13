@@ -3,7 +3,7 @@ import {
   addMeterSample,
   emptyMeterStats,
   meteringProbeModule,
-} from './issue189MeteringProbeSupport';
+} from './microphoneMeteringProbeSupport';
 
 test('empty and silent observations do not manufacture microphone activity', () => {
   const empty = emptyMeterStats();

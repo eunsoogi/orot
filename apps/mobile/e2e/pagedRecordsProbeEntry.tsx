@@ -31,7 +31,7 @@ const calendarEvents: CalendarEvent[] = [
   { title: '팀 점심', day: 1 },
   { title: '방문 일정', day: 2 },
 ].map((example, index) => ({
-  calendarEventIdentifier: `issue189-synthetic-calendar-${index}`,
+  calendarEventIdentifier: `synthetic-calendar-${index}`,
   effectiveAt: new Date(
     nextMorning.getTime() + example.day * dayMs,
   ).toISOString(),
@@ -88,7 +88,7 @@ function saveNewAppointment(
   const now = new Date().toISOString();
   const appointment = createAppointment({
     ...input,
-    id: `issue189-synthetic-appointment-${++appointmentSequence}`,
+    id: `synthetic-appointment-${++appointmentSequence}`,
     recordedAt: now,
     ingestedAt: now,
     provenance: { origin: 'user_reported', sourceRecordIds: [] },
@@ -142,7 +142,7 @@ const pageSize = 50;
 function observationAt(index: number): HealthObservation {
   const effectiveAt = new Date(fixtureNow - index * hourMs).toISOString();
   return {
-    id: `issue189-synthetic-health-${String(index).padStart(4, '0')}`,
+    id: `synthetic-health-${String(index).padStart(4, '0')}`,
     effectiveAt,
     recordedAt: effectiveAt,
     ingestedAt: new Date(fixtureNow).toISOString(),
@@ -151,7 +151,7 @@ function observationAt(index: number): HealthObservation {
       sourceRecordIds: [],
       source: {
         system: 'healthkit',
-        sourceIdentifier: 'issue189-synthetic-ui-fixture',
+        sourceIdentifier: 'synthetic-ui-fixture',
       },
     },
     reviewState: { status: 'unreviewed' },
@@ -166,7 +166,7 @@ async function loadHealthObservationPage(
   cursor: HealthObservationCursor | null,
 ): Promise<HealthObservationPage> {
   const start = cursor
-    ? Number(cursor.id.slice('issue189-synthetic-health-'.length)) + 1
+    ? Number(cursor.id.slice('synthetic-health-'.length)) + 1
     : 0;
   if (!Number.isInteger(start) || start < 0 || start > healthRecordCount) {
     throw new Error('Invalid synthetic health cursor.');
@@ -187,7 +187,7 @@ async function loadHealthObservationPage(
 }
 
 /** Uses production screens, native recording, provider selection and actual Apple availability. */
-function Issue189UiProbeEntry() {
+function PagedRecordsProbeEntry() {
   return (
     <App
       calendarBridge={calendarBridge}
@@ -197,4 +197,4 @@ function Issue189UiProbeEntry() {
   );
 }
 
-AppRegistry.registerComponent(appName, () => Issue189UiProbeEntry);
+AppRegistry.registerComponent(appName, () => PagedRecordsProbeEntry);

@@ -41,4 +41,19 @@ describe('native test entry routing', () => {
       'Unsupported test scenario',
     );
   });
+
+  it('rejects removed diagnostic screens while retaining recording and paged fixture routes', () => {
+    for (const scenario of ['apple-workflow', 'rag', 'hybrid-retrieval']) {
+      expect(() => selectTestRoute({ OROT_TEST_SCENARIO: scenario })).toThrow(
+        'Unsupported test scenario',
+      );
+    }
+    for (const scenario of [
+      'automatic-transcription',
+      'metering',
+      'paged-records',
+    ]) {
+      expect(selectTestRoute({ OROT_TEST_SCENARIO: scenario })).toBe(scenario);
+    }
+  });
 });

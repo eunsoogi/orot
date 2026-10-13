@@ -13,8 +13,7 @@ import type { NativeSpeechTranscriptionResponse } from '../src/transcription';
 import { createTranscriptEvidenceService } from '../src/transcription/transcriptEvidenceService';
 import fixture from './transcription/fixtures/synthetic-korean.json';
 
-export const syntheticTitle =
-  'Issue 189 synthetic automatic transcription fixture';
+export const syntheticTitle = 'Synthetic automatic transcription fixture';
 
 /** Read only this probe's source. Relaunch never starts a new recognition request. */
 export async function readAutomaticProbeSource(sourceId: string) {

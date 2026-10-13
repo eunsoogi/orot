@@ -10,11 +10,11 @@ import {
 const medicationText = '혈압약 아모디핀 5mg을 매일 아침 복용했습니다.';
 
 const medication = chunk({
-  id: 'issue25-synthetic-medication',
+  id: 'hybrid-synthetic-medication',
   text: medicationText,
   effectiveTime: '2026-01-02T08:00:00.000Z',
   recordType: 'medication_assertion',
-  encounterId: 'issue25-synthetic-encounter',
+  encounterId: 'hybrid-synthetic-encounter',
   reviewState: {
     status: 'reviewed',
     reviewerId: 'synthetic-reviewer',
@@ -28,7 +28,7 @@ const medication = chunk({
 });
 
 const sleep = chunk({
-  id: 'issue25-synthetic-sleep',
+  id: 'hybrid-synthetic-sleep',
   text: '어젯밤 오후 11시에 잠들어 오늘 오전 6시에 일어났고 7시간 잤습니다.',
   effectiveTime: '2026-01-03T07:00:00.000Z',
   recordType: 'symptom_entry',
@@ -38,7 +38,7 @@ const sleep = chunk({
 
 const corpus = [medication, sleep];
 
-export interface Issue25HybridProbeResult {
+export interface HybridProbeResult {
   readonly mode: 'indexed' | 'reopened';
   readonly sqlCipherEnabled: boolean;
   readonly cipherVersion: string | null;
@@ -96,7 +96,7 @@ function summarize(hit: HybridEvidenceSearchHit | undefined) {
   };
 }
 
-export async function runIssue25HybridRetrievalProbe(): Promise<Issue25HybridProbeResult> {
+export async function runHybridRetrievalProbe(): Promise<HybridProbeResult> {
   const service = await openLocalE5RagService();
   const database = await openLocalAgentMemoryDatabase();
   const cipherVersion = await getCipherVersion();
@@ -110,7 +110,7 @@ export async function runIssue25HybridRetrievalProbe(): Promise<Issue25HybridPro
   const indexedVectors = await vectorStorage.listForModel(
     service.provider.modelIdentity,
   );
-  let mode: Issue25HybridProbeResult['mode'];
+  let mode: HybridProbeResult['mode'];
   if (indexedVectors.length === 0) {
     mode = 'indexed';
     await service.index(corpus, { batchSize: 2 });
@@ -155,7 +155,7 @@ export async function runIssue25HybridRetrievalProbe(): Promise<Issue25HybridPro
         end: '2026-01-02T08:00:00.000Z',
       },
       recordTypes: ['medication_assertion'],
-      encounterId: 'issue25-synthetic-encounter',
+      encounterId: 'hybrid-synthetic-encounter',
       reviewStates: ['reviewed'],
     },
   });
@@ -203,7 +203,7 @@ export async function runIssue25HybridRetrievalProbe(): Promise<Issue25HybridPro
   const remainingVectors = await vectorStorage.listForModel(
     service.provider.modelIdentity,
   );
-  const result: Issue25HybridProbeResult = {
+  const result: HybridProbeResult = {
     mode,
     sqlCipherEnabled: true,
     cipherVersion,

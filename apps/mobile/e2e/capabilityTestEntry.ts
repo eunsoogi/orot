@@ -30,23 +30,14 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
     case 'apple-foundation-models':
       require('./appleFoundationModelsProbeEntry');
       break;
-    case 'apple-workflow':
-      require('./issue189AppleWorkflowProbeEntry');
-      break;
     case 'automatic-transcription':
-      require('./issue189AutomaticTranscriptionProbeEntry');
+      require('./automaticTranscriptionProbeEntry');
       break;
     case 'metering':
-      require('./issue189MeteringProbeEntry');
-      break;
-    case 'rag':
-      require('./issue189RagProbeEntry');
+      require('./microphoneMeteringProbeEntry');
       break;
     case 'paged-records':
-      require('./issue189UiProbeEntry');
-      break;
-    case 'hybrid-retrieval':
-      require('./issue25HybridRetrievalProbeEntry');
+      require('./pagedRecordsProbeEntry');
       break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');

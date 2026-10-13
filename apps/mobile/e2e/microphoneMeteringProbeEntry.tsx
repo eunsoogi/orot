@@ -9,7 +9,7 @@ import {
   meteringProbeModule,
   subscribeMetering,
   type MeteringState,
-} from './issue189MeteringProbeSupport';
+} from './microphoneMeteringProbeSupport';
 
 /** Dedicated microphone-only entry: it imports no persistence, recording-save, or transcription service. */
 function Probe() {

@@ -9,7 +9,7 @@ import type { VisitQuestionEvidenceItem } from '../src/agent/visitQuestions/task
 import { visitQuestionCitationKey } from '../src/agent/visitQuestions/evidence';
 
 const event: CalendarEvent = {
-  calendarEventIdentifier: 'synthetic-issue189-appointment',
+  calendarEventIdentifier: 'synthetic-appointment',
   effectiveAt: '2035-06-02T09:00:00.000Z',
   endsAt: '2035-06-02T10:00:00.000Z',
   calendarEventSnapshot: {
@@ -23,11 +23,11 @@ const event: CalendarEvent = {
 };
 const evidence: VisitQuestionEvidenceItem = {
   sourceKind: 'personal_record',
-  sourceId: 'synthetic-issue189-sleep',
+  sourceId: 'synthetic-sleep',
   sourceRevision: '1',
-  evidenceId: 'synthetic-issue189-sleep-span',
+  evidenceId: 'synthetic-sleep-span',
   evidenceRevision: '1',
-  locator: { kind: 'structured_record', recordId: 'synthetic-issue189-sleep' },
+  locator: { kind: 'structured_record', recordId: 'synthetic-sleep' },
   effectiveTime: '2035-06-01T09:00:00.000Z',
   reviewState: 'reviewed',
   content:
@@ -70,7 +70,7 @@ function preparedContext(): Extract<
     status: 'ready',
     appointment: {
       ...event,
-      id: 'synthetic-issue189-appointment',
+      id: 'synthetic-appointment',
       recordedAt: '2035-06-01T09:00:00.000Z',
       ingestedAt: '2035-06-01T09:00:00.000Z',
       provenance: { origin: 'user_reported', sourceRecordIds: [] },
@@ -97,9 +97,7 @@ function preparedContext(): Extract<
 }
 
 /** Calls shipping workflows and records native failures without substituting output. */
-export async function runIssue189AppleWorkflowProbe(
-  progress: (phase: string) => void,
-) {
+export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   let onGenerate: (() => void) | undefined;
   const native = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
@@ -137,7 +135,7 @@ export async function runIssue189AppleWorkflowProbe(
       // All requests contain only synthetic fixtures, so exact diagnostics can be retained.
       diagnostics.push({ phase: requestPhase, result });
       console.log(
-        'ISSUE189_APPLE_PROVIDER ' +
+        'APPLE_WORKFLOW_PROVIDER ' +
           JSON.stringify({ phase: requestPhase, result }),
       );
       return result;

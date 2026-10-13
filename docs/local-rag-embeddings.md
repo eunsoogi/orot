@@ -10,12 +10,7 @@ Search filters the supplied evidence chunks before asking either local candidate
 
 The mobile full-text store builds an FTS5 index from the current chunk snapshot inside the existing SQLCipher connection, with `temp_store` set to memory. It drops the temporary table after each query and does not keep a second persistent copy of source text. Query text is normalized into quoted Unicode prefix terms, and FTS5 BM25 order supplies the lexical rank. The shared RAG package combines that list with the locally stored E5 vector ranking using reciprocal-rank fusion. Defaults are `lexicalWeight: 0.5`, `vectorWeight: 0.5`, `rrfConstant: 60`, and `candidateLimit: 20`; callers may override them, and invalid weights or limits are rejected. Results include the original evidence chunk and locator plus nullable lexical and vector ranks.
 
-The issue-specific SQLCipher/FTS probe uses synthetic chunks and a dedicated app entry so its native result remains separate from the general smoke probe. From `apps/mobile`, set `OROT_ISSUE25_SIMULATOR_UDID` to a dedicated Simulator UUID, then run:
-
-```sh
-pnpm exec detox build --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid
-pnpm exec detox test --config-path e2e/issue25-hybrid.detox.config.js --configuration ios.sim.release.issue25-hybrid --no-start --headless
-```
+The shared SQLCipher/FTS probe in `apps/mobile/e2e/hybridRetrievalProbe.ts` uses synthetic chunks. Its persistence checks require a dedicated Simulator and a new app process for the second read. Development commands and preparation requirements belong in [the development guide](development.md).
 
 The probe checks SQLCipher and FTS5 on the native connection, removes one synthetic vector to prove lexical-only retrieval, checks a vector-only E5 result, verifies the requested filters and evidence locators, and confirms that the temporary FTS table is gone after each search. It then relaunches the app and repeats both searches without re-indexing, so the vector result comes from the persisted SQLCipher row.
 
@@ -23,14 +18,14 @@ The probe checks SQLCipher and FTS5 on the native connection, removes one synthe
 
 The recorded run used a Release build on an iPhone 17 Pro simulator running iOS 27.0, with the pinned model, six synthetic Korean records, and five Korean retrieval queries. The fixture covers medication, a stomach symptom, sleep, walking, and a lab appointment. It contains no personal records.
 
-| Measurement | First indexing run | App relaunch run |
-| --- | ---: | ---: |
-| Model asset preparation | 18.20 s, including cold download and integrity checks | 202 ms from the cached files and integrity checks |
-| ONNX session load | 414 ms | 370 ms |
-| Search latency for five queries | 5, 4, 3, 5, 4 ms (4.2 ms mean) | 588, 2, 3, 3, 2 ms |
-| Top-1 / recall@3 / MRR | 5/5 / 5/5 / 1.00 | 5/5 / 5/5 / 1.00 |
-| Persisted vectors read | 6 | 6 |
-| Model preparation progress callbacks | 1,382, monotonic | Not applicable; this pass reads the saved index without re-indexing |
+| Measurement                          |                                    First indexing run |                                                    App relaunch run |
+| ------------------------------------ | ----------------------------------------------------: | ------------------------------------------------------------------: |
+| Model asset preparation              | 18.20 s, including cold download and integrity checks |                   202 ms from the cached files and integrity checks |
+| ONNX session load                    |                                                414 ms |                                                              370 ms |
+| Search latency for five queries      |                        5, 4, 3, 5, 4 ms (4.2 ms mean) |                                                  588, 2, 3, 3, 2 ms |
+| Top-1 / recall@3 / MRR               |                                      5/5 / 5/5 / 1.00 |                                                    5/5 / 5/5 / 1.00 |
+| Persisted vectors read               |                                                     6 |                                                                   6 |
+| Model preparation progress callbacks |                                      1,382, monotonic | Not applicable; this pass reads the saved index without re-indexing |
 
 The first run's app-process physical footprint was 39,914,280 bytes (38.1 MiB) before model load and 520,162,520 bytes (496.2 MiB) after load. The peak sampled across embedding inference was 908,250,688 bytes (866.2 MiB); that probe includes a separate cancellation batch of eight long inputs, so it is not the peak for an ordinary short query alone. Footprint values are absolute process measurements, not memory deltas attributable solely to the model. After relaunch, the fresh process measured 506,350,688 bytes (482.7 MiB) before the new session load and 988,646,952 bytes (942.8 MiB) after load; the inference peak was 512,429,320 bytes (488.7 MiB).
 
