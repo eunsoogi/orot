@@ -9,7 +9,14 @@ import { iosTestConfig } from '../ios-test-config.mjs';
 
 function fixture(
   profile,
-  { preserveKeychain = false, state = 'Booted', ownerProfile = profile, action = 'reset' } = {},
+  {
+    preserveKeychain = false,
+    state = 'Booted',
+    ownerProfile = profile,
+    action = 'reset',
+    installed = true,
+    containerError = false,
+  } = {},
 ) {
   const root = mkdtempSync(join(tmpdir(), 'orot-fixture-reset-'));
   const spec = iosTestConfig(profile);
@@ -27,6 +34,7 @@ fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
 if(name==='plutil')console.log(JSON.stringify(fs.existsSync(${JSON.stringify(removed)})?{}:{'com.orot.mobile':{}}));
 else if(args[1]==='list'&&args[2]==='runtimes')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},isAvailable:true}]}));
 else if(args[1]==='list'&&args[2]==='devices')console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
+else if(args[1]==='get_app_container'){if(${containerError}){console.error('Synthetic service unavailable');process.exit(1);}if(!${installed}||fs.existsSync(${JSON.stringify(removed)})){console.error('An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=2): No such file or directory');process.exit(2);}console.log('/synthetic/owned/Orot.app');}
 else {if(args[1]==='uninstall')fs.writeFileSync(${JSON.stringify(removed)},'removed');if(args[1]==='install'&&fs.existsSync(${JSON.stringify(removed)}))fs.unlinkSync(${JSON.stringify(removed)});console.log('synthetic fixture response');}
 `;
   for (const name of ['xcrun', 'plutil']) writeFileSync(join(root, name), program, { mode: 0o755 });
@@ -70,6 +78,8 @@ test('fresh isolated cases reset only their owned app and Keychain without booti
         ],
       );
       assert.ok(!value.calls.some((call) => ['boot', 'shutdown', 'delete'].includes(call.args[1])));
+      // Reset needs only this bundle's installation state; full application enumeration stalled before the hosted backup case.
+      assert.ok(!value.calls.some((call) => call.args[1] === 'listapps'));
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
@@ -88,7 +98,13 @@ test('completed and failed independent cases remove only their owned app contain
         mutations.map((call) => call.args),
         [['simctl', 'uninstall', value.owner.udid, 'com.orot.mobile']],
       );
-      assert.equal(value.calls.filter((call) => call.name === 'plutil').length, 2);
+      assert.deepEqual(
+        value.calls.filter((call) => call.args[1] === 'get_app_container').map((call) => call.args),
+        [
+          ['simctl', 'get_app_container', value.owner.udid, 'com.orot.mobile', 'app'],
+          ['simctl', 'get_app_container', value.owner.udid, 'com.orot.mobile', 'app'],
+        ],
+      );
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
@@ -108,6 +124,27 @@ test('completed and failed independent cases remove only their owned app contain
       );
     } finally {
       rmSync(value.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('absent owned bundles are distinguished from container service errors before mutation', () => {
+  for (const action of ['reset', 'cleanup']) {
+    const absent = fixture('fixtures', { action, installed: false });
+    const unavailable = fixture('fixtures', { action, containerError: true });
+    try {
+      assert.equal(absent.outcome.status, 0, absent.outcome.stderr);
+      assert.ok(!absent.calls.some((call) => call.args[1] === 'uninstall'));
+      assert.notEqual(unavailable.outcome.status, 0);
+      assert.match(unavailable.outcome.stderr, /Synthetic service unavailable/);
+      assert.ok(
+        !unavailable.calls.some((call) =>
+          ['uninstall', 'install', 'keychain'].includes(call.args[1]),
+        ),
+      );
+    } finally {
+      rmSync(absent.root, { recursive: true, force: true });
+      rmSync(unavailable.root, { recursive: true, force: true });
     }
   }
 });

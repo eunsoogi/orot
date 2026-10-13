@@ -57,6 +57,19 @@ writeFileSync(
 const guiApplication = existsSync(resolve(developer, '../Applications/DeviceHub.app'))
   ? 'DeviceHub'
   : 'unavailable';
+let guiLaunch = 'unavailable';
+if (guiApplication === 'DeviceHub') {
+  try {
+    // Launch Services may initialize the hosted GUI connection. No undocumented device-selection argument or preference is used.
+    execFileSync('open', ['-a', resolve(developer, '../Applications/DeviceHub.app')], {
+      timeout: 30000,
+    });
+    guiLaunch = 'opened';
+  } catch {
+    // A successful launch alone does not prove a selected destination or Accessibility; the original XCUI cases still decide that result.
+    console.log('IOS_UI_GUI_LAUNCH unavailable');
+  }
+}
 let screenshot = 'unavailable';
 try {
   execFileSync(
@@ -85,6 +98,7 @@ writeFileSync(
       udid: owner.udid,
       hostConnectionVerified: true,
       guiApplication,
+      guiLaunch,
       targetedGuiLaunch: 'unsupported',
       selectedXcodeDeveloperDirectory: developer,
       screenshot,

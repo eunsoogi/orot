@@ -112,6 +112,9 @@ jobs:
           ARCHIVE_DIGEST: ${{ needs.native_products.outputs.archive_digest }}
           MANIFEST_DIGEST: ${{ needs.native_products.outputs.manifest_digest }}
         run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/ios-tests/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Observe and prewarm the public Apple model host SDK
+        if: matrix.profile == 'provider-data'
+        run: scripts/ci/run-command.sh ios-apple-model-host artifacts/ios-tests/apple-model-host.log -- xcrun swift scripts/ci/prepare-apple-model-host.swift
       - name: Boot the dedicated execution destination
         env:
           PROFILE: ${{ matrix.profile }}

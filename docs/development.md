@@ -85,6 +85,8 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/native-core-owner.json
 
 UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례를 별도 bundle에서 한 번 실행합니다. 이 결과는 연결 확인이며 화면의 접근성 준비 완료를 뜻하지 않습니다. UI 검증은 실제 버튼·스크롤 영역·키보드와 시스템 창의 관측 조건을 기다립니다. 합성 Calendar·HealthKit 자료나 계정 응답을 사용한 결과는 실제 개인 자료·계정·물리 기기의 검증과 구분합니다. Apple 모델 준비 실패, 인식 실패와 UI 입력·복귀 실패도 별도로 기록합니다.
 
+`provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
+
 ## Detox 스모크 테스트
 
 ```sh

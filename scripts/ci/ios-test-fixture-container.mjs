@@ -3,6 +3,20 @@ import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 
 const bundleIdentifier = 'com.orot.mobile';
 
+/** Query only the owned bundle; enumeration of every installed app is unrelated to the reset boundary. */
+function hasInstalledApp(simctl) {
+  try {
+    const container = simctl('get_app_container', bundleIdentifier, 'app').trim();
+    if (!container) throw new Error('Owned app container query returned no path');
+    return true;
+  } catch (error) {
+    // simctl reports an absent bundle as POSIX ENOENT. Timeouts and other service errors must still stop execution.
+    if (error.status === 2 && String(error.stderr).includes('domain=NSPOSIXErrorDomain, code=2'))
+      return false;
+    throw error;
+  }
+}
+
 /** Restore the original independent-case uninstall boundary after success or failure; snapshot and model restart phases are deliberately excluded. */
 export function removeIosTestFixtureContainer(profile, owner) {
   if (!['fixtures', 'health-import', 'microphone', 'provider-selection'].includes(profile))
@@ -13,16 +27,10 @@ export function removeIosTestFixtureContainer(profile, owner) {
     return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', timeout: 30000 });
   }
   const installed = () =>
-    JSON.parse(
-      execFileSync('plutil', ['-convert', 'json', '-o', '-', '-'], {
-        input: simctl('listapps', owner.udid),
-        encoding: 'utf8',
-      }),
-    );
-  const removed = Object.hasOwn(installed(), bundleIdentifier);
+    hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args));
+  const removed = installed();
   if (removed) simctl('uninstall', owner.udid, bundleIdentifier);
-  if (Object.hasOwn(installed(), bundleIdentifier))
-    throw new Error('Owned fixture application remained after cleanup');
+  if (installed()) throw new Error('Owned fixture application remained after cleanup');
   return { removed, installed: false };
 }
 
@@ -51,13 +59,8 @@ export function resetIosTestFixtureContainer(
       throw new Error('Fixture reset requires its booted owned destination');
     return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', timeout: 30000 }).trim();
   }
-  const apps = JSON.parse(
-    execFileSync('plutil', ['-convert', 'json', '-o', '-', '-'], {
-      input: simctl('listapps', owner.udid),
-      encoding: 'utf8',
-    }),
-  );
-  if (Object.hasOwn(apps, bundleIdentifier)) simctl('uninstall', owner.udid, bundleIdentifier);
+  if (hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args)))
+    simctl('uninstall', owner.udid, bundleIdentifier);
   if (!preserveKeychain) simctl('keychain', owner.udid, 'reset');
   simctl('install', owner.udid, application);
 }

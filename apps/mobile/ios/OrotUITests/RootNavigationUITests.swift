@@ -110,7 +110,7 @@ final class RootNavigationUITests: XCTestCase {
     @MainActor
     func testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { app.terminate() }
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
@@ -136,19 +136,33 @@ final class RootNavigationUITests: XCTestCase {
         XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-back").control.label, "이전 화면으로 돌아가기")
         XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-home").control.label, "홈 화면으로 이동")
         capture(app, "visit-questions-native-safe-area")
+        captureNavigationObservation(app, "before-edge-back")
         edgeBack(scroll, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
         XCTAssertTrue(scroll.exists && scroll.isHittable)
         capture(app, "edge-back-cancelled")
+        captureNavigationObservation(app, "after-cancelled-edge-back")
         edgeBack(scroll, in: app, fraction: 0.85, velocity: .fast)
+        captureNavigationObservation(app, "after-full-edge-back")
         let ai = UITestConditions.element(app, "ai-features-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 30), .completed, app.debugDescription)
+        captureNavigationObservation(app, "after-returned-route")
         capture(app, "edge-back-completed")
         FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
         action.tap()
         XCTAssertTrue(UITestConditions.exists(scroll))
         try NavigationUITestConditions.tapNative(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
+    }
+
+    @MainActor
+    private func captureNavigationObservation(_ app: XCUIApplication, _ name: String) {
+        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let data = Data(UITestConditions.text(marker).utf8)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor

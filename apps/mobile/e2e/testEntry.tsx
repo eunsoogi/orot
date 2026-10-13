@@ -8,8 +8,10 @@ import {
 } from 'react-native';
 import {
   useEffect,
+  useRef,
   useState,
   type ComponentType,
+  type ComponentRef,
   type PropsWithChildren,
 } from 'react';
 import { SafeAreaListener, type Metrics } from 'react-native-safe-area-context';
@@ -73,9 +75,42 @@ function IntegrationTestHost() {
 
 function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const navigationMarker = useRef<ComponentRef<typeof Text>>(null);
+  useEffect(() => {
+    if (settings.OROT_TEST_NAVIGATION_OBSERVATION !== 'YES') return;
+    let active = true;
+    // Update only the diagnostic native label; avoid a React render loop during UIKit transitions.
+    const timer = setInterval(() => {
+      NativeModules.OrotTestControl.navigationSnapshot().then(
+        (value: unknown) => {
+          if (active)
+            navigationMarker.current?.setNativeProps({
+              accessibilityLabel: JSON.stringify(value),
+            });
+        },
+      );
+    }, 200);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
   return (
     <SafeAreaListener onChange={setMetrics}>
       {children}
+      {settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ? (
+        <View pointerEvents="none" style={styles.geometryMarker}>
+          <Text
+            ref={navigationMarker}
+            accessible
+            accessibilityLabel="{}"
+            style={styles.geometryMarkerText}
+            testID="native-navigation-observation"
+          >
+            {t('probe.layout.nativeObservation')}
+          </Text>
+        </View>
+      ) : null}
       {metrics ? (
         <View pointerEvents="none" style={styles.geometryMarker}>
           <Text

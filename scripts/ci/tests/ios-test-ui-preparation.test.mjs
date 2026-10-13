@@ -14,6 +14,7 @@ function fixture({
   state = 'Booted',
   selectedDeveloper = 'provided',
   hostFailure = false,
+  guiFailure = false,
   profile = 'speech',
 } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'orot-ui-preparation-'));
@@ -41,7 +42,7 @@ function fixture({
 const fs=require('node:fs');const args=process.argv.slice(2);const name=require('node:path').basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
 if(name==='xcodebuild'){if(${hostFailure})process.exit(65);fs.mkdirSync(args[args.indexOf('-resultBundlePath')+1]);process.exit(0);}
-if(name==='open')throw new Error('No unsupported GUI command is allowed');
+if(name==='open'){if(args.length!==2||args[0]!=='-a'||args[1]!==${JSON.stringify(join(developer, '../Applications/DeviceHub.app'))})throw new Error('Unsupported GUI launch argument');process.exit(${guiFailure ? 1 : 0});}
 if(args[0]==='xcresulttool')console.log(${JSON.stringify(JSON.stringify(report))});
 else if(args[1]==='list'&&args[2]==='runtimes')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));
 else if(args[1]==='list'&&args[2]==='devices')console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
@@ -95,21 +96,37 @@ test('prepares the genuine host case once on the owned destination without anoth
       );
       assert.ok(runs[0].args.includes('platform=iOS Simulator,id=' + value.owner.udid));
       assert.ok(
-        !value.calls.some(
-          (call) =>
-            call.name === 'open' ||
-            ['boot', 'shutdown', 'delete'].some((action) => call.args.includes(action)),
+        !value.calls.some((call) =>
+          ['boot', 'shutdown', 'delete'].some((action) => call.args.includes(action)),
         ),
+      );
+      assert.deepEqual(
+        value.calls.filter((call) => call.name === 'open').map((call) => call.args),
+        [['-a', join(value.root, 'SelectedXcode.app/Contents/Applications/DeviceHub.app')]],
       );
       const report = JSON.parse(readFileSync(join(value.output, 'ui-bootstrap.json')));
       assert.equal(report.hostConnectionVerified, true);
       assert.equal(report.guiApplication, 'DeviceHub');
       assert.equal(report.targetedGuiLaunch, 'unsupported');
+      assert.equal(report.guiLaunch, 'opened');
       assert.equal(report.screenshot, 'captured');
       assert.ok(!('accessibilityReady' in report));
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
+  }
+});
+
+test('an unavailable optional GUI launch stays diagnostic and cannot invent Accessibility readiness', () => {
+  const value = fixture({ guiFailure: true });
+  try {
+    assert.equal(value.outcome.status, 0, value.outcome.stderr);
+    const report = JSON.parse(readFileSync(join(value.output, 'ui-bootstrap.json')));
+    assert.equal(report.guiLaunch, 'unavailable');
+    assert.ok(!('accessibilityReady' in report));
+    assert.equal(value.calls.filter((call) => call.name === 'open').length, 1);
+  } finally {
+    rmSync(value.root, { recursive: true, force: true });
   }
 });
 
