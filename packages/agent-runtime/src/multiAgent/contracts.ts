@@ -68,6 +68,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
+  /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
+  correctionInstructionForInvalidResult?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
 

@@ -1,15 +1,14 @@
-import type { JsonObject, LanguageModelRequest } from '@orot/model-runtime';
-import type { TaskResponderInput } from './contracts';
+import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
-import type { ModelCallOutcome } from './modelCall';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
 import { buildResearchRequest, buildTaskRequest } from './requests';
-import { decodeResearchPlan, consumeResponderResponse } from './responses';
+import { decodeResearchPlan } from './responses';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { createSearchNodes } from './searchNodes';
+import { consumeTaskModelResponse, finishModelFailure } from './taskResponse';
 
 // These nodes implement the role handoff; search remains a selected deterministic tool call.
 export function createNodes<TResult>(context: RuntimeContext<TResult>) {
@@ -61,7 +60,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The task responder request was invalid.', 'invalid_output');
       return completeState();
     }
-    return consumeModelResponse(state, request.request, input, false);
+    return consumeTaskModelResponse(context, state, request.request, input, false);
   };
 
   const prepareResearcher = async (state: WorkflowState) => {
@@ -108,7 +107,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
     );
     const outcome = await callModelWithEvidenceFreshness(context, request);
     if (!outcome) return completeState();
-    if (outcome.status !== 'response') return finishModelFailure(outcome);
+    if (outcome.status !== 'response') return finishModelFailure(context, outcome);
     const plan = decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
     const tool = plan && options.tools.find((candidate) => candidate.id === plan.toolId);
     let input: JsonObject | undefined;
@@ -168,7 +167,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The revised task request was invalid.', 'invalid_output');
       return completeState();
     }
-    return consumeModelResponse(state, request.request, input, true);
+    return consumeTaskModelResponse(context, state, request.request, input, true);
   };
 
   return {
@@ -180,34 +179,4 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
     prepareRevision,
     invokeRevision,
   };
-
-  async function consumeModelResponse(
-    state: WorkflowState,
-    request: LanguageModelRequest,
-    input: TaskResponderInput,
-    revised: boolean,
-  ) {
-    const outcome = await callModelWithEvidenceFreshness(context, request);
-    if (!outcome) return completeState();
-    if (outcome.status !== 'response') return finishModelFailure(outcome);
-    return consumeResponderResponse(context, state, outcome.response, input, revised);
-  }
-
-  function finishModelFailure(outcome: ModelCallOutcome) {
-    if (outcome.status === 'cancelled') canceled(context, outcome.providerStop);
-    else if (outcome.status === 'consent_required') {
-      stop(
-        context,
-        'User approval is required before this payload can be processed.',
-        'consent_required',
-      );
-    } else if (outcome.status === 'unavailable') {
-      context.outcome = {
-        status: 'unavailable',
-        reason: 'The selected model could not complete the request.',
-        providerErrorCode: outcome.errorCode,
-      };
-    }
-    return completeState();
-  }
 }

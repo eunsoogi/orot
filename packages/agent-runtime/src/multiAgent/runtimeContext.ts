@@ -39,6 +39,8 @@ export interface RuntimeContext<TResult> {
   currentEvidence: EvidenceBatch;
   researchInput?: JsonObject;
   outcome?: PrivateOutcome<TResult>;
+  /** Ephemeral task correction guidance; it is never written to graph checkpoints. */
+  responseCorrectionInstruction?: string;
 }
 
 export function stop<TResult>(

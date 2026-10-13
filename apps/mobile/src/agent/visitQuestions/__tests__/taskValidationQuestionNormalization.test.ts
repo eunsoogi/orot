@@ -30,7 +30,6 @@ const evidence = createVisitQuestionEvidenceAliases({
   conflicts: [],
 }).batch;
 
-const responder = createVisitQuestionTaskResponder();
 const input = {
   request: '다음 진료에서 확인할 질문을 준비해 주세요.',
   context: { effectiveAt: '2035-06-02T09:00:00.000Z' },
@@ -43,8 +42,7 @@ function response(questionText: string) {
     questions: [
       {
         questionText,
-        rationale:
-          '기록에 명시된 수면 패턴 변화를 바탕으로 추가 분석이 필요합니다.',
+        rationale: '기록에 명시된 수면 패턴 변화를 바탕으로 확인이 필요해요.',
         priority: 'routine',
         evidenceIds: ['evidence-1'],
       },
@@ -55,8 +53,8 @@ function response(questionText: string) {
         evidenceIds: ['evidence-1'],
       },
       {
-        questionText: '다음 진료까지 어떤 기록을 준비하면 좋을까요?',
-        rationale: '진료 사이의 변화를 구체적으로 남길 수 있어요.',
+        questionText: '다음 방문 전 기록할 점이 있을까요?',
+        rationale: '진료 사이에 확인할 방법을 의료진에게 물어볼 수 있어요.',
         priority: 'routine',
         evidenceIds: ['evidence-1'],
       },
@@ -64,8 +62,10 @@ function response(questionText: string) {
   };
 }
 
-describe('visit-question Apple output normalization', () => {
-  it('rephrases the observed evidence-grounded confirmation statement as a question', () => {
+describe('visit-question response repair contract', () => {
+  const responder = createVisitQuestionTaskResponder();
+
+  it('keeps declarative generated text invalid for the local validator', () => {
     const validation = responder.validateResult(
       response(
         '최근 일주일간 평소보다 두 시간 일찍 잠에서 깨어 다시 잠들기 어려웠다는 기록을 바탕으로, 수면 패턴의 변화를 더 구체적으로 확인해야 합니다.',
@@ -73,25 +73,29 @@ describe('visit-question Apple output normalization', () => {
       input,
     );
 
-    expect(validation.status).toBe('valid');
-    if (
-      validation.status === 'valid' &&
-      validation.value.status === 'suggestions'
-    ) {
-      expect(validation.value.questions[0]?.questionText).toBe(
-        '수면 패턴의 변화를 더 구체적으로 확인하려면 어떤 점을 관찰하고 기록하면 좋을까요?',
-      );
-      expect(validation.value.questions[0]?.citations).toEqual(evidence.items);
-      expect(validation.value.questions).toHaveLength(3);
-    }
+    expect(validation).toMatchObject({ status: 'invalid' });
   });
 
-  it('continues rejecting other statement forms instead of accepting them as questions', () => {
+  it('offers correction guidance only for question field formatting failures', () => {
+    const instruction = responder.correctionInstructionForInvalidResult?.(
+      'A visit question must end with a question mark.',
+    );
+
+    expect(instruction).toContain('의문문');
     expect(
-      responder.validateResult(
-        response('수면 패턴의 변화는 중요한 기록입니다.'),
-        input,
+      responder.correctionInstructionForInvalidResult?.(
+        'The clarification contains unsafe clinical advice.',
       ),
-    ).toMatchObject({ status: 'invalid' });
+    ).toBeUndefined();
+    expect(
+      responder.correctionInstructionForInvalidResult?.(
+        'A question cited evidence outside the current result set.',
+      ),
+    ).toBeUndefined();
+    expect(
+      responder.correctionInstructionForInvalidResult?.(
+        'A rationale or priority is invalid.',
+      ),
+    ).toBeUndefined();
   });
 });

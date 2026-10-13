@@ -46,25 +46,6 @@ function readNonEmptyKoreanText(
     : null;
 }
 
-/**
- * Reframes a declarative request to verify a topic as the forward-looking question this task needs.
- * The rewrite is deliberately narrow; other non-question text stays invalid and all local checks run after it.
- */
-function readVisitQuestionText(value: unknown): string | null {
-  const text = readNonEmptyKoreanText(value, 300);
-  if (!text) return null;
-  if (text.endsWith('?')) return text;
-  const declarative = text.match(
-    /^.+,\s*(.+?) 더 구체적으로 확인해야 합니다\.$/u,
-  );
-  const topic = readNonEmptyKoreanText(declarative?.[1], 300);
-  if (!topic) return null;
-  return readNonEmptyKoreanText(
-    `${topic} 더 구체적으로 확인하려면 어떤 점을 관찰하고 기록하면 좋을까요?`,
-    300,
-  );
-}
-
 function clarification(
   message: string,
 ): VisitQuestionTaskValidation<VisitQuestionTaskResult> {
@@ -193,16 +174,28 @@ export function validateVisitQuestionTaskResult(
         reason: 'A question contains unsupported fields.',
       };
     }
-    const questionText = readVisitQuestionText(question.questionText);
+    const questionText = readNonEmptyKoreanText(question.questionText, 300);
     const rationale = readNonEmptyKoreanText(question.rationale, 400);
+    if (!questionText) {
+      return {
+        status: 'invalid',
+        reason: 'A question text is invalid.',
+      };
+    }
+    // Keep the validator strict; the task contract may request one bounded regeneration.
+    if (!questionText.endsWith('?')) {
+      return {
+        status: 'invalid',
+        reason: 'A visit question must end with a question mark.',
+      };
+    }
     if (
-      !questionText ||
       !rationale ||
       (question.priority !== 'routine' && question.priority !== 'important')
     ) {
       return {
         status: 'invalid',
-        reason: 'A question text, rationale, or priority is invalid.',
+        reason: 'A rationale or priority is invalid.',
       };
     }
     if (
