@@ -89,6 +89,8 @@ UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례
 
 `provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
 
+Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 묶음마다 같은 검증된 Release 제품을 사용하고 전용 Simulator를 한 번 부팅하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
+
 ## Detox 스모크 테스트
 
 ```sh

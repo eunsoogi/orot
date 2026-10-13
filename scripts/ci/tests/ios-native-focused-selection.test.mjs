@@ -59,6 +59,25 @@ test('UI focus preserves its native app-host preparation while a native core sel
   assert.equal(native.prepareUi, false);
 });
 
+test('named fixture focus binds its complete group to the governing inventory without partial method selection', () => {
+  const file = 'scripts/ci/ios-test-fixture-groups.mjs';
+  for (const suite of ['navigation', 'recordings', 'questions', 'calendar', 'all']) {
+    const selection = selectFocusedNativeTests(
+      'native/fixtures',
+      file,
+      suite === 'all' ? 'all' : `group/${suite}`,
+    );
+    assert.deepEqual(selection.identifiers, iosTestInventory('fixtures', suite));
+    assert.equal(selection.fixtureSuite, suite);
+    assert.equal(selection.mode, 'fixture');
+    assert.equal(selection.identifier, '');
+    assert.equal(selection.prepareUi, true);
+  }
+  assert.throws(() => selectFocusedNativeTests('native/fixtures', file, 'group/unknown'));
+  assert.throws(() => selectFocusedNativeTests('native/core', file, 'group/navigation'));
+  assert.throws(() => selectFocusedNativeTests('native/fixtures', 'other.mjs', 'group/navigation'));
+});
+
 test('wrong profile, source path, fragments and incomplete stateful phase selections cannot run', () => {
   const id = 'OrotUITests/TestHostConnectionTests/testHostLaunches';
   const file = 'apps/mobile/ios/OrotUITests/TestHostConnectionTests.swift';

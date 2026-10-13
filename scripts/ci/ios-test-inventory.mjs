@@ -1,4 +1,5 @@
 import { iosTestConfig, representativeSpeechTests } from './ios-test-config.mjs';
+import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
 
 const coreTests = [
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
@@ -89,8 +90,10 @@ export const fixtureTests = [
 export function iosTestInventory(profile, suite = 'all') {
   const spec = iosTestConfig(profile);
   if (
-    !['all', 'native', 'ui', 'preparation'].includes(suite) ||
-    (profile !== 'speech' && suite !== 'all')
+    (!['all', 'native', 'ui', 'preparation'].includes(suite) &&
+      !(profile === 'fixtures' && Object.hasOwn(iosFixtureGroups, suite))) ||
+    (profile !== 'speech' && profile !== 'fixtures' && suite !== 'all') ||
+    (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported native test suite selection');
   if (suite === 'preparation')
@@ -116,6 +119,7 @@ export function iosTestInventory(profile, suite = 'all') {
                     ? providerSelectionTests
                     : providerTests),
   ];
+  if (profile === 'fixtures') return selectIosFixtureGroup(inventory, suite);
   // Cold Speech and XCUI framework initialization run on distinct hosted machines.
   // Both subsets remain mandatory and their union is the original complete inventory.
   if (suite === 'all') return inventory;

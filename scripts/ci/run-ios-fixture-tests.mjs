@@ -23,6 +23,8 @@ if (
   );
 const spec = iosTestConfig(profile);
 const inventory = iosTestInventory(profile);
+const suite = process.env.OROT_IOS_TEST_SUITE ?? 'all';
+const expected = selected.length ? selected : iosTestInventory(profile, suite);
 if (
   new Set(selected).size !== selected.length ||
   selected.some((identifier) => !inventory.includes(identifier))
@@ -39,7 +41,6 @@ const app = join(dirname(resolve(runFile)), spec.configuration + '-iphonesimulat
 if (!existsSync(app)) throw new Error('The verified fixture application is missing');
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
-const expected = selected.length ? selected : inventory;
 const observations = [];
 const started = Date.now();
 for (const [index, identifier] of expected.entries()) {
@@ -103,7 +104,7 @@ writeFileSync(
   JSON.stringify(
     {
       profile,
-      suite: selected.length ? 'selected' : 'all',
+      suite: selected.length ? 'selected' : suite,
       observations,
       elapsedMs: Date.now() - started,
     },

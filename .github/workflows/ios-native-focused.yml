@@ -29,6 +29,7 @@ jobs:
       suite: ${{ steps.selection.outputs.suite }}
       identifier: ${{ steps.selection.outputs.identifier }}
       prepare_ui: ${{ steps.selection.outputs.prepareUi }}
+      fixture_suite: ${{ steps.selection.outputs.fixtureSuite }}
       archive_digest: ${{ steps.build.outputs.archive_digest }}
       manifest_digest: ${{ steps.build.outputs.manifest_digest }}
     steps:
@@ -129,6 +130,7 @@ jobs:
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
           MODE: ${{ needs.products.outputs.mode }}
+          OROT_IOS_TEST_SUITE: ${{ needs.products.outputs.fixture_suite }}
           TEST_ID: ${{ needs.products.outputs.identifier }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
@@ -137,7 +139,11 @@ jobs:
           elif [[ "$MODE" == local-model ]]; then
             scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/local-model
           elif [[ "$MODE" == fixture ]]; then
-            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures "$TEST_ID"
+            if [[ -n "$TEST_ID" ]]; then
+              scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures "$TEST_ID"
+            else
+              scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures
+            fi
           else
             scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/results.xcresult "$TEST_ID"
             node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/native-focus/results.xcresult artifacts/native-focus/results.json "$TEST_ID"

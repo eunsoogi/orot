@@ -81,7 +81,7 @@ test('focused validation uses the existing dispatch and leaves the full gate fai
   assert.match(e2e, /'Focus profile routing' \|\| 'Detox E2E profiles'/);
   assert.match(e2e, /name: iOS Simulator Build/);
   assert.match(e2e, /Fail when focused validation is selected/);
-  assert.match(e2e, /Focused Detox validation cannot satisfy the full iOS validation gate/);
+  assert.match(e2e, /Focused validation cannot satisfy the full iOS validation gate/);
   assert.match(
     e2e,
     /inputs\.focus_pr_number != '' \|\| inputs\.focus_profile != '' \|\| inputs\.focus_scenario_file != '' \|\| inputs\.focus_scenario_name != ''/,

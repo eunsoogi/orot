@@ -88,7 +88,13 @@ jobs:
           - profile: backup
             suite: all
           - profile: fixtures
-            suite: all
+            suite: navigation
+          - profile: fixtures
+            suite: recordings
+          - profile: fixtures
+            suite: questions
+          - profile: fixtures
+            suite: calendar
           - profile: local-model
             suite: all
     steps:

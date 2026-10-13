@@ -107,7 +107,7 @@ jobs:
       - name: Fail when focused validation is selected
         if: ${{ github.event_name == 'workflow_dispatch' && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
         run: |
-          echo "::error::Focused Detox validation cannot satisfy the full iOS validation gate."
+          echo "::error::Focused validation cannot satisfy the full iOS validation gate."
           exit 1
       # A draft must leave a failing required context until a full PR event runs.
       - name: Fail when full validation is deferred

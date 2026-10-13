@@ -1,7 +1,7 @@
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
-/** Focus is an exact diagnostic selection. Stateful model/backup phases remain an explicitly requested group. */
+/** Focus is an exact diagnostic selection. Stateful phases and named fixture groups must be requested explicitly. */
 export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioName) {
   if (![profileInput, scenarioFile, scenarioName].every((value) => typeof value === 'string'))
     throw new Error('Native focus requires string profile, source file and exact test selection');
@@ -9,9 +9,17 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
   if (!profile) throw new Error('Native focus profile must use native/<profile>');
   const configuration = iosTestConfig(profile).configuration;
   const inventory = iosTestInventory(profile);
-  const grouped = ['backup', 'local-model'].includes(profile);
-  const identifiers = grouped && scenarioName === 'all' ? inventory : [scenarioName];
-  if (grouped && scenarioName !== 'all')
+  const statefulGroup = ['backup', 'local-model'].includes(profile);
+  const fixtureGroup =
+    profile === 'fixtures' && (scenarioName === 'all' || scenarioName.startsWith('group/'));
+  const fixtureSuite = fixtureGroup ? scenarioName.replace(/^group\//, '') : 'all';
+  const grouped = statefulGroup || fixtureGroup;
+  const identifiers = fixtureGroup
+    ? iosTestInventory(profile, fixtureSuite)
+    : statefulGroup && scenarioName === 'all'
+      ? inventory
+      : [scenarioName];
+  if (statefulGroup && scenarioName !== 'all')
     throw new Error('Stateful backup and local-model focus requires the complete all phase group');
   if (identifiers.some((identifier) => !inventory.includes(identifier)))
     throw new Error('Native focus must name an exact registered test in its profile');
@@ -19,9 +27,13 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
     const [target, name] = identifier.split('/');
     return `apps/mobile/ios/${target}/${name}.swift`;
   });
-  if (!files.every((file) => file === scenarioFile))
+  if (
+    fixtureGroup
+      ? scenarioFile !== 'scripts/ci/ios-test-fixture-groups.mjs'
+      : !files.every((file) => file === scenarioFile)
+  )
     throw new Error('Native focus source file does not match the selected test or phase group');
-  const mode = grouped
+  const mode = statefulGroup
     ? profile
     : ['fixtures', 'microphone', 'health-import', 'provider-selection'].includes(profile)
       ? 'fixture'
@@ -32,6 +44,7 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
     configuration,
     mode,
     suite,
+    fixtureSuite,
     identifiers,
     identifier: grouped ? '' : identifiers[0],
     prepareUi: mode === 'fixture' || mode === 'backup' || suite === 'ui',
