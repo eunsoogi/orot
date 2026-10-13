@@ -29,7 +29,7 @@ on:
         type: string
         default: ''
       focus_profile:
-        description: E2E profile for the selected scenario.
+        description: Detox profile or native/<profile> for the selected diagnostic.
         required: false
         type: string
         default: ''
@@ -39,7 +39,7 @@ on:
         type: string
         default: ''
       focus_scenario_name:
-        description: Exact test title or unique literal fragment.
+        description: Detox test title or exact native XCTest identifier; all for grouped phases.
         required: false
         type: string
         default: ''
@@ -227,10 +227,10 @@ jobs:
       run_next_visit: ${{ needs.ios-simulator-build.outputs.full_validation_deferred != 'true' && (needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_next_visit == 'true') }}
       path_selection_failed: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' }}
 
-  focused_detox_scenario:
-    name: Focused Detox scenario
+  focused_scenario:
+    name: Focused scenario
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_test_validation != true && (inputs.ios_test_validation == true || inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
-    uses: ./.github/workflows/detox-e2e-focused.yml
+    uses: ./.github/workflows/e2e-focused.yml
     with:
       pr_number: ${{ inputs.focus_pr_number }}
       profile: ${{ inputs.focus_profile }}

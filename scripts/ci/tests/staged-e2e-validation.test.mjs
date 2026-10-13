@@ -77,10 +77,7 @@ test('focused validation uses the existing dispatch and leaves the full gate fai
     e2e,
     /focus_pr_number:[\s\S]*focus_profile:[\s\S]*focus_scenario_file:[\s\S]*focus_scenario_name:/,
   );
-  assert.match(
-    e2e,
-    /focused_detox_scenario:[\s\S]*uses: \.\/\.github\/workflows\/detox-e2e-focused\.yml/,
-  );
+  assert.match(e2e, /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/e2e-focused\.yml/);
   assert.match(e2e, /'Focus profile routing' \|\| 'Detox E2E profiles'/);
   assert.match(e2e, /name: iOS Simulator Build/);
   assert.match(e2e, /Fail when focused validation is selected/);

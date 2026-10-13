@@ -1,0 +1,176 @@
+name: Focused native iOS diagnostic
+
+on:
+  workflow_call:
+    inputs:
+      pr_number: { required: false, type: string, default: '' }
+      profile: { required: true, type: string }
+      scenario_file: { required: true, type: string }
+      scenario_name: { required: true, type: string }
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  CI: 'true'
+  TZ: UTC
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  EXPECTED_NODE_VERSION: '22.23.2'
+
+jobs:
+  products:
+    name: Build selected native test products
+    runs-on: xcode-27
+    timeout-minutes: 60
+    outputs:
+      profile: ${{ steps.selection.outputs.profile }}
+      mode: ${{ steps.selection.outputs.mode }}
+      suite: ${{ steps.selection.outputs.suite }}
+      identifier: ${{ steps.selection.outputs.identifier }}
+      prepare_ui: ${{ steps.selection.outputs.prepareUi }}
+      archive_digest: ${{ steps.build.outputs.archive_digest }}
+      manifest_digest: ${{ steps.build.outputs.manifest_digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Bind the actual workflow head and exact test selection
+        id: selection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROFILE: ${{ inputs.profile }}
+          SOURCE_FILE: ${{ inputs.scenario_file }}
+          TEST_ID: ${{ inputs.scenario_name }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          mkdir -p artifacts/native-focus
+          set -o pipefail
+          node scripts/ci/ios-native-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER" 2>&1 | tee artifacts/native-focus/selection.log
+      - uses: ./.github/actions/ios-test-products-build
+        id: build
+        with:
+          profile: ${{ steps.selection.outputs.profile }}
+      - name: Upload exact portable native products
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/native-focus/product-artifact
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve build and selection diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-focused-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/native-focus/*.log
+            artifacts/native-focus/*.jsonl
+            artifacts/native-focus/DerivedData/Build/Products/*.xctestrun
+          if-no-files-found: warn
+          retention-days: 7
+
+  execution:
+    name: Execute selected native ${{ needs.products.outputs.profile }} ${{ needs.products.outputs.suite }} tests
+    needs: products
+    runs-on: xcode-27
+    # Stateful local-model groups retain their original operation and setup allowances.
+    timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.3.4
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies before test boot
+        run: scripts/ci/run-command.sh native-focus-dependencies artifacts/native-focus/install.log -- pnpm install --frozen-lockfile
+      - name: Download the producer's exact native products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/native-focus/product-artifact
+      - name: Verify product provenance and integrity before boot
+        id: verify
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          ARCHIVE_DIGEST: ${{ needs.products.outputs.archive_digest }}
+          MANIFEST_DIGEST: ${{ needs.products.outputs.manifest_digest }}
+        run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/native-focus/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Provision the pinned Speech runtime
+        if: needs.products.outputs.profile == 'speech'
+        run: bash scripts/ci/prepare-ios-test-runtime.sh speech
+      - name: Observe public Apple model host preparation
+        if: needs.products.outputs.profile == 'provider-data'
+        run: scripts/ci/run-command.sh native-focus-model-host artifacts/native-focus/apple-model-host.log -- xcrun swift -swift-version 6 scripts/ci/prepare-apple-model-host.swift
+      - name: Boot the dedicated execution destination
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+        run: scripts/ci/run-command.sh native-focus-boot artifacts/native-focus/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/native-focus/simulator-owner.json
+      - name: Verify native app-host preparation before UI execution
+        if: needs.products.outputs.prepare_ui == 'true'
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: scripts/ci/run-command.sh native-focus-ui-preparation artifacts/native-focus/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus
+      - name: Install Korean Speech assets without recognizing a fixture
+        if: needs.products.outputs.profile == 'speech'
+        env:
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: |
+          scripts/ci/run-command.sh native-focus-speech-assets artifacts/native-focus/speech-assets.log -- node scripts/ci/run-ios-tests.mjs speech "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/speech-assets.xcresult OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+          node scripts/ci/ios-test-results.mjs speech artifacts/native-focus/speech-assets.xcresult artifacts/native-focus/speech-assets.json OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+      - name: Execute the selected case or explicit phase group without compilation or retry
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          MODE: ${{ needs.products.outputs.mode }}
+          TEST_ID: ${{ needs.products.outputs.identifier }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: |
+          if [[ "$MODE" == backup ]]; then
+            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/backup
+          elif [[ "$MODE" == local-model ]]; then
+            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/local-model
+          elif [[ "$MODE" == fixture ]]; then
+            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures "$TEST_ID"
+          else
+            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/results.xcresult "$TEST_ID"
+            node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/native-focus/results.xcresult artifacts/native-focus/results.json "$TEST_ID"
+          fi
+      - name: Export native evidence attachments
+        if: always()
+        run: |
+          if [[ -d artifacts/native-focus/results.xcresult ]]; then
+            xcrun xcresulttool export attachments --path artifacts/native-focus/results.xcresult --output-path artifacts/native-focus/attachments
+          fi
+      - name: Tear down the owned destination
+        if: always()
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+        run: |
+          if [[ -f artifacts/native-focus/simulator-owner.json ]]; then
+            node scripts/ci/ios-test-simulator.mjs cleanup "$PROFILE" artifacts/native-focus/simulator-owner.json
+          fi
+      - name: Preserve native execution diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/native-focus/*.log
+            artifacts/native-focus/*.json
+            artifacts/native-focus/*.jsonl
+            artifacts/native-focus/*.png
+            artifacts/native-focus/*.xcresult
+            artifacts/native-focus/attachments
+            artifacts/native-focus/backup
+            artifacts/native-focus/local-model
+            artifacts/native-focus/fixtures
+            artifacts/native-focus/product-artifact/manifest.json
+          if-no-files-found: warn
+          retention-days: 7

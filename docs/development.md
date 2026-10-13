@@ -85,6 +85,8 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/native-core-owner.json
 
 UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례를 별도 bundle에서 한 번 실행합니다. 이 결과는 연결 확인이며 화면의 접근성 준비 완료를 뜻하지 않습니다. UI 검증은 실제 버튼·스크롤 영역·키보드와 시스템 창의 관측 조건을 기다립니다. 합성 Calendar·HealthKit 자료나 계정 응답을 사용한 결과는 실제 개인 자료·계정·물리 기기의 검증과 구분합니다. Apple 모델 준비 실패, 인식 실패와 UI 입력·복귀 실패도 별도로 기록합니다.
 
+네이티브 선택 검증은 기존 E2E workflow의 `focus_profile=native/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 성공하더라도 보호된 전체 검증을 충족하지 않습니다.
+
 `provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
 
 ## Detox 스모크 테스트
