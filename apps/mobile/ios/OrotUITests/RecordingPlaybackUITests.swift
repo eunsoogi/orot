@@ -67,12 +67,18 @@ final class RecordingPlaybackUITests: XCTestCase {
         let error = node(app, "recording-playback-error")
         XCTAssertTrue(UITestConditions.exists(error, timeout: 10))
         XCTAssertTrue(UITestConditions.text(error).contains("오디오 기기"))
-        reveal(app, "recording-playback-button").tap()
-        progress(app)
-        let stop = reveal(app, "recording-playback-stop")
+        let play = reveal(app, "recording-playback-button")
+        play.tap()
+        // The recovered two-second source can finish while AX remeasures its
+        // already-visible row. Stop this playback first, then observe progress
+        // in a separate playback without racing both assertions in one second.
+        let stop = app.buttons["recording-playback-stop"]
         XCTAssertTrue(UITestConditions.exists(stop, timeout: 5))
         stop.tap()
         absent(stop, timeout: 5)
+        play.tap()
+        progress(app)
+        absent(stop, timeout: 10)
         RecordingFixtureUITestConditions.capture(app, "native-simulated-output-route-recovered", testCase: self)
     }
 

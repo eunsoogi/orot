@@ -91,13 +91,18 @@ final class MicrophoneMeteringUITests: XCTestCase {
 
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        UITestConditions.element(app, id)
+        // This probe exposes buttons and static text directly. Avoid full-tree
+        // queries inside its unchanged 25-second wall-clock capture boundary.
+        if ["metering-start", "metering-consent", "metering-pause", "metering-resume", "metering-finish"].contains(id) {
+            return app.buttons.matching(identifier: id).firstMatch
+        }
+        return app.staticTexts.matching(identifier: id).firstMatch
     }
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(target.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(target, timeout: 10), app.debugDescription)
         target.tap()
     }
 
@@ -108,7 +113,9 @@ final class MicrophoneMeteringUITests: XCTestCase {
 
     @MainActor
     private func report(_ app: XCUIApplication, name: String) -> [String: Any] {
-        let raw = UITestConditions.text(node(app, "metering-report"))
+        // The RN Text accessibilityLabel contains the complete JSON. Reading
+        // value first creates another AX snapshot on every timed observation.
+        let raw = node(app, "metering-report").label
         let data = Data(raw.utf8)
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
         attachment.name = name
