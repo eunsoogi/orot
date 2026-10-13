@@ -89,7 +89,9 @@ UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례
 
 `provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
 
-Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 묶음마다 같은 검증된 Release 제품을 사용하고 전용 Simulator를 한 번 부팅하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
+전체 네이티브 CI는 macOS 작업 5개로 구성합니다. Release·Debug 제품 빌드 2개와 일반 Release·Speech·Debug 실행 3개이며, 의존 관계상 한 실행에서 동시에 진행하는 macOS 작업은 최대 3개입니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 생산용 앱과 OAuth 검증은 Release producer에서 별도 flags와 DerivedData 경로를 사용합니다. 계정 전체의 macOS 동시 실행 한도 5개를 고려해 다른 실행과의 중복도 확인합니다. 작업별 200·90·180분 한도는 기존 프로필 작업 한도를 합한 값이며, 개별 인식·생성·UI 대기 제한을 늘리지 않습니다. 총 작업 시간과 안정성 개선은 실제 실행 결과로 판단합니다.
+
+Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
 
 ## Detox 스모크 테스트
 

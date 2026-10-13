@@ -31,6 +31,13 @@ export function verifyIosTestResults(report, expected) {
     for (const child of node.children ?? []) visit(child, currentTarget);
   }
   report.testNodes.forEach((node) => visit(node, undefined));
+  return verifyIosObservationList(observations, expected);
+}
+
+/** JSON aggregation on Linux applies the same exact first-execution oracle as the Mac xcresult exporter. */
+export function verifyIosObservationList(observations, expected) {
+  if (!Array.isArray(observations) || !Array.isArray(expected) || !expected.length)
+    throw new Error('Native results require an explicit expected test inventory');
   if (
     observations.length !== expected.length ||
     new Set(observations.map((item) => item.identifier)).size !== expected.length

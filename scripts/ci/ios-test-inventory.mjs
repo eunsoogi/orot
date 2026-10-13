@@ -120,7 +120,7 @@ export function iosTestInventory(profile, suite = 'all') {
                     : providerTests),
   ];
   if (profile === 'fixtures') return selectIosFixtureGroup(inventory, suite);
-  // Cold Speech and XCUI framework initialization run on distinct hosted machines.
+  // Speech integration and UI retain distinct result boundaries in their shared hosted cohort.
   // Both subsets remain mandatory and their union is the original complete inventory.
   if (suite === 'all') return inventory;
   const target = suite === 'native' ? spec.integrationTarget : spec.uiTarget;

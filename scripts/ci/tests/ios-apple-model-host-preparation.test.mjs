@@ -3,17 +3,27 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 test('provider data prewarms only the host SDK and still executes the original native tests without a readiness substitute', () => {
-  const source = readFileSync('.github/workflows/ios-debug-test-validation.yml', 'utf8');
-  const start = source.indexOf('      - name: Observe and prewarm the public Apple model host SDK');
-  const end = source.indexOf('      - name: Boot the dedicated execution destination', start);
-  assert.ok(start > source.indexOf('Verify product provenance and integrity'));
+  const source = readFileSync('.github/workflows/ios-test-cohort-execution.yml', 'utf8');
+  const start = source.indexOf('      - name: Record public Apple model host preparation');
+  const end = source.indexOf(
+    '      - name: Boot the explicitly owned compatible destination once',
+    start,
+  );
+  assert.ok(
+    start > source.indexOf('Verify configuration, source and product integrity before boot'),
+  );
   assert.ok(end > start);
   const step = source.slice(start, end);
-  assert.match(step, /if: matrix\.profile == 'provider-data'/);
-  assert.match(step, /xcrun swift scripts\/ci\/prepare-apple-model-host\.swift/);
-  assert.match(step, /artifacts\/ios-tests\/apple-model-host\.log/);
+  assert.match(step, /if: inputs\.cohort == 'debug'/);
+  assert.match(step, /xcrun swift -swift-version 6 scripts\/ci\/prepare-apple-model-host\.swift/);
+  assert.match(step, /artifacts\/ios-cohort\/apple-model-host\.log/);
   assert.ok(!step.includes('continue-on-error') && !step.includes('retry'));
-  assert.ok(source.indexOf('      - name: Execute without compilation or retry', end) > end);
+  assert.ok(
+    source.indexOf(
+      '      - name: Execute every planned first attempt without compilation or retry',
+      end,
+    ) > end,
+  );
   const preparation = readFileSync('scripts/ci/prepare-apple-model-host.swift', 'utf8');
   assert.match(preparation, /LanguageModelSession\(model: model\)\.prewarm\(\)/);
   assert.match(preparation, /"before": before/);

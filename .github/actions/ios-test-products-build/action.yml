@@ -4,6 +4,9 @@ inputs:
   profile:
     description: Validated native execution profile selecting its compatible build specification.
     required: true
+  production_build:
+    description: Build production and OAuth with separate flags and DerivedData in this Release producer.
+    default: 'false'
 outputs:
   archive_digest:
     description: SHA-256 of the portable native product archive.
@@ -32,12 +35,71 @@ runs:
     - name: Install pinned CocoaPods
       shell: bash
       run: gem install cocoapods --version 1.17.0 --no-document
+    - name: Capture production source fingerprints before Pods
+      if: inputs.production_build == 'true'
+      id: production_fingerprints
+      shell: bash
+      run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
+    - name: Read actual production toolchain metadata
+      if: inputs.production_build == 'true'
+      id: production_toolchain
+      shell: bash
+      run: |
+        printf 'macos_version=%s\n' "$(sw_vers -productVersion)" >> "$GITHUB_OUTPUT"
+        xcodebuild -version > artifacts/native-focus/production-toolchain.log
+        printf 'xcodebuild_fingerprint=%s\n' "$(shasum -a 256 artifacts/native-focus/production-toolchain.log | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+    - name: Prepare the isolated production DerivedData boundary
+      if: inputs.production_build == 'true'
+      id: production_cache
+      shell: bash
+      env:
+        DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+        DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
+        EXPECTED_XCODE_VERSION: '27.0'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
+        EXPECTED_PNPM_VERSION: '12.3.4'
+        EXPECTED_RUBY_VERSION: '4.0.7'
+        EXPECTED_COCOAPODS_VERSION: '1.17.0'
+        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
+      run: node scripts/ci/detox-derived-data-cache.mjs prepare production
     - name: Prepare native dependencies
       shell: bash
       run: scripts/ci/run-command.sh native-focus-pods artifacts/native-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
     - name: Verify generated privacy metadata
       shell: bash
       run: node scripts/ci/ios-test-source-inputs.mjs
+    - name: Build production with its default entry and native flags
+      if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
+      shell: bash
+      run: scripts/ci/run-command.sh ios-production-build artifacts/native-focus/production.log -- bash scripts/ci/build-ios-simulator-app.sh build
+    - name: Write the production-only cache manifest
+      if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
+      shell: bash
+      env:
+        DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
+        DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
+        EXPECTED_XCODE_VERSION: '27.0'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
+        EXPECTED_PNPM_VERSION: '12.3.4'
+        EXPECTED_RUBY_VERSION: '4.0.7'
+        EXPECTED_COCOAPODS_VERSION: '1.17.0'
+        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
+      run: node scripts/ci/detox-derived-data-cache.mjs write production
+    - name: Verify Simulator defaults and OAuth package
+      if: inputs.production_build == 'true'
+      shell: bash
+      run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh ios-oauth-unit artifacts/native-focus/oauth-unit.log -- swift test --package-path packages/provider-openai
+    - name: Build the separate OAuth Simulator harness
+      if: inputs.production_build == 'true'
+      shell: bash
+      run: |
+        scripts/ci/run-command.sh ios-oauth-build artifacts/native-focus/oauth-build.log -- xcodebuild \
+          -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
+          -scheme ChatGPTOAuthSpike -configuration Debug \
+          -destination 'generic/platform=iOS Simulator' \
+          -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build
     - name: Build without booting a Simulator
       shell: bash
       env:

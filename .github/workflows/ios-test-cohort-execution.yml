@@ -1,0 +1,104 @@
+name: Execute one compatible native cohort
+
+on:
+  workflow_call:
+    inputs:
+      cohort: { required: true, type: string }
+      profile: { required: true, type: string }
+      artifact_name: { required: true, type: string }
+      archive_digest: { required: true, type: string }
+      manifest_digest: { required: true, type: string }
+      timeout_minutes: { required: true, type: number }
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+  TZ: UTC
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  EXPECTED_NODE_VERSION: '22.23.2'
+
+jobs:
+  execution:
+    name: Execute native ${{ inputs.cohort }} cohort
+    runs-on: xcode-27
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.3.4
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install frozen dependencies before test boot
+        run: scripts/ci/run-command.sh native-cohort-dependencies artifacts/ios-cohort/install.log -- pnpm install --frozen-lockfile
+      - name: Download the exact compatible products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ${{ inputs.artifact_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-cohort/product-artifact
+      - name: Verify configuration, source and product integrity before boot
+        id: verify
+        env:
+          PROFILE: ${{ inputs.profile }}
+          ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
+          MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
+        run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/ios-cohort/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Provision the pinned Speech runtime
+        if: inputs.cohort == 'speech'
+        run: bash scripts/ci/prepare-ios-test-runtime.sh speech
+      - name: Record public Apple model host preparation
+        if: inputs.cohort == 'debug'
+        run: scripts/ci/run-command.sh native-model-host artifacts/ios-cohort/apple-model-host.log -- xcrun swift -swift-version 6 scripts/ci/prepare-apple-model-host.swift
+      - name: Boot the explicitly owned compatible destination once
+        env:
+          COHORT: ${{ inputs.cohort }}
+        run: scripts/ci/run-command.sh native-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
+      - name: Verify the native app-host connection before UI work
+        env:
+          PROFILE: ${{ inputs.profile }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: scripts/ci/run-command.sh native-cohort-ui-preparation artifacts/ios-cohort/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort
+      - name: Execute every planned first attempt without compilation or retry
+        env:
+          COHORT: ${{ inputs.cohort }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: scripts/ci/run-command.sh native-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
+      - name: Remove only the owned destination
+        if: always()
+        env:
+          COHORT: ${{ inputs.cohort }}
+        run: |
+          if [[ -f artifacts/ios-cohort/simulator-owner.json ]]; then
+            node scripts/ci/ios-test-simulator.mjs cleanup "$COHORT" artifacts/ios-cohort/simulator-owner.json
+          fi
+      - name: Preserve all first-attempt diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-cohort-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-cohort/*.log
+            artifacts/ios-cohort/*.json
+            artifacts/ios-cohort/*.jsonl
+            artifacts/ios-cohort/*.png
+            artifacts/ios-cohort/results
+            artifacts/ios-cohort/product-artifact/manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Publish compact reports for Linux aggregation
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-cohort-report-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-cohort/results/results.json
+            artifacts/ios-cohort/results/speech-native/attachments/*.json
+          if-no-files-found: warn
+          retention-days: 7
