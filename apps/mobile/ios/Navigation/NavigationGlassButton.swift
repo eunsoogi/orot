@@ -89,7 +89,15 @@ enum NavigationGlassButton {
                 : selectedRootTab
                 ? NavigationGlassPalette.selectedRootTabForeground
                 : UIColor.label
-        button.accessibilityTraits = selectedRootTab ? [.button, .selected] : [.button]
+        // Custom traits replace UIKit's defaults, so mirror disabled state for accessibility clients.
+        var accessibilityTraits: UIAccessibilityTraits = [.button]
+        if selectedRootTab {
+            accessibilityTraits.insert(.selected)
+        }
+        if action.disabled {
+            accessibilityTraits.insert(.notEnabled)
+        }
+        button.accessibilityTraits = accessibilityTraits
         button.translatesAutoresizingMaskIntoConstraints = false
         // Root tabs grow while contextual primary actions keep their separate target size.
         let height: CGFloat = action.rootTab ? 52 : 48

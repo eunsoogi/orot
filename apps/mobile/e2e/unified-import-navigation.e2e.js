@@ -10,6 +10,10 @@ const { expectContentAboveFloatingBar } = require('./safeAreaHelpers');
 
 describe('unified import through Records', () => {
   it('selects providers in the real shell without requesting device records before import', async () => {
+    // Keep UIKit's disabled trait separate from Detox's enabled attribute; XCUITest observed them disagree on the same app build.
+    const disabledImportAction = element(
+      by.id('unified-import-start').and(by.traits(['notEnabled'])),
+    );
     execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'light']);
     await device.launchApp({ newInstance: true });
     await waitFor(element(by.id('welcome-title')))
@@ -26,6 +30,7 @@ describe('unified import through Records', () => {
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(false);
+    await expect(disabledImportAction).toExist();
     // Appearance changes must not enable import while the provider selection is still empty.
     execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'dark']);
     await expect(
@@ -34,6 +39,7 @@ describe('unified import through Records', () => {
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(false);
+    await expect(disabledImportAction).toExist();
     execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'light']);
     await expect(
       element(by.id('unified-import-toggle-healthKit')),
@@ -41,10 +47,12 @@ describe('unified import through Records', () => {
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(false);
+    await expect(disabledImportAction).toExist();
     await element(by.id('unified-import-toggle-healthKit')).tap();
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(true);
+    await expect(disabledImportAction).not.toExist();
     await device.takeScreenshot('unified-import-light');
     execFileSync('xcrun', ['simctl', 'ui', device.id, 'appearance', 'dark']);
     await expect(
@@ -59,6 +67,7 @@ describe('unified import through Records', () => {
     jestExpect(
       (await element(by.id('unified-import-start')).getAttributes()).enabled,
     ).toBe(false);
+    await expect(disabledImportAction).toExist();
     await expectContentAboveFloatingBar(
       'unified-import-scroll',
       'unified-import-status',
