@@ -34,12 +34,15 @@ func virtualizationHint() -> Bool? {
 }
 
 let model = SystemLanguageModel.default
+let rawBefore = String(reflecting: model.availability)
 let before = availability(model)
 let started = Date()
 // This call requests memory preparation only. Subsequent native tests must still observe availability and execute their original generation assertions.
 LanguageModelSession(model: model).prewarm()
 let report: [String: Any] = [
     "scope": "host-sdk-prewarm", "before": before, "after": availability(model),
+    // Preserve the public enum independently of Orot's mapped label for host-versus-Simulator diagnosis.
+    "rawBefore": rawBefore, "rawAfter": String(reflecting: model.availability),
     "prewarmInvoked": true, "generatedFixture": false,
     "koreanSupported": model.supportsLocale(Locale(identifier: "ko-KR")),
     "macOS": ProcessInfo.processInfo.operatingSystemVersionString,

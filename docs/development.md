@@ -88,6 +88,8 @@ UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례
 
 `provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
 
+원래 Debug 테스트 시도가 끝난 뒤에는 macOS 27의 공개 `fm --help`, `fm respond --help`와 무해한 프롬프트의 `fm respond`를 각각 한 번 기록합니다. 기본 온디바이스 모델을 사용하고 PCC나 다른 제공자를 선택하지 않습니다. 도움말 호출은 각각 5초, 응답 진단은 30초로 제한하며 원래 테스트의 시간 제한은 바꾸지 않습니다. Swift의 원래 availability enum과 CLI의 출력, 오류 출력, 종료 코드, 타임아웃은 원본 로그에 보존합니다. 명령 누락이나 실패를 성공으로 바꾸지 않으며, CLI 응답 성공도 실제 앱의 Apple Intelligence 테스트를 대체하지 않습니다.
+
 전체 네이티브 CI의 기본 macOS 작업은 Release·Debug 제품 빌드 2개와 일반 Release·Speech·Debug 실행 3개입니다. Speech의 새 러너 검증 2개를 순차적으로 추가해 총 7개 작업을 계획하며, 선행 관계상 한 실행에서 동시에 진행하는 macOS 작업은 최대 3개입니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 생산용 앱과 OAuth 검증은 Release producer에서 별도 flags와 DerivedData 경로를 사용합니다. 계정 전체의 macOS 동시 실행 한도 5개를 고려해 다른 실행과의 중복도 확인합니다. 작업별 200·90·180분 한도는 기존 프로필 작업 한도를 합한 값이며, 개별 인식·생성·UI 대기 제한을 늘리지 않습니다. 총 작업 시간과 안정성 개선은 실제 실행 결과로 판단합니다.
 
 Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.

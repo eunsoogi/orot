@@ -79,6 +79,9 @@ jobs:
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
           OROT_IOS_TEST_SAMPLE: ${{ inputs.sample }}
         run: scripts/ci/run-command.sh native-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
+      - name: Record the public on-device Apple model CLI diagnostic
+        if: always() && inputs.cohort == 'debug'
+        run: scripts/ci/run-command.sh native-model-cli artifacts/ios-cohort/apple-model-cli.log -- node scripts/ci/probe-apple-model-cli.mjs
       - name: Require supported Apple Intelligence after preserving every original provider attempt
         if: always() && inputs.cohort == 'debug'
         run: node scripts/ci/verify-apple-model-host.mjs artifacts/ios-cohort/apple-model-host.log
