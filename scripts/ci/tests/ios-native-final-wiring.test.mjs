@@ -36,12 +36,12 @@ test('five Linux native compatibility leaves retain the exact protected context 
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });
 
-test('full native execution preserves 77 methods and all eight strict provider cases without a receipt substitution', () => {
-  const identifiers = new Set(
-    ['release', 'speech', 'debug'].flatMap((cohort) =>
-      iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
-    ),
+test('full native execution preserves 78 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
+  const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
+    iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
+  assert.equal(scheduled.length, 78);
+  const identifiers = new Set(scheduled);
   assert.equal(identifiers.size, 77);
   const provider = iosTestInventory('provider-data');
   assert.equal(provider.length, 8);

@@ -1,6 +1,6 @@
 # Native validation coverage
 
-This inventory preserves the 55 original requirements at source revision `08a3c63950f2db7ecddcb37cba719b58a3443076`. Native execution is defined by `scripts/ci/ios-test-inventory.mjs`; its full cohort plan contains 77 original methods plus the separate Speech asset preparation case. The observation column below is historical evidence retained from PR #200. It does not establish a pass on the final candidate. Complete current-head Actions validation and three fresh-runner authentic Speech and UI samples remain required.
+This inventory preserves the 55 original requirements at source revision `08a3c63950f2db7ecddcb37cba719b58a3443076`. Native execution is defined by `scripts/ci/ios-test-inventory.mjs`; its full cohort plan contains 77 original scheduled observations plus one separate Speech asset preparation case. There are 78 executions and 77 unique identifiers because the app-host launch case runs in both Core and Speech. The observation column below is historical evidence retained from PR #200. It does not establish a pass on the final candidate. Complete current-head Actions validation and three fresh-runner authentic Speech and UI samples remain required.
 
 ## Original requirements and replacements
 
