@@ -60,6 +60,9 @@
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
 		A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */; };
 		A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */; };
+		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
+		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
+		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
@@ -139,9 +142,6 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
-		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
-		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
-		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -226,6 +226,9 @@
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
 		B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsRequestSlot.swift; path = OrotMobile/AppleFoundationModelsRequestSlot.swift; sourceTree = "<group>"; };
 		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
+		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
+		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
+		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
 		B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderErrorDetails.swift; path = OrotMobile/OpenAIProviderErrorDetails.swift; sourceTree = "<group>"; };
@@ -300,9 +303,6 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
-		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
-		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
-		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
