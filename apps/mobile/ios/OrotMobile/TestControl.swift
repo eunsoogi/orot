@@ -20,7 +20,7 @@
             if events.count > 384 {
                 events.removeFirst(events.count - 384)
             }
-            // Infrequent export boundaries survive an unfinished xcresult; periodic snapshots never reach stdout here.
+            // Emit compact export boundaries to stdout; capture availability depends on the runner. Periodic snapshots stay local.
             if event.hasPrefix("export-"), UserDefaults.standard.string(forKey: "OROT_TEST_EXPORT_OBSERVATION") == "YES",
                let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8)
             {

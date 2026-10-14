@@ -106,7 +106,7 @@ final class RecordingExportUITests: XCTestCase {
             "presentations": native?["presentations"] ?? NSNull(),
         ]
         if let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8) {
-            // Two small records remain readable even when Xcode cannot finalize its result bundle.
+            // Emit two compact stdout records alongside attachments; runner capture must be observed separately.
             print("OROT_TEST_EXPORT_DISMISSAL \(text)")
             let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
             attachment.name = stage
