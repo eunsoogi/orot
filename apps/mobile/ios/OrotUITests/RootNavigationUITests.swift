@@ -144,7 +144,9 @@ final class RootNavigationUITests: XCTestCase {
         XCTAssertTrue(scroll.exists && scroll.isHittable)
         capture(app, "edge-back-cancelled")
         captureNavigationObservation(app, "after-cancelled-edge-back")
-        edgeBack(scroll, in: app, fraction: 0.85, velocity: .fast)
+        // Local UIKit diagnostics sometimes cancelled at an 86% endpoint and returned at a 99% endpoint.
+        // Send the intended completion path near the far edge; existing route assertions still decide success.
+        edgeBack(scroll, in: app, fraction: 0.98, velocity: .fast)
         captureNavigationObservation(app, "after-full-edge-back")
         let ai = UITestConditions.element(app, "ai-features-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
