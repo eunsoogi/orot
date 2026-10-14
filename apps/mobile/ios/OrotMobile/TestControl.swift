@@ -20,6 +20,12 @@
             if events.count > 384 {
                 events.removeFirst(events.count - 384)
             }
+            // Infrequent export boundaries survive an unfinished xcresult; periodic snapshots never reach stdout here.
+            if event.hasPrefix("export-"), UserDefaults.standard.string(forKey: "OROT_TEST_EXPORT_OBSERVATION") == "YES",
+               let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8)
+            {
+                print("OROT_TEST_EXPORT_EVENT \(text)")
+            }
         }
 
         static func snapshot() -> [[String: Any]] {
@@ -70,9 +76,13 @@
         func navigationSnapshot(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
             DispatchQueue.main.async {
                 var controllers: [UINavigationController] = []
+                var presentations: [[String: Any]] = []
                 func visit(_ controller: UIViewController) {
                     if let navigation = controller as? UINavigationController {
                         controllers.append(navigation)
+                    }
+                    if let activity = controller as? UIActivityViewController {
+                        presentations.append(self.presentationObservation(activity))
                     }
                     controller.children.forEach(visit)
                     if let presented = controller.presentedViewController {
@@ -104,9 +114,36 @@
                     ]
                 }
                 resolve(["navigation": observations, "events": self.gestureEvents,
+                         "presentations": presentations,
                          "lifecycle": TestLifecycleObservation.snapshot(),
                          "observerID": self.navigationObservationID, "atMs": Date().timeIntervalSince1970 * 1000])
             }
+        }
+
+        /// Public window/container coordinates distinguish presentation bounds from the full-screen dismiss region.
+        private func presentationObservation(_ activity: UIActivityViewController) -> [String: Any] {
+            let view = activity.viewIfLoaded
+            let window = view?.window
+            let presentation = activity.presentationController
+            return [
+                "controllerID": observationIdentifier(activity, prefix: "activity"),
+                "hasPresenter": activity.presentingViewController != nil,
+                "beingPresented": activity.isBeingPresented, "beingDismissed": activity.isBeingDismissed,
+                "viewInWindow": windowRect(view),
+                "presentedViewInWindow": windowRect(presentation?.presentedView),
+                "containerInWindow": windowRect(presentation?.containerView),
+                "windowBounds": window.map { rectObservation($0.bounds) } ?? [:],
+                "frameInContainer": presentation.map { rectObservation($0.frameOfPresentedViewInContainerView) } ?? [:],
+            ]
+        }
+
+        private func windowRect(_ view: UIView?) -> [String: CGFloat] {
+            guard let view, let window = view.window else { return [:] }
+            return rectObservation(view.convert(view.bounds, to: window))
+        }
+
+        private func rectObservation(_ rect: CGRect) -> [String: CGFloat] {
+            ["x": rect.minX, "y": rect.minY, "width": rect.width, "height": rect.height]
         }
 
         @objc private func observeNavigationGesture(_ recognizer: UIGestureRecognizer) {

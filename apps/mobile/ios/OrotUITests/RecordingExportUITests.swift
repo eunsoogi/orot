@@ -77,8 +77,11 @@ final class RecordingExportUITests: XCTestCase {
         XCTAssertGreaterThan(frame.height, 0)
         let point = CGVector(dx: frame.midX - app.frame.minX,
                              dy: frame.minY + frame.height * 0.2 - app.frame.minY)
-        // UIKit receives an actual outside touch; the audio path never consumes the synthetic cancellation hook.
+        // Preserve the candidate backdrop point; geometry observations check its relation to the presented content.
+        // The audio path never consumes the synthetic cancellation hook.
+        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point)
         app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
+        captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: frame, point: point)
         value(app, "recording-export-status", "내보내기를 취소했어요.")
         XCTAssertFalse(dismissal.exists)
         tap(app, "recording-export-read-residue")
@@ -87,6 +90,39 @@ final class RecordingExportUITests: XCTestCase {
         tap(app, "transcript-evidence-cleanup")
         value(app, "transcript-evidence-setup-status", "cleaned")
         ownedSources.removeAll()
+    }
+
+    @MainActor
+    private func captureDismissalGeometry(_ app: XCUIApplication, _ stage: String, frame: CGRect, point: CGVector) {
+        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let snapshot = marker.exists ? UITestConditions.text(marker) : ""
+        let native = (try? JSONSerialization.jsonObject(with: Data(snapshot.utf8))) as? [String: Any]
+        // Bridge snapshots can lag. Keep their timestamp separate from the captured tap geometry, in UIKit points.
+        let observation: [String: Any] = [
+            "stage": stage, "atMs": Date().timeIntervalSince1970 * 1000,
+            "applicationFrame": rectObservation(app.frame), "dismissRegionFrameBeforeTouch": rectObservation(frame),
+            "tapPointInApplication": ["x": point.dx, "y": point.dy],
+            "nativeSnapshotAtMs": native?["atMs"] ?? NSNull(), "observerID": native?["observerID"] ?? NSNull(),
+            "presentations": native?["presentations"] ?? NSNull(),
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8) {
+            // Two small records remain readable even when Xcode cannot finalize its result bundle.
+            print("OROT_TEST_EXPORT_DISMISSAL \(text)")
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+            attachment.name = stage
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        if stage == "after-audio-dismissal-touch" {
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = stage
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+        }
+    }
+
+    private func rectObservation(_ rect: CGRect) -> [String: CGFloat] {
+        ["x": rect.minX, "y": rect.minY, "width": rect.width, "height": rect.height]
     }
 
     @MainActor
