@@ -13,39 +13,37 @@ enum FormUITestConditions {
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true) {
         XCTAssertTrue(UITestConditions.exists(scroll))
-        // AX rounds origins and sizes separately. Allow only their observed numerical error (well below one physical pixel), while retaining viewport and keyboard containment.
-        let coordinateTolerance: CGFloat = 0.0001
+        var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
         for attempt in 0 ... 16 {
             let keyboard = app.keyboards.firstMatch
-            let bottom = keyboard.exists ? min(scroll.frame.maxY, keyboard.frame.minY) : scroll.frame.maxY
-            if target.exists, !requireHittable || target.isHittable, !target.frame.isEmpty,
-               target.frame.minY >= scroll.frame.minY - coordinateTolerance, target.frame.maxY <= bottom + coordinateTolerance
-            {
+            // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
+            let applicationFrame = app.frame
+            let scrollFrame = scroll.frame
+            let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+            let targetFrame = target.exists ? target.frame : nil
+            lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
+            guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame) else {
+                XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
+                return
+            }
+            if let targetFrame, geometry.contains(targetFrame), !requireHittable || target.isHittable {
                 return
             }
             if attempt == 16 {
                 break
             }
-            // Large-text rows can fit the viewport yet be overshot by a fixed half-page drag.
-            // Follow their observed overflow in either direction, and keep the gesture above an actual keyboard.
-            let height = bottom - scroll.frame.minY
-            guard height > 0 else {
-                XCTFail("The form has no visible viewport above the keyboard")
+            guard let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: horizontalPosition) else {
+                XCTFail("The form gesture has invalid coordinates")
                 return
             }
-            let above = target.exists && !target.frame.isEmpty ? target.frame.minY < scroll.frame.minY : towardTop
-            let overflow = target.exists && !target.frame.isEmpty
-                ? (above ? scroll.frame.minY - target.frame.minY : target.frame.maxY - bottom)
-                : height * 0.45
-            let distance = min(max(overflow + 8, 30), height * 0.45)
-            let startY = scroll.frame.minY + height * (above ? 0.25 : 0.75)
-            let origin = scroll.coordinate(withNormalizedOffset: .zero)
-            let start = origin.withOffset(CGVector(dx: scroll.frame.width * horizontalPosition, dy: startY - scroll.frame.minY))
-            let end = origin.withOffset(CGVector(dx: scroll.frame.width * horizontalPosition, dy: startY - scroll.frame.minY + (above ? distance : -distance)))
+            // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(gesture.start)
+            let end = origin.withOffset(gesture.end)
             start.press(forDuration: 0.05, thenDragTo: end)
         }
-        XCTFail("Control did not enter the measured form viewport: hittable=\(target.isHittable), target=\(target.frame), viewport=\(scroll.frame), topDelta=\(target.frame.minY - scroll.frame.minY), bottomDelta=\(target.frame.maxY - scroll.frame.maxY); \(target.debugDescription)")
+        XCTFail("Control did not enter the measured form viewport: \(lastObservation)")
     }
 
     static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {

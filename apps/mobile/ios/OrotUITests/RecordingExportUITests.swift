@@ -11,6 +11,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     @MainActor
     func testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart() throws {
         try ExportDismissalGeometryRegression.verify()
+        try FormScrollGeometryRegression.verify()
         let app = XCUIApplication()
         addTeardownBlock { @MainActor in
             // A failed share assertion must leave no recording from this case; never reset another case's storage.
