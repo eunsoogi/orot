@@ -110,6 +110,7 @@
                         "visible": view?.window != nil && view?.isHidden == false,
                         "viewBounds": view.map { ["width": $0.bounds.width, "height": $0.bounds.height] } ?? [:],
                         "transition": navigation.transitionCoordinator.map { ["interactive": $0.isInteractive, "cancelled": $0.isCancelled, "percentComplete": $0.percentComplete] as [String: Any] } ?? [:],
+                        "nativeScreens": self.nativeScreenObservation(navigation),
                         "gestures": recognizers.map { ["recognizerID": self.observationIdentifier($0, prefix: "gesture"), "roles": self.publicPopRoles($0, navigation: navigation), "type": String(describing: type(of: $0)), "enabled": $0.isEnabled, "state": $0.state.rawValue] as [String: Any] },
                     ]
                 }
@@ -158,6 +159,7 @@
                 "controllerID": owner.map { observationIdentifier($0, prefix: "navigation") } ?? (owners.isEmpty ? "unknown" : "ambiguous"),
                 "viewOwnerControllerIDs": owners.map { observationIdentifier($0, prefix: "navigation") },
                 "controllerDepth": owner.map(\.viewControllers.count) as Any? ?? NSNull(),
+                "nativeScreens": owner.map(nativeScreenObservation) as Any? ?? NSNull(),
                 "publicPopControllers": knownNavigations.compactMap { navigation -> [String: Any]? in
                     let roles = publicPopRoles(recognizer, navigation: navigation)
                     return roles.isEmpty ? nil : ["controllerID": observationIdentifier(navigation, prefix: "navigation"), "roles": roles]
@@ -179,6 +181,33 @@
             if gestureEvents.count > 32 {
                 gestureEvents.removeFirst(gestureEvents.count - 32)
             }
+        }
+
+        /// Read declared RNS flags without loading a view or invoking a navigation delegate.
+        private func nativeScreenObservation(_ navigation: UINavigationController) -> [String: Any] {
+            let stack = navigation.viewControllers
+            func endpoint(_ controller: UIViewController?) -> [String: Any] {
+                guard let controller else { return ["status": "unknown"] }
+                let view = controller.viewIfLoaded
+                let screen = view as? RNSScreenView
+                return [
+                    "controllerID": observationIdentifier(controller, prefix: "screen"),
+                    // UIKit may already remove an outgoing controller from this public array during a pop.
+                    // This index is not RNS's private React subview order; absence stays null.
+                    "indexInCurrentNativeStack": stack.firstIndex { $0 === controller } as Any? ?? NSNull(),
+                    "viewLoaded": view != nil,
+                    "preventNativeDismiss": screen.map(\.preventNativeDismiss) as Any? ?? NSNull(),
+                    "flagStatus": screen == nil ? "unknown" : "read-native-RNSScreenView",
+                ]
+            }
+            let transition = navigation.transitionCoordinator
+            return [
+                "stack": stack.map { endpoint($0) },
+                "source": endpoint(transition?.viewController(forKey: .from)),
+                "destination": endpoint(transition?.viewController(forKey: .to)),
+                // UIKit exposes transition context, not the selected animator/interaction objects.
+                "selectedAnimationController": "unknown", "selectedInteractionController": "unknown",
+            ]
         }
 
         private func observationIdentifier(_ object: NSObject, prefix: String) -> String {
