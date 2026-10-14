@@ -22,8 +22,6 @@
 		2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */; };
 		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
 		33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F894914E4F39E9162E577E /* RecordingExportUITests.swift */; };
-		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
-		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */; };
 		3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */; };
 		403636589BB5F1697E88C9F7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
@@ -117,6 +115,8 @@
 		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
+		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
+		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */; };
 		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
 		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
@@ -170,8 +170,6 @@
 		2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelIntegrationTests.swift; sourceTree = "<group>"; };
 		35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HermesDomainIntegrationTests.swift; sourceTree = "<group>"; };
 		38F894914E4F39E9162E577E /* RecordingExportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportUITests.swift; sourceTree = "<group>"; };
-		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
-		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
 		39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MicrophoneMeteringUITests.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.debug.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedHealthRecordsUITests.swift; sourceTree = "<group>"; };
@@ -274,6 +272,8 @@
 		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
+		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
+		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
 		E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormUITestConditions.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingModule.swift; path = OrotMobile/LocalE5EmbeddingModule.swift; sourceTree = "<group>"; };
