@@ -44,7 +44,9 @@ mkdirSync(directory, { recursive: true });
 const observations = [];
 const failures = [];
 const started = Date.now();
+let attempted = 0;
 for (const [index, identifier] of expected.entries()) {
+  attempted += 1;
   // Independent schema, form and import fixtures never share a prior database or its initialization marker.
   resetIosTestFixtureContainer(profile, owner, app);
   const name = String(index + 1).padStart(2, '0');
@@ -84,8 +86,7 @@ for (const [index, identifier] of expected.entries()) {
       join(directory, name + '-attachments'),
     ]);
   } catch (error) {
-    // A failed first execution must not suppress later independent cases or become a retry.
-    // Preparation above and verified cleanup below still fail closed before another app is installed.
+    // Retain the first failed case before stopping; cleanup below still runs for the owned app.
     const failure = { identifier, error: String(error) };
     failures.push(failure);
     console.error('IOS_FIXTURE_CASE_FAILED ' + JSON.stringify(failure));
@@ -103,6 +104,7 @@ for (const [index, identifier] of expected.entries()) {
         }),
     );
   }
+  if (failures.length) break;
 }
 writeFileSync(
   join(directory, 'results.json'),
@@ -113,6 +115,7 @@ writeFileSync(
       passed: failures.length === 0 && observations.length === expected.length,
       observations,
       failures,
+      notRun: expected.slice(attempted),
       elapsedMs: Date.now() - started,
     },
     null,

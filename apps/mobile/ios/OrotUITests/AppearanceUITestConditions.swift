@@ -15,7 +15,13 @@ enum AppearanceUITestConditions {
         XCTAssertNotEqual(app.state, .notRunning)
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
         settings.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        settings.launch()
+        // launch() terminates a running Settings instance. Reuse the owned English session instead; the actual controls below still verify its language and appearance state.
+        if settings.state == .notRunning {
+            settings.launch()
+        } else {
+            settings.activate()
+        }
+        XCTAssertEqual(settings.state, .runningForeground, settings.debugDescription)
         // The pinned iOS 27 controls combine their sample clock and mode in one accessible label.
         let light = settings.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Light")).firstMatch
         let darkButton = settings.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Dark")).firstMatch

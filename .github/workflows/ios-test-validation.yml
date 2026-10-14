@@ -8,11 +8,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Full and diagnostic native graphs share this repository budget; superseded PR runs are cancelled by their caller.
+  group: native-ci-macos-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   plan:
     name: Plan native coverage and macOS budget
     runs-on: ubuntu-24.04
-    # Required reviewer protection is configured in repository settings; approval precedes both Mac producers.
+    # Required reviewer protection is configured in repository settings; approval precedes the first Debug VM and every successor.
     environment: { name: native-ci-admin-approval }
     timeout-minutes: 5
     outputs:
@@ -29,47 +34,40 @@ jobs:
       - name: Validate the complete logical plan before Mac allocation
         id: plan
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
-  release_products:
-    name: Production and Release native products
+  debug_execution:
+    name: Debug provider and capability validation
     needs: plan
-    uses: ./.github/workflows/ios-test-product-build.yml
+    uses: ./.github/workflows/ios-test-build-and-execute.yml
     with:
-      profile: core
-      artifact_name: ios-test-release-products
-      production_build: ${{ github.event_name == 'workflow_dispatch' || inputs.production_build == true }}
-  debug_products:
-    name: Debug native products
-    needs: plan
-    uses: ./.github/workflows/ios-test-product-build.yml
-    with:
+      cohort: debug
       profile: provider-data
       artifact_name: ios-test-debug-products
+      timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
   release_execution:
-    name: General Release validation
-    needs: [plan, release_products]
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    name: Production and General Release validation
+    needs: [plan, debug_execution]
+    uses: ./.github/workflows/ios-test-build-and-execute.yml
     with:
       cohort: release
       profile: core
       artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      production_build: ${{ inputs.production_build }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_minutes) }}
   speech_execution:
     name: Authentic Korean Speech and UI validation
-    needs: [plan, release_products]
+    needs: [plan, release_execution]
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
       cohort: speech
       sample: first
       profile: speech
       artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   speech_sample_2:
     name: Fresh Speech acceptance sample 2
-    needs: [plan, release_products, speech_execution]
+    needs: [plan, release_execution, speech_execution]
     # A failed first attempt stays failed. The next fresh VM runs only after all original native and UI assertions passed.
     if: ${{ needs.speech_execution.result == 'success' }}
     uses: ./.github/workflows/ios-test-cohort-execution.yml
@@ -78,12 +76,12 @@ jobs:
       sample: second
       profile: speech
       artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   speech_sample_3:
     name: Fresh Speech acceptance sample 3
-    needs: [plan, release_products, speech_sample_2]
+    needs: [plan, release_execution, speech_sample_2]
     if: ${{ needs.speech_sample_2.result == 'success' }}
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
@@ -91,32 +89,12 @@ jobs:
       sample: third
       profile: speech
       artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
-  debug_execution:
-    name: Debug provider and capability validation
-    needs: [plan, debug_products]
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
-    with:
-      cohort: debug
-      profile: provider-data
-      artifact_name: ios-test-debug-products
-      archive_digest: ${{ needs.debug_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.debug_products.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
   completeness:
     name: Native test completeness
-    needs:
-      [
-        release_products,
-        debug_products,
-        release_execution,
-        speech_execution,
-        speech_sample_2,
-        speech_sample_3,
-        debug_execution,
-      ]
+    needs: [release_execution, speech_execution, speech_sample_2, speech_sample_3, debug_execution]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10

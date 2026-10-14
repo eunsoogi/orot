@@ -34,6 +34,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Diagnose this Debug host before dependencies or compilation
+        if: inputs.profile == 'provider-data'
+        timeout-minutes: 2
+        uses: ./.github/actions/ios-apple-model-host
+        with:
+          evidence: artifacts/native-focus
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:

@@ -21,18 +21,23 @@ test('cohort executor runs each exact task once and only reports success for com
   assert.equal(result.tasks.length, 3);
 });
 
-test('first failure remains terminal for its task without suppressing independent later observations', async () => {
+test('first failure stops costly later tasks and records them as unexecuted prerequisites', async () => {
   const calls = [];
   const result = await executeIosTestCohortTasks(tasks, async (task) => {
     calls.push(task.profile);
     if (task.profile === 'first') throw new Error('actual first-attempt Xcode exit 65');
     return observations(task);
   });
-  assert.deepEqual(calls, ['first', 'second', 'third']);
+  assert.deepEqual(calls, ['first']);
   assert.equal(result.passed, false);
   assert.equal(result.tasks[0].status, 'failed');
   assert.match(result.tasks[0].error, /first-attempt Xcode exit 65/);
-  assert.equal(result.tasks[1].status, 'passed');
+  assert.deepEqual(
+    result.tasks.slice(1).map((task) => task.status),
+    ['not-run', 'not-run'],
+  );
+  assert.ok(result.tasks.slice(1).every((task) => task.blockedBy === 'first/all'));
+  assert.ok(result.tasks.slice(1).every((task) => !Object.hasOwn(task, 'observations')));
 });
 
 test('missing, repeated, unexpected and failed observations cannot become cohort success', async () => {

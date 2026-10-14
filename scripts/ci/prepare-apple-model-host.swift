@@ -37,13 +37,29 @@ let model = SystemLanguageModel.default
 let rawBefore = String(reflecting: model.availability)
 let before = availability(model)
 let started = Date()
-// This call requests memory preparation only. Subsequent native tests must still observe availability and execute their original generation assertions.
-LanguageModelSession(model: model).prewarm()
+let preparationAllowed = before == "available" || before == "modelNotReady"
+// Public prewarm requests memory only. Ineligible or disabled hosts cannot recover by waiting and must not consume the readiness budget.
+if preparationAllowed {
+    LanguageModelSession(model: model).prewarm()
+}
+
+let readinessStarted = Date()
+let readinessBudgetSeconds: TimeInterval = 30
+let readinessDeadline = ContinuousClock.now.advanced(by: .seconds(readinessBudgetSeconds))
+if preparationAllowed {
+    // Poll only a transient modelNotReady state. Original native generation and cancellation assertions remain mandatory after this prerequisite.
+    while availability(model) == "modelNotReady", ContinuousClock.now < readinessDeadline {
+        Thread.sleep(forTimeInterval: 1)
+    }
+}
+
 let report: [String: Any] = [
     "scope": "host-sdk-prewarm", "before": before, "after": availability(model),
     // Preserve the public enum independently of Orot's mapped label for host-versus-Simulator diagnosis.
     "rawBefore": rawBefore, "rawAfter": String(reflecting: model.availability),
-    "prewarmInvoked": true, "generatedFixture": false,
+    "prewarmInvoked": preparationAllowed, "generatedFixture": false,
+    "readinessBudgetMs": readinessBudgetSeconds * 1000,
+    "readinessWaitMs": Date().timeIntervalSince(readinessStarted) * 1000,
     "koreanSupported": model.supportsLocale(Locale(identifier: "ko-KR")),
     "macOS": ProcessInfo.processInfo.operatingSystemVersionString,
     "hardwareModel": hostString("hw.model").map { $0 as Any } ?? NSNull(),

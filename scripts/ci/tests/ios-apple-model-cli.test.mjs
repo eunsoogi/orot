@@ -54,19 +54,29 @@ test('unsupported CLI, absent command, timeout and empty response remain unsucce
   }
 });
 
-test('host diagnostic runs after original attempts and cannot bypass the independent Apple acceptance gate', () => {
-  const workflow = readFileSync('.github/workflows/ios-test-cohort-execution.yml', 'utf8');
-  const original = workflow.indexOf('- name: Execute every planned first attempt');
-  const diagnostic = workflow.indexOf(
-    '- name: Record the public on-device Apple model CLI diagnostic',
-  );
-  const gate = workflow.indexOf('- name: Require supported Apple Intelligence');
-  assert.ok(original >= 0 && diagnostic > original && gate > diagnostic);
-  const step = workflow.slice(diagnostic, gate);
-  assert.match(step, /if: always\(\) && inputs\.cohort == 'debug'/);
-  assert.match(step, /probe-apple-model-cli\.mjs/);
-  assert.match(step, /artifacts\/ios-cohort\/apple-model-cli\.log/);
-  assert.doesNotMatch(step, /continue-on-error|retry|--model/);
+test('bounded host diagnosis runs before dependency preparation on each actual Debug VM', () => {
+  for (const [file, expensive] of [
+    [
+      '.github/workflows/ios-test-product-build.yml',
+      'uses: ./.github/actions/ios-test-products-build',
+    ],
+    [
+      '.github/workflows/ios-test-build-and-execute.yml',
+      'uses: ./.github/actions/ios-test-products-build',
+    ],
+    ['.github/workflows/ios-test-cohort-execution.yml', 'pnpm/action-setup'],
+  ]) {
+    const source = readFileSync(file, 'utf8');
+    const gate = source.indexOf('uses: ./.github/actions/ios-apple-model-host');
+    assert.ok(gate > 0 && gate < source.indexOf(expensive), file);
+  }
+  const action = readFileSync('.github/actions/ios-apple-model-host/action.yml', 'utf8');
+  const probe = action.indexOf('prepare-apple-model-host.swift');
+  const diagnostic = action.indexOf('probe-apple-model-cli.mjs');
+  const verification = action.indexOf('verify-apple-model-host.mjs');
+  assert.ok(probe > 0 && diagnostic > probe && verification > diagnostic);
+  assert.doesNotMatch(action, /continue-on-error|--model|pnpm install|simulator.*prepare/);
+  assert.match(action, /if:.*!cancelled\(\)/);
   const swift = readFileSync('scripts/ci/prepare-apple-model-host.swift', 'utf8');
   assert.match(swift, /"rawBefore": rawBefore/);
   assert.match(swift, /"rawAfter": String\(reflecting: model\.availability\)/);

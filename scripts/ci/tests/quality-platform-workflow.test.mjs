@@ -180,8 +180,10 @@ test('uses singular workflow names and matching paths with direct checks and can
   );
   assert.match(
     e2eWorkflow,
-    /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.run_id \}\}-\$\{\{ github\.event\.pull_request\.draft == true && 'draft' \|\| 'full' \}\}/,
+    /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}/,
   );
+  // Ready/draft transitions of the same PR must supersede the same expensive run, not occupy separate Mac groups.
+  assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
   assert.match(e2eWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
   assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);

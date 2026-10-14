@@ -17,7 +17,7 @@ test('hosted Speech verifies actual assets before its first recognition without 
   assert.match(runner, /OROT_IOS_TEST_SUITE: suite/);
   assert.match(runner, /run-ios-tests\.mjs/);
   assert.match(runner, /ios-test-results\.mjs/);
-  const source = readFileSync('.github/workflows/ios-test-cohort-execution.yml', 'utf8');
+  const source = readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8');
   assert.ok(
     source.indexOf('Verify configuration, source and product integrity before boot') <
       source.indexOf('prepare-cohort'),

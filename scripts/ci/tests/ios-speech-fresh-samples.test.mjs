@@ -22,8 +22,11 @@ test('three first Speech samples share verified products and stop after a failed
     assert.equal(job.with.cohort, 'speech');
     assert.equal(job.with.sample, samples[index]);
     assert.equal(job.with.artifact_name, 'ios-test-release-products');
-    assert.equal(job.with.archive_digest, '${{ needs.release_products.outputs.archive_digest }}');
-    assert.equal(job.with.manifest_digest, '${{ needs.release_products.outputs.manifest_digest }}');
+    assert.equal(job.with.archive_digest, '${{ needs.release_execution.outputs.archive_digest }}');
+    assert.equal(
+      job.with.manifest_digest,
+      '${{ needs.release_execution.outputs.manifest_digest }}',
+    );
     if (index > 0) {
       assert.ok(job.needs.includes(ids[index - 1]));
       assert.equal(job.if, '${{ needs.' + ids[index - 1] + ".result == 'success' }}");
@@ -35,11 +38,12 @@ test('three first Speech samples share verified products and stop after a failed
 test('later samples retain separate raw and compact artifacts and enter Linux completeness', () => {
   const consumer = workflow('ios-test-cohort-execution.yml');
   assert.equal(consumer.on.workflow_call.inputs.sample?.default, 'first');
-  const execute = consumer.jobs.execution.steps.find(
+  const action = yaml.load(readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8'));
+  const execute = action.runs.steps.find(
     (step) => step.name === 'Execute every planned first attempt without compilation or retry',
   );
   assert.equal(execute.env.OROT_IOS_TEST_SAMPLE, '${{ inputs.sample }}');
-  for (const step of consumer.jobs.execution.steps.filter((step) =>
+  for (const step of action.runs.steps.filter((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   ))
     assert.ok(step.with.name.includes('inputs.sample'), step.name);
@@ -55,7 +59,7 @@ test('later samples retain separate raw and compact artifacts and enter Linux co
   }
 });
 
-test('actual Linux plan reports all seven Mac jobs and the three fresh Speech samples', () => {
+test('actual Linux plan reports five Mac jobs and the three fresh Speech samples', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-speech-plan-'));
   try {
     const output = join(directory, 'outputs');
@@ -65,8 +69,8 @@ test('actual Linux plan reports all seven Mac jobs and the three fresh Speech sa
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
-    assert.equal(value.macJobs, 7);
-    assert.equal(value.maximumConcurrentMacJobs, 3);
+    assert.equal(value.macJobs, 5);
+    assert.equal(value.maximumConcurrentMacJobs, 1);
     assert.equal(value.uniqueNativeCases, 77);
     assert.equal(value.scheduledNativeObservations, 100);
     assert.deepEqual(value.speechSamples, ['first', 'second', 'third']);

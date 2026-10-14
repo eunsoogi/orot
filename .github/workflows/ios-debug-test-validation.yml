@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: native-ci-macos-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   approval:
     name: Approve native Debug execution
@@ -14,25 +18,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - run: echo 'Administrator approved this native Debug run.'
-  products:
-    needs: approval
-    uses: ./.github/workflows/ios-test-product-build.yml
-    with:
-      profile: provider-data
-      artifact_name: ios-test-debug-products
   execution:
-    needs: products
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    needs: approval
+    uses: ./.github/workflows/ios-test-build-and-execute.yml
     with:
       cohort: debug
       profile: provider-data
       artifact_name: ios-test-debug-products
-      archive_digest: ${{ needs.products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.products.outputs.manifest_digest }}
       timeout_minutes: 180
   completeness:
     name: Debug native completeness
-    needs: [products, execution]
+    needs: execution
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -45,9 +41,8 @@ jobs:
           node-version-file: .nvmrc
       - name: Require the Debug boundaries
         env:
-          PRODUCTS: ${{ needs.products.result }}
           EXECUTION: ${{ needs.execution.result }}
-        run: test "$PRODUCTS" = success && test "$EXECUTION" = success
+        run: test "$EXECUTION" = success
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: native-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}

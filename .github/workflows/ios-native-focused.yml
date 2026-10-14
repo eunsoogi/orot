@@ -57,6 +57,9 @@ jobs:
     name: Build selected native test products
     needs: selection
     runs-on: xcode-27
+    concurrency:
+      group: native-ci-macos-${{ github.repository }}
+      cancel-in-progress: false
     timeout-minutes: 60
     outputs:
       profile: ${{ needs.selection.outputs.profile }}
@@ -71,6 +74,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Diagnose this selected provider host before compilation
+        if: needs.selection.outputs.profile == 'provider-data'
+        timeout-minutes: 2
+        uses: ./.github/actions/ios-apple-model-host
+        with: { evidence: artifacts/native-focus }
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:
@@ -125,12 +133,20 @@ jobs:
     name: Execute selected native ${{ needs.products.outputs.profile }} ${{ needs.products.outputs.suite }} tests
     needs: products
     runs-on: xcode-27
+    concurrency:
+      group: native-ci-macos-${{ github.repository }}
+      cancel-in-progress: false
     # Stateful local-model groups retain their original operation and setup allowances.
     timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Diagnose this provider executor before dependencies or transfer
+        if: needs.products.outputs.profile == 'provider-data'
+        timeout-minutes: 2
+        uses: ./.github/actions/ios-apple-model-host
+        with: { evidence: artifacts/native-focus }
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           version: 12.3.4
@@ -156,9 +172,6 @@ jobs:
       - name: Provision the pinned Speech runtime
         if: needs.products.outputs.profile == 'speech'
         run: bash scripts/ci/prepare-ios-test-runtime.sh speech
-      - name: Observe public Apple model host preparation
-        if: needs.products.outputs.profile == 'provider-data'
-        run: scripts/ci/run-command.sh native-focus-model-host artifacts/native-focus/apple-model-host.log -- xcrun swift -swift-version 6 scripts/ci/prepare-apple-model-host.swift
       - name: Boot the dedicated execution destination
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
@@ -204,9 +217,6 @@ jobs:
           if [[ -d artifacts/native-focus/results.xcresult ]]; then
             xcrun xcresulttool export attachments --path artifacts/native-focus/results.xcresult --output-path artifacts/native-focus/attachments
           fi
-      - name: Require the authentic provider host without substituting availability for generation
-        if: always() && needs.products.outputs.profile == 'provider-data'
-        run: node scripts/ci/verify-apple-model-host.mjs artifacts/native-focus/apple-model-host.log
       - name: Tear down the owned destination
         if: always()
         env:

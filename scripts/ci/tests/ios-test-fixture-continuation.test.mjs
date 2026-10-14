@@ -70,24 +70,22 @@ console.log('synthetic owned fixture operation');
   };
 }
 
-test('a failed first case stays failed while the next isolated case executes exactly once', () => {
+test('a failed first fixture preserves its result and cleanup without installing the next case', () => {
   const value = fixture();
   try {
     assert.notEqual(value.outcome.status, 0);
     const executions = value.calls.filter((call) => call.name === 'xcodebuild');
     assert.deepEqual(
       executions.map((call) => call.args.find((arg) => arg.startsWith('-only-testing:')).slice(14)),
-      value.identifiers,
+      [value.identifiers[0]],
     );
     const report = value.report();
     assert.equal(report.passed, false);
     assert.equal(report.failures[0].identifier, value.identifiers[0]);
-    assert.deepEqual(
-      report.observations.map((item) => item.identifier),
-      [value.identifiers[1]],
-    );
-    assert.equal(value.calls.filter((call) => call.args[1] === 'keychain').length, 2);
-    assert.equal(value.calls.filter((call) => call.args[1] === 'uninstall').length, 2);
+    assert.deepEqual(report.observations, []);
+    assert.deepEqual(report.notRun, [value.identifiers[1]]);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'keychain').length, 1);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'uninstall').length, 1);
   } finally {
     value.dispose();
   }

@@ -26,9 +26,9 @@ appendFileSync(
 );
 console.log(
   JSON.stringify({
-    // Two producers and one execution per cohort are primary jobs; only later Speech samples add fresh execution jobs.
-    macJobs: 2 + names.length + IOS_SPEECH_SAMPLES.length - 1,
-    maximumConcurrentMacJobs: 3,
+    // Debug and Release each build and execute on one VM. Fresh Speech samples consume three more VMs only after their predecessors pass.
+    macJobs: 2 + IOS_SPEECH_SAMPLES.length,
+    maximumConcurrentMacJobs: 1,
     uniqueNativeCases: actual.size,
     scheduledNativeObservations:
       primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length,

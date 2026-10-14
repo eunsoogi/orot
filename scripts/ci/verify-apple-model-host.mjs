@@ -15,7 +15,7 @@ export function verifyAppleModelHost(log) {
   if (reports.length !== 1)
     throw new Error('Missing or ambiguous Apple Intelligence host evidence');
   const report = reports[0];
-  if (report.before !== 'available' || report.after !== 'available')
+  if (!['available', 'modelNotReady'].includes(report.before) || report.after !== 'available')
     throw new Error(
       `Apple Intelligence host is not available: before=${report.before}, after=${report.after}`,
     );

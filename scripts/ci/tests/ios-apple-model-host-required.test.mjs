@@ -17,9 +17,18 @@ const evidence = {
 const log = (changes = {}) => JSON.stringify({ ...evidence, ...changes }) + '\n';
 
 test('host prewarm cannot certify unsupported, disabled, unready or unknown Apple Intelligence', () => {
-  for (const state of ['unsupportedDevice', 'disabled', 'modelNotReady', 'unknown', null])
+  for (const state of ['unsupportedDevice', 'disabled', 'unknown', null])
     for (const field of ['before', 'after'])
       assert.throws(() => verifyAppleModelHost(log({ [field]: state })), /not available/);
+  assert.throws(() => verifyAppleModelHost(log({ after: 'modelNotReady' })), /not available/);
+});
+
+test('only a modelNotReady host that actually becomes available may proceed to native assertions', () => {
+  assert.equal(verifyAppleModelHost(log({ before: 'modelNotReady' })).after, 'available');
+  assert.throws(
+    () => verifyAppleModelHost(log({ before: 'modelNotReady', after: 'modelNotReady' })),
+    /not available/,
+  );
 });
 
 test('missing, ambiguous, synthetic or incomplete host observations fail closed', () => {

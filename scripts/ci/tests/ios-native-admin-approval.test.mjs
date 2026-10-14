@@ -15,11 +15,11 @@ function assertApproval(job) {
   assert.equal(job['continue-on-error'], undefined);
 }
 
-test('automatic full validation waits for administrator approval before either Mac producer', () => {
+test('automatic full validation approves Linux planning before Debug and all successor Mac allocation', () => {
   const full = read('ios-test-validation.yml');
   assertApproval(full.jobs.plan);
-  for (const name of ['release_products', 'debug_products'])
-    assert.equal(full.jobs[name].needs, 'plan');
+  assert.equal(full.jobs.debug_execution.needs, 'plan');
+  assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'debug_execution']);
   assert.equal(full.on.workflow_dispatch, undefined);
   assert.ok(Object.hasOwn(full.on, 'workflow_call'));
 });
@@ -30,7 +30,7 @@ test('focused and standalone Debug paths cannot bypass the same administrator ap
   assert.equal(focus.jobs.products.needs, 'selection');
   const debug = read('ios-debug-test-validation.yml');
   assertApproval(debug.jobs.approval);
-  assert.equal(debug.jobs.products.needs, 'approval');
+  assert.equal(debug.jobs.execution.needs, 'approval');
   assert.equal(debug.on.workflow_dispatch, undefined);
 });
 
