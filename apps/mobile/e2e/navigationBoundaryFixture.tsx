@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AppRegistry,
+  NativeModules,
   Pressable,
   requireNativeComponent,
   ScrollView,
@@ -44,16 +45,36 @@ function RNSFixture() {
 
 function RNSStack() {
   const [childVisible, setChildVisible] = useState(false);
+  useEffect(() => {
+    // Record committed fixture state separately from the native dismiss event; neither changes a transition driver.
+    NativeModules.OrotTestControl.recordObservation({
+      event: 'boundary-child-committed',
+      present: childVisible,
+    });
+  }, [childVisible]);
   return (
     <ScreenStack style={styles.full}>
-      <Screen activityState={childVisible ? 1 : 2} style={styles.full}>
-        <ScreenStackHeaderConfig hidden />
+      <Screen
+        activityState={childVisible ? 1 : 2}
+        style={StyleSheet.absoluteFill}
+      >
         <Surface child={false} openChild={() => setChildVisible(true)} />
+        <ScreenStackHeaderConfig hidden />
       </Screen>
       {childVisible ? (
-        <Screen activityState={2} style={styles.full}>
-          <ScreenStackHeaderConfig hidden />
+        <Screen
+          activityState={2}
+          style={StyleSheet.absoluteFill}
+          onDismissed={() => {
+            // A normal ScreenStack consumer removes a child after native dismissal, never after gesture cancellation.
+            NativeModules.OrotTestControl.recordObservation({
+              event: 'boundary-native-dismissed',
+            });
+            setChildVisible(false);
+          }}
+        >
           <Surface child />
+          <ScreenStackHeaderConfig hidden />
         </Screen>
       ) : null}
     </ScreenStack>
