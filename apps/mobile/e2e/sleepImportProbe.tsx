@@ -8,7 +8,7 @@ import type {
   SleepDeviceMetadata,
 } from '../src/healthkit/sleep/types';
 
-interface SleepProbeNative {
+interface SleepProbeModule {
   prepareSyntheticFixture(feature: 'sleep'): Promise<void>;
   removeSyntheticFixture(): Promise<void>;
   inspectReadAuthorizationPlan(feature: 'sleep'): Promise<{
@@ -25,7 +25,7 @@ type SleepBridgeMetadata = {
   readonly timeZone?: string | null;
 };
 
-const native = NativeModules.HealthKitModule as SleepProbeNative;
+const healthKitModule = NativeModules.HealthKitModule as SleepProbeModule;
 const healthKit = createHealthKitClient(NativeModules.HealthKitModule, 'ios');
 const startDate = '2026-10-01T23:30:00.000Z';
 const endDate = '2026-10-02T00:30:00.000Z';
@@ -59,7 +59,7 @@ export async function runSleepIntegrationProbe(): Promise<string> {
   try {
     // Availability reads the real store; sleep samples come only from the Debug Simulator adapter.
     const availability = await healthKit.getAvailability();
-    const plan = await native.inspectReadAuthorizationPlan('sleep');
+    const plan = await healthKitModule.inspectReadAuthorizationPlan('sleep');
     if (
       plan.availability === 'available' &&
       (plan.writeTypeIdentifiers.length !== 0 ||
@@ -69,7 +69,7 @@ export async function runSleepIntegrationProbe(): Promise<string> {
       throw new Error('Sleep authorization requested an unexpected type set.');
     }
 
-    await native.prepareSyntheticFixture('sleep');
+    await healthKitModule.prepareSyntheticFixture('sleep');
     fixtureInstalled = true;
     const authorization = await healthKit.requestReadAuthorization('sleep');
     if (authorization.readAuthorization !== 'notObservable') {
@@ -199,7 +199,7 @@ export async function runSleepIntegrationProbe(): Promise<string> {
       '; source=synthetic; realSamples=unverified'
     );
   } finally {
-    if (fixtureInstalled) await native.removeSyntheticFixture();
+    if (fixtureInstalled) await healthKitModule.removeSyntheticFixture();
   }
 }
 

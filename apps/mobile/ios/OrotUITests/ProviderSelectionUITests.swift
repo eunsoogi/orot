@@ -12,9 +12,9 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         let app = launch()
         defer { app.terminate() }
         reset(app)
-        tap(app, "provider-selection-native-auth-cancel")
+        tap(app, "provider-selection-auth-session-cancel")
         try continueLocalConsent(app)
-        summary(app, "nativeAuthSessionCancellation=verified; realAccount=unverified")
+        summary(app, "authSessionCancellation=verified; realAccount=unverified")
         reset(app)
         tap(app, "provider-selection-auth-cancel")
         tap(app, "chatgpt-account-action")

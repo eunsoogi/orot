@@ -114,7 +114,7 @@ enum BackupMigrationFailure: LocalizedError {
             } catch let error as RecordingFileSecurityError {
                 preparationError = preparationErrorCode(error)
             } catch {
-                preparationError = "other-native-error"
+                preparationError = "other-backup-error"
             }
 
             url.removeCachedResourceValue(forKey: .isExcludedFromBackupKey) // Drop stale exclusion metadata.

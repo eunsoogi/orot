@@ -33,27 +33,28 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         XCTAssertEqual(result["providerCalls"] as? Int, 1)
         XCTAssertEqual(result["events"] as? [String], [
             "production-save-refused", "screen-start", "screen-stop", "synthetic-source-saved",
-            "native-provider-start", "native-provider-complete",
+            "speech-provider-start", "speech-provider-complete",
         ])
         XCTAssertEqual(result["fileProtection"] as? String, refusal["fileProtection"] as? String)
         let source = try dictionary(result, "source")
         let sourceID = try XCTUnwrap(source["id"] as? String)
         XCTAssertEqual(sourceID, fixtureID)
-        let serviceResult = try dictionary(result, "nativeResult")
+        let serviceResult = try dictionary(result, "speechResult")
         let speechSegments = try XCTUnwrap(serviceResult["segments"] as? [[String: Any]])
         let segments = try XCTUnwrap(result["segments"] as? [[String: Any]])
         XCTAssertFalse(speechSegments.isEmpty)
         XCTAssertEqual(segments.count, speechSegments.count)
+        // Stored ranges use milliseconds; compare them with the independent Speech response in seconds.
         for (index, segment) in segments.enumerated() {
-            let native = speechSegments[index]
+            let speechSegment = speechSegments[index]
             let text = try XCTUnwrap(segment["text"] as? String)
-            XCTAssertEqual(text, native["text"] as? String)
+            XCTAssertEqual(text, speechSegment["text"] as? String)
             XCTAssertFalse(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             let range = try dictionary(segment, "audioRange")
             let start = try number(range, "startMs")
             let end = try number(range, "endMs")
-            XCTAssertEqual(start, try floor(number(native, "startSeconds") * 1000))
-            XCTAssertEqual(end, try ceil(number(native, "endSeconds") * 1000))
+            XCTAssertEqual(start, try floor(number(speechSegment, "startSeconds") * 1000))
+            XCTAssertEqual(end, try ceil(number(speechSegment, "endSeconds") * 1000))
             XCTAssertLessThanOrEqual(end, try number(segment, "recordingDurationMs"))
             XCTAssertEqual(segment["recordingSourceId"] as? String, sourceID)
             XCTAssertEqual(try dictionary(segment, "reviewState")["status"] as? String, "unreviewed")

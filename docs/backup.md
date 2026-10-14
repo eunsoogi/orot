@@ -1,7 +1,6 @@
 # iCloud device backup and restore
 
-> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
-
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
 
 Orot uses Apple's **iCloud device backup and restore** for a point-in-time copy of app data. This is not CloudKit or live synchronization: iCloud Backup takes periodic snapshots, and restoring an older snapshot can bring back data deleted after that snapshot. Orot cannot start, schedule, or observe completion of the operating system's backup.
 
@@ -39,18 +38,11 @@ If iCloud is unavailable, storage is insufficient, or a backup is incomplete, th
 
 Restore eligibility has not been verified with a real Apple Account, an iCloud backup, or a new physical device. Unit tests and Simulator builds can verify app logic and synthetic file metadata only; they are not evidence that Apple's backup completed or that a real restore succeeded.
 
-## Local synthetic Simulator probe
+## Local synthetic Simulator checks
 
-The dedicated Detox probe checks app behavior and a synthetic app-container snapshot. It does not verify iCloud backup completion, Apple Account transfer, or restore to a physical device. Run it only on the assigned isolated Simulator with its assigned UDID and a separate DerivedData directory. The [backup Detox configuration](../apps/mobile/e2e/backup.detox.config.js) requires `OROT_BACKUP_SIMULATOR_UDID` and `OROT_BACKUP_DERIVED_DATA_PATH` to be set before both commands.
+The `backup` profile runs `BackupPersistenceUITests` through `run-ios-backup-tests.mjs` on an explicitly owned Simulator. Use the complete `all` group for focused selection: the snapshot seed and recovery steps must run in order while retaining the required app-container and Keychain state. Preparation and execution commands are in the development guide.
 
-From the repository root, build and run the probe with:
-
-```sh
-pnpm --filter @orot/mobile exec detox build --config-path ./e2e/backup.detox.config.js --configuration ios.sim.release.backup
-pnpm --filter @orot/mobile exec detox test --config-path ./e2e/backup.detox.config.js --configuration ios.sim.release.backup
-```
-
-The suite covers process restart and tombstones, migration of a legacy backup-excluded recording, key-migration rollback and retry, and restoring a synthetic app-container snapshot with recording relationships. Treat its output as local app-logic evidence only; use the physical-device procedure below to verify an actual iCloud backup and restore.
+The suite covers process restart and tombstones, migration of a legacy backup-excluded recording, key-migration rollback and retry, and restoring a synthetic app-container snapshot with recording relationships. It preserves the strict source-file protection checks and reports unavailable Simulator protection metadata explicitly. This is local app-logic evidence; it does not verify iCloud backup completion, Apple Account transfer or restore to a physical device. Use the procedure below for those observations.
 
 ## Preparing a real-device restore verification
 

@@ -87,8 +87,8 @@
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
-		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
-		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
+		A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */; };
+		A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarTestModule.m */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
@@ -252,8 +252,8 @@
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
-		B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarDetoxModule.swift; path = OrotMobile/SyntheticCalendarDetoxModule.swift; sourceTree = "<group>"; };
-		B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarDetoxModule.m; path = OrotMobile/SyntheticCalendarDetoxModule.m; sourceTree = "<group>"; };
+		B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarTestModule.swift; path = OrotMobile/SyntheticCalendarTestModule.swift; sourceTree = "<group>"; };
+		B66F00000000000000000002 /* SyntheticCalendarTestModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarTestModule.m; path = OrotMobile/SyntheticCalendarTestModule.m; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
 		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
@@ -388,8 +388,8 @@
 				B65F00000000000000000001 /* EventKitCalendarModule.swift */,
 				B65F00000000000000000002 /* EventKitCalendarModule.m */,
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
-				B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */,
-				B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */,
+				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
+				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
 				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
 				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
@@ -870,8 +870,8 @@
 				A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */,
 				A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */,
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
-				A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */,
-				A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */,
+				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
+				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
 				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
 				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,

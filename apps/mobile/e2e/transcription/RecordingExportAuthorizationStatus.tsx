@@ -33,7 +33,7 @@ export function RecordingExportAuthorizationStatus({ recordingId }: Props) {
     };
   }, [recordingId]);
 
-  // This test-only report also gives Detox a visible target to dismiss multiline editing before scrolling.
+  // This test-only report also gives UI tests a visible target to dismiss multiline editing before scrolling.
   return (
     <Text
       accessibilityRole="button"

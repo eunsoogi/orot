@@ -27,11 +27,11 @@ test('release gate mirrors all 22 required main branch-protection contexts', () 
     '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
     '.github/workflows/e2e-test.yml': [
       'iOS Simulator Build',
-      'Detox E2E profiles / Release shards / Release UI and storage / Detox release iOS E2E',
-      'Detox E2E profiles / Release shards / Release stateful-data / Detox release iOS E2E',
-      'Detox E2E profiles / OpenAI Debug E2E / Detox openai-provider iOS E2E',
-      'Detox E2E profiles / Speech Transcription E2E / Detox transcription iOS E2E',
-      'Detox E2E profiles / Next Visit Questions E2E / Detox next-visit-questions iOS E2E',
+      'iOS validation / Release UI and storage',
+      'iOS validation / Stateful data',
+      'iOS validation / Provider and capability',
+      'iOS validation / Speech transcription',
+      'iOS validation / Visit questions',
     ],
   };
 

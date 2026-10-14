@@ -1,6 +1,6 @@
 import { selectEntryRoute } from '../e2e/selectEntryRoute';
 
-describe('Detox entry routing', () => {
+describe('Test entry routing', () => {
   it('keeps the storage probe as the default route', () => {
     expect(selectEntryRoute({})).toBe('storage');
   });

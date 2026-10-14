@@ -26,12 +26,16 @@ appendFileSync(
 );
 console.log(
   JSON.stringify({
-    // Debug and Release each build and execute on one VM. Fresh Speech samples consume three more VMs only after their predecessors pass.
+    // Independent Debug and Release VMs can overlap. Speech starts only after both pass, then uses three sequential fresh VMs.
     macJobs: 2 + IOS_SPEECH_SAMPLES.length,
-    maximumConcurrentMacJobs: 1,
+    maximumConcurrentMacJobs: 2,
     uniqueTestCases: actual.size,
     scheduledTestObservations:
       primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length,
+    // The two selectors run after the original Debug/Release cohorts; their reports never replace full observations.
+    focusedSelectionObservations: 2,
+    totalScheduledTestObservations:
+      primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length + 2,
     speechSamples: IOS_SPEECH_SAMPLES,
     builds: ['Release', 'Debug'],
     cohorts: definitions.map((value) => ({ name: value.name, profiles: value.profiles })),

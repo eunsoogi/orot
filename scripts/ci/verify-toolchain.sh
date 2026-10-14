@@ -7,16 +7,16 @@ expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
 expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
 expected_simulator_runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
 expected_simulator_runtime_id="${EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:-com.apple.CoreSimulator.SimRuntime.iOS-27-0}"
-expected_simulator_device_name="${EXPECTED_DETOX_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
-expected_simulator_device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
+expected_simulator_device_name="${EXPECTED_IOS_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
+expected_simulator_device_type_id="${EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
 expected_ruby="${EXPECTED_RUBY_VERSION:-4.0.7}"
 expected_cocoapods="${EXPECTED_COCOAPODS_VERSION:-1.17.0}"
 
 # Node reads the resolved Simulator targets through process.env when matching xcrun output.
 export EXPECTED_IOS_SIMULATOR_RUNTIME_NAME="$expected_simulator_runtime_name"
 export EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER="$expected_simulator_runtime_id"
-export EXPECTED_DETOX_SIMULATOR_DEVICE_NAME="$expected_simulator_device_name"
-export EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID="$expected_simulator_device_type_id"
+export EXPECTED_IOS_SIMULATOR_DEVICE_NAME="$expected_simulator_device_name"
+export EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID="$expected_simulator_device_type_id"
 
 fail_version() {
   printf 'Toolchain mismatch for %s: expected %s, got %s\n' "$1" "$2" "$3" >&2
@@ -109,8 +109,8 @@ const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
 const devices = data.devicetypes ?? [];
 const device = devices.find((entry) =>
-  entry.name === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_NAME &&
-  entry.identifier === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID
+  entry.name === process.env.EXPECTED_IOS_SIMULATOR_DEVICE_NAME &&
+  entry.identifier === process.env.EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID
 );
 process.stdout.write(
   device ? device.name + " (" + device.identifier + ")" : ""

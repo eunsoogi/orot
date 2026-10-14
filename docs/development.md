@@ -52,7 +52,7 @@ node scripts/ci/check-loc.mjs --all
 
 The repository policy is in [`scripts/ci/loc-policy.json`](../scripts/ci/loc-policy.json). It counts physical lines, including comments and blank lines: 250 passes and 251 fails. It includes maintained application and package source, tests, scripts, and executable configuration. Documentation, lockfiles, generated/vendor/build output, binary assets, and serialized Xcode project metadata have explicit exclusion reasons. Unknown changed file types and missing Git history fail the check.
 
-GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Branch protection requires it alongside `Maintained file inventory`, ten `Lint / <surface>` checks, `Format check`, the type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and five compatibility E2E leaves backed by complete iOS validation. Branch protection reads each job check directly rather than a workflow summary.
+GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Branch protection requires it alongside `Maintained file inventory`, ten `Lint / <surface>` checks, `Format check`, the type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and five domain checks backed by complete iOS validation. Branch protection reads each job check directly rather than a workflow summary.
 
 ## iOS 빌드
 
@@ -90,11 +90,15 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 
 iOS 선택 검증은 기존 E2E workflow의 `focus_profile=ios/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 성공하더라도 보호된 전체 검증을 충족하지 않습니다.
 
+자동 전체 실행도 Debug와 Release의 원래 사례가 모두 성공한 뒤 각각 통합 사례 하나와 UI 사례 하나를 정확히 선택해 추가 실행합니다. 선택 검증과 같은 `run-ios-focused-tests.sh`를 사용하고, 이미 검증한 제품과 부팅한 소유 Simulator를 재사용합니다. 원래 전체 관측 100개와 추가 선택 관측 2개를 별도로 보존하며, 추가 빌드·부팅·Mac 작업은 없습니다. Linux 집계는 두 선택의 정확한 identifier와 제품의 source·run·attempt·configuration을 확인합니다. 전체 실행이나 추가 선택 중 하나가 실패하면 필수 검증도 실패합니다. 자동 PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶입니다.
+
+Simulator 소유권은 각 검증 호출에서 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
+
 테스트의 Foundation Models 호출은 `OROT_TESTS`로 컴파일한 Simulator 제품에서만 mock으로 대체합니다. 정해진 원본 문자열·JSON·스트리밍 snapshot·오류를 SDK 호출 경계에 주입하고, 실제 JavaScript 직렬화·React Native 브리지·스키마 처리·응답 정규화·요청 취소와 앱 workflow를 검증합니다. 지정하지 않은 요청, 다른 요청에 속한 응답, 남은 응답은 실패입니다. 생성 결과의 출처 보존, 스트리밍 완료·취소·재작성 거부, 사용 불가·오류 처리, Calendar 분류·중복 없는 저장·근거가 연결된 질문과 RAG 연결을 확인합니다. RAG의 공개 Europe PMC 조회는 실제 네트워크를 사용하며 모델의 최종 문구는 고정된 테스트 응답입니다.
 
 일반 CI는 호스트 Apple Intelligence 지원·활성화·모델 다운로드나 CLI 약관 동의를 요구하지 않습니다. 결과에는 `modelExecution=mock`, `actualModel=not-run`을 남기며 실제 Apple 모델의 응답 품질이나 추론 실행을 검증했다고 해석하지 않습니다. 제품 빌드의 기본 경로는 실제 Apple SDK를 사용합니다. 빌드 후 앱에 연결된 기호를 검사하여 생산용 제품에는 mock 제어 endpoint가 없고 실제 `LanguageModelSession`이 연결되어 있으며, 테스트 제품에는 반대로 mock만 연결되어 있음을 확인합니다. 실행 인자나 환경 변수로 생산용 앱의 mock을 켤 수 없습니다.
 
-전체 iOS CI는 Debug 빌드·검증, production·Release 빌드·검증, 새 러너의 Speech 검증 3개로 총 5개 macOS 작업을 계획합니다. 첫 측정 그래프는 Debug → Release → Speech 1 → 2 → 3 순서로 실행하며, 실패한 선행 작업 뒤에는 새 Mac을 할당하지 않습니다. 전체·집중 실행은 저장소 단위 동시 실행 제한을 공유합니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. Debug와 Release는 빌드한 같은 VM에서 제품 무결성을 검증하므로 실행을 위한 중복 의존성 설치와 업로드·다운로드가 없습니다. Release 제품만 새 Speech 러너로 전달합니다. 생산용 앱과 OAuth 검증의 별도 flags·DerivedData 경로는 유지합니다. 기존 작업 상한과 개별 인식·생성·UI 대기 제한은 늘리지 않습니다. 성공 경로의 총 시간은 실제 측정으로 평가하며, 작업 수 감소나 조기 실패만으로 성능·모델 지원 문제가 해결됐다고 판단하지 않습니다.
+전체 iOS CI는 Debug 빌드·검증, production·Release 빌드·검증, 새 러너의 Speech 검증 3개로 총 5개 macOS 작업을 계획합니다. Debug와 Release는 독립 VM에서 동시에 실행할 수 있으며 최대 동시 Mac은 2개입니다. 두 작업이 모두 성공해야 Speech 1 → 2 → 3을 차례로 할당합니다. 각 작업은 첫 실패에서 다음 사례를 중단하고 진단을 보존합니다. 한 작업이 실패해도 이미 시작한 독립 작업의 비용은 발생할 수 있으며, 그 뒤의 Speech 작업은 할당하지 않습니다. 전체·집중 실행은 저장소 단위 동시 실행 제한을 공유합니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. Debug와 Release는 빌드한 같은 VM에서 제품 무결성을 검증하므로 실행을 위한 중복 의존성 설치와 업로드·다운로드가 없습니다. Release 제품만 새 Speech 러너로 전달합니다. 생산용 앱과 OAuth 검증의 별도 flags·DerivedData 경로는 유지합니다. 기존 작업 상한과 개별 인식·생성·UI 대기 제한은 늘리지 않습니다. 성공 경로의 총 시간은 실제 측정으로 평가하며, 작업 수 감소나 조기 실패만으로 성능·모델 지원 문제가 해결됐다고 판단하지 않습니다.
 
 Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
 
@@ -110,7 +114,7 @@ cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 �
 
 ## 초안 PR과 집중 검증
 
-초안 PR은 정적 검사와 단위 테스트를 자동으로 실행하며, 전체 iOS 실행은 관리자 승인 전까지 대기합니다. 승인 거절·미승인·취소·미실행을 성공으로 처리하지 않습니다. 승인 후 실제 전체 검증이 성공해야 초안의 실행 보류 조건을 해제할 수 있으며, 최종 검증 전에는 PR을 초안으로 유지합니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 기존 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에 유지되며, 이름의 Detox 표기는 호환 목적이고 실행기는 XCTest/XCUITest입니다.
+초안 PR은 정적 검사와 단위 테스트를 자동으로 실행하며, 전체 iOS 실행은 관리자 승인 전까지 대기합니다. 승인 거절·미승인·취소·미실행을 성공으로 처리하지 않습니다. 승인 후 실제 전체 검증이 성공해야 초안의 실행 보류 조건을 해제할 수 있으며, 최종 검증 전에는 PR을 초안으로 유지합니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에서 관리합니다. iOS 상태는 `iOS validation /` 아래의 Release UI and storage, Stateful data, Provider and capability, Speech transcription, Visit questions 다섯 개이며, 모두 동일한 전체 검증 결과를 요구합니다. 상태 이름을 바꿀 때는 실제 생성된 이름과 저장소 보호 설정의 22개 필수 검사를 함께 확인합니다.
 
 현재 후보 브랜치에서 원래 iOS 사례 하나를 선택하려면 정확한 Swift 파일과 XCTest identifier를 지정합니다. PR 번호·저장소·열린 상태·base와 현재 head를 검증한 뒤 제품을 준비하고, 그 제품의 무결성을 확인한 consumer만 실행합니다.
 

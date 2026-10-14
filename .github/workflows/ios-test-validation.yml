@@ -45,7 +45,8 @@ jobs:
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
   release_execution:
     name: Production and General Release validation
-    needs: [plan, debug_execution]
+    # Independent products use separate VMs. A failed sibling prevents Speech allocation but keeps its first-attempt diagnostics.
+    needs: plan
     uses: ./.github/workflows/ios-test-build-and-execute.yml
     with:
       cohort: release
@@ -55,7 +56,7 @@ jobs:
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_minutes) }}
   speech_execution:
     name: Authentic Korean Speech and UI validation
-    needs: [plan, release_execution]
+    needs: [plan, debug_execution, release_execution]
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
       cohort: speech
@@ -139,3 +140,15 @@ jobs:
           node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-second/speech-integration/attachments artifacts/ios-reports/speech-second-accuracy.json
           node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech-third/results.json artifacts/ios-reports/speech-third-verified.json third
           node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-third/speech-integration/attachments artifacts/ios-reports/speech-third-accuracy.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/focused-debug
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-report-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/focused-release
+      - name: Require both separate exact integration and UI selection observations
+        run: |
+          node scripts/ci/ios-focused-results.mjs ios/provider-data apps/mobile/ios/OrotIntegrationTests/AppleModelIntegrationTests.swift OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures artifacts/ios-reports/focused-debug
+          node scripts/ci/ios-focused-results.mjs ios/fixtures apps/mobile/ios/OrotUITests/RootNavigationUITests.swift OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack artifacts/ios-reports/focused-release

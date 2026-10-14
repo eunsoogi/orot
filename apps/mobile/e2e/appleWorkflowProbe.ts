@@ -99,7 +99,7 @@ function preparedContext(): Extract<
 /** Calls shipping workflows and records native failures through the configured native call boundary. */
 export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   let onGenerate: (() => void) | undefined;
-  const native = new AppleFoundationModelsProvider({
+  const modelProvider = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
     generate(request, requestId) {
       const pending = appleFoundationModelsNativeBridge.generate(
@@ -110,7 +110,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
       return pending;
     },
   });
-  const availability = await native.getAvailability();
+  const availability = await modelProvider.getAvailability();
   progress('availability=' + availability.status);
   const diagnostics: unknown[] = [];
   if (availability.status !== 'available') {
@@ -124,10 +124,10 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   }
   let phase = 'calendar';
   const provider: LanguageModelProvider = {
-    kind: native.kind,
-    id: native.id,
-    displayName: native.displayName,
-    capabilities: native.capabilities,
+    kind: modelProvider.kind,
+    id: modelProvider.id,
+    displayName: modelProvider.displayName,
+    capabilities: modelProvider.capabilities,
     async generate(request, options) {
       const requestPhase = phase;
       // Keep dispatch distinct from completion when a bounded workflow aborts an outstanding synthetic request; timestamps are epoch milliseconds.
@@ -136,7 +136,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
         stage: 'requested',
         atMs: Date.now(),
       });
-      const pending = native.generate(request, options);
+      const pending = modelProvider.generate(request, options);
       const result = await pending;
       // All requests contain only synthetic fixtures, so exact diagnostics can be retained.
       diagnostics.push({ phase: requestPhase, result });

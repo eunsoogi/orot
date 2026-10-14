@@ -214,5 +214,5 @@ const styles = StyleSheet.create({
   actions: { gap: 12 },
 });
 
-// A separate AppRegistry entry lets Detox exercise the real screen without changing the app router.
+// A separate AppRegistry entry lets UI tests exercise the real screen without changing the app router.
 AppRegistry.registerComponent(appName, () => VisitQuestionsProbeEntry);

@@ -20,16 +20,7 @@ export const CHECK_KEYS = Object.freeze([
   'unit_tests',
   'policy_tests',
   'ios_build',
-  'detox_release',
-  'detox_openai',
-  'detox_transcription',
-  'detox_next_visit',
-]);
-export const DETOX_KEYS = Object.freeze([
-  'detox_release',
-  'detox_openai',
-  'detox_transcription',
-  'detox_next_visit',
+  'ios_tests',
 ]);
 const QUALITY_KEYS = Object.freeze([
   'javascript',
@@ -136,8 +127,4 @@ export function markAllQuality(selection) {
   selection.source_loc = true;
   selection.format_check = true;
   for (const key of QUALITY_KEYS) selection[key] = true;
-}
-
-export function markAllDetox(selection) {
-  for (const key of DETOX_KEYS) selection[key] = true;
 }

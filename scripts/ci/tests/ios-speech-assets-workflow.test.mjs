@@ -25,3 +25,32 @@ test('hosted Speech verifies actual assets before its first recognition without 
   assert.match(source, /artifacts\/ios-cohort\/results/);
   assert.doesNotMatch(source, /continue-on-error|test-iterations/);
 });
+
+test('Speech preparation diagnoses each public asset boundary without changing its deadline or swallowing failure', () => {
+  const source = readFileSync(
+    'apps/mobile/ios/OrotIntegrationTests/SpeechAssetPreparationTests.swift',
+    'utf8',
+  );
+  assert.equal(
+    (source.match(/SpeechTranscriptionDeadline\.run\(timeoutNanoseconds: 180_000_000_000\)/g) ?? [])
+      .length,
+    1,
+  );
+  for (const stage of [
+    'availability',
+    'speech-supported-locale',
+    'dictation-supported-locale',
+    'status-before',
+    'installation-request',
+    'download-and-install',
+    'status-after',
+    'compatible-formats',
+    'best-format',
+  ])
+    assert.ok(source.includes(`trace.measure("${stage}")`), stage);
+  assert.match(source, /selected-korean-assets-preparation-failure[\s\S]*throw error/);
+  assert.match(source, /XCTAssertEqual\(result\["statusAfter"\] as\? String, "installed"\)/);
+  assert.match(source, /XCTAssertEqual\(result\["bestFormatAvailable"\] as\? Bool, true\)/);
+  assert.match(source, /XCTAssertGreaterThan[\s\S]*compatibleFormatCount/);
+  assert.match(source, /XCTAssertEqual\(result\["inputAudioUsed"\] as\? Bool, false\)/);
+});

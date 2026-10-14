@@ -6,7 +6,6 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      ios_test_validation: { type: boolean, default: false }
       focus_pr_number: { type: string, default: '' }
       focus_profile: { type: string, default: '' }
       focus_scenario_file: { type: string, default: '' }
@@ -24,7 +23,7 @@ jobs:
     outputs:
       complete: ${{ steps.select.outputs.selection_complete }}
       deferred: ${{ steps.select.outputs.full_validation_deferred }}
-      run_ios: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.detox_release == 'true' || steps.select.outputs.detox_openai == 'true' || steps.select.outputs.detox_transcription == 'true' || steps.select.outputs.detox_next_visit == 'true' }}
+      run_ios: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true' }}
       focused: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
       diagnostic: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
@@ -69,8 +68,8 @@ jobs:
         if: needs.selection.outputs.run_ios == 'true'
         run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json
   required_statuses:
-    # Compatibility names preserve branch protection; execution contains no Detox runner.
-    name: Detox E2E profiles
+    # These five domain checks require the same complete current-head validation.
+    name: iOS validation
     needs: [selection, ios_validation]
     if: always()
     uses: ./.github/workflows/ios-required-statuses.yml
@@ -81,7 +80,7 @@ jobs:
   focused_scenario:
     name: Focused scenario
     needs: selection
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_test_validation != true && needs.selection.outputs.focused == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.selection.outputs.focused == 'true' }}
     uses: ./.github/workflows/ios-focused.yml
     with:
       pr_number: ${{ inputs.focus_pr_number }}

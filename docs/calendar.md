@@ -1,7 +1,6 @@
 # Calendar linking
 
-> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
-
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
 
 Calendar linking lets a user choose an upcoming event and confirm it as the
 next outpatient visit. Orot does not decide which events are medical visits.
@@ -52,17 +51,6 @@ use the app's Korean strings.
 
 ## Synthetic iOS Simulator check
 
-The dedicated Calendar Detox entry compiles a synthetic provider instead of
-EventKit. It supplies an unrelated meeting and a clinic-visit fixture, then
-checks that only the clinic visit is selected and confirmed, and that its
-Asia/Seoul time is displayed. This verifies the app selection and confirmation
-path without reading a real calendar; it does not verify the iOS permission
-prompt or the real EventKit provider.
+`CalendarSelectionUITests/testOnlyTheSelectedSyntheticEventIsConfirmedFromTheScheduleTab` runs in the `fixtures` profile's `calendar` group. The test-only `SyntheticCalendarTestModule` supplies an unrelated meeting and a clinic-visit fixture without calling EventKit. The test checks selection, explicit confirmation and the displayed Asia/Seoul time through the real Schedule route.
 
-Set `OROT_CALENDAR_DETOX_SIMULATOR_UDID` to the dedicated simulator's UUID, then
-run these commands from the repository root:
-
-```sh
-pnpm --filter @orot/mobile exec detox build --config-path e2e/calendar.detox.config.js --configuration ios.sim.release.calendar
-pnpm --filter @orot/mobile exec detox test --config-path e2e/calendar.detox.config.js --configuration ios.sim.release.calendar
-```
+This proves the app's behavior with synthetic events; it does not prove an iOS permission prompt or access to a real calendar. Use the development guide's fixture preparation and exact test-selection commands. Production builds exclude the synthetic bridge.

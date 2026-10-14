@@ -9,7 +9,7 @@ import { openLocalWorkflowCheckpointSaver } from '../src/agent/localCheckpointSa
 const checkpointNote = '환자 기록: café 🌱🩺';
 const config = createWorkflowCheckpointConfig(
   'visit-question',
-  'detox-thread-42',
+  'test-thread-42',
 );
 type ProbeStatus = 'ready' | 'running' | 'saved' | 'complete' | 'failure';
 

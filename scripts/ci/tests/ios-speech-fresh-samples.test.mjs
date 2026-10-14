@@ -43,10 +43,17 @@ test('later samples retain separate raw and compact artifacts and enter Linux co
     (step) => step.name === 'Execute every planned first attempt without compilation or retry',
   );
   assert.equal(execute.env.OROT_IOS_TEST_SAMPLE, '${{ inputs.sample }}');
-  for (const step of action.runs.steps.filter((step) =>
+  const uploads = action.runs.steps.filter((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
-  ))
+  );
+  const speechUploads = uploads.filter((step) => !step.with.name.startsWith('ios-focused-'));
+  assert.equal(speechUploads.length, 2, 'Speech retains its raw and compact result artifacts');
+  for (const step of speechUploads) {
+    assert.equal(step.if, 'always()');
     assert.ok(step.with.name.includes('inputs.sample'), step.name);
+  }
+  for (const step of uploads.filter((step) => step.with.name.startsWith('ios-focused-')))
+    assert.equal(step.if, "always() && inputs.cohort != 'speech'");
   const full = workflow('ios-test-validation.yml');
   const commands = full.jobs.completeness.steps.map((step) => step.run ?? '').join('\n');
   for (const sample of ['second', 'third']) {
@@ -70,9 +77,11 @@ test('actual Linux plan reports five Mac jobs and the three fresh Speech samples
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
     assert.equal(value.macJobs, 5);
-    assert.equal(value.maximumConcurrentMacJobs, 1);
+    assert.equal(value.maximumConcurrentMacJobs, 2);
     assert.equal(value.uniqueTestCases, 77);
     assert.equal(value.scheduledTestObservations, 100);
+    assert.equal(value.focusedSelectionObservations, 2);
+    assert.equal(value.totalScheduledTestObservations, 102);
     assert.deepEqual(value.speechSamples, ['first', 'second', 'third']);
     assert.match(readFileSync(output, 'utf8'), /speech_minutes=90/);
   } finally {

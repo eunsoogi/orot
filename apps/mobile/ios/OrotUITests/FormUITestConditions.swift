@@ -41,7 +41,12 @@ enum FormUITestConditions {
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(gesture.start)
             let end = origin.withOffset(gesture.end)
-            start.press(forDuration: 0.05, thenDragTo: end)
+            // Default-speed short drags can move a tall row beyond the opposite edge. Use slow movement only
+            // once the target intersects the viewport; keep fast travel, containment, hit testing and the gesture budget.
+            let velocity: XCUIGestureVelocity = targetFrame.map { geometry.viewport.intersects($0) } == true ? .slow : .default
+            XCTContext.runActivity(named: "Measured form scroll \(attempt + 1): \(lastObservation)") { _ in
+                start.press(forDuration: 0.05, thenDragTo: end, withVelocity: velocity, thenHoldForDuration: 0)
+            }
         }
         XCTFail("Control did not enter the measured form viewport: \(lastObservation)")
     }

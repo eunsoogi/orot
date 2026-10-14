@@ -104,14 +104,14 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     {
         let marker = UITestConditions.element(app, "navigation-test-observation")
         let text = snapshot ?? (marker.exists ? UITestConditions.text(marker) : "")
-        let native = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
+        let authorization = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
         // Bridge snapshots can lag. Keep their timestamp separate from the captured tap geometry, in UIKit points.
         let observation: [String: Any] = [
             "stage": stage, "atMs": Date().timeIntervalSince1970 * 1000,
             "applicationFrame": rectObservation(applicationFrame ?? app.frame), "dismissRegionFrameBeforeTouch": rectObservation(frame),
             "tapPointInApplication": ["x": point.dx, "y": point.dy],
-            "authorizationSnapshotAtMs": native?["atMs"] ?? NSNull(), "observerID": native?["observerID"] ?? NSNull(),
-            "presentations": native?["presentations"] ?? NSNull(),
+            "authorizationSnapshotAtMs": authorization?["atMs"] ?? NSNull(), "observerID": authorization?["observerID"] ?? NSNull(),
+            "presentations": authorization?["presentations"] ?? NSNull(),
         ]
         if let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8) {
             // Emit two compact stdout records alongside attachments; runner capture must be observed separately.

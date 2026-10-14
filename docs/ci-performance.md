@@ -1,4 +1,24 @@
-# Detox CI performance
+# CI performance measurements
+
+Current execution procedures are in [development.md](development.md), and replacement coverage is mapped in [ios-validation.md](ios-validation.md). Each measurement below belongs to its stated revision and workload. Historical Detox commands and workflow names remain as evidence of those runs. A focused historical run or a smaller inventory does not establish a current speedup.
+
+## Integration candidate before cleanup and parallel producers
+
+[Run 38621746347](https://github.com/eunsoogi/orot/actions/runs/38621746347), attempt 1, built PR head `fdc89e1cc104dad5c9606d8a4f3423fe9cb88588` at merge checkout `9ec3f1ccc157ffde759ba5dce452e035e12a61a7`. It used the pinned Xcode 27 toolchain on macOS 27.0.1 arm64. Debug and Release used iOS 27 build 24A434; the fresh Speech VMs used iOS 26.2 build 23C54. Build and execution shared a VM for each configuration, and all Speech consumers verified the same Release artifact.
+
+| Mac job | Whole job | Owned boot | Cohort execution | Result |
+| --- | --- | --- | --- | --- |
+| Debug | 37m43s | 153.831s | 1,120.880s | 17 passed |
+| Release, including production and OAuth | 93m15s | 90.743s | 3,361.569s | 50 passed |
+| Speech first sample | 36m24s | 496.281s | 1,394.913s | 11 passed |
+| Speech second sample | 24m05s | 431.089s | 673.108s | Asset preparation failed; recognition and UI did not run |
+| Speech third sample | Not allocated | Not run | Not run | Failed prerequisite |
+
+The serial graph took 3h11m54s from the first Mac start to the last Mac completion. This is a failed-run measurement, not a full-success time. Release's build action took 1,689s, including separate production, default Keychain and OAuth obligations; its integration build helper took 612.000s. The first Speech preparation, integration and UI tasks took 445.559s, 243.175s and 706.171s. In the second sample the preparation helper took 666.092s and the test body failed after 227.317s against its unchanged 180-second asynchronous preparation deadline. Existing logs do not identify which asset API remained unfinished.
+
+Raw execution resource samples recorded swap ranges of 5.44 MiB for Debug, 0–3.81 MiB for Release, 4,012–8,421.06 MiB for Speech first and 4,751–7,812.88 MiB for Speech second. Valid process snapshots showed no compiler process during these execution stages. Three Release, one first-Speech and two second-Speech process observations were unavailable, not zero. Both successful and failed Speech samples had high swap, so that observation alone does not establish the failure cause. Samples are not continuous peaks; cumulative CPU time, whole-runner peak RSS, disk I/O, child-process time and total fixture bytes were not measured.
+
+The follow-up preserves all assertions, relaunches and fresh-install boundaries while reading repeated UI frames once per observation and taking one fresh `simctl list -j` inventory before each owned mutation. Per-command timings and per-API Speech preparation stages expose previously unattributed time. Independent Debug and Release VMs may overlap, with Speech still requiring both to succeed. The previous Debug duration gives a calculated maximum overlap of 37m43s if all other durations remain unchanged; it is not a measured speedup. A failed producer can leave its already-started sibling consuming time while preserving diagnostics. Final-candidate measurements and three successful fresh Speech samples remain outstanding.
 
 ## Historical cache fingerprint candidate: app-input scope
 

@@ -52,7 +52,7 @@ export async function prepareAutomaticProbe() {
   );
   const repository = await openLocalStorage();
   let providerCalls = 0;
-  let nativeResult: NativeSpeechTranscriptionResponse | null = null;
+  let speechResult: NativeSpeechTranscriptionResponse | null = null;
   const events: string[] = [];
   async function assertFixture(id: string) {
     if (
@@ -97,16 +97,16 @@ export async function prepareAutomaticProbe() {
       async transcribeRecording(request) {
         await assertFixture(request.recordingId);
         providerCalls += 1;
-        events.push('native-provider-start');
+        events.push('speech-provider-start');
         // Forward cancellation unchanged; native code still checks registered fixture integrity.
         const result =
           await appleOnDeviceSpeechTranscriptionProvider.transcribeRecording({
             ...request,
             syntheticFixture: true,
           });
-        if (result.ok) nativeResult = result.value;
+        if (result.ok) speechResult = result.value;
         events.push(
-          result.ok ? 'native-provider-complete' : 'native-provider-failed',
+          result.ok ? 'speech-provider-complete' : 'speech-provider-failed',
         );
         return result;
       },
@@ -212,7 +212,7 @@ export async function prepareAutomaticProbe() {
         ...persisted,
         refusal,
         providerCalls,
-        nativeResult,
+        speechResult,
         events: [...events],
         boundary:
           'synthetic-capture-and-source-save; real-screen-hook-apple-speech-sql',

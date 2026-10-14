@@ -25,7 +25,7 @@ function SafeAreaProbeEntry() {
   const largeTextEnabled = PixelRatio.getFontScale() >= 1.5;
 
   useEffect(() => {
-    // Read the native keyboard frame because Detox has no supported keyboard-frame matcher.
+    // Expose the UIKit keyboard frame so UI tests can measure actual viewport occlusion.
     const updateFrame = (event: {
       endCoordinates: { screenY: number; height: number };
     }) => {
@@ -67,7 +67,7 @@ function SafeAreaProbeEntry() {
             scale: formatNumber(PixelRatio.getFontScale()),
           })}
         </Text>
-        {/* Detox waits on an ID because the dynamic label matcher timed out on iOS. */}
+        {/* Keep a stable identifier while the measured keyboard label changes. */}
         <Text
           accessible
           accessibilityLabel={

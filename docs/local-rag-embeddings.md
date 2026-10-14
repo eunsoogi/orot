@@ -1,7 +1,6 @@
 # Local multilingual RAG embeddings
 
-> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
-
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
 
 The iOS app uses `intfloat/multilingual-e5-small` for on-device document and query vectors. The selected Hugging Face revision is pinned to `614241f622f53c4eeff9890bdc4f31cfecc418b3`; its ONNX model and SentencePiece tokenizer are downloaded on first use, checked against pinned byte counts and SHA-256 digests, and kept in the app's purgeable cache. The model produces 384-dimensional vectors. E5 document and query inputs use the `passage:` and `query:` prefixes, respectively.
 
@@ -36,13 +35,8 @@ The eight-item cancellation probe returned the cancellation result in 13 ms. A q
 
 These figures are one Simulator run, not a device-wide performance guarantee. The small synthetic fixture verifies Korean semantic retrieval for these five queries only. Physical-device measurements and Core ML/Neural Engine performance were not collected.
 
-## Reproducing the probe
+## Running the maintained checks
 
-From `apps/mobile`, set `OROT_ISSUE24_SIMULATOR_UDID` to a dedicated iOS Simulator UUID and `OROT_ISSUE24_DERIVED_DATA_PATH` to a writable DerivedData directory, then run:
+The `local-model` profile runs `LocalModelIntegrationTests` through `run-ios-local-model-tests.mjs`. Select the complete `all` group for focused execution because the fresh indexing and process-restart phases share persisted state. The development guide owns build, product verification and Simulator preparation commands.
 
-```sh
-pnpm exec detox build --config-path e2e/local-e5-embedding.detox.config.js --configuration ios.sim.release.local-e5
-pnpm exec detox test --config-path e2e/local-e5-embedding.detox.config.js --configuration ios.sim.release.local-e5 --no-start
-```
-
-The E2E probe clears the app and Keychain before its first pass, downloads and verifies the model, measures retrieval and cancellation, then relaunches the app and checks that the SQLCipher-backed vectors remain searchable.
+The helper starts with an isolated app and Keychain, downloads and verifies the pinned model, records retrieval and cancellation measurements, then launches a new app process to inspect the saved SQLCipher vectors. The hybrid phases also retain the vector-only result, lexical-only result, filters, source locators and temporary-table cleanup checks. The historical measurements above remain evidence of their original run; a later test result must carry its own revision and runtime.

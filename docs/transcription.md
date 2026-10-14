@@ -1,7 +1,6 @@
 # On-device speech transcription
 
-> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
-
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
 
 `AppleOnDeviceSpeechProvider` implements the shared `TranscriptionProvider`
 contract for Korean audio. It returns transcript text with start and end times
@@ -109,46 +108,17 @@ engine/runtime provenance, stale-artifact count, and the segment's audio range.
 Playback uses the recording UUID and requested range through the native player,
 which seeks in the local recording and stops at the range end.
 
-## Simulator probe
+## Simulator integration and UI checks
 
-The isolated Detox entry point calls the real TypeScript provider and native
-`SpeechTranscriptionModule`. It bundles three short, synthetic Korean AAC
-samples generated with the macOS Yuna voice. The expected text records the
-spoken input; it is not an Apple transcript. The fixture includes the encoded
-audio, duration, and SHA-256 for each sample.
+The `speech` profile calls the real `SpeechTranscriptionModule` with three short synthetic Korean AAC samples generated with the macOS Yuna voice. The expected text records the spoken input; it is not an Apple transcript. Each fixture retains encoded audio, duration and SHA-256. The profile runs on the pinned iOS 26.2 runtime described in the development guide.
 
-From `apps/mobile`, set a fresh dedicated Simulator UDID and a separate
-DerivedData directory, then run:
+A separate `SpeechAssetPreparationTests` case installs the selected Korean model assets without recognizing a fixture. `SpeechIntegrationTests` then records the actual engine, recognized text, segment ranges, input hashes and case-level metrics, and checks cancellation and failure handling. An unavailable engine, missing result or skipped case cannot satisfy the complete cohort.
 
-```sh
-export OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID=<dedicated-simulator-udid>
-export OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH=ios/build-speech-transcription
-pnpm exec detox build --config-path ./e2e/transcription.detox.config.js --configuration ios.sim.release.transcription
-pnpm exec detox test --config-path ./e2e/transcription.detox.config.js --configuration ios.sim.release.transcription --artifacts-location ./e2e/artifacts/transcription
-```
+`SpeechJourneyUITests` proves that actual recognition reaches a saved recording and survives app relaunch. `AutomaticTranscriptionUITests` checks the screen's stop/save flow and reopening without another recognition call. `RecordingExportUITests` preserves the sharing cancellation, temporary-file cleanup and source-preservation checks. The `core` profile separately runs `TranscriptEvidenceUITests` for review, correction history, timed playback, stale derived evidence and deletion across relaunch.
 
-The test grants speech recognition permission on that Simulator for the legacy
-API and feeds the fixture files directly to the provider when the native module
-reports availability. It records the initial native availability, engine,
-installed-model state, actual recognized text, segment timestamps, input
-hashes, and case-level metrics. A supported result has the
-`SPEECH_TRANSCRIPTION_SIMULATOR_RESULT` log prefix. An explicit unsupported-
-language, unsupported-device, unavailable-model, denied or restricted
-permission, or unavailable-recognizer result uses
-`SPEECH_TRANSCRIPTION_SIMULATOR_UNSUPPORTED`. A module-registration or
-recognition error without an explicit unsupported state fails the probe.
+These checks use synthetic audio and isolated app data. They do not prove microphone acoustics or physical-device behavior. Build, owned-Simulator setup, execution and cleanup commands belong in [development.md](development.md); the exact case list is maintained in `scripts/ci/ios-test-inventory.mjs`.
 
-When the native run reports a measured result, the same Detox flow installs the
-first bundled synthetic clip as a test recording through a module compiled
-only with `OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST` for an iOS Simulator. It
-transcribes that recording through its saved UUID, checks persisted engine and
-range metadata, verifies that the native player reports a seek within 50 ms of
-the requested start, then corrects the text and checks both revision history
-and a stale derived artifact. Teardown removes the synthetic question, source
-record, transcript revisions, and audio file, including after a failed test
-assertion. The fixture and the narrowly scoped unverified-protection exception
-are test-only; this run does not exercise a live microphone recording or prove
-physical-device behavior.
+## Historical Simulator observations
 
 The initial iPhone 17e / iOS 27 Simulator probe at revision `a4295b9` returned `model_unavailable` for
 `dictation_transcriber` (`ko_KR`, `modelInstalled=true`): Korean Dictation was

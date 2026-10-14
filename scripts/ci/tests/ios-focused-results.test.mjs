@@ -19,6 +19,18 @@ const inputs = ['core', 'backup', 'local-model'].map((profile) => {
   ];
 });
 inputs.push(['ios/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/recordings']);
+inputs.push(
+  [
+    'ios/provider-data',
+    'apps/mobile/ios/OrotIntegrationTests/AppleModelIntegrationTests.swift',
+    'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
+  ],
+  [
+    'ios/fixtures',
+    'apps/mobile/ios/OrotUITests/RootNavigationUITests.swift',
+    'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
+  ],
+);
 
 // These fixtures prove Linux aggregation only, never integration runtime behavior.
 function fixture(input, mutate = () => {}, environment = context) {

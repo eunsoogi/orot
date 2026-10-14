@@ -172,7 +172,7 @@ export async function runLocalE5EmbeddingProbe(
       : null,
   ].filter((measurement): measurement is string => measurement !== null);
   if (missingMeasurements.length > 0) {
-    // Keep raw values in the visible error so Simulator-only gaps can be diagnosed from Detox.
+    // Keep raw values in the failure report so Simulator-only gaps can be diagnosed.
     throw new Error(
       `The Simulator is missing ${missingMeasurements.join(', ')}; progressEvents=${progressSteps.length}; runtime=${JSON.stringify(runtime)}.`,
     );

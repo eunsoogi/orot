@@ -18,11 +18,15 @@ function protectedLeaves(path, parents = [], inputs = {}) {
     assert.equal(job['runs-on'], 'ubuntu-24.04');
     assert.equal(job.if, 'always()');
     assert.equal(job['continue-on-error'], undefined);
-    return [names.join(' / ')];
+    // GitHub expands the single status job into five separately named checks.
+    // Preserve exact-name comparison after that expansion, including duplicate detection.
+    return (job.strategy?.matrix?.check ?? [null]).map((check) =>
+      names.join(' / ').replace(/\$\{\{ matrix\.check \}\}/g, check ?? ''),
+    );
   });
 }
 
-test('five Linux integration compatibility leaves retain the exact protected context names', () => {
+test('five Linux integration domain leaves retain the exact required context names', () => {
   const e2e = workflow('.github/workflows/e2e-test.yml');
   const required = e2e.jobs.required_statuses;
   const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [required.name]);

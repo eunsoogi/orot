@@ -1,11 +1,11 @@
-#if (OROT_CALENDAR_DETOX || OROT_TESTS) && targetEnvironment(simulator)
+#if OROT_TESTS && targetEnvironment(simulator)
     import Foundation
     import React
 
     /// Synthetic-only EventKit substitute for isolated calendar test entries.
-    /// It has no EventKit dependency and cannot inspect or modify system calendars.
-    @objc(SyntheticCalendarDetoxModule)
-    public final class SyntheticCalendarDetoxModule: RCTEventEmitter {
+    /// Only test builds register this bridge; fixture records never reach EventKit.
+    @objc(SyntheticCalendarTestModule)
+    public final class SyntheticCalendarTestModule: RCTEventEmitter {
         @objc override public static func requiresMainQueueSetup() -> Bool {
             false
         }

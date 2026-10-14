@@ -1,6 +1,6 @@
 import type { AppleNativeStreamPacket } from '@orot/provider-apple';
 import type { LanguageModelRequest } from '@orot/model-runtime';
-import { appleFoundationModelsNativeBridge as native } from '../src/providers/apple/nativeBridge';
+import { appleFoundationModelsNativeBridge as moduleBridge } from '../src/providers/apple/nativeBridge';
 import {
   appleFoundationModelsProbeBridge as bridge,
   withMockAppleModel,
@@ -121,16 +121,17 @@ export async function runAppleModelMockBridgeProbe() {
       [],
       async () => {
         check(
-          (await native.getAvailability()).status === status,
+          (await moduleBridge.getAvailability()).status === status,
           'Mock availability was not observed through the bridge',
         );
         check(
-          (await errorCode(native.generate(request, 'mock-unavailable'))) ===
-            'APPLE_MODEL_UNAVAILABLE',
+          (await errorCode(
+            moduleBridge.generate(request, 'mock-unavailable'),
+          )) === 'APPLE_MODEL_UNAVAILABLE',
           'Unavailable generation must fail before model dispatch',
         );
         const stream = [];
-        for await (const packet of native.stream(
+        for await (const packet of moduleBridge.stream(
           request,
           'mock-unavailable-stream',
         ))

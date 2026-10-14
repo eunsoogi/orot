@@ -48,5 +48,5 @@ export function selectTestRoute(settings: Record<string, unknown>): TestRoute {
   ) {
     return profile;
   }
-  throw new Error('Unsupported native test profile');
+  throw new Error('Unsupported iOS test profile');
 }

@@ -50,7 +50,7 @@ export async function runRagWorkflowProbe(
   let outcome: RagConversationOutcome | undefined;
   let failure: string | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const native = new AppleFoundationModelsProvider({
+  const modelProvider = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
     cancel(requestId) {
       sessionCancellations.push(requestId);
@@ -58,10 +58,10 @@ export async function runRagWorkflowProbe(
     },
   });
   const provider: LanguageModelProvider = {
-    kind: native.kind,
-    id: native.id,
-    displayName: native.displayName,
-    capabilities: native.capabilities,
+    kind: modelProvider.kind,
+    id: modelProvider.id,
+    displayName: modelProvider.displayName,
+    capabilities: modelProvider.capabilities,
     async generate(request, options) {
       onPhase('apple-generation');
       const callStarted = Date.now();
@@ -79,7 +79,7 @@ export async function runRagWorkflowProbe(
       };
       options?.signal?.addEventListener('abort', markAborted, { once: true });
       try {
-        const result = await native.generate(request, options);
+        const result = await modelProvider.generate(request, options);
         diagnostic.status = result.ok ? 'response' : 'provider-error';
         diagnostic.response = result;
         return result;
@@ -128,7 +128,7 @@ export async function runRagWorkflowProbe(
     await Promise.race([
       (async () => {
         onPhase('apple-availability');
-        availability = (await native.getAvailability()).status;
+        availability = (await modelProvider.getAvailability()).status;
         if (availability !== 'available' || controller.signal.aborted) {
           terminal = controller.signal.aborted
             ? 'cancelled'

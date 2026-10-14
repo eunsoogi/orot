@@ -59,7 +59,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
             try await Task.sleep(for: .milliseconds(50))
         }
         throw NSError(domain: "NavigationLayoutTests", code: 1,
-                      userInfo: [NSLocalizedDescriptionKey: "No visible native route: \(identifiers)"])
+                      userInfo: [NSLocalizedDescriptionKey: "No visible UIKit route: \(identifiers)"])
     }
 
     @MainActor
@@ -71,7 +71,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let label = children.first { $0.accessibilityIdentifier == identifier + "-UILabel" }
             ?? children.first { $0 is UILabel }
         guard let icon, let label else {
-            return XCTFail("Root tab \(identifier) has no native symbol or label")
+            return XCTFail("Root tab \(identifier) has no UIKit symbol or label")
         }
         let iconFrame = icon.convert(icon.bounds, to: button)
         let labelFrame = label.convert(label.bounds, to: button)

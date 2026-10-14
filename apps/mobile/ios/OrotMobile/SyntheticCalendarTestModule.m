@@ -1,10 +1,10 @@
 #import <TargetConditionals.h>
 
-#if (defined(OROT_CALENDAR_DETOX) || defined(OROT_TESTS)) && TARGET_OS_SIMULATOR
+#if defined(OROT_TESTS) && TARGET_OS_SIMULATOR
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
-@interface RCT_EXTERN_MODULE (SyntheticCalendarDetoxModule, RCTEventEmitter)
+@interface RCT_EXTERN_MODULE (SyntheticCalendarTestModule, RCTEventEmitter)
 RCT_EXTERN_METHOD(requestAccessAndListUpcomingEvents : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(findEvent : (NSString *)calendarEventIdentifier occurrenceDate : (

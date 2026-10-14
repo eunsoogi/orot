@@ -1,7 +1,6 @@
 # On-device agent memory
 
-> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
-
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
 
 Orot uses [Rememori 0.7.0](https://github.com/GiorgioDotcom/rememori), pinned exactly under the MIT license, for memory importance, temporal decay, reinforcement, recall, and forgetting. `@orot/agent-memory` wraps that engine with Orot's explicit write policy, provenance, idempotency, correction, and LangChain tools. The library has no automatic LLM extraction or consolidation; Orot does not recreate those capabilities.
 
@@ -38,4 +37,4 @@ Rememori 0.7.0 is an early pre-1.0 release and its upstream API has no update op
 
 The source integration and deterministic lifecycle probe do not satisfy the still-open initial-release end-to-end acceptance in #42. Keep the integrated iOS app flow and its provider, account, and Simulator limits distinct from unit/component and synthetic evidence.
 
-The root lint, typecheck, and unit-test commands include `@orot/agent-memory`. Root Detox build and test commands invoke the default app, memory, and graph configurations separately; the CI summary guard requires a non-empty successful Jest result for each run.
+The root lint, typecheck, and unit-test commands include `@orot/agent-memory`. The `core` profile runs `HermesDomainIntegrationTests` against the real Hermes and SQLCipher boundaries, and `PersistenceUITests/testRemovedMemoryAndHybridEvidenceDoNotReturnAfterRelaunch` checks deletion after a new app process. These tests retain synthetic text and deterministic embedding fixtures; they do not prove provider inference or Korean semantic quality. Follow the development guide for preparation and execution.

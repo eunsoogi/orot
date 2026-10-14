@@ -162,6 +162,6 @@ export async function runDomainTestOperation(
       await runAgentMemoryProbe('verify-deletion', memoryIdentifier);
       return { absentFromMemoryAndSearch: true, networkDisabled: true };
     default:
-      throw new Error('Unknown native domain operation: ' + operation);
+      throw new Error('Unknown iOS test operation: ' + operation);
   }
 }

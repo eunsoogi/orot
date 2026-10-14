@@ -1,10 +1,10 @@
 import { NativeModules } from 'react-native';
-import type { NativeBackupProbeModule } from './backupProbeTypes';
+import type { BackupProbeModule } from './backupProbeTypes';
 
 // The probe bridge exists only in the dedicated Simulator build configuration.
-export function requireNativeBackupProbe(): NativeBackupProbeModule {
+export function requireBackupProbeBridge(): BackupProbeModule {
   const module = NativeModules.BackupMigrationModule as
-    NativeBackupProbeModule | undefined;
+    BackupProbeModule | undefined;
   if (
     !module?.armPostUpdateReadbackFailureForProbe ||
     !module.postUpdateReadbackFailureWasTriggeredForProbe ||

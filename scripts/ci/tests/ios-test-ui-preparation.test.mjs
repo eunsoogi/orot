@@ -44,8 +44,7 @@ fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
 if(name==='xcodebuild'){if(${hostFailure})process.exit(65);fs.mkdirSync(args[args.indexOf('-resultBundlePath')+1]);process.exit(0);}
 if(name==='open'){if(args.length!==2||args[0]!=='-a'||args[1]!==${JSON.stringify(join(developer, '../Applications/DeviceHub.app'))})throw new Error('Unsupported GUI launch argument');process.exit(${guiFailure ? 1 : 0});}
 if(args[0]==='xcresulttool')console.log(${JSON.stringify(JSON.stringify(report))});
-else if(args[1]==='list'&&args[2]==='runtimes')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));
-else if(args[1]==='list'&&args[2]==='devices')console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
+else if(args[1]==='list'&&args[2]==='-j')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
 else if(args[1]==='io'){if(${screenshotFailure})process.exit(1);fs.writeFileSync(args.at(-1),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64'));}
 else console.log('synthetic fixture diagnostic');
 `;

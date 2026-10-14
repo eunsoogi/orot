@@ -37,8 +37,7 @@ if(args[0]==='xcresulttool'){
  const result=args[args.indexOf('--path')+1];const identifier=fs.readFileSync(path.join(result,'identifier'),'utf8');
  console.log(JSON.stringify({testNodes:[{nodeType:'UI test bundle',name:'OrotUITests',children:[{nodeType:'Test Case',nodeIdentifier:identifier.split('/').slice(1).join('/')+'()',result:'Passed'}]}]}));process.exit(0);
 }
-if(args[1]==='list'&&args[2]==='runtimes'){console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));process.exit(0);}
-if(args[1]==='list'&&args[2]==='devices'){console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));process.exit(0);}
+if(args[1]==='list'&&args[2]==='-j'){console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));process.exit(0);}
 if(args[1]==='get_app_container'){if(fs.existsSync(${JSON.stringify(installed)})){console.log('/synthetic/owned/Orot.app');process.exit(0);}console.error('domain=NSPOSIXErrorDomain, code=2');process.exit(2);}
 if(args[1]==='install')fs.writeFileSync(${JSON.stringify(installed)},'installed');
 if(args[1]==='uninstall'&&!${cleanupFailure})fs.rmSync(${JSON.stringify(installed)});

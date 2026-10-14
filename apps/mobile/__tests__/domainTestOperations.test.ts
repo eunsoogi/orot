@@ -30,7 +30,7 @@ test('routes encrypted storage and deletion operations to their existing asserti
     (runAgentMemoryProbe as jest.Mock).mock.calls.map(call => call[0]),
   ).toEqual(['fresh', 'delete', 'tombstone-restart', 'verify-deletion']);
 });
-test('does not turn a failed domain assertion into a successful native report', async () => {
+test('does not turn a failed domain assertion into a successful test report', async () => {
   (runStorageProbe as jest.Mock).mockRejectedValueOnce(
     new Error('wrong key was accepted'),
   );
@@ -38,6 +38,6 @@ test('does not turn a failed domain assertion into a successful native report', 
     'wrong key was accepted',
   );
   await expect(runDomainTestOperation('unknown-operation', {})).rejects.toThrow(
-    'Unknown native domain operation',
+    'Unknown iOS test operation',
   );
 });

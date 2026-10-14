@@ -27,7 +27,7 @@ struct SpeechFixture: Decodable {
         let item = try XCTUnwrap(fixture.cases.first { $0.id == id })
         let bytes = try XCTUnwrap(Data(base64Encoded: item.audio.base64))
         let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-        XCTAssertEqual(digest, item.audio.sha256, "The native test must use the existing Korean fixture")
+        XCTAssertEqual(digest, item.audio.sha256, "The Speech integration test must use the existing Korean fixture")
         return item
     }
 }

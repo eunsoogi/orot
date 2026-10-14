@@ -7,7 +7,7 @@ final class TestOperationBrokerTests: OrotFailFastTestCase {
         let broker = TestOperationBroker()
         broker.next { value in
             guard let command = value as? [String: Any], let identifier = command["id"] as? String else {
-                return XCTFail("Missing native command identity")
+                return XCTFail("Missing test command identity")
             }
             XCTAssertEqual(command["operation"] as? String, "synthetic-command")
             broker.finish(identifier, result: .success(["completed": true]))

@@ -50,11 +50,11 @@ pnpm format:check
 
 CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물로 분류합니다. 같은 경로 아래의 다른 확장자는 파일 형식에 따라 검사되거나 미지원 파일로 실패합니다.
 
-`Code Quality`(`code-quality.yml`), `Unit Test`(`unit-test.yml`), `Policy Check`(`policy-check.yml`), `E2E Test`(`e2e-test.yml`)는 `main` 대상 pull request, `main` push, 수동 실행 조건을 사용하는 독립 workflow입니다. 품질·단위·정책 check는 직접 실행하고 E2E는 네이티브 재사용 workflow를 호출합니다. 기존 보호 context의 정확한 이름과 의미를 유지합니다. `Code Quality`는 `Maintained file inventory`, 열 개의 `Lint / <surface>` checks, `Source LOC policy`, `Format check`를 각각 실행합니다. 각 lint leaf는 전체 인벤토리를 검증한 뒤 한 표면의 파일만 lint하며, 현재 파일이 없는 설정 표면도 인벤토리 검증을 거쳐 독립된 no-op check 이름을 유지합니다. Source LOC leaf는 canonical 250줄 검사기를 pull request의 target base와 main push 직전 SHA로 실행하고, Code Quality 수동 실행에서는 전체 추적 파일을 검사합니다.
+`Code Quality`(`code-quality.yml`), `Unit Test`(`unit-test.yml`), `Policy Check`(`policy-check.yml`), `E2E Test`(`e2e-test.yml`)는 `main` 대상 pull request, `main` push, 수동 실행 조건을 사용하는 독립 workflow입니다. 품질·단위·정책 check는 직접 실행하고 E2E는 iOS 재사용 workflow를 호출합니다. 필수 검사 이름은 release readiness 목록과 저장소 보호 설정에서 함께 관리합니다. `Code Quality`는 `Maintained file inventory`, 열 개의 `Lint / <surface>` checks, `Source LOC policy`, `Format check`를 각각 실행합니다. 각 lint leaf는 전체 인벤토리를 검증한 뒤 한 표면의 파일만 lint하며, 현재 파일이 없는 설정 표면도 인벤토리 검증을 거쳐 독립된 no-op check 이름을 유지합니다. Source LOC leaf는 canonical 250줄 검사기를 pull request의 target base와 main push 직전 SHA로 실행하고, Code Quality 수동 실행에서는 전체 추적 파일을 검사합니다.
 
-`Unit Test`는 `TypeScript typecheck`와 `Unit and component tests`를 실행하고, `Policy Check`는 CI·release·quality 정책 테스트를 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다. Xcode와 Simulator가 필요한 Debug 빌드·실행, production 검증을 포함한 Release 빌드·실행, 새 러너의 Speech 표본 3개까지 총 5개 작업만 Mac을 사용합니다. 각 후속 작업은 앞선 실제 검증이 성공해야 시작하며, 세 Speech 표본 모두 전체 결과 집계에 필요합니다. `iOS Simulator Build`는 Linux에서 완료된 production·기본 Keychain·OAuth 결과를 검증하고, 5개 기존 E2E 호환 leaf도 Linux에서 전체 현재-head 네이티브 결과를 요구합니다. 원래 정확한 identifier 검증, 첫 실패 보존, artifact 업로드와 소유 Simulator 정리는 유지합니다.
+`Unit Test`는 `TypeScript typecheck`와 `Unit and component tests`를 실행하고, `Policy Check`는 CI·release·quality 정책 테스트를 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다. Xcode와 Simulator가 필요한 Debug 빌드·실행, production 검증을 포함한 Release 빌드·실행, 새 러너의 Speech 표본 3개까지 총 5개 작업만 Mac을 사용합니다. Debug와 Release는 독립 VM에서 동시에 실행할 수 있고 최대 동시 Mac은 2개입니다. 두 작업이 모두 성공하면 새 Speech 표본 3개를 차례로 실행하며, 세 표본 모두 전체 결과 집계에 필요합니다. 실패 시 이미 시작한 독립 작업의 비용은 남을 수 있지만 후속 Speech는 할당하지 않습니다. `iOS Simulator Build`는 Linux에서 완료된 production·기본 Keychain·OAuth 결과를 검증하고, 다섯 iOS 도메인 상태도 Linux에서 현재 head의 전체 결과를 요구합니다. Debug와 Release는 원래 전체 사례가 성공한 뒤 정확히 선택한 통합·UI 사례를 각각 하나 더 실행하며, 기존 제품과 Simulator를 재사용합니다. 이 두 결과는 원래 100개 관측과 별도로 검증합니다. 원래 정확한 identifier 검증, 첫 실패 보존, artifact 업로드와 소유 Simulator 정리는 유지합니다.
 
-Branch protection과 release readiness가 사용하는 실제 check 이름은 `scripts/release/ci-required-jobs.mjs`의 `REQUIRED_CI_JOBS` 목록에 고정되어 있습니다. 주요 경로는 `Maintained file inventory`, `Lint / JavaScript|TypeScript|Swift|Objective-C|Shell|Ruby|YAML|JSON|XML|Properties`, `Source LOC policy`, `Format check`, 세 개의 typecheck/test leaf, `iOS Simulator Build`, 두 Release shard leaf, 그리고 OpenAI·Speech·Next Visit의 각 E2E leaf입니다. 이 목록의 새 check가 hosted CI에서 관측된 뒤 부모가 branch protection을 마이그레이션합니다.
+Branch protection과 release readiness가 사용하는 실제 check 이름은 `scripts/release/ci-required-jobs.mjs`의 `REQUIRED_CI_JOBS` 목록에 고정되어 있습니다. 주요 경로는 `Maintained file inventory`, `Lint / JavaScript|TypeScript|Swift|Objective-C|Shell|Ruby|YAML|JSON|XML|Properties`, `Source LOC policy`, `Format check`, 세 개의 typecheck/test leaf, `iOS Simulator Build`, `iOS validation /` 아래의 Release UI and storage, Stateful data, Provider and capability, Speech transcription, Visit questions입니다. 새 이름이 hosted CI에 실제로 나타난 뒤 저장소 관리자가 보호 설정을 변경하고, 나머지 17개를 포함한 22개 필수 검사가 정확히 일치하는지 확인합니다.
 
 ## 변경 경로별 CI 실행
 
@@ -63,14 +63,14 @@ Branch protection과 release readiness가 사용하는 실제 check 이름은 `s
 | 변경 경로 | 선택하는 검사 |
 | --- | --- |
 | Markdown과 `AGENTS.md` | CI 정책 회귀 검사. Markdown은 품질 포매터 대상이 아니며 앱 빌드와 E2E는 실행하지 않습니다. |
-| 저장소의 앱 밖 래스터 이미지 | 코드 검사가 필요하지 않아 필수 leaf를 실행하지 않습니다. 앱 번들 이미지와 E2E fixture 이미지는 관련 iOS 빌드 또는 해당 E2E 프로필을 선택합니다. |
-| 앱 소스와 공유 `packages/*` | 관련 언어 lint, inventory, LOC, format, typecheck, unit tests, iOS 빌드 및 E2E 프로필. 공유 패키지 변경은 모든 E2E 프로필을 선택합니다. |
-| `apps/mobile/e2e/` 파일 | 해당 파일의 언어 lint, LOC, format, CI 정책 회귀 검사와 추론한 E2E 프로필. 앱 단위 테스트에서 직접 사용하는 E2E helper와 fixture는 `Unit Test`도 선택합니다. 공유 E2E fixture 또는 알 수 없는 시나리오 지원 파일은 모든 프로필을 선택합니다. |
+| 저장소의 앱 밖 래스터 이미지 | 코드 검사가 필요하지 않아 필수 leaf를 실행하지 않습니다. 앱 번들 이미지와 E2E fixture 이미지는 전체 iOS 검증을 선택하며, 앱 번들 이미지는 iOS 빌드도 선택합니다. |
+| 앱 소스와 공유 `packages/*` | 관련 언어 lint, inventory, LOC, format, typecheck, unit tests, iOS 빌드 및 전체 iOS 검증. |
+| `apps/mobile/e2e/` 파일 | 해당 파일의 언어 lint, LOC, format, CI 정책 회귀 검사와 전체 iOS 검증. Jest와 Metro가 이 지원 코드를 함께 사용하므로 새로 추가되거나 간접적으로 참조되는 파일까지 `Unit Test`를 선택합니다. TypeScript 입력은 타입 검사도 선택합니다. |
 | 잠금 파일, workspace 또는 native 의존성 | 모든 필수 검사. |
 | `.github/actions/`, `scripts/ci/`, 알 수 없는 GitHub 설정 또는 미지원 경로 | 모든 필수 검사. |
 | CI workflow 파일 | 변경된 workflow와 그 종속 check를 선택하며 정책 회귀 검사도 실행합니다. workflow 변경을 인식할 수 없으면 모든 검사를 선택합니다. |
 
-변경 경로 비교가 불완전하거나 알 수 없는 이벤트·파일을 만나면 모든 검사로 대체합니다. 수동 `workflow_dispatch`도 전체 검사를 선택합니다. Selector의 출력 기록을 할 수 없으면 selector를 소유한 필수 check가 실패합니다. E2E 경로 선택이 실패하면 iOS build와 각 필수 E2E leaf가 실패 상태를 남기며 선택되지 않은 check로 위장하지 않습니다.
+변경 경로 비교가 불완전하거나 알 수 없는 이벤트·파일을 만나면 모든 검사로 대체합니다. 수동 `workflow_dispatch`도 경로 선택은 전체 검사를 반환하지만, iOS workflow는 수동 진단을 자동 전체 실행과 구분하며 보호 상태의 통과 근거로 인정하지 않습니다. Selector의 출력 기록을 할 수 없으면 selector를 소유한 필수 check가 실패합니다. E2E 경로 선택이 실패하면 iOS build와 각 필수 E2E leaf가 실패 상태를 남기며 선택되지 않은 check로 위장하지 않습니다.
 
 E2E 경로가 iOS 검증을 선택하지 않으면 실제 빌드·실행 graph는 `skipped`로 표시됩니다. 필수 check 이름은 별도의 짧은 Linux 상태 job이 항상 기록하며, 경로 선택으로 실행을 생략한 경우 이 상태 job은 성공하고 요약에 프로필 실행이 생략됐다고 남깁니다. 따라서 상태 check의 성공만으로 E2E를 실행했다고 해석하지 말고, 프로필 실행 job의 상태와 테스트 단계·로그 및 결과 artifact를 확인하세요. 전체 iOS 검증은 자동 PR/push 실행에서 `ios-ci-admin-approval` 관리자 승인을 받은 뒤 Debug 빌드·실행, Release 빌드·실행, 새 러너의 Speech 검증 3개를 순차 실행합니다. 실패한 선행 조건으로 미실행된 작업은 성공으로 집계하지 않습니다. 수동·집중 진단은 전체 보호 상태를 충족하지 않습니다.
 

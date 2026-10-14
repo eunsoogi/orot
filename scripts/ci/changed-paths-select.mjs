@@ -2,7 +2,6 @@ import { basename, extname } from 'node:path';
 import {
   emptySelection,
   loadPolicies,
-  markAllDetox,
   markAllQuality,
   markQualityPath,
   selectEverything,
@@ -46,7 +45,7 @@ function mobileRuntime(selection) {
   selection.typecheck = true;
   selection.unit_tests = true;
   selection.ios_build = true;
-  markAllDetox(selection);
+  selection.ios_tests = true;
 }
 
 function normalizePath(value) {
@@ -92,7 +91,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
     if (IMAGES.has(extname(path).toLowerCase())) {
       if (mobileAsset(path)) {
         selection.ios_build = true;
-        markAllDetox(selection);
+        selection.ios_tests = true;
       } else if (lower.startsWith('apps/mobile/e2e/')) {
         selectE2EPath(path, selection);
       }
@@ -192,7 +191,6 @@ export function selectChecksForPaths(changedPaths, policies = null) {
     if (
       file.startsWith('tsconfig') ||
       file.startsWith('jest.config') ||
-      file === '.detoxrc.js' ||
       file === 'metro.config.js' ||
       file === 'babel.config.js'
     ) {
@@ -203,7 +201,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       selection.unit_tests = true;
       if (file !== 'jest.config.js') {
         selection.ios_build = true;
-        markAllDetox(selection);
+        selection.ios_tests = true;
       }
       continue;
     }

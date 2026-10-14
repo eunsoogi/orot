@@ -5,11 +5,35 @@ import { fileURLToPath } from 'node:url';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestCohort, verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
 
-function simctl(...args) {
-  return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8' }).trim();
+/** Preserve command failures and stdout while reporting each public simctl operation separately on stderr. */
+export function runIosSimulatorCommand(args, options = {}) {
+  const started = performance.now();
+  const operation = { operation: 'simctl', arguments: args, timestamp: new Date().toISOString() };
+  console.error(JSON.stringify({ ...operation, phase: 'started' }));
+  let failure;
+  try {
+    return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', ...options });
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    console.error(
+      JSON.stringify({
+        ...operation,
+        phase: 'finished',
+        timestamp: new Date().toISOString(),
+        elapsedMs: Math.round((performance.now() - started) * 1000) / 1000,
+        status: failure ? (failure.status ?? null) : 0,
+        signal: failure?.signal ?? null,
+        errorCode: failure?.code ?? null,
+      }),
+    );
+  }
 }
-function inventory(owner) {
-  const devices = JSON.parse(simctl('list', 'devices', '-j')).devices;
+function simctl(...args) {
+  return runIosSimulatorCommand(args).trim();
+}
+function inventory(owner, devices) {
   const device = devices[owner.runtime]?.find((item) => item.udid === owner.udid);
   if (!device || device.name !== owner.name || device.deviceTypeIdentifier !== owner.device)
     throw new Error('iOS simulator ownership mismatch');
@@ -18,12 +42,14 @@ function inventory(owner) {
 
 export function verifyIosTestSimulator(owner, profile) {
   const config = verifyIosSimulatorOwnerContract(owner, profile);
-  const runtime = JSON.parse(simctl('list', 'runtimes', '-j')).runtimes.find(
+  // One fresh public inventory contains both boundaries. Never cache it across mutations.
+  const snapshot = JSON.parse(simctl('list', '-j'));
+  const runtime = snapshot.runtimes.find(
     (item) => item.identifier === config.runtime && item.isAvailable,
   );
   if (!runtime || (config.runtimeBuild && runtime.buildversion !== config.runtimeBuild))
     throw new Error('Approved integration test runtime is unavailable');
-  return inventory(owner);
+  return inventory(owner, snapshot.devices);
 }
 
 const [command, profile, path] = process.argv.slice(2);

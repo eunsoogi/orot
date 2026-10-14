@@ -40,22 +40,26 @@ enum NavigationUITestConditions {
         // Select only observed navigation containers, retaining containment, active geometry and 44-point requirements.
         let bars = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["navigation-toolbar", "navigation-root-tabs-glass-backdrop"])).allElementsBoundByIndex
         for bar in bars where bar.exists && bar.isHittable {
+            let barFrame = bar.frame
             for control in query.allElementsBoundByIndex where control.exists {
                 let frame = control.frame
-                if frame.width >= 44, frame.height >= 44, bar.frame.insetBy(dx: -1, dy: -1).contains(frame) {
+                if frame.width >= 44, frame.height >= 44, barFrame.insetBy(dx: -1, dy: -1).contains(frame) {
                     return NavigationAction(control: control, toolbar: bar)
                 }
             }
         }
         throw NSError(domain: "NavigationUITests", code: 1,
-                      userInfo: [NSLocalizedDescriptionKey: "No active 44-point native control: \(identifier); \(app.debugDescription)"])
+                      userInfo: [NSLocalizedDescriptionKey: "No active 44-point navigation control: \(identifier); \(app.debugDescription)"])
     }
 
     static func tapNavigation(_ app: XCUIApplication, _ identifier: String) throws {
         let action = try navigationAction(app, identifier)
         // iOS can misreport the child's activation point. Send the touch through its measured active toolbar.
-        let offset = CGVector(dx: action.control.frame.midX - action.toolbar.frame.minX,
-                              dy: action.control.frame.midY - action.toolbar.frame.minY)
+        // Read each frame once for this gesture; later gestures must observe the elements again.
+        let controlFrame = action.control.frame
+        let toolbarFrame = action.toolbar.frame
+        let offset = CGVector(dx: controlFrame.midX - toolbarFrame.minX,
+                              dy: controlFrame.midY - toolbarFrame.minY)
         action.toolbar.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
     }
 
@@ -63,7 +67,9 @@ enum NavigationUITestConditions {
         let predicate = NSPredicate { _, _ in
             markers.contains { identifier in
                 let element = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-                return element.exists && !element.frame.isEmpty && element.frame.intersects(app.frame)
+                guard element.exists else { return false }
+                let frame = element.frame
+                return !frame.isEmpty && frame.intersects(app.frame)
             }
         }
         if predicate.evaluate(with: nil) {
@@ -82,15 +88,19 @@ enum NavigationUITestConditions {
         let scroll = UITestConditions.element(app, scrollID)
         XCTAssertTrue(UITestConditions.exists(scroll))
         let viewport = scroll.scrollViews.firstMatch.exists ? scroll.scrollViews.firstMatch : scroll
-        let content = viewport.children(matching: .any).allElementsBoundByIndex.filter {
-            !$0.frame.isEmpty && $0.frame.width >= viewport.frame.width * 0.5
+        // Rank one coherent observation rather than repeatedly querying accessibility during comparison.
+        let viewportFrame = viewport.frame
+        let content = viewport.children(matching: .any).allElementsBoundByIndex.map {
+            (element: $0, frame: $0.frame)
+        }.filter {
+            !$0.frame.isEmpty && $0.frame.width >= viewportFrame.width * 0.5
         }
         guard let anchor = content.max(by: { $0.frame.height < $1.frame.height }) else {
             throw NSError(domain: "NavigationUITests", code: 2,
                           userInfo: [NSLocalizedDescriptionKey: "Missing measured scroll content: \(scrollID)"])
         }
         // A short import page has real content smaller than its viewport. Its fully contained native frame already proves the bottom without an artificial scroll.
-        if anchor.frame.height <= viewport.frame.height, viewport.frame.insetBy(dx: -0.5, dy: -0.5).contains(anchor.frame) {
+        if anchor.frame.height <= viewportFrame.height, viewportFrame.insetBy(dx: -0.5, dy: -0.5).contains(anchor.frame) {
             return
         }
         var previous = anchor.frame
@@ -98,7 +108,7 @@ enum NavigationUITestConditions {
             let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
             let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
             start.press(forDuration: 0.05, thenDragTo: end)
-            let current = anchor.frame
+            let current = anchor.element.frame
             if abs(current.minY - previous.minY) < 0.5 {
                 return
             }

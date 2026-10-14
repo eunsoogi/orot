@@ -12,7 +12,7 @@ import {
   migrateDatabaseKeyForBackup,
 } from '../src/backup/nativeBackupMigration';
 import { getBackupProbeRecordingId } from './backupProbeConfig';
-import { requireNativeBackupProbe } from './backupProbeNative';
+import { requireBackupProbeBridge } from './backupProbeBridge';
 import { createBackupProbeTranscript } from './backupProbeRecording';
 import { verifyRecordingProbeState } from './backupProbePreparation';
 import type { BackupProbeResult } from './backupProbeTypes';
@@ -53,7 +53,7 @@ async function verifySnapshotRelationships(recordingId: string) {
   const transcripts =
     await repository.transcripts.listForRecording(recordingId);
   const file =
-    await requireNativeBackupProbe().inspectRecordingForBackupProbe(
+    await requireBackupProbeBridge().inspectRecordingForBackupProbe(
       recordingId,
     );
   verifyRecordingProbeState(file);
@@ -95,7 +95,7 @@ export async function seedSnapshotProbe(): Promise<BackupProbeResult> {
   try {
     logSnapshotProbeStage('seed-recording-inspect-start');
     const state =
-      await requireNativeBackupProbe().inspectRecordingForBackupProbe(
+      await requireBackupProbeBridge().inspectRecordingForBackupProbe(
         recording.id,
       );
     logSnapshotProbeStage('seed-recording-inspect-complete');

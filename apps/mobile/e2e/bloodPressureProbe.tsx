@@ -21,11 +21,12 @@ interface BloodPressureProbeModule extends HealthKitNativeModule {
   removeSyntheticFixture(): Promise<void>;
 }
 
-const native = NativeModules.HealthKitModule as BloodPressureProbeModule;
-const healthKit = createHealthKitClient(native, 'ios');
+const healthKitModule =
+  NativeModules.HealthKitModule as BloodPressureProbeModule;
+const healthKit = createHealthKitClient(healthKitModule, 'ios');
 const syntheticCursor = 'bloodPressure:bloodPressure:anchor-v1';
 
-// Detox routes through App so the probe covers the same explicit user action and results screen.
+// UI tests route through App so the probe covers the same explicit user action and results screen.
 export function BloodPressureProbe() {
   const [storageEvidence, setStorageEvidence] = useState('storage=notRead');
   const [syncEvidence, setSyncEvidence] = useState('sync=notRun');
@@ -76,7 +77,8 @@ export function BloodPressureProbe() {
 async function importSyntheticBloodPressure(): Promise<BloodPressureSyncResult> {
   let fixtureInstalled = false;
   try {
-    const fixture = await native.prepareSyntheticFixture('bloodPressure');
+    const fixture =
+      await healthKitModule.prepareSyntheticFixture('bloodPressure');
     fixtureInstalled = true;
     if (fixture.mode !== 'synthetic') {
       throw new Error('The Simulator fixture is not synthetic.');
@@ -95,7 +97,7 @@ async function importSyntheticBloodPressure(): Promise<BloodPressureSyncResult> 
     }
     return result;
   } finally {
-    if (fixtureInstalled) await native.removeSyntheticFixture();
+    if (fixtureInstalled) await healthKitModule.removeSyntheticFixture();
   }
 }
 

@@ -1,7 +1,7 @@
 import { selectTestRoute } from '../e2e/testRoute';
 
-describe('native test entry routing', () => {
-  it('isolates app-hosted native tests from all UI probes', () => {
+describe('iOS test entry routing', () => {
+  it('isolates app-hosted integration tests from all UI probes', () => {
     expect(selectTestRoute({ OROT_TEST_HOST: 'YES' })).toBe('test-host');
     expect(
       selectTestRoute({
@@ -25,7 +25,7 @@ describe('native test entry routing', () => {
 
   it('rejects an unknown profile instead of silently running core tests', () => {
     expect(() => selectTestRoute({ OROT_TEST_PROFILE: 'unknown' })).toThrow(
-      'Unsupported native test profile',
+      'Unsupported iOS test profile',
     );
   });
 

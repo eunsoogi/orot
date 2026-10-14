@@ -15,11 +15,16 @@ function assertApproval(job) {
   assert.equal(job['continue-on-error'], undefined);
 }
 
-test('automatic full validation approves Linux planning before Debug and all successor Mac allocation', () => {
+test('automatic full validation approves Linux planning before both independent producers and every Speech successor', () => {
   const full = read('ios-test-validation.yml');
   assertApproval(full.jobs.plan);
   assert.equal(full.jobs.debug_execution.needs, 'plan');
-  assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'debug_execution']);
+  assert.equal(full.jobs.release_execution.needs, 'plan');
+  assert.deepEqual(full.jobs.speech_execution.needs, [
+    'plan',
+    'debug_execution',
+    'release_execution',
+  ]);
   assert.equal(full.on.workflow_dispatch, undefined);
   assert.ok(Object.hasOwn(full.on, 'workflow_call'));
 });

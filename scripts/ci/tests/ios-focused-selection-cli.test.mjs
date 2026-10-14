@@ -110,6 +110,17 @@ test('actual checkout mismatch and malformed selectors emit no outputs or PR API
     });
 });
 
+test('automatic PR merge selection uses its actual checkout without impersonating the optional PR-head diagnostic', () =>
+  fixture(({ root, output, run }) => {
+    const result = run(['ios/core', file, identifier], { GITHUB_REF_NAME: '200/merge' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(existsSync(join(root, 'api-arguments.json')), false);
+    assert.match(readFileSync(output, 'utf8'), /expectedCount=1/);
+    const receipt = JSON.parse(result.stdout.replace('IOS_FOCUS_SELECTION ', ''));
+    assert.equal(receipt.sourceSha, sha);
+    assert.deepEqual(receipt.identifiers, [identifier]);
+  }));
+
 test('closed or foreign/stale PR results fail before products and workflow outputs', () => {
   for (const change of [
     { state: 'closed' },

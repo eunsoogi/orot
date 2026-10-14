@@ -13,8 +13,8 @@ import {
   type HealthKitProbeModule,
 } from './healthkitProbeAssertions';
 
-const native = NativeModules.HealthKitModule as HealthKitProbeModule;
-const healthKit = createHealthKitClient(native, 'ios');
+const healthKitModule = NativeModules.HealthKitModule as HealthKitProbeModule;
+const healthKit = createHealthKitClient(healthKitModule, 'ios');
 const range = {
   startDate: '2026-10-01T00:00:00.000Z',
   endDate: '2026-10-02T00:00:00.000Z',
@@ -51,13 +51,13 @@ export async function runHealthKitIntegrationProbe(): Promise<string> {
     const availability = await healthKit.getAvailability();
     const plans = new Map<HealthKitFeature, AuthorizationPlan>();
     for (const feature of healthKitFeatures) {
-      const plan = await native.inspectReadAuthorizationPlan(feature);
+      const plan = await healthKitModule.inspectReadAuthorizationPlan(feature);
       plans.set(feature, plan);
       assertAuthorizationPlan(feature, plan);
     }
-    await assertSampleTypeMappings(plans, native);
+    await assertSampleTypeMappings(plans, healthKitModule);
 
-    await native.prepareSyntheticFixture('steps');
+    await healthKitModule.prepareSyntheticFixture('steps');
     fixtureInstalled = true;
     const authorization = await healthKit.requestReadAuthorization('steps');
     if (
@@ -143,7 +143,7 @@ export async function runHealthKitIntegrationProbe(): Promise<string> {
     const medicationPlan = plans.get('medications');
     let medicationResult = 'unsupportedFeature';
     if (medicationPlan?.availability === 'available') {
-      await native.prepareSyntheticFixture('medications');
+      await healthKitModule.prepareSyntheticFixture('medications');
       const medications = await healthKit.queryMedicationDefinitions(0);
       if (
         medications.availability !== 'available' ||
@@ -205,7 +205,7 @@ export async function runHealthKitIntegrationProbe(): Promise<string> {
 syntheticSteps=passed; genericSampleChanges=passed; unrelatedSleep=passed; emptyQuery=completed; medications=${medicationResult}; medicationSampleChanges=passed; \
 sampleTypes=passed; readAuthorization=notObservable; realSamples=unverified`;
   } finally {
-    if (fixtureInstalled) await native.removeSyntheticFixture();
+    if (fixtureInstalled) await healthKitModule.removeSyntheticFixture();
   }
 }
 

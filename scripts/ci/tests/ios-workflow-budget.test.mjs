@@ -28,8 +28,12 @@ test('full integration graph uses five Mac jobs and stops dependent allocation a
   assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
-  assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'debug_execution']);
-  assert.deepEqual(full.jobs.speech_execution.needs, ['plan', 'release_execution']);
+  assert.equal(full.jobs.release_execution.needs, 'plan');
+  assert.deepEqual(full.jobs.speech_execution.needs, [
+    'plan',
+    'debug_execution',
+    'release_execution',
+  ]);
   assert.equal(full.jobs.debug_execution.needs, 'plan');
   assert.equal(full.jobs.release_execution.with.profile, 'core');
   assert.equal(full.jobs.debug_execution.with.profile, 'provider-data');
@@ -59,7 +63,13 @@ test('full integration graph uses five Mac jobs and stops dependent allocation a
     )
       maximum = Math.max(maximum, active.length);
   }
-  assert.equal(maximum, 1);
+  assert.equal(maximum, 2);
+  // No Speech VM can be allocated after either independent producer failed; neither producer discards the other's diagnostics.
+  for (const id of ['debug_execution', 'release_execution']) {
+    assert.ok(ancestors('speech_execution').includes(id));
+    assert.equal(full.jobs[id].if, undefined);
+  }
+  assert.equal(full.jobs.speech_execution.if, undefined);
 });
 
 test('manual focused diagnostics reuse one configuration and do not allocate Mac slots for selection/results', () => {

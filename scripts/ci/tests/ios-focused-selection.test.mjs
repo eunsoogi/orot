@@ -137,6 +137,7 @@ test('integration focus routing leaves full protected statuses failing without a
 
 test('focused consumer verifies exact products before its only boot and retains strict selected-case verification', () => {
   const source = readFileSync('.github/workflows/ios-focused.yml', 'utf8');
+  const execution = readFileSync('scripts/ci/run-ios-focused-tests.sh', 'utf8');
   const action = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
   assert.ok(
     source.indexOf('Verify product provenance and integrity before boot') <
@@ -146,10 +147,10 @@ test('focused consumer verifies exact products before its only boot and retains 
   assert.match(source, /needs: products/);
   assert.match(source, /ARCHIVE_DIGEST: \$\{\{ needs\.products\.outputs\.archive_digest \}\}/);
   assert.match(source, /MANIFEST_DIGEST: \$\{\{ needs\.products\.outputs\.manifest_digest \}\}/);
-  assert.match(source, /ios-test-results\.mjs "\$PROFILE"[^\n]*"\$TEST_ID"/);
-  assert.match(source, /run-ios-fixture-tests\.mjs "\$PROFILE"[^\n]*"\$TEST_ID"/);
-  assert.match(source, /run-ios-backup-tests\.mjs/);
-  assert.match(source, /run-ios-local-model-tests\.mjs/);
+  assert.match(source, /run-ios-focused-tests\.sh "\$PROFILE" "\$MODE" "\$TEST_ID"/);
+  assert.match(execution, /ios-test-results\.mjs "\$profile"[^\n]*"\$test_id"/);
+  assert.match(execution, /run-ios-fixture-tests\.mjs "\$@"/);
+  assert.match(execution, /backup \| local-model\)/);
   assert.doesNotMatch(
     source,
     /continue-on-error|build-ios-tests\.mjs|test-with-building|test-iterations/,

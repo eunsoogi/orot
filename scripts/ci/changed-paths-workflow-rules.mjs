@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { markAllDetox, markAllQuality } from './changed-paths-core.mjs';
+import { markAllQuality } from './changed-paths-core.mjs';
 
 // Workflow edits can change reusable-call wiring, so keep their dependent leaf checks explicit.
 export function selectWorkflowPath(path, selection) {
@@ -18,12 +18,7 @@ export function selectWorkflowPath(path, selection) {
       return true;
     case 'e2e-test.yml':
       selection.ios_build = true;
-      markAllDetox(selection);
-      return true;
-    case 'detox-e2e-profiles.yml':
-    case 'detox-e2e-profile.yml':
-    case 'detox-e2e-release.yml':
-      markAllDetox(selection);
+      selection.ios_tests = true;
       return true;
     default:
       return false;

@@ -28,13 +28,10 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   const docs = selectChecksForPaths(['docs/development.md']);
   assert.equal(docs.policy_tests, true);
   assert.equal(docs.ios_build, false);
-  assert.equal(docs.detox_release, false);
+  assert.equal(docs.ios_tests, false);
 
   const integration = selectChecksForPaths(['apps/mobile/ios/OrotMobile/AppDelegate.swift']);
-  assert.equal(integration.detox_release, true);
-  assert.equal(integration.detox_openai, true);
-  assert.equal(integration.detox_transcription, true);
-  assert.equal(integration.detox_next_visit, true);
+  assert.equal(integration.ios_tests, true);
 });
 
 test('unapproved drafts, focused and diagnostic runs cannot satisfy the full integration gate', () => {
@@ -55,7 +52,7 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full int
     e2e,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
   );
-  const status = read('.github/workflows/ios-profile-status.yml');
+  const status = read('.github/workflows/ios-required-statuses.yml');
   assert.match(status, /test "\$INVALID" = false/);
   assert.match(status, /test "\$RESULT" = success/);
   assert.match(status, /if: ['"]!inputs.selected['"]/);

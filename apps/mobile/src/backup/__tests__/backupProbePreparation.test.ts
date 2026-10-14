@@ -18,7 +18,7 @@ describe('legacy recording backup probe classification', () => {
 
   test.each([
     ['backup exclusion failure', 'backup-eligibility-not-applied'],
-    ['other native failure', 'other-native-error'],
+    ['other backup failure', 'other-backup-error'],
     ['unclassified preparation failure', 'recording-preparation-failed'],
   ] as const)(
     'rejects %s even when protection is unverified',

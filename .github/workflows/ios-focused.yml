@@ -186,21 +186,7 @@ jobs:
           OROT_IOS_TEST_SUITE: ${{ needs.products.outputs.fixture_suite }}
           TEST_ID: ${{ needs.products.outputs.identifier }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
-        run: |
-          if [[ "$MODE" == backup ]]; then
-            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/backup
-          elif [[ "$MODE" == local-model ]]; then
-            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/local-model
-          elif [[ "$MODE" == fixture ]]; then
-            if [[ -n "$TEST_ID" ]]; then
-              scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/fixtures "$TEST_ID"
-            else
-              scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/fixtures
-            fi
-          else
-            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/results.xcresult "$TEST_ID"
-            node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-focus/results.xcresult artifacts/ios-focus/results.json "$TEST_ID"
-          fi
+        run: bash scripts/ci/run-ios-focused-tests.sh "$PROFILE" "$MODE" "$TEST_ID" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus
       - name: Export integration evidence attachments
         if: always()
         run: |

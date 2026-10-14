@@ -1,5 +1,4 @@
-import { execFileSync } from 'node:child_process';
-import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { runIosSimulatorCommand, verifyIosTestSimulator } from './ios-test-simulator.mjs';
 
 const bundleIdentifier = 'com.orot.mobile';
 
@@ -24,7 +23,7 @@ export function removeIosTestFixtureContainer(profile, owner) {
   function simctl(...args) {
     if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
       throw new Error('Fixture cleanup requires its booted owned destination');
-    return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', timeout: 30000 });
+    return runIosSimulatorCommand(args, { timeout: 30000 });
   }
   const installed = () =>
     hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args));
@@ -57,7 +56,7 @@ export function resetIosTestFixtureContainer(
   function simctl(...args) {
     if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
       throw new Error('Fixture reset requires its booted owned destination');
-    return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8', timeout: 30000 }).trim();
+    return runIosSimulatorCommand(args, { timeout: 30000 }).trim();
   }
   if (hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args)))
     simctl('uninstall', owner.udid, bundleIdentifier);

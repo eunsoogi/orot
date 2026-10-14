@@ -86,16 +86,16 @@ export function ProviderSelectionProbe() {
           probeSyntheticAuthSessionCancellation()
             .then(verified =>
               setSummary(
-                `nativeAuthSessionCancellation=${verified ? 'verified' : 'failed'}; realAccount=unverified`,
+                `authSessionCancellation=${verified ? 'verified' : 'failed'}; realAccount=unverified`,
               ),
             )
             .catch(() =>
               setSummary(
-                'nativeAuthSessionCancellation=failed; realAccount=unverified',
+                'authSessionCancellation=failed; realAccount=unverified',
               ),
             )
         }
-        testID="provider-selection-native-auth-cancel"
+        testID="provider-selection-auth-session-cancel"
         title={t('probe.provider.sessionCancel')}
       />
       <Button
