@@ -54,7 +54,11 @@ if (
 ) {
   const inputMode =
     settings.OROT_TEST_NAVIGATION_INPUT_MODE ?? 'cancel-then-full';
-  if (inputMode !== 'cancel-then-full' && inputMode !== 'fresh-full-only') {
+  if (
+    inputMode !== 'cancel-then-full' &&
+    inputMode !== 'fresh-full-only' &&
+    inputMode !== 'cancel-then-full-1000'
+  ) {
     throw new Error('Unsupported local navigation input mode');
   }
   require('./navigationBoundaryFixture').registerNavigationBoundaryFixture(
