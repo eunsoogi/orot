@@ -82,8 +82,9 @@ OrotTestContextViews(UIView *_Nullable source, UIView *_Nullable destination,
         @"sourceReactStack" : OrotTestReactStack(source, destination, identifier),
         // Label the alternate projection explicitly; it never substitutes for a missing context
         // view.
-        @"loadedControllerSourceReactStack" : source && source == loadedSource
-            ? @{@"status" : @"same-as-context-source"}
+        @"loadedControllerSourceReactStack" :
+                    source && source == loadedSource && destination == loadedDestination
+            ? @{@"status" : @"same-as-context-endpoints"}
             : OrotTestReactStack(loadedSource, loadedDestination, identifier)
     };
 }
