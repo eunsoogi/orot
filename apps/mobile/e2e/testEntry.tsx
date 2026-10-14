@@ -57,7 +57,8 @@ if (
   if (
     inputMode !== 'cancel-then-full' &&
     inputMode !== 'fresh-full-only' &&
-    inputMode !== 'cancel-then-full-1000'
+    inputMode !== 'cancel-then-full-1000' &&
+    inputMode !== 'cancel-then-full-99pct'
   ) {
     throw new Error('Unsupported local navigation input mode');
   }

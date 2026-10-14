@@ -27,7 +27,11 @@ const UIKitBoundary = requireNativeComponent<ViewProps>(
 /** Local boundary fixtures omit business services, route guards and app reconciliation. */
 export function registerNavigationBoundaryFixture(
   boundary: 'uikit' | 'rns',
-  inputMode: 'cancel-then-full' | 'fresh-full-only' | 'cancel-then-full-1000',
+  inputMode:
+    | 'cancel-then-full'
+    | 'fresh-full-only'
+    | 'cancel-then-full-1000'
+    | 'cancel-then-full-99pct',
 ) {
   const Component = boundary === 'uikit' ? UIKitFixture : RNSFixture;
   function ObservedBoundaryFixture() {

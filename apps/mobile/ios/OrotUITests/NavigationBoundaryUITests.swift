@@ -20,16 +20,18 @@ final class NavigationBoundaryUITests: XCTestCase {
     @MainActor
     private func compare(_ boundary: String) throws {
         guard let inputMode = ProcessInfo.processInfo.environment["OROT_LOCAL_NAVIGATION_INPUT_MODE"],
-              ["cancel-then-full", "fresh-full-only", "cancel-then-full-1000"].contains(inputMode)
+              ["cancel-then-full", "fresh-full-only", "cancel-then-full-1000", "cancel-then-full-99pct"].contains(inputMode)
         else {
             throw NSError(domain: "NavigationBoundary", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "An explicit supported local input mode is required"])
         }
         // The case identifier alone cannot distinguish this diagnostic axis from the original two-gesture condition.
-        // This axis changes only the requested full velocity, not its distance, hold, or return deadline.
+        // Each labelled axis overrides either requested full velocity or travel distance; holds and deadline stay fixed.
         let fullVelocity = inputMode == "cancel-then-full-1000" ? XCUIGestureVelocity(rawValue: 1000) : .fast
+        let fullFraction: CGFloat = inputMode == "cancel-then-full-99pct" ? 0.98 : 0.85
         let input: [String: Any] = ["boundary": boundary, "inputMode": inputMode,
                                     "requestedFullVelocityRawValue": fullVelocity.rawValue,
+                                    "requestedFullTravelFraction": fullFraction,
                                     "plannedGestures": inputMode == "fresh-full-only" ? 1 : 2]
         let inputData = try JSONSerialization.data(withJSONObject: input)
         let inputAttachment = XCTAttachment(data: inputData, uniformTypeIdentifier: "public.json")
@@ -67,14 +69,14 @@ final class NavigationBoundaryUITests: XCTestCase {
         }
         capture(app, "\(boundary)-child-preflight")
         observation(app, "\(boundary)-before-edge-back")
-        // Keep N030's short input and full geometry/holds; only the labelled speed axis overrides full velocity.
+        // Keep N030's short input and viewport/holds; requested full distance and velocity follow the labelled axis.
         if inputMode != "fresh-full-only" {
             edgeBack(child, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
             XCTAssertTrue(child.exists && child.isHittable)
             observation(app, "\(boundary)-after-short-edge-back")
             capture(app, "\(boundary)-after-short-edge-back")
         }
-        edgeBack(child, in: app, fraction: 0.85, velocity: fullVelocity)
+        edgeBack(child, in: app, fraction: fullFraction, velocity: fullVelocity)
         observation(app, "\(boundary)-after-full-edge-back")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             rootTitle.exists && rootTitle.isHittable && !child.exists
