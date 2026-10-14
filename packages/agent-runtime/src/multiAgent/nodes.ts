@@ -1,7 +1,7 @@
 import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
-import { buildResearchRequest, buildTaskRequest } from './requests';
+import { buildResearchRequest, buildTaskRequest, responderResearchAvailability } from './requests';
 import { decodeResearchPlan } from './responses';
 import { canceled, completeState, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
@@ -46,6 +46,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       request: options.request,
       context: options.context,
       evidence: context.currentEvidence,
+      research: responderResearchAvailability(options.execution, options.tools, state),
     };
     const request = buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {
@@ -153,6 +154,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       request: options.request,
       context: options.context,
       evidence: context.currentEvidence,
+      research: responderResearchAvailability(options.execution, options.tools, state, true),
     };
     const request = buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {
