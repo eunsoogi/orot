@@ -74,7 +74,13 @@ runs:
       run: node scripts/ci/ios-derived-data-cache.mjs prepare production
     - name: Prepare native dependencies
       shell: bash
-      run: scripts/ci/run-command.sh native-focus-pods artifacts/native-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
+      # CocoaPods 1.17's pnpm symlink group-base recovery remains pinned and scoped to this install.
+      env:
+        OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1'
+        RUBYOPT: -r${{ github.workspace }}/scripts/ci/cocoapods-null-byte-diagnostic.rb
+      run: |
+        bash scripts/ci/verify-toolchain.sh --cocoapods-only
+        scripts/ci/run-command.sh native-focus-pods artifacts/native-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
     - name: Verify generated privacy metadata
       shell: bash
       run: node scripts/ci/ios-test-source-inputs.mjs

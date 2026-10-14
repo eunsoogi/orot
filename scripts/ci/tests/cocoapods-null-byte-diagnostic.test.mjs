@@ -127,13 +127,15 @@ function runDiagnosticFixture({
   }
 }
 
-test('native dependency preparation leaves the diagnostic opt-in and preserves deployment inputs', () => {
+test('native dependency preparation preserves the pinned pnpm path recovery and deployment inputs', () => {
   const action = readFileSync(
     path.join(repositoryRoot, '.github/actions/ios-test-products-build/action.yml'),
     'utf8',
   );
   assert.match(action, /ios:pods --deployment/);
-  assert.doesNotMatch(action, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC=1|RUBYOPT/);
+  assert.match(action, /OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1'/);
+  assert.match(action, /RUBYOPT:.*cocoapods-null-byte-diagnostic\.rb/);
+  assert.match(action, /verify-toolchain\.sh --cocoapods-only/);
 });
 
 test('logs escaped file-reference context and preserves the original null-byte exception', () => {
