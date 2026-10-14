@@ -133,6 +133,7 @@
                 "presentedViewInWindow": windowRect(presentation?.presentedView),
                 "containerInWindow": windowRect(presentation?.containerView),
                 "windowBounds": window.map { rectObservation($0.bounds) } ?? [:],
+                "windowSafeArea": window.map { rectObservation($0.safeAreaLayoutGuide.layoutFrame) } ?? [:],
                 "frameInContainer": presentation.map { rectObservation($0.frameOfPresentedViewInContainerView) } ?? [:],
             ]
         }

@@ -10,6 +10,7 @@ final class RecordingExportUITests: XCTestCase {
 
     @MainActor
     func testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart() throws {
+        try ExportDismissalGeometryRegression.verify()
         let app = XCUIApplication()
         addTeardownBlock { @MainActor in
             // A failed share assertion must leave no recording from this case; never reset another case's storage.
@@ -65,6 +66,8 @@ final class RecordingExportUITests: XCTestCase {
             XCTAssertEqual(report[field] as? Bool, true, field)
         }
         XCTAssertTrue(UITestConditions.text(element(app, "transcript-evidence-source-security")).contains("backup-excluded=false"))
+        let marker = element(app, "native-navigation-observation")
+        let session = try ExportDismissalGeometry.session(snapshot: UITestConditions.text(marker), nowMs: Date().timeIntervalSince1970 * 1000)
         tap(app, "recording-export-audio")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "actual-audio-share-sheet"
@@ -75,11 +78,13 @@ final class RecordingExportUITests: XCTestCase {
         let frame = dismissal.frame
         XCTAssertGreaterThan(frame.width, 0)
         XCTAssertGreaterThan(frame.height, 0)
-        let point = CGVector(dx: frame.midX - app.frame.minX,
-                             dy: frame.minY + frame.height * 0.2 - app.frame.minY)
-        // Preserve the candidate backdrop point; geometry observations check its relation to the presented content.
+        let applicationFrame = app.frame
+        let snapshot = UITestConditions.text(marker)
+        let point = try ExportDismissalGeometry.point(snapshot: snapshot, session: session, applicationFrame: applicationFrame,
+                                                      nowMs: Date().timeIntervalSince1970 * 1000)
+        // The AX dismissal frame covers the whole screen. Require a fresh safe corridor outside public presented geometry.
         // The audio path never consumes the synthetic cancellation hook.
-        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point)
+        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point, snapshot: snapshot, applicationFrame: applicationFrame)
         app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
         captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: frame, point: point)
         value(app, "recording-export-status", "내보내기를 취소했어요.")
@@ -93,14 +98,16 @@ final class RecordingExportUITests: XCTestCase {
     }
 
     @MainActor
-    private func captureDismissalGeometry(_ app: XCUIApplication, _ stage: String, frame: CGRect, point: CGVector) {
+    private func captureDismissalGeometry(_ app: XCUIApplication, _ stage: String, frame: CGRect, point: CGVector,
+                                          snapshot: String? = nil, applicationFrame: CGRect? = nil)
+    {
         let marker = UITestConditions.element(app, "native-navigation-observation")
-        let snapshot = marker.exists ? UITestConditions.text(marker) : ""
-        let native = (try? JSONSerialization.jsonObject(with: Data(snapshot.utf8))) as? [String: Any]
+        let text = snapshot ?? (marker.exists ? UITestConditions.text(marker) : "")
+        let native = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
         // Bridge snapshots can lag. Keep their timestamp separate from the captured tap geometry, in UIKit points.
         let observation: [String: Any] = [
             "stage": stage, "atMs": Date().timeIntervalSince1970 * 1000,
-            "applicationFrame": rectObservation(app.frame), "dismissRegionFrameBeforeTouch": rectObservation(frame),
+            "applicationFrame": rectObservation(applicationFrame ?? app.frame), "dismissRegionFrameBeforeTouch": rectObservation(frame),
             "tapPointInApplication": ["x": point.dx, "y": point.dy],
             "nativeSnapshotAtMs": native?["atMs"] ?? NSNull(), "observerID": native?["observerID"] ?? NSNull(),
             "presentations": native?["presentations"] ?? NSNull(),
