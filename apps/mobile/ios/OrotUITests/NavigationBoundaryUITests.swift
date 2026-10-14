@@ -29,7 +29,7 @@ final class NavigationBoundaryUITests: XCTestCase {
         // This axis changes only the requested full velocity, not its distance, hold, or return deadline.
         let fullVelocity = inputMode == "cancel-then-full-1000" ? XCUIGestureVelocity(rawValue: 1000) : .fast
         let input: [String: Any] = ["boundary": boundary, "inputMode": inputMode,
-                                    "fullVelocityPointsPerSecond": fullVelocity.rawValue,
+                                    "requestedFullVelocityRawValue": fullVelocity.rawValue,
                                     "plannedGestures": inputMode == "fresh-full-only" ? 1 : 2]
         let inputData = try JSONSerialization.data(withJSONObject: input)
         let inputAttachment = XCTAttachment(data: inputData, uniformTypeIdentifier: "public.json")
