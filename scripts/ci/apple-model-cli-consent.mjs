@@ -91,6 +91,12 @@ export function inspectAppleModelCliConsent({
     call('macos-sdk', '/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-version']);
     call('ios-simulator-sdk', '/usr/bin/xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']);
     call('binary-signature', '/usr/bin/codesign', ['--display', '--verbose=2', '/usr/bin/fm']);
+    const ptyRuntime = call('pty-runtime', '/usr/bin/python3', [
+      '-I',
+      '-S',
+      '-c',
+      'import os, pty, sys; print(sys.version); assert hasattr(os, "waitstatus_to_exitcode") and hasattr(pty, "fork")',
+    ]);
     call('license-help', '/usr/bin/fm', ['license', '--help']);
     const notice = call('license-notice', '/usr/bin/fm', ['license', '--show']);
     const before = call('license-status-before', '/usr/bin/fm', ['license', '--status']);
@@ -109,6 +115,7 @@ export function inspectAppleModelCliConsent({
       throw new Error('The remote CLI notice differs from the user-approved notice');
     if (before.signal || before.error || ![0, 69].includes(before.exitCode))
       throw new Error('CLI license status could not be determined');
+    if (!succeeded(ptyRuntime)) throw new Error('The system PTY runtime is unavailable');
     claim(env, { ...report, consumed: true });
     report.consumed = true;
     let acceptance;

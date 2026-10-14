@@ -35,7 +35,7 @@ test('the real acceptance deadline stops a TERM-resistant child and consumes wit
     OROT_NATIVE_COHORT: 'debug',
   };
   const child =
-    "process.on('SIGTERM', () => {}); console.log(process.pid); setTimeout(() => process.exit(0), 6500);";
+    "process.on('SIGTERM', () => {}); console.log('CHILD_PID=' + process.pid); setTimeout(() => process.exit(0), 6500);";
   let attempted = 0;
   const options = {
     consentRunId: '12345',
@@ -47,14 +47,13 @@ test('the real acceptance deadline stops a TERM-resistant child and consumes wit
       if (command !== '/usr/bin/sudo') return { status: 0, stdout: 'observed\n' };
       attempted += 1;
       // Never invoke sudo or fm. Substitute only the fixed child in the real watchdog program.
-      if (args[1] === '/usr/bin/fm') return spawnSync(process.execPath, ['-e', child], settings);
-      assert.equal(args[1], process.execPath);
-      const program = args[4].replace(
-        "'/usr/bin/fm', ['license']",
-        `${JSON.stringify(process.execPath)}, ['-e', ${JSON.stringify(child)}]`,
+      assert.equal(args[1], '/usr/bin/python3');
+      const program = args[5].replace(
+        "os.execv('/usr/bin/fm', ['/usr/bin/fm', 'license'])",
+        `os.execv(${JSON.stringify(process.execPath)}, [${JSON.stringify(process.execPath)}, '-e', ${JSON.stringify(child)}])`,
       );
-      assert.notEqual(program, args[4]);
-      return spawnSync(process.execPath, [args[2], args[3], program, args[5]], settings);
+      assert.notEqual(program, args[5]);
+      return spawnSync(args[1], [args[2], args[3], args[4], program, args[6]], settings);
     },
   };
   const started = Date.now();
@@ -68,7 +67,7 @@ test('the real acceptance deadline stops a TERM-resistant child and consumes wit
   const nested = JSON.parse(acceptance.stdout);
   assert.equal(nested.signal, 'SIGKILL');
   assert.equal(nested.error, 'ETIMEDOUT');
-  const childPid = Number(nested.stdout.trim());
+  const childPid = Number(nested.stdout.match(/CHILD_PID=(\d+)/)[1]);
   assert.throws(() => process.kill(childPid, 0), { code: 'ESRCH' });
   assert.match(inspectAppleModelCliConsent(options).error, /EEXIST/);
   assert.equal(attempted, 1);

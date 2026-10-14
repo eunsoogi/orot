@@ -88,14 +88,15 @@ test('one bound hosted invocation consumes before sudo, records accepted status 
       assert.equal(claim.consumed, true);
       assert.equal(claim.noticeSha256, APPROVED_FM_NOTICE_SHA256);
       assert.equal(settings.input, undefined);
-      assert.deepEqual(args.slice(0, 5), [
+      assert.deepEqual(args.slice(0, 6), [
         '-n',
-        process.execPath,
-        '--input-type=module',
-        '-e',
+        '/usr/bin/python3',
+        '-I',
+        '-S',
+        '-c',
         FM_LICENSE_WATCHDOG,
       ]);
-      assert.ok(Number(args[5]) > Date.now() && Number(args[5]) <= Date.now() + 4000);
+      assert.ok(Number(args[6]) > Date.now() && Number(args[6]) <= Date.now() + 4000);
     }
     return execute(command, args, settings);
   };
@@ -184,10 +185,11 @@ test('an already accepted runner still consumes once without repeating privilege
   assert.ok(!calls.some((item) => item.command === '/usr/bin/sudo'));
 });
 
-test('failed notice or indeterminate license status cannot consume or accept', (t) => {
+test('failed notice, indeterminate status or missing PTY runtime cannot consume or accept', (t) => {
   for (const [argument, result] of [
     ['--show', { status: 1, stdout: notice }],
     ['--status', { status: 1 }],
+    ['-S', { status: 1 }],
     ['--status', { status: null, signal: 'SIGTERM', error: new Error('timeout') }],
   ]) {
     const { options, calls } = fixture(t);
