@@ -8,7 +8,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testNativeAuthCancellationRouteExitRetryAndCallbackKeepSelectionExplicit() throws {
+    func testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit() throws {
         let app = launch()
         defer { app.terminate() }
         reset(app)

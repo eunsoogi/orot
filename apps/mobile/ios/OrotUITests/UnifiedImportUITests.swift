@@ -31,7 +31,7 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         XCTAssertTrue(title.exists)
         let start = app.buttons.matching(identifier: "unified-import-start").firstMatch
         XCTAssertTrue(UITestConditions.exists(start))
-        let surface = node(app, "navigation-native-toolbar")
+        let surface = node(app, "navigation-toolbar")
         XCTAssertTrue(surface.exists && surface.frame.contains(start.frame))
         XCTAssertGreaterThanOrEqual(start.frame.width, 44)
         XCTAssertGreaterThanOrEqual(start.frame.height, 44)
@@ -39,13 +39,13 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         let candidates = app.buttons.matching(identifier: "unified-import-start").allElementsBoundByIndex
         let observations: [[String: Any]] = candidates.map { ["label": $0.label, "enabled": $0.isEnabled, "hittable": $0.isHittable, "x": $0.frame.minX, "y": $0.frame.minY, "width": $0.frame.width, "height": $0.frame.height] }
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observations), uniformTypeIdentifier: "public.json")
-        attachment.name = "native-import-button-before-selection"
+        attachment.name = "import-button-before-selection"
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertFalse(start.isEnabled, app.debugDescription)
         tap(app, "unified-import-toggle-healthKit")
         XCTAssertTrue(start.isEnabled)
-        try captureNativeStart(app, "native-import-button-after-selection")
+        try captureNavigationStart(app, "import-button-after-selection")
         capture(app, "unified-import-light")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
         FormUITestConditions.reveal(node(app, "unified-import-toggle-eventKit"), in: app, scrollID: "unified-import-scroll")
@@ -55,14 +55,14 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         // Clearing the same selection must restore the native disabled state and leave no pending import to discard.
         tap(app, "unified-import-toggle-healthKit")
         XCTAssertFalse(start.isEnabled, app.debugDescription)
-        try captureNativeStart(app, "native-import-button-after-clear")
+        try captureNavigationStart(app, "import-button-after-clear")
         // Selection remains local. Do not invoke the import action or request personal records in this route test.
-        try NavigationUITestConditions.tapNative(app, "navigation-back")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
     }
 
     @MainActor
-    private func captureNativeStart(_ app: XCUIApplication, _ name: String) throws {
+    private func captureNavigationStart(_ app: XCUIApplication, _ name: String) throws {
         let values: [[String: Any]] = app.buttons.matching(identifier: "unified-import-start").allElementsBoundByIndex.map {
             ["label": $0.label, "enabled": $0.isEnabled, "hittable": $0.isHittable, "x": $0.frame.minX, "y": $0.frame.minY, "width": $0.frame.width, "height": $0.frame.height]
         }

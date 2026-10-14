@@ -37,7 +37,7 @@ function requireGitHubActions() {
 }
 
 function makeManifest(repositoryRoot, profile, { reuseSharedFingerprints = false } = {}) {
-  // Capture source inputs before Pods so an exact app hit can skip native dependency installation.
+  // Capture source inputs before Pods so an exact app hit can skip platform dependency installation.
   const capturedInputs = readExpectedCocoapodsInputHashes();
   const baselineInputs = capturedInputs ?? readCocoapodsInputHashes(repositoryRoot);
   if (!capturedInputs && process.env.EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256) {
@@ -53,7 +53,7 @@ function makeManifest(repositoryRoot, profile, { reuseSharedFingerprints = false
     schemaVersion: 7,
     profile,
     toolchain: getIosCacheToolchain(),
-    nativeDependencies: fingerprints.nativeDependencies,
+    platformDependencies: fingerprints.platformDependencies,
     buildInputs: fingerprints.buildInputs,
     cocoapodsInputProvenance: { baseline: baselineInputs },
   };
@@ -81,7 +81,7 @@ function writeManifest(repositoryRoot, profile) {
   const fingerprintCheck = inspectManifestFingerprints(
     manifest,
     process.env.EXPECTED_IOS_BUILD_INPUT_FINGERPRINT,
-    process.env.EXPECTED_IOS_NATIVE_DEPENDENCY_FINGERPRINT,
+    process.env.EXPECTED_IOS_PLATFORM_DEPENDENCY_FINGERPRINT,
   );
   const changedInputsDiagnostic =
     fingerprintCheck.match === 'false'
@@ -96,7 +96,7 @@ function writeManifest(repositoryRoot, profile) {
       outputPath,
       [
         `manifest_build_inputs=${manifest.buildInputs}`,
-        `manifest_native_dependencies=${manifest.nativeDependencies}`,
+        `manifest_platform_dependencies=${manifest.platformDependencies}`,
         `manifest_fingerprint_match=${fingerprintCheck.match}`,
         `manifest_fingerprint_mismatch_fields=${fingerprintCheck.mismatchFields.join(',') || 'none'}`,
       ].join('\n') + '\n',

@@ -17,7 +17,7 @@ with tarfile.open(sys.argv[1],'w') as archive:
         archive.addfile(item)
 `;
 test('checks tar headers before extraction, rejecting traversal and link-based writes', () => {
-  const root = mkdtempSync(join(tmpdir(), 'native-archive-'));
+  const root = mkdtempSync(join(tmpdir(), 'ios-archive-'));
   const archive = join(root, 'products.tar');
   const header = ['products', 'directory', ''];
   try {

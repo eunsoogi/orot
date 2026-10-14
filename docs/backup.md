@@ -1,6 +1,6 @@
 # iCloud device backup and restore
 
-> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
 
 
 Orot uses Apple's **iCloud device backup and restore** for a point-in-time copy of app data. This is not CloudKit or live synchronization: iCloud Backup takes periodic snapshots, and restoring an older snapshot can bring back data deleted after that snapshot. Orot cannot start, schedule, or observe completion of the operating system's backup.

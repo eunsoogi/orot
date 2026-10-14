@@ -17,7 +17,7 @@ final class SpeechIntegrationTests: OrotFailFastTestCase {
         try await verifyFixture("negation")
     }
 
-    func testInvalidLanguageFailsBeforeRequestingNativeServices() async {
+    func testInvalidLanguageFailsBeforeRequestingSpeechServices() async {
         do {
             _ = try await SpeechTranscriptionEngine.transcribe(["language": "en-US"])
             XCTFail("An unsupported language must not start transcription")
@@ -28,7 +28,7 @@ final class SpeechIntegrationTests: OrotFailFastTestCase {
         }
     }
 
-    func testMissingAudioFailsBeforeRequestingNativeServices() async {
+    func testMissingAudioFailsBeforeRequestingSpeechServices() async {
         do {
             _ = try await SpeechTranscriptionEngine.transcribe(["language": "ko-KR"])
             XCTFail("Missing audio must be rejected")
@@ -43,7 +43,7 @@ final class SpeechIntegrationTests: OrotFailFastTestCase {
         let fixture = try SpeechFixture.item(id, bundle: Bundle(for: Self.self))
         let started = Date()
         let availability = await SpeechTranscriptionEngine.availability(language: "ko-KR")
-        NSLog("OROT_NATIVE_SPEECH_AVAILABILITY id=%@ value=%@", id, String(describing: availability.dictionary))
+        NSLog("OROT_SPEECH_AVAILABILITY id=%@ value=%@", id, String(describing: availability.dictionary))
         let result = try await SpeechTranscriptionEngine.transcribe([
             "language": "ko-KR",
             "audioBase64": fixture.audio.base64,
@@ -69,13 +69,13 @@ final class SpeechIntegrationTests: OrotFailFastTestCase {
             "expectedText": fixture.expectedText, "recognizedText": text,
             "engine": engine, "segments": segments,
             "elapsedSeconds": Date().timeIntervalSince(started),
-            "syntheticAudio": true, "nativeResult": true,
+            "syntheticAudio": true, "serviceResult": true,
         ]
         let data = try JSONSerialization.data(withJSONObject: observation, options: [.sortedKeys])
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-        attachment.name = "native-korean-\(id)"
+        attachment.name = "speech-korean-\(id)"
         attachment.lifetime = .keepAlways
         add(attachment)
-        NSLog("OROT_NATIVE_SPEECH_RESULT %@", String(decoding: data, as: UTF8.self))
+        NSLog("OROT_SPEECH_RESULT %@", String(decoding: data, as: UTF8.self))
     }
 }

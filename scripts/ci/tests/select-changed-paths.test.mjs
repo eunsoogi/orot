@@ -82,7 +82,7 @@ test('docs and AGENTS changes keep policy checks while skipping app builds and E
   }
 });
 
-test('non-app images are ignored while mobile bundle images validate native outputs', () => {
+test('non-app images are ignored while mobile bundle images validate integration outputs', () => {
   const documentationImage = selectChecksForPaths(['docs/architecture.png']);
   const appImage = selectChecksForPaths(['apps/mobile/ios/OrotMobile/Images.xcassets/icon.png']);
 

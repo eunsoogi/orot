@@ -81,7 +81,7 @@ test('backup mutations cannot run as a shared Core selection or an unsequenced b
   }
 });
 
-for (const suite of ['native', 'ui']) {
+for (const suite of ['integration', 'ui']) {
   test(`executes the mandatory Speech ${suite} inventory once on its own runner`, () => {
     const result = fixture(0, 'speech', suite);
     try {
@@ -212,7 +212,7 @@ test('local model selection requires exactly one corpus phase on its dedicated d
   }
 });
 
-test('each runner invocation creates a fresh namespace and refuses a mixed native/UI selection', () => {
+test('each runner invocation creates a fresh namespace and refuses a mixed ios/UI selection', () => {
   const first = fixture(0);
   const second = fixture(0);
   const mixed = fixture(0, 'core', 'all', iosTestInventory('core'));

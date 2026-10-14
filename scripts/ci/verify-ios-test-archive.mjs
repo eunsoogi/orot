@@ -24,22 +24,22 @@ def verify(path):
                 or name in names
                 or not (item.isfile() or item.isdir() or item.issym())
             ):
-                raise ValueError("Unsafe native product archive entry")
+                raise ValueError("Unsafe integration product archive entry")
             names.add(name)
             if item.issym():
                 target = posixpath.normpath(posixpath.join(posixpath.dirname(name), item.linkname))
                 if item.linkname.startswith("/") or not target.startswith("products/"):
-                    raise ValueError("Native product archive symlink escapes its root")
+                    raise ValueError("iOS product archive symlink escapes its root")
                 links.add(name)
         # Validate the whole header set first: later entries must never write through a symlink.
         for name in names:
             parent = posixpath.dirname(name)
             while parent:
                 if parent in links:
-                    raise ValueError("Native archive entry traverses a symlink")
+                    raise ValueError("iOS archive entry traverses a symlink")
                 parent = posixpath.dirname(parent)
         if "products" not in names:
-            raise ValueError("Missing native product archive root")
+            raise ValueError("Missing integration product archive root")
 
 
 if __name__ == "__main__":

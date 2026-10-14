@@ -42,7 +42,7 @@ final class RecordingExportIntegrationTests: OrotFailFastTestCase {
         XCTAssertTrue(RecordingExportFiles.consumeSimulatorCancellation())
         XCTAssertFalse(RecordingExportFiles.consumeSimulatorCancellation())
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: report), uniformTypeIdentifier: "public.json")
-        attachment.name = "recording-export-native-authorization"
+        attachment.name = "recording-export-authorization"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

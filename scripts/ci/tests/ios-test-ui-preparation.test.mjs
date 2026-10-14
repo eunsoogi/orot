@@ -7,7 +7,7 @@ import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
-// All executables and result nodes below are synthetic CLI fixtures, not native or hosted acceptance evidence.
+// All executables and result nodes below are synthetic CLI fixtures, not integration or hosted acceptance evidence.
 function fixture({
   github = true,
   screenshotFailure = false,
@@ -143,7 +143,7 @@ test('an unavailable optional screenshot cannot manufacture readiness or prevent
   }
 });
 
-test('a failed first native host result remains failed and prevents later preparation evidence', () => {
+test('a failed first integration host result remains failed and prevents later preparation evidence', () => {
   const value = fixture({ hostFailure: true });
   try {
     assert.notEqual(value.outcome.status, 0);
@@ -155,7 +155,7 @@ test('a failed first native host result remains failed and prevents later prepar
   }
 });
 
-test('refuses local or inactive destinations before executing native preparation', () => {
+test('refuses local or inactive destinations before executing integration preparation', () => {
   for (const options of [{ github: false }, { state: 'Shutdown' }]) {
     const value = fixture(options);
     try {
@@ -167,7 +167,7 @@ test('refuses local or inactive destinations before executing native preparation
   }
 });
 
-test('refuses absent or relative selected Xcode directories before executing native preparation', () => {
+test('refuses absent or relative selected Xcode directories before executing integration preparation', () => {
   for (const selectedDeveloper of ['missing', 'relative']) {
     const value = fixture({ selectedDeveloper });
     try {

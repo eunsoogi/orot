@@ -139,6 +139,9 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
+		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
+		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
+		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -297,6 +300,9 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
+		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
+		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
+		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -343,6 +349,9 @@
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
 				B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */,
 				B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */,
+				B62F00000000000000000008 /* AppleFoundationModelsMock.m */,
+				B62F00000000000000000007 /* AppleFoundationModelsMock.swift */,
+				B62F00000000000000000006 /* AppleFoundationModelsSession.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
 				E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */,
@@ -822,6 +831,9 @@
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
 				A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */,
 				A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */,
+				A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */,
+				A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */,
+				A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
 				E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */,
@@ -1223,7 +1235,7 @@
 				DEVELOPMENT_TEAM = OROTSIM000;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotnativeintegrationtests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotintegrationtests;
 				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1266,7 +1278,7 @@
 				DEVELOPMENT_TEAM = OROTSIM000;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotnativeintegrationtests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotintegrationtests;
 				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

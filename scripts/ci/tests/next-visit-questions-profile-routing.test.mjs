@@ -3,11 +3,11 @@ import test from 'node:test';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
-// Consent, cited review, keyboard reachability and relaunch are mandatory native replacements for the retired screen runner.
+// Consent, cited review, keyboard reachability and relaunch are mandatory integration replacements for the retired screen runner.
 test('full Release retains every next-visit and consent journey in its fixture groups', () => {
   const fixtures = iosTestInventory('fixtures');
   for (const method of [
-    'testNativeSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
+    'testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
     'testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges',
     'testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   ])

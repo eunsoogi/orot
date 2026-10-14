@@ -8,7 +8,7 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testSecondPageValueAndShortThenCompleteNativeBackSwipe() throws {
+    func testSecondPageValueAndShortThenCompleteBackSwipe() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
         app.launchArguments = ["-OROT_TEST_SCENARIO", "paged-records"]
@@ -37,7 +37,7 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
             library.exists && library.isHittable && !list.exists
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 10), .completed, app.debugDescription)
-        capture(app, "health-native-edge-back-completed")
+        capture(app, "health-edge-back-completed")
     }
 
     @MainActor

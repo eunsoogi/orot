@@ -48,7 +48,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         visible(app, "Neurology clinic")
         visible(app, "2027년 6월 3일 10:15 · 현지 시간")
         visible(app, "취소됨")
-        try NavigationUITestConditions.tapNative(app, "appointments-back")
+        try NavigationUITestConditions.tapNavigation(app, "appointments-back")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
@@ -66,7 +66,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         }
         XCTAssertGreaterThanOrEqual(scroll.frame.minY - root.frame.minY, 44)
         XCTAssertGreaterThanOrEqual(title.frame.minY - root.frame.minY, 44)
-        let action = try NavigationUITestConditions.nativeAction(app, "appointments-back")
+        let action = try NavigationUITestConditions.navigationAction(app, "appointments-back")
         XCTAssertGreaterThanOrEqual(action.control.frame.minY, action.toolbar.frame.minY)
         XCTAssertLessThanOrEqual(action.control.frame.maxY, action.toolbar.frame.maxY)
         XCTAssertFalse(UITestConditions.element(app, "appointments-top-back").exists)

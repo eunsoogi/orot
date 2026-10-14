@@ -54,7 +54,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testPlaybackRecoversAfterTheNativeSimulatedOutputRouteLoss() throws {
+    func testPlaybackRecoversAfterTheSimulatedOutputRouteLoss() throws {
         let app = XCUIApplication()
         RecordingFixtureUITestConditions.launch(app, playback: "route", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"])
         var appearance: AppearanceUITestConditions.Snapshot?
@@ -79,7 +79,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         play.tap()
         progress(app)
         absent(stop, timeout: 10)
-        RecordingFixtureUITestConditions.capture(app, "native-simulated-output-route-recovered", testCase: self)
+        RecordingFixtureUITestConditions.capture(app, "simulated-output-route-recovered", testCase: self)
     }
 
     @MainActor

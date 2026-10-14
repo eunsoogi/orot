@@ -10,13 +10,13 @@ test('Speech requires all ten original methods plus separate asset preparation w
   assert.match(spec.runtime, /26-2/);
   assert.equal(spec.configuration, 'Release');
   assert.deepEqual(iosTestBuildSpec('speech'), iosTestBuildSpec('core'));
-  const native = iosTestInventory('speech', 'native');
+  const integration = iosTestInventory('speech', 'integration');
   const ui = iosTestInventory('speech', 'ui');
-  assert.equal(native.length, 6);
+  assert.equal(integration.length, 6);
   assert.equal(ui.length, 4);
-  assert.deepEqual([...native, ...ui].sort(), iosTestInventory('speech').sort());
+  assert.deepEqual([...integration, ...ui].sort(), iosTestInventory('speech').sort());
   assert.deepEqual(
     iosTestCohortTasks('speech').map((task) => task.suite),
-    ['preparation', 'native', 'ui'],
+    ['preparation', 'integration', 'ui'],
   );
 });

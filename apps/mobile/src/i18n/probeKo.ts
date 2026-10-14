@@ -20,7 +20,7 @@ export const probeKo = {
   'probe.layout.scrollContent': '스크롤 내용 {index}',
   'probe.layout.done': '완료',
   'probe.layout.continue': '계속',
-  'probe.layout.nativeObservation': '네이티브 화면 배치 측정',
+  'probe.layout.layoutObservation': '네이티브 화면 배치 측정',
   'probe.visit.title': '진료 질문 합성 검증',
   'probe.visit.notice':
     '테스트 전용 합성 자료와 모델을 사용합니다. 실제 계정이나 건강 기록은 사용하지 않습니다.',
@@ -38,7 +38,7 @@ export const probeKo = {
   'probe.nextVisit.reload': '합성 저장 목록 다시 불러오기',
   'probe.nextVisit.closeTools': '화면 보기',
   'probe.provider.request': '합성 추론 진행 검사',
-  'probe.provider.nativeCancel': '네이티브 인증 창 취소 검사',
+  'probe.provider.sessionCancel': '네이티브 인증 창 취소 검사',
   'probe.provider.loginCancel': '합성 ChatGPT 로그인 취소 검사',
   'probe.provider.loginReturn': '합성 ChatGPT 로그인 복귀 검사',
   'probe.provider.signOutStart': '합성 ChatGPT 로그아웃 흐름 시작',

@@ -42,7 +42,7 @@ function observedFormatOne() {
 test('accepts the actual scheme-based format 1 target and app-hosted flag layout', () => {
   assert.equal(verifyTestRunContract(observedFormatOne(), spec).length, 2);
 });
-test('rejects other versions, missing targets and lost native host isolation', () => {
+test('rejects other versions, missing targets and lost integration host isolation', () => {
   for (const mutate of [
     (data) => {
       data.__xctestrun_metadata__.FormatVersion = 2;

@@ -16,6 +16,6 @@ test('preparation is restricted to exactly one non-mutating connection case and 
   ])
     assert.throws(
       () => isIosHostPreparation(tests, phase),
-      /Invalid native host preparation selection/,
+      /Invalid integration host preparation selection/,
     );
 });

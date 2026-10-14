@@ -8,11 +8,18 @@ jest.mock('../e2e/graphIntegrationProbe', () => ({
 jest.mock('../e2e/appleWorkflowProbe', () => ({
   runAppleWorkflowProbe: jest.fn(),
 }));
+jest.mock('../e2e/appleModelMockBridge', () => ({
+  withMockAppleModel: jest.fn(async (_script, run) => ({
+    ...(await run()),
+    modelExecution: 'mock',
+    actualModel: 'not-run',
+  })),
+}));
 
 import { runDomainTestOperation } from '../e2e/domainTestOperations';
 import { runAppleWorkflowProbe } from '../e2e/appleWorkflowProbe';
 
-test('native workflow routing preserves actual provider outcomes and rejects probe failures', async () => {
+test('workflow routing declares mock evidence and preserves workflow outcomes and failures', async () => {
   const result = {
     availability: 'available',
     calendar: { status: 'complete' },
@@ -27,12 +34,14 @@ test('native workflow routing preserves actual provider outcomes and rejects pro
   };
   const probe = runAppleWorkflowProbe as jest.Mock;
   probe.mockResolvedValueOnce(result);
-  await expect(runDomainTestOperation('apple-workflow', {})).resolves.toEqual(
-    result,
-  );
+  await expect(runDomainTestOperation('apple-workflow', {})).resolves.toEqual({
+    ...result,
+    modelExecution: 'mock',
+    actualModel: 'not-run',
+  });
   expect(probe).toHaveBeenCalledWith(expect.any(Function));
-  probe.mockRejectedValueOnce(new Error('native provider failed'));
+  probe.mockRejectedValueOnce(new Error('model bridge failed'));
   await expect(runDomainTestOperation('apple-workflow', {})).rejects.toThrow(
-    'native provider failed',
+    'model bridge failed',
   );
 });

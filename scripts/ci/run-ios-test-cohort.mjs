@@ -101,7 +101,7 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
     } catch (error) {
       if (!executionError) executionError = error;
       console.error(
-        'Native attachment export unavailable after the preserved first failure: ' + String(error),
+        'iOS attachment export unavailable after the preserved first failure: ' + String(error),
       );
     }
   }

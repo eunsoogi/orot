@@ -12,7 +12,7 @@ test('shares only identical generic Release inputs and preserves each execution 
   assert.equal(iosTestConfig('speech').runtimeBuild, '23C54');
   assert.equal(iosTestConfig('speech').runtime, 'com.apple.CoreSimulator.SimRuntime.iOS-26-2');
   assert.equal(iosTestConfig('core').runtime, 'com.apple.CoreSimulator.SimRuntime.iOS-27-0');
-  assert.throws(() => iosTestConfig('unknown'), /Unknown native test profile/);
+  assert.throws(() => iosTestConfig('unknown'), /Unknown integration test profile/);
 });
 
 test('rejects archive traversal and paths outside the product namespace', () => {

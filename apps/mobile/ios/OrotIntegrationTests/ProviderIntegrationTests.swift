@@ -3,11 +3,11 @@ import Foundation
 import XCTest
 
 final class ProviderIntegrationTests: OrotFailFastTestCase {
-    func testSyntheticCatalogStreamLimitAndCancellationUseNativeBridge() async throws {
+    func testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge() async throws {
         try await verify("openai-provider", assertions: "catalog-stream-rate-limit-cancellation")
     }
 
-    func testSyntheticToolDefinitionAndLocalResultRoundTripUseNativeBridge() async throws {
+    func testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge() async throws {
         try await verify("openai-tools", assertions: "definitions-stream-tool-result-hosted-rejection")
     }
 
@@ -20,7 +20,7 @@ final class ProviderIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["realAccount"] as? String, "unverified")
         XCTAssertEqual(result["assertions"] as? String, assertions)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
-        attachment.name = operation + "-native-bridge"
+        attachment.name = operation + "-provider-bridge"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

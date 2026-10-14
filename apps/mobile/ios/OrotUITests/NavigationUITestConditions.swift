@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 enum NavigationUITestConditions {
-    struct NativeAction {
+    struct NavigationAction {
         let control: XCUIElement
         let toolbar: XCUIElement
     }
@@ -15,13 +15,13 @@ enum NavigationUITestConditions {
 
     /// The test-only root exposes the public native SafeAreaListener event. Compare its actual frame before using the insets for another view.
     static func safeArea(_ app: XCUIApplication, testCase: XCTestCase? = nil) throws -> SafeAreaObservation {
-        let marker = UITestConditions.element(app, "native-safe-area-observation")
+        let marker = UITestConditions.element(app, "safe-area-test-observation")
         XCTAssertTrue(UITestConditions.exists(marker), app.debugDescription)
         let data = try XCTUnwrap(UITestConditions.text(marker).data(using: .utf8))
         let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         if let testCase {
             let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-            attachment.name = "native-safe-area-observation"
+            attachment.name = "safe-area-test-observation"
             attachment.lifetime = .keepAlways
             testCase.add(attachment)
         }
@@ -33,17 +33,17 @@ enum NavigationUITestConditions {
         )
     }
 
-    static func nativeAction(_ app: XCUIApplication, _ identifier: String) throws -> NativeAction {
+    static func navigationAction(_ app: XCUIApplication, _ identifier: String) throws -> NavigationAction {
         let query = app.buttons.matching(identifier: identifier)
         XCTAssertTrue(UITestConditions.exists(query.firstMatch), app.debugDescription)
         // The root glass container and contextual stack expose the same native buttons without an XCUI Toolbar role.
         // Select only observed navigation containers, retaining containment, active geometry and 44-point requirements.
-        let bars = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["navigation-native-toolbar", "navigation-root-tabs-glass-backdrop"])).allElementsBoundByIndex
+        let bars = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["navigation-toolbar", "navigation-root-tabs-glass-backdrop"])).allElementsBoundByIndex
         for bar in bars where bar.exists && bar.isHittable {
             for control in query.allElementsBoundByIndex where control.exists {
                 let frame = control.frame
                 if frame.width >= 44, frame.height >= 44, bar.frame.insetBy(dx: -1, dy: -1).contains(frame) {
-                    return NativeAction(control: control, toolbar: bar)
+                    return NavigationAction(control: control, toolbar: bar)
                 }
             }
         }
@@ -51,8 +51,8 @@ enum NavigationUITestConditions {
                       userInfo: [NSLocalizedDescriptionKey: "No active 44-point native control: \(identifier); \(app.debugDescription)"])
     }
 
-    static func tapNative(_ app: XCUIApplication, _ identifier: String) throws {
-        let action = try nativeAction(app, identifier)
+    static func tapNavigation(_ app: XCUIApplication, _ identifier: String) throws {
+        let action = try navigationAction(app, identifier)
         // iOS can misreport the child's activation point. Send the touch through its measured active toolbar.
         let offset = CGVector(dx: action.control.frame.midX - action.toolbar.frame.minX,
                               dy: action.control.frame.midY - action.toolbar.frame.minY)
@@ -74,7 +74,7 @@ enum NavigationUITestConditions {
     }
 
     static func openTab(_ app: XCUIApplication, _ tab: String, markers: [String]) throws {
-        try tapNative(app, "navigation-tab-\(tab)")
+        try tapNavigation(app, "navigation-tab-\(tab)")
         route(app, markers: markers)
     }
 
@@ -114,7 +114,7 @@ enum NavigationUITestConditions {
         try scrollToBottom(app, scrollID)
         let content = UITestConditions.element(app, contentID)
         XCTAssertTrue(content.exists && !content.frame.isEmpty)
-        let active = try nativeAction(app, navigationID)
+        let active = try navigationAction(app, navigationID)
         XCTAssertLessThanOrEqual(content.frame.maxY, active.toolbar.frame.minY - 16)
     }
 }

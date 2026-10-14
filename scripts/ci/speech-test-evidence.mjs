@@ -8,19 +8,19 @@ export function verifySpeechObservations(observations, fixture) {
     observations.length !== fixture.cases.length ||
     new Set(observations.map((item) => item.id)).size !== fixture.cases.length
   )
-    throw new Error('Native Korean observations are missing or repeated');
+    throw new Error('iOS Korean observations are missing or repeated');
   return fixture.cases.map((testCase) => {
     const observed = observations.find((item) => item.id === testCase.id);
     if (
       !observed ||
       observed.inputSha256 !== testCase.audio.sha256 ||
       observed.expectedText !== testCase.expectedText ||
-      observed.nativeResult !== true ||
+      observed.serviceResult !== true ||
       observed.syntheticAudio !== true ||
       typeof observed.recognizedText !== 'string' ||
       !observed.recognizedText.trim()
     )
-      throw new Error('Native Speech fixture provenance mismatch');
+      throw new Error('iOS Speech fixture provenance mismatch');
     if (
       !['speech_transcriber', 'dictation_transcriber', 'on_device_speech_recognizer'].includes(
         observed.engine,
@@ -42,7 +42,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const observations = [];
   for (const test of manifest) {
     for (const attachment of test.attachments ?? []) {
-      if (!attachment.suggestedHumanReadableName?.startsWith('native-korean-')) continue;
+      if (!attachment.suggestedHumanReadableName?.startsWith('speech-korean-')) continue;
       const name = attachment.exportedFileName;
       if (typeof name !== 'string' || name !== basename(name))
         throw new Error('Invalid Speech attachment path');
@@ -61,7 +61,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const measured = verifySpeechObservations(observations, fixture);
   writeFileSync(
     output,
-    JSON.stringify({ syntheticAudio: true, nativeResult: true, cases: measured }, null, 2) + '\n',
+    JSON.stringify({ syntheticAudio: true, serviceResult: true, cases: measured }, null, 2) + '\n',
   );
   console.log(`SPEECH_TEST_EVIDENCE_VERIFIED fixtures=${measured.length}`);
 }

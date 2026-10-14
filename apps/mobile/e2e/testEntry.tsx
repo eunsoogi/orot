@@ -43,10 +43,10 @@ if (lifecycleObservation) {
 
 // XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.
 if (settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation) {
-  AppRegistry.setWrapperComponentProvider(() => NativeGeometryTestWrapper);
+  AppRegistry.setWrapperComponentProvider(() => GeometryTestWrapper);
 }
 
-// This entry is bundled only for native test products. An app-hosted XCTest must
+// This entry is bundled only for integration test products. An app-hosted XCTest must
 // call the production services without starting an unrelated JS Speech probe.
 if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
@@ -82,7 +82,7 @@ function IntegrationTestHost() {
   );
 }
 
-function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
+function GeometryTestWrapper({ children }: PropsWithChildren) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const navigationMarker = useRef<ComponentRef<typeof Text>>(null);
   useEffect(() => {
@@ -114,9 +114,9 @@ function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
             accessible
             accessibilityLabel="{}"
             style={styles.geometryMarkerText}
-            testID="native-navigation-observation"
+            testID="navigation-test-observation"
           >
-            {t('probe.layout.nativeObservation')}
+            {t('probe.layout.layoutObservation')}
           </Text>
         </View>
       ) : null}
@@ -126,9 +126,9 @@ function NativeGeometryTestWrapper({ children }: PropsWithChildren) {
             accessible
             accessibilityLabel={JSON.stringify(metrics)}
             style={styles.geometryMarkerText}
-            testID="native-safe-area-observation"
+            testID="safe-area-test-observation"
           >
-            {t('probe.layout.nativeObservation')}
+            {t('probe.layout.layoutObservation')}
           </Text>
         </View>
       ) : null}

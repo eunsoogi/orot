@@ -64,7 +64,7 @@ for (const variant of variants) {
       rejection = String(error);
     }
     if (!rejection || existsSync(join(sandbox, 'verified-products')))
-      throw new Error('An invalid native artifact was accepted or installed');
+      throw new Error('An invalid integration artifact was accepted or installed');
     observations.push({
       variant: variant.name,
       rejected: true,
@@ -90,4 +90,4 @@ writeFileSync(
     2,
   ) + '\n',
 );
-console.log(`Hosted native artifact rejections observed: ${observations.length}`);
+console.log(`Hosted integration artifact rejections observed: ${observations.length}`);

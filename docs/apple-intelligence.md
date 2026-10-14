@@ -1,6 +1,6 @@
 # Apple Intelligence provider
 
-> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
 
 
 Orot exposes Apple's on-device Foundation Models through the existing
@@ -58,6 +58,8 @@ silently switching providers.
 Korean strings used by the mobile app when it presents these states.
 
 ## Verification
+
+The maintained Simulator integration suite mocks only the Foundation Models call boundary. It exercises the shipping bridge, structured-response codec, streaming, cancellation and application workflows, and records `modelExecution=mock` and `actualModel=not-run`. Production builds keep the real SDK and exclude the mock control endpoint. See [development.md](development.md) for the current commands and product checks.
 
 The unit suite uses a deterministic fake native boundary for provider
 capabilities, structured responses, input errors, unavailable states, streaming,

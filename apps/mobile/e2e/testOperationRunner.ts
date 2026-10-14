@@ -1,22 +1,22 @@
 import { NativeModules, Platform } from 'react-native';
 import { runDomainTestOperation } from './domainTestOperations';
 
-interface NativeCommand {
+interface TestControlCommand {
   id: string;
   operation: string;
   parameters: Record<string, unknown>;
 }
 interface Control {
-  nextRequest(): Promise<NativeCommand>;
+  nextRequest(): Promise<TestControlCommand>;
   complete(id: string, result: Record<string, unknown>): void;
   fail(id: string, message: string): void;
 }
 
-/** Only the native test host mounts this consumer; ordinary bundles do not import this entry. */
+/** Only the integration test host mounts this consumer; ordinary bundles do not import this entry. */
 export function startTestOperationRunner(): () => void {
   const control = NativeModules.OrotTestControl as Control | undefined;
   if (!control)
-    throw new Error('The native test command bridge is unavailable');
+    throw new Error('The integration test command bridge is unavailable');
   let active = true;
   async function consume() {
     while (active) {
@@ -44,7 +44,7 @@ export function startTestOperationRunner(): () => void {
     }
   }
   consume().catch(error =>
-    console.error('Native test command consumer failed', error),
+    console.error('Integration test command consumer failed', error),
   );
   return () => {
     active = false;

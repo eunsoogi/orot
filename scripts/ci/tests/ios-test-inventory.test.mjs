@@ -5,18 +5,18 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 test('separate Core and Speech runners cover every original case without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
-  for (const [profile, nativeCount, uiCount] of [
+  for (const [profile, integrationCount, uiCount] of [
     ['core', 13, 6],
     ['speech', 6, 4],
   ]) {
     const all = iosTestInventory(profile);
-    const native = iosTestInventory(profile, 'native');
+    const integration = iosTestInventory(profile, 'integration');
     const ui = iosTestInventory(profile, 'ui');
-    assert.equal(native.length, nativeCount);
+    assert.equal(integration.length, integrationCount);
     assert.equal(ui.length, uiCount);
-    assert.deepEqual([...native, ...ui].sort(), [...all].sort());
-    assert.equal(new Set([...native, ...ui]).size, all.length);
-    assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));
+    assert.deepEqual([...integration, ...ui].sort(), [...all].sort());
+    assert.equal(new Set([...integration, ...ui]).size, all.length);
+    assert.ok(integration.every((id) => id.startsWith('OrotIntegrationTests/')));
     assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
   }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);

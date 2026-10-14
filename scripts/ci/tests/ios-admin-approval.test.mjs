@@ -6,7 +6,7 @@ import test from 'node:test';
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const read = (name) => yaml.load(readFileSync('.github/workflows/' + name, 'utf8'));
-const environment = 'native-ci-admin-approval';
+const environment = 'ios-ci-admin-approval';
 
 // The real reviewer protection is repository state. These graph checks prove only that every expensive path reaches its approval job first.
 function assertApproval(job) {
@@ -24,26 +24,22 @@ test('automatic full validation approves Linux planning before Debug and all suc
   assert.ok(Object.hasOwn(full.on, 'workflow_call'));
 });
 
-test('focused and standalone Debug paths cannot bypass the same administrator approval', () => {
-  const focus = read('ios-native-focused.yml');
+test('focused diagnostics cannot bypass the same administrator approval', () => {
+  const focus = read('ios-focused.yml');
   assertApproval(focus.jobs.selection);
   assert.equal(focus.jobs.products.needs, 'selection');
-  const debug = read('ios-debug-test-validation.yml');
-  assertApproval(debug.jobs.approval);
-  assert.equal(debug.jobs.execution.needs, 'approval');
-  assert.equal(debug.on.workflow_dispatch, undefined);
 });
 
 test('draft PRs reach automatic approval while manual full dispatch cannot allocate Macs', () => {
   const e2e = read('e2e-test.yml');
   assert.ok(e2e.on.pull_request.types.includes('synchronize'));
   assert.deepEqual(e2e.on.push.branches, ['main']);
-  assert.doesNotMatch(e2e.jobs.native_validation.if, /outputs\.deferred != 'true'/);
-  assert.match(e2e.jobs.native_validation.if, /github\.event_name != 'workflow_dispatch'/);
-  assert.match(e2e.jobs.native_validation.if, /outputs\.focused != 'true'/);
+  assert.doesNotMatch(e2e.jobs.ios_validation.if, /outputs\.deferred != 'true'/);
+  assert.match(e2e.jobs.ios_validation.if, /github\.event_name != 'workflow_dispatch'/);
+  assert.match(e2e.jobs.ios_validation.if, /outputs\.focused != 'true'/);
   // A drafted, rejected, missing or skipped execution remains deferred; only a completed full result can clear that flag.
   const condition =
-    "needs.selection.outputs.deferred == 'true' && needs.native_validation.result != 'success'";
+    "needs.selection.outputs.deferred == 'true' && needs.ios_validation.result != 'success'";
   assert.ok(e2e.jobs.ios_simulator_build.steps[0].env.DEFERRED.includes(condition));
   assert.ok(e2e.jobs.required_statuses.with.invalid_selection.includes(condition));
   assert.ok(e2e.jobs.required_statuses.with.invalid_selection.includes("diagnostic == 'true'"));

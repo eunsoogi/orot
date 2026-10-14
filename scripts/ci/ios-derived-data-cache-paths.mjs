@@ -99,7 +99,7 @@ export function removeDerivedDataRoot(profile, dataRoot) {
 
 export function clearAppOutputs(profile, dataRoot) {
   const configuration = getProfile(profile).configuration;
-  // Compatible native dependencies keep their Pods products; only the app's intermediates and bundle need rebuilding.
+  // Compatible platform dependencies keep their Pods products; only the app's intermediates and bundle need rebuilding.
   const outputs = [
     join(dataRoot, 'Build/Intermediates.noindex/OrotMobile.build', configuration),
     join(dataRoot, 'Build/Products', configuration, 'Orot.app'),

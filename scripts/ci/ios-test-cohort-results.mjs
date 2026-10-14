@@ -19,15 +19,15 @@ export function verifyIosTestCohortResults(report, cohort, context) {
     !Array.isArray(report.tasks) ||
     report.tasks.length !== expected.length
   )
-    throw new Error('Missing, failed or stale native cohort results');
+    throw new Error('Missing, failed or stale integration cohort results');
   const actualKeys = report.tasks.map((task) => task.profile + '/' + task.suite);
   if (new Set(actualKeys).size !== expected.length)
-    throw new Error('Repeated native cohort task results');
+    throw new Error('Repeated integration cohort task results');
   return expected.flatMap((task) => {
     const actual = report.tasks.find(
       (result) => result.profile === task.profile && result.suite === task.suite,
     );
-    if (!actual || actual.status !== 'passed') throw new Error('Native cohort task did not pass');
+    if (!actual || actual.status !== 'passed') throw new Error('iOS cohort task did not pass');
     return verifyIosObservationList(actual.observations, task.identifiers);
   });
 }
@@ -40,7 +40,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     !process.env.GITHUB_RUN_ID ||
     !process.env.GITHUB_RUN_ATTEMPT
   )
-    throw new Error('Native aggregation requires its actual workflow context and explicit report');
+    throw new Error('iOS aggregation requires its actual workflow context and explicit report');
   const report = JSON.parse(readFileSync(path, 'utf8'));
   const observations = verifyIosTestCohortResults(report, cohort, {
     sourceSha: process.env.GITHUB_SHA,

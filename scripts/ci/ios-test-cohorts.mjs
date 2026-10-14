@@ -20,20 +20,20 @@ export function iosTestCohortSample(cohort, sample = 'first') {
     !IOS_SPEECH_SAMPLES.includes(sample) ||
     (cohort !== 'speech' && sample !== 'first')
   )
-    throw new Error('Invalid native cohort sample identity');
+    throw new Error('Invalid integration cohort sample identity');
   return sample;
 }
 
-/** A cohort owns one destination only when configuration, native flags, runtime and device all agree. Speech retains its separate pinned runtime. */
+/** A cohort owns one destination only when configuration, compiler flags, runtime and device all agree. Speech retains its separate pinned runtime. */
 export function iosTestCohort(name) {
-  if (!Object.hasOwn(cohorts, name)) throw new Error('Unknown native test cohort');
+  if (!Object.hasOwn(cohorts, name)) throw new Error('Unknown integration test cohort');
   const cohort = cohorts[name];
   const config = iosTestConfig(cohort.profiles[0]);
   const comparable = (value) =>
     Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'profile'));
   for (const profile of cohort.profiles) {
     if (!isDeepStrictEqual(comparable(iosTestConfig(profile)), comparable(config)))
-      throw new Error('Native cohort contains incompatible configuration or destination');
+      throw new Error('iOS cohort contains incompatible configuration or destination');
   }
   // These are sums of the previous profile-job allowances, not extensions of a recognition, model, UI or cancellation deadline.
   return { name, profiles: cohort.profiles.slice(), config, minutes: cohort.minutes };
@@ -46,12 +46,12 @@ export function iosTestCohortTasks(name) {
     name === 'speech'
       ? [
           { profile: 'speech', suite: 'preparation', mode: 'plain' },
-          { profile: 'speech', suite: 'native', mode: 'plain' },
+          { profile: 'speech', suite: 'integration', mode: 'plain' },
           { profile: 'speech', suite: 'ui', mode: 'plain' },
         ]
       : definition.profiles.flatMap((profile) =>
           profile === 'core'
-            ? ['native', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' }))
+            ? ['integration', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' }))
             : profile === 'fixtures'
               ? ['navigation', 'recordings', 'questions', 'calendar'].map((suite) => ({
                   profile,
@@ -87,11 +87,11 @@ export function verifyIosSimulatorOwnerContract(owner, profile) {
       !isDeepStrictEqual(owner.profiles, cohort.profiles) ||
       !owner.name?.startsWith(`OrotTests-cohort-${cohort.name}-`)
     )
-      throw new Error('Native simulator cohort ownership mismatch');
+      throw new Error('iOS simulator cohort ownership mismatch');
   } else if (owner.profile !== profile || owner.profiles !== undefined) {
-    throw new Error('Native simulator execution contract mismatch');
+    throw new Error('iOS simulator execution contract mismatch');
   }
   if (owner.runtime !== config.runtime || owner.device !== config.device)
-    throw new Error('Native simulator execution contract mismatch');
+    throw new Error('iOS simulator execution contract mismatch');
   return config;
 }

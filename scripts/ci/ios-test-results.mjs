@@ -6,14 +6,14 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 
 export function verifyIosTestResults(report, expected) {
   if (!Array.isArray(report.testNodes) || !expected.length)
-    throw new Error('Native results require an explicit expected test inventory');
+    throw new Error('iOS results require an explicit expected test inventory');
   const observations = [];
   function visit(node, target) {
     if (
       node.nodeType === 'Repetition' ||
       (node.nodeType === 'Test Case Run' && node.result !== 'Passed')
     )
-      throw new Error('Native results contain a retry or unsuccessful individual execution');
+      throw new Error('iOS results contain a retry or unsuccessful individual execution');
     const currentTarget = ['Unit test bundle', 'UI test bundle'].includes(node.nodeType)
       ? node.name
       : target;
@@ -37,16 +37,16 @@ export function verifyIosTestResults(report, expected) {
 /** JSON aggregation on Linux applies the same exact first-execution oracle as the Mac xcresult exporter. */
 export function verifyIosObservationList(observations, expected) {
   if (!Array.isArray(observations) || !Array.isArray(expected) || !expected.length)
-    throw new Error('Native results require an explicit expected test inventory');
+    throw new Error('iOS results require an explicit expected test inventory');
   if (
     observations.length !== expected.length ||
     new Set(observations.map((item) => item.identifier)).size !== expected.length
   )
-    throw new Error('Missing, unexpected or repeated native test execution');
+    throw new Error('Missing, unexpected or repeated integration test execution');
   for (const test of expected) {
     const result = observations.find((item) => item.identifier === test);
     if (!result || result.result !== 'Passed')
-      throw new Error('Native test did not pass on its first execution: ' + test);
+      throw new Error('iOS test did not pass on its first execution: ' + test);
   }
   return observations;
 }

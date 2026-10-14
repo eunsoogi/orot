@@ -96,8 +96,8 @@ function createDiagnostic(classification, reason, mismatchFields, previous, expe
     `expected_manifest_sha256=${valueDigest(expected)}`,
     `cached_toolchain_sha256=${valueDigest(previous?.toolchain)}`,
     `expected_toolchain_sha256=${valueDigest(expected?.toolchain)}`,
-    `cached_native_dependency_sha256=${fingerprintDigest(previous?.nativeDependencies)}`,
-    `expected_native_dependency_sha256=${fingerprintDigest(expected?.nativeDependencies)}`,
+    `cached_platform_dependency_sha256=${fingerprintDigest(previous?.platformDependencies)}`,
+    `expected_platform_dependency_sha256=${fingerprintDigest(expected?.platformDependencies)}`,
     `cached_build_input_sha256=${fingerprintDigest(previous?.buildInputs)}`,
     `expected_build_input_sha256=${fingerprintDigest(expected?.buildInputs)}`,
   ].join(' ');
@@ -133,8 +133,8 @@ export function inspectCacheManifest(readResult, expected) {
   } else {
     mismatchFields.push('toolchain');
   }
-  if (previous.nativeDependencies !== expected.nativeDependencies) {
-    mismatchFields.push('native_dependencies');
+  if (previous.platformDependencies !== expected.platformDependencies) {
+    mismatchFields.push('platform_dependencies');
   }
   if (!FINGERPRINT_PATTERN.test(previous.buildInputs ?? '')) {
     mismatchFields.push('build_inputs_format');
@@ -181,9 +181,9 @@ export function inspectCacheManifest(readResult, expected) {
 export function inspectManifestFingerprints(
   manifest,
   expectedBuildInputs,
-  expectedNativeDependencies,
+  expectedPlatformDependencies,
 ) {
-  const provided = [expectedBuildInputs, expectedNativeDependencies].filter(
+  const provided = [expectedBuildInputs, expectedPlatformDependencies].filter(
     (value) => value !== undefined,
   );
   if (provided.length === 0) {
@@ -198,7 +198,7 @@ export function inspectManifestFingerprints(
   if (provided.length !== 2) mismatchFields.push('prebuild_expectations_incomplete');
   const expected = [
     ['build_inputs', expectedBuildInputs, manifest.buildInputs],
-    ['native_dependencies', expectedNativeDependencies, manifest.nativeDependencies],
+    ['platform_dependencies', expectedPlatformDependencies, manifest.platformDependencies],
   ];
   for (const [field, before, after] of expected) {
     if (before === undefined) continue;
@@ -216,8 +216,8 @@ export function inspectManifestFingerprints(
     `manifest_fingerprint_mismatch_fields=${fields}`,
     `prebuild_build_inputs_sha256=${fingerprintDigest(expectedBuildInputs)}`,
     `manifest_build_inputs_sha256=${fingerprintDigest(manifest.buildInputs)}`,
-    `prebuild_native_dependencies_sha256=${fingerprintDigest(expectedNativeDependencies)}`,
-    `manifest_native_dependencies_sha256=${fingerprintDigest(manifest.nativeDependencies)}`,
+    `prebuild_platform_dependencies_sha256=${fingerprintDigest(expectedPlatformDependencies)}`,
+    `manifest_platform_dependencies_sha256=${fingerprintDigest(manifest.platformDependencies)}`,
   ].join(' ');
   return { match, mismatchFields, diagnostic };
 }

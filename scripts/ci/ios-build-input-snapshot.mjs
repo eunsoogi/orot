@@ -42,7 +42,7 @@ function validateSnapshot(profile, value) {
   if (
     !isRecord(fingerprints) ||
     !HASH_PATTERN.test(fingerprints.buildInputs ?? '') ||
-    !HASH_PATTERN.test(fingerprints.nativeDependencies ?? '')
+    !HASH_PATTERN.test(fingerprints.platformDependencies ?? '')
   ) {
     throw new Error(`Invalid Ios build-input fingerprints in the ${profile} snapshot.`);
   }
@@ -53,7 +53,7 @@ function validateSnapshot(profile, value) {
     baseline,
     fingerprints: {
       buildInputs: fingerprints.buildInputs,
-      nativeDependencies: fingerprints.nativeDependencies,
+      platformDependencies: fingerprints.platformDependencies,
     },
   };
   if (value.stage === 'verified') {

@@ -4,7 +4,7 @@ import XCTest
 
 /// The host runner isolates corpora and starts a different process for each persistence read; these call the real ORT, SQLCipher and FTS probes.
 final class LocalModelIntegrationTests: OrotFailFastTestCase {
-    func testFreshE5RetrievalMeasurementsAndNativeCancellation() async throws {
+    func testFreshE5RetrievalMeasurementsAndInferenceCancellation() async throws {
         let result = try await run("local-e5", parameters: ["mode": "fresh"], timeout: 900)
         try e5(result, mode: "fresh")
         XCTAssertGreaterThan(try number(result, "progressEvents"), 0)

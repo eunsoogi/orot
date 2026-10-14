@@ -13,13 +13,17 @@ const workflow = (file) => yaml.load(readFileSync(file, 'utf8'));
 
 function macJobs(file) {
   return Object.values(workflow(file).jobs).reduce((count, job) => {
-    assert.equal(job.strategy?.matrix, undefined, 'native Mac jobs must not fan out by test/group');
+    assert.equal(
+      job.strategy?.matrix,
+      undefined,
+      'integration Mac jobs must not fan out by test/group',
+    );
     if (job.uses) return count + macJobs(job.uses.replace(/^\.\//, ''));
     return count + (job['runs-on'] === 'xcode-27' ? 1 : 0);
   }, 0);
 }
 
-test('full native graph uses five Mac jobs and stops dependent allocation after any failed prerequisite', () => {
+test('full integration graph uses five Mac jobs and stops dependent allocation after any failed prerequisite', () => {
   const full = workflow('.github/workflows/ios-test-validation.yml');
   assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
@@ -58,14 +62,13 @@ test('full native graph uses five Mac jobs and stops dependent allocation after 
   assert.equal(maximum, 1);
 });
 
-test('manual focused and standalone Debug paths reuse one configuration and do not allocate Mac slots for selection/results', () => {
-  const focus = workflow('.github/workflows/ios-native-focused.yml');
-  assert.equal(macJobs('.github/workflows/ios-native-focused.yml'), 2);
+test('manual focused diagnostics reuse one configuration and do not allocate Mac slots for selection/results', () => {
+  const focus = workflow('.github/workflows/ios-focused.yml');
+  assert.equal(macJobs('.github/workflows/ios-focused.yml'), 2);
   assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.products.needs, 'selection');
   assert.equal(focus.jobs.execution.needs, 'products');
-  assert.equal(macJobs('.github/workflows/ios-debug-test-validation.yml'), 1);
 });
 
 test('every cohort boots only once after verification and preserves the original test, failure and production boundaries', () => {
@@ -102,7 +105,7 @@ test('every cohort boots only once after verification and preserves the original
     ])
       assert.ok(environment[name], 'Missing production toolchain input: ' + name);
   }
-  assert.match(action, /build-ios-tests\.mjs "\$PROFILE" artifacts\/native-focus\/DerivedData/);
+  assert.match(action, /build-ios-tests\.mjs "\$PROFILE" artifacts\/ios-focus\/DerivedData/);
   assert.equal(
     new Set(
       ['release', 'speech', 'debug'].flatMap((name) =>
@@ -142,13 +145,13 @@ test('removing duplicated GUI preflight retains the original host case and first
   assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/results'));
   const combined = workflow('.github/workflows/ios-test-build-and-execute.yml');
   const diagnostics = combined.jobs.validation.steps.find((step) =>
-    step.name?.startsWith('Preserve build and host diagnostics'),
+    step.name?.startsWith('Preserve build diagnostics'),
   );
   assert.equal(diagnostics.if, 'always()');
-  assert.ok(diagnostics.with.path.split('\n').includes('artifacts/native-focus/*.log'));
+  assert.ok(diagnostics.with.path.split('\n').includes('artifacts/ios-focus/*.log'));
 });
 
-test('colocated builds are verified locally and all native routes share one live-run budget', () => {
+test('colocated builds are verified locally and all integration routes share one live-run budget', () => {
   const combined = workflow('.github/workflows/ios-test-build-and-execute.yml');
   const steps = combined.jobs.validation.steps;
   assert.equal(
@@ -160,14 +163,12 @@ test('colocated builds are verified locally and all native routes share one live
     1,
   );
   assert.ok(steps.every((step) => !step.uses?.startsWith('actions/download-artifact@')));
-  for (const name of ['ios-test-validation.yml', 'ios-debug-test-validation.yml']) {
-    const concurrency = workflow('.github/workflows/' + name).concurrency;
-    assert.equal(concurrency.group, 'native-ci-macos-${{ github.repository }}');
-    assert.equal(concurrency['cancel-in-progress'], false);
-  }
-  const focused = workflow('.github/workflows/ios-native-focused.yml');
+  const concurrency = workflow('.github/workflows/ios-test-validation.yml').concurrency;
+  assert.equal(concurrency.group, 'ios-ci-macos-${{ github.repository }}');
+  assert.equal(concurrency['cancel-in-progress'], false);
+  const focused = workflow('.github/workflows/ios-focused.yml');
   for (const name of ['products', 'execution']) {
-    assert.equal(focused.jobs[name].concurrency.group, 'native-ci-macos-${{ github.repository }}');
+    assert.equal(focused.jobs[name].concurrency.group, 'ios-ci-macos-${{ github.repository }}');
     assert.equal(focused.jobs[name].concurrency['cancel-in-progress'], false);
   }
 });

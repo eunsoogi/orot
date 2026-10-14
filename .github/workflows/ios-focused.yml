@@ -1,4 +1,4 @@
-name: Focused native iOS diagnostic
+name: Focused integration iOS diagnostic
 
 on:
   workflow_call:
@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   # Updating the selected PR invalidates its previous diagnostic, without satisfying the full gate.
-  group: focused-native-${{ inputs.pr_number || github.run_id }}-scenario
+  group: focused-ios-${{ inputs.pr_number || github.run_id }}-scenario
   cancel-in-progress: true
 
 env:
@@ -25,10 +25,10 @@ env:
 
 jobs:
   selection:
-    name: Validate exact native selection
+    name: Validate exact integration selection
     runs-on: ubuntu-24.04
     # Diagnostics require the same human administrator approval and cannot bypass the full path's Mac allocation boundary.
-    environment: { name: native-ci-admin-approval }
+    environment: { name: ios-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       profile: ${{ steps.selection.outputs.profile }}
@@ -52,13 +52,13 @@ jobs:
           SOURCE_FILE: ${{ inputs.scenario_file }}
           TEST_ID: ${{ inputs.scenario_name }}
           PR_NUMBER: ${{ inputs.pr_number }}
-        run: node scripts/ci/ios-native-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER"
+        run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER"
   products:
-    name: Build selected native test products
+    name: Build selected integration test products
     needs: selection
     runs-on: xcode-27
     concurrency:
-      group: native-ci-macos-${{ github.repository }}
+      group: ios-ci-macos-${{ github.repository }}
       cancel-in-progress: false
     timeout-minutes: 60
     outputs:
@@ -74,35 +74,30 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Diagnose this selected provider host before compilation
-        if: needs.selection.outputs.profile == 'provider-data'
-        timeout-minutes: 2
-        uses: ./.github/actions/ios-apple-model-host
-        with: { evidence: artifacts/native-focus }
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:
           profile: ${{ needs.selection.outputs.profile }}
-      - name: Upload exact portable native products
+      - name: Upload exact portable integration products
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: native-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-focus/product-artifact
+          name: ios-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/product-artifact
           if-no-files-found: error
           retention-days: 7
       - name: Preserve build and selection diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: native-focused-build-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ios-focused-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            artifacts/native-focus/*.log
-            artifacts/native-focus/*.jsonl
-            artifacts/native-focus/DerivedData/Build/Products/*.xctestrun
+            artifacts/ios-focus/*.log
+            artifacts/ios-focus/*.jsonl
+            artifacts/ios-focus/DerivedData/Build/Products/*.xctestrun
           if-no-files-found: warn
           retention-days: 7
   completeness:
-    name: Verify selected native observations on Linux
+    name: Verify selected integration observations on Linux
     needs: [selection, products, execution]
     if: always()
     runs-on: ubuntu-24.04
@@ -117,24 +112,24 @@ jobs:
       - name: Require selection, build and actual execution success
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: node -e 'if(Object.values(JSON.parse(process.env.RESULTS)).some(job=>job.result!=="success")) throw new Error("Incomplete native focus");'
+        run: node -e 'if(Object.values(JSON.parse(process.env.RESULTS)).some(job=>job.result!=="success")) throw new Error("Incomplete integration focus");'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-focus-results
+          name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus-results
       - name: Apply the exact selection oracle to exported evidence
         env:
           PROFILE: ${{ inputs.profile }}
           SOURCE_FILE: ${{ inputs.scenario_file }}
           TEST_ID: ${{ inputs.scenario_name }}
-        run: node scripts/ci/ios-native-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/native-focus-results
+        run: node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results
 
   execution:
-    name: Execute selected native ${{ needs.products.outputs.profile }} ${{ needs.products.outputs.suite }} tests
+    name: Execute selected integration ${{ needs.products.outputs.profile }} ${{ needs.products.outputs.suite }} tests
     needs: products
     runs-on: xcode-27
     concurrency:
-      group: native-ci-macos-${{ github.repository }}
+      group: ios-ci-macos-${{ github.repository }}
       cancel-in-progress: false
     # Stateful local-model groups retain their original operation and setup allowances.
     timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
@@ -142,11 +137,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Diagnose this provider executor before dependencies or transfer
-        if: needs.products.outputs.profile == 'provider-data'
-        timeout-minutes: 2
-        uses: ./.github/actions/ios-apple-model-host
-        with: { evidence: artifacts/native-focus }
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           version: 12.3.4
@@ -156,39 +146,39 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - name: Install dependencies before test boot
-        run: scripts/ci/run-command.sh native-focus-dependencies artifacts/native-focus/install.log -- pnpm install --frozen-lockfile
-      - name: Download the producer's exact native products
+        run: scripts/ci/run-command.sh ios-focus-dependencies artifacts/ios-focus/install.log -- pnpm install --frozen-lockfile
+      - name: Download the producer's exact integration products
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-focus/product-artifact
+          name: ios-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/product-artifact
       - name: Verify product provenance and integrity before boot
         id: verify
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
           ARCHIVE_DIGEST: ${{ needs.products.outputs.archive_digest }}
           MANIFEST_DIGEST: ${{ needs.products.outputs.manifest_digest }}
-        run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/native-focus/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+        run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/ios-focus/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
       - name: Provision the pinned Speech runtime
         if: needs.products.outputs.profile == 'speech'
         run: bash scripts/ci/prepare-ios-test-runtime.sh speech
       - name: Boot the dedicated execution destination
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
-        run: scripts/ci/run-command.sh native-focus-boot artifacts/native-focus/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/native-focus/simulator-owner.json
-      - name: Verify native app-host preparation before UI execution
+        run: scripts/ci/run-command.sh ios-focus-boot artifacts/ios-focus/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-focus/simulator-owner.json
+      - name: Verify integration app-host preparation before UI execution
         if: needs.products.outputs.prepare_ui == 'true'
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
-        run: scripts/ci/run-command.sh native-focus-ui-preparation artifacts/native-focus/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus
+        run: scripts/ci/run-command.sh ios-focus-ui-preparation artifacts/ios-focus/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus
       - name: Install Korean Speech assets without recognizing a fixture
         if: needs.products.outputs.profile == 'speech'
         env:
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
-          scripts/ci/run-command.sh native-focus-speech-assets artifacts/native-focus/speech-assets.log -- node scripts/ci/run-ios-tests.mjs speech "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/speech-assets.xcresult OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
-          node scripts/ci/ios-test-results.mjs speech artifacts/native-focus/speech-assets.xcresult artifacts/native-focus/speech-assets.json OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+          scripts/ci/run-command.sh ios-focus-speech-assets artifacts/ios-focus/speech-assets.log -- node scripts/ci/run-ios-tests.mjs speech "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/speech-assets.xcresult OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+          node scripts/ci/ios-test-results.mjs speech artifacts/ios-focus/speech-assets.xcresult artifacts/ios-focus/speech-assets.json OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
       - name: Execute the selected case or explicit phase group without compilation or retry
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
@@ -198,48 +188,48 @@ jobs:
           TEST_RUN: ${{ steps.verify.outputs.test_run }}
         run: |
           if [[ "$MODE" == backup ]]; then
-            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/backup
+            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-backup-tests.mjs "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/backup
           elif [[ "$MODE" == local-model ]]; then
-            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/local-model
+            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-local-model-tests.mjs "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/local-model
           elif [[ "$MODE" == fixture ]]; then
             if [[ -n "$TEST_ID" ]]; then
-              scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures "$TEST_ID"
+              scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/fixtures "$TEST_ID"
             else
-              scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/fixtures
+              scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-fixture-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/fixtures
             fi
           else
-            scripts/ci/run-command.sh native-focus-tests artifacts/native-focus/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/native-focus/simulator-owner.json artifacts/native-focus/results.xcresult "$TEST_ID"
-            node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/native-focus/results.xcresult artifacts/native-focus/results.json "$TEST_ID"
+            scripts/ci/run-command.sh ios-focus-tests artifacts/ios-focus/tests.log -- node scripts/ci/run-ios-tests.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/results.xcresult "$TEST_ID"
+            node scripts/ci/ios-test-results.mjs "$PROFILE" artifacts/ios-focus/results.xcresult artifacts/ios-focus/results.json "$TEST_ID"
           fi
-      - name: Export native evidence attachments
+      - name: Export integration evidence attachments
         if: always()
         run: |
-          if [[ -d artifacts/native-focus/results.xcresult ]]; then
-            xcrun xcresulttool export attachments --path artifacts/native-focus/results.xcresult --output-path artifacts/native-focus/attachments
+          if [[ -d artifacts/ios-focus/results.xcresult ]]; then
+            xcrun xcresulttool export attachments --path artifacts/ios-focus/results.xcresult --output-path artifacts/ios-focus/attachments
           fi
       - name: Tear down the owned destination
         if: always()
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
         run: |
-          if [[ -f artifacts/native-focus/simulator-owner.json ]]; then
-            node scripts/ci/ios-test-simulator.mjs cleanup "$PROFILE" artifacts/native-focus/simulator-owner.json
+          if [[ -f artifacts/ios-focus/simulator-owner.json ]]; then
+            node scripts/ci/ios-test-simulator.mjs cleanup "$PROFILE" artifacts/ios-focus/simulator-owner.json
           fi
-      - name: Preserve native execution diagnostics
+      - name: Preserve integration execution diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: native-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            artifacts/native-focus/*.log
-            artifacts/native-focus/*.json
-            artifacts/native-focus/*.jsonl
-            artifacts/native-focus/*.png
-            artifacts/native-focus/*.xcresult
-            artifacts/native-focus/attachments
-            artifacts/native-focus/backup
-            artifacts/native-focus/local-model
-            artifacts/native-focus/fixtures
-            artifacts/native-focus/product-artifact/manifest.json
+            artifacts/ios-focus/*.log
+            artifacts/ios-focus/*.json
+            artifacts/ios-focus/*.jsonl
+            artifacts/ios-focus/*.png
+            artifacts/ios-focus/*.xcresult
+            artifacts/ios-focus/attachments
+            artifacts/ios-focus/backup
+            artifacts/ios-focus/local-model
+            artifacts/ios-focus/fixtures
+            artifacts/ios-focus/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

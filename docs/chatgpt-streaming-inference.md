@@ -1,6 +1,6 @@
 # ChatGPT plan models and streaming
 
-> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
 
 
 The `@orot/provider-openai` workspace package adapts the saved ChatGPT account to Orot's `LanguageModelProvider` contract. Swift owns OAuth credentials, model discovery, Responses transport, and server-sent event decoding. TypeScript maps requests and results to the provider-neutral runtime. The React Native bridge passes the issued client ID and stream packets; it never serializes the stored account or its tokens.

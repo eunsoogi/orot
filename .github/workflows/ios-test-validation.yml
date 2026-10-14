@@ -9,22 +9,21 @@ permissions:
   contents: read
 
 concurrency:
-  # Full and diagnostic native graphs share this repository budget; superseded PR runs are cancelled by their caller.
-  group: native-ci-macos-${{ github.repository }}
+  # Full and diagnostic integration graphs share this repository budget; superseded PR runs are cancelled by their caller.
+  group: ios-ci-macos-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
   plan:
-    name: Plan native coverage and macOS budget
+    name: Plan integration coverage and macOS budget
     runs-on: ubuntu-24.04
     # Required reviewer protection is configured in repository settings; approval precedes the first Debug VM and every successor.
-    environment: { name: native-ci-admin-approval }
+    environment: { name: ios-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       release_minutes: ${{ steps.plan.outputs.release_minutes }}
       speech_minutes: ${{ steps.plan.outputs.speech_minutes }}
       debug_minutes: ${{ steps.plan.outputs.debug_minutes }}
-      cli_consent_run_id: ${{ steps.cli_consent.outputs.cli_consent_run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -35,11 +34,6 @@ jobs:
       - name: Validate the complete logical plan before Mac allocation
         id: plan
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
-      - name: Bind optional CLI consent to this approved first run
-        id: cli_consent
-        env:
-          OROT_FM_CLI_CONSENT_RUN: ${{ vars.OROT_FM_CLI_CONSENT_RUN }}
-        run: node scripts/ci/apple-model-cli-consent.mjs plan
   debug_execution:
     name: Debug provider and capability validation
     needs: plan
@@ -49,7 +43,6 @@ jobs:
       profile: provider-data
       artifact_name: ios-test-debug-products
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
-      cli_consent_run_id: ${{ needs.plan.outputs.cli_consent_run_id }}
   release_execution:
     name: Production and General Release validation
     needs: [plan, debug_execution]
@@ -75,7 +68,7 @@ jobs:
   speech_sample_2:
     name: Fresh Speech acceptance sample 2
     needs: [plan, release_execution, speech_execution]
-    # A failed first attempt stays failed. The next fresh VM runs only after all original native and UI assertions passed.
+    # A failed first attempt stays failed. The next fresh VM runs only after all original integration and UI assertions passed.
     if: ${{ needs.speech_execution.result == 'success' }}
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
@@ -100,7 +93,7 @@ jobs:
       manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   completeness:
-    name: Native test completeness
+    name: iOS test completeness
     needs: [release_execution, speech_execution, speech_sample_2, speech_sample_3, debug_execution]
     if: always()
     runs-on: ubuntu-24.04
@@ -115,34 +108,34 @@ jobs:
       - name: Require every build and execution boundary to succeed
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: node -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) throw new Error("Incomplete native validation");'
+        run: node -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) throw new Error("Incomplete integration validation");'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-cohort-report-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-reports/release
+          name: ios-cohort-report-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/release
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-cohort-report-speech-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-reports/speech
+          name: ios-cohort-report-speech-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/speech
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-reports/debug
+          name: ios-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/debug
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-cohort-report-speech-second-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-reports/speech-second
+          name: ios-cohort-report-speech-second-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/speech-second
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-cohort-report-speech-third-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-reports/speech-third
-      - name: Verify complete current-head native observations and authentic Speech
+          name: ios-cohort-report-speech-third-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/speech-third
+      - name: Verify complete current-head integration observations and authentic Speech
         run: |
-          node scripts/ci/ios-test-cohort-results.mjs release artifacts/native-reports/release/results.json artifacts/native-reports/release-verified.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech/results.json artifacts/native-reports/speech-verified.json
-          node scripts/ci/ios-test-cohort-results.mjs debug artifacts/native-reports/debug/results.json artifacts/native-reports/debug-verified.json
-          node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech/speech-native/attachments artifacts/native-reports/speech-accuracy.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech-second/results.json artifacts/native-reports/speech-second-verified.json second
-          node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech-second/speech-native/attachments artifacts/native-reports/speech-second-accuracy.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech-third/results.json artifacts/native-reports/speech-third-verified.json third
-          node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech-third/speech-native/attachments artifacts/native-reports/speech-third-accuracy.json
+          node scripts/ci/ios-test-cohort-results.mjs release artifacts/ios-reports/release/results.json artifacts/ios-reports/release-verified.json
+          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech/results.json artifacts/ios-reports/speech-verified.json
+          node scripts/ci/ios-test-cohort-results.mjs debug artifacts/ios-reports/debug/results.json artifacts/ios-reports/debug-verified.json
+          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech/speech-integration/attachments artifacts/ios-reports/speech-accuracy.json
+          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech-second/results.json artifacts/ios-reports/speech-second-verified.json second
+          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-second/speech-integration/attachments artifacts/ios-reports/speech-second-accuracy.json
+          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech-third/results.json artifacts/ios-reports/speech-third-verified.json third
+          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-third/speech-integration/attachments artifacts/ios-reports/speech-third-accuracy.json

@@ -10,7 +10,7 @@ test('production cache reuse skips only app compilation, preserving separate OAu
   assert.match(action, /ios-derived-data-cache\.mjs write production/);
   assert.match(
     action,
-    /key: orot-ios-production-v1-.*macos_version.*xcodebuild_fingerprint.*native_dependencies.*build_inputs/,
+    /key: orot-ios-production-v1-.*macos_version.*xcodebuild_fingerprint.*platform_dependencies.*build_inputs/,
   );
   assert.match(action, /apps\/mobile\/ios\/build-production\n\s+apps\/mobile\/ios\/Pods/);
   assert.match(action, /app_reusable != 'true'/);
@@ -28,12 +28,12 @@ test('production cache reuse skips only app compilation, preserving separate OAu
 
 test('production status reads the actual preserved filename and fails for diagnostic selection', () => {
   const e2e = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
-  const product = readFileSync('.github/workflows/ios-test-product-build.yml', 'utf8');
+  const product = readFileSync('.github/workflows/ios-test-build-and-execute.yml', 'utf8');
   assert.match(
     e2e,
     /ios-production-receipt\.mjs verify artifacts\/production-receipt\/production-receipt\.json/,
   );
-  assert.match(product, /path: artifacts\/native-focus\/production-receipt\.json/);
+  assert.match(product, /path: artifacts\/ios-focus\/production-receipt\.json/);
   assert.match(product, /if: \$\{\{ always\(\) && inputs\.production_build \}\}/);
   assert.match(e2e, /test "\$DIAGNOSTIC" != true/);
 });

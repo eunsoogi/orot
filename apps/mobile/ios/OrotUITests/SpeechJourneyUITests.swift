@@ -26,7 +26,7 @@ final class SpeechJourneyUITests: OrotFailFastTestCase {
         let firstSegmentText = try XCTUnwrap(result["firstSegmentText"] as? String)
         verifyProductionTranscript(app, sourceId: sourceId, text: firstSegmentText)
         let attachment = XCTAttachment(data: bytes, uniformTypeIdentifier: "public.json")
-        attachment.name = "native-to-app-saved-transcript"
+        attachment.name = "speech-to-app-saved-transcript"
         attachment.lifetime = .keepAlways
         add(attachment)
 

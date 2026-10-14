@@ -22,7 +22,7 @@ const BUILD_INPUT_PATHS = [
 ];
 
 const REACT_NATIVE_ARTIFACT_PATHS = ['pnpm-lock.yaml', 'apps/mobile/ios/Podfile.lock'];
-const NATIVE_DEPENDENCY_INPUT_PATHS = [
+const PLATFORM_DEPENDENCY_INPUT_PATHS = [
   '.npmrc',
   'package.json',
   'pnpm-lock.yaml',
@@ -83,16 +83,16 @@ export function computeIosCacheFingerprints(
     {
       buildInputs: { pathspecs: BUILD_INPUT_PATHS, excludeHostTests: true },
       reactNativeArtifacts: { pathspecs: REACT_NATIVE_ARTIFACT_PATHS },
-      nativeDependencies: { pathspecs: NATIVE_DEPENDENCY_INPUT_PATHS },
+      platformDependencies: { pathspecs: PLATFORM_DEPENDENCY_INPUT_PATHS },
     },
     options,
     readInput,
   );
-  const nativeDependencies = addBuildConfigFingerprint(inputs.nativeDependencies, root);
+  const platformDependencies = addBuildConfigFingerprint(inputs.platformDependencies, root);
   return makeFingerprintOutput({
     buildInputs: inputs.buildInputs,
     reactNativeArtifacts: inputs.reactNativeArtifacts,
-    nativeDependencies,
+    platformDependencies,
     privacyManifestInputHash: inputs.buildInputs.privacyManifestInputHash,
     cocoapodsProjectInputHash: inputs.buildInputs.cocoapodsProjectInputHash,
   });
@@ -122,15 +122,15 @@ export function computeIosDerivedDataFingerprints(
     root,
     {
       buildInputs: { pathspecs: BUILD_INPUT_PATHS, excludeHostTests: true },
-      nativeDependencies: { pathspecs: NATIVE_DEPENDENCY_INPUT_PATHS },
+      platformDependencies: { pathspecs: PLATFORM_DEPENDENCY_INPUT_PATHS },
     },
     options,
     readInput,
   );
-  const nativeDependencies = addBuildConfigFingerprint(inputs.nativeDependencies, root);
+  const platformDependencies = addBuildConfigFingerprint(inputs.platformDependencies, root);
   return makeFingerprintOutput({
     buildInputs: inputs.buildInputs,
-    nativeDependencies,
+    platformDependencies,
     privacyManifestInputHash: inputs.buildInputs.privacyManifestInputHash,
     cocoapodsProjectInputHash: inputs.buildInputs.cocoapodsProjectInputHash,
   });
@@ -139,7 +139,7 @@ export function computeIosDerivedDataFingerprints(
 function makeFingerprintOutput({
   buildInputs,
   reactNativeArtifacts,
-  nativeDependencies,
+  platformDependencies,
   privacyManifestInputHash,
   cocoapodsProjectInputHash,
 }) {
@@ -152,9 +152,9 @@ function makeFingerprintOutput({
     fingerprints.reactNativeArtifacts = reactNativeArtifacts.fingerprint;
     fingerprints.reactNativeArtifactInputCount = reactNativeArtifacts.count;
   }
-  if (nativeDependencies) {
-    fingerprints.nativeDependencies = nativeDependencies.fingerprint;
-    fingerprints.nativeDependencyInputCount = nativeDependencies.count;
+  if (platformDependencies) {
+    fingerprints.platformDependencies = platformDependencies.fingerprint;
+    fingerprints.platformDependencyInputCount = platformDependencies.count;
   }
   if (privacyManifestInputHash) fingerprints.privacyManifestInputHash = privacyManifestInputHash;
   if (cocoapodsProjectInputHash) fingerprints.cocoapodsProjectInputHash = cocoapodsProjectInputHash;

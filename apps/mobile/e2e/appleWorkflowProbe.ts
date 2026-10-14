@@ -1,6 +1,6 @@
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
-import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
+import { appleFoundationModelsProbeBridge as appleFoundationModelsNativeBridge } from './appleModelMockBridge';
 import { classifyCalendarEvents } from '../src/medicalAppointments/classificationWorkflow';
 import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
 import { runVisitQuestionWorkflow } from '../src/agent/visitQuestions/workflow';
@@ -34,7 +34,7 @@ const evidence: VisitQuestionEvidenceItem = {
     '합성 사용자 기록: 최근 일주일간 평소보다 두 시간 일찍 잠에서 깨어 다시 잠들기 어려웠다. 다음 내과 진료에서 수면 변화와 기록할 내용을 확인하고 싶다.',
 };
 
-/** Synthetic storage boundaries isolate this real-provider probe from personal records. */
+/** Synthetic storage boundaries isolate this workflow probe from personal records. */
 function preparedContext(): Extract<
   VisitQuestionContextResult,
   { status: 'ready' }
@@ -96,7 +96,7 @@ function preparedContext(): Extract<
   };
 }
 
-/** Calls shipping workflows and records native failures without substituting output. */
+/** Calls shipping workflows and records native failures through the configured native call boundary. */
 export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   let onGenerate: (() => void) | undefined;
   const native = new AppleFoundationModelsProvider({

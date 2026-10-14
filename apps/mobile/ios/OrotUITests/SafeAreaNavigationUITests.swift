@@ -13,14 +13,14 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         // These routes request no personal records and start no recording. Keep their original assertions in named activities while sharing one native launch.
         try XCTContext.runActivity(named: "Home, Records and Health import insets") { _ in try verifyHomeAndHealthImport(app) }
-        try NavigationUITestConditions.tapNative(app, "navigation-back")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         // The selected but unimported categories retain the real leave guard. Discard only this synthetic selection before continuing the shared journey.
         let leave = app.alerts["저장하지 않은 내용이 있어요"]
         XCTAssertTrue(UITestConditions.exists(leave))
         leave.buttons["내용 버리고 나가기"].tap()
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try XCTContext.runActivity(named: "Recording inner scroller and floating toolbar") { _ in try verifyRecording(app) }
-        try NavigationUITestConditions.tapNative(app, "navigation-back")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try XCTContext.runActivity(named: "Synthetic blood pressure and final library row") { _ in try verifyBloodPressure(app) }
     }
@@ -64,7 +64,7 @@ final class SafeAreaNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(action.isHittable)
         let root = try rootFrame(app, containing: action.frame)
         XCTAssertEqual(node(app, "recording-controls-scroll").frame.maxY, root.maxY, accuracy: 0.5)
-        let bar = try NavigationUITestConditions.nativeAction(app, "navigation-back").toolbar
+        let bar = try NavigationUITestConditions.navigationAction(app, "navigation-back").toolbar
         XCTAssertLessThanOrEqual(action.frame.maxY, bar.frame.minY)
         capture(app, "recording-inner-scroll-floating-bar-safe-area")
     }

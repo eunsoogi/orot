@@ -7,7 +7,7 @@ import { iosTestConfig } from '../ios-test-config.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
 
-// These CLI fixtures reproduce scheduling and ownership; they prove no native UI acceptance.
+// These CLI fixtures reproduce scheduling and ownership; they prove no integration UI acceptance.
 function fixture({ failFirst = true, cleanupFailure = false } = {}) {
   const repository = process.cwd();
   const value = createProductFixture('fixtures');

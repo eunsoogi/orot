@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const workflow = (name) => yaml.load(readFileSync('.github/workflows/' + name, 'utf8'));
 
-// Jobs on GitHub-hosted runners use fresh VMs. This graph proves sequencing and separate evidence, not observed native passes.
+// Jobs on GitHub-hosted runners use fresh VMs. This graph proves sequencing and separate evidence, not observed integration passes.
 test('three first Speech samples share verified products and stop after a failed prerequisite', () => {
   const full = workflow('ios-test-validation.yml');
   const ids = ['speech_execution', 'speech_sample_2', 'speech_sample_3'];
@@ -52,10 +52,10 @@ test('later samples retain separate raw and compact artifacts and enter Linux co
   for (const sample of ['second', 'third']) {
     assert.ok(
       commands.includes(
-        `results.json artifacts/native-reports/speech-${sample}-verified.json ${sample}`,
+        `results.json artifacts/ios-reports/speech-${sample}-verified.json ${sample}`,
       ),
     );
-    assert.ok(commands.includes(`speech-${sample}/speech-native/attachments`));
+    assert.ok(commands.includes(`speech-${sample}/speech-integration/attachments`));
   }
 });
 
@@ -71,8 +71,8 @@ test('actual Linux plan reports five Mac jobs and the three fresh Speech samples
     const value = JSON.parse(result.stdout);
     assert.equal(value.macJobs, 5);
     assert.equal(value.maximumConcurrentMacJobs, 1);
-    assert.equal(value.uniqueNativeCases, 77);
-    assert.equal(value.scheduledNativeObservations, 100);
+    assert.equal(value.uniqueTestCases, 77);
+    assert.equal(value.scheduledTestObservations, 100);
     assert.deepEqual(value.speechSamples, ['first', 'second', 'third']);
     assert.match(readFileSync(output, 'utf8'), /speech_minutes=90/);
   } finally {

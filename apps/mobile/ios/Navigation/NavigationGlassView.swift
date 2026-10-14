@@ -54,7 +54,7 @@ final class NavigationGlassSurfaceView: UIView {
         isOpaque = false
         clipsToBounds = false
         toolbar.translatesAutoresizingMaskIntoConstraints = false
-        toolbar.accessibilityIdentifier = "navigation-native-toolbar"
+        toolbar.accessibilityIdentifier = "navigation-toolbar"
         addSubview(toolbar)
         NSLayoutConstraint.activate([
             toolbar.leadingAnchor.constraint(equalTo: leadingAnchor),

@@ -4,7 +4,7 @@ const [logPath, suiteName, extra] = process.argv.slice(2);
 if (!logPath || suiteName !== 'unit' || extra)
   throw new Error('Usage: require-jest-summary.mjs <log-path> unit');
 
-// Every workspace Jest invocation must discover and pass tests. Native validation reads xcresult instead of accepting a textual Jest substitute.
+// Every workspace Jest invocation must discover and pass tests. iOS validation reads xcresult instead of accepting a textual Jest substitute.
 const log = readFileSync(logPath, 'utf8').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
 const tests = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
 const suites = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)].map((match) => match[1]);

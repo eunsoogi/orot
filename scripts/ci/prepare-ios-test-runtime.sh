@@ -5,7 +5,7 @@ case "${1:-}" in
   core | provider-data) exit 0 ;;
   speech) ;;
   *)
-    printf 'Expected one supported native test profile.\n' >&2
+    printf 'Expected one supported integration test profile.\n' >&2
     exit 2
     ;;
 esac

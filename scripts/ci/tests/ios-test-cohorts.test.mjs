@@ -45,7 +45,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
     tasks.filter((task) => task.profile === 'speech').map((task) => task.suite),
-    ['preparation', 'native', 'ui'],
+    ['preparation', 'integration', 'ui'],
   );
 });
 
@@ -74,11 +74,11 @@ test('explicit compatible cohort ownership cannot authorize another configuratio
   assert.throws(() => verifyIosSimulatorOwnerContract(ordinary, 'fixtures'));
 });
 
-test('Core verifies the native target before scheduling UI, without losing or duplicating any case', () => {
+test('Core verifies the integration target before scheduling UI, without losing or duplicating any case', () => {
   const tasks = iosTestCohortTasks('release').filter((task) => task.profile === 'core');
   assert.deepEqual(
     tasks.map((task) => task.suite),
-    ['native', 'ui'],
+    ['integration', 'ui'],
   );
   assert.deepEqual(
     tasks.flatMap((task) => task.identifiers),

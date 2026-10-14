@@ -11,6 +11,19 @@ jest.mock('../e2e/appleFoundationModelsProbe', () => ({
 jest.mock('../e2e/localRecordQueryProbe', () => ({
   runLocalQueryIntegrationProbe: jest.fn(),
 }));
+// This unit boundary checks dispatch and validation; the Simulator suite executes the real mock-control bridge.
+jest.mock('../e2e/appleModelMockBridge', () => ({
+  withMockAppleModel: jest.fn(async (_script, run) => ({
+    ...(await run()),
+    modelExecution: 'mock',
+    actualModel: 'not-run',
+  })),
+}));
+jest.mock('../e2e/appleModelMockBridgeProbe', () => ({
+  runAppleModelMockBridgeProbe: jest.fn(async () => ({
+    unitRoutingFixture: true,
+  })),
+}));
 
 import { runDomainTestOperation } from '../e2e/domainTestOperations';
 import { runAppleFoundationModelsProbe } from '../e2e/appleFoundationModelsProbe';
@@ -33,12 +46,19 @@ const available = {
   inferenceStop: 'unverified',
 };
 
-test('preserves the actual unavailable report without manufacturing generation or cancellation', async () => {
+const expected = (result: object) => ({
+  ...result,
+  modelExecution: 'mock',
+  actualModel: 'not-run',
+  bridge: { unitRoutingFixture: true },
+});
+
+test('preserves an unavailable fixture without manufacturing generation or cancellation', async () => {
   (runAppleFoundationModelsProbe as jest.Mock).mockResolvedValueOnce(
     unavailable,
   );
   await expect(runDomainTestOperation('apple-model', {})).resolves.toEqual(
-    unavailable,
+    expected(unavailable),
   );
   expect(runAppleFoundationModelsProbe).toHaveBeenCalledTimes(1);
 });
@@ -46,7 +66,7 @@ test('preserves the actual unavailable report without manufacturing generation o
 test('preserves the original available-branch question and source validation', async () => {
   (runAppleFoundationModelsProbe as jest.Mock).mockResolvedValueOnce(available);
   await expect(runDomainTestOperation('apple-model', {})).resolves.toEqual(
-    available,
+    expected(available),
   );
   for (const result of [
     { ...available, sourceIdPreserved: 'failed' },

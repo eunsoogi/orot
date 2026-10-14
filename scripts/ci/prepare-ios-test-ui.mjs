@@ -22,9 +22,9 @@ const started = Date.now();
 const developer = process.env.DEVELOPER_DIR;
 if (!developer || !isAbsolute(developer))
   throw new Error('Simulator UI preparation requires the explicit selected Xcode directory');
-// Core's native-first executions reached XCUI while cold standalone UI runners failed before their cases.
+// Core's integration-first executions reached XCUI while cold standalone UI runners failed before their cases.
 // Exercise the same real app-host/JS boundary as a separate preparation result, without another boot or retry.
-const nativeResult = resolve(evidence, 'host-preparation.xcresult');
+const serviceResult = resolve(evidence, 'host-preparation.xcresult');
 execFileSync(
   'scripts/ci/run-command.sh',
   [
@@ -36,7 +36,7 @@ execFileSync(
     profile,
     runFile,
     ownerFile,
-    nativeResult,
+    serviceResult,
     hostConnectionTest,
   ],
   { stdio: 'inherit', env: { ...process.env, OROT_IOS_TEST_PHASE: 'prepare-ui' } },
@@ -44,7 +44,7 @@ execFileSync(
 const report = JSON.parse(
   execFileSync(
     'xcrun',
-    ['xcresulttool', 'get', 'test-results', 'tests', '--path', nativeResult, '--compact'],
+    ['xcresulttool', 'get', 'test-results', 'tests', '--path', serviceResult, '--compact'],
     { encoding: 'utf8' },
   ),
 );

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/** Only the maintained default production recipe influences this cache. Native test products have their own exact build specification and portable manifest. */
+/** Only the maintained default production recipe influences this cache. iOS test products have their own exact build specification and portable manifest. */
 export function fingerprintIosBuildConfigs(repositoryRoot) {
   return [
     {
@@ -11,7 +11,7 @@ export function fingerprintIosBuildConfigs(repositoryRoot) {
       configuration: 'Debug',
       sdk: 'iphonesimulator',
       entry: 'index.js',
-      nativeFlags: 'default',
+      platformFlags: 'default',
       signing: 'NO',
       derivedDataPath: 'apps/mobile/ios/build-production',
       recipeSha256: createHash('sha256')

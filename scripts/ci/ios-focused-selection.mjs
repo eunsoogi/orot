@@ -2,11 +2,11 @@ import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
 /** Focus is an exact diagnostic selection. Stateful phases and named fixture groups must be requested explicitly. */
-export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioName) {
+export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) {
   if (![profileInput, scenarioFile, scenarioName].every((value) => typeof value === 'string'))
-    throw new Error('Native focus requires string profile, source file and exact test selection');
-  const profile = /^native\/([a-z][a-z-]+)$/.exec(profileInput)?.[1];
-  if (!profile) throw new Error('Native focus profile must use native/<profile>');
+    throw new Error('iOS focus requires string profile, source file and exact test selection');
+  const profile = /^ios\/([a-z][a-z-]+)$/.exec(profileInput)?.[1];
+  if (!profile) throw new Error('iOS focus profile must use ios/<profile>');
   const configuration = iosTestConfig(profile).configuration;
   const inventory = iosTestInventory(profile);
   const statefulGroup = ['backup', 'local-model'].includes(profile);
@@ -22,7 +22,7 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
   if (statefulGroup && scenarioName !== 'all')
     throw new Error('Stateful backup and local-model focus requires the complete all phase group');
   if (identifiers.some((identifier) => !inventory.includes(identifier)))
-    throw new Error('Native focus must name an exact registered test in its profile');
+    throw new Error('iOS focus must name an exact registered test in its profile');
   const files = identifiers.map((identifier) => {
     const [target, name] = identifier.split('/');
     return `apps/mobile/ios/${target}/${name}.swift`;
@@ -32,13 +32,13 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
       ? scenarioFile !== 'scripts/ci/ios-test-fixture-groups.mjs'
       : !files.every((file) => file === scenarioFile)
   )
-    throw new Error('Native focus source file does not match the selected test or phase group');
+    throw new Error('iOS focus source file does not match the selected test or phase group');
   const mode = statefulGroup
     ? profile
     : ['fixtures', 'microphone', 'health-import', 'provider-selection'].includes(profile)
       ? 'fixture'
       : 'plain';
-  const suite = identifiers[0].startsWith('OrotUITests/') ? 'ui' : 'native';
+  const suite = identifiers[0].startsWith('OrotUITests/') ? 'ui' : 'integration';
   return {
     profile,
     configuration,
@@ -53,13 +53,13 @@ export function selectFocusedNativeTests(profileInput, scenarioFile, scenarioNam
 }
 
 /** A PR selector must bind the workflow's actual branch/SHA, never silently substitute a different checkout. */
-export function verifyFocusedNativePullRequest(context, number, pullRequest) {
+export function verifyFocusedIosPullRequest(context, number, pullRequest) {
   if (
     typeof number !== 'string' ||
     !/^[1-9]\d*$/.test(number) ||
     !Number.isSafeInteger(Number(number))
   )
-    throw new Error('Native focus PR number must be a positive integer');
+    throw new Error('iOS focus PR number must be a positive integer');
   if (
     pullRequest?.number !== Number(number) ||
     pullRequest.state !== 'open' ||
@@ -68,6 +68,6 @@ export function verifyFocusedNativePullRequest(context, number, pullRequest) {
     pullRequest.head?.ref !== context.ref
   )
     throw new Error(
-      'Native focus must run the selected open PR head in its own repository and branch',
+      'iOS focus must run the selected open PR head in its own repository and branch',
     );
 }

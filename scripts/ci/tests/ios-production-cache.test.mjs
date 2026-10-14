@@ -10,7 +10,7 @@ import {
   writeFixtureFile,
 } from './fixtures/ios-derived-data-cache.mjs';
 
-// Synthetic repositories and Apple-tool stubs characterize cache policy; this is not a native build observation.
+// Synthetic repositories and Apple-tool stubs characterize cache policy; this is not an integration build observation.
 function withFixture(name, run) {
   test(name, () => {
     const root = createFixtureRepository();
@@ -66,10 +66,10 @@ withFixture(
 );
 
 withFixture(
-  'native dependency and production recipe changes invalidate only the owned root',
+  'platform dependency and production recipe changes invalidate only the owned root',
   (root) => {
     runCacheCommand(root, 'write');
-    writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed native dependency');
+    writeFixtureFile(root, 'apps/mobile/ios/Podfile.lock', 'changed platform dependency');
     assert.throws(
       () =>
         runCacheCommand(root, 'prepare', 'production', {
@@ -120,7 +120,7 @@ withFixture(
         projectFile: initial.cocoapodsProjectInputHash,
       }),
       EXPECTED_IOS_BUILD_INPUT_FINGERPRINT: initial.buildInputs,
-      EXPECTED_IOS_NATIVE_DEPENDENCY_FINGERPRINT: initial.nativeDependencies,
+      EXPECTED_IOS_PLATFORM_DEPENDENCY_FINGERPRINT: initial.platformDependencies,
     };
     runCacheCommand(root, 'prepare', env);
     writeFixtureFile(

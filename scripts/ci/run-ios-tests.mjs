@@ -16,9 +16,9 @@ if (!results)
 const spec = iosTestConfig(profile);
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
 if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
-  throw new Error('Native tests require their booted owned simulator');
+  throw new Error('iOS tests require their booted owned simulator');
 if (!existsSync(runFile) || existsSync(results))
-  throw new Error('Missing products or existing native results');
+  throw new Error('Missing products or existing integration results');
 const tests = selected.length
   ? selected
   : iosTestInventory(profile, process.env.OROT_IOS_TEST_SUITE ?? 'all');
@@ -64,10 +64,10 @@ if (
       ).test(test),
   )
 )
-  throw new Error('Invalid native test selection');
+  throw new Error('Invalid integration test selection');
 // Different targets have separate sandboxes, so the host must verify one before scheduling the other.
 if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
-  throw new Error('Native and UI targets require separate verified invocations');
+  throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
 const stopSampling = iosTestResourceSampler(resolve(results) + '.resources.jsonl');
 const started = Date.now();

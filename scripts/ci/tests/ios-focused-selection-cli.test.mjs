@@ -14,20 +14,20 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-const cli = fileURLToPath(new URL('../ios-native-focused-selection-cli.mjs', import.meta.url));
+const cli = fileURLToPath(new URL('../ios-focused-selection-cli.mjs', import.meta.url));
 const file = 'apps/mobile/ios/OrotUITests/TestHostConnectionTests.swift';
 const identifier = 'OrotUITests/TestHostConnectionTests/testHostLaunches';
 const sha = 'a'.repeat(40);
 
 function fixture(callback) {
-  const root = mkdtempSync(join(tmpdir(), 'orot-native-focus-cli-unit-'));
+  const root = mkdtempSync(join(tmpdir(), 'orot-ios-focus-cli-unit-'));
   try {
     const bin = join(root, 'bin');
     mkdirSync(bin);
     mkdirSync(dirname(join(root, file)), { recursive: true });
     writeFileSync(
       join(root, file),
-      '// Synthetic source-existence unit fixture; no native test is executed.\n',
+      '// Synthetic source-existence unit fixture; no integration test is executed.\n',
     );
     const pr = {
       number: 200,
@@ -46,7 +46,7 @@ function fixture(callback) {
       { mode: 0o755 },
     );
     const output = join(root, 'output.txt');
-    const run = (args = ['native/core', file, identifier, '200'], overrides = {}) =>
+    const run = (args = ['ios/core', file, identifier, '200'], overrides = {}) =>
       spawnSync(process.execPath, [cli, ...args], {
         cwd: root,
         encoding: 'utf8',
@@ -88,7 +88,7 @@ test('hosted CLI contract emits only the exact selected target after the read-on
     assert.equal(values.identifier, identifier);
     assert.equal(values.prepareUi, 'true');
     assert.equal(values.expectedCount, '1');
-    const receipt = JSON.parse(result.stdout.replace('IOS_NATIVE_FOCUS_SELECTION ', ''));
+    const receipt = JSON.parse(result.stdout.replace('IOS_FOCUS_SELECTION ', ''));
     assert.deepEqual(receipt.identifiers, [identifier]);
     assert.equal(receipt.sourceSha, sha);
     assert.equal(receipt.fullValidation, false);
@@ -96,11 +96,11 @@ test('hosted CLI contract emits only the exact selected target after the read-on
 
 test('actual checkout mismatch and malformed selectors emit no outputs or PR API requests', () => {
   for (const [args, env] of [
-    [['native/core', file, identifier, '200'], { GITHUB_SHA: 'b'.repeat(40) }],
-    [['native/core', file, identifier, '200;echo'], {}],
-    [['native/core', file, 'testHostLaunches', '200'], {}],
-    [['native/core', file, identifier, '200', 'extra'], {}],
-    [['native/core', file, identifier, '200'], { GITHUB_ACTIONS: 'false' }],
+    [['ios/core', file, identifier, '200'], { GITHUB_SHA: 'b'.repeat(40) }],
+    [['ios/core', file, identifier, '200;echo'], {}],
+    [['ios/core', file, 'testHostLaunches', '200'], {}],
+    [['ios/core', file, identifier, '200', 'extra'], {}],
+    [['ios/core', file, identifier, '200'], { GITHUB_ACTIONS: 'false' }],
   ])
     fixture(({ root, output, run }) => {
       const result = run(args, env);

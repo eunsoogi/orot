@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { selectFocusedNativeTests } from '../ios-native-focused-selection.mjs';
+import { selectFocusedIosTests } from '../ios-focused-selection.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 const sha = 'a'.repeat(40);
@@ -13,18 +13,18 @@ const inputs = ['core', 'backup', 'local-model'].map((profile) => {
   const identifier = iosTestInventory(profile)[0];
   const [target, name] = identifier.split('/');
   return [
-    'native/' + profile,
+    'ios/' + profile,
     `apps/mobile/ios/${target}/${name}.swift`,
     profile === 'core' ? identifier : 'all',
   ];
 });
-inputs.push(['native/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/recordings']);
+inputs.push(['ios/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/recordings']);
 
-// These fixtures prove Linux aggregation only, never native runtime behavior.
+// These fixtures prove Linux aggregation only, never integration runtime behavior.
 function fixture(input, mutate = () => {}, environment = context) {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-native-focus-results-'));
+  const directory = mkdtempSync(join(tmpdir(), 'orot-ios-focus-results-'));
   try {
-    const selection = selectFocusedNativeTests(...input);
+    const selection = selectFocusedIosTests(...input);
     const manifest = {
       context: {
         sourceSha: sha,
@@ -56,7 +56,7 @@ function fixture(input, mutate = () => {}, environment = context) {
     writeFileSync(join(directory, path), JSON.stringify(report));
     return spawnSync(
       process.execPath,
-      ['scripts/ci/ios-native-focused-results.mjs', ...input, directory],
+      ['scripts/ci/ios-focused-results.mjs', ...input, directory],
       {
         encoding: 'utf8',
         env: { ...process.env, ...environment },
@@ -74,7 +74,7 @@ test('Linux focus aggregation reads every evidence layout and always marks selec
     const report = JSON.parse(result.stdout);
     assert.equal(report.fullValidation, false);
     assert.equal(report.sourceSha, sha);
-    assert.equal(report.selectedCases, selectFocusedNativeTests(...input).expectedCount);
+    assert.equal(report.selectedCases, selectFocusedIosTests(...input).expectedCount);
   }
 });
 

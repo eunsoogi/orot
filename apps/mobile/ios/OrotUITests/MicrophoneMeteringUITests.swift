@@ -8,7 +8,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testNativeEventsPauseResumeAndExplicitCleanup() async throws {
+    func testMeteringEventsPauseResumeAndExplicitCleanup() async throws {
         let app = XCUIApplication()
         defer { app.terminate() }
         start(app)

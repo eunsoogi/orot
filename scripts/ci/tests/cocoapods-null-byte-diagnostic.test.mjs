@@ -127,7 +127,7 @@ function runDiagnosticFixture({
   }
 }
 
-test('native dependency preparation preserves the pinned pnpm path recovery and deployment inputs', () => {
+test('platform dependency preparation preserves the pinned pnpm path recovery and deployment inputs', () => {
   const action = readFileSync(
     path.join(repositoryRoot, '.github/actions/ios-test-products-build/action.yml'),
     'utf8',

@@ -1,7 +1,7 @@
 import { RAG_CONVERSATION_BUDGET } from '../src/ragConversation/budget';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
-import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
+import { appleFoundationModelsProbeBridge as appleFoundationModelsNativeBridge } from './appleModelMockBridge';
 import { createEuropePmcMedicalEvidenceService } from '../src/externalMedicalEvidence/europePmc';
 import type { ExternalMedicalPublication } from '../src/externalMedicalEvidence/europePmc';
 import { createExternalConversationEvidence } from '../src/aiFeatures/integration/externalConversationEvidence';
@@ -21,7 +21,7 @@ export interface RagWorkflowProbeResult {
   readonly responses: readonly { status: number; ok: boolean }[];
   readonly publications: readonly ExternalMedicalPublication[];
   readonly diagnostics: readonly unknown[];
-  readonly nativeCancellations: readonly string[];
+  readonly sessionCancellations: readonly string[];
   readonly outcome?: RagConversationOutcome;
   readonly failure?: string;
   readonly elapsedMs: number;
@@ -29,7 +29,7 @@ export interface RagWorkflowProbeResult {
   readonly parentAborted: boolean;
 }
 
-/** Executes the shipping RAG chain with real network/model calls and an empty personal library. */
+/** Executes the shipping RAG chain with real network calls and the native model bridge and an empty personal library. */
 export async function runRagWorkflowProbe(
   onPhase: (phase: string) => void,
   parentSignal: AbortSignal,
@@ -44,7 +44,7 @@ export async function runRagWorkflowProbe(
   const responses: { status: number; ok: boolean }[] = [];
   const publications: ExternalMedicalPublication[] = [];
   const diagnostics: unknown[] = [];
-  const nativeCancellations: string[] = [];
+  const sessionCancellations: string[] = [];
   let availability = 'notobserved';
   let terminal = 'notobserved';
   let outcome: RagConversationOutcome | undefined;
@@ -53,7 +53,7 @@ export async function runRagWorkflowProbe(
   const native = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
     cancel(requestId) {
-      nativeCancellations.push(requestId);
+      sessionCancellations.push(requestId);
       appleFoundationModelsNativeBridge.cancel(requestId);
     },
   });
@@ -205,7 +205,7 @@ export async function runRagWorkflowProbe(
     responses: [...responses],
     publications: [...publications],
     diagnostics: [...diagnostics],
-    nativeCancellations: [...nativeCancellations],
+    sessionCancellations: [...sessionCancellations],
     outcome,
     failure,
     elapsedMs: Date.now() - startedAt,

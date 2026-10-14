@@ -11,12 +11,12 @@ const coreTests = [
   'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
   'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandTimesOut',
   'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
-  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirNativeTouchTargets',
-  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testDisabledAccessibilityTracksNativeStateAndPreservesSelectionAcrossUpdates',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testDisabledAccessibilityTracksUIKitStateAndPreservesSelectionAcrossUpdates',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
-  'OrotUITests/RootNavigationUITests/testEveryRootTabAndNativeRecordingNavigationRemainReachable',
+  'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
   'OrotUITests/PersistenceUITests/testRemovedMemoryAndHybridEvidenceDoNotReturnAfterRelaunch',
   'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
@@ -24,11 +24,11 @@ const coreTests = [
 ];
 const providerTests = [
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
-  'OrotIntegrationTests/AppleModelIntegrationTests/testAvailabilityAndSupportedGenerationKeepRuntimeLimitationsExplicit',
-  'OrotIntegrationTests/AppleWorkflowIntegrationTests/testActualCalendarClassificationCitedQuestionsAndWorkflowCancellation',
-  'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeActualCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
-  'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseNativeBridge',
-  'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseNativeBridge',
+  'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
+  'OrotIntegrationTests/AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',
+  'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
+  'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
+  'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
   'OrotIntegrationTests/HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
 ];
@@ -46,17 +46,17 @@ export const healthImportTests = [
   'OrotUITests/UnifiedImportUITests/testCancellationPreventsQueriesAndPersistenceBeforeSameSelectionRetry',
 ];
 export const localModelTests = [
-  'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndNativeCancellation',
+  'OrotIntegrationTests/LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation',
   'OrotIntegrationTests/LocalModelIntegrationTests/testE5IndexAndKoreanRetrievalSurviveProcessRestart',
   'OrotIntegrationTests/LocalModelIntegrationTests/testFreshHybridSearchPreservesFiltersLocatorsAndTemporaryTableCleanup',
   'OrotIntegrationTests/LocalModelIntegrationTests/testHybridRetainedVectorSurvivesProcessRestartWithoutReindexing',
 ];
 export const microphoneTests = [
-  'OrotUITests/MicrophoneMeteringUITests/testNativeEventsPauseResumeAndExplicitCleanup',
+  'OrotUITests/MicrophoneMeteringUITests/testMeteringEventsPauseResumeAndExplicitCleanup',
   'OrotUITests/MicrophoneMeteringUITests/testWallClockDeadlineEndsCaptureAndCleansItsArtifact',
 ];
 export const providerSelectionTests = [
-  'OrotUITests/ProviderSelectionUITests/testNativeAuthCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
+  'OrotUITests/ProviderSelectionUITests/testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit',
   'OrotUITests/ProviderSelectionUITests/testExplicitSelectionAndKeychainRestoreNeverChooseAnAutomaticFallback',
   'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
 ];
@@ -65,18 +65,18 @@ export const fixtureTests = [
   'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart',
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
-  'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack',
+  'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
   'OrotUITests/RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
   'OrotUITests/RecordingLibraryUITests/testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText',
   'OrotUITests/RecordingLibraryUITests/testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport',
   'OrotUITests/RecordingPlaybackUITests/testSavedAudioPlaybackStopsCompletesAndReopensBeforeMissingFileRecovery',
-  'OrotUITests/RecordingPlaybackUITests/testPlaybackRecoversAfterTheNativeSimulatedOutputRouteLoss',
+  'OrotUITests/RecordingPlaybackUITests/testPlaybackRecoversAfterTheSimulatedOutputRouteLoss',
   'OrotUITests/UnifiedImportUITests/testProviderSelectionUsesTheRealRecordsRouteAcrossAppearanceChangesBeforeImport',
-  'OrotUITests/NextVisitReviewUITests/testNativeSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
+  'OrotUITests/NextVisitReviewUITests/testSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
   'OrotUITests/RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable',
   'OrotUITests/NextVisitReviewUITests/testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges',
   'OrotUITests/KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
-  'OrotUITests/PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteNativeBackSwipe',
+  'OrotUITests/PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
   'OrotUITests/HealthImportUITests/testDisplayOnlyBloodPressureCompletionCounts',
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
   'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
@@ -90,13 +90,13 @@ export const fixtureTests = [
 export function iosTestInventory(profile, suite = 'all') {
   const spec = iosTestConfig(profile);
   if (
-    (!['all', 'native', 'ui', 'preparation'].includes(suite) &&
+    (!['all', 'integration', 'ui', 'preparation'].includes(suite) &&
       !(profile === 'fixtures' && Object.hasOwn(iosFixtureGroups, suite))) ||
     (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
     (suite === 'preparation' && profile !== 'speech') ||
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
-    throw new Error('Unsupported native test suite selection');
+    throw new Error('Unsupported integration test suite selection');
   if (suite === 'preparation')
     return [
       'OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture',
@@ -124,6 +124,6 @@ export function iosTestInventory(profile, suite = 'all') {
   // Core and Speech integration and UI retain distinct result boundaries in their shared hosted cohort.
   // Both subsets remain mandatory and their union is the original complete inventory.
   if (suite === 'all') return inventory;
-  const target = suite === 'native' ? spec.integrationTarget : spec.uiTarget;
+  const target = suite === 'integration' ? spec.integrationTarget : spec.uiTarget;
   return inventory.filter((identifier) => identifier.startsWith(target + '/'));
 }

@@ -1,11 +1,12 @@
 const obligations = [
   'production-app',
+  'foundation-models-production-boundary',
   'simulator-keychain-defaults',
   'oauth-unit',
   'oauth-simulator-harness',
 ];
 
-/** A producer receipt records completed build steps independently of later native execution. Missing or stale receipts fail the protected production context. */
+/** A producer receipt records completed build steps independently of later integration execution. Missing or stale receipts fail the protected production context. */
 export function verifyProductionReceipt(receipt, env) {
   if (
     !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') ||

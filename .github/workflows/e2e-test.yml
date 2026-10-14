@@ -24,7 +24,7 @@ jobs:
     outputs:
       complete: ${{ steps.select.outputs.selection_complete }}
       deferred: ${{ steps.select.outputs.full_validation_deferred }}
-      run_native: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.detox_release == 'true' || steps.select.outputs.detox_openai == 'true' || steps.select.outputs.detox_transcription == 'true' || steps.select.outputs.detox_next_visit == 'true' }}
+      run_ios: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.detox_release == 'true' || steps.select.outputs.detox_openai == 'true' || steps.select.outputs.detox_transcription == 'true' || steps.select.outputs.detox_next_visit == 'true' }}
       focused: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
       diagnostic: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
@@ -35,16 +35,16 @@ jobs:
         with: { node-version-file: .nvmrc }
       - id: select
         run: node scripts/ci/select-changed-paths.mjs
-  native_validation:
-    name: Full native validation
+  ios_validation:
+    name: Full iOS validation
     needs: selection
     # PR/push full validation waits for human approval even in draft. Manual entry remains diagnostic-only.
-    if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.focused != 'true' && needs.selection.outputs.run_native == 'true' }}
+    if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.focused != 'true' && needs.selection.outputs.run_ios == 'true' }}
     uses: ./.github/workflows/ios-test-validation.yml
     with: { production_build: true }
   ios_simulator_build:
     name: iOS Simulator Build
-    needs: [selection, native_validation]
+    needs: [selection, ios_validation]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -52,37 +52,37 @@ jobs:
       - name: Require full current-head selection
         env:
           COMPLETE: ${{ needs.selection.outputs.complete }}
-          DEFERRED: ${{ needs.selection.outputs.deferred == 'true' && needs.native_validation.result != 'success' }}
+          DEFERRED: ${{ needs.selection.outputs.deferred == 'true' && needs.ios_validation.result != 'success' }}
           DIAGNOSTIC: ${{ needs.selection.outputs.diagnostic }}
         run: test "$COMPLETE" = true && test "$DEFERRED" != true && test "$DIAGNOSTIC" != true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with: { node-version-file: .nvmrc }
-      - name: Read the completed production and OAuth receipt independently of later native tests
-        if: needs.selection.outputs.run_native == 'true'
+      - name: Read the completed production and OAuth receipt independently of later integration tests
+        if: needs.selection.outputs.run_ios == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/production-receipt
       - name: Verify production receipt at this run and head
-        if: needs.selection.outputs.run_native == 'true'
+        if: needs.selection.outputs.run_ios == 'true'
         run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json
   required_statuses:
     # Compatibility names preserve branch protection; execution contains no Detox runner.
     name: Detox E2E profiles
-    needs: [selection, native_validation]
+    needs: [selection, ios_validation]
     if: always()
-    uses: ./.github/workflows/ios-native-required-statuses.yml
+    uses: ./.github/workflows/ios-required-statuses.yml
     with:
-      selected: ${{ needs.selection.outputs.run_native == 'true' }}
-      invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.deferred == 'true' && needs.native_validation.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
-      execution_result: ${{ needs.native_validation.result }}
+      selected: ${{ needs.selection.outputs.run_ios == 'true' }}
+      invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.deferred == 'true' && needs.ios_validation.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
+      execution_result: ${{ needs.ios_validation.result }}
   focused_scenario:
     name: Focused scenario
     needs: selection
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.ios_test_validation != true && needs.selection.outputs.focused == 'true' }}
-    uses: ./.github/workflows/ios-native-focused.yml
+    uses: ./.github/workflows/ios-focused.yml
     with:
       pr_number: ${{ inputs.focus_pr_number }}
       profile: ${{ inputs.focus_profile }}

@@ -1,4 +1,4 @@
-// Native test products are separate when configuration, flags or runtime contracts differ.
+// iOS test products are separate when configuration, flags or runtime contracts differ.
 export function iosTestConfig(profile) {
   const common = {
     scheme: 'OrotTests',
@@ -43,12 +43,12 @@ export function iosTestConfig(profile) {
       device: 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro',
     };
   }
-  throw new Error('Unknown native test profile: ' + profile);
+  throw new Error('Unknown integration test profile: ' + profile);
 }
 
 export function iosTestBuildSpec(profile) {
   const execution = iosTestConfig(profile);
-  // Native products use one generic entry and identical test-only flags. Release
+  // iOS products use one generic entry and identical test-only flags. Release
   // UI and Speech can share that exact product; Debug dependencies remain separate.
   const build = Object.fromEntries(
     Object.entries(execution).filter(
@@ -70,11 +70,11 @@ export const representativeSpeechTests = [
   'OrotIntegrationTests/SpeechIntegrationTests/testMedicationFixture',
   'OrotIntegrationTests/SpeechIntegrationTests/testNumberFixture',
   'OrotIntegrationTests/SpeechIntegrationTests/testNegationFixture',
-  'OrotIntegrationTests/SpeechIntegrationTests/testInvalidLanguageFailsBeforeRequestingNativeServices',
-  'OrotIntegrationTests/SpeechIntegrationTests/testMissingAudioFailsBeforeRequestingNativeServices',
+  'OrotIntegrationTests/SpeechIntegrationTests/testInvalidLanguageFailsBeforeRequestingSpeechServices',
+  'OrotIntegrationTests/SpeechIntegrationTests/testMissingAudioFailsBeforeRequestingSpeechServices',
   'OrotIntegrationTests/SpeechCancellationTests/testProductionDeadlineCancellationPropagatesAndCancelsWorker',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/SpeechJourneyUITests/testTranscriptionReachesSavedRecordingAndSurvivesRelaunch',
   'OrotUITests/RecordingExportUITests/testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart',
-  'OrotUITests/AutomaticTranscriptionUITests/testScreenStopPersistsNativeSpeechSegmentsAndReopensWithoutRecognition',
+  'OrotUITests/AutomaticTranscriptionUITests/testScreenStopPersistsSpeechSegmentsAndReopensWithoutRecognition',
 ];

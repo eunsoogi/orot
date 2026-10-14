@@ -2,14 +2,16 @@ import Foundation
 @testable import Orot
 import XCTest
 
-/// Uses the actual Apple provider with synthetic source/context boundaries; unavailable models cannot satisfy this workflow requirement.
+/// Uses the shipping Apple bridge and workflows with raw model-response mocks and synthetic source/context boundaries.
 final class AppleWorkflowIntegrationTests: OrotFailFastTestCase {
-    func testThreeActualCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence() async throws {
+    func testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence() async throws {
         let result = try await TestOperationBroker.shared.request("calendar-classification", timeout: 255)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
-        attachment.name = "actual-apple-calendar-classifications-and-two-imports"
+        attachment.name = "mock-apple-calendar-classifications-and-two-imports"
         attachment.lifetime = .keepAlways
         add(attachment)
+        XCTAssertEqual(result["modelExecution"] as? String, "mock")
+        XCTAssertEqual(result["actualModel"] as? String, "not-run")
         XCTAssertEqual(result["availability"] as? String, "available")
         let runs = try XCTUnwrap(result["runs"] as? [[String: Any]])
         XCTAssertEqual(runs.count, 2)
@@ -41,15 +43,17 @@ final class AppleWorkflowIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(snapshot["title"] as? String, "내과 진료")
     }
 
-    func testActualCalendarClassificationCitedQuestionsAndWorkflowCancellation() async throws {
+    func testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation() async throws {
         let result = try await TestOperationBroker.shared.request("apple-workflow", timeout: 300)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
-        attachment.name = "actual-apple-workflow-synthetic-inputs"
+        attachment.name = "mock-apple-workflow-synthetic-inputs"
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
-        // Keep the former available-only acceptance: recording an unsupported status is not a successful classification or generation.
+        // The controlled mock must still drive complete classification, cited questions and cancellation.
+        XCTAssertEqual(result["modelExecution"] as? String, "mock")
+        XCTAssertEqual(result["actualModel"] as? String, "not-run")
         XCTAssertEqual(result["availability"] as? String, "available")
         let calendar = try XCTUnwrap(result["calendar"] as? [String: Any])
         XCTAssertEqual(calendar["status"] as? String, "complete")

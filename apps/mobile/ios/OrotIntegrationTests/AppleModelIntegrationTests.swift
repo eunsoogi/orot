@@ -3,15 +3,15 @@ import Foundation
 import XCTest
 
 final class AppleModelIntegrationTests: OrotFailFastTestCase {
-    func testAvailabilityAndSupportedGenerationKeepRuntimeLimitationsExplicit() async throws {
-        // Availability comes from the actual Apple SDK. Unsupported hardware cannot prove generation or inference stopping.
+    func testMockAvailabilityGenerationStreamingCancellationAndFailures() async throws {
+        // The shipping bridge runs against a test-only raw-response mock; this does not measure Apple inference.
         let result = try await TestOperationBroker.shared.request("apple-model", timeout: 240)
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         XCTAssertEqual(result["inferenceStop"] as? String, "unverified")
         let availability = try XCTUnwrap(result["availability"] as? String)
-        // This candidate requires authentic generation. An explicit unavailable result is preserved below but must fail acceptance.
-        XCTAssertEqual(availability, "available", "Apple Intelligence must execute on a supported runtime")
+        // The scripted available case must execute all original app-side generation and cancellation assertions.
+        XCTAssertEqual(availability, "available", "The configured mock must reach the native bridge")
         XCTAssertTrue(["available", "disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage"].contains(availability))
         if availability == "available" {
             XCTAssertEqual(result["generation"] as? String, "passed")
@@ -25,8 +25,19 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
                 XCTAssertEqual(result[field] as? String, "not-run", field)
             }
         }
+        XCTAssertEqual(result["modelExecution"] as? String, "mock")
+        XCTAssertEqual(result["actualModel"] as? String, "not-run")
+        XCTAssertEqual(result["cancellation"] as? String, "cancelled")
+        let bridge = try XCTUnwrap(result["bridge"] as? [String: Any])
+        XCTAssertEqual(bridge["modelExecution"] as? String, "mock")
+        XCTAssertEqual((bridge["streamed"] as? [Any])?.count, 3)
+        XCTAssertEqual((bridge["cancelled"] as? [Any])?.count, 2)
+        XCTAssertEqual((bridge["rewritten"] as? [Any])?.count, 2)
+        XCTAssertEqual(bridge["failed"] as? String, "GENERATION_FAILED")
+        XCTAssertEqual(bridge["invalid"] as? String, "GENERATION_FAILED")
+        XCTAssertEqual(bridge["unavailable"] as? [String], ["disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage"])
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
-        attachment.name = "apple-model-actual-availability"
+        attachment.name = "apple-model-mock-bridge-results"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

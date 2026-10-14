@@ -1,4 +1,4 @@
-name: Build and execute native tests on one host
+name: Build and execute integration tests on one host
 
 on:
   workflow_call:
@@ -8,7 +8,6 @@ on:
       artifact_name: { required: true, type: string }
       timeout_minutes: { required: true, type: number }
       production_build: { required: false, type: boolean, default: false }
-      cli_consent_run_id: { required: false, type: string, default: '' }
     outputs:
       archive_digest:
         value: ${{ jobs.validation.outputs.archive_digest }}
@@ -26,7 +25,7 @@ env:
 
 jobs:
   validation:
-    name: Build and execute native ${{ inputs.cohort }}
+    name: Build and execute integration ${{ inputs.cohort }}
     runs-on: xcode-27
     timeout-minutes: ${{ inputs.timeout_minutes }}
     outputs:
@@ -35,14 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
-      - name: Diagnose this Debug host before dependencies, build or Simulator work
-        if: inputs.cohort == 'debug'
-        timeout-minutes: 2
-        uses: ./.github/actions/ios-apple-model-host
-        with:
-          evidence: artifacts/native-focus
-          cli_consent_run_id: ${{ inputs.cli_consent_run_id }}
-          cohort: ${{ inputs.cohort }}
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:
@@ -53,15 +44,15 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact_name }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-focus/product-artifact
+          path: artifacts/ios-focus/product-artifact
           if-no-files-found: error
           retention-days: 7
-      - name: Preserve the production receipt independently of native compilation
+      - name: Preserve the production receipt independently of integration compilation
         if: ${{ always() && inputs.production_build }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: native-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/native-focus/production-receipt.json
+          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/production-receipt.json
           if-no-files-found: warn
           retention-days: 7
       - name: Verify and execute on the same VM without dependency reinstallation or download
@@ -69,18 +60,18 @@ jobs:
         with:
           cohort: ${{ inputs.cohort }}
           profile: ${{ inputs.profile }}
-          product_directory: artifacts/native-focus/product-artifact
+          product_directory: artifacts/ios-focus/product-artifact
           archive_digest: ${{ steps.build.outputs.archive_digest }}
           manifest_digest: ${{ steps.build.outputs.manifest_digest }}
-      - name: Preserve build and host diagnostics even when eligibility failed
+      - name: Preserve build diagnostics on failure
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact_name }}-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            artifacts/native-focus/*.log
-            artifacts/native-focus/*.jsonl
-            artifacts/native-focus/DerivedData/Build/Products/*.xctestrun
-            artifacts/native-focus/product-artifact/manifest.json
+            artifacts/ios-focus/*.log
+            artifacts/ios-focus/*.jsonl
+            artifacts/ios-focus/DerivedData/Build/Products/*.xctestrun
+            artifacts/ios-focus/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

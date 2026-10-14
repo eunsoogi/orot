@@ -13,7 +13,7 @@ export async function executeLocalModelPhases(operations) {
     const pid = result?.hostProcessIdentifier;
     if (!Number.isSafeInteger(pid) || pid <= 0 || result?.result?.mode !== expectedModes[index])
       throw new Error(
-        'Local model phase requires its actual app process and expected native result mode',
+        'Local model phase requires its actual app process and expected integration result mode',
       );
     if (index % 2 === 1 && pid === results[index - 1].hostProcessIdentifier)
       throw new Error('Local model persistence requires an actual app process restart');

@@ -1,4 +1,4 @@
-name: Cancel superseded focused native runs
+name: Cancel superseded focused integration runs
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 1
     concurrency:
       # Match the reusable focus workflow's PR-scoped group to cancel only its stale run.
-      group: focused-native-${{ github.event.pull_request.number }}-scenario
+      group: focused-ios-${{ github.event.pull_request.number }}-scenario
       cancel-in-progress: true
     steps:
       - name: Record focused run supersession

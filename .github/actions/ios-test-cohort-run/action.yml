@@ -1,4 +1,4 @@
-name: Verify and execute one native cohort
+name: Verify and execute one integration cohort
 description: Consume verified portable products on the current runner, boot once and retain first failures without retries.
 inputs:
   cohort:
@@ -39,7 +39,7 @@ runs:
         PRODUCT_DIRECTORY: ${{ inputs.product_directory }}
         ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
         MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
-      run: scripts/ci/run-command.sh native-artifact-rejections artifacts/ios-cohort/artifact-rejections.log -- node scripts/ci/probe-ios-test-products.mjs "$PROFILE" "$PRODUCT_DIRECTORY" "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST" artifacts/ios-cohort/artifact-rejections
+      run: scripts/ci/run-command.sh ios-artifact-rejections artifacts/ios-cohort/artifact-rejections.log -- node scripts/ci/probe-ios-test-products.mjs "$PROFILE" "$PRODUCT_DIRECTORY" "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST" artifacts/ios-cohort/artifact-rejections
     - name: Provision the pinned Speech runtime
       if: inputs.cohort == 'speech'
       shell: bash
@@ -48,7 +48,7 @@ runs:
       shell: bash
       env:
         COHORT: ${{ inputs.cohort }}
-      run: scripts/ci/run-command.sh native-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
+      run: scripts/ci/run-command.sh ios-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
     - name: Execute every planned first attempt without compilation or retry
       # The original Hermes host case remains in Core's inventory. Repeating it as a GUI preflight adds no unique coverage.
       shell: bash
@@ -56,7 +56,7 @@ runs:
         COHORT: ${{ inputs.cohort }}
         TEST_RUN: ${{ steps.verify.outputs.test_run }}
         OROT_IOS_TEST_SAMPLE: ${{ inputs.sample }}
-      run: scripts/ci/run-command.sh native-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
+      run: scripts/ci/run-command.sh ios-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
     - name: Remove only the owned destination
       if: always()
       shell: bash
@@ -70,7 +70,7 @@ runs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: native-cohort-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: ios-cohort-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
           artifacts/ios-cohort/*.log
           artifacts/ios-cohort/*.json
@@ -84,9 +84,9 @@ runs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: native-cohort-report-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: ios-cohort-report-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
           artifacts/ios-cohort/results/results.json
-          artifacts/ios-cohort/results/speech-native/attachments/*.json
+          artifacts/ios-cohort/results/speech-integration/attachments/*.json
         if-no-files-found: warn
         retention-days: 7

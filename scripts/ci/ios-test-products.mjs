@@ -18,7 +18,7 @@ import { verifyTestRunContract } from './ios-test-run-contract.mjs';
 
 function testRunFile(products) {
   const files = readdirSync(products).filter((name) => name.endsWith('.xctestrun'));
-  if (files.length !== 1) throw new Error('Exactly one native test-run file is required');
+  if (files.length !== 1) throw new Error('Exactly one integration test-run file is required');
   return files[0];
 }
 
@@ -52,7 +52,7 @@ export function inspectIosTestProducts(products, spec) {
       .trim()
       .split(/\s+/);
     if (!architectures.includes(spec.architecture))
-      throw new Error('Native test product architecture mismatch');
+      throw new Error('iOS test product architecture mismatch');
   }
   return name;
 }
@@ -66,7 +66,7 @@ export async function createIosTestProducts(
   const context = productContext(process.cwd(), profile, env);
   const directory = resolve(artifactDirectory);
   if (existsSync(directory))
-    throw new Error('Refusing to replace existing native product artifact');
+    throw new Error('Refusing to replace existing integration product artifact');
   mkdirSync(directory, { recursive: true });
   const products = join(directory, 'products');
   const configuration = context.spec.configuration + '-iphonesimulator';
@@ -115,18 +115,18 @@ export async function verifyIosTestProducts(
   env = process.env,
 ) {
   if (![expectedArchive, expectedManifest].every((value) => /^[a-f0-9]{64}$/.test(value ?? '')))
-    throw new Error('Native producer digests are required');
+    throw new Error('iOS producer digests are required');
   const context = productContext(process.cwd(), profile, env);
   const directory = resolve(artifactDirectory);
   const archive = join(directory, 'ios-test-products.tar');
   const path = join(directory, 'manifest.json');
   if ((await fileDigest(path)) !== expectedManifest)
-    throw new Error('Native product manifest digest mismatch');
+    throw new Error('iOS product manifest digest mismatch');
   const manifest = JSON.parse(readFileSync(path, 'utf8'));
   if (manifest.schemaVersion !== 1 || !isDeepStrictEqual(manifest.context, context))
-    throw new Error('Native product provenance mismatch');
+    throw new Error('iOS product provenance mismatch');
   if ((await fileDigest(archive)) !== expectedArchive || manifest.archiveDigest !== expectedArchive)
-    throw new Error('Native product archive digest mismatch');
+    throw new Error('iOS product archive digest mismatch');
   checkArchiveNames(execFileSync('tar', ['-tf', archive], { encoding: 'utf8' }));
   execFileSync(process.execPath, [
     fileURLToPath(new URL('./verify-ios-test-archive.mjs', import.meta.url)),
@@ -137,11 +137,12 @@ export async function verifyIosTestProducts(
     execFileSync('tar', ['-xf', archive, '-C', staging]);
     const products = join(staging, 'products');
     if ((await productDigest(products)) !== manifest.treeDigest)
-      throw new Error('Native product integrity mismatch');
+      throw new Error('iOS product integrity mismatch');
     const testRun = inspectIosTestProducts(products, context.spec);
-    if (testRun !== manifest.testRun) throw new Error('Native test-run identity mismatch');
+    if (testRun !== manifest.testRun) throw new Error('iOS test-run identity mismatch');
     const destination = join(directory, 'verified-products');
-    if (existsSync(destination)) throw new Error('Refusing to replace verified native products');
+    if (existsSync(destination))
+      throw new Error('Refusing to replace verified integration products');
     cpSync(products, destination, { recursive: true, dereference: false });
     console.log(
       `IOS_TEST_PRODUCTS_VERIFIED profile=${profile} source=${context.sourceSha} tree=${manifest.treeDigest}`,

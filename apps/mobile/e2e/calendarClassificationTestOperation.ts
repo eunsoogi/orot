@@ -1,5 +1,5 @@
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
-import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
+import { appleFoundationModelsProbeBridge as appleFoundationModelsNativeBridge } from './appleModelMockBridge';
 import { classifyCalendarEvents } from '../src/medicalAppointments/classificationWorkflow';
 import {
   isConfidentMedical,
@@ -7,7 +7,7 @@ import {
 } from '../src/medicalAppointments/saveCalendarCandidate';
 import { createCalendarClassificationFixtures } from './calendarClassificationFixtures';
 
-/** The original three Calendar examples use actual Apple inference and shipping save paths. Only Calendar access and session storage are synthetic. */
+/** The original three Calendar examples use the native Apple bridge and shipping save paths. Only Calendar access and session storage are synthetic. */
 export async function runCalendarClassificationTestOperation() {
   const provider = new AppleFoundationModelsProvider(
     appleFoundationModelsNativeBridge,

@@ -1,4 +1,4 @@
-name: Native required profile status
+name: iOS required profile status
 on:
   workflow_call:
     inputs:
@@ -18,7 +18,7 @@ jobs:
       - name: Reject draft, diagnostic and incomplete selection
         env: { INVALID: '${{ inputs.invalid_selection }}' }
         run: test "$INVALID" = false
-      - name: Require the full native current-head gate when selected
+      - name: Require the full integration current-head gate when selected
         if: inputs.selected
         env: { RESULT: '${{ inputs.execution_result }}' }
         run: test "$RESULT" = success

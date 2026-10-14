@@ -26,7 +26,7 @@ export async function productDigest(directory) {
     } else if (metadata.isFile()) {
       hash.update(JSON.stringify(['file', name, metadata.mode & 0o777, await fileDigest(path)]));
     } else {
-      throw new Error('Unsupported native product entry');
+      throw new Error('Unsupported integration product entry');
     }
   }
   await visit(resolve(root));
@@ -41,7 +41,7 @@ export function checkArchiveNames(names) {
       name.split('/').some((part) => part === '..') ||
       /[\r\0]/.test(name)
     ) {
-      throw new Error('Unsafe native product archive path');
+      throw new Error('Unsafe integration product archive path');
     }
   }
 }

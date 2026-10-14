@@ -3,7 +3,7 @@ import { iosTestCohort, iosTestCohortTasks, IOS_SPEECH_SAMPLES } from './ios-tes
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
 // This Linux-only planning stage validates coverage and configuration before consuming any macOS slot.
-if (!process.env.GITHUB_OUTPUT) throw new Error('Native planning requires workflow outputs');
+if (!process.env.GITHUB_OUTPUT) throw new Error('iOS planning requires workflow outputs');
 const names = ['release', 'speech', 'debug'];
 const definitions = names.map(iosTestCohort);
 const actual = new Set(
@@ -19,7 +19,7 @@ const expected = new Set([
   ...iosTestInventory('speech', 'preparation'),
 ]);
 if (actual.size !== expected.size || [...expected].some((identifier) => !actual.has(identifier)))
-  throw new Error('Native cohort plan omits maintained requirements');
+  throw new Error('iOS cohort plan omits maintained requirements');
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   definitions.map((value) => `${value.name}_minutes=${value.minutes}`).join('\n') + '\n',
@@ -29,8 +29,8 @@ console.log(
     // Debug and Release each build and execute on one VM. Fresh Speech samples consume three more VMs only after their predecessors pass.
     macJobs: 2 + IOS_SPEECH_SAMPLES.length,
     maximumConcurrentMacJobs: 1,
-    uniqueNativeCases: actual.size,
-    scheduledNativeObservations:
+    uniqueTestCases: actual.size,
+    scheduledTestObservations:
       primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length,
     speechSamples: IOS_SPEECH_SAMPLES,
     builds: ['Release', 'Debug'],

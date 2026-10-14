@@ -1,15 +1,15 @@
-name: Build portable native test products
-description: Prepare native dependencies and build verified test products without booting a Simulator.
+name: Build portable integration test products
+description: Prepare platform dependencies and build verified test products without booting a Simulator.
 inputs:
   profile:
-    description: Validated native execution profile selecting its compatible build specification.
+    description: Validated integration execution profile selecting its compatible build specification.
     required: true
   production_build:
     description: Build production and OAuth with separate flags and DerivedData in this Release producer.
     default: 'false'
 outputs:
   archive_digest:
-    description: SHA-256 of the portable native product archive.
+    description: SHA-256 of the portable integration product archive.
     value: ${{ steps.products.outputs.archive_digest }}
   manifest_digest:
     description: SHA-256 of the source and product provenance manifest.
@@ -30,7 +30,7 @@ runs:
       uses: ./.github/actions/pnpm-lockfile-verification
     - name: Install frozen workspace dependencies
       shell: bash
-      run: scripts/ci/run-command.sh native-focus-dependencies artifacts/native-focus/install.log -- pnpm install --frozen-lockfile
+      run: scripts/ci/run-command.sh ios-focus-dependencies artifacts/ios-focus/install.log -- pnpm install --frozen-lockfile
     - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
       with:
         ruby-version: '4.0.7'
@@ -47,7 +47,7 @@ runs:
       if: inputs.production_build == 'true'
       id: production_toolchain
       shell: bash
-      run: scripts/ci/run-command.sh production-toolchain artifacts/native-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
+      run: scripts/ci/run-command.sh production-toolchain artifacts/ios-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
     - name: Restore production-only DerivedData and CocoaPods intermediates
       if: inputs.production_build == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
@@ -55,8 +55,8 @@ runs:
         path: |
           apps/mobile/ios/build-production
           apps/mobile/ios/Pods
-        key: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-native-${{ steps.production_fingerprints.outputs.native_dependencies }}-source-${{ steps.production_fingerprints.outputs.build_inputs }}
-        restore-keys: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-native-${{ steps.production_fingerprints.outputs.native_dependencies }}-
+        key: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-source-${{ steps.production_fingerprints.outputs.build_inputs }}
+        restore-keys: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-
     - name: Prepare the isolated production DerivedData boundary
       if: inputs.production_build == 'true'
       id: production_cache
@@ -72,7 +72,7 @@ runs:
         EXPECTED_COCOAPODS_VERSION: '1.17.0'
         XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
       run: node scripts/ci/ios-derived-data-cache.mjs prepare production
-    - name: Prepare native dependencies
+    - name: Prepare platform dependencies
       shell: bash
       # CocoaPods 1.17's pnpm symlink group-base recovery remains pinned and scoped to this install.
       env:
@@ -80,14 +80,14 @@ runs:
         RUBYOPT: -r${{ github.workspace }}/scripts/ci/cocoapods-null-byte-diagnostic.rb
       run: |
         bash scripts/ci/verify-toolchain.sh --cocoapods-only
-        scripts/ci/run-command.sh native-focus-pods artifacts/native-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
+        scripts/ci/run-command.sh ios-focus-pods artifacts/ios-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
     - name: Verify generated privacy metadata
       shell: bash
       run: node scripts/ci/ios-test-source-inputs.mjs
-    - name: Build production with its default entry and native flags
+    - name: Build production with its default entry and compiler flags
       if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
       shell: bash
-      run: scripts/ci/run-command.sh ios-production-build artifacts/native-focus/production.log -- bash scripts/ci/build-ios-simulator-app.sh build
+      run: scripts/ci/run-command.sh ios-production-build artifacts/ios-focus/production.log -- bash scripts/ci/build-ios-simulator-app.sh build
     - name: Write the production-only cache manifest
       if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
       shell: bash
@@ -102,15 +102,19 @@ runs:
         EXPECTED_COCOAPODS_VERSION: '1.17.0'
         XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
       run: node scripts/ci/ios-derived-data-cache.mjs write production
+    - name: Verify production uses the Apple SDK without the model mock
+      if: inputs.production_build == 'true'
+      shell: bash
+      run: scripts/ci/run-command.sh apple-production-boundary artifacts/ios-focus/apple-production-boundary.log -- node scripts/ci/verify-apple-model-product.mjs production apps/mobile/ios/build-production/Build/Products/Debug-iphonesimulator/Orot.app
     - name: Verify Simulator defaults and OAuth package
       if: inputs.production_build == 'true'
       shell: bash
-      run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh ios-oauth-unit artifacts/native-focus/oauth-unit.log -- swift test --package-path packages/provider-openai
+      run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh ios-oauth-unit artifacts/ios-focus/oauth-unit.log -- swift test --package-path packages/provider-openai
     - name: Build the separate OAuth Simulator harness
       if: inputs.production_build == 'true'
       shell: bash
       run: |
-        scripts/ci/run-command.sh ios-oauth-build artifacts/native-focus/oauth-build.log -- xcodebuild \
+        scripts/ci/run-command.sh ios-oauth-build artifacts/ios-focus/oauth-build.log -- xcodebuild \
           -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
           -scheme ChatGPTOAuthSpike -configuration Debug \
           -destination 'generic/platform=iOS Simulator' \
@@ -118,15 +122,22 @@ runs:
     - name: Record completed production and OAuth obligations
       if: inputs.production_build == 'true'
       shell: bash
-      run: node scripts/ci/ios-production-receipt.mjs write artifacts/native-focus/production-receipt.json
+      run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
     - name: Build without booting a Simulator
       shell: bash
       env:
         PROFILE: ${{ inputs.profile }}
-      run: scripts/ci/run-command.sh native-focus-build artifacts/native-focus/build.log -- node scripts/ci/build-ios-tests.mjs "$PROFILE" artifacts/native-focus/DerivedData
+      run: scripts/ci/run-command.sh ios-focus-build artifacts/ios-focus/build.log -- node scripts/ci/build-ios-tests.mjs "$PROFILE" artifacts/ios-focus/DerivedData
+    - name: Verify test products contain only the mock model call boundary
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+      run: |
+        configuration="$(node --input-type=module -e 'import {iosTestConfig} from "./scripts/ci/ios-test-config.mjs"; console.log(iosTestConfig(process.env.PROFILE).configuration)')"
+        node scripts/ci/verify-apple-model-product.mjs integration-test "artifacts/ios-focus/DerivedData/Build/Products/$configuration-iphonesimulator/Orot.app"
     - name: Package portable test products
       id: products
       shell: bash
       env:
         PROFILE: ${{ inputs.profile }}
-      run: scripts/ci/run-command.sh native-focus-products artifacts/native-focus/products.log -- node scripts/ci/ios-test-products.mjs create "$PROFILE" artifacts/native-focus/DerivedData/Build/Products artifacts/native-focus/product-artifact
+      run: scripts/ci/run-command.sh ios-focus-products artifacts/ios-focus/products.log -- node scripts/ci/ios-test-products.mjs create "$PROFILE" artifacts/ios-focus/DerivedData/Build/Products artifacts/ios-focus/product-artifact

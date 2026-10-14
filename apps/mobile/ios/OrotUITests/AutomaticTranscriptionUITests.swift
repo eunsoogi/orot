@@ -8,7 +8,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testScreenStopPersistsNativeSpeechSegmentsAndReopensWithoutRecognition() throws {
+    func testScreenStopPersistsSpeechSegmentsAndReopensWithoutRecognition() throws {
         let app = XCUIApplication()
         let arguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TEST_SCENARIO", "automatic-transcription"]
         app.launchArguments = arguments
@@ -29,7 +29,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         tap(app, "recording-stop")
         // This observes the completed screen-owned job; it never starts or retries recognition from the harness.
         value(app, "automatic-transcription-phase", "complete", timeout: 150)
-        let result = try report(app, id: "automatic-transcription-result", name: "automatic-native-saved-result")
+        let result = try report(app, id: "automatic-transcription-result", name: "automatic-saved-result")
         XCTAssertEqual(result["providerCalls"] as? Int, 1)
         XCTAssertEqual(result["events"] as? [String], [
             "production-save-refused", "screen-start", "screen-stop", "synthetic-source-saved",
@@ -39,13 +39,13 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         let source = try dictionary(result, "source")
         let sourceID = try XCTUnwrap(source["id"] as? String)
         XCTAssertEqual(sourceID, fixtureID)
-        let nativeResult = try dictionary(result, "nativeResult")
-        let nativeSegments = try XCTUnwrap(nativeResult["segments"] as? [[String: Any]])
+        let serviceResult = try dictionary(result, "nativeResult")
+        let speechSegments = try XCTUnwrap(serviceResult["segments"] as? [[String: Any]])
         let segments = try XCTUnwrap(result["segments"] as? [[String: Any]])
-        XCTAssertFalse(nativeSegments.isEmpty)
-        XCTAssertEqual(segments.count, nativeSegments.count)
+        XCTAssertFalse(speechSegments.isEmpty)
+        XCTAssertEqual(segments.count, speechSegments.count)
         for (index, segment) in segments.enumerated() {
-            let native = nativeSegments[index]
+            let native = speechSegments[index]
             let text = try XCTUnwrap(segment["text"] as? String)
             XCTAssertEqual(text, native["text"] as? String)
             XCTAssertFalse(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -59,7 +59,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
             XCTAssertEqual(try dictionary(segment, "reviewState")["status"] as? String, "unreviewed")
             let provenance = try dictionary(dictionary(segment, "provenance"), "source")
             XCTAssertEqual(provenance["system"] as? String, "Apple Speech")
-            XCTAssertEqual(provenance["sourceIdentifier"] as? String, nativeResult["engine"] as? String)
+            XCTAssertEqual(provenance["sourceIdentifier"] as? String, serviceResult["engine"] as? String)
         }
         app.terminate()
         app.launchArguments = arguments + ["-OROT_AUTOMATIC_VERIFY_SOURCE_ID", sourceID]

@@ -10,7 +10,7 @@ const requireFromRepository = createRequire(join(repositoryRoot, 'package.json')
 const selectEntryRoute = requireFromRepository(
   './apps/mobile/e2e/selectEntryRoute.js',
 ).selectEntryRoute;
-const nativeInventory = readFileSync(
+const integrationInventory = readFileSync(
   join(repositoryRoot, 'scripts/ci/ios-test-inventory.mjs'),
   'utf8',
 );
@@ -38,7 +38,7 @@ test('routes #108 through App and includes its probe in the required Release sui
   assert.ok(router.includes("case 'medical-appointment-app-navigation':"));
   assert.ok(router.includes("require('./medicalAppointmentNavigationProbeEntry')"));
   assert.match(
-    nativeInventory,
+    integrationInventory,
     /AppointmentConsentUITests\/testManualPageReturnsThroughClassificationAndScheduleToHome/,
   );
 });

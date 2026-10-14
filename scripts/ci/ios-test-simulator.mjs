@@ -12,7 +12,7 @@ function inventory(owner) {
   const devices = JSON.parse(simctl('list', 'devices', '-j')).devices;
   const device = devices[owner.runtime]?.find((item) => item.udid === owner.udid);
   if (!device || device.name !== owner.name || device.deviceTypeIdentifier !== owner.device)
-    throw new Error('Native simulator ownership mismatch');
+    throw new Error('iOS simulator ownership mismatch');
   return device;
 }
 
@@ -22,7 +22,7 @@ export function verifyIosTestSimulator(owner, profile) {
     (item) => item.identifier === config.runtime && item.isAvailable,
   );
   if (!runtime || (config.runtimeBuild && runtime.buildversion !== config.runtimeBuild))
-    throw new Error('Approved native test runtime is unavailable');
+    throw new Error('Approved integration test runtime is unavailable');
   return inventory(owner);
 }
 
@@ -34,7 +34,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     );
   const ownerPath = resolve(path);
   if (command === 'prepare' || command === 'prepare-cohort') {
-    if (existsSync(ownerPath)) throw new Error('Native simulator ownership file already exists');
+    if (existsSync(ownerPath)) throw new Error('iOS simulator ownership file already exists');
     const cohort = command === 'prepare-cohort' ? iosTestCohort(profile) : null;
     const config = cohort?.config ?? iosTestConfig(profile);
     const name = `OrotTests-${cohort ? 'cohort-' : ''}${profile}-${process.env.GITHUB_RUN_ID ?? 'local'}-${process.env.GITHUB_RUN_ATTEMPT ?? '1'}`;
@@ -54,7 +54,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
           (!config.runtimeBuild || item.buildversion === config.runtimeBuild),
       )
     )
-      throw new Error('Approved native test runtime is unavailable');
+      throw new Error('Approved integration test runtime is unavailable');
     owner.udid = simctl('create', name, config.device, config.runtime);
     writeFileSync(ownerPath, JSON.stringify(owner, null, 2) + '\n');
     verifyIosTestSimulator(owner, cohort?.profiles[0] ?? profile);
@@ -69,15 +69,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const owner = JSON.parse(readFileSync(ownerPath, 'utf8'));
     const executionProfile = owner.cohort ? iosTestCohort(profile).profiles[0] : profile;
     if (owner.cohort && owner.cohort !== profile)
-      throw new Error('Native cohort cleanup identity mismatch');
+      throw new Error('iOS cohort cleanup identity mismatch');
     const device = verifyIosTestSimulator(owner, executionProfile);
     if (command === 'verify' || command === 'verify-cohort') {
-      if (device.state !== 'Booted') throw new Error('Owned native test simulator is not booted');
+      if (device.state !== 'Booted')
+        throw new Error('Owned integration test simulator is not booted');
       console.log(owner.udid);
     } else if (command === 'cleanup') {
       // Cleanup is confined to the recorded device, including on test failure. Other lanes are preserved.
       if (device.state === 'Booted') simctl('shutdown', owner.udid);
       simctl('delete', owner.udid);
-    } else throw new Error('Unknown native simulator command');
+    } else throw new Error('Unknown integration simulator command');
   }
 }

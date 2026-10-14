@@ -16,7 +16,7 @@ const observation = {
   id: 'medication-name',
   expectedText: '메트포르민',
   inputSha256: 'expected-hash',
-  nativeResult: true,
+  serviceResult: true,
   syntheticAudio: true,
   recognizedText: '매트 푸르 인',
   engine: 'dictation_transcriber',
@@ -27,14 +27,14 @@ test('retains recognition errors as measured accuracy instead of substituting fi
   assert.ok(result.accuracy.characterErrorRate > 0);
   assert.equal(result.accuracy.medicationNameMatched, false);
 });
-test('rejects missing and repeated native fixture observations', () => {
+test('rejects missing and repeated integration fixture observations', () => {
   assert.throws(() => verifySpeechObservations([], fixture));
   assert.throws(() => verifySpeechObservations([observation, observation], fixture));
 });
-test('rejects substituted input hashes and missing native provenance', () => {
+test('rejects substituted input hashes and missing integration provenance', () => {
   for (const change of [
     { inputSha256: 'another-input' },
-    { nativeResult: false },
+    { serviceResult: false },
     { syntheticAudio: false },
     { engine: 'mock' },
     { recognizedText: '' },

@@ -7,7 +7,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testEveryRootTabAndNativeRecordingNavigationRemainReachable() throws {
+    func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
         let app = launch()
         defer { app.terminate() }
         let tabs = [
@@ -19,13 +19,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         ]
         for (tab, markers, label) in tabs {
             try NavigationUITestConditions.openTab(app, tab, markers: markers)
-            let action = try NavigationUITestConditions.nativeAction(app, "navigation-tab-\(tab)")
+            let action = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)")
             XCTAssertEqual(action.control.label, label)
             capture(app, "selected-root-tab-\(tab)")
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
         let recent = UITestConditions.element(app, "home-open-records")
-        let bar = try NavigationUITestConditions.nativeAction(app, "navigation-tab-home").toolbar
+        let bar = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").toolbar
         let root = UITestConditions.element(app, "navigation-keyboard-avoiding-root")
         XCTAssertTrue(recent.exists && !recent.frame.isEmpty)
         XCTAssertTrue(root.exists && !root.frame.isEmpty)
@@ -34,10 +34,10 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-new-recording")
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
-        XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-home").control.label, "홈 화면으로 이동")
-        try NavigationUITestConditions.tapNative(app, "navigation-home")
+        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-home").control.label, "홈 화면으로 이동")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
-        capture(app, "home-after-native-home-action")
+        capture(app, "home-after-home-action")
     }
 
     @MainActor
@@ -85,16 +85,16 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(UITestConditions.element(app, "welcome-title").frame.height, normalTitleHeight)
         try NavigationUITestConditions.scrollToBottom(app, "navigation-route-scroll")
         try NavigationUITestConditions.openTab(app, "home", markers: ["home-empty-recordings", "home-recordings-retry"])
-        _ = try NavigationUITestConditions.nativeAction(app, "navigation-tab-home")
-        capture(app, "home-xxxl-native-glass-tabs")
+        _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home")
+        capture(app, "home-xxxl-glass-tabs")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-new-recording")
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.scrollToBottom(app, "recording-controls-scroll")
         let start = UITestConditions.element(app, "recording-start")
         XCTAssertTrue(start.exists && start.isHittable)
-        capture(app, "recording-xxxl-native-navigation")
-        try NavigationUITestConditions.tapNative(app, "navigation-home")
+        capture(app, "recording-xxxl-navigation")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
@@ -108,7 +108,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack() throws {
+    func testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -136,9 +136,9 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         let title = UITestConditions.element(app, "next-visit-title")
         XCTAssertTrue(title.exists && !title.frame.isEmpty)
         XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
-        XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-back").control.label, "이전 화면으로 돌아가기")
-        XCTAssertEqual(try NavigationUITestConditions.nativeAction(app, "navigation-home").control.label, "홈 화면으로 이동")
-        capture(app, "visit-questions-native-safe-area")
+        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-back").control.label, "이전 화면으로 돌아가기")
+        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-home").control.label, "홈 화면으로 이동")
+        capture(app, "visit-questions-safe-area")
         captureNavigationObservation(app, "before-edge-back")
         edgeBack(scroll, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
         XCTAssertTrue(scroll.exists && scroll.isHittable)
@@ -159,13 +159,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)
         action.tap()
         XCTAssertTrue(UITestConditions.exists(scroll))
-        try NavigationUITestConditions.tapNative(app, "navigation-home")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     @MainActor
     private func captureNavigationObservation(_ app: XCUIApplication, _ name: String) {
-        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let marker = UITestConditions.element(app, "navigation-test-observation")
         let data = Data(UITestConditions.text(marker).utf8)
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
         attachment.name = name
@@ -193,7 +193,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     private func backToSettings(_ app: XCUIApplication) throws {
-        try NavigationUITestConditions.tapNative(app, "navigation-back")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
     }
 

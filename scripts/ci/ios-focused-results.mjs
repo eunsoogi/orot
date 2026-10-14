@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { selectFocusedNativeTests } from './ios-native-focused-selection.mjs';
+import { selectFocusedIosTests } from './ios-focused-selection.mjs';
 import { verifyIosObservationList } from './ios-test-results.mjs';
 
 // Selection and JSON completeness checks require no Apple tools and run on Linux after the Mac exporter.
@@ -12,7 +12,7 @@ if (
   !/^[1-9]\d*$/.test(process.env.GITHUB_RUN_ATTEMPT ?? '')
 )
   throw new Error('Focused result verification requires selection and downloaded evidence');
-const selection = selectFocusedNativeTests(profile, file, name);
+const selection = selectFocusedIosTests(profile, file, name);
 const manifest = JSON.parse(
   readFileSync(join(directory, 'product-artifact/manifest.json'), 'utf8'),
 );
@@ -24,7 +24,7 @@ if (
   context.spec.configuration !== selection.configuration ||
   !context.spec.compatibleExecutions.includes(selection.profile)
 )
-  throw new Error('Focused results belong to a stale or incompatible native product');
+  throw new Error('Focused results belong to a stale or incompatible integration product');
 const reportFile =
   selection.mode === 'fixture'
     ? 'fixtures/results.json'

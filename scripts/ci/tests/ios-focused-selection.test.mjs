@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
-import {
-  selectFocusedNativeTests,
-  verifyFocusedNativePullRequest,
-} from '../ios-native-focused-selection.mjs';
+import { selectFocusedIosTests, verifyFocusedIosPullRequest } from '../ios-focused-selection.mjs';
 
 const profiles = [
   'core',
@@ -19,13 +16,13 @@ const profiles = [
   'local-model',
 ];
 for (const profile of profiles) {
-  test(`native focus preserves exact ${profile} selection and its isolation mode`, () => {
+  test(`integration focus preserves exact ${profile} selection and its isolation mode`, () => {
     const inventory = iosTestInventory(profile);
     const grouped = ['backup', 'local-model'].includes(profile);
     const id = grouped ? 'all' : inventory[0];
     const [target, name] = inventory[0].split('/');
-    const actual = selectFocusedNativeTests(
-      `native/${profile}`,
+    const actual = selectFocusedIosTests(
+      `ios/${profile}`,
       `apps/mobile/ios/${target}/${name}.swift`,
       id,
     );
@@ -43,27 +40,27 @@ for (const profile of profiles) {
   });
 }
 
-test('UI focus preserves its native app-host preparation while a native core selection stays native-only', () => {
-  const ui = selectFocusedNativeTests(
-    'native/core',
+test('UI focus preserves its integration app-host preparation while an integration core selection stays integration-only', () => {
+  const ui = selectFocusedIosTests(
+    'ios/core',
     'apps/mobile/ios/OrotUITests/TestHostConnectionTests.swift',
     'OrotUITests/TestHostConnectionTests/testHostLaunches',
   );
   assert.equal(ui.suite, 'ui');
   assert.equal(ui.prepareUi, true);
-  const native = selectFocusedNativeTests(
-    'native/core',
+  const integration = selectFocusedIosTests(
+    'ios/core',
     'apps/mobile/ios/OrotIntegrationTests/HermesDomainIntegrationTests.swift',
     'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   );
-  assert.equal(native.prepareUi, false);
+  assert.equal(integration.prepareUi, false);
 });
 
 test('named fixture focus binds its complete group to the governing inventory without partial method selection', () => {
   const file = 'scripts/ci/ios-test-fixture-groups.mjs';
   for (const suite of ['navigation', 'recordings', 'questions', 'calendar', 'all']) {
-    const selection = selectFocusedNativeTests(
-      'native/fixtures',
+    const selection = selectFocusedIosTests(
+      'ios/fixtures',
       file,
       suite === 'all' ? 'all' : `group/${suite}`,
     );
@@ -73,9 +70,9 @@ test('named fixture focus binds its complete group to the governing inventory wi
     assert.equal(selection.identifier, '');
     assert.equal(selection.prepareUi, true);
   }
-  assert.throws(() => selectFocusedNativeTests('native/fixtures', file, 'group/unknown'));
-  assert.throws(() => selectFocusedNativeTests('native/core', file, 'group/navigation'));
-  assert.throws(() => selectFocusedNativeTests('native/fixtures', 'other.mjs', 'group/navigation'));
+  assert.throws(() => selectFocusedIosTests('ios/fixtures', file, 'group/unknown'));
+  assert.throws(() => selectFocusedIosTests('ios/core', file, 'group/navigation'));
+  assert.throws(() => selectFocusedIosTests('ios/fixtures', 'other.mjs', 'group/navigation'));
 });
 
 test('wrong profile, source path, fragments and incomplete stateful phase selections cannot run', () => {
@@ -83,24 +80,24 @@ test('wrong profile, source path, fragments and incomplete stateful phase select
   const file = 'apps/mobile/ios/OrotUITests/TestHostConnectionTests.swift';
   for (const args of [
     ['core', file, id],
-    ['native/unknown', file, id],
-    ['native/core', '../' + file, id],
-    ['native/core', file, 'testHostLaunches'],
-    ['native/core', file, id + '\n'],
-    ['native/fixtures', file, id],
-    ['native/core', file, ['all']],
+    ['ios/unknown', file, id],
+    ['ios/core', '../' + file, id],
+    ['ios/core', file, 'testHostLaunches'],
+    ['ios/core', file, id + '\n'],
+    ['ios/fixtures', file, id],
+    ['ios/core', file, ['all']],
     [
-      'native/backup',
+      'ios/backup',
       'apps/mobile/ios/OrotUITests/BackupPersistenceUITests.swift',
       iosTestInventory('backup')[0],
     ],
     [
-      'native/local-model',
+      'ios/local-model',
       'apps/mobile/ios/OrotIntegrationTests/LocalModelIntegrationTests.swift',
       iosTestInventory('local-model')[0],
     ],
   ])
-    assert.throws(() => selectFocusedNativeTests(...args));
+    assert.throws(() => selectFocusedIosTests(...args));
 });
 
 test('PR focus binds the actual workflow branch, repository and exact open head', () => {
@@ -114,7 +111,7 @@ test('PR focus binds the actual workflow branch, repository and exact open head'
     state: 'open',
     head: { repo: { full_name: context.repository }, sha: context.sha, ref: context.ref },
   };
-  assert.doesNotThrow(() => verifyFocusedNativePullRequest(context, '200', pr));
+  assert.doesNotThrow(() => verifyFocusedIosPullRequest(context, '200', pr));
   for (const change of [
     { number: 201 },
     { state: 'closed' },
@@ -122,16 +119,16 @@ test('PR focus binds the actual workflow branch, repository and exact open head'
     { head: { ...pr.head, ref: 'main' } },
     { head: { ...pr.head, repo: { full_name: 'other/orot' } } },
   ])
-    assert.throws(() => verifyFocusedNativePullRequest(context, '200', { ...pr, ...change }));
+    assert.throws(() => verifyFocusedIosPullRequest(context, '200', { ...pr, ...change }));
   for (const number of ['0', '0200', '200;echo', '200\n'])
-    assert.throws(() => verifyFocusedNativePullRequest(context, number, pr));
+    assert.throws(() => verifyFocusedIosPullRequest(context, number, pr));
 });
 
-test('native focus routing leaves full protected statuses failing without a legacy fallback', () => {
+test('integration focus routing leaves full protected statuses failing without a legacy fallback', () => {
   const dispatcher = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
   assert.match(
     dispatcher,
-    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-native-focused\.yml/,
+    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/,
   );
   assert.match(dispatcher, /DIAGNOSTIC: \$\{\{ needs\.selection\.outputs\.diagnostic \}\}/);
   assert.match(dispatcher, /test "\$DIAGNOSTIC" != true/);
@@ -139,7 +136,7 @@ test('native focus routing leaves full protected statuses failing without a lega
 });
 
 test('focused consumer verifies exact products before its only boot and retains strict selected-case verification', () => {
-  const source = readFileSync('.github/workflows/ios-native-focused.yml', 'utf8');
+  const source = readFileSync('.github/workflows/ios-focused.yml', 'utf8');
   const action = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
   assert.ok(
     source.indexOf('Verify product provenance and integrity before boot') <
@@ -160,5 +157,5 @@ test('focused consumer verifies exact products before its only boot and retains 
   assert.match(action, /build-ios-tests\.mjs "\$PROFILE"/);
   assert.doesNotMatch(action, /simctl|ios-test-simulator/);
   assert.match(source, /Tear down the owned destination\n\s+if: always\(\)/);
-  assert.match(source, /Preserve native execution diagnostics\n\s+if: always\(\)/);
+  assert.match(source, /Preserve integration execution diagnostics\n\s+if: always\(\)/);
 });

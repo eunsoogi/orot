@@ -1,4 +1,4 @@
-name: Native branch-protection compatibility
+name: iOS branch-protection compatibility
 on:
   workflow_call:
     inputs:
@@ -10,7 +10,7 @@ jobs:
   release:
     name: Release shards
     if: always()
-    uses: ./.github/workflows/ios-native-release-status.yml
+    uses: ./.github/workflows/ios-release-status.yml
     with:
       selected: ${{ inputs.selected }}
       invalid_selection: ${{ inputs.invalid_selection }}
@@ -18,7 +18,7 @@ jobs:
   openai:
     name: OpenAI Debug E2E
     if: always()
-    uses: ./.github/workflows/ios-native-profile-status.yml
+    uses: ./.github/workflows/ios-profile-status.yml
     with:
       profile: openai-provider
       selected: ${{ inputs.selected }}
@@ -27,7 +27,7 @@ jobs:
   speech:
     name: Speech Transcription E2E
     if: always()
-    uses: ./.github/workflows/ios-native-profile-status.yml
+    uses: ./.github/workflows/ios-profile-status.yml
     with:
       profile: transcription
       selected: ${{ inputs.selected }}
@@ -36,7 +36,7 @@ jobs:
   questions:
     name: Next Visit Questions E2E
     if: always()
-    uses: ./.github/workflows/ios-native-profile-status.yml
+    uses: ./.github/workflows/ios-profile-status.yml
     with:
       profile: next-visit-questions
       selected: ${{ inputs.selected }}

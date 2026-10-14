@@ -1,6 +1,8 @@
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import { runAgentMemoryProbe } from '../src/memory/agentMemoryProbe';
 import { runGraphIntegrationProbe } from './graphIntegrationProbe';
+import { withMockAppleModel } from './appleModelMockBridge';
+import { appleModelMockScript } from './appleModelMockFixtures';
 
 /** Each operation keeps its original domain assertions; no UI status is treated as a native result. */
 export async function runDomainTestOperation(
@@ -49,7 +51,10 @@ export async function runDomainTestOperation(
         require('./appleFoundationModelsProbe') as typeof import('./appleFoundationModelsProbe');
       const { validateVisitQuestionText } =
         require('./appleFoundationModelsProbeValidation') as typeof import('./appleFoundationModelsProbeValidation');
-      const result = await runAppleFoundationModelsProbe();
+      const result = await withMockAppleModel(
+        appleModelMockScript(operation),
+        runAppleFoundationModelsProbe,
+      );
       if (result.availability === 'available') {
         // Keep the original available-branch assertions, including exact text and synthetic source preservation.
         if (result.sourceIdPreserved !== 'passed')
@@ -61,25 +66,34 @@ export async function runDomainTestOperation(
         )
           throw new Error('Generated question changed during validation');
       }
-      return { ...result };
+      const { runAppleModelMockBridgeProbe } =
+        require('./appleModelMockBridgeProbe') as typeof import('./appleModelMockBridgeProbe');
+      return { ...result, bridge: await runAppleModelMockBridgeProbe() };
     }
     case 'apple-workflow': {
       const { runAppleWorkflowProbe } =
         require('./appleWorkflowProbe') as typeof import('./appleWorkflowProbe');
-      // The same real-provider workflows and their original deadlines run without a diagnostic screen or substituted output.
-      return runAppleWorkflowProbe(() => {});
+      // Shipping workflows and deadlines remain intact; only raw Foundation Models responses are scripted.
+      return withMockAppleModel(appleModelMockScript(operation), () =>
+        runAppleWorkflowProbe(() => {}),
+      );
     }
     case 'calendar-classification': {
       const { runCalendarClassificationTestOperation } =
         require('./calendarClassificationTestOperation') as typeof import('./calendarClassificationTestOperation');
-      return runCalendarClassificationTestOperation();
+      return withMockAppleModel(
+        appleModelMockScript(operation),
+        runCalendarClassificationTestOperation,
+      );
     }
     case 'rag-workflow': {
       const { runRagWorkflowProbe } =
         require('./ragWorkflowProbe') as typeof import('./ragWorkflowProbe');
-      // The original public-query authorization, real Europe PMC retrieval, provider calls and 120-second deadline remain owned by the probe.
+      // Public-query authorization, real Europe PMC retrieval and the 120-second deadline remain owned by the probe.
       return {
-        ...(await runRagWorkflowProbe(() => {}, new AbortController().signal)),
+        ...(await withMockAppleModel(appleModelMockScript(operation), () =>
+          runRagWorkflowProbe(() => {}, new AbortController().signal),
+        )),
       };
     }
     case 'local-e5': {

@@ -1,6 +1,6 @@
 # On-device agent memory
 
-> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+> Maintained validation uses the XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](ios-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
 
 
 Orot uses [Rememori 0.7.0](https://github.com/GiorgioDotcom/rememori), pinned exactly under the MIT license, for memory importance, temporal decay, reinforcement, recall, and forgetting. `@orot/agent-memory` wraps that engine with Orot's explicit write policy, provenance, idempotency, correction, and LangChain tools. The library has no automatic LLM extraction or consolidation; Orot does not recreate those capabilities.

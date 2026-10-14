@@ -12,5 +12,5 @@ const parse = (input) =>
   );
 const current = execFileSync('plutil', ['-convert', 'json', '-o', '-', path], { encoding: 'utf8' });
 if (!isDeepStrictEqual(parse(original), JSON.parse(current)))
-  throw new Error('Generated native privacy metadata changed its meaning');
+  throw new Error('Generated platform privacy metadata changed its meaning');
 writeFileSync(path, original);

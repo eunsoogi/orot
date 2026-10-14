@@ -22,7 +22,7 @@ function protectedLeaves(path, parents = [], inputs = {}) {
   });
 }
 
-test('five Linux native compatibility leaves retain the exact protected context names', () => {
+test('five Linux integration compatibility leaves retain the exact protected context names', () => {
   const e2e = workflow('.github/workflows/e2e-test.yml');
   const required = e2e.jobs.required_statuses;
   const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [required.name]);
@@ -30,13 +30,13 @@ test('five Linux native compatibility leaves retain the exact protected context 
   assert.deepEqual(actual.sort(), expected.filter((name) => name !== 'iOS Simulator Build').sort());
   assert.equal(e2e.jobs.ios_simulator_build.name, 'iOS Simulator Build');
   assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
-  assert.equal(e2e.jobs.native_validation.uses, './.github/workflows/ios-test-validation.yml');
-  assert.equal(e2e.jobs.native_validation.with.production_build, true);
+  assert.equal(e2e.jobs.ios_validation.uses, './.github/workflows/ios-test-validation.yml');
+  assert.equal(e2e.jobs.ios_validation.with.production_build, true);
   assert.equal(e2e.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });
 
-test('full native execution preserves 78 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
+test('full integration execution preserves 78 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
@@ -51,6 +51,6 @@ test('full native execution preserves 78 scheduled observations and all eight st
     workflowSource,
     /supported-provider-receipt|availability.*skip|continue-on-error/,
   );
-  const mapping = readFileSync('docs/native-validation.md', 'utf8');
+  const mapping = readFileSync('docs/ios-validation.md', 'utf8');
   assert.equal((mapping.match(/^\| N\d{3} \|/gm) ?? []).length, 55);
 });

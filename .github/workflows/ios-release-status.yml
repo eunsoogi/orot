@@ -10,7 +10,7 @@ jobs:
   ui:
     name: Release UI and storage
     if: always()
-    uses: ./.github/workflows/ios-native-profile-status.yml
+    uses: ./.github/workflows/ios-profile-status.yml
     with:
       profile: release
       selected: ${{ inputs.selected }}
@@ -19,7 +19,7 @@ jobs:
   data:
     name: Release stateful-data
     if: always()
-    uses: ./.github/workflows/ios-native-profile-status.yml
+    uses: ./.github/workflows/ios-profile-status.yml
     with:
       profile: release
       selected: ${{ inputs.selected }}

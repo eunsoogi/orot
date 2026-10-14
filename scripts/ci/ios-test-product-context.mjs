@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { iosTestBuildSpec } from './ios-test-config.mjs';
 
 export function buildInputDigest(root) {
-  // Hash the committed native/JS inputs before generated dependency setup rewrites metadata.
+  // Hash the committed ios/JS inputs before generated dependency setup rewrites metadata.
   const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8' })
     .split('\0')
     .filter(Boolean);
@@ -29,7 +29,7 @@ export function buildInputDigest(root) {
 
 export function productContext(root, profile, env = process.env) {
   if (env.GITHUB_ACTIONS !== 'true')
-    throw new Error('Run-bound native products require GitHub Actions');
+    throw new Error('Run-bound integration products require GitHub Actions');
   // A HEAD digest cannot describe modified build inputs. Generated dependency outputs
   // live outside these tracked sources; producers and consumers must preserve checkout bytes.
   const changes = execFileSync(
@@ -51,7 +51,7 @@ export function productContext(root, profile, env = process.env) {
     { encoding: 'utf8' },
   ).trim();
   if (changes)
-    throw new Error('Native product source inputs differ from the committed head:\n' + changes);
+    throw new Error('iOS product source inputs differ from the committed head:\n' + changes);
   const runId = Number(env.GITHUB_RUN_ID);
   const attempt = Number(env.GITHUB_RUN_ATTEMPT);
   const sha = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -63,7 +63,7 @@ export function productContext(root, profile, env = process.env) {
     !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') ||
     sha !== env.GITHUB_SHA
   )
-    throw new Error('Native product source/run identity mismatch');
+    throw new Error('iOS product source/run identity mismatch');
   const spec = iosTestBuildSpec(profile);
   const xcode = execFileSync('xcodebuild', ['-version'], { encoding: 'utf8', env }).trim();
   const sdk = execFileSync('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version'], {
@@ -78,7 +78,7 @@ export function productContext(root, profile, env = process.env) {
     platform !== 'Darwin' ||
     architecture !== spec.architecture
   )
-    throw new Error('Native product toolchain mismatch');
+    throw new Error('iOS product toolchain mismatch');
   return {
     runId,
     attempt,

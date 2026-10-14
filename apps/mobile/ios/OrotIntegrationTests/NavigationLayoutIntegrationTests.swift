@@ -4,12 +4,12 @@ import XCTest
 
 final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testDisabledAccessibilityTracksNativeStateAndPreservesSelectionAcrossUpdates() throws {
+    func testDisabledAccessibilityTracksUIKitStateAndPreservesSelectionAcrossUpdates() throws {
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
         // Exercise the real production constructor without a fabricated AX snapshot or a JS-only disabled assertion.
         for (disabled, selected) in [(true, false), (false, true), (true, true), (false, false)] {
             surface.actions = [[
-                "id": "primary", "label": "Synthetic action", "testID": "synthetic-native-action",
+                "id": "primary", "label": "Synthetic action", "testID": "synthetic-navigation-action",
                 "accessibilityLabel": "Synthetic action", "primary": true,
                 "disabled": disabled, "selected": selected,
             ]] as NSArray
@@ -24,7 +24,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testProductionRootTabSymbolsAndLabelsFitTheirNativeTouchTargets() async throws {
+    func testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets() async throws {
         let result = try await TestOperationBroker.shared.request("render-application")
         XCTAssertEqual(result["requested"] as? Bool, true)
         let routes = [

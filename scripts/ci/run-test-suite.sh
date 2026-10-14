@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# This wrapper owns only workspace unit execution; native suites use verified XCTest products and result bundles.
+# This wrapper owns only workspace unit execution; integration suites use verified XCTest products and result bundles.
 if [[ $# -ne 2 || "$1" != unit ]]; then
   printf 'Usage: %s unit <artifact-directory>\n' "$0" >&2
   exit 2

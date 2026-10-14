@@ -96,7 +96,7 @@ export function ProviderSelectionProbe() {
             )
         }
         testID="provider-selection-native-auth-cancel"
-        title={t('probe.provider.nativeCancel')}
+        title={t('probe.provider.sessionCancel')}
       />
       <Button
         onPress={() => setAuthFlow('cancel')}

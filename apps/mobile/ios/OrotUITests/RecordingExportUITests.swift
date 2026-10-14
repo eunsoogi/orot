@@ -27,14 +27,14 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         addTeardownBlock { @MainActor in
             // XCTest may bypass defer on failure; collect before the earlier registered source cleanup.
             guard app.state != .notRunning else { return }
-            let marker = UITestConditions.element(app, "native-navigation-observation")
+            let marker = UITestConditions.element(app, "navigation-test-observation")
             let attachment = XCTAttachment(data: Data(UITestConditions.text(marker).utf8), uniformTypeIdentifier: "public.json")
             attachment.name = "export-final-lifecycle-observation"
             attachment.lifetime = .keepAlways
             self.add(attachment)
         }
         defer {
-            let observation = UITestConditions.element(app, "native-navigation-observation")
+            let observation = UITestConditions.element(app, "navigation-test-observation")
             let attachment = XCTAttachment(data: Data(UITestConditions.text(observation).utf8), uniformTypeIdentifier: "public.json")
             attachment.name = "export-lifecycle-observation"
             attachment.lifetime = .keepAlways
@@ -67,7 +67,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             XCTAssertEqual(report[field] as? Bool, true, field)
         }
         XCTAssertTrue(UITestConditions.text(element(app, "transcript-evidence-source-security")).contains("backup-excluded=false"))
-        let marker = element(app, "native-navigation-observation")
+        let marker = element(app, "navigation-test-observation")
         let session = try ExportDismissalGeometry.session(snapshot: UITestConditions.text(marker), nowMs: Date().timeIntervalSince1970 * 1000)
         tap(app, "recording-export-audio")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
@@ -102,7 +102,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     private func captureDismissalGeometry(_ app: XCUIApplication, _ stage: String, frame: CGRect, point: CGVector,
                                           snapshot: String? = nil, applicationFrame: CGRect? = nil)
     {
-        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let marker = UITestConditions.element(app, "navigation-test-observation")
         let text = snapshot ?? (marker.exists ? UITestConditions.text(marker) : "")
         let native = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
         // Bridge snapshots can lag. Keep their timestamp separate from the captured tap geometry, in UIKit points.
@@ -110,7 +110,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             "stage": stage, "atMs": Date().timeIntervalSince1970 * 1000,
             "applicationFrame": rectObservation(applicationFrame ?? app.frame), "dismissRegionFrameBeforeTouch": rectObservation(frame),
             "tapPointInApplication": ["x": point.dx, "y": point.dy],
-            "nativeSnapshotAtMs": native?["atMs"] ?? NSNull(), "observerID": native?["observerID"] ?? NSNull(),
+            "authorizationSnapshotAtMs": native?["atMs"] ?? NSNull(), "observerID": native?["observerID"] ?? NSNull(),
             "presentations": native?["presentations"] ?? NSNull(),
         ]
         if let data = try? JSONSerialization.data(withJSONObject: observation), let text = String(data: data, encoding: .utf8) {
@@ -135,7 +135,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
 
     @MainActor
     private func captureLifecycle(_ app: XCUIApplication, _ name: String) {
-        let marker = UITestConditions.element(app, "native-navigation-observation")
+        let marker = UITestConditions.element(app, "navigation-test-observation")
         let attachment = XCTAttachment(data: Data(UITestConditions.text(marker).utf8), uniformTypeIdentifier: "public.json")
         attachment.name = name
         attachment.lifetime = .keepAlways

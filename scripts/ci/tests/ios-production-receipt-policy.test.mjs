@@ -29,7 +29,7 @@ const receipt = () => ({
 });
 
 // This is schema policy proof, not an actual production build or hosted receipt observation.
-test('current production and OAuth receipt does not depend on unrelated native test outcomes', () => {
+test('current production and OAuth receipt does not depend on unrelated integration test outcomes', () => {
   assert.equal(verifyProductionReceipt(receipt(), env).sourceSha, env.GITHUB_SHA);
 });
 
@@ -41,7 +41,7 @@ test('stale, partial, incompatible and absent proof cannot satisfy the productio
     ['configuration', 'Release'],
     ['entry', 'e2e/testEntry.tsx'],
     ['flags', 'OROT_TESTS'],
-    ['derivedData', 'artifacts/native-focus/DerivedData'],
+    ['derivedData', 'artifacts/ios-focus/DerivedData'],
     ['inputDigest', ''],
   ])
     assert.throws(() => verifyProductionReceipt({ ...receipt(), [key]: value }, env));

@@ -1,4 +1,4 @@
-# Scoped CocoaPods 1.17.0 context capture and guarded pnpm group-base recovery for native dependency preparation.
+# Scoped CocoaPods 1.17.0 context capture and guarded pnpm group-base recovery for platform dependency preparation.
 module OrotCocoapodsNullByteDiagnostic
   COCOAPODS_VERSION = '1.17.0'
   NULL_BYTE_PATH_ERROR = 'path name contains null byte'

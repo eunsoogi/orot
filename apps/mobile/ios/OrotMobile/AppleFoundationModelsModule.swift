@@ -43,7 +43,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
             let task = Task { [weak self] in
                 guard let self, isActive(slot) else { return }
                 do {
-                    let result = try await generate(payload, requestId: requestId)
+                    let result = try await AppleFoundationModelsSession.generate(payload, requestId: requestId)
                     if finish(slot) {
                         completion(result as NSDictionary, nil)
                     }
@@ -103,16 +103,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
     private func availability() -> [String: Any] {
         #if canImport(FoundationModels)
             if #available(iOS 26.0, *) {
-                switch SystemLanguageModel.default.availability {
-                case .available:
-                    return ["status": SystemLanguageModel.default.supportsLocale(Locale(identifier: "ko-KR")) ? "available" : "unsupportedLanguage"]
-                case let .unavailable(reason):
-                    switch reason {
-                    case .deviceNotEligible: return ["status": "unsupportedDevice"]
-                    case .appleIntelligenceNotEnabled: return ["status": "disabled"]
-                    case .modelNotReady: return ["status": "modelNotReady"]
-                    }
-                }
+                return AppleFoundationModelsSession.availability()
             }
         #endif
         return ["status": "unsupportedDevice"]
@@ -120,50 +111,21 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
 
     #if canImport(FoundationModels)
         @available(iOS 26.0, *)
-        private func generate(_ payload: NSDictionary, requestId: String) async throws -> [String: Any] {
-            guard let request = payload as? [String: Any], let prompt = request["prompt"] as? String,
-                  let instructions = request["instructions"] as? String
-            else {
-                throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt and instructions are required.", nil)
-            }
-            let session = LanguageModelSession(instructions: instructions)
-            let options = GenerationOptions(temperature: request["temperature"] as? Double,
-                                            maximumResponseTokens: request["maxOutputTokens"] as? Int)
-            guard let raw = request["schema"] as? [String: Any] else {
-                guard request["mode"] as? String == "text" else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided generation needs a schema.", nil) }
-                let response = try await session.respond(to: prompt, options: options)
-                return ["text": response.content, "toolCalls": [], "finishReason": "complete"]
-            }
-            let schema = try GenerationSchema(root: AppleFoundationModelsCodec.schema(raw), dependencies: [])
-            let response = try await session.respond(to: prompt, schema: schema, options: options)
-            return try AppleFoundationModelsCodec.normalize(response.content.jsonString, request, requestId: requestId)
-        }
-
-        @available(iOS 26.0, *)
         private func stream(_ payload: NSDictionary, _ slot: AppleFoundationModelsRequestSlot) async throws {
-            guard let request = payload as? [String: Any], request["mode"] as? String == "text",
-                  request["schema"] == nil, let prompt = request["prompt"] as? String,
-                  let instructions = request["instructions"] as? String
-            else {
-                throw appleFoundationModelsFailure("UNSUPPORTED_CAPABILITY", "Streaming supports text requests only.", nil)
-            }
-            let session = LanguageModelSession(instructions: instructions)
-            let options = GenerationOptions(temperature: request["temperature"] as? Double,
-                                            maximumResponseTokens: request["maxOutputTokens"] as? Int)
             var previous = ""
-            for try await snapshot in session.streamResponse(to: prompt, options: options) {
+            try await AppleFoundationModelsSession.stream(payload) { current in
                 if Task.isCancelled {
-                    return
+                    return false
                 }
-                let current = String(describing: snapshot.content)
                 guard current.hasPrefix(previous) else {
-                    if finish(slot) {
+                    if self.finish(slot) {
                         slot.event?(appleFoundationModelsPacket("error", "STREAM_REWRITE", "A prior text snapshot was rewritten.", nil))
                     }
-                    return
+                    return false
                 }
-                guard emitIfActive(slot, ["type": "snapshot", "text": current] as NSDictionary) else { return }
+                guard self.emitIfActive(slot, ["type": "snapshot", "text": current] as NSDictionary) else { return false }
                 previous = current
+                return true
             }
             if finish(slot) {
                 slot.event?(["type": "completed", "response": ["text": previous, "toolCalls": [], "finishReason": "complete"]] as NSDictionary)

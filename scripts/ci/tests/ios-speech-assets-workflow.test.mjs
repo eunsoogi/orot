@@ -8,7 +8,7 @@ test('hosted Speech verifies actual assets before its first recognition without 
   const tasks = iosTestCohortTasks('speech');
   assert.deepEqual(
     tasks.map(({ suite }) => suite),
-    ['preparation', 'native', 'ui'],
+    ['preparation', 'integration', 'ui'],
   );
   assert.deepEqual(tasks[0].identifiers, iosTestInventory('speech', 'preparation'));
   assert.equal(tasks[0].identifiers.length, 1);

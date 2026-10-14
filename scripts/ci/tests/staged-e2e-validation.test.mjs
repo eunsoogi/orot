@@ -30,21 +30,21 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(docs.ios_build, false);
   assert.equal(docs.detox_release, false);
 
-  const native = selectChecksForPaths(['apps/mobile/ios/OrotMobile/AppDelegate.swift']);
-  assert.equal(native.detox_release, true);
-  assert.equal(native.detox_openai, true);
-  assert.equal(native.detox_transcription, true);
-  assert.equal(native.detox_next_visit, true);
+  const integration = selectChecksForPaths(['apps/mobile/ios/OrotMobile/AppDelegate.swift']);
+  assert.equal(integration.detox_release, true);
+  assert.equal(integration.detox_openai, true);
+  assert.equal(integration.detox_transcription, true);
+  assert.equal(integration.detox_next_visit, true);
 });
 
-test('unapproved drafts, focused and diagnostic runs cannot satisfy the full native gate', () => {
+test('unapproved drafts, focused and diagnostic runs cannot satisfy the full integration gate', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
   assert.match(
     e2e,
     /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(e2e, /outputs\.deferred == 'true' && needs\.native_validation\.result != 'success'/);
+  assert.match(e2e, /outputs\.deferred == 'true' && needs\.ios_validation\.result != 'success'/);
   assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
   assert.match(e2e, /needs\.selection\.outputs\.focused != 'true'/);
   assert.match(
@@ -55,7 +55,7 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full nat
     e2e,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
   );
-  const status = read('.github/workflows/ios-native-profile-status.yml');
+  const status = read('.github/workflows/ios-profile-status.yml');
   assert.match(status, /test "\$INVALID" = false/);
   assert.match(status, /test "\$RESULT" = success/);
   assert.match(status, /if: ['"]!inputs.selected['"]/);
@@ -64,19 +64,16 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full nat
     assert.match(read('.github/workflows/' + path), /ready_for_review/);
 });
 
-test('manual focus uses exact native selection and retains PR-scoped supersession', () => {
+test('manual focus uses exact integration selection and retains PR-scoped supersession', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
-  assert.match(
-    e2e,
-    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-native-focused\.yml/,
-  );
-  const focus = read('.github/workflows/ios-native-focused.yml');
+  assert.match(e2e, /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
+  const focus = read('.github/workflows/ios-focused.yml');
   assert.match(
     focus,
-    /group: focused-native-\$\{\{ inputs\.pr_number \|\| github\.run_id \}\}-scenario/,
+    /group: focused-ios-\$\{\{ inputs\.pr_number \|\| github\.run_id \}\}-scenario/,
   );
   assert.match(focus, /cancel-in-progress: true/);
-  assert.match(focus, /ios-native-focused-selection-cli\.mjs/);
-  assert.match(focus, /ios-native-focused-results\.mjs/);
-  assert.doesNotMatch(focus, /ios-native-profile-status/);
+  assert.match(focus, /ios-focused-selection-cli\.mjs/);
+  assert.match(focus, /ios-focused-results\.mjs/);
+  assert.doesNotMatch(focus, /ios-profile-status/);
 });

@@ -10,12 +10,12 @@ import {
   writeIosBuildInputSnapshot,
 } from './ios-build-input-snapshot.mjs';
 
-// Capture the tracked CocoaPods outputs so later native build stages cannot change them silently.
+// Capture the tracked CocoaPods outputs so later integration build stages cannot change them silently.
 export const EXPECTED_COCOAPODS_INPUT_HASHES_ENV = 'EXPECTED_COCOAPODS_INPUT_HASHES_JSON';
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 const EXPECTED_BUILD_FINGERPRINT_ENV = 'EXPECTED_IOS_BUILD_INPUT_FINGERPRINT';
-const EXPECTED_NATIVE_FINGERPRINT_ENV = 'EXPECTED_IOS_NATIVE_DEPENDENCY_FINGERPRINT';
+const EXPECTED_PLATFORM_FINGERPRINT_ENV = 'EXPECTED_IOS_PLATFORM_DEPENDENCY_FINGERPRINT';
 const INPUTS = {
   privacyManifest: 'apps/mobile/ios/OrotMobile/PrivacyInfo.xcprivacy',
   projectFile: 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj',
@@ -79,11 +79,11 @@ export function assertCocoapodsInputHashesEqual(actual, expected, stage) {
 function readExpectedFingerprints() {
   const fingerprints = {
     buildInputs: process.env[EXPECTED_BUILD_FINGERPRINT_ENV],
-    nativeDependencies: process.env[EXPECTED_NATIVE_FINGERPRINT_ENV],
+    platformDependencies: process.env[EXPECTED_PLATFORM_FINGERPRINT_ENV],
   };
   if (
     !HASH_PATTERN.test(fingerprints.buildInputs ?? '') ||
-    !HASH_PATTERN.test(fingerprints.nativeDependencies ?? '')
+    !HASH_PATTERN.test(fingerprints.platformDependencies ?? '')
   ) {
     throw new Error('Missing or invalid prebuild Ios cache fingerprints.');
   }
@@ -93,13 +93,13 @@ function readExpectedFingerprints() {
 export function readExpectedIosCacheFingerprints() {
   // Local cache checks may omit both job-scoped values and use the full source scan instead.
   const hasBuildInputs = process.env[EXPECTED_BUILD_FINGERPRINT_ENV] !== undefined;
-  const hasNativeDependencies = process.env[EXPECTED_NATIVE_FINGERPRINT_ENV] !== undefined;
-  if (!hasBuildInputs && !hasNativeDependencies) return null;
+  const hasPlatformDependencies = process.env[EXPECTED_PLATFORM_FINGERPRINT_ENV] !== undefined;
+  if (!hasBuildInputs && !hasPlatformDependencies) return null;
   return readExpectedFingerprints();
 }
 
 function assertFingerprintsEqual(actual, expected, stage) {
-  const changed = ['buildInputs', 'nativeDependencies'].filter(
+  const changed = ['buildInputs', 'platformDependencies'].filter(
     (name) => actual[name] !== expected[name],
   );
   if (changed.length > 0) {
