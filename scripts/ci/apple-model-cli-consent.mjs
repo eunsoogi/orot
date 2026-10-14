@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { appleModelCliAcceptanceArguments } from './apple-model-cli-deadline.mjs';
 
 // Exact stdout of the notice the user reviewed. A different notice requires a new decision, not a fallback agreement.
 export const APPROVED_FM_NOTICE_SHA256 =
@@ -65,7 +66,7 @@ export function inspectAppleModelCliConsent({
       encoding: 'utf8',
       shell: false,
       timeout: 5000,
-      killSignal: 'SIGTERM',
+      killSignal: 'SIGKILL',
       maxBuffer: 1024 * 1024,
       input,
     });
@@ -112,13 +113,8 @@ export function inspectAppleModelCliConsent({
     report.consumed = true;
     let acceptance;
     if (!report.alreadyAccepted) {
-      // fm documents yes/y at this prompt, with machine-wide privileged consent. No undocumented acceptance flag is used.
-      acceptance = call(
-        'license-acceptance',
-        '/usr/bin/sudo',
-        ['-n', '/usr/bin/fm', 'license'],
-        'yes\n',
-      );
+      // The fixed privileged watchdog supplies fm's documented yes response and reaps only its own fm child on deadline.
+      acceptance = call('license-acceptance', '/usr/bin/sudo', appleModelCliAcceptanceArguments());
     }
     const after = call('license-status-after', '/usr/bin/fm', ['license', '--status']);
     if ((acceptance && !succeeded(acceptance)) || !succeeded(after))

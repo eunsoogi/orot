@@ -11,6 +11,7 @@ import {
   inspectAppleModelCliConsent,
 } from '../apple-model-cli-consent.mjs';
 import { collectAppleModelCliDiagnostics } from '../probe-apple-model-cli.mjs';
+import { FM_LICENSE_WATCHDOG } from '../apple-model-cli-deadline.mjs';
 
 const notice = `LEGAL NOTICE & TERMS
 
@@ -86,8 +87,15 @@ test('one bound hosted invocation consumes before sudo, records accepted status 
       );
       assert.equal(claim.consumed, true);
       assert.equal(claim.noticeSha256, APPROVED_FM_NOTICE_SHA256);
-      assert.equal(settings.input, 'yes\n');
-      assert.deepEqual(args, ['-n', '/usr/bin/fm', 'license']);
+      assert.equal(settings.input, undefined);
+      assert.deepEqual(args.slice(0, 5), [
+        '-n',
+        process.execPath,
+        '--input-type=module',
+        '-e',
+        FM_LICENSE_WATCHDOG,
+      ]);
+      assert.ok(Number(args[5]) > Date.now() && Number(args[5]) <= Date.now() + 4000);
     }
     return execute(command, args, settings);
   };
