@@ -17,9 +17,9 @@ function macJobs(file) {
   }, 0);
 }
 
-test('full native graph has exactly five Mac jobs and leaves planning and aggregation on Linux', () => {
+test('full native graph has five primary Mac jobs plus two sequential fresh samples and leaves planning and aggregation on Linux', () => {
   const full = workflow('.github/workflows/ios-test-validation.yml');
-  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
+  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 7);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'release_products']);
@@ -34,16 +34,23 @@ test('full native graph has exactly five Mac jobs and leaves planning and aggreg
     'release_execution',
     'speech_execution',
     'debug_execution',
+    'speech_sample_2',
+    'speech_sample_3',
   ];
+  const ancestors = (id) => {
+    const needs = full.jobs[id].needs ?? [];
+    return (Array.isArray(needs) ? needs : [needs]).flatMap((dependency) => [
+      dependency,
+      ...ancestors(dependency),
+    ]);
+  };
   let maximum = 0;
   for (let bits = 0; bits < 1 << ids.length; bits++) {
     const active = ids.filter((_, index) => bits & (1 << index));
     if (
       active.every((id) => {
-        const needs = full.jobs[id].needs ?? [];
-        return !(Array.isArray(needs) ? needs : [needs]).some((dependency) =>
-          active.includes(dependency),
-        );
+        // A later fresh sample cannot overlap any earlier prerequisite, including through the intervening sample.
+        return !ancestors(id).some((dependency) => active.includes(dependency));
       })
     )
       maximum = Math.max(maximum, active.length);

@@ -1,15 +1,17 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { iosTestCohortTasks } from './ios-test-cohorts.mjs';
+import { iosTestCohortTasks, iosTestCohortSample } from './ios-test-cohorts.mjs';
 import { verifyIosObservationList } from './ios-test-results.mjs';
 
 /** Linux aggregation requires every planned first attempt at the current run/head. A passing subset or stale receipt cannot satisfy completeness. */
 export function verifyIosTestCohortResults(report, cohort, context) {
   const expected = iosTestCohortTasks(cohort);
+  const sample = iosTestCohortSample(cohort, context.sample);
   if (
     report.schemaVersion !== 1 ||
     report.cohort !== cohort ||
+    report.sample !== sample ||
     report.passed !== true ||
     report.sourceSha !== context.sourceSha ||
     report.runId !== context.runId ||
@@ -31,7 +33,7 @@ export function verifyIosTestCohortResults(report, cohort, context) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [cohort, path, output] = process.argv.slice(2);
+  const [cohort, path, output, sample = 'first'] = process.argv.slice(2);
   if (
     !output ||
     !/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA ?? '') ||
@@ -44,10 +46,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     sourceSha: process.env.GITHUB_SHA,
     runId: process.env.GITHUB_RUN_ID,
     attempt: process.env.GITHUB_RUN_ATTEMPT,
+    sample,
   });
   writeFileSync(
     output,
-    JSON.stringify({ cohort, observations, sourceSha: report.sourceSha }, null, 2) + '\n',
+    JSON.stringify({ cohort, sample, observations, sourceSha: report.sourceSha }, null, 2) + '\n',
   );
   console.log(`IOS_COHORT_RESULTS_VERIFIED cohort=${cohort} passed=${observations.length}`);
 }

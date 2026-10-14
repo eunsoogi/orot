@@ -11,6 +11,19 @@ const cohorts = {
   },
 };
 
+export const IOS_SPEECH_SAMPLES = Object.freeze(['first', 'second', 'third']);
+
+/** Fresh Speech samples are distinct first executions. Other cohorts have only their original first execution. */
+export function iosTestCohortSample(cohort, sample = 'first') {
+  if (
+    !Object.hasOwn(cohorts, cohort) ||
+    !IOS_SPEECH_SAMPLES.includes(sample) ||
+    (cohort !== 'speech' && sample !== 'first')
+  )
+    throw new Error('Invalid native cohort sample identity');
+  return sample;
+}
+
 /** A cohort owns one destination only when configuration, native flags, runtime and device all agree. Speech retains its separate pinned runtime. */
 export function iosTestCohort(name) {
   if (!Object.hasOwn(cohorts, name)) throw new Error('Unknown native test cohort');

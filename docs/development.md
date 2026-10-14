@@ -88,19 +88,19 @@ UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례
 
 `provider-data` CI는 Simulator 생성 전에 호스트 Foundation Models SDK의 상태와 한국어 지원 여부를 기록하고 공개 `prewarm`을 한 번 호출합니다. 이는 메모리 준비 요청입니다. Simulator의 모델 사용 가능 상태와 실제 생성 결과는 이어지는 원래 네이티브 사례에서 확인하며, 호스트 관측은 별도 로그로 남깁니다.
 
-전체 네이티브 CI는 macOS 작업 5개로 구성합니다. Release·Debug 제품 빌드 2개와 일반 Release·Speech·Debug 실행 3개이며, 의존 관계상 한 실행에서 동시에 진행하는 macOS 작업은 최대 3개입니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 생산용 앱과 OAuth 검증은 Release producer에서 별도 flags와 DerivedData 경로를 사용합니다. 계정 전체의 macOS 동시 실행 한도 5개를 고려해 다른 실행과의 중복도 확인합니다. 작업별 200·90·180분 한도는 기존 프로필 작업 한도를 합한 값이며, 개별 인식·생성·UI 대기 제한을 늘리지 않습니다. 총 작업 시간과 안정성 개선은 실제 실행 결과로 판단합니다.
+전체 네이티브 CI의 기본 macOS 작업은 Release·Debug 제품 빌드 2개와 일반 Release·Speech·Debug 실행 3개입니다. Speech의 새 러너 검증 2개를 순차적으로 추가해 총 7개 작업을 계획하며, 선행 관계상 한 실행에서 동시에 진행하는 macOS 작업은 최대 3개입니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 생산용 앱과 OAuth 검증은 Release producer에서 별도 flags와 DerivedData 경로를 사용합니다. 계정 전체의 macOS 동시 실행 한도 5개를 고려해 다른 실행과의 중복도 확인합니다. 작업별 200·90·180분 한도는 기존 프로필 작업 한도를 합한 값이며, 개별 인식·생성·UI 대기 제한을 늘리지 않습니다. 총 작업 시간과 안정성 개선은 실제 실행 결과로 판단합니다.
 
 Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
 
 ## 전체 CI와 제품 재사용
 
-`E2E Test`는 PR 변경과 `main` push에서 네이티브 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `native-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. Mac 작업은 Release producer, Debug producer, 일반 Release 실행, Speech 실행, Debug 실행의 5개이며 선행 관계상 최대 3개가 겹칩니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 다른 workflow의 Mac 사용량까지 합친 저장소 전체 동시 실행 수는 별도 운영 조건입니다.
+`E2E Test`는 PR 변경과 `main` push에서 네이티브 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `native-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. Mac 작업은 기본 5개와 순차 Speech 검증 2개로 구성하며 선행 관계상 최대 3개가 겹칩니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 다른 workflow의 Mac 사용량까지 합친 저장소 전체 동시 실행 수는 별도 운영 조건입니다.
 
 Release producer는 기본 production 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 먼저 검증하고, 같은 작업에서 네이티브 Release 제품을 만듭니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달합니다. 뒤의 네이티브 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, 네이티브 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 
 독립 그룹은 실패 후에도 첫 시도의 결과를 수집합니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. `unsupportedDevice`가 남거나 실제 Apple Intelligence 테스트가 통과하지 못하면 머지하지 않습니다. 지원하지 않는 환경의 실패를 availability 성공, 스킵, 합성 응답, 대체 제공자나 별도 로컬 결과로 대체하지 않습니다.
 
-원래 55개 요구사항과 대체 테스트, 과거 관측의 범위는 [네이티브 검증 목록](native-validation.md)에 있습니다. 같은 최종 head의 전체 Actions 결과와 새 runner에서의 실제 Speech·UI 3회 결과를 별도로 확보해야 합니다. 테스트 수 감소, fixture 결과나 선택 실행 하나로 안정성·속도·전체 완료를 주장하지 않습니다.
+원래 55개 요구사항과 대체 테스트, 과거 관측의 범위는 [네이티브 검증 목록](native-validation.md)에 있습니다. 전체 자동 CI는 같은 최종 head의 Speech 검증을 새 hosted runner에서 최대 3회 순차 실행합니다. 첫 검증은 기존 Speech cohort이며, 성공한 경우에만 두 번째 검증을 실행하고 두 번째도 성공해야 세 번째를 실행합니다. 각 검증은 실제 native 6개, 원래 UI 4개와 별도 asset 준비를 실행합니다. 첫 실패는 그대로 실패로 보존하고 후속 검증은 실패한 선행 조건으로 미실행 상태를 남깁니다. `first`, `second`, `third` 결과와 원시 artifact를 구분하며, Linux 집계는 같은 head·run·attempt의 완전한 결과 3개를 모두 요구합니다. 세 번의 성공은 초기 수락 표본이며 실패가 없다는 통계적 보장은 아닙니다. 테스트 수 감소, fixture 결과나 선택 실행 하나로 안정성·속도·전체 완료를 주장하지 않습니다.
 
 ## 초안 PR과 집중 검증
 

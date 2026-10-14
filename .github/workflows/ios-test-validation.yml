@@ -61,6 +61,34 @@ jobs:
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
       cohort: speech
+      sample: first
+      profile: speech
+      artifact_name: ios-test-release-products
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
+  speech_sample_2:
+    name: Fresh Speech acceptance sample 2
+    needs: [plan, release_products, speech_execution]
+    # A failed first attempt stays failed. The next fresh VM runs only after all original native and UI assertions passed.
+    if: ${{ needs.speech_execution.result == 'success' }}
+    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    with:
+      cohort: speech
+      sample: second
+      profile: speech
+      artifact_name: ios-test-release-products
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
+  speech_sample_3:
+    name: Fresh Speech acceptance sample 3
+    needs: [plan, release_products, speech_sample_2]
+    if: ${{ needs.speech_sample_2.result == 'success' }}
+    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    with:
+      cohort: speech
+      sample: third
       profile: speech
       artifact_name: ios-test-release-products
       archive_digest: ${{ needs.release_products.outputs.archive_digest }}
@@ -79,7 +107,16 @@ jobs:
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
   completeness:
     name: Native test completeness
-    needs: [release_products, debug_products, release_execution, speech_execution, debug_execution]
+    needs:
+      [
+        release_products,
+        debug_products,
+        release_execution,
+        speech_execution,
+        speech_sample_2,
+        speech_sample_3,
+        debug_execution,
+      ]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -106,9 +143,21 @@ jobs:
         with:
           name: native-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/native-reports/debug
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-cohort-report-speech-second-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/native-reports/speech-second
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-cohort-report-speech-third-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/native-reports/speech-third
       - name: Verify complete current-head native observations and authentic Speech
         run: |
           node scripts/ci/ios-test-cohort-results.mjs release artifacts/native-reports/release/results.json artifacts/native-reports/release-verified.json
           node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech/results.json artifacts/native-reports/speech-verified.json
           node scripts/ci/ios-test-cohort-results.mjs debug artifacts/native-reports/debug/results.json artifacts/native-reports/debug-verified.json
           node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech/speech-native/attachments artifacts/native-reports/speech-accuracy.json
+          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech-second/results.json artifacts/native-reports/speech-second-verified.json second
+          node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech-second/speech-native/attachments artifacts/native-reports/speech-second-accuracy.json
+          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/native-reports/speech-third/results.json artifacts/native-reports/speech-third-verified.json third
+          node scripts/ci/speech-test-evidence.mjs artifacts/native-reports/speech-third/speech-native/attachments artifacts/native-reports/speech-third-accuracy.json

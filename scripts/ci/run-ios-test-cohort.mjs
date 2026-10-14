@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { iosTestCohort, iosTestCohortTasks } from './ios-test-cohorts.mjs';
+import { iosTestCohort, iosTestCohortTasks, iosTestCohortSample } from './ios-test-cohorts.mjs';
 import { executeIosTestCohortTasks } from './ios-test-cohort-execution.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 
@@ -11,6 +11,7 @@ if (!output || !existsSync(runFile) || existsSync(output))
     'Cohort execution requires verified products, explicit ownership and a new evidence directory',
   );
 const definition = iosTestCohort(cohort);
+const sample = iosTestCohortSample(cohort, process.env.OROT_IOS_TEST_SAMPLE);
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
 if (
   owner.cohort !== cohort ||
@@ -113,6 +114,7 @@ writeFileSync(
     {
       schemaVersion: 1,
       cohort,
+      sample,
       sourceSha: process.env.GITHUB_SHA ?? null,
       runId: process.env.GITHUB_RUN_ID ?? null,
       attempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
