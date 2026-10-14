@@ -71,8 +71,8 @@ final class NavigationBoundaryUITests: XCTestCase {
         XCTAssertEqual(surface.frame.width, 402, accuracy: 0.5)
         XCTAssertEqual(surface.frame.height, 812, accuracy: 0.5)
         let geometry: [String: Any] = ["surface": surface.identifier,
-                                       "appFrame": NSStringFromCGRect(app.frame),
-                                       "surfaceFrame": NSStringFromCGRect(surface.frame),
+                                       "appFrame": NSCoder.string(for: app.frame),
+                                       "surfaceFrame": NSCoder.string(for: surface.frame),
                                        "windowTopInset": safe.top,
                                        "visibleNavigationBars": app.navigationBars.count,
                                        "fixtureContentHeight": 1100,
