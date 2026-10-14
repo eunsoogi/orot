@@ -201,10 +201,17 @@
                 ]
             }
             let transition = navigation.transitionCoordinator
+            let source = transition?.viewController(forKey: .from)
+            let destination = transition?.viewController(forKey: .to)
             return [
                 "stack": stack.map { endpoint($0) },
-                "source": endpoint(transition?.viewController(forKey: .from)),
-                "destination": endpoint(transition?.viewController(forKey: .to)),
+                "source": endpoint(source), "destination": endpoint(destination),
+                "contextStatus": transition == nil ? "no-public-transition" : "present",
+                "contextViews": OrotTestContextViews(transition?.view(forKey: .from), transition?.view(forKey: .to),
+                                                     source?.viewIfLoaded, destination?.viewIfLoaded)
+                {
+                    self.observationIdentifier($0, prefix: "view")
+                },
                 // UIKit exposes transition context, not the selected animator/interaction objects.
                 "selectedAnimationController": "unknown", "selectedInteractionController": "unknown",
             ]
