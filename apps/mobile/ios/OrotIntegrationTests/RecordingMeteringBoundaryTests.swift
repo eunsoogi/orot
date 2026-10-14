@@ -2,7 +2,7 @@
 import XCTest
 
 /// Retains interruption handling during capture while excluding a permission event queued before the recorder exists.
-final class RecordingMeteringBoundaryTests: XCTestCase {
+final class RecordingMeteringBoundaryTests: OrotFailFastTestCase {
     func testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection() {
         XCTAssertFalse(RecordingMeteringProbeModule.interruptionApplies(observedAt: 9, captureBeganAt: nil))
         XCTAssertFalse(RecordingMeteringProbeModule.interruptionApplies(observedAt: 9, captureBeganAt: 10))

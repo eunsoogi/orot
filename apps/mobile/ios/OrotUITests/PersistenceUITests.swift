@@ -1,6 +1,6 @@
 import XCTest
 
-final class PersistenceUITests: XCTestCase {
+final class PersistenceUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

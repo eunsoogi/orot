@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class HermesDomainIntegrationTests: XCTestCase {
+final class HermesDomainIntegrationTests: OrotFailFastTestCase {
     func testHostExecutesHermesOperations() async throws {
         let result = try await operation("connection")
         XCTAssertEqual(result["connected"] as? Bool, true)

@@ -1,6 +1,6 @@
 import XCTest
 
-final class TestHostConnectionTests: XCTestCase {
+final class TestHostConnectionTests: OrotFailFastTestCase {
     /// A first connection check proves an actual XCUI runner can launch the app and read its test-only host.
     /// It is target wiring evidence, not the completed Speech or product journey.
     @MainActor

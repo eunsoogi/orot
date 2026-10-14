@@ -3,20 +3,26 @@ import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
-test('separate Speech runners cover every original case without duplication or silent subsets', () => {
-  const all = iosTestInventory('speech');
-  const native = iosTestInventory('speech', 'native');
-  const ui = iosTestInventory('speech', 'ui');
-  assert.equal(native.length, 6);
-  assert.equal(ui.length, 4);
-  assert.deepEqual([...native, ...ui].sort(), [...all].sort());
-  assert.equal(new Set([...native, ...ui]).size, all.length);
-  assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));
-  assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
+test('separate Core and Speech runners cover every original case without duplication or silent subsets', () => {
+  // Target boundaries stop dependent UI work while preserving the full original inventory.
+  for (const [profile, nativeCount, uiCount] of [
+    ['core', 13, 6],
+    ['speech', 6, 4],
+  ]) {
+    const all = iosTestInventory(profile);
+    const native = iosTestInventory(profile, 'native');
+    const ui = iosTestInventory(profile, 'ui');
+    assert.equal(native.length, nativeCount);
+    assert.equal(ui.length, uiCount);
+    assert.deepEqual([...native, ...ui].sort(), [...all].sort());
+    assert.equal(new Set([...native, ...ui]).size, all.length);
+    assert.ok(native.every((id) => id.startsWith('OrotIntegrationTests/')));
+    assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
+  }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
   assert.throws(() => iosTestInventory('core', 'preparation'));
   assert.throws(() => iosTestInventory('speech', 'unknown'));
-  assert.throws(() => iosTestInventory('core', 'ui'));
+  assert.throws(() => iosTestInventory('provider-data', 'ui'));
 });
 
 test('each profile declares unique existing cases and every test method is scheduled', () => {

@@ -1,7 +1,7 @@
 import XCTest
 
 /// Uses App's default dependencies for the non-visit routes. The host clears test Keychain state, so failures must remain recoverable without provider inference.
-final class AiFeatureNavigationUITests: XCTestCase {
+final class AiFeatureNavigationUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

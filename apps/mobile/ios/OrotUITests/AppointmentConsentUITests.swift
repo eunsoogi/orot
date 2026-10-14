@@ -1,7 +1,7 @@
 import XCTest
 
 /// Synthetic provider failures retain the disclosure and manual-entry boundaries without sending health data remotely.
-final class AppointmentConsentUITests: XCTestCase {
+final class AppointmentConsentUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

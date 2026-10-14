@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 /// Calls the shipping RAG workflow with the original public synthetic query, actual Apple generation, and real Europe PMC responses.
-final class RagWorkflowIntegrationTests: XCTestCase {
+final class RagWorkflowIntegrationTests: OrotFailFastTestCase {
     func testPublicRetrievalReturnsAnAnswerWithGroundedCitations() async throws {
         let result = try await TestOperationBroker.shared.request("rag-workflow", timeout: 150)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")

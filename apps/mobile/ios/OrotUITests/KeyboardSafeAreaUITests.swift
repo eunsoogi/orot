@@ -1,7 +1,7 @@
 import XCTest
 
 /// Observes native keyboard geometry at the original large-text boundary; this fixture requests no record or provider access.
-final class KeyboardSafeAreaUITests: XCTestCase {
+final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

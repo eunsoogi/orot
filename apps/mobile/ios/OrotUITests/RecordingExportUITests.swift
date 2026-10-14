@@ -1,6 +1,6 @@
 import XCTest
 
-final class RecordingExportUITests: XCTestCase {
+final class RecordingExportUITests: OrotFailFastTestCase {
     @MainActor private var ownedSources = Set<String>()
 
     override func setUp() {

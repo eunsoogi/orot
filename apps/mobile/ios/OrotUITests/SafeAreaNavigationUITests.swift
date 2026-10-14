@@ -1,7 +1,7 @@
 import XCTest
 
 /// Measures the real shell and its feature scrollers. The blood-pressure fixture supplies no personal HealthKit data.
-final class SafeAreaNavigationUITests: XCTestCase {
+final class SafeAreaNavigationUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

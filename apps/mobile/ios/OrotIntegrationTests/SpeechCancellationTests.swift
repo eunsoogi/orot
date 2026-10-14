@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class SpeechCancellationTests: XCTestCase {
+final class SpeechCancellationTests: OrotFailFastTestCase {
     func testProductionDeadlineCancellationPropagatesAndCancelsWorker() async {
         let began = expectation(description: "operation began")
         let cancelled = expectation(description: "operation received cancellation")

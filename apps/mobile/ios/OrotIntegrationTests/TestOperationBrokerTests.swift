@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class TestOperationBrokerTests: XCTestCase {
+final class TestOperationBrokerTests: OrotFailFastTestCase {
     func testCommandCompletesExactlyOnce() async throws {
         let broker = TestOperationBroker()
         broker.next { value in

@@ -1,7 +1,7 @@
 import XCTest
 
 /// Inspects the production library with disposable audio and synthetic transcript output, separately from authentic recognition.
-final class RecordingLibraryUITests: XCTestCase {
+final class RecordingLibraryUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

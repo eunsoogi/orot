@@ -1,7 +1,7 @@
 import XCTest
 
 /// Uses the production screen's stop action and real Apple Speech, then compares every persisted field after process restart.
-final class AutomaticTranscriptionUITests: XCTestCase {
+final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

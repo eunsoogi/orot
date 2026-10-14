@@ -1,7 +1,7 @@
 import XCTest
 
 /// These tests require the dedicated backup runner: it installs a fresh container between independent cases.
-final class BackupPersistenceUITests: XCTestCase {
+final class BackupPersistenceUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class SpeechIntegrationTests: XCTestCase {
+final class SpeechIntegrationTests: OrotFailFastTestCase {
     /// Each operation uses the production engine and its existing 120-second service deadline.
     /// App launch, model readiness and recognition remain separate from editor/export UI assertions.
     func testMedicationFixture() async throws {

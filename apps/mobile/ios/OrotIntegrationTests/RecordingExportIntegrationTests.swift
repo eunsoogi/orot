@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class RecordingExportIntegrationTests: XCTestCase {
+final class RecordingExportIntegrationTests: OrotFailFastTestCase {
     func testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport() throws {
         let text = "합성 전사 café🙂\n"
         let operation = try RecordingExportFiles.transcriptFile(text: text)

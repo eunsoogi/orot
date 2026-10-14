@@ -73,12 +73,16 @@ Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 �
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/native-tests-release
 node scripts/ci/ios-test-simulator.mjs prepare core build/native-core-owner.json
-node scripts/ci/run-ios-tests.mjs core build/native-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/native-core-owner.json build/native-core.xcresult
-node scripts/ci/ios-test-results.mjs core build/native-core.xcresult build/native-core-results.json
+OROT_IOS_TEST_SUITE=native node scripts/ci/run-ios-tests.mjs core build/native-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/native-core-owner.json build/native-core-native.xcresult && \
+OROT_IOS_TEST_SUITE=native node scripts/ci/ios-test-results.mjs core build/native-core-native.xcresult build/native-core-native-results.json && \
+OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/native-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/native-core-owner.json build/native-core-ui.xcresult && \
+OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/native-core-ui.xcresult build/native-core-ui-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup core build/native-core-owner.json
 ```
 
 제품과 의존성을 준비한 뒤 기록된 기기만 부팅합니다. `test-without-building`은 consumer에서 다시 컴파일하지 않습니다. CI는 run·attempt·source와 build input·제품 digest를 검증한 뒤 Simulator를 생성하며, 검증 실패를 빌드나 다른 제품으로 대체하지 않습니다. 실행은 한 destination과 worker를 사용하고 첫 실패·결과 bundle·첨부 자료·단계 시간·resource samples를 보존합니다.
+
+테스트 실행 helper는 호출마다 새 UUID를 전달합니다. 테스트 target에만 포함되는 공통 기본 클래스는 현재 사례 이름을 해당 runner의 컨테이너에 기록하고, 정리 단계까지 성공했을 때 지웁니다. 실패나 runner 크래시가 남긴 기록은 같은 호출의 후속 본문을 건너뛰게 합니다. 원래 실패와 미실행 사례는 결과에 남으며, 누락·건너뜀은 기존 결과 검증에서 통과하지 못합니다. runner가 기본 설정에 도달하기 전의 시작 실패는 이 기록으로 차단할 수 없습니다. Core와 Speech의 네이티브·UI target은 서로 다른 컨테이너를 쓰므로 앞 target의 검증이 성공해야 다음 target을 실행합니다. Xcode에서 테스트를 직접 실행할 때도 새 `OROT_IOS_TEST_INVOCATION` UUID를 runner 환경에 지정해야 합니다.
 
 `fixtures`, `health-import`, `microphone`, `provider-selection`은 `run-ios-fixture-tests.mjs`로 실행합니다. 이 helper는 사례마다 소유한 앱과 Keychain을 초기화하고, 각 결과를 검증한 뒤 합성 앱 데이터를 제거합니다. `backup`의 snapshot 단계와 `local-model`의 재실행 단계는 각각 전용 helper의 순서를 따르며, process restart에 필요한 Keychain·자료를 유지합니다. 프로필이 다른 기기나 공유 Core·Speech 컨테이너를 이 helper로 초기화하지 마세요.
 

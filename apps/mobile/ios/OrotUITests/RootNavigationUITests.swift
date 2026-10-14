@@ -1,6 +1,6 @@
 import XCTest
 
-final class RootNavigationUITests: XCTestCase {
+final class RootNavigationUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

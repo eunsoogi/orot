@@ -2,7 +2,7 @@
 import UIKit
 import XCTest
 
-final class NavigationLayoutIntegrationTests: XCTestCase {
+final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     @MainActor
     func testDisabledAccessibilityTracksNativeStateAndPreservesSelectionAcrossUpdates() throws {
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))

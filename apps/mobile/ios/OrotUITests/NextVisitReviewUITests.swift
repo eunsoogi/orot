@@ -1,7 +1,7 @@
 import XCTest
 
 /// Keeps the original synthetic session boundary explicit while testing the production review, native toolbar and system appearance changes.
-final class NextVisitReviewUITests: XCTestCase {
+final class NextVisitReviewUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

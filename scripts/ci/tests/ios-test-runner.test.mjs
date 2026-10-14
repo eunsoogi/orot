@@ -17,7 +17,7 @@ function fixture(status, profile = 'core', suite = 'all', selected) {
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 const name = require('node:path').basename(process.argv[1]);
-fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args})+'\\n');
+fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args,invocation:process.env.TEST_RUNNER_OROT_IOS_TEST_INVOCATION})+'\\n');
 if (name === 'xcodebuild') process.exit(${status});
 if (args[1] === 'list' && args[2] === 'runtimes') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}]}));
 else if (args[1] === 'list' && args[2] === 'devices') console.log(JSON.stringify({devices:{[${JSON.stringify(spec.runtime)}]:[{udid:'fixture-udid',name:'owned-fixture',deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));
@@ -209,5 +209,29 @@ test('local model selection requires exactly one corpus phase on its dedicated d
     assert.equal(allowed.calls.filter((call) => call.name === 'xcodebuild').length, 1);
   } finally {
     rmSync(allowed.directory, { recursive: true, force: true });
+  }
+});
+
+test('each runner invocation creates a fresh namespace and refuses a mixed native/UI selection', () => {
+  const first = fixture(0);
+  const second = fixture(0);
+  const mixed = fixture(0, 'core', 'all', iosTestInventory('core'));
+  try {
+    const invocations = [first, second].map((result) => {
+      assert.equal(result.outcome.status, 0, result.outcome.stderr);
+      const run = result.calls.find((call) => call.name === 'xcodebuild');
+      assert.match(
+        run.invocation,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+      return run.invocation;
+    });
+    assert.notEqual(invocations[0], invocations[1]);
+    assert.notEqual(mixed.outcome.status, 0);
+    assert.match(mixed.outcome.stderr, /separate verified invocations/);
+    assert.ok(!mixed.calls.some((call) => call.name === 'xcodebuild'));
+  } finally {
+    for (const result of [first, second, mixed])
+      rmSync(result.directory, { recursive: true, force: true });
   }
 });

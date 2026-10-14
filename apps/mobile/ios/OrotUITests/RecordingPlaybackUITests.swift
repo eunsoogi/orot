@@ -1,7 +1,7 @@
 import XCTest
 
 /// Drives the real native player with disposable audio; simulated route loss stays distinct from a physical audio-device change.
-final class RecordingPlaybackUITests: XCTestCase {
+final class RecordingPlaybackUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

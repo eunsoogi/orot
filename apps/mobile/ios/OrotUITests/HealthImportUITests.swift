@@ -1,7 +1,7 @@
 import XCTest
 
 /// These journeys use the original Simulator fixtures and production UI/storage. They do not prove access to personal HealthKit samples.
-final class HealthImportUITests: XCTestCase {
+final class HealthImportUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

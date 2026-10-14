@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { iosTestConfig } from './ios-test-config.mjs';
@@ -64,6 +65,9 @@ if (
   )
 )
   throw new Error('Invalid native test selection');
+// Different targets have separate sandboxes, so the host must verify one before scheduling the other.
+if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
+  throw new Error('Native and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
 const stopSampling = iosTestResourceSampler(resolve(results) + '.resources.jsonl');
 const started = Date.now();
@@ -99,7 +103,11 @@ const outcome = spawn(
     'never',
     ...tests.map((test) => '-only-testing:' + test),
   ],
-  { stdio: 'inherit' },
+  {
+    stdio: 'inherit',
+    // Xcode forwards this public prefix to the runner, including its automatic restart after a crash.
+    env: { ...process.env, TEST_RUNNER_OROT_IOS_TEST_INVOCATION: randomUUID() },
+  },
 );
 try {
   const status = await new Promise((resolveStatus, reject) => {

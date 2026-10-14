@@ -92,7 +92,8 @@ export function iosTestInventory(profile, suite = 'all') {
   if (
     (!['all', 'native', 'ui', 'preparation'].includes(suite) &&
       !(profile === 'fixtures' && Object.hasOwn(iosFixtureGroups, suite))) ||
-    (profile !== 'speech' && profile !== 'fixtures' && suite !== 'all') ||
+    (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
+    (suite === 'preparation' && profile !== 'speech') ||
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported native test suite selection');
@@ -120,7 +121,7 @@ export function iosTestInventory(profile, suite = 'all') {
                     : providerTests),
   ];
   if (profile === 'fixtures') return selectIosFixtureGroup(inventory, suite);
-  // Speech integration and UI retain distinct result boundaries in their shared hosted cohort.
+  // Core and Speech integration and UI retain distinct result boundaries in their shared hosted cohort.
   // Both subsets remain mandatory and their union is the original complete inventory.
   if (suite === 'all') return inventory;
   const target = suite === 'native' ? spec.integrationTarget : spec.uiTarget;

@@ -1,7 +1,7 @@
 import XCTest
 
 /// Exercises synthetic loopback authentication and native Keychain state; this never proves a real ChatGPT account or provider result.
-final class ProviderSelectionUITests: XCTestCase {
+final class ProviderSelectionUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

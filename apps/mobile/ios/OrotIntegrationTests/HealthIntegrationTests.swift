@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class HealthIntegrationTests: XCTestCase {
+final class HealthIntegrationTests: OrotFailFastTestCase {
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {

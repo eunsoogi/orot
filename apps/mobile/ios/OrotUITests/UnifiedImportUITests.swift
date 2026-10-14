@@ -1,7 +1,7 @@
 import XCTest
 
 /// Keeps fixture authorization timings separate from permission-sheet visibility and personal HealthKit access.
-final class UnifiedImportUITests: XCTestCase {
+final class UnifiedImportUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

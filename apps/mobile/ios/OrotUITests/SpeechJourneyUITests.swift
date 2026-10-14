@@ -1,6 +1,6 @@
 import XCTest
 
-final class SpeechJourneyUITests: XCTestCase {
+final class SpeechJourneyUITests: OrotFailFastTestCase {
     @MainActor
     func testTranscriptionReachesSavedRecordingAndSurvivesRelaunch() throws {
         let app = XCUIApplication()

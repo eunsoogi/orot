@@ -1,7 +1,7 @@
 import XCTest
 
 /// A fresh fixture destination preserves the legacy-schema assertion without resetting shared Core records.
-final class StorageMigrationUITests: XCTestCase {
+final class StorageMigrationUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

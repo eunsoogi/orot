@@ -1,7 +1,7 @@
 import XCTest
 
 /// Observes the original RN event consumer and real microphone boundary; silence is valid, generated amplitudes are not.
-final class MicrophoneMeteringUITests: XCTestCase {
+final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

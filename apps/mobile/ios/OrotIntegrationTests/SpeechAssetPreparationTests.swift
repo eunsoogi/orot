@@ -4,7 +4,7 @@ import Speech
 import XCTest
 
 /// Installs the actual selected Korean module before recognition. This stage uses no audio or transcript and cannot stand in for a Speech fixture result.
-final class SpeechAssetPreparationTests: XCTestCase {
+final class SpeechAssetPreparationTests: OrotFailFastTestCase {
     func testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture() async throws {
         guard #available(iOS 26.0, *) else {
             XCTFail("The pinned Speech destination requires the iOS 26 native asset boundary")

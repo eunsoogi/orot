@@ -38,6 +38,7 @@
 		876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */; };
 		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
 		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
+		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
 		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
 		9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */; };
@@ -86,6 +87,7 @@
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
+		B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
 		BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */; };
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
@@ -249,6 +251,7 @@
 		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
 		BE2F722F9A5281E9B9A73231 /* TestControl.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = TestControl.m; path = OrotMobile/TestControl.m; sourceTree = "<group>"; };
 		C12D46B0C240DC6518A5EF57 /* OrotUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotFailFastTestCase.swift; sourceTree = "<group>"; };
 		C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RagWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
 		C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationProbeSupport.swift; path = OrotMobile/BackupMigrationProbeSupport.swift; sourceTree = "<group>"; };
 		C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackupProbeBridge.swift; path = OrotMobile/BackupProbeBridge.swift; sourceTree = "<group>"; };
@@ -431,6 +434,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
 				ABFF46896F35DA79FC1B1F87 /* OrotIntegrationTests */,
+				F32CAB7D3C19AE0A162CCDC4 /* OrotTestSupport */,
 				CFF66607983B8DBE758C7293 /* OrotUITests */,
 				FB2DCF8F796AD07FCF2D9E97 /* TestFixtures */,
 			);
@@ -541,6 +545,14 @@
 			);
 			name = OrotUITests;
 			path = OrotUITests;
+			sourceTree = "<group>";
+		};
+		F32CAB7D3C19AE0A162CCDC4 /* OrotTestSupport */ = {
+			isa = PBXGroup;
+			children = (
+				C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */,
+			);
+			path = OrotTestSupport;
 			sourceTree = "<group>";
 		};
 		FB2DCF8F796AD07FCF2D9E97 /* TestFixtures */ = {
@@ -869,6 +881,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */,
 				BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */,
 				32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */,
 				D9CF3B98627BE4243FAB68C0 /* SpeechJourneyUITests.swift in Sources */,
@@ -909,6 +922,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */,
 				761BB559E6B44B51D6F155FF /* SpeechCancellationTests.swift in Sources */,
 				C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */,
 				C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */,

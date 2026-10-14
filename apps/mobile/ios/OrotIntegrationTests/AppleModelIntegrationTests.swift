@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class AppleModelIntegrationTests: XCTestCase {
+final class AppleModelIntegrationTests: OrotFailFastTestCase {
     func testAvailabilityAndSupportedGenerationKeepRuntimeLimitationsExplicit() async throws {
         // Availability comes from the actual Apple SDK. Unsupported hardware cannot prove generation or inference stopping.
         let result = try await TestOperationBroker.shared.request("apple-model", timeout: 240)

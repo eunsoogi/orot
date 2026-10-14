@@ -1,6 +1,6 @@
 import XCTest
 
-final class TranscriptEvidenceUITests: XCTestCase {
+final class TranscriptEvidenceUITests: OrotFailFastTestCase {
     @MainActor private var ownedSource: String?
     override func setUp() {
         super.setUp()

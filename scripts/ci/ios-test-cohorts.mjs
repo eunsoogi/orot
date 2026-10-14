@@ -50,23 +50,25 @@ export function iosTestCohortTasks(name) {
           { profile: 'speech', suite: 'ui', mode: 'plain' },
         ]
       : definition.profiles.flatMap((profile) =>
-          profile === 'fixtures'
-            ? ['navigation', 'recordings', 'questions', 'calendar'].map((suite) => ({
-                profile,
-                suite,
-                mode: 'fixture',
-              }))
-            : [
-                {
+          profile === 'core'
+            ? ['native', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' }))
+            : profile === 'fixtures'
+              ? ['navigation', 'recordings', 'questions', 'calendar'].map((suite) => ({
                   profile,
-                  suite: 'all',
-                  mode: ['backup', 'local-model'].includes(profile)
-                    ? profile
-                    : ['health-import', 'microphone', 'provider-selection'].includes(profile)
-                      ? 'fixture'
-                      : 'plain',
-                },
-              ],
+                  suite,
+                  mode: 'fixture',
+                }))
+              : [
+                  {
+                    profile,
+                    suite: 'all',
+                    mode: ['backup', 'local-model'].includes(profile)
+                      ? profile
+                      : ['health-import', 'microphone', 'provider-selection'].includes(profile)
+                        ? 'fixture'
+                        : 'plain',
+                  },
+                ],
         );
   return tasks.map((task) => ({
     ...task,

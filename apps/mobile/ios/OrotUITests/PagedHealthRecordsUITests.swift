@@ -1,7 +1,7 @@
 import XCTest
 
 /// Uses the original 1,503-record adapter and real native navigation, with no HealthKit or persisted-source claim.
-final class PagedHealthRecordsUITests: XCTestCase {
+final class PagedHealthRecordsUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

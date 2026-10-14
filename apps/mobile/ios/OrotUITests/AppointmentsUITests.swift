@@ -1,7 +1,7 @@
 import XCTest
 
 /// Uses the real manual form and encrypted repository; the fixture runner isolates each case before launch.
-final class AppointmentsUITests: XCTestCase {
+final class AppointmentsUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

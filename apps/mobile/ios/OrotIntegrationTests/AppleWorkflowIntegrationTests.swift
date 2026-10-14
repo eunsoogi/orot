@@ -3,7 +3,7 @@ import Foundation
 import XCTest
 
 /// Uses the actual Apple provider with synthetic source/context boundaries; unavailable models cannot satisfy this workflow requirement.
-final class AppleWorkflowIntegrationTests: XCTestCase {
+final class AppleWorkflowIntegrationTests: OrotFailFastTestCase {
     func testThreeActualCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence() async throws {
         let result = try await TestOperationBroker.shared.request("calendar-classification", timeout: 255)
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")

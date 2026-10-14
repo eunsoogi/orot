@@ -2,7 +2,7 @@ import Vision
 import XCTest
 
 /// The original synthetic workflow proves declined consent, cited review and explicit priority changes, not real provider inference.
-final class VisitQuestionConsentUITests: XCTestCase {
+final class VisitQuestionConsentUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false

@@ -2,7 +2,7 @@ import Foundation
 @testable import Orot
 import XCTest
 
-final class ProviderIntegrationTests: XCTestCase {
+final class ProviderIntegrationTests: OrotFailFastTestCase {
     func testSyntheticCatalogStreamLimitAndCancellationUseNativeBridge() async throws {
         try await verify("openai-provider", assertions: "catalog-stream-rate-limit-cancellation")
     }

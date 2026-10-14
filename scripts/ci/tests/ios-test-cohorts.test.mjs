@@ -73,3 +73,18 @@ test('explicit compatible cohort ownership cannot authorize another configuratio
   assert.doesNotThrow(() => verifyIosSimulatorOwnerContract(ordinary, 'core'));
   assert.throws(() => verifyIosSimulatorOwnerContract(ordinary, 'fixtures'));
 });
+
+test('Core verifies the native target before scheduling UI, without losing or duplicating any case', () => {
+  const tasks = iosTestCohortTasks('release').filter((task) => task.profile === 'core');
+  assert.deepEqual(
+    tasks.map((task) => task.suite),
+    ['native', 'ui'],
+  );
+  assert.deepEqual(
+    tasks.flatMap((task) => task.identifiers),
+    iosTestInventory('core'),
+  );
+  for (const task of tasks)
+    assert.equal(new Set(task.identifiers.map((id) => id.split('/')[0])).size, 1);
+  assert.throws(() => iosTestInventory('core', 'preparation'));
+});

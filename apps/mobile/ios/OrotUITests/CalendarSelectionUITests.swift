@@ -1,7 +1,7 @@
 import XCTest
 
 /// The native fixture never reads EventKit. This journey proves explicit selection, layout and local confirmation only.
-final class CalendarSelectionUITests: XCTestCase {
+final class CalendarSelectionUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
