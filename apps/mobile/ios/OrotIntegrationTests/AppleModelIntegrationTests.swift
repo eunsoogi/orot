@@ -10,6 +10,8 @@ final class AppleModelIntegrationTests: XCTestCase {
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         XCTAssertEqual(result["inferenceStop"] as? String, "unverified")
         let availability = try XCTUnwrap(result["availability"] as? String)
+        // This candidate requires authentic generation. An explicit unavailable result is preserved below but must fail acceptance.
+        XCTAssertEqual(availability, "available", "Apple Intelligence must execute on a supported runtime")
         XCTAssertTrue(["available", "disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage"].contains(availability))
         if availability == "available" {
             XCTAssertEqual(result["generation"] as? String, "passed")

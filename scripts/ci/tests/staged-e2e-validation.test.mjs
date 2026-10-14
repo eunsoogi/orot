@@ -37,14 +37,15 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(native.detox_next_visit, true);
 });
 
-test('draft, focused and diagnostic runs cannot satisfy the full native gate', () => {
+test('unapproved drafts, focused and diagnostic runs cannot satisfy the full native gate', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
   assert.match(
     e2e,
     /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(e2e, /needs\.selection\.outputs\.deferred != 'true'/);
+  assert.match(e2e, /outputs\.deferred == 'true' && needs\.native_validation\.result != 'success'/);
+  assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
   assert.match(e2e, /needs\.selection\.outputs\.focused != 'true'/);
   assert.match(
     e2e,

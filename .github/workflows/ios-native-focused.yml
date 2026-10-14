@@ -27,6 +27,8 @@ jobs:
   selection:
     name: Validate exact native selection
     runs-on: ubuntu-24.04
+    # Diagnostics require the same human administrator approval and cannot bypass the full path's Mac allocation boundary.
+    environment: { name: native-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       profile: ${{ steps.selection.outputs.profile }}
@@ -202,6 +204,9 @@ jobs:
           if [[ -d artifacts/native-focus/results.xcresult ]]; then
             xcrun xcresulttool export attachments --path artifacts/native-focus/results.xcresult --output-path artifacts/native-focus/attachments
           fi
+      - name: Require the authentic provider host without substituting availability for generation
+        if: always() && needs.products.outputs.profile == 'provider-data'
+        run: node scripts/ci/verify-apple-model-host.mjs artifacts/native-focus/apple-model-host.log
       - name: Tear down the owned destination
         if: always()
         env:

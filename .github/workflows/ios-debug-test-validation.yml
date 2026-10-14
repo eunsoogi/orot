@@ -1,14 +1,21 @@
 name: iOS Debug test validation
 
 on:
-  workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
 
 jobs:
+  approval:
+    name: Approve native Debug execution
+    runs-on: ubuntu-24.04
+    environment: { name: native-ci-admin-approval }
+    timeout-minutes: 5
+    steps:
+      - run: echo 'Administrator approved this native Debug run.'
   products:
+    needs: approval
     uses: ./.github/workflows/ios-test-product-build.yml
     with:
       profile: provider-data

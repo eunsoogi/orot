@@ -1,7 +1,6 @@
 name: iOS test validation
 
 on:
-  workflow_dispatch:
   workflow_call:
     inputs:
       production_build: { required: false, type: boolean, default: true }
@@ -13,6 +12,8 @@ jobs:
   plan:
     name: Plan native coverage and macOS budget
     runs-on: ubuntu-24.04
+    # Required reviewer protection is configured in repository settings; approval precedes both Mac producers.
+    environment: { name: native-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       release_minutes: ${{ steps.plan.outputs.release_minutes }}

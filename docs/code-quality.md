@@ -72,6 +72,6 @@ Branch protection과 release readiness가 사용하는 실제 check 이름은 `s
 
 변경 경로 비교가 불완전하거나 알 수 없는 이벤트·파일을 만나면 모든 검사로 대체합니다. 수동 `workflow_dispatch`도 전체 검사를 선택합니다. Selector의 출력 기록을 할 수 없으면 selector를 소유한 필수 check가 실패합니다. E2E 경로 선택이 실패하면 iOS build와 각 필수 E2E leaf가 실패 상태를 남기며 선택되지 않은 check로 위장하지 않습니다.
 
-E2E 경로가 네이티브 검증을 선택하지 않으면 실제 빌드·실행 graph는 `skipped`로 표시됩니다. 필수 check 이름은 별도의 짧은 Linux 상태 job이 항상 기록하며, 경로 선택으로 실행을 생략한 경우 이 상태 job은 성공하고 요약에 프로필 실행이 생략됐다고 남깁니다. 따라서 상태 check의 성공만으로 E2E를 실행했다고 해석하지 말고, 프로필 실행 job의 상태와 테스트 단계·로그 및 결과 artifact를 확인하세요. 수동 전체 검증에서는 두 producer와 세 cohort의 모든 원래 테스트 단계가 실행됐는지 확인하세요.
+E2E 경로가 네이티브 검증을 선택하지 않으면 실제 빌드·실행 graph는 `skipped`로 표시됩니다. 필수 check 이름은 별도의 짧은 Linux 상태 job이 항상 기록하며, 경로 선택으로 실행을 생략한 경우 이 상태 job은 성공하고 요약에 프로필 실행이 생략됐다고 남깁니다. 따라서 상태 check의 성공만으로 E2E를 실행했다고 해석하지 말고, 프로필 실행 job의 상태와 테스트 단계·로그 및 결과 artifact를 확인하세요. 전체 네이티브 검증은 자동 PR/push 실행에서 `native-ci-admin-approval` 관리자 승인을 받은 뒤 두 producer와 세 cohort를 실행합니다. 수동·집중 진단은 전체 보호 상태를 충족하지 않습니다.
 
 네이티브 검증의 전체 실행 목록은 `scripts/ci/ios-test-inventory.mjs`가 정의합니다. `ios-test-results.mjs`는 선택된 정확한 identifier와 실제 `.xcresult`의 결과를 대조하며, 누락·중복·미실행·실패를 성공으로 처리하지 않습니다. 집중 실행은 선택한 사례만 증명합니다. 새 소스나 공유 fixture·helper가 바뀌면 영향을 받는 검증을 다시 실행하고, 변경하지 않은 검증의 과거 실행 기록과 현재 적용 가능성은 구분해서 기록합니다. 최종 검증은 현재 head의 전체 실행·제품 무결성·필수 상태를 실제 Actions 결과로 확인해야 합니다.
