@@ -42,6 +42,7 @@ if (!existsSync(app)) throw new Error('The verified fixture application is missi
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
 const observations = [];
+const failures = [];
 const started = Date.now();
 for (const [index, identifier] of expected.entries()) {
   // Independent schema, form and import fixtures never share a prior database or its initialization marker.
@@ -82,6 +83,12 @@ for (const [index, identifier] of expected.entries()) {
       '--output-path',
       join(directory, name + '-attachments'),
     ]);
+  } catch (error) {
+    // A failed first execution must not suppress later independent cases or become a retry.
+    // Preparation above and verified cleanup below still fail closed before another app is installed.
+    const failure = { identifier, error: String(error) };
+    failures.push(failure);
+    console.error('IOS_FIXTURE_CASE_FAILED ' + JSON.stringify(failure));
   } finally {
     // run-ios-tests preserves logs and xcresult before returning. Remove only this owned synthetic app, even when its first execution fails.
     const cleanupStarted = Date.now();
@@ -97,21 +104,23 @@ for (const [index, identifier] of expected.entries()) {
     );
   }
 }
-if (observations.length !== expected.length)
-  throw new Error('Fresh fixture inventory is incomplete');
 writeFileSync(
   join(directory, 'results.json'),
   JSON.stringify(
     {
       profile,
       suite: selected.length ? 'selected' : suite,
+      passed: failures.length === 0 && observations.length === expected.length,
       observations,
+      failures,
       elapsedMs: Date.now() - started,
     },
     null,
     2,
   ) + '\n',
 );
+if (failures.length || observations.length !== expected.length)
+  throw new Error('Fresh fixture inventory contains failed or missing first executions');
 console.log(
   `IOS_FIXTURE_RESULTS_VERIFIED passed=${observations.length} elapsed_ms=${Date.now() - started}`,
 );
