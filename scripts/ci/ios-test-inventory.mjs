@@ -1,12 +1,6 @@
 import { iosTestConfig, representativeSpeechTests } from './ios-test-config.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
 
-// These two unpublished boundary experiments are selectable locally, never part of hosted acceptance coverage.
-export const localNavigationBoundaryTests = Object.freeze([
-  'OrotUITests/NavigationBoundaryUITests/testUIKitBoundaryShortThenFullEdgeBack',
-  'OrotUITests/NavigationBoundaryUITests/testRNSBoundaryShortThenFullEdgeBack',
-]);
-
 const coreTests = [
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',

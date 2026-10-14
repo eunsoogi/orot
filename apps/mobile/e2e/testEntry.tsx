@@ -48,25 +48,7 @@ if (settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation) {
 
 // This entry is bundled only for native test products. An app-hosted XCTest must
 // call the production services without starting an unrelated JS Speech probe.
-if (
-  settings.OROT_TEST_NAVIGATION_BOUNDARY === 'uikit' ||
-  settings.OROT_TEST_NAVIGATION_BOUNDARY === 'rns'
-) {
-  const inputMode =
-    settings.OROT_TEST_NAVIGATION_INPUT_MODE ?? 'cancel-then-full';
-  if (
-    inputMode !== 'cancel-then-full' &&
-    inputMode !== 'fresh-full-only' &&
-    inputMode !== 'cancel-then-full-1000' &&
-    inputMode !== 'cancel-then-full-99pct'
-  ) {
-    throw new Error('Unsupported local navigation input mode');
-  }
-  require('./navigationBoundaryFixture').registerNavigationBoundaryFixture(
-    settings.OROT_TEST_NAVIGATION_BOUNDARY,
-    inputMode,
-  );
-} else if (route === 'test-host') {
+if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
 } else if (route === 'speech') {
   require('./transcriptionProbeEntry');
