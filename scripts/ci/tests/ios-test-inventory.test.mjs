@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
-import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { iosTestInventory, localNavigationBoundaryTests } from '../ios-test-inventory.mjs';
 
 test('separate Speech runners cover every original case without duplication or silent subsets', () => {
   const all = iosTestInventory('speech');
@@ -19,7 +19,7 @@ test('separate Speech runners cover every original case without duplication or s
   assert.throws(() => iosTestInventory('core', 'ui'));
 });
 
-test('each profile declares unique existing cases and every test method is scheduled', () => {
+test('each method is scheduled or one of the two explicit local boundary diagnostics', () => {
   const seen = new Set();
   for (const profile of [
     'core',
@@ -47,6 +47,18 @@ test('each profile declares unique existing cases and every test method is sched
     const [target, suite, method] = identifier.split('/');
     const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
     assert.ok(source.includes(`func ${method}(`), identifier);
+  }
+  // Exact identifiers prevent a prefix exception from hiding missing maintained coverage.
+  assert.deepEqual(localNavigationBoundaryTests, [
+    'OrotUITests/NavigationBoundaryUITests/testUIKitBoundaryShortThenFullEdgeBack',
+    'OrotUITests/NavigationBoundaryUITests/testRNSBoundaryShortThenFullEdgeBack',
+  ]);
+  for (const identifier of localNavigationBoundaryTests) {
+    assert.ok(!seen.has(identifier), `Local diagnostic was scheduled: ${identifier}`);
+    const [target, suite, method] = identifier.split('/');
+    const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
+    assert.ok(source.includes(`func ${method}(`), identifier);
+    seen.add(identifier);
   }
   for (const target of ['OrotIntegrationTests', 'OrotUITests']) {
     for (const file of readdirSync(`apps/mobile/ios/${target}`).filter((file) =>

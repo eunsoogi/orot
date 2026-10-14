@@ -86,6 +86,9 @@
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
+		BC1980000000000000000001 /* NavigationBoundaryFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1980000000000000000011 /* NavigationBoundaryFixture.swift */; };
+		BC1980000000000000000002 /* NavigationBoundaryFixture.m in Sources */ = {isa = PBXBuildFile; fileRef = BC1980000000000000000012 /* NavigationBoundaryFixture.m */; };
+		BC1980000000000000000003 /* NavigationBoundaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1980000000000000000013 /* NavigationBoundaryUITests.swift */; };
 		BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */; };
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
@@ -247,6 +250,9 @@
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
 		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
+		BC1980000000000000000011 /* NavigationBoundaryFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationBoundaryFixture.swift; path = OrotMobile/NavigationBoundaryFixture.swift; sourceTree = "<group>"; };
+		BC1980000000000000000012 /* NavigationBoundaryFixture.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = NavigationBoundaryFixture.m; path = OrotMobile/NavigationBoundaryFixture.m; sourceTree = "<group>"; };
+		BC1980000000000000000013 /* NavigationBoundaryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationBoundaryUITests.swift; path = NavigationBoundaryUITests.swift; sourceTree = "<group>"; };
 		BE2F722F9A5281E9B9A73231 /* TestControl.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = TestControl.m; path = OrotMobile/TestControl.m; sourceTree = "<group>"; };
 		C12D46B0C240DC6518A5EF57 /* OrotUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RagWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
@@ -397,6 +403,8 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
+				BC1980000000000000000011 /* NavigationBoundaryFixture.swift */,
+				BC1980000000000000000012 /* NavigationBoundaryFixture.m */,
 				BE2F722F9A5281E9B9A73231 /* TestControl.m */,
 				C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */,
 			);
@@ -512,6 +520,7 @@
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
+				BC1980000000000000000013 /* NavigationBoundaryUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
 				E19800000000000000000003 /* ExportDismissalGeometry.swift */,
 				E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */,
@@ -860,6 +869,8 @@
 				E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */,
 				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
+				BC1980000000000000000001 /* NavigationBoundaryFixture.swift in Sources */,
+				BC1980000000000000000002 /* NavigationBoundaryFixture.m in Sources */,
 				CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */,
 				165B7B0D6D7095B471560BD2 /* BackupProbeBridge.swift in Sources */,
 			);
@@ -876,6 +887,7 @@
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,
+				BC1980000000000000000003 /* NavigationBoundaryUITests.swift in Sources */,
 				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
 				E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */,
 				E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */,

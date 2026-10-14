@@ -48,7 +48,14 @@ if (settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation) {
 
 // This entry is bundled only for native test products. An app-hosted XCTest must
 // call the production services without starting an unrelated JS Speech probe.
-if (route === 'test-host') {
+if (
+  settings.OROT_TEST_NAVIGATION_BOUNDARY === 'uikit' ||
+  settings.OROT_TEST_NAVIGATION_BOUNDARY === 'rns'
+) {
+  require('./navigationBoundaryFixture').registerNavigationBoundaryFixture(
+    settings.OROT_TEST_NAVIGATION_BOUNDARY,
+  );
+} else if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
 } else if (route === 'speech') {
   require('./transcriptionProbeEntry');
