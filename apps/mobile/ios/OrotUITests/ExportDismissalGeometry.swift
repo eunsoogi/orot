@@ -70,7 +70,7 @@ enum ExportDismissalGeometry {
         let safe = safeArea.insetBy(dx: clearance, dy: clearance)
         let blocked = sheet.insetBy(dx: -clearance, dy: -clearance)
         guard valid(safe) else { throw Failure.noBackdrop }
-        // Whole-screen AX dismissal frames include the sheet. Use four disjoint public-geometry corridors instead.
+        // Whole-screen AX dismissal frames include the sheet. Consider four public-geometry corridors instead.
         let corridors = [
             CGRect(x: safe.minX, y: safe.minY, width: safe.width, height: min(safe.maxY, blocked.minY) - safe.minY),
             CGRect(x: safe.minX, y: max(safe.minY, blocked.maxY), width: safe.width, height: safe.maxY - max(safe.minY, blocked.maxY)),
