@@ -4,6 +4,12 @@ inputs:
   evidence:
     description: Directory retaining the original host observations for this executor.
     required: true
+  cli_consent_run_id:
+    description: Optional single approved run ID, valid only on its first attempt and this hosted Debug job.
+    default: ''
+  cohort:
+    description: Calling cohort; only Debug can consume the optional CLI consent.
+    default: ''
 runs:
   using: composite
   steps:
@@ -20,13 +26,28 @@ runs:
       env:
         EVIDENCE: ${{ inputs.evidence }}
       run: scripts/ci/run-command.sh native-model-host "$EVIDENCE/apple-model-host.log" -- xcrun swift -swift-version 6 scripts/ci/prepare-apple-model-host.swift
-    - name: Record the public on-device Apple model CLI diagnostic
-      # Collect the distinct CLI discriminator even if Swift failed; it cannot erase that failure.
+    - name: Record public CLI terms and toolchain provenance
+      id: cli_consent
       if: ${{ !cancelled() }}
       shell: bash
       env:
         EVIDENCE: ${{ inputs.evidence }}
+        OROT_FM_CLI_CONSENT_RUN: ${{ inputs.cli_consent_run_id }}
+        OROT_NATIVE_COHORT: ${{ inputs.cohort }}
+      run: scripts/ci/run-command.sh native-model-cli-consent "$EVIDENCE/apple-model-cli-consent.log" -- node scripts/ci/apple-model-cli-consent.mjs inspect
+    - name: Record the public on-device Apple model CLI diagnostic
+      # Collect the distinct CLI discriminator even if Swift failed; it cannot erase that failure.
+      if: ${{ !cancelled() && (inputs.cli_consent_run_id == '' || steps.cli_consent.outcome == 'success') }}
+      shell: bash
+      env:
+        EVIDENCE: ${{ inputs.evidence }}
       run: scripts/ci/run-command.sh native-model-cli "$EVIDENCE/apple-model-cli.log" -- node scripts/ci/probe-apple-model-cli.mjs
+    - name: Preserve the independent SDK observation after the one-run CLI diagnostic
+      if: ${{ !cancelled() && inputs.cli_consent_run_id != '' }}
+      shell: bash
+      env:
+        EVIDENCE: ${{ inputs.evidence }}
+      run: scripts/ci/run-command.sh native-model-host-after-cli "$EVIDENCE/apple-model-host-after-cli.log" -- xcrun swift -swift-version 6 scripts/ci/prepare-apple-model-host.swift
     - name: Observe resources after host diagnosis
       if: ${{ !cancelled() }}
       shell: bash
@@ -39,3 +60,9 @@ runs:
       env:
         EVIDENCE: ${{ inputs.evidence }}
       run: node scripts/ci/verify-apple-model-host.mjs "$EVIDENCE/apple-model-host.log"
+    - name: Require supported Apple Intelligence after the one-run CLI diagnostic
+      if: ${{ !cancelled() && inputs.cli_consent_run_id != '' }}
+      shell: bash
+      env:
+        EVIDENCE: ${{ inputs.evidence }}
+      run: node scripts/ci/verify-apple-model-host.mjs "$EVIDENCE/apple-model-host-after-cli.log"

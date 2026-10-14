@@ -24,6 +24,7 @@ jobs:
       release_minutes: ${{ steps.plan.outputs.release_minutes }}
       speech_minutes: ${{ steps.plan.outputs.speech_minutes }}
       debug_minutes: ${{ steps.plan.outputs.debug_minutes }}
+      cli_consent_run_id: ${{ steps.cli_consent.outputs.cli_consent_run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -34,6 +35,11 @@ jobs:
       - name: Validate the complete logical plan before Mac allocation
         id: plan
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
+      - name: Bind optional CLI consent to this approved first run
+        id: cli_consent
+        env:
+          OROT_FM_CLI_CONSENT_RUN: ${{ vars.OROT_FM_CLI_CONSENT_RUN }}
+        run: node scripts/ci/apple-model-cli-consent.mjs plan
   debug_execution:
     name: Debug provider and capability validation
     needs: plan
@@ -43,6 +49,7 @@ jobs:
       profile: provider-data
       artifact_name: ios-test-debug-products
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
+      cli_consent_run_id: ${{ needs.plan.outputs.cli_consent_run_id }}
   release_execution:
     name: Production and General Release validation
     needs: [plan, debug_execution]

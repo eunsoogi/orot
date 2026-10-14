@@ -8,6 +8,7 @@ on:
       artifact_name: { required: true, type: string }
       timeout_minutes: { required: true, type: number }
       production_build: { required: false, type: boolean, default: false }
+      cli_consent_run_id: { required: false, type: string, default: '' }
     outputs:
       archive_digest:
         value: ${{ jobs.validation.outputs.archive_digest }}
@@ -38,7 +39,10 @@ jobs:
         if: inputs.cohort == 'debug'
         timeout-minutes: 2
         uses: ./.github/actions/ios-apple-model-host
-        with: { evidence: artifacts/native-focus }
+        with:
+          evidence: artifacts/native-focus
+          cli_consent_run_id: ${{ inputs.cli_consent_run_id }}
+          cohort: ${{ inputs.cohort }}
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:
