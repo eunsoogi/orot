@@ -37,8 +37,14 @@ final class NavigationBoundaryUITests: XCTestCase {
         let child = UITestConditions.element(app, "boundary-child-surface")
         let childTitle = UITestConditions.element(app, "boundary-child-title")
         XCTAssertTrue(UITestConditions.exists(childTitle) && childTitle.isHittable)
+        // Fabric can publish the child's viewport while the push is still active. First observe its existing completion condition.
+        if boundary == "rns" {
+            try observedStack(app, boundary: boundary, depth: 2)
+        }
         try geometry(child, in: app)
-        try observedStack(app, boundary: boundary, depth: 2)
+        if boundary == "uikit" {
+            try observedStack(app, boundary: boundary, depth: 2)
+        }
         capture(app, "\(boundary)-child-preflight")
         observation(app, "\(boundary)-before-edge-back")
         // Copy N030's inputs, including requested velocity. Actual UIKit callback velocity is recorded separately.
