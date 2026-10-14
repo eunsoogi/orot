@@ -13,11 +13,10 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 | pnpm | 12.3.4 |
 | React Native / React | 0.87.1 / 19.2.3 |
 | Jest / React Native Testing Library / test-renderer | 29.7.0 / 14.0.1 / 1.2.0 |
-| Detox | 20.51.4 |
 | Xcode | 27.0 |
 | Ruby / CocoaPods | 4.0.7 / 1.17.0 (Homebrew) |
 
-iOS 빌드와 Detox 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
+iOS 빌드와 네이티브 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
 
 `xcode-select -p`가 Command Line Tools 경로를 가리키면 Xcode 개발자 디렉터리를 지정해 의존성을 설치하고 iOS 명령을 실행하세요.
 
@@ -53,7 +52,7 @@ node scripts/ci/check-loc.mjs --all
 
 The repository policy is in [`scripts/ci/loc-policy.json`](../scripts/ci/loc-policy.json). It counts physical lines, including comments and blank lines: 250 passes and 251 fails. It includes maintained application and package source, tests, scripts, and executable configuration. Documentation, lockfiles, generated/vendor/build output, binary assets, and serialized Xcode project metadata have explicit exclusion reasons. Unknown changed file types and missing Git history fail the check.
 
-GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Branch protection requires it alongside `Maintained file inventory`, ten `Lint / <surface>` checks, `Format check`, the type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and the individual Detox E2E profile leaves. Branch protection reads each job check directly rather than a workflow summary.
+GitHub Actions runs this canonical check as the direct `Source LOC policy` job in the `Code Quality` workflow. Branch protection requires it alongside `Maintained file inventory`, ten `Lint / <surface>` checks, `Format check`, the type/unit/policy-test leaves, the production/OAuth `iOS Simulator Build`, and five compatibility E2E leaves backed by complete native validation. Branch protection reads each job check directly rather than a workflow summary.
 
 ## iOS 빌드
 
@@ -93,39 +92,28 @@ UI를 처음 실행하기 전 CI는 앱과 Hermes의 기존 native 연결 사례
 
 Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=native/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
 
-## Detox 스모크 테스트
+## 전체 CI와 제품 재사용
 
-```sh
-pnpm e2e:build:ios
-pnpm e2e:test:ios
-```
+`E2E Test`는 검토 준비 상태의 PR, `main` push와 수동 전체 실행에서 같은 네이티브 검증 graph를 호출합니다. Mac 작업은 Release producer, Debug producer, 일반 Release 실행, Speech 실행, Debug 실행의 5개이며 선행 관계상 최대 3개가 겹칩니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 다른 workflow의 Mac 사용량까지 합친 저장소 전체 동시 실행 수는 별도 운영 조건입니다.
 
-Detox는 `.detoxrc.js`에 지정된 iOS Simulator에서 앱을 실행하고 시작 화면이 표시되는지 확인합니다. 러너 설정과 테스트는 `apps/mobile/e2e`에 있습니다.
+Release producer는 기본 production 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 먼저 검증하고, 같은 작업에서 네이티브 Release 제품을 만듭니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달합니다. 뒤의 네이티브 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, 네이티브 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 
-## Release 및 Speech E2E 앱 재사용
+독립 그룹은 실패 후에도 첫 시도의 결과를 수집합니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수이며, 지원하지 않는 환경의 실패를 availability 성공이나 별도 로컬 결과로 대체하지 않습니다.
 
-GitHub Actions의 Release UI/storage 및 stateful-data shard는 Release 앱 producer가 준비한 동일한 artifact를 공유합니다. 각 shard는 workflow run과 attempt, 소스 커밋, 프로필별 빌드 설정, Xcode/SDK, 앱 bundle 무결성을 확인한 뒤 앱을 사용합니다. Artifact 확인에 실패하면 해당 shard가 실패하며 앱 빌드 단계는 실행되지 않습니다. 두 shard는 Simulator와 테스트 데이터를 계속 분리해서 사용합니다.
+원래 55개 요구사항과 대체 테스트, 과거 관측의 범위는 [네이티브 검증 목록](native-validation.md)에 있습니다. 같은 최종 head의 전체 Actions 결과와 새 runner에서의 실제 Speech·UI 3회 결과를 별도로 확보해야 합니다. 테스트 수 감소, fixture 결과나 선택 실행 하나로 안정성·속도·전체 완료를 주장하지 않습니다.
 
-Speech transcription은 별도의 Release 앱 producer와 test consumer를 사용합니다. Consumer는 새 job에서 transcription artifact의 프로필과 무결성을 확인한 뒤 앱을 실행하며, Release artifact를 사용하지 않고 앱을 다시 빌드하지 않습니다. 두 프로필의 native 설정, entitlements, entry point와 DerivedData 경로는 각각 유지됩니다. Speech 실행의 프로세스 및 메모리 샘플을 수집하려면 workflow의 `resource_sampling` 입력을 활성화합니다.
+## 초안 PR과 집중 검증
 
-CI는 기존 headless 모드로 전용 Simulator 한 대를 사용합니다. Speech는 iPhone SE 3세대 기기를 생성해 UDID를 기록하고, 앱 artifact와 framework 준비가 끝난 뒤 한 번만 부팅합니다. 현재 Speech의 iOS 26.2 runtime(build 23C54)과 SDK 27을 유지하며, 해당 runner에서 기기 유형과 runtime의 조합이 사용 가능하지 않으면 실패합니다. 실행 ID, 기록된 UDID, runtime과 기기 유형이 일치하지 않아도 부팅하지 않고 실패합니다. 부팅 후 baseline inventory를 기록하며, 앱 artifact manifest에도 runtime·기기 유형·캐시 식별자를 포함해 producer와 consumer의 조건을 비교합니다. 더 작은 기기가 메모리를 줄인다는 보장은 없습니다.
+초안 PR은 정적 검사와 단위 테스트를 실행하고 전체 네이티브 실행을 보류합니다. 필수 상태는 이 보류를 성공으로 처리하지 않습니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 기존 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에 유지되며, 이름의 Detox 표기는 호환 목적이고 실행기는 XCTest/XCUITest입니다.
 
-`resource_sampling`을 활성화한 Speech 실행에서는 toolchain 준비부터 종료까지 호스트 프로세스 RSS, `vm_stat`와 swap을 별도 로그로 수집합니다. 테스트 구간의 기존 리소스 샘플도 유지합니다. RSS에는 공유 메모리와 다른 호스트 프로세스가 포함되므로 Simulator의 private footprint나 연속 peak로 해석하지 않습니다. 부팅 로그에는 부팅 전후 메모리 상태가 남습니다. 로그와 실제 테스트 결과를 함께 비교하며, 시스템 서비스, 권한, 한국어 모델 설치와 테스트 제한 시간은 유지합니다. Release의 대표 화면 크기와 부팅 순서도 유지합니다.
-
-경량 실행 후보인 [simless](https://github.com/abacusai/simless)는 SwiftUI 앱을 Mac의 Designed for iPad 환경에서 실행하는 도구입니다. 현재 React Native workspace의 Detox 실행을 대체하지 못하며, 도구 자체도 키보드, 시스템 권한 UI와 share sheet를 검증하지 않는다고 명시합니다. 따라서 해당 검증이 필요한 이 프로젝트의 E2E에서는 Apple Simulator를 사용합니다. [Apple의 Simulator 소개](https://developer.apple.com/videos/play/wwdc2019/418/)와 현재 runner의 `simctl help boot`, `simctl help shutdown`에 있는 전용 기기 부팅·종료 명령으로 준비 순서를 조정합니다. 더 작은 기기 모델의 효과는 실제 측정 없이 가정하지 않습니다.
-
-## 초안 PR과 집중 E2E 검증
-
-초안 PR 업데이트에서는 정적 검사와 단위 테스트를 실행하고, 전체 iOS/E2E 필수 check는 초안 상태를 분명히 표시하며 Simulator 빌드와 프로필 실행을 건너뜁니다. PR을 검토 준비 상태로 바꾸거나 이후 커밋을 올리면 변경 경로에 맞는 필수 검증이 실행됩니다. 초안 또는 집중 실행의 결과는 병합에 필요한 전체 검증을 대신하지 않습니다.
-
-한 E2E 실패를 재현할 때는 기본 브랜치에 있는 `E2E Test` workflow를 PR branch에서 수동 실행하고 `focus_pr_number`, `focus_profile`, `focus_scenario_file`, `focus_scenario_name`을 지정합니다. 실행 전에 PR이 열려 있고 `main`을 대상으로 하며, 같은 저장소와 현재 branch/SHA를 가리키는지 확인합니다. 집중 실행은 해당 테스트 하나만 실행하고 프로세스·메모리 샘플을 수집합니다. Release와 Speech는 각자 별도의 앱 producer를 사용합니다.
+현재 후보 브랜치에서 원래 네이티브 사례 하나를 선택하려면 정확한 Swift 파일과 XCTest identifier를 지정합니다. PR 번호·저장소·열린 상태·base와 현재 head를 검증한 뒤 제품을 준비하고, 그 제품의 무결성을 확인한 consumer만 실행합니다.
 
 ```sh
 gh workflow run e2e-test.yml --ref <PR-branch> \
   -f focus_pr_number=<PR-number> \
-  -f focus_profile=release \
-  -f focus_scenario_file=release-e2e-data.test.js \
-  -f focus_scenario_name='creates, edits, and cancels an appointment that survives process restarts'
+  -f focus_profile=native/fixtures \
+  -f focus_scenario_file=apps/mobile/ios/OrotUITests/RootNavigationUITests.swift \
+  -f focus_scenario_name=OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaNativeActionsAndCancelledThenCompletedEdgeBack
 ```
 
-포커스 실행은 원인을 분리하는 진단용이며 보호된 전체 E2E check를 통과 처리하지 않습니다. 실패한 테스트는 먼저 이 방식으로 분리해 로그와 원인을 확인하고, 수정 후 새 커밋에서 PR의 전체 필수 검증 결과를 확인합니다. 원인이 확인되지 않으면 같은 전체 실행을 반복하거나 제한 시간을 늘리지 말고, 실패한 Actions 실행과 단계, 현재 커밋, 관련 로그와 샘플을 함께 기록해 원인 조사를 이어갑니다.
+선택 실행은 Mac producer와 consumer 2개를 사용하고 선택·정확한 결과 검증은 Linux에서 처리합니다. 실패한 첫 시도와 원시 결과를 보존하고 원인이 확인된 변경 후에만 재실행합니다. 전체 수동 검증은 `E2E Test`를 후보 브랜치에서 focus 입력 없이 실행합니다. 최종 검증이 불완전하면 PR은 초안을 유지합니다.

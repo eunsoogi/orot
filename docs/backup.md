@@ -1,5 +1,8 @@
 # iCloud device backup and restore
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 Orot uses Apple's **iCloud device backup and restore** for a point-in-time copy of app data. This is not CloudKit or live synchronization: iCloud Backup takes periodic snapshots, and restoring an older snapshot can bring back data deleted after that snapshot. Orot cannot start, schedule, or observe completion of the operating system's backup.
 
 The in-app readiness check verifies only local prerequisites: permanent recording files retain complete file protection and are not excluded from device backup; the SQLCipher database opens and passes a read query; and its existing Keychain key is readable with a restore-compatible accessibility class. A `ready` result means those local checks passed. It does not mean that an iCloud backup ran, completed, contains the latest changes, or can be restored on another device.

@@ -1,74 +1,17 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { getProfile } from '../ios-derived-data-cache-paths.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
-const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
-const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
-
-function requireWithNextVisitProfile(modulePath) {
-  const previous = process.env.OROT_DETOX_TEST_PROFILE;
-  process.env.OROT_DETOX_TEST_PROFILE = 'next-visit-questions';
-  delete requireFromRepository.cache[requireFromRepository.resolve(modulePath)];
-  try {
-    return requireFromRepository(modulePath);
-  } finally {
-    delete requireFromRepository.cache[requireFromRepository.resolve(modulePath)];
-    if (previous === undefined) delete process.env.OROT_DETOX_TEST_PROFILE;
-    else process.env.OROT_DETOX_TEST_PROFILE = previous;
-  }
-}
-
-test('routes the deterministic screen entry through its isolated app and Jest profiles', () => {
-  const cacheProfile = getProfile('next-visit-questions');
-  const detoxProfile = requireWithNextVisitProfile(
-    './scripts/ci/detox-e2e-profile.detox.config.cjs',
-  );
-  const jestProfile = requireWithNextVisitProfile('./scripts/ci/detox-e2e-profile.jest.config.cjs');
-  const probe = requireFromRepository('./apps/mobile/e2e/next-visit-questions.detox.config.js');
-  const probeJest = requireFromRepository('./apps/mobile/e2e/next-visit-questions.jest.config.js');
-
-  assert.equal(cacheProfile.derivedDataPath, 'apps/mobile/ios/build-detox-next-visit-questions');
-  assert.equal(cacheProfile.configuration, 'Debug-iphonesimulator');
-  assert.deepEqual(detoxProfile.configurations, probe.configurations);
-  assert.deepEqual(detoxProfile.apps, probe.apps);
-  assert.match(
-    probe.apps['ios.next-visit-questions'].build,
-    /ENTRY_FILE=e2e\/nextVisitQuestionsProbeEntry\.tsx/,
-  );
-  assert.match(
-    probe.apps['ios.next-visit-questions'].build,
-    /ARCHS="\$\(uname -m\)" ONLY_ACTIVE_ARCH=YES/,
-  );
-  assert.deepEqual(jestProfile.testMatch, probeJest.testMatch);
-  assert.deepEqual(probeJest.testMatch, ['<rootDir>/e2e/next-visit-questions.e2e.js']);
-});
-
-test('runs Next Visit as a required direct profile in the shared CI workflow', () => {
-  const genericProfiles = readFileSync(
-    join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
-    'utf8',
-  );
-  const reusableProfile = readFileSync(
-    join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
-    'utf8',
-  );
-  const suiteRunner = readFileSync(join(repositoryRoot, 'scripts/ci/run-test-suite.sh'), 'utf8');
-
-  assert.match(
-    genericProfiles,
-    /detox_next_visit_e2e:[\s\S]*?name: Next Visit Questions E2E[\s\S]*?profile: next-visit-questions/,
-  );
-  assert.match(
-    genericProfiles,
-    /fingerprints: \$\{\{ toJSON\(needs\.detox_cache_fingerprint\.outputs\) \}\}/,
-  );
-  assert.match(genericProfiles, /needs: \[detox_cache_fingerprint\]/);
-  assert.doesNotMatch(genericProfiles, /paths:/);
-  assert.match(reusableProfile, /inputs\.profile == 'next-visit-questions'/);
-  assert.match(suiteRunner, /e2e-next-visit-questions/);
-  assert.match(suiteRunner, /require-jest-summary\.mjs/);
+// Consent, cited review, keyboard reachability and relaunch are mandatory native replacements for the retired screen runner.
+test('full Release retains every next-visit and consent journey in its fixture groups', () => {
+  const fixtures = iosTestInventory('fixtures');
+  for (const method of [
+    'testNativeSaveRemainsAboveTheActualKeyboardWhileEditingTheThirdQuestion',
+    'testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges',
+    'testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
+  ])
+    assert.equal(fixtures.filter((id) => id.endsWith('/' + method)).length, 1);
+  const scheduled = iosTestCohortTasks('release').flatMap((task) => task.identifiers);
+  for (const identifier of fixtures) assert.ok(scheduled.includes(identifier));
 });

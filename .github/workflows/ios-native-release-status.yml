@@ -1,0 +1,27 @@
+name: Release required statuses
+on:
+  workflow_call:
+    inputs:
+      selected: { required: true, type: boolean }
+      invalid_selection: { required: true, type: boolean }
+      execution_result: { required: true, type: string }
+permissions: { contents: read }
+jobs:
+  ui:
+    name: Release UI and storage
+    if: always()
+    uses: ./.github/workflows/ios-native-profile-status.yml
+    with:
+      profile: release
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}
+  data:
+    name: Release stateful-data
+    if: always()
+    uses: ./.github/workflows/ios-native-profile-status.yml
+    with:
+      profile: release
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}

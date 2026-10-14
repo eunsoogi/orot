@@ -1,0 +1,22 @@
+name: Cancel superseded focused native runs
+
+on:
+  pull_request:
+    # A stacked PR's new head also supersedes its previous focused selection.
+    types: [synchronize]
+
+permissions: {}
+
+jobs:
+  cancel_superseded_focus:
+    name: Cancel stale focused run for updated PR
+    if: ${{ github.event.action == 'synchronize' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    concurrency:
+      # Match the reusable focus workflow's PR-scoped group to cancel only its stale run.
+      group: focused-native-${{ github.event.pull_request.number }}-scenario
+      cancel-in-progress: true
+    steps:
+      - name: Record focused run supersession
+        run: echo "A new pull request head supersedes any prior focused scenario for this PR."

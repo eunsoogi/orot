@@ -183,15 +183,15 @@ test('uses singular workflow names and matching paths with direct checks and can
     /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.run_id \}\}-\$\{\{ github\.event\.pull_request\.draft == true && 'draft' \|\| 'full' \}\}/,
   );
   assert.match(e2eWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
-  assert.match(e2eWorkflow, /runs-on: \$\{\{.*'ubuntu-latest'.*'xcode-27' \}\}/s);
+  assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
   assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);
   assert.match(e2eWorkflow, /^ {2}pull-requests: read$/m);
   assert.doesNotMatch(e2eWorkflow, /workflow_call/);
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
-  const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios-simulator-build:\n'));
+  const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
   assert.match(buildJob, /name: iOS Simulator Build/);
-  assert.match(buildJob, /Fail when focused validation is selected/);
+  assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });

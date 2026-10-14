@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { selectChecksForPaths } from '../changed-paths-select.mjs';
@@ -37,90 +37,45 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(native.detox_next_visit, true);
 });
 
-test('PR E2E workflow separates draft deferral from the full required gate', () => {
+test('draft, focused and diagnostic runs cannot satisfy the full native gate', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
-  const required = ['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft'];
-  const events = e2e
-    .match(/types: \[([^\]]+)\]/)?.[1]
-    ?.split(',')
-    .map((event) => event.trim());
-  for (const event of required) assert.ok(events?.includes(event), `missing PR event ${event}`);
   assert.match(
     e2e,
-    /full_validation_deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/,
+    /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
-  assert.match(e2e, /Fail when full validation is deferred/);
+  assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
+  assert.match(e2e, /needs\.selection\.outputs\.deferred != 'true'/);
+  assert.match(e2e, /needs\.selection\.outputs\.focused != 'true'/);
   assert.match(
     e2e,
-    /github\.event\.pull_request\.draft == true \|\| github\.event_name == 'workflow_dispatch'.*'ubuntu-latest' \|\| 'xcode-27'/s,
+    /test "\$COMPLETE" = true && test "\$DEFERRED" != true && test "\$DIAGNOSTIC" != true/,
   );
-  assert.match(e2e, /pull_request\.draft == true && 'draft' \|\| 'full'/);
-  assert.match(e2e, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
-
-  for (const path of [
-    '.github/workflows/code-quality.yml',
-    '.github/workflows/unit-test.yml',
-    '.github/workflows/policy-check.yml',
-  ]) {
-    assert.match(read(path), /ready_for_review/);
-  }
+  assert.match(
+    e2e,
+    /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
+  );
+  const status = read('.github/workflows/ios-native-profile-status.yml');
+  assert.match(status, /test "\$INVALID" = false/);
+  assert.match(status, /test "\$RESULT" = success/);
+  assert.match(status, /if: ['"]!inputs.selected['"]/);
+  assert.doesNotMatch(e2e, /detox-e2e-profile|run-detox/);
+  for (const path of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml'])
+    assert.match(read('.github/workflows/' + path), /ready_for_review/);
 });
 
-test('focused validation uses the existing dispatch and leaves the full gate failing', () => {
+test('manual focus uses exact native selection and retains PR-scoped supersession', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
-  const focus = read('.github/workflows/detox-e2e-focused.yml');
-  assert.equal(
-    existsSync(fileURLToPath(new URL('.github/workflows/detox-e2e-focused.yml', root))),
-    true,
-  );
   assert.match(
     e2e,
-    /focus_pr_number:[\s\S]*focus_profile:[\s\S]*focus_scenario_file:[\s\S]*focus_scenario_name:/,
+    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-native-focused\.yml/,
   );
-  assert.match(e2e, /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/e2e-focused\.yml/);
-  assert.match(e2e, /'Focus profile routing' \|\| 'Detox E2E profiles'/);
-  assert.match(e2e, /name: iOS Simulator Build/);
-  assert.match(e2e, /Fail when focused validation is selected/);
-  assert.match(e2e, /Focused validation cannot satisfy the full iOS validation gate/);
+  const focus = read('.github/workflows/ios-native-focused.yml');
   assert.match(
-    e2e,
-    /inputs\.focus_pr_number != '' \|\| inputs\.focus_profile != '' \|\| inputs\.focus_scenario_file != '' \|\| inputs\.focus_scenario_name != ''/,
+    focus,
+    /group: focused-native-\$\{\{ inputs\.pr_number \|\| github\.run_id \}\}-scenario/,
   );
-  assert.match(e2e, /runs-on:.*inputs\.focus_pr_number.*'ubuntu-latest'.*'xcode-27'/s);
-  assert.match(e2e, /pull-requests: read/);
-  assert.match(focus, /^name: Focused Detox scenario$/m);
-  assert.match(focus, /workflow_call:/);
-  assert.doesNotMatch(focus, /workflow_dispatch:/);
-  assert.match(focus, /pull-requests: read/);
-  assert.match(focus, /head\.sha.*GITHUB_SHA|head\.sha.*EXPECTED_SHA/);
-  assert.match(focus, /inputs\.scenario_file/);
-  assert.match(focus, /inputs\.scenario_name/);
-  assert.match(focus, /resource_sampling: true/);
-  assert.match(focus, /group: focused-detox-\$\{\{ inputs\.pr_number \}\}-scenario/);
   assert.match(focus, /cancel-in-progress: true/);
-  assert.doesNotMatch(focus, /detox-e2e-profile-status\.yml/);
-  assert.match(focus, /detox-e2e-profile-app-producer\.yml/);
-  assert.match(focus, /detox-e2e-profile\.yml/);
-});
-
-test('draft deferral reaches stable profile checks without becoming an unknown runner input', () => {
-  const calledWorkflows = (source, workflow) =>
-    source
-      .split(`uses: ./.github/workflows/${workflow}`)
-      .slice(1)
-      .map((call) => call.split(/\n {2}[A-Za-z][\w-]*:\n/, 1)[0]);
-  for (const [path, expectedStatusCalls] of [
-    ['.github/workflows/detox-e2e-profiles.yml', 3],
-    ['.github/workflows/detox-e2e-release.yml', 2],
-  ]) {
-    const source = read(path);
-    const statusCalls = calledWorkflows(source, 'detox-e2e-profile-status.yml');
-    assert.equal(statusCalls.length, expectedStatusCalls);
-    for (const call of statusCalls) {
-      assert.match(call, /full_validation_deferred: \$\{\{ inputs\.full_validation_deferred \}\}/);
-    }
-    for (const call of calledWorkflows(source, 'detox-e2e-profile.yml')) {
-      assert.doesNotMatch(call, /full_validation_deferred:/);
-    }
-  }
+  assert.match(focus, /ios-native-focused-selection-cli\.mjs/);
+  assert.match(focus, /ios-native-focused-results\.mjs/);
+  assert.doesNotMatch(focus, /ios-native-profile-status/);
 });

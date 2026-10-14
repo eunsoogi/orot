@@ -78,12 +78,12 @@ test('every cohort boots only once after verification and preserves the original
   const composite = yaml.load(action);
   // Production cache validation needs every toolchain field even on a fresh cache miss.
   for (const step of composite.runs.steps.filter((step) =>
-    /detox-derived-data-cache\.mjs (prepare|write) production/.test(step.run ?? ''),
+    /ios-derived-data-cache\.mjs (prepare|write) production/.test(step.run ?? ''),
   )) {
     const environment = { ...productWorkflow.env, ...step.env };
     for (const name of [
-      'DETOX_CACHE_RUNNER_OS',
-      'DETOX_CACHE_RUNNER_ARCH',
+      'IOS_CACHE_RUNNER_OS',
+      'IOS_CACHE_RUNNER_ARCH',
       'MACOS_VERSION',
       'EXPECTED_NODE_VERSION',
       'EXPECTED_PNPM_VERSION',
@@ -114,7 +114,7 @@ test('production rejects mismatched actual tools before cache preparation, Pods 
   assert.equal(steps[guard].if, "inputs.production_build == 'true'");
   assert.equal(steps[guard]['continue-on-error'], undefined);
   for (const command of [
-    'detox-derived-data-cache.mjs prepare production',
+    'ios-derived-data-cache.mjs prepare production',
     'ios:pods',
     'build-ios-simulator-app.sh build',
     'swift test --package-path',

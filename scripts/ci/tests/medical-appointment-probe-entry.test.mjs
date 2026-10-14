@@ -10,7 +10,10 @@ const requireFromRepository = createRequire(join(repositoryRoot, 'package.json')
 const selectEntryRoute = requireFromRepository(
   './apps/mobile/e2e/selectEntryRoute.js',
 ).selectEntryRoute;
-const releaseSuiteFiles = requireFromRepository('./apps/mobile/e2e/release-e2e-suite-files.js');
+const nativeInventory = readFileSync(
+  join(repositoryRoot, 'scripts/ci/ios-test-inventory.mjs'),
+  'utf8',
+);
 
 test('loads agent runtime polyfills before both medical appointment probes import', () => {
   // LangGraph reads ReadableStream during module initialization on Hermes.
@@ -34,5 +37,8 @@ test('routes #108 through App and includes its probe in the required Release sui
   assert.ok(router.includes("require('./medicalAppointmentClassificationProbeEntry')"));
   assert.ok(router.includes("case 'medical-appointment-app-navigation':"));
   assert.ok(router.includes("require('./medicalAppointmentNavigationProbeEntry')"));
-  assert.ok(releaseSuiteFiles.includes('./medicalAppointmentNavigation.test.js'));
+  assert.match(
+    nativeInventory,
+    /AppointmentConsentUITests\/testManualPageReturnsThroughClassificationAndScheduleToHome/,
+  );
 });

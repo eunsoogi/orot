@@ -1,5 +1,8 @@
 # Apple Intelligence provider
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 Orot exposes Apple's on-device Foundation Models through the existing
 `@orot/model-runtime` provider contract. The adapter uses the system model only;
 it does not send prompts to a server or fall back to another provider. Apple

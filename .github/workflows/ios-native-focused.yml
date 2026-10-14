@@ -12,6 +12,11 @@ permissions:
   contents: read
   pull-requests: read
 
+concurrency:
+  # Updating the selected PR invalidates its previous diagnostic, without satisfying the full gate.
+  group: focused-native-${{ inputs.pr_number || github.run_id }}-scenario
+  cancel-in-progress: true
+
 env:
   CI: 'true'
   TZ: UTC

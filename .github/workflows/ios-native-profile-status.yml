@@ -1,0 +1,27 @@
+name: Native required profile status
+on:
+  workflow_call:
+    inputs:
+      profile: { required: true, type: string }
+      selected: { required: true, type: boolean }
+      invalid_selection: { required: true, type: boolean }
+      execution_result: { required: true, type: string }
+permissions: { contents: read }
+jobs:
+  status:
+    # This exact legacy check name is retained only for branch protection.
+    name: Detox ${{ inputs.profile }} iOS E2E
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Reject draft, diagnostic and incomplete selection
+        env: { INVALID: '${{ inputs.invalid_selection }}' }
+        run: test "$INVALID" = false
+      - name: Require the full native current-head gate when selected
+        if: inputs.selected
+        env: { RESULT: '${{ inputs.execution_result }}' }
+        run: test "$RESULT" = success
+      - name: Record a complete affected-path exclusion
+        if: '!inputs.selected'
+        run: echo 'The complete path selector did not select iOS validation.' >> "$GITHUB_STEP_SUMMARY"

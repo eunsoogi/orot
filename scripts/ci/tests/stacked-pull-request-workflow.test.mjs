@@ -18,7 +18,7 @@ test('protected check workflows and stale-focus cancellation receive stacked PR 
     '.github/workflows/e2e-test.yml',
     '.github/workflows/unit-test.yml',
     '.github/workflows/policy-check.yml',
-    '.github/workflows/cancel-stale-focused-detox.yml',
+    '.github/workflows/cancel-stale-focused-native.yml',
   ]) {
     const event = eventBlock(path, 'pull_request');
     assert.doesNotMatch(event, /branches(?:-ignore)?:/);

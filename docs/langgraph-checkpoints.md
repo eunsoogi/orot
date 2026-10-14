@@ -1,5 +1,8 @@
 # Local LangGraph checkpoints
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 Orot's LangGraph saver implements the upstream `BaseCheckpointSaver` contract
 and writes checkpoint state through the app's existing SQLCipher connection.
 It adds no backend, hosted checkpoint service, or native bridge. The mobile app

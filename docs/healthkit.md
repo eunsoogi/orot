@@ -1,5 +1,8 @@
 # HealthKit boundary
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 ## Change contract
 
 - **Requested behavior:** Report whether HealthKit is available, request read access for one named Orot feature or an explicit selected feature batch only when its caller asks, expose a reusable native query boundary, and locally import medication, blood-pressure, sleep, and supported quantity observations through their owning feature flows. Never request write access or claim that a read request was granted or denied.

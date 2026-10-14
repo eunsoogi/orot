@@ -61,10 +61,9 @@ function requireCacheInAction(relativePath) {
 }
 
 test('caches pnpm policy verification in each independent dependency-install job', () => {
-  requireCacheInWorkflow('.github/workflows/e2e-test.yml', 1);
+  requireCacheInAction('.github/actions/ios-test-products-build/action.yml');
   requireCacheInWorkflow('.github/workflows/unit-test.yml', 2);
   requireCacheInWorkflow('.github/workflows/policy-check.yml', 1);
-  requireCacheInWorkflow('.github/workflows/detox-e2e-profile.yml', 1);
 
   const codeQuality = readFileSync(
     join(repositoryRoot, '.github/workflows/code-quality.yml'),

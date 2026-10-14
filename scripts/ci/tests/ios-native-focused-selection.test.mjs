@@ -127,19 +127,15 @@ test('PR focus binds the actual workflow branch, repository and exact open head'
     assert.throws(() => verifyFocusedNativePullRequest(context, number, pr));
 });
 
-test('native focus routing retains the protected full-gate rejection and the existing legacy diagnostic path', () => {
+test('native focus routing leaves full protected statuses failing without a legacy fallback', () => {
   const dispatcher = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
-  const router = readFileSync('.github/workflows/e2e-focused.yml', 'utf8');
   assert.match(
     dispatcher,
-    /Fail when focused validation is selected[\s\S]*inputs\.focus_profile != ''/,
+    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-native-focused\.yml/,
   );
-  assert.match(
-    dispatcher,
-    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/e2e-focused\.yml/,
-  );
-  assert.match(router, /!startsWith\(inputs\.profile, 'native\/'\)[\s\S]*detox-e2e-focused\.yml/);
-  assert.match(router, /startsWith\(inputs\.profile, 'native\/'\)[\s\S]*ios-native-focused\.yml/);
+  assert.match(dispatcher, /DIAGNOSTIC: \$\{\{ needs\.selection\.outputs\.diagnostic \}\}/);
+  assert.match(dispatcher, /test "\$DIAGNOSTIC" != true/);
+  assert.doesNotMatch(dispatcher, /detox-e2e-focused|e2e-focused\.yml/);
 });
 
 test('focused consumer verifies exact products before its only boot and retains strict selected-case verification', () => {

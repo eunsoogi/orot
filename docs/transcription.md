@@ -1,5 +1,8 @@
 # On-device speech transcription
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 `AppleOnDeviceSpeechProvider` implements the shared `TranscriptionProvider`
 contract for Korean audio. It returns transcript text with start and end times
 in seconds from the beginning of the audio file. It does not stream partial

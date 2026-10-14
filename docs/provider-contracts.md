@@ -1,5 +1,8 @@
 # Language model provider contracts
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 `@orot/model-runtime` defines one normalized `LanguageModelProvider` interface
 for the in-memory fake, Apple Foundation Models, and the ChatGPT plan adapter.
 The shared conformance suite is in

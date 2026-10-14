@@ -1,0 +1,44 @@
+name: Native branch-protection compatibility
+on:
+  workflow_call:
+    inputs:
+      selected: { required: true, type: boolean }
+      invalid_selection: { required: true, type: boolean }
+      execution_result: { required: true, type: string }
+permissions: { contents: read }
+jobs:
+  release:
+    name: Release shards
+    if: always()
+    uses: ./.github/workflows/ios-native-release-status.yml
+    with:
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}
+  openai:
+    name: OpenAI Debug E2E
+    if: always()
+    uses: ./.github/workflows/ios-native-profile-status.yml
+    with:
+      profile: openai-provider
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}
+  speech:
+    name: Speech Transcription E2E
+    if: always()
+    uses: ./.github/workflows/ios-native-profile-status.yml
+    with:
+      profile: transcription
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}
+  questions:
+    name: Next Visit Questions E2E
+    if: always()
+    uses: ./.github/workflows/ios-native-profile-status.yml
+    with:
+      profile: next-visit-questions
+      selected: ${{ inputs.selected }}
+      invalid_selection: ${{ inputs.invalid_selection }}
+      execution_result: ${{ inputs.execution_result }}

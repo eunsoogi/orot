@@ -35,7 +35,7 @@ if [[ "${1:-}" == "--cocoapods-only" ]]; then
     printf 'Usage: verify-toolchain.sh [--portable|--cocoapods|--cocoapods-only]\n' >&2
     exit 2
   }
-  # Detox already checks the full runner before requesting Simulator startup; avoid simctl enumeration during that boot.
+  # A caller can verify only CocoaPods without enumerating or booting Simulator destinations.
   verify_cocoapods
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
   exit 0
@@ -87,7 +87,7 @@ fi
 actual_xcode_details="$(xcodebuild -version)"
 actual_xcode="$(printf '%s\n' "$actual_xcode_details" | sed -n '1s/^Xcode //p')"
 [[ "$actual_xcode" == "$expected_xcode" ]] || fail_version Xcode "$expected_xcode" "$actual_xcode"
-# Detox derives its extracted-framework directory from the complete Xcode version output.
+# Cache and portable-product identities use the complete Xcode build, not only its marketing version.
 actual_xcodebuild_fingerprint="$(printf '%s\n' "$actual_xcode_details" | shasum -a 256 | awk '{print $1}')"
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"

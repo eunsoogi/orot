@@ -50,6 +50,13 @@ jobs:
           ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
           MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
         run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/ios-cohort/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Observe invalid products rejected before any test boot
+        if: inputs.cohort == 'release'
+        env:
+          PROFILE: ${{ inputs.profile }}
+          ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
+          MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
+        run: scripts/ci/run-command.sh native-artifact-rejections artifacts/ios-cohort/artifact-rejections.log -- node scripts/ci/probe-ios-test-products.mjs "$PROFILE" artifacts/ios-cohort/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST" artifacts/ios-cohort/artifact-rejections
       - name: Provision the pinned Speech runtime
         if: inputs.cohort == 'speech'
         run: bash scripts/ci/prepare-ios-test-runtime.sh speech
@@ -90,6 +97,7 @@ jobs:
             artifacts/ios-cohort/*.png
             artifacts/ios-cohort/*.xcresult
             artifacts/ios-cohort/results
+            artifacts/ios-cohort/artifact-rejections/results.json
             artifacts/ios-cohort/product-artifact/manifest.json
           if-no-files-found: warn
           retention-days: 7

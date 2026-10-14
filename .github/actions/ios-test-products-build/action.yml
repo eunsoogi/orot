@@ -21,10 +21,13 @@ runs:
       with:
         version: 12.3.4
         run_install: false
-    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
       with:
         node-version-file: .nvmrc
         cache: pnpm
+    - name: Cache pnpm lockfile verification
+      uses: ./.github/actions/pnpm-lockfile-verification
     - name: Install frozen workspace dependencies
       shell: bash
       run: scripts/ci/run-command.sh native-focus-dependencies artifacts/native-focus/install.log -- pnpm install --frozen-lockfile
@@ -39,19 +42,28 @@ runs:
       if: inputs.production_build == 'true'
       id: production_fingerprints
       shell: bash
-      run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
+      run: node scripts/ci/ios-cache-fingerprint-cli.mjs --derived-data-only
     - name: Verify actual production toolchain before cache and builds
       if: inputs.production_build == 'true'
       id: production_toolchain
       shell: bash
       run: scripts/ci/run-command.sh production-toolchain artifacts/native-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
+    - name: Restore production-only DerivedData and CocoaPods intermediates
+      if: inputs.production_build == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          apps/mobile/ios/build-production
+          apps/mobile/ios/Pods
+        key: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-native-${{ steps.production_fingerprints.outputs.native_dependencies }}-source-${{ steps.production_fingerprints.outputs.build_inputs }}
+        restore-keys: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-native-${{ steps.production_fingerprints.outputs.native_dependencies }}-
     - name: Prepare the isolated production DerivedData boundary
       if: inputs.production_build == 'true'
       id: production_cache
       shell: bash
       env:
-        DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
-        DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
+        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
         MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
         EXPECTED_XCODE_VERSION: '27.0'
         EXPECTED_IOS_SIMULATOR_SDK: '27.0'
@@ -59,7 +71,7 @@ runs:
         EXPECTED_RUBY_VERSION: '4.0.7'
         EXPECTED_COCOAPODS_VERSION: '1.17.0'
         XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
-      run: node scripts/ci/detox-derived-data-cache.mjs prepare production
+      run: node scripts/ci/ios-derived-data-cache.mjs prepare production
     - name: Prepare native dependencies
       shell: bash
       run: scripts/ci/run-command.sh native-focus-pods artifacts/native-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
@@ -74,8 +86,8 @@ runs:
       if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
       shell: bash
       env:
-        DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
-        DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
+        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
+        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
         MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
         EXPECTED_XCODE_VERSION: '27.0'
         EXPECTED_IOS_SIMULATOR_SDK: '27.0'
@@ -83,7 +95,7 @@ runs:
         EXPECTED_RUBY_VERSION: '4.0.7'
         EXPECTED_COCOAPODS_VERSION: '1.17.0'
         XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
-      run: node scripts/ci/detox-derived-data-cache.mjs write production
+      run: node scripts/ci/ios-derived-data-cache.mjs write production
     - name: Verify Simulator defaults and OAuth package
       if: inputs.production_build == 'true'
       shell: bash
@@ -97,6 +109,10 @@ runs:
           -scheme ChatGPTOAuthSpike -configuration Debug \
           -destination 'generic/platform=iOS Simulator' \
           -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build
+    - name: Record completed production and OAuth obligations
+      if: inputs.production_build == 'true'
+      shell: bash
+      run: node scripts/ci/ios-production-receipt.mjs write artifacts/native-focus/production-receipt.json
     - name: Build without booting a Simulator
       shell: bash
       env:

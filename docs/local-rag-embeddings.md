@@ -1,5 +1,8 @@
 # Local multilingual RAG embeddings
 
+> Maintained validation uses the native XCTest/XCUITest profiles described in [development.md](development.md) and the [original requirement map](native-validation.md). Detox commands and run observations below are historical records of the retired runner; they are not current execution instructions or proof of the final candidate.
+
+
 The iOS app uses `intfloat/multilingual-e5-small` for on-device document and query vectors. The selected Hugging Face revision is pinned to `614241f622f53c4eeff9890bdc4f31cfecc418b3`; its ONNX model and SentencePiece tokenizer are downloaded on first use, checked against pinned byte counts and SHA-256 digests, and kept in the app's purgeable cache. The model produces 384-dimensional vectors. E5 document and query inputs use the `passage:` and `query:` prefixes, respectively.
 
 The native path uses ONNX Runtime 1.24.2 on its CPU execution provider and SentencePiece at commit `48f1241971c19dc79c314e5a9c5b9c38cbf25a53`. It does not claim Core ML or Neural Engine execution. The provider-neutral RAG service stores model identity, revision, dimension, and float32 vectors in the existing SQLCipher database. Embedding batches accept up to eight texts and report progress for model preparation; cancelling rejects the caller's request and prevents later batches, while a synchronous ONNX call already in progress runs to completion.
