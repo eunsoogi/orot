@@ -25,10 +25,23 @@ const UIKitBoundary = requireNativeComponent<ViewProps>(
 );
 
 /** Local boundary fixtures omit business services, route guards and app reconciliation. */
-export function registerNavigationBoundaryFixture(boundary: 'uikit' | 'rns') {
-  AppRegistry.registerComponent(appName, () =>
-    boundary === 'uikit' ? UIKitFixture : RNSFixture,
-  );
+export function registerNavigationBoundaryFixture(
+  boundary: 'uikit' | 'rns',
+  inputMode: 'cancel-then-full' | 'fresh-full-only',
+) {
+  const Component = boundary === 'uikit' ? UIKitFixture : RNSFixture;
+  function ObservedBoundaryFixture() {
+    useEffect(() => {
+      // Bind the actual app-side mode to the raw observation before either diagnostic sends a touch.
+      NativeModules.OrotTestControl.recordObservation({
+        event: 'boundary-input-mode',
+        boundary,
+        inputMode,
+      });
+    }, []);
+    return <Component />;
+  }
+  AppRegistry.registerComponent(appName, () => ObservedBoundaryFixture);
 }
 
 function UIKitFixture() {

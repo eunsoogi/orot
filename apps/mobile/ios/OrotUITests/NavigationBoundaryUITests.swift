@@ -19,8 +19,24 @@ final class NavigationBoundaryUITests: XCTestCase {
 
     @MainActor
     private func compare(_ boundary: String) throws {
+        guard let inputMode = ProcessInfo.processInfo.environment["OROT_LOCAL_NAVIGATION_INPUT_MODE"],
+              ["cancel-then-full", "fresh-full-only"].contains(inputMode)
+        else {
+            throw NSError(domain: "NavigationBoundary", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "An explicit supported local input mode is required"])
+        }
+        // The case identifier alone cannot distinguish this diagnostic axis from the original two-gesture condition.
+        let input: [String: Any] = ["boundary": boundary, "inputMode": inputMode,
+                                    "plannedGestures": inputMode == "fresh-full-only" ? 1 : 2]
+        let inputData = try JSONSerialization.data(withJSONObject: input)
+        let inputAttachment = XCTAttachment(data: inputData, uniformTypeIdentifier: "public.json")
+        inputAttachment.name = "local-boundary-input"
+        inputAttachment.lifetime = .keepAlways
+        add(inputAttachment)
+        print("LOCAL_BOUNDARY_INPUT " + String(decoding: inputData, as: UTF8.self))
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_NAVIGATION_BOUNDARY", boundary,
+                               "-OROT_TEST_NAVIGATION_INPUT_MODE", inputMode,
                                "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
                                "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -29,7 +45,7 @@ final class NavigationBoundaryUITests: XCTestCase {
         XCTAssertTrue(UITestConditions.exists(rootTitle) && rootTitle.isHittable)
         let root = UITestConditions.element(app, "boundary-root-surface")
         try geometry(root, in: app)
-        try observedStack(app, boundary: boundary, depth: 1)
+        try observedStack(app, boundary: boundary, depth: 1, inputMode: inputMode)
         capture(app, "\(boundary)-root-preflight")
         let open = UITestConditions.element(app, "boundary-open-child")
         XCTAssertTrue(open.exists && open.isHittable)
@@ -38,20 +54,23 @@ final class NavigationBoundaryUITests: XCTestCase {
         let childTitle = UITestConditions.element(app, "boundary-child-title")
         XCTAssertTrue(UITestConditions.exists(childTitle) && childTitle.isHittable)
         // Fabric can publish the child's viewport while the push is still active. First observe its existing completion condition.
-        if boundary == "rns" {
-            try observedStack(app, boundary: boundary, depth: 2)
+        let observeBeforeGeometry = boundary == "rns" || inputMode == "fresh-full-only"
+        if observeBeforeGeometry {
+            try observedStack(app, boundary: boundary, depth: 2, inputMode: inputMode)
         }
         try geometry(child, in: app)
-        if boundary == "uikit" {
-            try observedStack(app, boundary: boundary, depth: 2)
+        if !observeBeforeGeometry {
+            try observedStack(app, boundary: boundary, depth: 2, inputMode: inputMode)
         }
         capture(app, "\(boundary)-child-preflight")
         observation(app, "\(boundary)-before-edge-back")
         // Copy N030's inputs, including requested velocity. Actual UIKit callback velocity is recorded separately.
-        edgeBack(child, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
-        XCTAssertTrue(child.exists && child.isHittable)
-        observation(app, "\(boundary)-after-short-edge-back")
-        capture(app, "\(boundary)-after-short-edge-back")
+        if inputMode == "cancel-then-full" {
+            edgeBack(child, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
+            XCTAssertTrue(child.exists && child.isHittable)
+            observation(app, "\(boundary)-after-short-edge-back")
+            capture(app, "\(boundary)-after-short-edge-back")
+        }
         edgeBack(child, in: app, fraction: 0.85, velocity: .fast)
         observation(app, "\(boundary)-after-full-edge-back")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -90,10 +109,14 @@ final class NavigationBoundaryUITests: XCTestCase {
     }
 
     @MainActor
-    private func observedStack(_ app: XCUIApplication, boundary: String, depth: Int) throws {
+    private func observedStack(_ app: XCUIApplication, boundary: String, depth: Int, inputMode: String) throws {
         var navigation: [String: Any]?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard let report = self.report(app), let stacks = report["navigation"] as? [[String: Any]],
+            guard let report = self.report(app), let lifecycle = report["lifecycle"] as? [[String: Any]],
+                  lifecycle.contains(where: { $0["event"] as? String == "boundary-input-mode"
+                          && $0["boundary"] as? String == boundary && $0["inputMode"] as? String == inputMode
+                  }),
+                  let stacks = report["navigation"] as? [[String: Any]],
                   stacks.count == 1, stacks[0]["depth"] as? Int == depth,
                   let transition = stacks[0]["transition"] as? [String: Any], transition.isEmpty else { return false }
             navigation = stacks[0]

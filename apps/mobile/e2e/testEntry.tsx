@@ -52,8 +52,14 @@ if (
   settings.OROT_TEST_NAVIGATION_BOUNDARY === 'uikit' ||
   settings.OROT_TEST_NAVIGATION_BOUNDARY === 'rns'
 ) {
+  const inputMode =
+    settings.OROT_TEST_NAVIGATION_INPUT_MODE ?? 'cancel-then-full';
+  if (inputMode !== 'cancel-then-full' && inputMode !== 'fresh-full-only') {
+    throw new Error('Unsupported local navigation input mode');
+  }
   require('./navigationBoundaryFixture').registerNavigationBoundaryFixture(
     settings.OROT_TEST_NAVIGATION_BOUNDARY,
+    inputMode,
   );
 } else if (route === 'test-host') {
   AppRegistry.registerComponent(appName, () => IntegrationTestHost);
