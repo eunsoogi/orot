@@ -3,6 +3,7 @@ description: Install the pinned JavaScript and Ruby tools once on each native bu
 runs:
   using: composite
   steps:
+    - uses: ./.github/actions/ios-host-bootstrap
     - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
       with:
         version: 12.3.4
@@ -12,9 +13,6 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: pnpm
-    - name: Suppress competing Spotlight indexing on the ephemeral host
-      shell: bash
-      run: scripts/ci/run-command.sh ios-host-spotlight artifacts/ios-focus/spotlight.log -- node scripts/ci/suppress-hosted-spotlight.mjs
     - name: Cache pnpm lockfile verification
       uses: ./.github/actions/pnpm-lockfile-verification
     - name: Install frozen workspace dependencies

@@ -1,5 +1,5 @@
-name: Validate production and OAuth independently
-description: Keep default app and OAuth obligations separate from portable test-product availability.
+name: Build and inspect the production app
+description: Build the default app and retain its SDK and Keychain boundaries independently of test executors.
 runs:
   using: composite
   steps:
@@ -57,22 +57,14 @@ runs:
     - name: Verify production uses the Apple SDK without the model mock
       shell: bash
       run: scripts/ci/run-command.sh apple-production-boundary artifacts/ios-focus/apple-production-boundary.log -- node scripts/ci/verify-apple-model-product.mjs production apps/mobile/ios/build-production/Build/Products/Debug-iphonesimulator/Orot.app
-    - name: Verify Simulator defaults and OAuth package
+    - name: Verify Simulator defaults
       shell: bash
-      run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh ios-oauth-unit artifacts/ios-focus/oauth-unit.log -- swift test --package-path packages/provider-openai
-    - name: Build the separate OAuth Simulator harness
-      shell: bash
-      run: |
-        scripts/ci/run-command.sh ios-oauth-build artifacts/ios-focus/oauth-build.log -- xcodebuild \
-          -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
-          -scheme ChatGPTOAuthSpike -configuration Debug \
-          -destination 'generic/platform=iOS Simulator' \
-          -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build
-    - name: Record completed production and OAuth obligations
+      run: node scripts/ci/verify-simulator-keychain-defaults.mjs
+    - name: Record completed production build obligations
       shell: bash
       run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
     - name: Save verified production outputs
-      # Independent test failures cannot discard validated production outputs; earlier production failures still prevent saving.
+      # This cache contains only the production app and Pods. OAuth's separate products and tests remain final-gate obligations.
       if: success() && steps.production_cache_restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:

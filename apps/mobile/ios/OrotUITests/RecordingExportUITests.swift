@@ -24,6 +24,10 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             app.terminate()
         }
         launch(app)
+        // Own both sources so the regression does not depend on another suite's saved recordings.
+        let backgroundSource = try prepare(app)
+        app.terminate()
+        launch(app)
         addTeardownBlock { @MainActor in
             // XCTest may bypass defer on failure; collect before the earlier registered source cleanup.
             guard app.state != .notRunning else { return }
@@ -41,37 +45,50 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             add(attachment)
             app.terminate()
         }
-        try prepare(app)
+        let source = try prepare(app)
         // Authorization matrices, programmatic cancellation and restart residue have independent native tests.
         XCTAssertTrue(UITestConditions.text(element(app, "transcript-evidence-source-security")).contains("backup-excluded=false"))
         let marker = element(app, "navigation-test-observation")
         let session = try ExportDismissalGeometry.session(snapshot: UITestConditions.text(marker), nowMs: Date().timeIntervalSince1970 * 1000)
         tap(app, "recording-export-audio")
+        let backgroundRow = app.buttons["recording-details-" + backgroundSource]
+        let dismissal = app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "dismiss popup")).firstMatch
+        var ready: (frame: CGRect, application: CGRect, snapshot: String, point: CGVector)?
+        let presented = NSPredicate { _, _ in
+            guard dismissal.exists else { return false }
+            let frame = dismissal.frame
+            let application = app.frame
+            let snapshot = UITestConditions.text(marker)
+            guard frame.width > 0, frame.height > 0,
+                  backgroundRow.exists,
+                  let point = try? ExportDismissalGeometry.point(snapshot: snapshot, session: session, applicationFrame: application,
+                                                                 nowMs: Date().timeIntervalSince1970 * 1000,
+                                                                 preferredFrame: backgroundRow.frame) else { return false }
+            ready = (frame, application, snapshot, point)
+            return true
+        }
+        // AX exposes the dismissal element before UIKit finishes presenting it. Use the same 30-second readiness budget for both boundaries.
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: presented, object: nil)], timeout: 30), .completed)
+        let geometry = try XCTUnwrap(ready)
+        let frame = geometry.frame
+        let point = geometry.point
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "actual-audio-share-sheet"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        let dismissal = app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "dismiss popup")).firstMatch
-        XCTAssertTrue(dismissal.waitForExistence(timeout: 30), app.debugDescription)
-        let frame = dismissal.frame
-        XCTAssertGreaterThan(frame.width, 0)
-        XCTAssertGreaterThan(frame.height, 0)
-        let applicationFrame = app.frame
-        let snapshot = UITestConditions.text(marker)
-        let point = try ExportDismissalGeometry.point(snapshot: snapshot, session: session, applicationFrame: applicationFrame,
-                                                      nowMs: Date().timeIntervalSince1970 * 1000)
         // The AX dismissal frame covers the whole screen. Require a fresh safe corridor outside public presented geometry.
         // The audio path never consumes the synthetic cancellation hook.
-        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point, snapshot: snapshot, applicationFrame: applicationFrame)
+        captureDismissalGeometry(app, "before-audio-dismissal-touch", frame: frame, point: point, snapshot: geometry.snapshot, applicationFrame: geometry.application)
         app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
         captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: frame, point: point)
+        XCTAssertFalse(element(app, "recording-detail").exists, "Dismissing the native share must not select its obscured recording row")
         value(app, "recording-export-status", "내보내기를 취소했어요.")
         XCTAssertFalse(dismissal.exists)
         let result = try json(element(app, "recording-export-result"))
         XCTAssertEqual(result["residueCount"] as? Int, 0)
         XCTAssertEqual(result["sourceUnchanged"] as? Bool, true)
         XCTAssertEqual(result["cleaned"] as? Bool, true)
-        ownedSources.removeAll()
+        ownedSources.remove(source)
     }
 
     @MainActor
@@ -103,6 +120,10 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             screenshot.lifetime = .keepAlways
             add(screenshot)
         }
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = stage + "-accessibility"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
     }
 
     private func rectObservation(_ rect: CGRect) -> [String: CGFloat] {
@@ -126,11 +147,12 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func prepare(_ app: XCUIApplication) throws {
+    private func prepare(_ app: XCUIApplication) throws -> String {
         value(app, "transcript-evidence-setup-status", "ready")
         let source = UITestConditions.text(element(app, "recording-export-source-id"))
         XCTAssertNotNil(UUID(uuidString: source))
         ownedSources.insert(source)
+        return source
     }
 
     @MainActor

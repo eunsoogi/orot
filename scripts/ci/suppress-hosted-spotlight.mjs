@@ -7,7 +7,7 @@ const dataVolume = '/System/Volumes/Data';
 // The deadline must run inside sudo, where it can signal the privileged mdutil process.
 // The system Perl/POSIX supervisor creates and owns one process group, kills only that
 // group on timeout/cancellation, and reaps its child before returning to sudo. If Perl
-// is unavailable, the command fails and the optimization remains unverified.
+// is unavailable, the hosted bootstrap fails with its original diagnostics.
 const supervisor = `
 use strict;
 use warnings;
@@ -37,7 +37,7 @@ alarm 0;
 exit (($status & 127) ? 128 + ($status & 127) : $status >> 8);
 `;
 
-/** This optional host optimization must never change a developer Mac or a persistent self-hosted runner. */
+/** The required hosted bootstrap must never change a developer Mac or a persistent self-hosted runner. */
 export function isEphemeralMac(env, platform) {
   return (
     platform === 'darwin' &&
@@ -61,7 +61,7 @@ export function indexingDisabled(result) {
 /** Suppress competing host indexing once, before dependency extraction, build or Simulator boot.
  * No index deletion, service termination, privilege prompt or retry is allowed. Each invocation has
  * a deadline because the earlier unbounded mdutil experiment held CI for three minutes.
- * Failure leaves the optimization unverified and preserves all ordinary build/test gates.
+ * A hosted failure stops preparation with its original diagnostics; it cannot claim verified suppression.
  */
 export function suppressHostedSpotlight({
   env = process.env,
@@ -111,6 +111,7 @@ export function suppressHostedSpotlight({
     operation: 'host-spotlight',
     outcome: verified ? 'disabled-and-verified' : 'attempted-unverified',
   });
+  if (!verified) throw new Error('Hosted Spotlight suppression was not verified');
   return verified;
 }
 

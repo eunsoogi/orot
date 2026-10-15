@@ -1,4 +1,4 @@
-name: Focused integration iOS diagnostic
+name: Focused integration
 
 on:
   workflow_call:
@@ -25,11 +25,12 @@ env:
 
 jobs:
   selection:
-    name: Validate exact integration selection
+    name: Plan / Select
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       profile: ${{ steps.selection.outputs.profile }}
+      configuration: ${{ steps.selection.outputs.configuration }}
       mode: ${{ steps.selection.outputs.mode }}
       suite: ${{ steps.selection.outputs.suite }}
       identifier: ${{ steps.selection.outputs.identifier }}
@@ -52,7 +53,7 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER"
   products:
-    name: Build selected integration test products
+    name: Build / ${{ needs.selection.outputs.configuration }}
     needs: selection
     runs-on: xcode-27
     concurrency:
@@ -95,7 +96,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
   completeness:
-    name: Verify selected integration observations on Linux
+    name: Validate / Complete
     needs: [selection, products, execution]
     if: always()
     runs-on: ubuntu-24.04
@@ -123,7 +124,7 @@ jobs:
         run: node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results
 
   execution:
-    name: Execute selected integration ${{ needs.products.outputs.profile }} ${{ needs.products.outputs.suite }} tests
+    name: Test / Selection
     needs: products
     runs-on: xcode-27
     concurrency:
@@ -135,18 +136,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
+      - uses: ./.github/actions/ios-host-bootstrap
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
-          cache: pnpm
-      - name: Suppress competing Spotlight indexing on the ephemeral host
-        run: scripts/ci/run-command.sh ios-host-spotlight artifacts/ios-focus/spotlight.log -- node scripts/ci/suppress-hosted-spotlight.mjs
-      - name: Install dependencies before test boot
-        run: scripts/ci/run-command.sh ios-focus-dependencies artifacts/ios-focus/install.log -- pnpm install --frozen-lockfile
+      # The verified app already contains its JavaScript bundle; execution helpers require no installed packages.
       - name: Download the producer's exact integration products
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:

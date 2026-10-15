@@ -115,6 +115,22 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       )
     )
       throw new Error('Approved integration test runtime is unavailable');
+    if (
+      process.env.GITHUB_ACTIONS === 'true' &&
+      process.env.RUNNER_ENVIRONMENT === 'github-hosted'
+    ) {
+      // Apple documents this public command as the readiness barrier for runtime caches.
+      // Complete the selected cache before boot so its compiler cannot compete with the new Simulator.
+      // Never force regeneration, touch another runtime, or change a local/self-hosted machine.
+      const stopSampling = iosTestResourceSampler(ownerPath + '.runtime.resources.jsonl');
+      try {
+        runIosSimulatorCommand(['runtime', 'dyld_shared_cache', 'update', config.runtime], {
+          stdio: 'inherit',
+        });
+      } finally {
+        stopSampling();
+      }
+    }
     owner.udid = simctl('create', name, config.device, config.runtime);
     writeFileSync(ownerPath, JSON.stringify(owner, null, 2) + '\n');
     verifyIosTestSimulator(owner, cohort?.profiles[0] ?? profile);

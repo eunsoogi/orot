@@ -162,7 +162,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
   assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
-  assert.match(e2eWorkflow, /^name: E2E Test$/m);
+  assert.match(e2eWorkflow, /^name: E2E$/m);
   for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow]) {
     assert.ok(workflow.replace(/^ {4}#.*\n/gm, '').includes(staticTriggers));
     assert.ok(
@@ -192,7 +192,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
-  assert.match(buildJob, /name: iOS Simulator Build/);
+  assert.match(buildJob, /name: E2E \/ Validate \/ Build/);
   assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);

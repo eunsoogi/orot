@@ -161,6 +161,12 @@ export default function RecordingLibraryPanel({
   }
 
   const disabled = busy || actionsDisabled;
+  function selectSource(sourceId: string, autoPlay = false): void {
+    if (disabled) return;
+    // Both list actions share the same source and busy boundary; playback still uses the detail control.
+    setPlaybackRequestSourceId(autoPlay ? sourceId : null);
+    setSelectedSourceId(sourceId);
+  }
   const exportSourceId = selected?.source.id ?? fallbackExportSourceId ?? null;
   const transcriptSourceId =
     selected?.source.id ??
@@ -196,15 +202,8 @@ export default function RecordingLibraryPanel({
               key={summary.source.id}
               summary={summary}
               disabled={disabled}
-              onOpen={() => {
-                setPlaybackRequestSourceId(null);
-                setSelectedSourceId(summary.source.id);
-              }}
-              onPlay={() => {
-                // Route list playback through the detail control so progress and recovery share one state path.
-                setPlaybackRequestSourceId(summary.source.id);
-                setSelectedSourceId(summary.source.id);
-              }}
+              onOpen={() => selectSource(summary.source.id)}
+              onPlay={() => selectSource(summary.source.id, true)}
               onDelete={() => requestDelete(summary.source)}
             />
           ))}
@@ -236,6 +235,7 @@ export default function RecordingLibraryPanel({
         <RecordingExportPanel
           recordingSourceId={exportSourceId}
           transcriptService={transcriptService}
+          onBusyChange={setBusy}
         />
       ) : null}
       <RecordingDeletionConfirmation

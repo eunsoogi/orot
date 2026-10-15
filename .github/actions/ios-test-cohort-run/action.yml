@@ -29,7 +29,7 @@ runs:
         MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
       run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" "$PRODUCT_DIRECTORY" "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
     - name: Observe invalid products rejected before any test boot
-      if: inputs.cohort == 'release' || inputs.cohort == 'release-core'
+      if: inputs.cohort == 'core-integration'
       shell: bash
       env:
         PROFILE: ${{ inputs.profile }}

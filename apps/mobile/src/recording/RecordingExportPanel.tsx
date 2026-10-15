@@ -20,6 +20,7 @@ interface RecordingExportPanelProps {
   recordingSourceId: string;
   transcriptService?: TranscriptEvidenceService;
   exportService?: RecordingExportService;
+  onBusyChange?: (busy: boolean) => void;
 }
 
 type ExportError =
@@ -51,6 +52,7 @@ export default function RecordingExportPanel({
   recordingSourceId,
   transcriptService = transcriptEvidenceService,
   exportService = recordingExportService,
+  onBusyChange,
 }: RecordingExportPanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,12 @@ export default function RecordingExportPanel({
   const [status, setStatus] = useState<'completed' | 'cancelled' | null>(null);
   const selectionRevision = useRef(0);
   const previousSourceId = useRef(recordingSourceId);
+
+  function updateBusy(value: boolean): void {
+    setBusy(value);
+    // Native backdrop dismissal can also deliver a touch to the library. Keep its source controls disabled until this request settles.
+    onBusyChange?.(value);
+  }
 
   useLayoutEffect(() => {
     if (previousSourceId.current === recordingSourceId) return;
@@ -96,7 +104,7 @@ export default function RecordingExportPanel({
   async function shareAudio(): Promise<void> {
     // Audio export reads the saved file directly and must stay available if transcript lookup fails.
     const requestRevision = selectionRevision.current;
-    setBusy(true);
+    updateBusy(true);
     setError(null);
     setStatus(null);
     try {
@@ -109,13 +117,13 @@ export default function RecordingExportPanel({
         setError(shareError(reason));
       }
     } finally {
-      setBusy(false);
+      updateBusy(false);
     }
   }
 
   async function shareTranscript(): Promise<void> {
     const requestRevision = selectionRevision.current;
-    setBusy(true);
+    updateBusy(true);
     setError(null);
     setStatus(null);
     try {
@@ -140,7 +148,7 @@ export default function RecordingExportPanel({
         );
       }
     } finally {
-      setBusy(false);
+      updateBusy(false);
     }
   }
 

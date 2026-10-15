@@ -7,7 +7,7 @@ import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
 // Drive the actual CLI with public-command fixtures; policy tests must never boot a device or sample their host.
-function run(bootStatus) {
+function run(bootStatus, hosted = false, cacheStatus = 0) {
   const root = mkdtempSync(join(tmpdir(), 'orot-boot-observation-'));
   const ownerPath = join(root, 'owner.json');
   const config = iosTestConfig('speech');
@@ -26,6 +26,7 @@ fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify(args)+'\\n');
 const command=args[1];
 if(command==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else if(command==='create')console.log('owned-device');
+else if(command==='runtime') { console.log('Runtime shared cache ready'); process.exit(${cacheStatus}); }
 else if(command==='bootstatus') { console.log('Waiting for Data Migration'); process.exit(${bootStatus}); }
 else if(command!=='boot')process.exit(99);
 `,
@@ -50,6 +51,8 @@ else if(command!=='boot')process.exit(99);
         GITHUB_RUN_ID: 'local',
         GITHUB_RUN_ATTEMPT: '1',
         GITHUB_ENV: '',
+        GITHUB_ACTIONS: String(hosted),
+        RUNNER_ENVIRONMENT: hosted ? 'github-hosted' : 'self-hosted',
       },
     },
   );
@@ -88,3 +91,39 @@ for (const status of [0, 65])
       rmSync(value.root, { recursive: true, force: true });
     }
   });
+
+test('hosted preparation completes only the selected runtime cache before creating or booting a device', () => {
+  for (const status of [0, 65]) {
+    const value = run(0, true, status);
+    try {
+      assert.equal(value.outcome.status === 0, status === 0, value.outcome.stderr);
+      const cache = value.calls.findIndex((args) => args[1] === 'runtime');
+      assert.deepEqual(value.calls[cache], [
+        'simctl',
+        'runtime',
+        'dyld_shared_cache',
+        'update',
+        iosTestConfig('speech').runtime,
+      ]);
+      if (status === 0) {
+        assert.ok(cache < value.calls.findIndex((args) => args[1] === 'create'));
+        assert.ok(cache < value.calls.findIndex((args) => args[1] === 'boot'));
+        assert.match(value.outcome.stdout, /Runtime shared cache ready/);
+      } else {
+        assert.ok(value.calls.every((args) => !['create', 'boot', 'bootstatus'].includes(args[1])));
+      }
+    } finally {
+      rmSync(value.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('local and self-hosted preparation does not update shared runtime caches', () => {
+  const value = run(0);
+  try {
+    assert.equal(value.outcome.status, 0, value.outcome.stderr);
+    assert.ok(value.calls.every((args) => args[1] !== 'runtime'));
+  } finally {
+    rmSync(value.root, { recursive: true, force: true });
+  }
+});

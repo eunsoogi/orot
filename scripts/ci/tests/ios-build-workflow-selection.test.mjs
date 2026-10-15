@@ -15,12 +15,16 @@ test('production cache reuse skips only app compilation, preserving separate OAu
   assert.match(action, /apps\/mobile\/ios\/build-production\n\s+apps\/mobile\/ios\/Pods/);
   assert.match(action, /app_reusable != 'true'/);
   assert.match(action, /verify-simulator-keychain-defaults\.mjs/);
-  assert.match(action, /swift test --package-path packages\/provider-openai/);
+  const oauthBuild = readFileSync('.github/workflows/ios-oauth-build.yml', 'utf8');
   assert.match(
-    action,
+    oauthBuild,
+    /swift build --package-path packages\/provider-openai[^\n]+--build-tests/,
+  );
+  assert.match(
+    oauthBuild,
     /derivedDataPath "\$RUNNER_TEMP\/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build/,
   );
-  assert.ok(action.indexOf('ios-oauth-build') < action.indexOf('ios-production-receipt.mjs write'));
+  assert.doesNotMatch(action, /swift test|ios-oauth-build/);
   assert.doesNotMatch(action, /build-ios-tests\.mjs/);
 });
 

@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
@@ -13,20 +14,14 @@ const workflow = (name) => yaml.load(readFileSync('.github/workflows/' + name, '
 // Each complete CI execution uses one fresh Speech VM. Acceptance requires one complete execution, with no repeated Speech sample.
 test('each full CI schedules every cohort once after verified products are available', () => {
   const full = workflow('ios-test-validation.yml');
-  const ids = ['debug_execution', 'release_core', 'release_ui', 'speech_execution'];
-  assert.deepEqual(
-    Object.values(full.jobs)
-      .filter((job) => job.with?.cohort)
-      .map((job) => job.with.cohort)
-      .sort(),
-    ['debug', 'release-core', 'release-ui', 'speech'],
-  );
+  const ids = ['debug_execution', 'release_execution'];
+  assert.equal(iosTestExecutionPlan().filter((entry) => entry.cohort === 'speech').length, 1);
   for (const id of ids) {
     const job = full.jobs[id];
     assert.equal(job.with.sample, undefined);
     assert.ok(full.jobs.completeness.needs.includes(id));
   }
-  const speech = full.jobs.speech_execution;
+  const speech = full.jobs.release_execution;
   assert.equal(speech.uses, './.github/workflows/ios-test-cohort-execution.yml');
   assert.deepEqual(speech.needs, ['plan', 'release_products']);
   assert.equal(speech.if, undefined);
@@ -38,11 +33,13 @@ test('each full CI schedules every cohort once after verified products are avail
   );
   assert.deepEqual([...full.jobs.completeness.needs].sort(), [
     'debug_execution',
+    'debug_products',
+    'oauth_execution',
+    'oauth_products',
+    'plan',
     'production_validation',
-    'release_core',
+    'release_execution',
     'release_products',
-    'release_ui',
-    'speech_execution',
   ]);
 });
 
@@ -65,12 +62,13 @@ test('raw and compact evidence is isolated by CI run and attempt without intra-r
   }
   const full = workflow('ios-test-validation.yml');
   const commands = full.jobs.completeness.steps.map((step) => step.run ?? '').join('\n');
-  assert.equal((commands.match(/ios-test-cohort-results\.mjs speech /g) ?? []).length, 1);
-  assert.equal((commands.match(/speech-test-evidence\.mjs /g) ?? []).length, 1);
+  assert.equal((commands.match(/ios-test-plan-results\.mjs /g) ?? []).length, 1);
+  const aggregate = readFileSync('scripts/ci/ios-test-plan-results.mjs', 'utf8');
+  assert.equal((aggregate.match(/speech-test-evidence\.mjs/g) ?? []).length, 1);
   assert.doesNotMatch(commands, /speech-second|speech-third/);
 });
 
-test('actual Linux plan reports six Mac jobs and one complete original inventory', () => {
+test('actual Linux plan reports separate producers, independent suites and one complete original inventory', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-speech-plan-'));
   try {
     const output = join(directory, 'outputs');
@@ -80,14 +78,28 @@ test('actual Linux plan reports six Mac jobs and one complete original inventory
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
-    assert.equal(value.macJobs, 6);
-    assert.equal(value.maximumConcurrentMacJobs, 5);
+    assert.equal(value.macJobs, 20);
+    assert.equal(value.maximumConcurrentMacJobs, 17);
     assert.equal(value.uniqueTestCases, 82);
     assert.equal(value.scheduledTestObservations, 82);
     assert.equal(value.focusedSelectionObservations, undefined);
     assert.equal(value.totalScheduledTestObservations, undefined);
     assert.equal(value.speechSamples, undefined);
-    assert.match(readFileSync(output, 'utf8'), /speech_minutes=90/);
+    const matrices = Object.fromEntries(
+      readFileSync(output, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => {
+          const boundary = line.indexOf('=');
+          return [line.slice(0, boundary), JSON.parse(line.slice(boundary + 1)).include];
+        }),
+    );
+    assert.deepEqual(
+      [...matrices.debug_matrix, ...matrices.release_matrix].sort((a, b) =>
+        a.cohort.localeCompare(b.cohort),
+      ),
+      iosTestExecutionPlan().sort((a, b) => a.cohort.localeCompare(b.cohort)),
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

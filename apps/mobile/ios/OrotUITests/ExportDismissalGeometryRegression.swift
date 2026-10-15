@@ -24,6 +24,15 @@ enum ExportDismissalGeometryRegression {
             XCTAssertEqual(point.dx, 187.5, accuracy: 0.01)
             XCTAssertEqual(point.dy, sheet == expanded ? 59 : 162, accuracy: 0.01)
         }
+        let row = CGRect(x: 30, y: 180, width: 280, height: 60)
+        let rowPoint = try ExportDismissalGeometry.point(snapshot: baseline, session: session,
+                                                         applicationFrame: window, nowMs: 10000, preferredFrame: row)
+        XCTAssertTrue(row.contains(CGRect(x: rowPoint.dx - 22, y: rowPoint.dy - 22, width: 44, height: 44)))
+        XCTAssertFalse(small.contains(CGPoint(x: rowPoint.dx, y: rowPoint.dy)))
+        for unsafe in [small, CGRect(x: 0, y: 180, width: 43, height: 60)] {
+            XCTAssertThrowsError(try ExportDismissalGeometry.point(snapshot: baseline, session: session,
+                                                                   applicationFrame: window, nowMs: 10000, preferredFrame: unsafe))
+        }
         // No fixed coordinate is substituted when the safe backdrop is missing or narrower than a touch target.
         for sheet in [window, CGRect(x: 0, y: 50, width: 375, height: 617)] {
             try rejects(snapshot(sheet: sheet), session: session, expected: .noBackdrop)

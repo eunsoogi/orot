@@ -1,4 +1,4 @@
-name: Validate production and OAuth products
+name: Production build
 
 on:
   workflow_call:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   validation:
-    name: Build production and OAuth independently
+    name: Production
     runs-on: xcode-27
     timeout-minutes: 60
     steps:

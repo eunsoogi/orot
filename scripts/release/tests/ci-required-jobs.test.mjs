@@ -26,12 +26,12 @@ test('release gate mirrors all 22 required main branch-protection contexts', () 
     '.github/workflows/unit-test.yml': ['TypeScript typecheck', 'Unit and component tests'],
     '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
     '.github/workflows/e2e-test.yml': [
-      'iOS Simulator Build',
-      'iOS validation / Release UI and storage',
-      'iOS validation / Stateful data',
-      'iOS validation / Provider and capability',
-      'iOS validation / Speech transcription',
-      'iOS validation / Visit questions',
+      'E2E / Validate / Build',
+      'E2E / Validate / UI',
+      'E2E / Validate / Storage',
+      'E2E / Validate / Provider',
+      'E2E / Validate / Speech',
+      'E2E / Validate / Questions',
     ],
   };
 

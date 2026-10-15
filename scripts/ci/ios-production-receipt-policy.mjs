@@ -1,3 +1,5 @@
+import { verifyOAuthReceipt } from './oauth-test-results.mjs';
+
 const obligations = [
   'production-app',
   'foundation-models-production-boundary',
@@ -6,8 +8,10 @@ const obligations = [
   'oauth-simulator-harness',
 ];
 
-/** A producer receipt records completed build steps independently of later integration execution. Missing or stale receipts fail the protected production context. */
-export function verifyProductionReceipt(receipt, env) {
+const buildObligations = obligations.slice(0, 3);
+
+/** A build receipt proves only the default app, its real SDK linkage and Keychain defaults. OAuth execution is a separate required fact. */
+export function verifyProductionBuildReceipt(receipt, env) {
   if (
     !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') ||
     !/^[1-9]\d*$/.test(env.GITHUB_RUN_ID ?? '') ||
@@ -15,7 +19,7 @@ export function verifyProductionReceipt(receipt, env) {
   )
     throw new Error('Production receipt requires its actual workflow context');
   if (
-    receipt.schemaVersion !== 1 ||
+    receipt.schemaVersion !== 2 ||
     receipt.sourceSha !== env.GITHUB_SHA ||
     receipt.runId !== env.GITHUB_RUN_ID ||
     receipt.attempt !== env.GITHUB_RUN_ATTEMPT ||
@@ -30,10 +34,10 @@ export function verifyProductionReceipt(receipt, env) {
   if (
     Object.keys(receipt.obligations ?? {})
       .sort()
-      .join(',') !== obligations.slice().sort().join(',') ||
-    obligations.some((key) => receipt.obligations[key] !== 'passed')
+      .join(',') !== buildObligations.slice().sort().join(',') ||
+    buildObligations.some((key) => receipt.obligations[key] !== 'passed')
   )
-    throw new Error('Production or OAuth obligations did not complete');
+    throw new Error('Production build obligations did not complete');
   if (
     !/^[a-f0-9]{64}$/.test(receipt.appArtifacts?.appBinarySha256 ?? '') ||
     !/^[a-f0-9]{64}$/.test(receipt.appArtifacts?.infoPlistSha256 ?? '')
@@ -42,4 +46,15 @@ export function verifyProductionReceipt(receipt, env) {
   return receipt;
 }
 
+/** The protected aggregate requires all five original obligations at the same source/run/attempt. Neither producer can claim the other's result. */
+export function verifyProductionReceipt(receipt, env, oauth) {
+  verifyProductionBuildReceipt(receipt, env);
+  verifyOAuthReceipt(oauth, env);
+  return {
+    ...receipt,
+    obligations: Object.fromEntries(obligations.map((name) => [name, 'passed'])),
+  };
+}
+
 export const productionObligations = () => obligations.slice();
+export const productionBuildObligations = () => buildObligations.slice();

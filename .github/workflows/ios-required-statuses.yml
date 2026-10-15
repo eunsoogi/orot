@@ -17,11 +17,11 @@ jobs:
       fail-fast: false
       matrix:
         check:
-          - Release UI and storage
-          - Stateful data
-          - Provider and capability
-          - Speech transcription
-          - Visit questions
+          - UI
+          - Storage
+          - Provider
+          - Speech
+          - Questions
     steps:
       - name: Reject diagnostic and incomplete selection
         env: { INVALID: '${{ inputs.invalid_selection }}' }

@@ -1,0 +1,15 @@
+name: Prepare ephemeral macOS host
+description: Disable and verify host indexing before installing tools, extracting dependencies or preparing a Simulator.
+inputs:
+  log_directory:
+    description: Job-owned diagnostic directory.
+    default: artifacts/ios-focus
+runs:
+  using: composite
+  steps:
+    - name: Disable and verify Spotlight on the ephemeral host
+      # The hosted image's Node runs this dependency-free helper; the pinned build Node is installed afterward.
+      shell: bash
+      env:
+        LOG_DIRECTORY: ${{ inputs.log_directory }}
+      run: scripts/ci/run-command.sh ios-host-spotlight "$LOG_DIRECTORY/spotlight.log" -- node scripts/ci/suppress-hosted-spotlight.mjs

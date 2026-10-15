@@ -1,0 +1,61 @@
+name: OAuth build
+on:
+  workflow_call:
+    outputs:
+      archive_digest:
+        value: ${{ jobs.build.outputs.archive_digest }}
+      manifest_digest:
+        value: ${{ jobs.build.outputs.manifest_digest }}
+permissions: { contents: read }
+env:
+  CI: 'true'
+  TZ: UTC
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+jobs:
+  build:
+    name: OAuth
+    runs-on: xcode-27
+    timeout-minutes: 60
+    outputs:
+      archive_digest: ${{ steps.products.outputs.archive_digest }}
+      manifest_digest: ${{ steps.products.outputs.manifest_digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-oauth }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Verify the actual OAuth build toolchain
+        run: node --input-type=module -e 'import { oauthTestContext } from "./scripts/ci/oauth-test-context.mjs"; oauthTestContext();'
+      - name: Compile the package tests without executing them
+        run: scripts/ci/run-command.sh oauth-test-build artifacts/ios-oauth/build.log -- swift build --package-path packages/provider-openai --scratch-path "$RUNNER_TEMP/orot-oauth-tests" --build-tests
+      - name: Build the OAuth Simulator harness
+        run: |
+          scripts/ci/run-command.sh ios-oauth-build artifacts/ios-oauth/simulator-build.log -- xcodebuild \
+            -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
+            -scheme ChatGPTOAuthSpike -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build
+      - name: Discover and package the exact runnable tests and build provenance
+        id: products
+        run: |
+          swift test --package-path packages/provider-openai --scratch-path "$RUNNER_TEMP/orot-oauth-tests" list --skip-build > artifacts/ios-oauth/inventory.txt
+          products="$(swift build --package-path packages/provider-openai --scratch-path "$RUNNER_TEMP/orot-oauth-tests" --show-bin-path)"
+          node scripts/ci/oauth-test-products.mjs create artifacts/ios-oauth/products "$products" artifacts/ios-oauth/inventory.txt "$RUNNER_TEMP/orot-openai-oauth-derived/Build/Products/Debug-iphonesimulator/ChatGPTOAuthSpike.app/ChatGPTOAuthSpike"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-oauth-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-oauth/products
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-oauth-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-oauth/*.log
+            artifacts/ios-oauth/inventory.txt
+          if-no-files-found: warn
+          retention-days: 7

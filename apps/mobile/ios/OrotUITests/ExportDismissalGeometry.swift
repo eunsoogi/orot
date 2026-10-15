@@ -52,7 +52,9 @@ enum ExportDismissalGeometry {
         return Session(observerID: snapshot.observerID, atMs: snapshot.atMs)
     }
 
-    static func point(snapshot text: String, session: Session, applicationFrame: CGRect, nowMs: Double) throws -> CGVector {
+    static func point(snapshot text: String, session: Session, applicationFrame: CGRect, nowMs: Double,
+                      preferredFrame: CGRect? = nil) throws -> CGVector
+    {
         let snapshot = try decode(text)
         guard snapshot.observerID == session.observerID, snapshot.atMs >= session.atMs else { throw Failure.session }
         try fresh(snapshot, nowMs: nowMs)
@@ -77,7 +79,12 @@ enum ExportDismissalGeometry {
             CGRect(x: safe.minX, y: safe.minY, width: min(safe.maxX, blocked.minX) - safe.minX, height: safe.height),
             CGRect(x: max(safe.minX, blocked.maxX), y: safe.minY, width: safe.maxX - max(safe.minX, blocked.maxX), height: safe.height),
         ]
-        guard let region = corridors.filter({ valid($0) && $0.width >= minimumTouchSide && $0.height >= minimumTouchSide })
+        // A regression may place a real background control under the touch. Its intersection must still satisfy every safe-backdrop constraint.
+        if let preferredFrame, !valid(preferredFrame) {
+            throw Failure.geometry
+        }
+        let candidates = corridors.map { preferredFrame.map($0.intersection) ?? $0 }
+        guard let region = candidates.filter({ valid($0) && $0.width >= minimumTouchSide && $0.height >= minimumTouchSide })
             .max(by: { $0.width * $0.height < $1.width * $1.height }) else { throw Failure.noBackdrop }
         let hit = CGRect(x: region.midX - minimumTouchSide / 2, y: region.midY - minimumTouchSide / 2,
                          width: minimumTouchSide, height: minimumTouchSide)

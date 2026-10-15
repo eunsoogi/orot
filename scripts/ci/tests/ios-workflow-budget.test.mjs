@@ -1,93 +1,88 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
+import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
-import { expandedActionSteps } from './fixtures/ios-workflow.mjs';
+import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
 
-// Use the already-pinned ESLint YAML parser; this graph check adds no dependency or runner installation.
-const require = createRequire(import.meta.url);
-const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
-const workflow = (file) => yaml.load(readFileSync(file, 'utf8'));
-
-function macJobs(file) {
-  return Object.values(workflow(file).jobs).reduce((count, job) => {
-    assert.equal(
-      job.strategy?.matrix,
-      undefined,
-      'integration Mac jobs must not fan out by test/group',
-    );
-    if (job.uses) return count + macJobs(job.uses.replace(/^\.\//, ''));
-    return count + (job['runs-on'] === 'xcode-27' ? 1 : 0);
-  }, 0);
+const full = () => workflow('.github/workflows/ios-test-validation.yml');
+const read = (name) => workflow('.github/workflows/' + name);
+const needs = (job) => (typeof job.needs === 'string' ? [job.needs] : (job.needs ?? []));
+function ancestors(jobs, id) {
+  return needs(jobs[id]).flatMap((dependency) => [dependency, ...ancestors(jobs, dependency)]);
 }
 
-test('verified Release availability releases three consumers without waiting for unrelated tests', () => {
-  const full = workflow('.github/workflows/ios-test-validation.yml');
-  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 6);
-  assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
-  assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
-  assert.equal(full.jobs.release_products.needs, 'plan');
-  const consumers = ['release_core', 'release_ui', 'speech_execution'];
-  for (const id of consumers) {
-    assert.deepEqual(full.jobs[id].needs, ['plan', 'release_products']);
-    assert.equal(full.jobs[id].if, undefined);
+test('Debug, Release and OAuth consumers wait only for their corresponding separate producers', () => {
+  const { jobs } = full();
+  for (const id of [
+    'production_validation',
+    'debug_products',
+    'release_products',
+    'oauth_products',
+  ])
+    assert.equal(jobs[id].needs, 'plan');
+  for (const configuration of ['debug', 'release']) {
+    const consumer = jobs[configuration + '_execution'];
+    assert.deepEqual(consumer.needs, ['plan', configuration + '_products']);
+    assert.equal(consumer.uses, './.github/workflows/ios-test-cohort-execution.yml');
     assert.equal(
-      full.jobs[id].with.archive_digest,
-      '${{ needs.release_products.outputs.archive_digest }}',
+      consumer.with.archive_digest,
+      '${{ needs.' + configuration + '_products.outputs.archive_digest }}',
     );
     assert.equal(
-      full.jobs[id].with.manifest_digest,
-      '${{ needs.release_products.outputs.manifest_digest }}',
+      consumer.with.manifest_digest,
+      '${{ needs.' + configuration + '_products.outputs.manifest_digest }}',
     );
+    assert.equal(consumer.strategy['fail-fast'], false);
+    assert.equal(consumer.strategy['max-parallel'], undefined);
+    assert.equal(
+      consumer.strategy.matrix,
+      '${{ fromJSON(needs.plan.outputs.' + configuration + '_matrix) }}',
+    );
+    assert.equal(consumer.if, undefined);
   }
-  assert.equal(full.jobs.debug_execution.needs, 'plan');
-  assert.equal(full.jobs.release_products.with.profile, 'core');
-  assert.equal(full.jobs.debug_execution.with.profile, 'provider-data');
-  // Enumerate possible overlap states in the Mac dependency graph, rather than relying only on a max-parallel setting.
-  const ids = ['production_validation', 'release_products', 'debug_execution', ...consumers];
-  const ancestors = (id) => {
-    const needs = full.jobs[id].needs ?? [];
-    return (Array.isArray(needs) ? needs : [needs]).flatMap((dependency) => [
-      dependency,
-      ...ancestors(dependency),
-    ]);
-  };
+  assert.equal(jobs.oauth_execution.needs, 'oauth_products');
+  assert.equal(jobs.oauth_execution.uses, './.github/workflows/ios-oauth-execution.yml');
+  assert.equal(jobs.debug_products.with.profile, 'provider-data');
+  assert.equal(jobs.release_products.with.profile, 'core');
+  assert.equal(jobs.plan['runs-on'], 'ubuntu-24.04');
+  assert.equal(jobs.completeness['runs-on'], 'ubuntu-24.04');
+});
+
+test('the finite feature plan permits independent parallel jobs without repeating builds', () => {
+  const { jobs } = full();
+  const plan = iosTestExecutionPlan();
+  const ids = Object.keys(jobs).filter((id) => !['plan', 'completeness'].includes(id));
+  const weight = (id) =>
+    id === 'debug_execution'
+      ? plan.filter((entry) => entry.configuration === 'Debug').length
+      : id === 'release_execution'
+        ? plan.filter((entry) => entry.configuration === 'Release').length
+        : 1;
+  assert.equal(
+    ids.reduce((total, id) => total + weight(id), 0),
+    plan.length + 5,
+  );
+  // Enumerate dependency-compatible active job families. Matrix leaves share no dependency on one another.
   let maximum = 0;
   for (let bits = 0; bits < 1 << ids.length; bits++) {
     const active = ids.filter((_, index) => bits & (1 << index));
     if (
-      active.every((id) => {
-        // Completed test products unblock consumers while production and Debug can still execute.
-        return !ancestors(id).some((dependency) => active.includes(dependency));
-      })
+      active.every((id) => !ancestors(jobs, id).some((dependency) => active.includes(dependency)))
     )
-      maximum = Math.max(maximum, active.length);
+      maximum = Math.max(
+        maximum,
+        active.reduce((total, id) => total + weight(id), 0),
+      );
   }
-  assert.equal(maximum, 5);
-  for (const id of ids) {
-    assert.ok(full.jobs.completeness.needs.includes(id));
-    assert.equal(full.jobs[id].if, undefined);
-  }
-  assert.equal(full.jobs.completeness.needs.length, 6);
-  assert.ok(ancestors('speech_execution').includes('release_products'));
-  assert.ok(!ancestors('speech_execution').includes('debug_execution'));
+  assert.equal(maximum, plan.length + 2);
+  assert.deepEqual([...jobs.completeness.needs].sort(), ['plan', ...ids].sort());
+  for (const id of ids) assert.equal(jobs[id].if, undefined);
 });
 
-test('manual focused diagnostics reuse one configuration and do not allocate Mac slots for selection/results', () => {
-  const focus = workflow('.github/workflows/ios-focused.yml');
-  assert.equal(macJobs('.github/workflows/ios-focused.yml'), 2);
-  assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
-  assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
-  assert.equal(focus.jobs.products.needs, 'selection');
-  assert.equal(focus.jobs.execution.needs, 'products');
-});
-
-test('Release product availability never boots a simulator and production retains its independent receipt', () => {
-  const producer = workflow('.github/workflows/ios-test-products-build.yml');
-  const steps = producer.jobs.validation.steps;
+test('test producers publish portable products without booting a Simulator or running tests', () => {
+  const steps = read('ios-test-products-build.yml').jobs.validation.steps;
   assert.equal(
     steps.filter((step) => step.uses === './.github/actions/ios-test-products-build').length,
     1,
@@ -99,55 +94,73 @@ test('Release product availability never boots a simulator and production retain
   );
   assert.equal(publication.if, undefined);
   assert.equal(publication.with['if-no-files-found'], 'error');
-  const production = workflow('.github/workflows/ios-production-validation.yml');
-  const receipt = production.jobs.validation.steps.find(
-    (step) => step.with?.path === 'artifacts/ios-focus/production-receipt.json',
+  const diagnostics = steps.find((step) => step.name?.startsWith('Preserve build diagnostics'));
+  assert.equal(diagnostics.if, 'always()');
+  assert.ok(diagnostics.with.path.split('\n').includes('artifacts/ios-focus/*.log'));
+  const execution = JSON.stringify(read('ios-test-cohort-execution.yml'));
+  assert.match(execution, /actions\/download-artifact@/);
+  assert.doesNotMatch(execution, /ios-test-products-build|build-ios-tests/);
+});
+
+test('the final gate rejects every failed, cancelled, skipped or missing prerequisite', () => {
+  const { jobs } = full();
+  const gate = jobs.completeness.steps.find((step) => step.env?.RESULTS);
+  assert.equal(jobs.completeness.if, 'always()');
+  const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
+  const success = Object.fromEntries(
+    jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
   );
-  assert.equal(receipt.if, 'always()');
+  assert.doesNotThrow(() => evaluate({ env: { RESULTS: JSON.stringify(success) } }));
+  for (const id of jobs.completeness.needs) {
+    for (const result of ['failure', 'cancelled', 'skipped', undefined])
+      assert.throws(() =>
+        evaluate({ env: { RESULTS: JSON.stringify({ ...success, [id]: { result } }) } }),
+      );
+  }
+});
+
+test('each executor verifies artifacts before one boot and retains first-failure diagnostics', () => {
+  const source = readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8');
+  assert.equal((source.match(/ios-test-simulator\.mjs prepare-cohort/g) ?? []).length, 1);
+  assert.ok(
+    source.indexOf('Verify configuration, source and product integrity before boot') <
+      source.indexOf('prepare-cohort'),
+  );
+  assert.match(source, /if: always\(\)[\s\S]*ios-test-simulator\.mjs cleanup/);
+  assert.doesNotMatch(
+    source,
+    /continue-on-error|build-ios-tests\.mjs|test-iterations|prepare-ios-test-ui|DeviceHub/,
+  );
   const action = workflow('.github/actions/ios-test-cohort-run/action.yml');
   const rejection = action.runs.steps.find((step) =>
     step.run?.includes('probe-ios-test-products.mjs'),
   );
-  assert.equal(rejection.if, "inputs.cohort == 'release' || inputs.cohort == 'release-core'");
+  assert.equal(rejection.if, "inputs.cohort == 'core-integration'");
+  const upload = action.runs.steps.find(
+    (step) => step.name === 'Preserve all first-attempt diagnostics',
+  );
+  assert.equal(upload.if, 'always()');
+  assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/results'));
+  assert.ok(iosTestInventory('core').includes(hostConnectionTest));
 });
 
-test('the full gate rejects failure, cancellation, skip and missing results from each producer or consumer', () => {
-  const full = workflow('.github/workflows/ios-test-validation.yml');
-  const gate = full.jobs.completeness.steps.find((step) => step.env?.RESULTS);
-  assert.equal(full.jobs.completeness.if, 'always()');
-  const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
-  const success = Object.fromEntries(
-    full.jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
-  );
-  assert.doesNotThrow(() => evaluate({ env: { RESULTS: JSON.stringify(success) } }));
-  for (const id of full.jobs.completeness.needs) {
-    for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
-      const changed = { ...success, [id]: { result } };
-      assert.throws(() => evaluate({ env: { RESULTS: JSON.stringify(changed) } }));
-    }
-  }
-});
-
-test('every cohort boots only once after verification and preserves the original test, failure and production boundaries', () => {
-  const consumer = readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8');
-  assert.equal((consumer.match(/ios-test-simulator\.mjs prepare-cohort/g) ?? []).length, 1);
-  assert.ok(
-    consumer.indexOf('Verify configuration, source and product integrity before boot') <
-      consumer.indexOf('prepare-cohort'),
-  );
-  assert.match(consumer, /if: always\(\)[\s\S]*ios-test-simulator\.mjs cleanup/);
-  assert.doesNotMatch(consumer, /continue-on-error|build-ios-tests\.mjs|test-iterations/);
-  const action = readFileSync('.github/actions/ios-production-validation/action.yml', 'utf8');
-  assert.match(action, /build-ios-simulator-app\.sh build/);
-  assert.match(action, /swift test --package-path packages\/provider-openai/);
-  assert.match(action, /orot-openai-oauth-derived/);
-  const productWorkflow = workflow('.github/workflows/ios-test-build-and-execute.yml');
-  const composite = yaml.load(action);
-  // Production cache validation needs every toolchain field even on a fresh cache miss.
-  for (const step of composite.runs.steps.filter((step) =>
-    /ios-derived-data-cache\.mjs (prepare|write) production/.test(step.run ?? ''),
+test('production verifies actual tools before cache, Pods and its isolated app build', () => {
+  const steps = expandedActionSteps('.github/actions/ios-production-validation/action.yml');
+  const guard = steps.findIndex((step) => /verify-toolchain\.sh --cocoapods/.test(step.run ?? ''));
+  assert.ok(guard >= 0);
+  assert.equal(steps[guard].if, undefined);
+  assert.equal(steps[guard]['continue-on-error'], undefined);
+  for (const command of [
+    'ios-derived-data-cache.mjs prepare production',
+    'ios:pods',
+    'build-ios-simulator-app.sh build',
+  ])
+    assert.ok(guard < steps.findIndex((step) => (step.run ?? '').includes(command)), command);
+  const producer = read('ios-production-validation.yml');
+  for (const step of steps.filter((value) =>
+    /ios-derived-data-cache\.mjs (prepare|write) production/.test(value.run ?? ''),
   )) {
-    const environment = { ...productWorkflow.env, ...step.env };
+    const env = { ...producer.env, ...step.env };
     for (const name of [
       'IOS_CACHE_RUNNER_OS',
       'IOS_CACHE_RUNNER_ARCH',
@@ -160,71 +173,21 @@ test('every cohort boots only once after verification and preserves the original
       'EXPECTED_IOS_SIMULATOR_SDK',
       'XCODEBUILD_FINGERPRINT',
     ])
-      assert.ok(environment[name], 'Missing production toolchain input: ' + name);
+      assert.ok(env[name], 'Missing production toolchain input: ' + name);
   }
-  const testAction = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
-  assert.match(testAction, /build-ios-tests\.mjs "\$PROFILE" artifacts\/ios-focus\/DerivedData/);
-  assert.equal(
-    new Set(
-      ['release', 'speech', 'debug'].flatMap((name) =>
-        iosTestCohortTasks(name).flatMap((task) => task.identifiers),
-      ),
-    ).size,
-    82,
-  );
 });
 
-test('production rejects mismatched actual tools before cache preparation, Pods and either build', () => {
-  const steps = expandedActionSteps('.github/actions/ios-production-validation/action.yml');
-  const guard = steps.findIndex((step) => /verify-toolchain\.sh --cocoapods/.test(step.run ?? ''));
-  assert.ok(guard >= 0, 'Actual production tools must be verified');
-  assert.equal(steps[guard].if, undefined);
-  assert.equal(steps[guard]['continue-on-error'], undefined);
-  for (const command of [
-    'ios-derived-data-cache.mjs prepare production',
-    'ios:pods',
-    'build-ios-simulator-app.sh build',
-    'swift test --package-path',
-  ])
-    assert.ok(guard < steps.findIndex((step) => (step.run ?? '').includes(command)), command);
-});
-
-test('removing duplicated GUI preflight retains the original host case and first-failure artifacts', () => {
-  assert.ok(iosTestInventory('core').includes(hostConnectionTest));
-  const action = readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8');
-  assert.doesNotMatch(action, /prepare-ios-test-ui|DeviceHub|host-preparation\.xcresult/);
-  const execution = workflow('.github/actions/ios-test-cohort-run/action.yml');
-  const upload = execution.runs.steps.find(
-    (step) => step.name === 'Preserve all first-attempt diagnostics',
-  );
-  assert.equal(upload.if, 'always()');
-  assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/results'));
-  const combined = workflow('.github/workflows/ios-test-build-and-execute.yml');
-  const diagnostics = combined.jobs.validation.steps.find((step) =>
-    step.name?.startsWith('Preserve build diagnostics'),
-  );
-  assert.equal(diagnostics.if, 'always()');
-  assert.ok(diagnostics.with.path.split('\n').includes('artifacts/ios-focus/*.log'));
-});
-
-test('colocated builds are verified locally and all integration routes share one live-run budget', () => {
-  const combined = workflow('.github/workflows/ios-test-build-and-execute.yml');
-  const steps = combined.jobs.validation.steps;
-  assert.equal(
-    steps.filter((step) => step.uses === './.github/actions/ios-test-products-build').length,
-    1,
-  );
-  assert.equal(
-    steps.filter((step) => step.uses === './.github/actions/ios-test-cohort-run').length,
-    1,
-  );
-  assert.ok(steps.every((step) => !step.uses?.startsWith('actions/download-artifact@')));
-  const concurrency = workflow('.github/workflows/ios-test-validation.yml').concurrency;
-  assert.equal(concurrency.group, 'ios-ci-macos-${{ github.repository }}');
-  assert.equal(concurrency['cancel-in-progress'], false);
-  const focused = workflow('.github/workflows/ios-focused.yml');
-  for (const name of ['products', 'execution']) {
-    assert.equal(focused.jobs[name].concurrency.group, 'ios-ci-macos-${{ github.repository }}');
-    assert.equal(focused.jobs[name].concurrency['cancel-in-progress'], false);
-  }
+test('full and focused execution retain one repository allocation window and separate build and test jobs', () => {
+  assert.deepEqual(full().concurrency, {
+    group: 'ios-ci-macos-${{ github.repository }}',
+    'cancel-in-progress': false,
+  });
+  const focus = read('ios-focused.yml');
+  assert.equal(focus.jobs.selection['runs-on'], 'ubuntu-24.04');
+  assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
+  assert.equal(focus.jobs.products.needs, 'selection');
+  assert.equal(focus.jobs.execution.needs, 'products');
+  assert.equal(Object.values(focus.jobs).filter((job) => job['runs-on'] === 'xcode-27').length, 2);
+  for (const id of ['products', 'execution'])
+    assert.deepEqual(focus.jobs[id].concurrency, full().concurrency);
 });

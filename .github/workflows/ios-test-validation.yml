@@ -1,138 +1,120 @@
-name: iOS test validation
-
+name: Integration validation
 on:
   workflow_call:
-
-permissions:
-  contents: read
-
+permissions: { contents: read }
 concurrency:
-  # Full and diagnostic integration graphs share this repository budget; superseded PR runs are cancelled by their caller.
+  # Full and focused routes share one repository-wide native allocation window.
   group: ios-ci-macos-${{ github.repository }}
   cancel-in-progress: false
-
 jobs:
   plan:
-    name: Plan integration coverage and macOS budget
+    name: Plan / Coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      release_core_minutes: ${{ steps.plan.outputs.release_core_minutes }}
-      release_ui_minutes: ${{ steps.plan.outputs.release_ui_minutes }}
-      speech_minutes: ${{ steps.plan.outputs.speech_minutes }}
-      debug_minutes: ${{ steps.plan.outputs.debug_minutes }}
+      debug_matrix: ${{ steps.plan.outputs.debug_matrix }}
+      release_matrix: ${{ steps.plan.outputs.release_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
+        with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-      - name: Validate the complete logical plan before Mac allocation
+        with: { node-version-file: .nvmrc }
+      - name: Validate all independent feature suites before Mac allocation
         id: plan
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
   production_validation:
-    name: Production and OAuth validation
-    # These separate products remain mandatory but are not inputs to any test product.
+    name: Build
     needs: plan
     uses: ./.github/workflows/ios-production-validation.yml
-  debug_execution:
-    name: Debug provider and capability validation
+  oauth_products:
+    name: Build
     needs: plan
-    uses: ./.github/workflows/ios-test-build-and-execute.yml
+    uses: ./.github/workflows/ios-oauth-build.yml
+  oauth_execution:
+    name: Test
+    needs: oauth_products
+    uses: ./.github/workflows/ios-oauth-execution.yml
     with:
-      cohort: debug
-      profile: provider-data
-      artifact_name: ios-test-debug-products
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
-  release_products:
-    name: Release test products
-    # Completing this build-only job makes verified products available without waiting for any integration/UI suite.
+      archive_digest: ${{ needs.oauth_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.oauth_products.outputs.manifest_digest }}
+  debug_products:
+    name: Build
     needs: plan
     uses: ./.github/workflows/ios-test-products-build.yml
     with:
+      name: Debug
+      profile: provider-data
+      artifact_name: ios-test-debug-products
+      timeout_minutes: 60
+  release_products:
+    name: Build
+    needs: plan
+    uses: ./.github/workflows/ios-test-products-build.yml
+    with:
+      name: Release
       profile: core
       artifact_name: ios-test-release-products
       timeout_minutes: 60
-  release_core:
-    name: Core, backup, local-model and question validation
-    needs: [plan, release_products]
+  debug_execution:
+    name: Test
+    # The four independent Debug suites start as soon as their one shared build is available.
+    needs: [plan, debug_products]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.debug_matrix) }}
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
-      cohort: release-core
-      profile: core
+      name: ${{ matrix.name }}
+      cohort: ${{ matrix.cohort }}
+      profile: ${{ matrix.profile }}
+      artifact_name: ios-test-debug-products
+      archive_digest: ${{ needs.debug_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.debug_products.outputs.manifest_digest }}
+      timeout_minutes: ${{ matrix.minutes }}
+  release_execution:
+    name: Test
+    # No independent suite waits for another suite, Debug build, or production/OAuth work.
+    needs: [plan, release_products]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.release_matrix) }}
+    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    with:
+      name: ${{ matrix.name }}
+      cohort: ${{ matrix.cohort }}
+      profile: ${{ matrix.profile }}
       artifact_name: ios-test-release-products
       archive_digest: ${{ needs.release_products.outputs.archive_digest }}
       manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_core_minutes) }}
-  release_ui:
-    name: Navigation, recording and calendar fixtures
-    needs: [plan, release_products]
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
-    with:
-      cohort: release-ui
-      profile: fixtures
-      artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_ui_minutes) }}
-  speech_execution:
-    name: Authentic Korean Speech and UI validation
-    needs: [plan, release_products]
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
-    with:
-      cohort: speech
-      profile: speech
-      artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
+      timeout_minutes: ${{ matrix.minutes }}
   completeness:
-    name: iOS test completeness
-    # One complete candidate execution requires production, test products and every execution job.
+    name: Validate / Complete
     needs:
       [
+        plan,
         production_validation,
+        oauth_products,
+        oauth_execution,
+        debug_products,
         release_products,
-        release_core,
-        release_ui,
-        speech_execution,
         debug_execution,
+        release_execution,
       ]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
+        with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-      - name: Require every build and execution boundary to succeed
+        with: { node-version-file: .nvmrc }
+      - name: Require every producer and executor to succeed
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: node -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) throw new Error("Incomplete integration validation");'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: ios-cohort-report-release-core-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/release-core
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-cohort-report-release-ui-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/release-ui
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-cohort-report-speech-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/speech
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/debug
-      - name: Verify complete current-head integration observations and authentic Speech
-        run: |
-          node scripts/ci/ios-test-cohort-results.mjs release-core artifacts/ios-reports/release-core/results.json artifacts/ios-reports/release-core-verified.json
-          node scripts/ci/ios-test-cohort-results.mjs release-ui artifacts/ios-reports/release-ui/results.json artifacts/ios-reports/release-ui-verified.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech/results.json artifacts/ios-reports/speech-verified.json
-          node scripts/ci/ios-test-cohort-results.mjs debug artifacts/ios-reports/debug/results.json artifacts/ios-reports/debug-verified.json
-          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech/speech-integration/attachments artifacts/ios-reports/speech-accuracy.json
+          pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports
+      - name: Verify every planned first attempt and authentic Korean Speech evidence
+        run: node scripts/ci/ios-test-plan-results.mjs artifacts/ios-reports

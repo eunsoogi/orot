@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { indexingDisabled, suppressHostedSpotlight } from '../suppress-hosted-spotlight.mjs';
+import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
 
 const hosted = {
   CI: 'true',
@@ -14,20 +14,25 @@ const hosted = {
   RUNNER_ENVIRONMENT: 'github-hosted',
 };
 const disabled = { status: 0, stdout: '/System/Volumes/Data:\n\tIndexing disabled.\n' };
-function exercise(results, env = hosted, platform = 'darwin') {
+function exercise(results, env = hosted, platform = 'darwin', expectedFailure = false) {
   const calls = [];
   const events = [];
-  const verified = suppressHostedSpotlight({
-    env,
-    platform,
-    execute: (...args) => {
-      calls.push(args);
-      assert.ok(results.length, 'unexpected extra command or retry');
-      return results.shift();
-    },
-    report: (event) => events.push(event),
-  });
-  return { calls, events, verified };
+  const invoke = () =>
+    suppressHostedSpotlight({
+      env,
+      platform,
+      execute: (...args) => {
+        calls.push(args);
+        assert.ok(results.length, 'unexpected extra command or retry');
+        return results.shift();
+      },
+      report: (event) => events.push(event),
+    });
+  if (expectedFailure) {
+    assert.throws(invoke, /Hosted Spotlight suppression was not verified/);
+    return { calls, events };
+  }
+  return { calls, events, verified: invoke() };
 }
 
 test('local, Linux and self-hosted machines issue no Spotlight commands', () => {
@@ -78,8 +83,7 @@ test('failure, missing privilege and timeout remain unverified without retry or 
     { status: null, signal: 'SIGKILL', error: { code: 'ETIMEDOUT' } },
     { status: null, error: { code: 'ENOENT' } },
   ]) {
-    const result = exercise([failure]);
-    assert.equal(result.verified, false);
+    const result = exercise([failure], hosted, 'darwin', true);
     assert.equal(result.calls.length, 1);
     assert.equal(result.events.at(-1).outcome, 'attempted-unverified');
     assert.equal(result.events[1].stderr, failure.stderr ?? '');
@@ -96,7 +100,7 @@ test('readback cannot turn another volume, enabled state or a failed command int
     { status: 0, stdout: disabled.stdout + '/:\n Indexing disabled.\n' },
   ]) {
     assert.equal(indexingDisabled(result), false);
-    assert.equal(exercise([disabled, result]).verified, false);
+    exercise([disabled, result], hosted, 'darwin', true);
   }
 });
 
@@ -139,26 +143,30 @@ test('a timed-out sudo-shaped command terminates its operation before the caller
     rmSync(directory, { recursive: true, force: true });
   });
   const started = performance.now();
-  const verified = suppressHostedSpotlight({
-    env: hosted,
-    platform: 'darwin',
-    report() {},
-    execute(program, args, options) {
-      assert.equal(program, '/usr/bin/sudo');
-      // Replace only the privilege launcher and mdutil with inert equivalents. The actual
-      // supervisor, when present, still owns its subprocess; use one second for this test.
-      const command = args.slice(1);
-      const index = command.indexOf('/usr/bin/mdutil');
-      assert.ok(index >= 0);
-      if (command[0] === '/usr/bin/perl') command[index - 1] = '1';
-      command.splice(index, command.length - index, process.execPath, operation);
-      outcome = spawnSync(process.execPath, [parent, ...command], {
-        ...options,
-        timeout: 3000,
-      });
-      return outcome;
-    },
-  });
+  assert.throws(
+    () =>
+      suppressHostedSpotlight({
+        env: hosted,
+        platform: 'darwin',
+        report() {},
+        execute(program, args, options) {
+          assert.equal(program, '/usr/bin/sudo');
+          // Replace only the privilege launcher and mdutil with inert equivalents. The actual
+          // supervisor, when present, still owns its subprocess; use one second for this test.
+          const command = args.slice(1);
+          const index = command.indexOf('/usr/bin/mdutil');
+          assert.ok(index >= 0);
+          if (command[0] === '/usr/bin/perl') command[index - 1] = '1';
+          command.splice(index, command.length - index, process.execPath, operation);
+          outcome = spawnSync(process.execPath, [parent, ...command], {
+            ...options,
+            timeout: 3000,
+          });
+          return outcome;
+        },
+      }),
+    /Hosted Spotlight suppression was not verified/,
+  );
   pid = Number(readFileSync(pidFile, 'utf8'));
   const state = spawnSync('ps', ['-p', String(pid), '-o', 'stat='], {
     encoding: 'utf8',
@@ -167,7 +175,6 @@ test('a timed-out sudo-shaped command terminates its operation before the caller
   assert.ok(performance.now() - started < 5000, 'subprocess wait exceeded its outer bound');
   assert.equal(outcome.status, 124);
   assert.equal(outcome.signal, null);
-  assert.equal(verified, false);
 });
 
 test('the supervisor preserves a completed operation status and output', () => {
@@ -187,21 +194,27 @@ test('the supervisor preserves a completed operation status and output', () => {
   }
 });
 
-test('every native producer and consumer suppresses indexing before dependency extraction', () => {
-  const require = createRequire(import.meta.url);
-  const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
-  const load = (path) => yaml.load(readFileSync(path, 'utf8'));
+test('every native producer and consumer suppresses indexing before dependencies or product download', () => {
   const stages = [
-    load('.github/actions/ios-native-toolchain/action.yml').runs.steps,
-    load('.github/workflows/ios-test-cohort-execution.yml').jobs.execution.steps,
-    load('.github/workflows/ios-focused.yml').jobs.execution.steps,
-  ];
+    workflow('.github/actions/ios-native-toolchain/action.yml').runs.steps,
+    workflow('.github/workflows/ios-test-cohort-execution.yml').jobs.execution.steps,
+    workflow('.github/workflows/ios-focused.yml').jobs.execution.steps,
+  ].map((steps) =>
+    steps.flatMap((step) =>
+      step.uses?.startsWith('./.github/actions/')
+        ? expandedActionSteps(step.uses + '/action.yml')
+        : [step],
+    ),
+  );
   for (const steps of stages) {
     const suppression = steps.findIndex((step) =>
       step.run?.includes('suppress-hosted-spotlight.mjs'),
     );
-    const dependencies = steps.findIndex((step) => step.run?.includes('pnpm install'));
-    assert.ok(suppression >= 0 && suppression < dependencies);
+    const preparation = steps.findIndex(
+      (step) =>
+        step.run?.includes('pnpm install') || step.uses?.startsWith('actions/download-artifact@'),
+    );
+    assert.ok(suppression >= 0 && suppression < preparation);
     assert.ok(steps[suppression].run.includes('run-command.sh'));
     assert.equal(steps[suppression]['continue-on-error'], undefined);
   }

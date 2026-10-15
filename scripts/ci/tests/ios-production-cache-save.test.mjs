@@ -38,8 +38,6 @@ test('only verified production outputs are cached before later integration or UI
     'ios-derived-data-cache.mjs write production',
     'verify-apple-model-product.mjs production',
     'verify-simulator-keychain-defaults.mjs',
-    'swift test --package-path packages/provider-openai',
-    'ios-oauth-build',
     'ios-production-receipt.mjs write',
   ]) {
     const index = position(command);

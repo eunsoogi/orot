@@ -1,8 +1,9 @@
-name: Build portable integration products
+name: Integration build
 
 on:
   workflow_call:
     inputs:
+      name: { required: true, type: string }
       profile: { required: true, type: string }
       artifact_name: { required: true, type: string }
       timeout_minutes: { required: true, type: number }
@@ -23,7 +24,7 @@ env:
 
 jobs:
   validation:
-    name: Build verified Release products
+    name: ${{ inputs.name }}
     runs-on: xcode-27
     timeout-minutes: ${{ inputs.timeout_minutes }}
     outputs:

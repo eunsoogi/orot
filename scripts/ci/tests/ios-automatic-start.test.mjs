@@ -27,11 +27,12 @@ test('automatic full validation plans coverage without deployment approval and r
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.plan['continue-on-error'], undefined);
   assert.equal(full.jobs.production_validation.needs, 'plan');
-  assert.equal(full.jobs.debug_execution.needs, 'plan');
+  assert.equal(full.jobs.debug_products.needs, 'plan');
+  assert.equal(full.jobs.oauth_products.needs, 'plan');
+  assert.equal(full.jobs.oauth_execution.needs, 'oauth_products');
+  assert.deepEqual(full.jobs.debug_execution.needs, ['plan', 'debug_products']);
   assert.equal(full.jobs.release_products.needs, 'plan');
-  assert.deepEqual(full.jobs.release_core.needs, ['plan', 'release_products']);
-  assert.deepEqual(full.jobs.release_ui.needs, ['plan', 'release_products']);
-  assert.deepEqual(full.jobs.speech_execution.needs, ['plan', 'release_products']);
+  assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'release_products']);
   assert.equal(full.on.workflow_dispatch, undefined);
   assert.ok(Object.hasOwn(full.on, 'workflow_call'));
 });

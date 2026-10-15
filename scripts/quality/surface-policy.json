@@ -101,7 +101,7 @@
     },
     "packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved": {
       "reason": "Swift Package Manager resolution snapshot, not hand-authored source.",
-      "validation": "The required iOS Simulator Build job resolves the standalone package."
+      "validation": "E2E / Build / OAuth resolves the standalone package; E2E / Validate / Build requires its separate execution receipt."
     },
     "scripts/quality/Gemfile.lock": {
       "reason": "Generated Ruby gem resolution data, pinned by Bundler rather than a formatter.",

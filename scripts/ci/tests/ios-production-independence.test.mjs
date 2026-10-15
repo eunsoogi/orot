@@ -33,7 +33,14 @@ test('production and OAuth remain mandatory without delaying test-product consum
   assert.equal(jobs.production_validation.needs, 'plan');
   assert.equal(jobs.production_validation.if, undefined);
   assert.equal(jobs.release_products.needs, 'plan');
-  for (const id of ['release_products', 'release_core', 'release_ui', 'speech_execution']) {
+  for (const id of [
+    'debug_products',
+    'release_products',
+    'debug_execution',
+    'release_execution',
+    'oauth_products',
+    'oauth_execution',
+  ]) {
     assert.ok(!ancestors(jobs, id).includes('production_validation'), id);
   }
   assert.ok(jobs.completeness.needs.includes('production_validation'));
@@ -44,13 +51,24 @@ test('production and OAuth remain mandatory without delaying test-product consum
     'build-ios-simulator-app.sh build',
     'verify-apple-model-product.mjs production',
     'verify-simulator-keychain-defaults.mjs',
-    'swift test --package-path packages/provider-openai',
-    'ChatGPTOAuthSpike.xcodeproj',
   ]) {
     assert.ok(source.includes(obligation), obligation);
     assert.ok(source.indexOf(obligation) < source.indexOf('ios-production-receipt.mjs write'));
   }
-  assert.doesNotMatch(source, /build-ios-tests|run-ios-tests|prepare-cohort/);
+  assert.doesNotMatch(
+    source,
+    /build-ios-tests|run-ios-tests|prepare-cohort|swift test|ChatGPTOAuthSpike/,
+  );
+  const oauthBuild = commands(read(jobs.oauth_products.uses).jobs.build.steps).join('\n');
+  const oauthTest = commands(read(jobs.oauth_execution.uses).jobs.execution.steps).join('\n');
+  assert.match(oauthBuild, /swift build[^\n]+--build-tests/);
+  assert.match(oauthBuild, /ChatGPTOAuthSpike.xcodeproj/);
+  assert.match(oauthBuild, /swift test[^\n]+list --skip-build/);
+  assert.doesNotMatch(oauthBuild, /oauth-test-products.mjs execute|xcrun xctest/);
+  assert.match(oauthTest, /oauth-test-products.mjs execute/);
+  assert.doesNotMatch(oauthTest, /swift build|swift test|xcodebuild/);
+  assert.equal(jobs.oauth_execution.needs, 'oauth_products');
+  assert.ok(jobs.completeness.needs.includes('oauth_execution'));
 });
 
 test('portable test producers never compile or cache unrelated production or OAuth products', () => {

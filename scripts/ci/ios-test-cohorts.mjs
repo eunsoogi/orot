@@ -20,6 +20,21 @@ const cohorts = {
     profiles: ['provider-data', 'health-import', 'microphone', 'provider-selection'],
     minutes: 180,
   },
+  // Hosted jobs separate independent feature suites. Only phases that exchange state stay in one task driver.
+  'core-integration': { profiles: ['core'], suites: ['integration'], minutes: 45 },
+  'core-ui': { profiles: ['core'], suites: ['ui'], minutes: 45 },
+  persistence: { profiles: ['core'], suites: ['shared-persistence'], minutes: 45 },
+  isolation: { profiles: ['core'], suites: ['isolation'], minutes: 30 },
+  backup: { profiles: ['backup'], minutes: 65 },
+  'local-model': { profiles: ['local-model'], minutes: 65 },
+  navigation: { profiles: ['fixtures'], suites: ['navigation'], minutes: 60 },
+  recordings: { profiles: ['fixtures'], suites: ['recordings'], minutes: 60 },
+  questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 45 },
+  calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 60 },
+  provider: { profiles: ['provider-data'], minutes: 45 },
+  health: { profiles: ['health-import'], minutes: 45 },
+  microphone: { profiles: ['microphone'], minutes: 45 },
+  selection: { profiles: ['provider-selection'], minutes: 45 },
 };
 
 /** A cohort owns one destination only when configuration, compiler flags, runtime and device all agree. Speech retains its separate pinned runtime. */
@@ -73,6 +88,7 @@ export function iosTestCohortTasks(name) {
                 ],
         );
   return tasks
+    .filter((task) => !cohorts[name].suites || cohorts[name].suites.includes(task.suite))
     .filter(
       (task) =>
         task.profile !== 'fixtures' ||
