@@ -54,3 +54,35 @@ test('Speech preparation diagnoses each public asset boundary without changing i
   assert.match(source, /XCTAssertGreaterThan[\s\S]*compatibleFormatCount/);
   assert.match(source, /XCTAssertEqual\(result\["inputAudioUsed"\] as\? Bool, false\)/);
 });
+
+test('Speech failure snapshots read public progress without another async request or installation attempt', () => {
+  const source = readFileSync(
+    'apps/mobile/ios/OrotIntegrationTests/SpeechAssetPreparationTests.swift',
+    'utf8',
+  );
+  assert.equal((source.match(/installation\.downloadAndInstall\(\)/g) ?? []).length, 1);
+  const trackingStart = source.indexOf('trace.trackInstallationProgress(installation.progress)');
+  assert.ok(
+    trackingStart >= 0 && trackingStart < source.indexOf('installation.downloadAndInstall()'),
+  );
+  const snapshot = source.slice(
+    source.indexOf('func snapshot()'),
+    source.indexOf('private var elapsedMs'),
+  );
+  assert.match(snapshot, /installationProgressInitial/);
+  assert.match(snapshot, /progressSnapshot\(installationProgress\)/);
+  for (const key of [
+    'totalUnitCount',
+    'completedUnitCount',
+    'fractionCompleted',
+    'isIndeterminate',
+    'isFinished',
+    'isCancelled',
+    'isPaused',
+  ])
+    assert.ok(snapshot.includes(`progress.${key}`), key);
+  assert.doesNotMatch(
+    snapshot,
+    /await|downloadAndInstall|AssetInventory|localizedDescription|userInfo/,
+  );
+});

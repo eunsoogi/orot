@@ -7,6 +7,7 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
+import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -70,6 +71,10 @@ if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
   throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
 const stopSampling = iosTestResourceSampler(resolve(results) + '.resources.jsonl');
+const stopDiagnostics =
+  profile === 'speech' && tests.some((test) => test.includes('/SpeechAssetPreparationTests/'))
+    ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')
+    : async () => {};
 const started = Date.now();
 const outcome = spawn(
   'xcodebuild',
@@ -114,6 +119,7 @@ try {
     outcome.once('error', reject);
     outcome.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
+  await stopDiagnostics();
   if (status !== 0) {
     const diagnostic = spawnSync(
       'xcrun',
@@ -144,5 +150,6 @@ try {
   console.log(`IOS_TEST_STAGE elapsed_ms=${Date.now() - started} exit=${status}`);
   process.exitCode = status;
 } finally {
+  await stopDiagnostics();
   stopSampling();
 }

@@ -82,6 +82,8 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 
 제품과 의존성을 준비한 뒤 기록된 기기만 부팅합니다. `test-without-building`은 consumer에서 다시 컴파일하지 않습니다. CI는 run·attempt·source와 build input·제품 digest를 검증한 뒤 Simulator를 생성하며, 검증 실패를 빌드나 다른 제품으로 대체하지 않습니다. 실행은 한 destination과 worker를 사용하고 첫 실패·결과 bundle·첨부 자료·단계 시간·resource samples를 보존합니다.
 
+Speech 자산 준비는 한 번의 설치 요청과 기존 180초 제한을 유지합니다. 요청 직전과 성공·실패 시점의 공개 `Progress` 수치를 첨부하며, 이 단위를 다운로드 바이트나 설치 성공으로 해석하지 않습니다. 준비 실행 중에는 소유 Simulator의 Orot 진단과 관측된 자산·Speech 프로세스의 공개 로그를 최대 8 MiB까지 보존합니다. 수집기 자체에 90분 상한을 두고 테스트 종료 시 해당 자식 프로세스만 정리합니다. 수집 실패·잘림·종료 확인 실패는 별도로 기록하며 원래 테스트 결과를 바꾸지 않습니다.
+
 테스트 실행 helper는 호출마다 새 UUID를 전달합니다. 테스트 target에만 포함되는 공통 기본 클래스는 현재 사례 이름을 해당 runner의 컨테이너에 기록하고, 정리 단계까지 성공했을 때 지웁니다. 실패나 runner 크래시가 남긴 기록은 같은 호출의 후속 본문을 건너뛰게 합니다. 원래 실패와 미실행 사례는 결과에 남으며, 누락·건너뜀은 기존 결과 검증에서 통과하지 못합니다. runner가 기본 설정에 도달하기 전의 시작 실패는 이 기록으로 차단할 수 없습니다. Core와 Speech의 iOS·UI target은 서로 다른 컨테이너를 쓰므로 앞 target의 검증이 성공해야 다음 target을 실행합니다. Xcode에서 테스트를 직접 실행할 때도 새 `OROT_IOS_TEST_INVOCATION` UUID를 runner 환경에 지정해야 합니다.
 
 `fixtures`, `health-import`, `microphone`, `provider-selection`은 `run-ios-fixture-tests.mjs`로 실행합니다. 이 helper는 사례마다 소유한 앱과 Keychain을 초기화하고, 각 결과를 검증한 뒤 합성 앱 데이터를 제거합니다. `backup`의 snapshot 단계와 `local-model`의 재실행 단계는 각각 전용 helper의 순서를 따르며, process restart에 필요한 Keychain·자료를 유지합니다. 프로필이 다른 기기나 공유 Core·Speech 컨테이너를 이 helper로 초기화하지 마세요.
@@ -104,7 +106,7 @@ Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음
 
 ## 전체 CI와 제품 재사용
 
-`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `ios-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. 계획된 Mac 작업은 총 5개이며 현재 그래프에서는 하나씩 실행합니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
+`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `ios-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. 계획된 Mac 작업은 총 5개이며 Debug와 Release를 독립 VM에서 병렬 실행한 뒤 두 작업이 모두 성공하면 Speech 3개를 순차 실행합니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
 
 Release producer는 기본 production 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 먼저 검증하고, 같은 작업에서 iOS Release 제품을 만듭니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달합니다. 뒤의 iOS 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, iOS 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 

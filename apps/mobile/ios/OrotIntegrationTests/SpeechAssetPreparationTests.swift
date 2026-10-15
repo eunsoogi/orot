@@ -57,6 +57,7 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
         try Task.checkCancellation()
         let installation = try await trace.measure("installation-request") { try await AssetInventory.assetInstallationRequest(supporting: [module]) }
         if let installation {
+            trace.trackInstallationProgress(installation.progress)
             try await trace.measure("download-and-install") { try await installation.downloadAndInstall() }
         }
         try Task.checkCancellation()
@@ -85,6 +86,17 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
         private let started = ProcessInfo.processInfo.systemUptime
         private var lastStage = "not-started"
         private var events: [[String: Any]] = []
+        private var installationProgress: Progress?
+        private var initialProgress: [String: Any]?
+
+        /// Public work units describe the framework's progress, not necessarily bytes or network activity.
+        /// Retaining the object lets the deadline snapshot read current counters without awaiting the stalled API.
+        func trackInstallationProgress(_ progress: Progress) {
+            lock.withLock {
+                installationProgress = progress
+                initialProgress = progressSnapshot(progress)
+            }
+        }
 
         func measure<Value>(_ name: String, operation: () async throws -> Value) async rethrows -> Value {
             mark(name, phase: "started")
@@ -99,7 +111,23 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
         }
 
         func snapshot() -> [String: Any] {
-            lock.withLock { ["lastStage": lastStage, "stages": events, "elapsedMs": elapsedMs] }
+            lock.withLock {
+                var value: [String: Any] = ["lastStage": lastStage, "stages": events, "elapsedMs": elapsedMs]
+                if let installationProgress, let initialProgress {
+                    value["installationProgressInitial"] = initialProgress
+                    value["installationProgress"] = progressSnapshot(installationProgress)
+                }
+                return value
+            }
+        }
+
+        private func progressSnapshot(_ progress: Progress) -> [String: Any] {
+            [
+                "elapsedMs": elapsedMs, "totalUnitCount": progress.totalUnitCount,
+                "completedUnitCount": progress.completedUnitCount,
+                "fractionCompleted": progress.fractionCompleted, "isIndeterminate": progress.isIndeterminate,
+                "isFinished": progress.isFinished, "isCancelled": progress.isCancelled, "isPaused": progress.isPaused,
+            ]
         }
 
         private var elapsedMs: Double {
