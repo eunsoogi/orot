@@ -6,7 +6,6 @@ on:
       profile: { required: true, type: string }
       artifact_name: { required: true, type: string }
       timeout_minutes: { required: true, type: number }
-      production_build: { required: false, type: boolean, default: false }
     outputs:
       archive_digest:
         value: ${{ jobs.validation.outputs.archive_digest }}
@@ -37,21 +36,12 @@ jobs:
         id: build
         with:
           profile: ${{ inputs.profile }}
-          production_build: ${{ inputs.production_build }}
       - name: Publish verified products before allocating consumers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ inputs.artifact_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-focus/product-artifact
           if-no-files-found: error
-          retention-days: 7
-      - name: Preserve the production receipt independently of integration compilation
-        if: ${{ always() && inputs.production_build }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-focus/production-receipt.json
-          if-no-files-found: warn
           retention-days: 7
       - name: Preserve build diagnostics on failure
         if: always()

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { expandedActionSteps } from './fixtures/ios-workflow.mjs';
 import { verifyAppleModelSymbols } from '../verify-apple-model-product.mjs';
 
 const mock = '_OBJC_CLASS_$_OrotAppleModelMock';
@@ -33,18 +33,16 @@ test('general CI requires neither host model eligibility nor CLI legal consent',
 });
 
 test('production and test symbol guards run before their respective receipts and publication', () => {
-  const require = createRequire(import.meta.url);
-  const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
-  const action = yaml.load(
-    readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8'),
-  );
-  const steps = action.runs.steps;
+  const steps = [
+    ...expandedActionSteps('.github/actions/ios-production-validation/action.yml'),
+    ...expandedActionSteps('.github/actions/ios-test-products-build/action.yml'),
+  ];
   const indexOf = (command) => steps.findIndex((step) => step.run?.includes(command));
   const production = indexOf('verify-apple-model-product.mjs production');
   const integration = indexOf('verify-apple-model-product.mjs integration-test');
   assert.ok(production > indexOf('build-ios-simulator-app.sh build'));
   // The same guard checks cached production binaries; a cache hit cannot skip the boundary.
-  assert.equal(steps[production].if, "inputs.production_build == 'true'");
+  assert.equal(steps[production].if, undefined);
   assert.ok(production < indexOf('ios-production-receipt.mjs write'));
   assert.ok(integration > indexOf('build-ios-tests.mjs'));
   assert.ok(integration < indexOf('ios-test-products.mjs create'));

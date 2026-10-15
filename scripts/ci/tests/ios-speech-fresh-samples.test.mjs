@@ -36,7 +36,14 @@ test('each full CI schedules every cohort once after verified products are avail
     speech.with.manifest_digest,
     '${{ needs.release_products.outputs.manifest_digest }}',
   );
-  assert.equal(full.jobs.completeness.needs.length, 5);
+  assert.deepEqual([...full.jobs.completeness.needs].sort(), [
+    'debug_execution',
+    'production_validation',
+    'release_core',
+    'release_products',
+    'release_ui',
+    'speech_execution',
+  ]);
 });
 
 test('raw and compact evidence is isolated by CI run and attempt without intra-run samples', () => {
@@ -63,7 +70,7 @@ test('raw and compact evidence is isolated by CI run and attempt without intra-r
   assert.doesNotMatch(commands, /speech-second|speech-third/);
 });
 
-test('actual Linux plan reports five Mac jobs and one complete original inventory', () => {
+test('actual Linux plan reports six Mac jobs and one complete original inventory', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-speech-plan-'));
   try {
     const output = join(directory, 'outputs');
@@ -73,8 +80,8 @@ test('actual Linux plan reports five Mac jobs and one complete original inventor
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
-    assert.equal(value.macJobs, 5);
-    assert.equal(value.maximumConcurrentMacJobs, 4);
+    assert.equal(value.macJobs, 6);
+    assert.equal(value.maximumConcurrentMacJobs, 5);
     assert.equal(value.uniqueTestCases, 82);
     assert.equal(value.scheduledTestObservations, 82);
     assert.equal(value.focusedSelectionObservations, undefined);

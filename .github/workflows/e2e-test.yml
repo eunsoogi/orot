@@ -40,7 +40,6 @@ jobs:
     # PR/push full validation waits for human approval even in draft. Manual entry remains diagnostic-only.
     if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.focused != 'true' && needs.selection.outputs.run_ios == 'true' }}
     uses: ./.github/workflows/ios-test-validation.yml
-    with: { production_build: true }
   ios_simulator_build:
     name: iOS Simulator Build
     needs: [selection, ios_validation]

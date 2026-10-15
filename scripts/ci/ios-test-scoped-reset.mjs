@@ -132,7 +132,7 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
   if (existsSync(receiptPath))
     throw new Error('Scoped fixture command refuses an existing receipt');
   if (action === 'reset') command('privacy', owner.udid, 'reset', 'all', bundle);
-  command(
+  const launchOutput = command(
     'launch',
     '--terminate-running-process',
     owner.udid,
@@ -141,8 +141,10 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
     action,
     token,
   );
+  const launched = Date.now();
   try {
-    while (!existsSync(receiptPath) && Date.now() - started < 10000) await setTimeout(50);
+    // Public container/privacy/launch commands have their own deadlines. Their cost cannot consume the app's unchanged ten-second receipt window.
+    while (!existsSync(receiptPath) && Date.now() - launched < 10000) await setTimeout(50);
     if (!existsSync(receiptPath)) throw new Error('Scoped fixture receipt deadline exceeded');
     const receipt = verifyIosFixtureReceipt(
       JSON.parse(readFileSync(receiptPath, 'utf8')),
@@ -150,7 +152,26 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
       token,
     );
     unlinkSync(receiptPath);
-    return { ...receipt, elapsedMs: Date.now() - started };
+    return {
+      ...receipt,
+      preparationElapsedMs: launched - started,
+      receiptElapsedMs: Date.now() - launched,
+      elapsedMs: Date.now() - started,
+    };
+  } catch (error) {
+    // Preserve the failed first launch and both measured phases before terminating its owned process.
+    console.error(
+      'IOS_FIXTURE_COMMAND_FAILED ' +
+        JSON.stringify({
+          action,
+          token,
+          launchOutput,
+          preparationElapsedMs: launched - started,
+          receiptElapsedMs: Date.now() - launched,
+          error: String(error),
+        }),
+    );
+    throw error;
   } finally {
     command('terminate', owner.udid, bundle);
   }

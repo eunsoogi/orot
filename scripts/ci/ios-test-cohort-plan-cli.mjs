@@ -40,8 +40,8 @@ appendFileSync(
 console.log(
   JSON.stringify({
     // Acceptance is one complete candidate execution. The separate Release producer never boots a test destination.
-    macJobs: definitions.length + 1,
-    maximumConcurrentMacJobs: 4,
+    macJobs: definitions.length + 2,
+    maximumConcurrentMacJobs: 5,
     uniqueTestCases: actual.size,
     scheduledTestObservations: primaryObservations.length,
     builds: ['Release', 'Debug'],

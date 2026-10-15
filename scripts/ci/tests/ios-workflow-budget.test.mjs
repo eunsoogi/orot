@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
+import { expandedActionSteps } from './fixtures/ios-workflow.mjs';
 
 // Use the already-pinned ESLint YAML parser; this graph check adds no dependency or runner installation.
 const require = createRequire(import.meta.url);
@@ -25,7 +26,7 @@ function macJobs(file) {
 
 test('verified Release availability releases three consumers without waiting for unrelated tests', () => {
   const full = workflow('.github/workflows/ios-test-validation.yml');
-  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
+  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 6);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.release_products.needs, 'plan');
@@ -46,7 +47,7 @@ test('verified Release availability releases three consumers without waiting for
   assert.equal(full.jobs.release_products.with.profile, 'core');
   assert.equal(full.jobs.debug_execution.with.profile, 'provider-data');
   // Enumerate possible overlap states in the Mac dependency graph, rather than relying only on a max-parallel setting.
-  const ids = ['release_products', 'debug_execution', ...consumers];
+  const ids = ['production_validation', 'release_products', 'debug_execution', ...consumers];
   const ancestors = (id) => {
     const needs = full.jobs[id].needs ?? [];
     return (Array.isArray(needs) ? needs : [needs]).flatMap((dependency) => [
@@ -59,18 +60,18 @@ test('verified Release availability releases three consumers without waiting for
     const active = ids.filter((_, index) => bits & (1 << index));
     if (
       active.every((id) => {
-        // Completed production/build work unblocks consumers even while Debug is executing.
+        // Completed test products unblock consumers while production and Debug can still execute.
         return !ancestors(id).some((dependency) => active.includes(dependency));
       })
     )
       maximum = Math.max(maximum, active.length);
   }
-  assert.equal(maximum, 4);
+  assert.equal(maximum, 5);
   for (const id of ids) {
     assert.ok(full.jobs.completeness.needs.includes(id));
     assert.equal(full.jobs[id].if, undefined);
   }
-  assert.equal(full.jobs.completeness.needs.length, 5);
+  assert.equal(full.jobs.completeness.needs.length, 6);
   assert.ok(ancestors('speech_execution').includes('release_products'));
   assert.ok(!ancestors('speech_execution').includes('debug_execution'));
 });
@@ -84,7 +85,7 @@ test('manual focused diagnostics reuse one configuration and do not allocate Mac
   assert.equal(focus.jobs.execution.needs, 'products');
 });
 
-test('Release product availability never boots a simulator and retains production receipts on failure', () => {
+test('Release product availability never boots a simulator and production retains its independent receipt', () => {
   const producer = workflow('.github/workflows/ios-test-products-build.yml');
   const steps = producer.jobs.validation.steps;
   assert.equal(
@@ -98,10 +99,11 @@ test('Release product availability never boots a simulator and retains productio
   );
   assert.equal(publication.if, undefined);
   assert.equal(publication.with['if-no-files-found'], 'error');
-  const receipt = steps.find(
+  const production = workflow('.github/workflows/ios-production-validation.yml');
+  const receipt = production.jobs.validation.steps.find(
     (step) => step.with?.path === 'artifacts/ios-focus/production-receipt.json',
   );
-  assert.equal(receipt.if, '${{ always() && inputs.production_build }}');
+  assert.equal(receipt.if, 'always()');
   const action = workflow('.github/actions/ios-test-cohort-run/action.yml');
   const rejection = action.runs.steps.find((step) =>
     step.run?.includes('probe-ios-test-products.mjs'),
@@ -135,7 +137,7 @@ test('every cohort boots only once after verification and preserves the original
   );
   assert.match(consumer, /if: always\(\)[\s\S]*ios-test-simulator\.mjs cleanup/);
   assert.doesNotMatch(consumer, /continue-on-error|build-ios-tests\.mjs|test-iterations/);
-  const action = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
+  const action = readFileSync('.github/actions/ios-production-validation/action.yml', 'utf8');
   assert.match(action, /build-ios-simulator-app\.sh build/);
   assert.match(action, /swift test --package-path packages\/provider-openai/);
   assert.match(action, /orot-openai-oauth-derived/);
@@ -160,7 +162,8 @@ test('every cohort boots only once after verification and preserves the original
     ])
       assert.ok(environment[name], 'Missing production toolchain input: ' + name);
   }
-  assert.match(action, /build-ios-tests\.mjs "\$PROFILE" artifacts\/ios-focus\/DerivedData/);
+  const testAction = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
+  assert.match(testAction, /build-ios-tests\.mjs "\$PROFILE" artifacts\/ios-focus\/DerivedData/);
   assert.equal(
     new Set(
       ['release', 'speech', 'debug'].flatMap((name) =>
@@ -172,18 +175,16 @@ test('every cohort boots only once after verification and preserves the original
 });
 
 test('production rejects mismatched actual tools before cache preparation, Pods and either build', () => {
-  const action = workflow('.github/actions/ios-test-products-build/action.yml');
-  const steps = action.runs.steps;
+  const steps = expandedActionSteps('.github/actions/ios-production-validation/action.yml');
   const guard = steps.findIndex((step) => /verify-toolchain\.sh --cocoapods/.test(step.run ?? ''));
   assert.ok(guard >= 0, 'Actual production tools must be verified');
-  assert.equal(steps[guard].if, "inputs.production_build == 'true'");
+  assert.equal(steps[guard].if, undefined);
   assert.equal(steps[guard]['continue-on-error'], undefined);
   for (const command of [
     'ios-derived-data-cache.mjs prepare production',
     'ios:pods',
     'build-ios-simulator-app.sh build',
     'swift test --package-path',
-    'build-ios-tests.mjs',
   ])
     assert.ok(guard < steps.findIndex((step) => (step.run ?? '').includes(command)), command);
 });

@@ -2,8 +2,6 @@ name: iOS test validation
 
 on:
   workflow_call:
-    inputs:
-      production_build: { required: false, type: boolean, default: true }
 
 permissions:
   contents: read
@@ -35,6 +33,11 @@ jobs:
       - name: Validate the complete logical plan before Mac allocation
         id: plan
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
+  production_validation:
+    name: Production and OAuth validation
+    # These separate products remain mandatory but are not inputs to any test product.
+    needs: plan
+    uses: ./.github/workflows/ios-production-validation.yml
   debug_execution:
     name: Debug provider and capability validation
     needs: plan
@@ -45,14 +48,13 @@ jobs:
       artifact_name: ios-test-debug-products
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
   release_products:
-    name: Production validation and Release products
+    name: Release test products
     # Completing this build-only job makes verified products available without waiting for any integration/UI suite.
     needs: plan
     uses: ./.github/workflows/ios-test-products-build.yml
     with:
       profile: core
       artifact_name: ios-test-release-products
-      production_build: ${{ inputs.production_build }}
       timeout_minutes: 60
   release_core:
     name: Core, backup, local-model and question validation
@@ -89,8 +91,16 @@ jobs:
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   completeness:
     name: iOS test completeness
-    # One complete candidate execution requires the producer and all four execution jobs, including independent failures.
-    needs: [release_products, release_core, release_ui, speech_execution, debug_execution]
+    # One complete candidate execution requires production, test products and every execution job.
+    needs:
+      [
+        production_validation,
+        release_products,
+        release_core,
+        release_ui,
+        speech_execution,
+        debug_execution,
+      ]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10

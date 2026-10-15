@@ -129,7 +129,7 @@ function runDiagnosticFixture({
 
 test('platform dependency preparation preserves the pinned pnpm path recovery and deployment inputs', () => {
   const action = readFileSync(
-    path.join(repositoryRoot, '.github/actions/ios-test-products-build/action.yml'),
+    path.join(repositoryRoot, '.github/actions/ios-platform-dependencies/action.yml'),
     'utf8',
   );
   assert.match(action, /ios:pods --deployment/);

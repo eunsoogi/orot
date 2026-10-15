@@ -35,7 +35,7 @@ test('five Linux integration domain leaves retain the exact required context nam
   assert.equal(e2e.jobs.ios_simulator_build.name, 'iOS Simulator Build');
   assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.ios_validation.uses, './.github/workflows/ios-test-validation.yml');
-  assert.equal(e2e.jobs.ios_validation.with.production_build, true);
+  assert.equal(e2e.jobs.ios_validation.with, undefined);
   assert.equal(e2e.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });

@@ -61,7 +61,12 @@ function requireCacheInAction(relativePath) {
 }
 
 test('caches pnpm policy verification in each independent dependency-install job', () => {
-  requireCacheInAction('.github/actions/ios-test-products-build/action.yml');
+  requireCacheInAction('.github/actions/ios-native-toolchain/action.yml');
+  for (const name of ['ios-test-products-build', 'ios-production-validation'])
+    assert.match(
+      readFileSync(`.github/actions/${name}/action.yml`, 'utf8'),
+      /uses: \.\/\.github\/actions\/ios-native-toolchain/,
+    );
   requireCacheInWorkflow('.github/workflows/unit-test.yml', 2);
   requireCacheInWorkflow('.github/workflows/policy-check.yml', 1);
 

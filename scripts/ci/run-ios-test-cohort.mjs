@@ -1,9 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { iosTestCohort, iosTestCohortTasks } from './ios-test-cohorts.mjs';
+import {
+  iosTestCohort,
+  iosTestCohortTasks,
+  verifyIosSimulatorOwnerContract,
+} from './ios-test-cohorts.mjs';
 import { executeIosTestCohortTasks } from './ios-test-cohort-execution.mjs';
-import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 
 const [cohort, runFile, ownerFile, output] = process.argv.slice(2);
 if (!output || !existsSync(runFile) || existsSync(output))
@@ -12,11 +15,8 @@ if (!output || !existsSync(runFile) || existsSync(output))
   );
 const definition = iosTestCohort(cohort);
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
-if (
-  owner.cohort !== cohort ||
-  verifyIosTestSimulator(owner, definition.profiles[0]).state !== 'Booted'
-)
-  throw new Error('Cohort execution requires its booted, explicitly compatible destination');
+if (owner.cohort !== cohort) throw new Error('Cohort execution requires its explicit owner');
+verifyIosSimulatorOwnerContract(owner, definition.profiles[0]);
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
 const started = Date.now();
@@ -30,8 +30,7 @@ function command(stage, log, script, args, suite) {
 }
 
 const report = await executeIosTestCohortTasks(tasks, async (task) => {
-  if (verifyIosTestSimulator(owner, task.profile).state !== 'Booted')
-    throw new Error('Cohort destination changed before task execution');
+  // Each execution/reset driver reads live ownership immediately before its Apple operation. The coordinator performs no Simulator mutation and must not repeat that inventory.
   const taskDirectory = join(directory, task.profile + '-' + task.suite);
   mkdirSync(taskDirectory);
   const log = join(taskDirectory, 'tests.log');

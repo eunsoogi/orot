@@ -54,7 +54,7 @@ CI 명령 래퍼가 생성하는 `artifacts/quality/*.log`만 로그 산출물�
 
 `Unit Test`는 `TypeScript typecheck`와 `Unit and component tests`를 실행하고, `Policy Check`는 CI·release·quality 정책 테스트를 실행합니다. 설치할 의존성과 포매터·린터는 기존 lockfile 및 도구 버전 해시로 검증합니다. 각 leaf는 실패 로그와 실행 결과를 별도 artifact로 보관합니다.
 
-한 전체 CI 실행에서 Mac은 Debug 빌드·실행, production 검증을 포함한 Release 빌드 전용 producer, Release 소비 작업 2개와 새 러너의 Speech까지 총 5개 작업을 사용합니다. Release producer가 성공하면 Debug나 Release 테스트 종료를 기다리지 않고 소비 작업을 시작하며 최대 동시 Mac은 4개입니다. producer 실패는 종속 작업 할당을 막고, 독립 작업의 실패는 이미 시작한 형제 작업의 진단을 취소하지 않습니다. `iOS Simulator Build`는 Linux에서 완료된 production·기본 Keychain·OAuth 결과를 검증하고, 다섯 iOS 도메인 상태도 Linux에서 현재 head·run·attempt의 전체 결과를 요구합니다.
+한 전체 CI 실행에서 Mac은 production·OAuth 검증, Debug 빌드·실행, Release 테스트 빌드 전용 producer, Release 소비 작업 2개와 새 러너의 Speech까지 총 6개 작업을 사용합니다. 처음 세 작업은 독립적으로 시작합니다. Release producer가 성공하면 production이나 Debug 종료를 기다리지 않고 소비 작업을 시작하며 최대 동시 Mac은 5개입니다. producer 실패는 종속 작업 할당을 막고, 독립 작업의 실패는 이미 시작한 형제 작업의 진단을 취소하지 않습니다. 전체 집계는 production 작업을 포함한 모든 필수 작업의 성공을 요구합니다. `iOS Simulator Build`는 Linux에서 완료된 production·기본 Keychain·OAuth 결과를 검증하고, 다섯 iOS 도메인 상태도 Linux에서 현재 head·run·attempt의 전체 결과를 요구합니다.
 
 전체 실행은 Debug 17개, Release 56개, Speech 9개로 총 82개의 서로 다른 관측을 포함합니다. Release는 39·17개로 나누며 네이티브 저장·복원 단계와 실제 UI 동작을 구분합니다. 범위를 제한한 초기화는 실제 오염 주입·제거·외부 자료 보존 검증을 요구하고, fresh-install·키 수명주기·Backup 복원과 native permission 경계는 원래 초기화를 유지합니다. 수락에는 최종 후보의 전체 CI 한 번이 통과해야 하며 추가 반복 실행은 하지 않습니다. 정확히 선택한 통합·UI 사례는 별도 focused workflow에서 실행하며 전체 CI 끝에 추가하지 않습니다. identifier 검증, 각 시도의 첫 실패 보존, artifact 업로드와 소유 Simulator 정리는 유지합니다. 실행 절차는 [development.md](development.md)를 따릅니다.
 

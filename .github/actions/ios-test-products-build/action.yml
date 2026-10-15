@@ -4,9 +4,6 @@ inputs:
   profile:
     description: Validated integration execution profile selecting its compatible build specification.
     required: true
-  production_build:
-    description: Build production and OAuth with separate flags and DerivedData in this Release producer.
-    default: 'false'
 outputs:
   archive_digest:
     description: SHA-256 of the portable integration product archive.
@@ -17,122 +14,8 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-      with:
-        version: 12.3.4
-        run_install: false
-    - name: Set up Node.js
-      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-      with:
-        node-version-file: .nvmrc
-        cache: pnpm
-    - name: Cache pnpm lockfile verification
-      uses: ./.github/actions/pnpm-lockfile-verification
-    - name: Install frozen workspace dependencies
-      shell: bash
-      run: scripts/ci/run-command.sh ios-focus-dependencies artifacts/ios-focus/install.log -- pnpm install --frozen-lockfile
-    - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-      with:
-        ruby-version: '4.0.7'
-        bundler-cache: false
-    - name: Install pinned CocoaPods
-      shell: bash
-      run: gem install cocoapods --version 1.17.0 --no-document
-    - name: Capture production source fingerprints before Pods
-      if: inputs.production_build == 'true'
-      id: production_fingerprints
-      shell: bash
-      run: node scripts/ci/ios-cache-fingerprint-cli.mjs --derived-data-only
-    - name: Verify actual production toolchain before cache and builds
-      if: inputs.production_build == 'true'
-      id: production_toolchain
-      shell: bash
-      run: scripts/ci/run-command.sh production-toolchain artifacts/ios-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
-    - name: Restore production-only DerivedData and CocoaPods intermediates
-      if: inputs.production_build == 'true'
-      id: production_cache_restore
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-      with:
-        path: |
-          apps/mobile/ios/build-production
-          apps/mobile/ios/Pods
-        key: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-source-${{ steps.production_fingerprints.outputs.build_inputs }}
-        restore-keys: orot-ios-production-v1-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.production_toolchain.outputs.macos_version }}-xcode-${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}-platform-${{ steps.production_fingerprints.outputs.platform_dependencies }}-
-    - name: Prepare the isolated production DerivedData boundary
-      if: inputs.production_build == 'true'
-      id: production_cache
-      shell: bash
-      env:
-        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
-        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
-        EXPECTED_XCODE_VERSION: '27.0'
-        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
-        EXPECTED_PNPM_VERSION: '12.3.4'
-        EXPECTED_RUBY_VERSION: '4.0.7'
-        EXPECTED_COCOAPODS_VERSION: '1.17.0'
-        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
-      run: node scripts/ci/ios-derived-data-cache.mjs prepare production
-    - name: Prepare platform dependencies
-      shell: bash
-      # CocoaPods 1.17's pnpm symlink group-base recovery remains pinned and scoped to this install.
-      env:
-        OROT_COCOAPODS_NULL_BYTE_DIAGNOSTIC: '1'
-        RUBYOPT: -r${{ github.workspace }}/scripts/ci/cocoapods-null-byte-diagnostic.rb
-      run: |
-        bash scripts/ci/verify-toolchain.sh --cocoapods-only
-        scripts/ci/run-command.sh ios-focus-pods artifacts/ios-focus/pods.log -- pnpm --filter @orot/mobile ios:pods --deployment
-    - name: Verify generated privacy metadata
-      shell: bash
-      run: node scripts/ci/ios-test-source-inputs.mjs
-    - name: Build production with its default entry and compiler flags
-      if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
-      shell: bash
-      run: scripts/ci/run-command.sh ios-production-build artifacts/ios-focus/production.log -- bash scripts/ci/build-ios-simulator-app.sh build
-    - name: Write the production-only cache manifest
-      if: inputs.production_build == 'true' && steps.production_cache.outputs.app_reusable != 'true'
-      shell: bash
-      env:
-        IOS_CACHE_RUNNER_OS: ${{ runner.os }}
-        IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-        MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
-        EXPECTED_XCODE_VERSION: '27.0'
-        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
-        EXPECTED_PNPM_VERSION: '12.3.4'
-        EXPECTED_RUBY_VERSION: '4.0.7'
-        EXPECTED_COCOAPODS_VERSION: '1.17.0'
-        XCODEBUILD_FINGERPRINT: ${{ steps.production_toolchain.outputs.xcodebuild_fingerprint }}
-      run: node scripts/ci/ios-derived-data-cache.mjs write production
-    - name: Verify production uses the Apple SDK without the model mock
-      if: inputs.production_build == 'true'
-      shell: bash
-      run: scripts/ci/run-command.sh apple-production-boundary artifacts/ios-focus/apple-production-boundary.log -- node scripts/ci/verify-apple-model-product.mjs production apps/mobile/ios/build-production/Build/Products/Debug-iphonesimulator/Orot.app
-    - name: Verify Simulator defaults and OAuth package
-      if: inputs.production_build == 'true'
-      shell: bash
-      run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh ios-oauth-unit artifacts/ios-focus/oauth-unit.log -- swift test --package-path packages/provider-openai
-    - name: Build the separate OAuth Simulator harness
-      if: inputs.production_build == 'true'
-      shell: bash
-      run: |
-        scripts/ci/run-command.sh ios-oauth-build artifacts/ios-focus/oauth-build.log -- xcodebuild \
-          -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
-          -scheme ChatGPTOAuthSpike -configuration Debug \
-          -destination 'generic/platform=iOS Simulator' \
-          -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" CODE_SIGNING_ALLOWED=NO build
-    - name: Record completed production and OAuth obligations
-      if: inputs.production_build == 'true'
-      shell: bash
-      run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
-    - name: Save verified production outputs before integration validation
-      # A later test failure must not discard this validated producer cache; earlier failures still prevent saving.
-      if: success() && inputs.production_build == 'true' && steps.production_cache_restore.outputs.cache-hit != 'true'
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-      with:
-        path: |
-          apps/mobile/ios/build-production
-          apps/mobile/ios/Pods
-        key: ${{ steps.production_cache_restore.outputs.cache-primary-key }}
+    - uses: ./.github/actions/ios-native-toolchain
+    - uses: ./.github/actions/ios-platform-dependencies
     - name: Build without booting a Simulator
       shell: bash
       env:
