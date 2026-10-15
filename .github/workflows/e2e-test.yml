@@ -37,7 +37,7 @@ jobs:
   ios_validation:
     name: Full iOS validation
     needs: selection
-    # PR/push full validation waits for human approval even in draft. Manual entry remains diagnostic-only.
+    # PR updates, including drafts, and pushes start full validation automatically. Manual entry remains diagnostic-only.
     if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.focused != 'true' && needs.selection.outputs.run_ios == 'true' }}
     uses: ./.github/workflows/ios-test-validation.yml
   ios_simulator_build:

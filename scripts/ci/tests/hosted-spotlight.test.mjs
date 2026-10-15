@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { indexingDisabled, suppressHostedSpotlight } from '../suppress-hosted-spotlight.mjs';
 
@@ -48,7 +50,21 @@ test('one bounded Data-volume change precedes a separate exact readback', () => 
   assert.deepEqual(
     result.calls.map(([program, args, options]) => [program, args, options.timeout]),
     [
-      ['/usr/bin/sudo', ['-n', '/usr/bin/mdutil', '-i', 'off', '/System/Volumes/Data'], 15000],
+      [
+        '/usr/bin/sudo',
+        [
+          '-n',
+          '/usr/bin/perl',
+          '-e',
+          result.calls[0][1][3],
+          '15',
+          '/usr/bin/mdutil',
+          '-i',
+          'off',
+          '/System/Volumes/Data',
+        ],
+        17000,
+      ],
       ['/usr/bin/mdutil', ['-s', '/System/Volumes/Data'], 5000],
     ],
   );
@@ -94,6 +110,81 @@ test('the real subprocess deadline terminates an unresponsive command', () => {
   assert.equal(result.error?.code, 'ETIMEDOUT');
   assert.equal(result.signal, 'SIGKILL');
   assert.equal(result.status, null);
+});
+
+test('a timed-out sudo-shaped command terminates its operation before the caller returns', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-spotlight-deadline-'));
+  const pidFile = join(directory, 'operation.pid');
+  const parent = join(directory, 'parent.cjs');
+  const operation = join(directory, 'operation.cjs');
+  writeFileSync(
+    parent,
+    'const child=require("node:child_process").spawn(process.argv[2],process.argv.slice(3),{stdio:"inherit"});child.on("close",(code)=>process.exit(code??125));',
+  );
+  writeFileSync(
+    operation,
+    `require("node:fs").writeFileSync(${JSON.stringify(pidFile)},String(process.pid));process.on("SIGTERM",()=>{});setInterval(()=>{},1000);`,
+  );
+  let pid;
+  let outcome;
+  t.after(() => {
+    // Clean only this fixture's recorded child after a failing characterization of the old code.
+    if (pid) {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error;
+      }
+    }
+    rmSync(directory, { recursive: true, force: true });
+  });
+  const started = performance.now();
+  const verified = suppressHostedSpotlight({
+    env: hosted,
+    platform: 'darwin',
+    report() {},
+    execute(program, args, options) {
+      assert.equal(program, '/usr/bin/sudo');
+      // Replace only the privilege launcher and mdutil with inert equivalents. The actual
+      // supervisor, when present, still owns its subprocess; use one second for this test.
+      const command = args.slice(1);
+      const index = command.indexOf('/usr/bin/mdutil');
+      assert.ok(index >= 0);
+      if (command[0] === '/usr/bin/perl') command[index - 1] = '1';
+      command.splice(index, command.length - index, process.execPath, operation);
+      outcome = spawnSync(process.execPath, [parent, ...command], {
+        ...options,
+        timeout: 3000,
+      });
+      return outcome;
+    },
+  });
+  pid = Number(readFileSync(pidFile, 'utf8'));
+  const state = spawnSync('ps', ['-p', String(pid), '-o', 'stat='], {
+    encoding: 'utf8',
+  }).stdout.trim();
+  assert.ok(!state || state.startsWith('Z'), 'timed-out operation is still running');
+  assert.ok(performance.now() - started < 5000, 'subprocess wait exceeded its outer bound');
+  assert.equal(outcome.status, 124);
+  assert.equal(outcome.signal, null);
+  assert.equal(verified, false);
+});
+
+test('the supervisor preserves a completed operation status and output', () => {
+  const command = exercise([disabled, disabled]).calls[0][1].slice(2);
+  const index = command.indexOf('/usr/bin/mdutil');
+  for (const status of [0, 23]) {
+    const args = [
+      ...command.slice(0, index),
+      process.execPath,
+      '-e',
+      `console.log('observed');process.exit(${status})`,
+    ];
+    const result = spawnSync('/usr/bin/perl', args, { encoding: 'utf8', timeout: 2000 });
+    assert.equal(result.status, status, result.stderr);
+    assert.equal(result.stdout, 'observed\n');
+    assert.equal(result.signal, null);
+  }
 });
 
 test('every native producer and consumer suppresses indexing before dependency extraction', () => {

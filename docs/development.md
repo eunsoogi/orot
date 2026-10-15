@@ -68,7 +68,7 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-GitHub가 제공하는 임시 macOS 러너에서는 의존성을 풀기 전에 Data 볼륨의 Spotlight 색인 해제를 한 번 시도합니다. 명령은 15초, 별도 상태 확인은 5초로 제한하고 결과를 `spotlight.log`에 남깁니다. 해제를 확인하지 못해도 기존 빌드·테스트 검증은 그대로 실행합니다. 개발용 Mac과 자체 호스팅 러너에서는 이 명령을 실행하지 않으며, 시뮬레이터 내부 서비스나 색인 파일을 삭제하지 않습니다.
+GitHub가 제공하는 임시 macOS 러너에서는 의존성을 풀기 전에 Data 볼륨의 Spotlight 색인 해제를 한 번 시도합니다. 명령을 실행하는 프로세스가 15초 제한과 하위 프로세스 종료를 담당하고, 시작 실패를 포함한 바깥 호출은 17초로 제한합니다. 성공 후 별도 상태 확인은 5초이며, 결과는 `spotlight.log`에 남깁니다. 해제를 확인하지 못해도 기존 빌드·테스트 검증은 그대로 실행합니다. 개발용 Mac과 자체 호스팅 러너에서는 이 명령을 실행하지 않으며, 시뮬레이터 내부 서비스나 색인 파일을 삭제하지 않습니다.
 
 로컬 Core 검증은 저장소 루트에서 다음 순서로 실행합니다. 기존 제품이나 소유권 파일과 겹치지 않는 경로를 사용하세요.
 

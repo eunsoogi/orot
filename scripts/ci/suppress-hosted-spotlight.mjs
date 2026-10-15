@@ -4,6 +4,39 @@ import { pathToFileURL } from 'node:url';
 
 const dataVolume = '/System/Volumes/Data';
 
+// The deadline must run inside sudo, where it can signal the privileged mdutil process.
+// The system Perl/POSIX supervisor creates and owns one process group, kills only that
+// group on timeout/cancellation, and reaps its child before returning to sudo. If Perl
+// is unavailable, the command fails and the optimization remains unverified.
+const supervisor = `
+use strict;
+use warnings;
+use POSIX qw(setpgid);
+my $seconds = shift @ARGV;
+my $pid = fork();
+defined $pid or die "Cannot fork Spotlight command: $!";
+if ($pid == 0) {
+  setpgid(0, 0) == 0 or die "Cannot isolate Spotlight command: $!";
+  exec @ARGV or die "Cannot execute Spotlight command: $!";
+}
+setpgid($pid, $pid);
+sub terminate {
+  my ($status) = @_;
+  kill 'KILL', -$pid;
+  waitpid($pid, 0);
+  exit $status;
+}
+$SIG{ALRM} = sub { terminate(124); };
+$SIG{TERM} = sub { terminate(143); };
+$SIG{INT} = sub { terminate(130); };
+$SIG{HUP} = sub { terminate(129); };
+alarm $seconds;
+waitpid($pid, 0);
+my $status = $?;
+alarm 0;
+exit (($status & 127) ? 128 + ($status & 127) : $status >> 8);
+`;
+
 /** This optional host optimization must never change a developer Mac or a persistent self-hosted runner. */
 export function isEphemeralMac(env, platform) {
   return (
@@ -27,7 +60,7 @@ export function indexingDisabled(result) {
 
 /** Suppress competing host indexing once, before dependency extraction, build or Simulator boot.
  * No index deletion, service termination, privilege prompt or retry is allowed. Each invocation has
- * a hard kill deadline because the earlier unbounded mdutil experiment held CI for three minutes.
+ * a deadline because the earlier unbounded mdutil experiment held CI for three minutes.
  * Failure leaves the optimization unverified and preserves all ordinary build/test gates.
  */
 export function suppressHostedSpotlight({
@@ -66,8 +99,10 @@ export function suppressHostedSpotlight({
   const mutation = invoke(
     'disable-indexing',
     '/usr/bin/sudo',
-    ['-n', '/usr/bin/mdutil', '-i', 'off', dataVolume],
-    15000,
+    ['-n', '/usr/bin/perl', '-e', supervisor, '15', '/usr/bin/mdutil', '-i', 'off', dataVolume],
+    // The inner supervisor owns the 15-second operation limit. This outer guard also
+    // bounds failure to start the supervisor; it is not the mdutil cleanup mechanism.
+    17000,
   );
   const accepted = mutation.status === 0 && !mutation.signal && !mutation.error;
   const verified =
