@@ -2,12 +2,15 @@ import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { iosTestConfig } from './ios-test-config.mjs';
+import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
+import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
+import { statePersistenceTests, statePersistencePhases } from './state-persistence-test-phases.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -29,6 +32,68 @@ const fixtureSelection = fixtureProfiles.find((candidate) =>
   tests.some((test) => iosTestInventory(candidate).includes(test)),
 );
 const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
+if (tests.some((test) => statePersistenceTests.includes(test))) {
+  const index = statePersistencePhases.indexOf(process.env.OROT_IOS_STATE_PHASE);
+  if (
+    profile !== 'core' ||
+    tests.length !== 1 ||
+    index < 0 ||
+    tests[0] !== statePersistenceTests[index] ||
+    !process.env.TEST_RUNNER_OROT_STATE_FIXTURE ||
+    !process.env.TEST_RUNNER_OROT_STATE_MEMORY_FIXTURE ||
+    (index > 0 && !process.env.TEST_RUNNER_OROT_STATE_PREVIOUS_PIDS)
+  )
+    throw new Error(
+      'State persistence requires its host-orchestrated fresh-install and new-process phases',
+    );
+}
+if (tests.some((test) => recordingPersistenceTests.includes(test))) {
+  const phase = process.env.OROT_IOS_RECORDING_PHASE;
+  const expected =
+    phase === 'seed'
+      ? recordingPersistenceTests[0]
+      : phase === 'read'
+        ? recordingPersistenceTests[1]
+        : null;
+  if (
+    profile !== 'core' ||
+    tests.length !== 1 ||
+    tests[0] !== expected ||
+    (phase === 'read' && !process.env.TEST_RUNNER_OROT_RECORDING_BASELINE)
+  )
+    throw new Error('Recording persistence requires its host-orchestrated new-process phases');
+}
+if (tests.some((test) => fixtureIsolationTests.includes(test))) {
+  const phase = process.env.OROT_IOS_FIXTURE_PHASE;
+  const expected =
+    phase === 'seed'
+      ? fixtureIsolationTests[0]
+      : phase === 'verify'
+        ? fixtureIsolationTests[1]
+        : null;
+  if (
+    profile !== 'core' ||
+    tests.length !== 1 ||
+    tests[0] !== expected ||
+    !process.env.TEST_RUNNER_OROT_FIXTURE_TOKEN ||
+    (phase === 'verify' && !process.env.TEST_RUNNER_OROT_FIXTURE_BASELINE)
+  )
+    throw new Error(
+      'Fixture isolation requires its host-orchestrated contamination and reset phases',
+    );
+}
+if (tests.some((test) => speechJourneyTests.includes(test))) {
+  const phase = process.env.OROT_IOS_SPEECH_PHASE;
+  const expected =
+    phase === 'ui' ? speechJourneyTests[0] : phase === 'readback' ? speechJourneyTests[1] : null;
+  if (
+    profile !== 'speech' ||
+    tests.length !== 1 ||
+    tests[0] !== expected ||
+    (phase === 'readback' && !process.env.TEST_RUNNER_OROT_SPEECH_BASELINE)
+  )
+    throw new Error('Speech UI and persistence require their host-orchestrated new-process phases');
+}
 // The manual appointment scenario already has a 180-second budget. Enforce it in XCTest as well as its assertions, so a stalled AX call cannot bypass it.
 const appointmentTimeLimit =
   tests.length === 1 &&

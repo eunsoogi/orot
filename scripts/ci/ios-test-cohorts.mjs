@@ -4,6 +4,17 @@ import { iosTestInventory } from './ios-test-inventory.mjs';
 
 const cohorts = {
   release: { profiles: ['core', 'fixtures', 'backup', 'local-model'], minutes: 200 },
+  // Hosted Release consumers partition tasks, never individual cases or stateful restore/model phases.
+  'release-core': {
+    profiles: ['core', 'backup', 'local-model', 'fixtures'],
+    fixtureSuites: ['questions'],
+    minutes: 120,
+  },
+  'release-ui': {
+    profiles: ['fixtures'],
+    fixtureSuites: ['navigation', 'recordings', 'calendar'],
+    minutes: 90,
+  },
   speech: { profiles: ['speech'], minutes: 90 },
   debug: {
     profiles: ['provider-data', 'health-import', 'microphone', 'provider-selection'],
@@ -34,11 +45,16 @@ export function iosTestCohortTasks(name) {
       ? [
           { profile: 'speech', suite: 'preparation', mode: 'plain' },
           { profile: 'speech', suite: 'integration', mode: 'plain' },
-          { profile: 'speech', suite: 'ui', mode: 'plain' },
+          { profile: 'speech', suite: 'journey', mode: 'speech-journey' },
         ]
       : definition.profiles.flatMap((profile) =>
           profile === 'core'
-            ? ['integration', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' }))
+            ? [
+                { profile, suite: 'state-persistence', mode: 'state-persistence' },
+                { profile, suite: 'isolation', mode: 'fixture-isolation' },
+                { profile, suite: 'recording-persistence', mode: 'recording-persistence' },
+                ...['integration', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' })),
+              ]
             : profile === 'fixtures'
               ? ['navigation', 'recordings', 'questions', 'calendar'].map((suite) => ({
                   profile,
@@ -57,10 +73,17 @@ export function iosTestCohortTasks(name) {
                   },
                 ],
         );
-  return tasks.map((task) => ({
-    ...task,
-    identifiers: iosTestInventory(task.profile, task.suite),
-  }));
+  return tasks
+    .filter(
+      (task) =>
+        task.profile !== 'fixtures' ||
+        !cohorts[name].fixtureSuites ||
+        cohorts[name].fixtureSuites.includes(task.suite),
+    )
+    .map((task) => ({
+      ...task,
+      identifiers: iosTestInventory(task.profile, task.suite),
+    }));
 }
 
 /** Cohort ownership is explicit; an ordinary profile owner cannot be relabelled to authorize another profile's mutations. */

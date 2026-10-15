@@ -73,6 +73,9 @@ Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 �
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-release
 node scripts/ci/ios-test-simulator.mjs prepare core build/ios-core-owner.json
+node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
+node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
+node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
 OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
 OROT_IOS_TEST_SUITE=integration node scripts/ci/ios-test-results.mjs core build/ios-core-integration.xcresult build/ios-core-integration-results.json && \
 OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
@@ -86,7 +89,9 @@ Speech 자산 준비는 한 번의 설치 요청과 기존 180초 제한을 유�
 
 테스트 실행 helper는 호출마다 새 UUID를 전달합니다. 테스트 target에만 포함되는 공통 기본 클래스는 현재 사례 이름을 해당 runner의 컨테이너에 기록하고, 정리 단계까지 성공했을 때 지웁니다. 실패나 runner 크래시가 남긴 기록은 같은 호출의 후속 본문을 건너뛰게 합니다. 원래 실패와 미실행 사례는 결과에 남으며, 누락·건너뜀은 기존 결과 검증에서 통과하지 못합니다. runner가 기본 설정에 도달하기 전의 시작 실패는 이 기록으로 차단할 수 없습니다. Core와 Speech의 iOS·UI target은 서로 다른 컨테이너를 쓰므로 앞 target의 검증이 성공해야 다음 target을 실행합니다. Xcode에서 테스트를 직접 실행할 때도 새 `OROT_IOS_TEST_INVOCATION` UUID를 runner 환경에 지정해야 합니다.
 
-`fixtures`, `health-import`, `microphone`, `provider-selection`은 `run-ios-fixture-tests.mjs`로 실행합니다. 이 helper는 사례마다 소유한 앱과 Keychain을 초기화하고, 각 결과를 검증한 뒤 합성 앱 데이터를 제거합니다. `backup`의 snapshot 단계와 `local-model`의 재실행 단계는 각각 전용 helper의 순서를 따르며, process restart에 필요한 Keychain·자료를 유지합니다. 프로필이 다른 기기나 공유 Core·Speech 컨테이너를 이 helper로 초기화하지 마세요.
+`fixtures`, `health-import`, `microphone`, `provider-selection`은 `run-ios-fixture-tests.mjs`로 실행합니다. 일반 Release UI 사례는 설치된 제품을 유지하고, React가 시작되기 전에 앱 소유 DB·WAL·SHM·녹음·삭제 대기열·내보내기 사본·Keychain 항목·설정과 권한을 초기화합니다. helper는 실제 부재와 권한 미결정 상태를 읽어 확인하며, 같은 묶음의 다음 사례가 시작할 때 한 번만 초기화합니다. 마지막 사례와 실패 직후에는 바로 정리합니다. 저장소 생성·schema migration·키 수명주기·native permission 사례는 전체 재설치와 Keychain 초기화를 유지합니다. Backup snapshot과 local-model 재실행 단계는 전용 helper의 순서대로 자료를 이어받습니다. 다른 프로필의 기기나 다른 앱을 초기화하지 마세요.
+
+Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQLCipher 저장소·메모리·UTF-8 checkpoint를 만들고, 세 개의 서로 다른 앱 프로세스에서 복원·노드 재실행 방지·삭제 후 검색 부재를 확인합니다. `isolation`은 실제 DB·파일·키·설정·권한 오염을 넣은 뒤 범위를 제한한 초기화를 실행하여 제거와 외부 sentinel 보존, 새 DB 키 생성을 확인합니다. `recording-persistence`는 수정 이력·stale evidence·메모리 무효화·삭제와 중단된 export 사본을 두 프로세스에서 확인합니다. 상태를 이어받는 단계 사이에는 초기화하지 않으며, 같은 프로세스이거나 앞 단계의 영수증이 없으면 실패합니다. Speech의 `journey`도 실제 화면 정지·저장과 실제 Apple Speech 연결을 한 번 실행한 뒤 별도 앱 프로세스에서 모든 저장 필드와 네이티브 Speech 요청 수 0을 확인합니다.
 
 화면 모드 검증은 XCTest의 공개 기기 API로 모드를 변경하고 실제 읽기 값을 확인합니다. 명시적으로 켠 테스트 진입점은 해당 값을 같은 앱 창에 다시 적용하고, 실제 UIKit trait으로 React Native 테마 알림을 갱신합니다. 테스트마다 분리한 UUID 알림 채널을 사용하며 설정 앱이나 프로세스 재시작은 필요하지 않습니다. 기기·UIKit 창·앱의 실제 `useColorScheme` 값, 창 재적용 방식과 횟수, 앱 스크린샷을 남깁니다. 원래 기기 모드와 창의 override를 복원하고 기존 화면 동작·저장 상태·레이아웃 검증을 수행합니다. 이 보정은 테스트 제품에만 포함되며 OS가 모드를 앱에 자동 전달했다는 증거로 해석하지 않습니다.
 
@@ -96,7 +101,7 @@ Speech 자산 준비는 한 번의 설치 요청과 기존 180초 제한을 유�
 
 iOS 선택 검증은 기존 E2E workflow의 `focus_profile=ios/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 성공하더라도 보호된 전체 검증을 충족하지 않습니다.
 
-자동 전체 실행은 Debug 17개, Release 50개, Speech 11개 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. 자동 PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
+자동 전체 실행은 Debug 17개, Release 56개, Speech 9개로 총 82개의 서로 다른 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. 자동 PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
 
 Simulator 소유권은 각 검증 호출에서 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 
@@ -104,13 +109,13 @@ Simulator 소유권은 각 검증 호출에서 새 `simctl list -j` 응답의 ru
 
 일반 CI는 호스트 Apple Intelligence 지원·활성화·모델 다운로드나 CLI 약관 동의를 요구하지 않습니다. 결과에는 `modelExecution=mock`, `actualModel=not-run`을 남기며 실제 Apple 모델의 응답 품질이나 추론 실행을 검증했다고 해석하지 않습니다. 제품 빌드의 기본 경로는 실제 Apple SDK를 사용합니다. 빌드 후 앱에 연결된 기호를 검사하여 생산용 제품에는 mock 제어 endpoint가 없고 실제 `LanguageModelSession`이 연결되어 있으며, 테스트 제품에는 반대로 mock만 연결되어 있음을 확인합니다. 실행 인자나 환경 변수로 생산용 앱의 mock을 켤 수 없습니다.
 
-전체 iOS CI 한 번은 Debug 빌드·검증, production·Release 빌드·검증, 새 러너의 Speech 검증을 각각 한 번씩 실행하는 총 3개 macOS 작업입니다. Debug와 Release는 독립 VM에서 동시에 실행할 수 있으며 최대 동시 Mac은 2개입니다. 두 작업이 모두 성공해야 Speech 작업을 할당합니다. 각 작업은 첫 실패에서 다음 사례를 중단하고 진단을 보존합니다. 한 작업이 실패해도 이미 시작한 독립 작업의 비용은 발생할 수 있으며, 그 뒤의 Speech 작업은 할당하지 않습니다. 전체·집중 실행은 저장소 단위 동시 실행 제한을 공유합니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. Debug와 Release는 빌드한 같은 VM에서 제품 무결성을 검증하므로 실행을 위한 중복 의존성 설치와 업로드·다운로드가 없습니다. Release 제품만 새 Speech 러너로 전달합니다. 생산용 앱과 OAuth 검증의 별도 flags·DerivedData 경로는 유지합니다. 기존 작업 상한과 개별 인식·생성·UI 대기 제한은 늘리지 않습니다. 성공 경로의 총 시간은 실제 측정으로 평가하며, 작업 수 감소나 조기 실패만으로 성능·모델 지원 문제가 해결됐다고 판단하지 않습니다.
+전체 iOS CI 한 번은 총 5개 macOS 작업을 사용합니다. Debug는 한 VM에서 빌드와 17개 관측을 실행합니다. 독립 Release producer는 production 의무 검증과 테스트 제품 빌드·업로드까지만 수행하고 Simulator를 부팅하지 않습니다. producer가 성공하면 Release 검증 2개 작업과 새 러너의 Speech 작업이 바로 시작할 수 있으며, Debug가 진행 중이면 최대 동시 Mac은 4개입니다. 각 실행 작업은 첫 실패에서 다음 사례를 중단하고 진단을 보존합니다. producer 실패 시 소비 작업은 할당하지 않지만, 독립 검증이 실패했을 때 이미 시작한 다른 작업의 비용은 발생할 수 있습니다. 전체·집중 실행은 저장소 단위 동시 실행 제한을 공유합니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 각 소비 작업은 제품의 출처·설정·도구·무결성을 부팅 전에 검증하며 별도로 컴파일하지 않습니다. 생산용 앱과 OAuth 검증의 별도 flags·DerivedData 경로, 사례별 인식·생성·UI 대기 제한은 유지합니다. 실제 총 시간과 Mac 사용 시간, 추가 VM의 준비·전송·부팅 비용을 각각 측정합니다.
 
-Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음으로 실행합니다. 일반 Release 실행 작업 한 개에서 같은 검증된 제품과 한 번 부팅한 전용 Simulator를 공유하며, 각 사례의 앱 컨테이너 초기화·삭제와 기존 제한 시간은 유지합니다. 전체 검증에는 네 묶음이 모두 필요합니다. 특정 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 원래 22개 전체를 선택합니다. 분할에 따른 준비·대기 시간과 총 작업량은 실제 실행 결과로 비교합니다.
+Release 56개 관측은 Core·Backup·local-model·questions 39개와 navigation·recordings·calendar 17개로 나눕니다. 각 작업은 별도의 전용 Simulator를 한 번 부팅합니다. Core는 해당 작업의 첫 단계이며, Backup 복원과 local-model의 종속 단계는 기존 순서를 유지합니다. 값과 저장 상태 검사를 네이티브 단계로 옮긴 뒤 UI 21개는 기존 네 묶음과 독립된 사례별 초기화를 유지합니다. 세 번째 Release 소비 VM의 준비·전송·부팅 비용을 추가하지 않도록 questions를 Core 뒤에 배치했으며, 실제 실행 균형과 성능은 최종 hosted 결과로 판단합니다. 전체 검증에는 두 작업의 정확한 합집합이 필요합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 21개 전체를 선택합니다. Core의 새 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
 
 ## 전체 CI와 제품 재사용
 
-`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `ios-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. 계획된 Mac 작업은 총 3개이며 Debug와 Release를 독립 VM에서 병렬 실행한 뒤 두 작업이 모두 성공하면 Speech를 한 번 실행합니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
+`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `ios-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. 계획된 Mac 작업은 총 5개이며, Debug와 Release producer가 독립 VM에서 시작합니다. Release 제품이 준비되면 두 Release 소비 작업과 Speech를 각각 한 번 실행합니다. 동시에 실행할 수 있는 Mac 작업은 최대 4개입니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
 
 Release producer는 기본 production 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 먼저 검증하고, 같은 작업에서 iOS Release 제품을 만듭니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달합니다. 뒤의 iOS 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, iOS 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 
@@ -118,9 +123,9 @@ production 캐시는 복원과 저장을 분리합니다. 앱 manifest와 생산
 
 cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 결과를 보존하고 소유한 자료를 정리한 뒤 후속 실행을 중단합니다. 실행하지 않은 cohort 단계는 `not-run`, fixture는 `notRun` 목록에 기록하며 성공으로 집계하지 않습니다. 한 `xcodebuild` 호출 내부에서 여러 사례가 실행되는 경계는 별도이며, 이 스케줄링 중단만으로 모든 사례가 첫 실패 순간에 중단됐다고 주장하지 않습니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. Foundation Models 관련 네 사례는 명시적인 mock 응답으로 앱·브리지·workflow를 검증합니다. mock 결과를 실제 Apple 모델 실행으로 표시하거나, 실패한 앱 동작을 skip으로 처리하지 않습니다. Speech와 다른 원래 검증의 실제 실행 요구는 유지합니다.
 
-원래 55개 요구사항과 대체 테스트, 과거 관측의 범위는 [iOS 검증 목록](ios-validation.md)에 있습니다. 한 전체 실행은 Debug 17개, Release 50개, Speech 11개 관측을 포함합니다. Speech는 별도 asset 준비, 실제 통합 테스트 6개, 원래 UI 4개를 한 번씩 실행합니다. Linux 집계는 현재 head·run·attempt에 속한 세 cohort의 완전한 결과를 요구합니다. 원시 artifact와 결과 파일도 run·attempt별로 분리하며 다른 실행의 성공을 재사용해 통과시키지 않습니다.
+원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. 한 전체 실행은 Debug 17개, Release 56개, Speech 9개 관측을 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. Linux 집계는 현재 head·run·attempt에 속한 네 실행 cohort의 완전한 결과와 Release producer 성공을 요구합니다. 원시 artifact와 결과 파일도 run·attempt별로 분리하며 다른 실행의 성공을 재사용해 통과시키지 않습니다.
 
-#198의 세 차례 수락 표본은 같은 최종 후보에서 전체 CI를 각각 한 번씩 실행해 얻습니다. 최초 자동 전체 실행이 성공하면 관리자가 해당 실행의 모든 작업을 `gh run rerun <run-id> --repo eunsoogi/orot`으로 두 차례 더 실행하고 각 환경 승인을 처리합니다. 각 실행이 끝난 뒤 다음 실행을 시작하며, `--failed`나 특정 job 재실행은 전체 수락 표본으로 세지 않습니다. [GitHub의 전체 재실행](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs?tool=cli)은 원래 SHA와 ref를 유지합니다. 후보 head와 실제 checkout, run·attempt, 전체 결과를 매번 확인하고 첫 실패와 이전 attempt를 보존합니다. 실패를 가리기 위한 자동 재시도는 두지 않으며, 실패 원인을 수정해 후보가 바뀌면 이전 성공을 새 후보의 표본으로 세지 않습니다. 세 번의 전체 성공은 초기 수락 표본이며 실패가 없다는 통계적 보장은 아닙니다.
+#198의 수락에는 최종 후보에서 전체 CI 한 번의 성공이 필요합니다. 각 관측은 해당 실행 안에서 한 번 수행하며, 세 번의 성공을 모으기 위한 추가 전체 실행이나 Speech 반복은 하지 않습니다. 후보 head와 실제 checkout, run·attempt, 전체 결과와 첫 실패를 보존합니다. 실패 원인을 수정해 후보가 바뀌면 변경된 후보에 필요한 검증을 수행하며 이전 성공을 새 후보의 결과로 사용하지 않습니다. 실패한 작업만 재실행하거나 focused 결과로 전체 검증을 대신하지 않습니다. 한 번의 성공이 장기적인 안정성을 통계적으로 보장하지는 않습니다.
 
 ## 초안 PR과 집중 검증
 

@@ -75,6 +75,11 @@
             TestLifecycleObservation.record(event, fields: observation)
         }
 
+        @objc(speechSnapshot:rejecter:)
+        func speechSnapshot(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
+            resolve(TestSpeechObservation.snapshot())
+        }
+
         /// Register the isolated test refresh channel and expose actual UIKit observations through the usual RN bridge.
         @objc(refreshAppearance:rejecter:)
         func refreshAppearance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {

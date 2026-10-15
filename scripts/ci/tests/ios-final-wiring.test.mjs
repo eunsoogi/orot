@@ -40,13 +40,13 @@ test('five Linux integration domain leaves retain the exact required context nam
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });
 
-test('full integration execution preserves 78 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
+test('full integration execution preserves 82 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(scheduled.length, 78);
+  assert.equal(scheduled.length, 82);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 77);
+  assert.equal(identifiers.size, 82);
   const provider = iosTestInventory('provider-data');
   assert.equal(provider.length, 8);
   for (const identifier of provider) assert.ok(identifiers.has(identifier));
@@ -56,5 +56,16 @@ test('full integration execution preserves 78 scheduled observations and all eig
     /supported-provider-receipt|availability.*skip|continue-on-error/,
   );
   const mapping = readFileSync('docs/ios-validation.md', 'utf8');
-  assert.equal((mapping.match(/^\| N\d{3} \|/gm) ?? []).length, 55);
+  const [replacements, classification] = mapping.split(
+    '## Requirement classification, reset and cost',
+  );
+  const expectedRequirements = Array.from(
+    { length: 55 },
+    (_, index) => `N${String(index + 1).padStart(3, '0')}`,
+  );
+  // Each table must cover all original requirements once; a duplicated row cannot hide a missing requirement.
+  for (const table of [replacements, classification]) {
+    const requirements = [...table.matchAll(/^\| (N\d{3}) \|/gm)].map((match) => match[1]);
+    assert.deepEqual(requirements, expectedRequirements);
+  }
 });

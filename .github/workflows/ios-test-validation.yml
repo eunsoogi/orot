@@ -21,7 +21,8 @@ jobs:
     environment: { name: ios-ci-admin-approval }
     timeout-minutes: 5
     outputs:
-      release_minutes: ${{ steps.plan.outputs.release_minutes }}
+      release_core_minutes: ${{ steps.plan.outputs.release_core_minutes }}
+      release_ui_minutes: ${{ steps.plan.outputs.release_ui_minutes }}
       speech_minutes: ${{ steps.plan.outputs.speech_minutes }}
       debug_minutes: ${{ steps.plan.outputs.debug_minutes }}
     steps:
@@ -43,32 +44,53 @@ jobs:
       profile: provider-data
       artifact_name: ios-test-debug-products
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.debug_minutes) }}
-  release_execution:
-    name: Production and General Release validation
-    # Independent products use separate VMs. A failed sibling prevents Speech allocation but keeps its first-attempt diagnostics.
+  release_products:
+    name: Production validation and Release products
+    # Completing this build-only job makes verified products available without waiting for any integration/UI suite.
     needs: plan
-    uses: ./.github/workflows/ios-test-build-and-execute.yml
+    uses: ./.github/workflows/ios-test-products-build.yml
     with:
-      cohort: release
       profile: core
       artifact_name: ios-test-release-products
       production_build: ${{ inputs.production_build }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_minutes) }}
+      timeout_minutes: 60
+  release_core:
+    name: Core, backup, local-model and question validation
+    needs: [plan, release_products]
+    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    with:
+      cohort: release-core
+      profile: core
+      artifact_name: ios-test-release-products
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_core_minutes) }}
+  release_ui:
+    name: Navigation, recording and calendar fixtures
+    needs: [plan, release_products]
+    uses: ./.github/workflows/ios-test-cohort-execution.yml
+    with:
+      cohort: release-ui
+      profile: fixtures
+      artifact_name: ios-test-release-products
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+      timeout_minutes: ${{ fromJSON(needs.plan.outputs.release_ui_minutes) }}
   speech_execution:
     name: Authentic Korean Speech and UI validation
-    needs: [plan, debug_execution, release_execution]
+    needs: [plan, release_products]
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
       cohort: speech
       profile: speech
       artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   completeness:
     name: iOS test completeness
-    # Acceptance repeats the entire workflow separately; this run requires one complete result from every cohort.
-    needs: [release_execution, speech_execution, debug_execution]
+    # One complete candidate execution requires the producer and all four execution jobs, including independent failures.
+    needs: [release_products, release_core, release_ui, speech_execution, debug_execution]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -85,8 +107,12 @@ jobs:
         run: node -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) throw new Error("Incomplete integration validation");'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: ios-cohort-report-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/release
+          name: ios-cohort-report-release-core-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/release-core
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-cohort-report-release-ui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports/release-ui
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ios-cohort-report-speech-${{ github.run_id }}-${{ github.run_attempt }}
@@ -97,7 +123,8 @@ jobs:
           path: artifacts/ios-reports/debug
       - name: Verify complete current-head integration observations and authentic Speech
         run: |
-          node scripts/ci/ios-test-cohort-results.mjs release artifacts/ios-reports/release/results.json artifacts/ios-reports/release-verified.json
+          node scripts/ci/ios-test-cohort-results.mjs release-core artifacts/ios-reports/release-core/results.json artifacts/ios-reports/release-core-verified.json
+          node scripts/ci/ios-test-cohort-results.mjs release-ui artifacts/ios-reports/release-ui/results.json artifacts/ios-reports/release-ui-verified.json
           node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech/results.json artifacts/ios-reports/speech-verified.json
           node scripts/ci/ios-test-cohort-results.mjs debug artifacts/ios-reports/debug/results.json artifacts/ios-reports/debug-verified.json
           node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech/speech-integration/attachments artifacts/ios-reports/speech-accuracy.json

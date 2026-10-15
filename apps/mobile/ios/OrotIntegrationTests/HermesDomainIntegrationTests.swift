@@ -15,6 +15,17 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["duplicateNodes"] as? Int, 0)
     }
 
+    func testLargeHealthLibraryUsesDefaultPagesAndStableCursors() async throws {
+        let result = try await operation("health-pagination", parameters: ["fixtureIdentifier": "test-pagination-\(UUID().uuidString)"])
+        XCTAssertEqual(result["encrypted"] as? Bool, true)
+        XCTAssertEqual(result["recordCount"] as? Int, 1503)
+        XCTAssertEqual(result["pageCount"] as? Int, 31)
+        XCTAssertEqual(result["defaultPageSize"] as? Int, 50)
+        XCTAssertEqual(result["secondPageValue"] as? String, "85 count/min")
+        XCTAssertEqual(result["tiedTimestamps"] as? Bool, true)
+        XCTAssertEqual(result["deletedCursorAndNewerArrival"] as? Bool, true)
+    }
+
     func testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures() async throws {
         let result = try await operation("local-query", parameters: ["queryIdentifier": "test-query-\(UUID().uuidString)"])
         XCTAssertEqual(result["synthetic"] as? Bool, true)

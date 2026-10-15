@@ -1,10 +1,21 @@
-import { iosTestConfig, representativeSpeechTests } from './ios-test-config.mjs';
+import {
+  iosTestConfig,
+  representativeSpeechTests,
+  speechJourneyTests,
+} from './ios-test-config.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from './ios-test-fixture-groups.mjs';
+import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
+import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  ...statePersistenceTests,
+  ...fixtureIsolationTests,
+  ...recordingPersistenceTests,
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeHealthLibraryUsesDefaultPagesAndStableCursors',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testEncryptedSourceEvidenceAndRagRelationships',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence',
@@ -18,9 +29,8 @@ const coreTests = [
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
   'OrotUITests/RootNavigationUITests/testEveryRootTabAndRecordingNavigationRemainReachable',
   'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
-  'OrotUITests/PersistenceUITests/testRemovedMemoryAndHybridEvidenceDoNotReturnAfterRelaunch',
-  'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
-  'OrotUITests/TranscriptEvidenceUITests/testReviewCorrectionHistoryPlaybackAndDeletionSurviveRelaunch',
+  'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
+  'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
 ];
 const providerTests = [
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
@@ -61,8 +71,6 @@ export const providerSelectionTests = [
   'OrotUITests/ProviderSelectionUITests/testSignOutCancelsTheOpenResponseAndSurvivesProcessRestartBeforeRelogin',
 ];
 export const fixtureTests = [
-  // Creation must begin with a fresh app and Keychain, while its in-case process restart retains them.
-  'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart',
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
   'OrotUITests/SafeAreaNavigationUITests/testSystemInsetsAcrossHomeHealthImportRecordingAndBloodPressureLibrary',
   'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
@@ -90,13 +98,30 @@ export const fixtureTests = [
 export function iosTestInventory(profile, suite = 'all') {
   const spec = iosTestConfig(profile);
   if (
-    (!['all', 'integration', 'ui', 'preparation'].includes(suite) &&
+    (![
+      'all',
+      'integration',
+      'ui',
+      'preparation',
+      'journey',
+      'isolation',
+      'recording-persistence',
+      'state-persistence',
+    ].includes(suite) &&
       !(profile === 'fixtures' && Object.hasOwn(iosFixtureGroups, suite))) ||
     (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
     (suite === 'preparation' && profile !== 'speech') ||
+    (suite === 'journey' && profile !== 'speech') ||
+    (suite === 'isolation' && profile !== 'core') ||
+    (suite === 'recording-persistence' && profile !== 'core') ||
+    (suite === 'state-persistence' && profile !== 'core') ||
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
+  if (suite === 'journey') return speechJourneyTests.slice();
+  if (suite === 'isolation') return fixtureIsolationTests.slice();
+  if (suite === 'recording-persistence') return recordingPersistenceTests.slice();
+  if (suite === 'state-persistence') return statePersistenceTests.slice();
   if (suite === 'preparation')
     return [
       'OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture',
@@ -125,5 +150,12 @@ export function iosTestInventory(profile, suite = 'all') {
   // Both subsets remain mandatory and their union is the original complete inventory.
   if (suite === 'all') return inventory;
   const target = suite === 'integration' ? spec.integrationTarget : spec.uiTarget;
-  return inventory.filter((identifier) => identifier.startsWith(target + '/'));
+  return inventory.filter(
+    (identifier) =>
+      identifier.startsWith(target + '/') &&
+      !fixtureIsolationTests.includes(identifier) &&
+      !recordingPersistenceTests.includes(identifier) &&
+      !statePersistenceTests.includes(identifier) &&
+      !(profile === 'speech' && suite === 'integration' && speechJourneyTests.includes(identifier)),
+  );
 }

@@ -1,7 +1,6 @@
-/** Independent UI cases share portable products, but each group owns one hosted destination and preserves per-case fresh-install isolation. */
+/** Independent UI cases share products and one owned destination. Explicit case policy chooses fresh installation or verified app-scoped reset. */
 export const iosFixtureGroups = Object.freeze({
   navigation: [
-    'PersistenceUITests',
     'AiFeatureNavigationUITests',
     'SafeAreaNavigationUITests',
     'RootNavigationUITests',

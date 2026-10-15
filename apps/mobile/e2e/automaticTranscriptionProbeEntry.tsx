@@ -1,45 +1,20 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import {
-  AppRegistry,
-  Button,
-  NativeModules,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { AppRegistry, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
-import { t } from '../src/i18n';
 import RecordingScreen from '../src/recording/RecordingScreen';
 import { getAutomaticTranscriptionStore } from '../src/recording/automaticTranscriptionStore';
-import {
-  prepareAutomaticProbe,
-  cleanupAutomaticProbeSource,
-  readAutomaticProbeSource,
-} from './automaticTranscriptionProbeSupport';
+import { prepareAutomaticProbe } from './automaticTranscriptionProbeSupport';
 
 type Probe = Awaited<ReturnType<typeof prepareAutomaticProbe>>;
-function verificationSourceId(): string | null {
-  const manager = NativeModules.SettingsManager as
-    | {
-        settings?: Record<string, unknown>;
-        getConstants?: () => { settings?: Record<string, unknown> };
-      }
-    | undefined;
-  const value =
-    manager?.settings?.OROT_AUTOMATIC_VERIFY_SOURCE_ID ??
-    manager?.getConstants?.().settings?.OROT_AUTOMATIC_VERIFY_SOURCE_ID;
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
 
-/** A dedicated entry keeps the synthetic save adapter outside the production app. */
+/** Only capture/source insertion are synthetic. The screen starts real Speech and renders the saved draft. */
 function ProbeEntry() {
   const [probe, setProbe] = useState<Probe | null>(null);
   const [phase, setPhase] = useState('preparing');
   const [result, setResult] = useState('');
-  const [restoredId, setRestoredId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     let unsubscribe = () => {};
@@ -48,41 +23,26 @@ function ProbeEntry() {
       setPhase('failed');
       setResult(JSON.stringify({ status: 'failed', message: String(error) }));
     };
-    const id = verificationSourceId();
-    if (id) {
-      readAutomaticProbeSource(id).then(value => {
-        if (!active) return;
-        setRestoredId(id);
-        setResult(
-          JSON.stringify({
-            ...value,
-            providerCalls: 0,
-            mode: 'relaunch-readback',
-          }),
-        );
-        setPhase('relaunch-complete');
-      }, fail);
-    } else {
-      prepareAutomaticProbe().then(value => {
-        if (!active) return;
-        const store = getAutomaticTranscriptionStore(value.transcription);
-        // Observe the screen-owned job; this harness never starts transcription itself.
-        unsubscribe = store.subscribe(() => {
-          const state = store.getSnapshot();
-          if (!state || !active) return;
-          setPhase(state.status);
-          if (state.status === 'failed')
-            fail(new Error(state.failureReason ?? 'AUTOMATIC_JOB_FAILED'));
-          if (state.status === 'complete') {
-            value.report().then(report => {
-              if (active) setResult(JSON.stringify(report));
-            }, fail);
-          }
-        });
-        setProbe(value);
-        setPhase('ready');
-      }, fail);
-    }
+    prepareAutomaticProbe().then(value => {
+      if (!active) return;
+      const store = getAutomaticTranscriptionStore(value.transcription);
+      unsubscribe = store.subscribe(() => {
+        const state = store.getSnapshot();
+        if (!state || !active) return;
+        if (state.status === 'failed')
+          fail(new Error(state.failureReason ?? 'AUTOMATIC_JOB_FAILED'));
+        else if (state.status === 'complete') {
+          // Publish completion only after the saved-source and native-process receipt is ready.
+          value.report().then(report => {
+            if (!active) return;
+            setResult(JSON.stringify(report));
+            setPhase('complete');
+          }, fail);
+        } else setPhase(state.status);
+      });
+      setProbe(value);
+      setPhase('ready');
+    }, fail);
     return () => {
       active = false;
       unsubscribe();
@@ -90,58 +50,35 @@ function ProbeEntry() {
   }, []);
   return (
     <SafeAreaView style={styles.fill}>
-      <Text testID="automatic-transcription-phase">{phase}</Text>
       {probe ? (
-        <Text
-          testID="automatic-transcription-refusal"
-          numberOfLines={2}
-          accessibilityLabel={JSON.stringify(probe.refusal)}
-        >
-          {JSON.stringify(probe.refusal)}
-        </Text>
+        <RecordingScreen
+          onBack={() => {}}
+          service={probe.service}
+          transcriptService={probe.transcription}
+          recordingLibraryService={probe.library}
+        />
       ) : null}
-      {result ? (
+      <View pointerEvents="none" style={styles.observation}>
+        <Text testID="automatic-transcription-phase" style={styles.marker}>
+          {phase}
+        </Text>
+        {probe ? (
+          <Text
+            testID="automatic-transcription-refusal"
+            accessibilityLabel={JSON.stringify(probe.refusal)}
+            style={styles.marker}
+          >
+            refusal
+          </Text>
+        ) : null}
         <Text
           testID="automatic-transcription-result"
           accessibilityLabel={result}
-          numberOfLines={2}
+          style={styles.marker}
         >
-          {result}
+          saved result
         </Text>
-      ) : null}
-      {probe ? (
-        <View style={styles.fill}>
-          <RecordingScreen
-            onBack={() => {}}
-            service={probe.service}
-            transcriptService={probe.transcription}
-            recordingLibraryService={probe.library}
-          />
-        </View>
-      ) : null}
-      {probe || restoredId ? (
-        <Button
-          title={t('probe.cleanup')}
-          testID="automatic-transcription-cleanup"
-          disabled={
-            !['ready', 'complete', 'relaunch-complete', 'failed'].includes(
-              phase,
-            )
-          }
-          onPress={() => {
-            const cleanup = probe
-              ? probe.cleanup()
-              : cleanupAutomaticProbeSource(restoredId!);
-            cleanup.then(
-              () => setPhase('cleaned'),
-              error => {
-                setResult(String(error));
-                setPhase('failed');
-              },
-            );
-          }}
-        />
-      ) : null}
+      </View>
     </SafeAreaView>
   );
 }
@@ -153,5 +90,8 @@ function Entry() {
   );
 }
 AppRegistry.registerComponent(appName, () => Entry);
-
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  observation: { position: 'absolute', top: 0, left: 0 },
+  marker: { fontSize: 1 },
+});

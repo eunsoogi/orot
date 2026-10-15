@@ -5,15 +5,15 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { iosTestCohort, iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('all four hosted fixture groups partition the original 22 exact cases without duplication', () => {
+test('all four hosted fixture groups partition the 21 UI cases after storage moves to native persistence', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [7, 5, 4, 6],
+    [6, 5, 4, 6],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 22);
+  assert.equal(original.length, 21);
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);
 });

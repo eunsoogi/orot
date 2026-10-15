@@ -35,7 +35,16 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
   const taskDirectory = join(directory, task.profile + '-' + task.suite);
   mkdirSync(taskDirectory);
   const log = join(taskDirectory, 'tests.log');
-  if (task.mode === 'backup' || task.mode === 'local-model') {
+  if (
+    [
+      'backup',
+      'local-model',
+      'speech-journey',
+      'fixture-isolation',
+      'recording-persistence',
+      'state-persistence',
+    ].includes(task.mode)
+  ) {
     const results = join(taskDirectory, 'phases');
     command(
       'ios-cohort-' + task.profile,
@@ -111,7 +120,7 @@ writeFileSync(
   join(directory, 'results.json'),
   JSON.stringify(
     {
-      // Repeated acceptance runs have different workflow identities, never an in-run sample ordinal.
+      // Evidence is bound to this workflow identity; another run or attempt cannot satisfy its gate.
       schemaVersion: 2,
       cohort,
       sourceSha: process.env.GITHUB_SHA ?? null,

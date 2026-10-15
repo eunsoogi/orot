@@ -23,22 +23,30 @@ function macJobs(file) {
   }, 0);
 }
 
-test('full integration graph uses three Mac jobs and stops dependent allocation after any failed prerequisite', () => {
+test('verified Release availability releases three consumers without waiting for unrelated tests', () => {
   const full = workflow('.github/workflows/ios-test-validation.yml');
-  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 3);
+  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
-  assert.equal(full.jobs.release_execution.needs, 'plan');
-  assert.deepEqual(full.jobs.speech_execution.needs, [
-    'plan',
-    'debug_execution',
-    'release_execution',
-  ]);
+  assert.equal(full.jobs.release_products.needs, 'plan');
+  const consumers = ['release_core', 'release_ui', 'speech_execution'];
+  for (const id of consumers) {
+    assert.deepEqual(full.jobs[id].needs, ['plan', 'release_products']);
+    assert.equal(full.jobs[id].if, undefined);
+    assert.equal(
+      full.jobs[id].with.archive_digest,
+      '${{ needs.release_products.outputs.archive_digest }}',
+    );
+    assert.equal(
+      full.jobs[id].with.manifest_digest,
+      '${{ needs.release_products.outputs.manifest_digest }}',
+    );
+  }
   assert.equal(full.jobs.debug_execution.needs, 'plan');
-  assert.equal(full.jobs.release_execution.with.profile, 'core');
+  assert.equal(full.jobs.release_products.with.profile, 'core');
   assert.equal(full.jobs.debug_execution.with.profile, 'provider-data');
   // Enumerate possible overlap states in the Mac dependency graph, rather than relying only on a max-parallel setting.
-  const ids = ['release_execution', 'speech_execution', 'debug_execution'];
+  const ids = ['release_products', 'debug_execution', ...consumers];
   const ancestors = (id) => {
     const needs = full.jobs[id].needs ?? [];
     return (Array.isArray(needs) ? needs : [needs]).flatMap((dependency) => [
@@ -51,19 +59,20 @@ test('full integration graph uses three Mac jobs and stops dependent allocation 
     const active = ids.filter((_, index) => bits & (1 << index));
     if (
       active.every((id) => {
-        // Speech cannot overlap either producer whose verified output and successful tests it requires.
+        // Completed production/build work unblocks consumers even while Debug is executing.
         return !ancestors(id).some((dependency) => active.includes(dependency));
       })
     )
       maximum = Math.max(maximum, active.length);
   }
-  assert.equal(maximum, 2);
-  // No Speech VM can be allocated after either independent producer failed; neither producer discards the other's diagnostics.
-  for (const id of ['debug_execution', 'release_execution']) {
-    assert.ok(ancestors('speech_execution').includes(id));
+  assert.equal(maximum, 4);
+  for (const id of ids) {
+    assert.ok(full.jobs.completeness.needs.includes(id));
     assert.equal(full.jobs[id].if, undefined);
   }
-  assert.equal(full.jobs.speech_execution.if, undefined);
+  assert.equal(full.jobs.completeness.needs.length, 5);
+  assert.ok(ancestors('speech_execution').includes('release_products'));
+  assert.ok(!ancestors('speech_execution').includes('debug_execution'));
 });
 
 test('manual focused diagnostics reuse one configuration and do not allocate Mac slots for selection/results', () => {
@@ -73,6 +82,48 @@ test('manual focused diagnostics reuse one configuration and do not allocate Mac
   assert.equal(focus.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.equal(focus.jobs.products.needs, 'selection');
   assert.equal(focus.jobs.execution.needs, 'products');
+});
+
+test('Release product availability never boots a simulator and retains production receipts on failure', () => {
+  const producer = workflow('.github/workflows/ios-test-products-build.yml');
+  const steps = producer.jobs.validation.steps;
+  assert.equal(
+    steps.filter((step) => step.uses === './.github/actions/ios-test-products-build').length,
+    1,
+  );
+  assert.ok(steps.every((step) => step.uses !== './.github/actions/ios-test-cohort-run'));
+  assert.doesNotMatch(JSON.stringify(steps), /prepare-cohort|run-ios-tests|test-without-building/);
+  const publication = steps.find(
+    (step) => step.with?.path === 'artifacts/ios-focus/product-artifact',
+  );
+  assert.equal(publication.if, undefined);
+  assert.equal(publication.with['if-no-files-found'], 'error');
+  const receipt = steps.find(
+    (step) => step.with?.path === 'artifacts/ios-focus/production-receipt.json',
+  );
+  assert.equal(receipt.if, '${{ always() && inputs.production_build }}');
+  const action = workflow('.github/actions/ios-test-cohort-run/action.yml');
+  const rejection = action.runs.steps.find((step) =>
+    step.run?.includes('probe-ios-test-products.mjs'),
+  );
+  assert.equal(rejection.if, "inputs.cohort == 'release' || inputs.cohort == 'release-core'");
+});
+
+test('the full gate rejects failure, cancellation, skip and missing results from each producer or consumer', () => {
+  const full = workflow('.github/workflows/ios-test-validation.yml');
+  const gate = full.jobs.completeness.steps.find((step) => step.env?.RESULTS);
+  assert.equal(full.jobs.completeness.if, 'always()');
+  const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
+  const success = Object.fromEntries(
+    full.jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
+  );
+  assert.doesNotThrow(() => evaluate({ env: { RESULTS: JSON.stringify(success) } }));
+  for (const id of full.jobs.completeness.needs) {
+    for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+      const changed = { ...success, [id]: { result } };
+      assert.throws(() => evaluate({ env: { RESULTS: JSON.stringify(changed) } }));
+    }
+  }
 });
 
 test('every cohort boots only once after verification and preserves the original test, failure and production boundaries', () => {
@@ -116,7 +167,7 @@ test('every cohort boots only once after verification and preserves the original
         iosTestCohortTasks(name).flatMap((task) => task.identifiers),
       ),
     ).size,
-    77,
+    82,
   );
 });
 

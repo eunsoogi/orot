@@ -1,6 +1,6 @@
 import XCTest
 
-/// Uses the production screen's stop action and real Apple Speech, then compares every persisted field after process restart.
+/// One real screen stop reaches Apple Speech and the production saved-draft view. A separate new-process test compares all fields.
 final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -8,7 +8,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testScreenStopPersistsSpeechSegmentsAndReopensWithoutRecognition() throws {
+    func testScreenStopReachesSavedDraft() throws {
         let app = XCUIApplication()
         let arguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TEST_SCENARIO", "automatic-transcription"]
         app.launchArguments = arguments
@@ -39,42 +39,19 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         let source = try dictionary(result, "source")
         let sourceID = try XCTUnwrap(source["id"] as? String)
         XCTAssertEqual(sourceID, fixtureID)
-        let serviceResult = try dictionary(result, "speechResult")
-        let speechSegments = try XCTUnwrap(serviceResult["segments"] as? [[String: Any]])
         let segments = try XCTUnwrap(result["segments"] as? [[String: Any]])
-        XCTAssertFalse(speechSegments.isEmpty)
-        XCTAssertEqual(segments.count, speechSegments.count)
-        // Stored ranges use milliseconds; compare them with the independent Speech response in seconds.
-        for (index, segment) in segments.enumerated() {
-            let speechSegment = speechSegments[index]
-            let text = try XCTUnwrap(segment["text"] as? String)
-            XCTAssertEqual(text, speechSegment["text"] as? String)
-            XCTAssertFalse(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            let range = try dictionary(segment, "audioRange")
-            let start = try number(range, "startMs")
-            let end = try number(range, "endMs")
-            XCTAssertEqual(start, try floor(number(speechSegment, "startSeconds") * 1000))
-            XCTAssertEqual(end, try ceil(number(speechSegment, "endSeconds") * 1000))
-            XCTAssertLessThanOrEqual(end, try number(segment, "recordingDurationMs"))
-            XCTAssertEqual(segment["recordingSourceId"] as? String, sourceID)
-            XCTAssertEqual(try dictionary(segment, "reviewState")["status"] as? String, "unreviewed")
-            let provenance = try dictionary(dictionary(segment, "provenance"), "source")
-            XCTAssertEqual(provenance["system"] as? String, "Apple Speech")
-            XCTAssertEqual(provenance["sourceIdentifier"] as? String, serviceResult["engine"] as? String)
-        }
-        app.terminate()
-        app.launchArguments = arguments + ["-OROT_AUTOMATIC_VERIFY_SOURCE_ID", sourceID]
-        app.launch()
-        value(app, "automatic-transcription-phase", "relaunch-complete", timeout: 60)
-        let restored = try report(app, id: "automatic-transcription-result", name: "automatic-persisted-relaunch")
-        XCTAssertEqual(restored["providerCalls"] as? Int, 0)
-        XCTAssertEqual(try dictionary(restored, "source") as NSDictionary, source as NSDictionary)
-        XCTAssertEqual(try XCTUnwrap(restored["segments"] as? NSArray), segments as NSArray)
-        let cleanup = UITestConditions.element(app, "automatic-transcription-cleanup")
-        XCTAssertTrue(UITestConditions.exists(cleanup))
-        XCTAssertTrue(cleanup.isEnabled)
-        cleanup.tap()
-        value(app, "automatic-transcription-phase", "cleaned")
+        let firstText = try XCTUnwrap(segments.first?["text"] as? String)
+        XCTAssertFalse(firstText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        let native = try dictionary(result, "nativeObservation")
+        XCTAssertEqual(native["speechRequests"] as? Int, 1)
+        // Select this exact saved source and inspect the shipping transcript view, not the diagnostic JSON alone.
+        tap(app, "recording-details-\(sourceID)")
+        XCTAssertTrue(UITestConditions.element(app, "recording-detail").waitForExistence(timeout: 30))
+        let transcript = UITestConditions.element(app, "transcript-text-0")
+        FormUITestConditions.reveal(transcript, in: app, scrollID: "recording-controls-scroll")
+        UITestConditions.value(transcript, equals: firstText)
+        UITestConditions.value(UITestConditions.element(app, "transcript-review-0"), equals: "검토 전 초안")
+        // Preserve this source for the host-orchestrated new-process readback and its exact-scope cleanup.
     }
 
     @MainActor
@@ -104,9 +81,5 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
 
     private func dictionary(_ value: [String: Any], _ key: String) throws -> [String: Any] {
         try XCTUnwrap(value[key] as? [String: Any])
-    }
-
-    private func number(_ value: [String: Any], _ key: String) throws -> Double {
-        try XCTUnwrap(value[key] as? NSNumber).doubleValue
     }
 }

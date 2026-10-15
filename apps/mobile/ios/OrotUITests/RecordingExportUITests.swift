@@ -9,7 +9,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart() throws {
+    func testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource() throws {
         try ExportDismissalGeometryRegression.verify()
         try FormScrollGeometryRegression.verify()
         let app = XCUIApplication()
@@ -42,30 +42,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             app.terminate()
         }
         try prepare(app)
-        tap(app, "recording-export-arm-simulated-cancel")
-        // Observe the native arm response before export. A tap alone cannot prove the Promise completed.
-        value(app, "recording-export-cancellation-status", "armed")
-        tap(app, "recording-export-transcript")
-        value(app, "recording-export-status", "내보내기를 취소했어요.")
-        captureLifecycle(app, "export-synthetic-cancellation-observation")
-        tap(app, "recording-export-read-residue")
-        value(app, "recording-export-residue-count", "0")
-        tap(app, "transcript-evidence-cleanup")
-        value(app, "transcript-evidence-setup-status", "cleaned")
-        ownedSources.removeAll()
-
-        tap(app, "recording-export-prepare-residue")
-        value(app, "recording-export-residue-count", "1")
-        app.terminate()
-        launch(app)
-        tap(app, "recording-export-read-residue")
-        value(app, "recording-export-residue-count", "1")
-        try prepare(app)
-        let reportElement = element(app, "recording-export-authorization-probe")
-        let report = try json(reportElement)
-        for field in ["registeredFixtureAllowed", "missingIDRejected", "unregisteredFileUsesStrictPath", "discardedRegistrationUsesStrictPath", "backupExclusionStillRequired"] {
-            XCTAssertEqual(report[field] as? Bool, true, field)
-        }
+        // Authorization matrices, programmatic cancellation and restart residue have independent native tests.
         XCTAssertTrue(UITestConditions.text(element(app, "transcript-evidence-source-security")).contains("backup-excluded=false"))
         let marker = element(app, "navigation-test-observation")
         let session = try ExportDismissalGeometry.session(snapshot: UITestConditions.text(marker), nowMs: Date().timeIntervalSince1970 * 1000)
@@ -90,11 +67,10 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         captureDismissalGeometry(app, "after-audio-dismissal-touch", frame: frame, point: point)
         value(app, "recording-export-status", "내보내기를 취소했어요.")
         XCTAssertFalse(dismissal.exists)
-        tap(app, "recording-export-read-residue")
-        value(app, "recording-export-residue-count", "0")
-        value(app, "recording-export-source-status", "unchanged")
-        tap(app, "transcript-evidence-cleanup")
-        value(app, "transcript-evidence-setup-status", "cleaned")
+        let result = try json(element(app, "recording-export-result"))
+        XCTAssertEqual(result["residueCount"] as? Int, 0)
+        XCTAssertEqual(result["sourceUnchanged"] as? Bool, true)
+        XCTAssertEqual(result["cleaned"] as? Bool, true)
         ownedSources.removeAll()
     }
 
@@ -146,12 +122,11 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     private func launch(_ app: XCUIApplication) {
         app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "recording-export", "-OROT_TEST_EXPORT_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        XCTAssertTrue(element(app, "transcript-evidence-open").waitForExistence(timeout: 30))
+        XCTAssertTrue(element(app, "transcript-evidence-setup-status").waitForExistence(timeout: 30))
     }
 
     @MainActor
     private func prepare(_ app: XCUIApplication) throws {
-        tap(app, "transcript-evidence-open")
         value(app, "transcript-evidence-setup-status", "ready")
         let source = UITestConditions.text(element(app, "recording-export-source-id"))
         XCTAssertNotNil(UUID(uuidString: source))
@@ -182,7 +157,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     @MainActor
     private func value(_ app: XCUIApplication, _ identifier: String, _ expected: String) {
         if identifier == "recording-export-status" {
-            // The fixed diagnostic controls leave a short viewport on SE. The result follows both export buttons and can be clipped from AX.
+            // The actual completion message remains part of the production scroll content.
             FormUITestConditions.reveal(element(app, identifier), in: app, scrollID: "recording-controls-scroll")
         }
         UITestConditions.value(element(app, identifier), equals: expected)

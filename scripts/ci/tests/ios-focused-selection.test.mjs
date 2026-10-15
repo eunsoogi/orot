@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { speechJourneyTests } from '../ios-test-config.mjs';
+import { fixtureIsolationTests } from '../fixture-isolation-test-phases.mjs';
 import { selectFocusedIosTests, verifyFocusedIosPullRequest } from '../ios-focused-selection.mjs';
 
 const profiles = [
@@ -15,9 +17,43 @@ const profiles = [
   'backup',
   'local-model',
 ];
+test('fixture reset focus retains both native processes and the intervening contamination proof', () => {
+  const selection = selectFocusedIosTests(
+    'ios/core',
+    'scripts/ci/fixture-isolation-test-phases.mjs',
+    'group/isolation',
+  );
+  assert.equal(selection.mode, 'fixture-isolation');
+  assert.equal(selection.prepareUi, false);
+  assert.deepEqual(selection.identifiers, fixtureIsolationTests);
+  for (const id of fixtureIsolationTests)
+    assert.throws(() =>
+      selectFocusedIosTests(
+        'ios/core',
+        'apps/mobile/ios/OrotIntegrationTests/FixtureIsolationTests.swift',
+        id,
+      ),
+    );
+});
+test('Speech focus preserves the UI-created baseline and its complete new-process readback group', () => {
+  const selection = selectFocusedIosTests(
+    'ios/speech',
+    'scripts/ci/speech-journey-test-phases.mjs',
+    'group/journey',
+  );
+  assert.equal(selection.mode, 'speech-journey');
+  assert.equal(selection.prepareUi, true);
+  assert.deepEqual(selection.identifiers, speechJourneyTests);
+  for (const id of speechJourneyTests) {
+    const [target, name] = id.split('/');
+    assert.throws(() =>
+      selectFocusedIosTests('ios/speech', `apps/mobile/ios/${target}/${name}.swift`, id),
+    );
+  }
+});
 for (const profile of profiles) {
   test(`integration focus preserves exact ${profile} selection and its isolation mode`, () => {
-    const inventory = iosTestInventory(profile);
+    const inventory = iosTestInventory(profile, profile === 'core' ? 'integration' : 'all');
     const grouped = ['backup', 'local-model'].includes(profile);
     const id = grouped ? 'all' : inventory[0];
     const [target, name] = inventory[0].split('/');
@@ -150,7 +186,10 @@ test('focused consumer verifies exact products before its only boot and retains 
   assert.match(source, /run-ios-focused-tests\.sh "\$PROFILE" "\$MODE" "\$TEST_ID"/);
   assert.match(execution, /ios-test-results\.mjs "\$profile"[^\n]*"\$test_id"/);
   assert.match(execution, /run-ios-fixture-tests\.mjs "\$@"/);
-  assert.match(execution, /backup \| local-model\)/);
+  assert.match(
+    execution,
+    /backup \| local-model \| speech-journey \| fixture-isolation \| recording-persistence \| state-persistence\)/,
+  );
   assert.doesNotMatch(
     source,
     /continue-on-error|build-ios-tests\.mjs|test-with-building|test-iterations/,

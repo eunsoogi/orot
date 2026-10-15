@@ -10,7 +10,7 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 const sha = 'a'.repeat(40);
 const context = { GITHUB_SHA: sha, GITHUB_RUN_ID: '1234', GITHUB_RUN_ATTEMPT: '1' };
 const inputs = ['core', 'backup', 'local-model'].map((profile) => {
-  const identifier = iosTestInventory(profile)[0];
+  const identifier = iosTestInventory(profile, profile === 'core' ? 'integration' : 'all')[0];
   const [target, name] = identifier.split('/');
   return [
     'ios/' + profile,
@@ -19,6 +19,13 @@ const inputs = ['core', 'backup', 'local-model'].map((profile) => {
   ];
 });
 inputs.push(['ios/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/recordings']);
+inputs.push(['ios/speech', 'scripts/ci/speech-journey-test-phases.mjs', 'group/journey']);
+inputs.push(['ios/core', 'scripts/ci/fixture-isolation-test-phases.mjs', 'group/isolation']);
+inputs.push([
+  'ios/core',
+  'scripts/ci/recording-persistence-test-phases.mjs',
+  'group/recording-persistence',
+]);
 inputs.push(
   [
     'ios/provider-data',
@@ -61,7 +68,14 @@ function fixture(input, mutate = () => {}, environment = context) {
     const path =
       selection.mode === 'fixture'
         ? 'fixtures/results.json'
-        : ['backup', 'local-model'].includes(selection.mode)
+        : [
+              'backup',
+              'local-model',
+              'speech-journey',
+              'fixture-isolation',
+              'recording-persistence',
+              'state-persistence',
+            ].includes(selection.mode)
           ? selection.mode + '/results.json'
           : 'results.json';
     if (path.includes('/')) mkdirSync(join(directory, path.split('/')[0]));

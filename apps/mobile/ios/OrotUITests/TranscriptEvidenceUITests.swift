@@ -8,7 +8,7 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testReviewCorrectionHistoryPlaybackAndDeletionSurviveRelaunch() throws {
+    func testNativeReviewHistoryPlaybackAndDeleteConfirmation() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "transcript-evidence"]
         addTeardownBlock { @MainActor in
@@ -21,7 +21,6 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         }
         app.launch()
         defer { app.terminate() }
-        tap(app, "transcript-evidence-open")
         value(app, "transcript-evidence-setup-status", "ready")
         let source = UITestConditions.text(element(app, "transcript-evidence-source-id"))
         ownedSource = source
@@ -69,10 +68,7 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         XCTAssertTrue(history.contains(original))
         XCTAssertEqual(text(app, "transcript-review-0", upward: true), "수정됨 · 다시 확인 필요")
         XCTAssertTrue(text(app, "transcript-stale-artifacts", upward: true).contains("1개"))
-        tap(app, "transcript-evidence-verify-memory")
-        value(app, "transcript-evidence-memory-status", "passed")
-        tap(app, "transcript-evidence-seed-deletion")
-        value(app, "transcript-evidence-deletion-seed-status", "seeded")
+        // Full memory/vector invalidation and new-process readback belong to RecordingPersistenceIntegrationTests.
         tap(app, "recording-detail-delete", upward: true)
         let confirmation = app.alerts["녹음을 삭제할까요?"]
         XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
@@ -83,11 +79,6 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         confirmation.buttons["삭제"].tap()
         let absent = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element(app, "recording-library-item-\(source)"))
         XCTAssertEqual(XCTWaiter.wait(for: [absent], timeout: 30), .completed)
-        app.terminate()
-        app.launchArguments += ["-OROT_TRANSCRIPT_DELETION_VERIFY_SOURCE_ID", source]
-        app.launch()
-        value(app, "transcript-evidence-deletion-status", "passed")
-        XCTAssertFalse(element(app, "recording-library-item-\(source)").exists)
         ownedSource = nil
     }
 

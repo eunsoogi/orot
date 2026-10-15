@@ -3,24 +3,33 @@ import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
-test('separate Core and Speech runners cover every original case without duplication or silent subsets', () => {
+test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 13, 6],
-    ['speech', 6, 4],
+    ['core', 14, 5],
+    ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
     const integration = iosTestInventory(profile, 'integration');
     const ui = iosTestInventory(profile, 'ui');
     assert.equal(integration.length, integrationCount);
     assert.equal(ui.length, uiCount);
-    assert.deepEqual([...integration, ...ui].sort(), [...all].sort());
-    assert.equal(new Set([...integration, ...ui]).size, all.length);
+    const remaining =
+      profile === 'speech'
+        ? iosTestInventory(profile, 'journey').slice(1)
+        : [
+            ...iosTestInventory(profile, 'isolation'),
+            ...iosTestInventory(profile, 'recording-persistence'),
+            ...iosTestInventory(profile, 'state-persistence'),
+          ];
+    assert.deepEqual([...integration, ...ui, ...remaining].sort(), [...all].sort());
+    assert.equal(new Set([...integration, ...ui, ...remaining]).size, all.length);
     assert.ok(integration.every((id) => id.startsWith('OrotIntegrationTests/')));
     assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
   }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
   assert.throws(() => iosTestInventory('core', 'preparation'));
+  assert.throws(() => iosTestInventory('core', 'journey'));
   assert.throws(() => iosTestInventory('speech', 'unknown'));
   assert.throws(() => iosTestInventory('provider-data', 'ui'));
 });

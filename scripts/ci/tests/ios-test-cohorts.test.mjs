@@ -40,12 +40,12 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 77);
+  assert.equal(actual.size, 82);
   assert.deepEqual([...actual].sort(), [...expected].sort());
   assert.equal(tasks.filter((task) => task.profile === 'fixtures').length, 4);
   assert.deepEqual(
     tasks.filter((task) => task.profile === 'speech').map((task) => task.suite),
-    ['preparation', 'integration', 'ui'],
+    ['preparation', 'integration', 'journey'],
   );
 });
 
@@ -78,7 +78,7 @@ test('Core verifies the integration target before scheduling UI, without losing 
   const tasks = iosTestCohortTasks('release').filter((task) => task.profile === 'core');
   assert.deepEqual(
     tasks.map((task) => task.suite),
-    ['integration', 'ui'],
+    ['state-persistence', 'isolation', 'recording-persistence', 'integration', 'ui'],
   );
   assert.deepEqual(
     tasks.flatMap((task) => task.identifiers),
@@ -87,4 +87,46 @@ test('Core verifies the integration target before scheduling UI, without losing 
   for (const task of tasks)
     assert.equal(new Set(task.identifiers.map((id) => id.split('/')[0])).size, 1);
   assert.throws(() => iosTestInventory('core', 'preparation'));
+});
+
+test('two Release destinations partition the original work exactly once and preserve stateful phase boundaries', () => {
+  const names = ['release-core', 'release-ui'];
+  const original = iosTestCohortTasks('release');
+  const partitioned = names.flatMap(iosTestCohortTasks);
+  const key = (task) => task.profile + '/' + task.suite;
+  assert.deepEqual(partitioned.map(key).sort(), original.map(key).sort());
+  assert.deepEqual(
+    names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
+    [39, 17],
+  );
+  assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
+    'core/state-persistence',
+    'core/isolation',
+    'core/recording-persistence',
+    'core/integration',
+    'core/ui',
+    'backup/all',
+    'local-model/all',
+    'fixtures/questions',
+  ]);
+  assert.deepEqual(iosTestCohortTasks('release-ui').map(key), [
+    'fixtures/navigation',
+    'fixtures/recordings',
+    'fixtures/calendar',
+  ]);
+  for (const name of names) {
+    const definition = iosTestCohort(name);
+    const owner = {
+      cohort: name,
+      profiles: definition.profiles,
+      runtime: definition.config.runtime,
+      device: definition.config.device,
+      name: `OrotTests-cohort-${name}-unit`,
+    };
+    for (const profile of definition.profiles)
+      assert.doesNotThrow(() => verifyIosSimulatorOwnerContract(owner, profile));
+    assert.throws(() =>
+      verifyIosSimulatorOwnerContract({ ...owner, cohort: 'release' }, definition.profiles[0]),
+    );
+  }
 });

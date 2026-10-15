@@ -17,6 +17,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         self.launchOptions = launchOptions
 
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if TestFixtureCommand.runIfRequested() {
+                return true
+            }
+        #endif
+
         let delegate = ReactNativeDelegate()
         let factory = RCTReactNativeFactory(delegate: delegate)
         delegate.dependencyProvider = RCTAppDependencyProvider()

@@ -33,15 +33,20 @@ export function removeIosTestFixtureContainer(profile, owner) {
   return { removed, installed: false };
 }
 
-/** Only dedicated fixture profiles may replace their app container or Keychain; shared Core and Speech destinations are excluded. */
+/** Fresh-install fixtures and Core's dedicated persistence phase may replace their owned container and Keychain. Speech is excluded. */
 export function resetIosTestFixtureContainer(
   profile,
   owner,
   application,
-  { preserveKeychain = false } = {},
+  { preserveKeychain = false, statePersistence = false } = {},
 ) {
+  if (profile === 'core' && !statePersistence)
+    throw new Error('Core fresh installation requires its explicit state persistence boundary');
+  if (statePersistence && profile !== 'core')
+    throw new Error('State persistence installation belongs only to Core');
   if (
     ![
+      'core',
       'backup',
       'fixtures',
       'health-import',

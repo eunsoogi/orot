@@ -23,8 +23,47 @@ export async function runDomainTestOperation(
       ? parameters.storageIdentifier
       : undefined;
   switch (operation) {
+    case 'checkpoint-persistence': {
+      const { runCheckpointPersistenceOperation } =
+        await import('./checkpointPersistenceOperation');
+      return runCheckpointPersistenceOperation(
+        parameters.mode,
+        parameters.fixtureIdentifier,
+      );
+    }
+    case 'recording-persistence-seed':
+    case 'recording-persistence-read': {
+      const { seedRecordingPersistence, readRecordingPersistence } =
+        await import('./recordingPersistenceTestOperation');
+      return operation === 'recording-persistence-seed'
+        ? seedRecordingPersistence()
+        : readRecordingPersistence(parameters);
+    }
     case 'connection':
       return { connected: true };
+    case 'fixture-isolation': {
+      const { runFixtureIsolationTestOperation } =
+        await import('./fixtureIsolationTestOperation');
+      return runFixtureIsolationTestOperation(
+        parameters.mode,
+        parameters.token,
+      );
+    }
+    case 'health-pagination': {
+      const { runHealthPaginationTestOperation } =
+        await import('./healthPaginationTestOperation');
+      return runHealthPaginationTestOperation(parameters.fixtureIdentifier);
+    }
+    case 'automatic-speech-readback':
+    case 'automatic-speech-cleanup': {
+      const {
+        readAutomaticSpeechAfterRestart,
+        cleanupAutomaticSpeechAfterRestart,
+      } = await import('./automaticSpeechReadbackOperation');
+      return operation === 'automatic-speech-readback'
+        ? readAutomaticSpeechAfterRestart(parameters.sourceId)
+        : cleanupAutomaticSpeechAfterRestart(parameters.sourceId);
+    }
     case 'render-application': {
       const { renderApplicationForTest } =
         await import('./testApplicationRenderer');
@@ -155,6 +194,13 @@ export async function runDomainTestOperation(
     case 'memory-delete':
       await runAgentMemoryProbe('delete', memoryIdentifier);
       return { removed: true, networkDisabled: true };
+    case 'memory-restart':
+      await runAgentMemoryProbe('restart', memoryIdentifier);
+      return {
+        restoredBeforeDeletion: true,
+        removed: true,
+        networkDisabled: true,
+      };
     case 'memory-tombstone':
       await runAgentMemoryProbe('tombstone-restart', memoryIdentifier);
       return { tombstoneVerified: true, networkDisabled: true };

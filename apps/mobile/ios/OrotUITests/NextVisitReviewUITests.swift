@@ -32,7 +32,11 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         DebugUITestConditions.dismissWarningToast(app)
         let scroll = node(app, "next-visit-questions-scroll")
         XCTAssertTrue(UITestConditions.exists(scroll))
-        let initialViewport = scroll.frame
+        // The test ID belongs to React's accessibility container. Compare the actual UIKit scroll viewport across keyboard dismissal.
+        let viewport = scroll.scrollViews.firstMatch
+        XCTAssertTrue(UITestConditions.exists(viewport))
+        let initialViewport = viewport.frame
+        try captureViewport(app, container: scroll, viewport: viewport, stage: "initial")
         XCTAssertTrue(app.staticTexts["합성 진료 예약"].exists)
         try NavigationUITestConditions.tapNavigation(app, "next-visit-generate")
         XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-generation-loading")))
@@ -67,12 +71,15 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         tap(app, "next-visit-review-cancel")
         try savedQuestion(app)
         XCTAssertFalse(app.staticTexts["저장되지 않은 임시 수정"].exists)
-        XCTAssertEqual(scroll.frame.height, initialViewport.height, accuracy: 0.5)
+        try captureViewport(app, container: scroll, viewport: viewport, stage: "restored")
+        XCTAssertEqual(viewport.frame.height, initialViewport.height, accuracy: 0.5)
         try NavigationUITestConditions.scrollToBottom(app, "next-visit-questions-scroll")
         capture(app, "saved-questions-bottom-clear")
         tap(app, "next-visit-probe-tools")
         tap(app, "next-visit-probe-reload-screen")
         try savedQuestion(app)
+        // Check the preserved caveat once after rehydration; repeating this bottom trip after every text assertion adds no boundary.
+        reveal(app, "next-visit-caveat-conflicting_records")
     }
 
     @MainActor
@@ -129,7 +136,6 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(saved, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
         XCTAssertTrue(node(app, "next-visit-saved-list").exists)
         try RenderedTextUITestConditions.verify(saved, equals: "검토해 수정한 합성 질문", in: app, testCase: self)
-        reveal(app, "next-visit-caveat-conflicting_records")
     }
 
     @MainActor
@@ -164,6 +170,18 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
     private func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    private func captureViewport(_ app: XCUIApplication, container: XCUIElement, viewport: XCUIElement, stage: String) throws {
+        let report: [String: Any] = ["stage": stage, "container": String(describing: container.frame),
+                                     "viewport": String(describing: viewport.frame), "application": String(describing: app.frame),
+                                     "keyboardVisible": app.keyboards.firstMatch.exists]
+        let data = try JSONSerialization.data(withJSONObject: report)
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "review-viewport-\(stage)"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

@@ -66,6 +66,11 @@ export function iosTestBuildSpec(profile) {
   };
 }
 
+export const speechJourneyTests = [
+  'OrotUITests/AutomaticTranscriptionUITests/testScreenStopReachesSavedDraft',
+  'OrotIntegrationTests/AutomaticSpeechPersistenceTests/testSavedSpeechFieldsSurviveNewProcessWithoutRecognition',
+];
+
 export const representativeSpeechTests = [
   'OrotIntegrationTests/SpeechIntegrationTests/testMedicationFixture',
   'OrotIntegrationTests/SpeechIntegrationTests/testNumberFixture',
@@ -73,8 +78,5 @@ export const representativeSpeechTests = [
   'OrotIntegrationTests/SpeechIntegrationTests/testInvalidLanguageFailsBeforeRequestingSpeechServices',
   'OrotIntegrationTests/SpeechIntegrationTests/testMissingAudioFailsBeforeRequestingSpeechServices',
   'OrotIntegrationTests/SpeechCancellationTests/testProductionDeadlineCancellationPropagatesAndCancelsWorker',
-  'OrotUITests/TestHostConnectionTests/testHostLaunches',
-  'OrotUITests/SpeechJourneyUITests/testTranscriptionReachesSavedRecordingAndSurvivesRelaunch',
-  'OrotUITests/RecordingExportUITests/testShareCancellationCleansTemporaryFilesAndPreservesSourceAfterRestart',
-  'OrotUITests/AutomaticTranscriptionUITests/testScreenStopPersistsSpeechSegmentsAndReopensWithoutRecognition',
+  ...speechJourneyTests,
 ];

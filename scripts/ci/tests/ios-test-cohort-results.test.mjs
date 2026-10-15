@@ -29,8 +29,10 @@ function report(cohort) {
 
 test('Linux aggregation retains all first-attempt observations from each compatible cohort', () => {
   for (const [cohort, count] of [
-    ['release', 50],
-    ['speech', 11],
+    ['release', 56],
+    ['release-core', 39],
+    ['release-ui', 17],
+    ['speech', 9],
     ['debug', 17],
   ])
     assert.equal(verifyIosTestCohortResults(report(cohort), cohort, context).length, count);
@@ -80,10 +82,10 @@ test('one complete Speech result cannot certify a different CI run or attempt', 
     assert.throws(() => verifyIosTestCohortResults(report('speech'), 'speech', changedContext));
 });
 
-test('each separate complete CI execution requires its own observations and rejects old intra-run reports', () => {
+test('a candidate requires its own observations and rejects historical intra-run sample reports', () => {
   for (const attempt of ['1', '2', '3']) {
     const value = { ...report('speech'), attempt };
-    assert.equal(verifyIosTestCohortResults(value, 'speech', { ...context, attempt }).length, 11);
+    assert.equal(verifyIosTestCohortResults(value, 'speech', { ...context, attempt }).length, 9);
     value.tasks[2].status = 'failed';
     assert.throws(() => verifyIosTestCohortResults(value, 'speech', { ...context, attempt }));
   }
@@ -120,7 +122,7 @@ test('CLI rejects a previous attempt and preserves the identity of its own compl
     assert.equal(value.runId, context.runId);
     assert.equal(value.attempt, '2');
     assert.equal(value.sample, undefined);
-    assert.equal(value.observations.length, 11);
+    assert.equal(value.observations.length, 9);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

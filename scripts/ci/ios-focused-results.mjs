@@ -28,7 +28,14 @@ if (
 const reportFile =
   selection.mode === 'fixture'
     ? 'fixtures/results.json'
-    : ['backup', 'local-model'].includes(selection.mode)
+    : [
+          'backup',
+          'local-model',
+          'speech-journey',
+          'fixture-isolation',
+          'recording-persistence',
+          'state-persistence',
+        ].includes(selection.mode)
       ? `${selection.mode}/results.json`
       : 'results.json';
 const report = JSON.parse(readFileSync(join(directory, reportFile), 'utf8'));

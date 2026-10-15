@@ -11,6 +11,7 @@ function fixture(
   profile,
   {
     preserveKeychain = false,
+    statePersistence = false,
     state = 'Booted',
     ownerProfile = profile,
     action = 'reset',
@@ -42,7 +43,7 @@ else {if(args[1]==='uninstall'){fs.writeFileSync(${JSON.stringify(removed)},'rem
   const app = join(root, 'Orot.app');
   const entry =
     action === 'cleanup' ? 'removeIosTestFixtureContainer' : 'resetIosTestFixtureContainer';
-  const code = `import {${entry} as operation} from ${JSON.stringify(pathToFileURL(resolve('scripts/ci/ios-test-fixture-container.mjs')).href)}; operation(${JSON.stringify(profile)},${JSON.stringify(owner)},${JSON.stringify(app)},${JSON.stringify({ preserveKeychain })});`;
+  const code = `import {${entry} as operation} from ${JSON.stringify(pathToFileURL(resolve('scripts/ci/ios-test-fixture-container.mjs')).href)}; operation(${JSON.stringify(profile)},${JSON.stringify(owner)},${JSON.stringify(app)},${JSON.stringify({ preserveKeychain, statePersistence })});`;
   const outcome = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {
     encoding: 'utf8',
     env: { ...process.env, PATH: root + ':' + process.env.PATH },
@@ -58,13 +59,14 @@ else {if(args[1]==='uninstall'){fs.writeFileSync(${JSON.stringify(removed)},'rem
 
 test('fresh isolated cases reset only their owned app and Keychain without booting another device', () => {
   for (const profile of [
+    'core',
     'fixtures',
     'health-import',
     'microphone',
     'local-model',
     'provider-selection',
   ]) {
-    const value = fixture(profile);
+    const value = fixture(profile, { statePersistence: profile === 'core' });
     try {
       assert.equal(value.outcome.status, 0, value.outcome.stderr);
       const mutations = value.calls.filter((call) =>
@@ -197,6 +199,7 @@ test('refuses shared Core, mismatched ownership, inactive devices and unsupporte
   for (const [profile, options] of [
     ['core', {}],
     ['fixtures', { ownerProfile: 'core' }],
+    ['fixtures', { statePersistence: true }],
     ['fixtures', { state: 'Shutdown' }],
     ['fixtures', { preserveKeychain: true }],
     ['health-import', { preserveKeychain: true }],

@@ -1,4 +1,5 @@
 import type { SourceRecord } from '@orot/domain';
+import { NativeModules } from 'react-native';
 import {
   installSyntheticTranscriptionRecording,
   removeSyntheticTranscriptionRecording,
@@ -210,6 +211,7 @@ export async function prepareAutomaticProbe() {
       const persisted = await readAutomaticProbeSource(recording.id);
       return {
         ...persisted,
+        nativeObservation: await NativeModules.OrotTestControl.speechSnapshot(),
         refusal,
         providerCalls,
         speechResult,

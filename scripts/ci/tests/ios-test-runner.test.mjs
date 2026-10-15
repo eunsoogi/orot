@@ -1,61 +1,9 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { readFileSync, rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
-import { iosTestConfig } from '../ios-test-config.mjs';
+import { fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
-
-// Executable fixtures exercise CLI exit propagation without booting a simulator or invoking Xcode.
-function fixture(status, profile = 'core', suite = 'all', selected) {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-test-runner-'));
-  const spec = iosTestConfig(profile);
-  const owner = { ...spec, name: 'owned-fixture', udid: 'fixture-udid' };
-  const calls = join(directory, 'calls.jsonl');
-  const program = `#!${process.execPath}
-const fs = require('node:fs');
-const args = process.argv.slice(2);
-const name = require('node:path').basename(process.argv[1]);
-fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args,invocation:process.env.TEST_RUNNER_OROT_IOS_TEST_INVOCATION})+'\\n');
-if (name === 'xcodebuild') process.exit(${status});
-if (args[1] === 'list' && args[2] === '-j') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:'fixture-udid',name:'owned-fixture',deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));
-else console.log('fixture app diagnostic');
-`;
-  for (const name of ['xcrun', 'xcodebuild', 'vm_stat', 'sysctl', 'ps'])
-    writeFileSync(join(directory, name), program, { mode: 0o755 });
-  const ownerFile = join(directory, 'owner.json');
-  const runFile = join(directory, 'products.xctestrun');
-  const result = join(directory, 'result.xcresult');
-  writeFileSync(ownerFile, JSON.stringify(owner));
-  writeFileSync(runFile, 'fixture products');
-  const outcome = spawnSync(
-    process.execPath,
-    [
-      resolve('scripts/ci/run-ios-tests.mjs'),
-      profile,
-      runFile,
-      ownerFile,
-      result,
-      ...(selected ??
-        (profile === 'core'
-          ? [
-              'OrotUITests/PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode',
-            ]
-          : [])),
-    ],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, OROT_IOS_TEST_SUITE: suite, PATH: directory + ':' + process.env.PATH },
-    },
-  );
-  return {
-    directory,
-    outcome,
-    calls: readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse),
-    result,
-  };
-}
 
 test('backup mutations cannot run as a shared Core selection or an unsequenced backup suite', () => {
   for (const [profile, selected] of [
@@ -82,7 +30,13 @@ test('backup mutations cannot run as a shared Core selection or an unsequenced b
 
 for (const suite of ['integration', 'ui']) {
   test(`executes the mandatory Speech ${suite} inventory once on its own runner`, () => {
-    const result = fixture(0, 'speech', suite);
+    const result = fixture(
+      0,
+      'speech',
+      suite,
+      undefined,
+      suite === 'ui' ? { OROT_IOS_SPEECH_PHASE: 'ui' } : {},
+    );
     try {
       assert.equal(result.outcome.status, 0, result.outcome.stderr);
       const runs = result.calls.filter((call) => call.name === 'xcodebuild');
@@ -167,7 +121,7 @@ test('fresh fixture selections cannot mutate Core or bypass their phase inventor
 test('fresh-install storage refuses shared Core state and runs only as an isolated fixture phase', () => {
   // The original storage requirement resets the app and Keychain before creation, then preserves both only for its in-case restart.
   const identifier =
-    'OrotUITests/PersistenceUITests/testEncryptedSourceAndEvidenceSurviveProcessRestart';
+    'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart';
   const shared = fixture(0, 'core', 'all', [identifier]);
   try {
     assert.notEqual(shared.outcome.status, 0);
@@ -214,7 +168,10 @@ test('local model selection requires exactly one corpus phase on its dedicated d
 test('each runner invocation creates a fresh namespace and refuses a mixed ios/UI selection', () => {
   const first = fixture(0);
   const second = fixture(0);
-  const mixed = fixture(0, 'core', 'all', iosTestInventory('core'));
+  const mixed = fixture(0, 'core', 'all', [
+    ...iosTestInventory('core', 'integration'),
+    ...iosTestInventory('core', 'ui'),
+  ]);
   try {
     const invocations = [first, second].map((result) => {
       assert.equal(result.outcome.status, 0, result.outcome.stderr);

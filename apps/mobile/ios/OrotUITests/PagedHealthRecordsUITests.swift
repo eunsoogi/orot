@@ -1,6 +1,6 @@
 import XCTest
 
-/// Uses the original 1,503-record adapter and real native navigation, with no HealthKit or persisted-source claim.
+/// Small synthetic pages exercise the production list and native gestures; SQLCipher integration owns large-library correctness.
 final class PagedHealthRecordsUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -21,13 +21,15 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         let list = UITestConditions.element(app, "health-records-scroll")
         XCTAssertTrue(list.waitForExistence(timeout: 30))
         XCTAssertTrue(UITestConditions.element(app, "health-record-row-0").waitForExistence(timeout: 30))
-        let row = UITestConditions.element(app, "health-record-row-55")
-        // Page size is 50, so this assertion requires a genuine second-page request from the production list.
-        // Form-sized drags exhausted all 16 gestures just below this virtualized row. Traverse the list
-        // farther per gesture, retaining the same budget and full containment before checking its value.
+        let row = UITestConditions.element(app, "health-record-row-5")
+        // Row 5 is unavailable until FlatList requests the next four-record page. Native integration retains row 55's value.
         FormUITestConditions.reveal(row, in: app, scrollID: "health-records-scroll", maximumScrollFraction: 0.7)
-        UITestConditions.value(UITestConditions.element(app, "health-record-row-55-value"), equals: "85 count/min")
-        capture(app, "health-second-page-row-55")
+        UITestConditions.value(UITestConditions.element(app, "health-record-row-5-value"), equals: "65 count/min")
+        let requestText = UITestConditions.text(UITestConditions.element(app, "health-pagination-requests"))
+        let requests = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(requestText.utf8)) as? [String: Any])
+        XCTAssertEqual(requests["pageSize"] as? Int, 4)
+        XCTAssertTrue((requests["requestedCursors"] as? [String] ?? []).contains("synthetic-health-0003"))
+        capture(app, "health-second-page-row-5")
         captureNavigationObservation(app, "health-before-edge-back")
         backSwipe(list, in: app, fraction: 0.1)
         let preserved = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in list.exists && list.isHittable }, object: nil)

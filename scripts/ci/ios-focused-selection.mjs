@@ -1,5 +1,8 @@
-import { iosTestConfig } from './ios-test-config.mjs';
+import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
+import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
+import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
+import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 /** Focus is an exact diagnostic selection. Stateful phases and named fixture groups must be requested explicitly. */
 export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) {
@@ -9,6 +12,76 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
   if (!profile) throw new Error('iOS focus profile must use ios/<profile>');
   const configuration = iosTestConfig(profile).configuration;
   const inventory = iosTestInventory(profile);
+  if (profile === 'core' && scenarioName === 'group/state-persistence') {
+    if (scenarioFile !== 'scripts/ci/state-persistence-test-phases.mjs')
+      throw new Error('State persistence focus requires its exact phase driver');
+    return {
+      profile,
+      configuration,
+      mode: 'state-persistence',
+      suite: 'state-persistence',
+      fixtureSuite: 'all',
+      identifiers: statePersistenceTests.slice(),
+      identifier: '',
+      prepareUi: false,
+      expectedCount: statePersistenceTests.length,
+    };
+  }
+  if (statePersistenceTests.includes(scenarioName))
+    throw new Error('State persistence focus requires the complete group/state-persistence phases');
+  if (profile === 'core' && scenarioName === 'group/recording-persistence') {
+    if (scenarioFile !== 'scripts/ci/recording-persistence-test-phases.mjs')
+      throw new Error('Recording persistence focus requires its exact phase driver');
+    return {
+      profile,
+      configuration,
+      mode: 'recording-persistence',
+      suite: 'recording-persistence',
+      fixtureSuite: 'all',
+      identifiers: recordingPersistenceTests.slice(),
+      identifier: '',
+      prepareUi: false,
+      expectedCount: recordingPersistenceTests.length,
+    };
+  }
+  if (recordingPersistenceTests.includes(scenarioName))
+    throw new Error(
+      'Recording persistence focus requires the complete group/recording-persistence phases',
+    );
+  if (profile === 'core' && scenarioName === 'group/isolation') {
+    if (scenarioFile !== 'scripts/ci/fixture-isolation-test-phases.mjs')
+      throw new Error('Fixture isolation focus requires its exact phase driver');
+    return {
+      profile,
+      configuration,
+      mode: 'fixture-isolation',
+      suite: 'isolation',
+      fixtureSuite: 'all',
+      identifiers: fixtureIsolationTests.slice(),
+      identifier: '',
+      prepareUi: false,
+      expectedCount: fixtureIsolationTests.length,
+    };
+  }
+  if (fixtureIsolationTests.includes(scenarioName))
+    throw new Error('Fixture isolation focus requires the complete group/isolation phases');
+  if (profile === 'speech' && scenarioName === 'group/journey') {
+    if (scenarioFile !== 'scripts/ci/speech-journey-test-phases.mjs')
+      throw new Error('Speech journey focus requires its exact phase driver');
+    return {
+      profile,
+      configuration,
+      mode: 'speech-journey',
+      suite: 'journey',
+      fixtureSuite: 'all',
+      identifiers: speechJourneyTests.slice(),
+      identifier: '',
+      prepareUi: true,
+      expectedCount: speechJourneyTests.length,
+    };
+  }
+  if (speechJourneyTests.includes(scenarioName))
+    throw new Error('Speech UI and persistence focus requires the complete group/journey phases');
   const statefulGroup = ['backup', 'local-model'].includes(profile);
   const fixtureGroup =
     profile === 'fixtures' && (scenarioName === 'all' || scenarioName.startsWith('group/'));

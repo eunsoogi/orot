@@ -57,6 +57,10 @@ test('shared focus dispatch preserves exact case, empty fixture group and statef
     ['fixture', ''],
     ['backup', ''],
     ['local-model', ''],
+    ['speech-journey', ''],
+    ['fixture-isolation', ''],
+    ['recording-persistence', ''],
+    ['state-persistence', ''],
   ]) {
     const value = fixture(mode, identifier);
     try {
@@ -95,7 +99,16 @@ test('shared focus dispatch preserves exact case, empty fixture group and statef
 });
 
 test('the first focused failure prevents verification and any retry or fallback', () => {
-  for (const mode of ['plain', 'fixture', 'backup', 'local-model']) {
+  for (const mode of [
+    'plain',
+    'fixture',
+    'backup',
+    'local-model',
+    'speech-journey',
+    'fixture-isolation',
+    'recording-persistence',
+    'state-persistence',
+  ]) {
     const value = fixture(mode, mode === 'plain' ? 'Target/Suite/testSelected' : '', 65);
     try {
       assert.equal(value.outcome.status, 65);

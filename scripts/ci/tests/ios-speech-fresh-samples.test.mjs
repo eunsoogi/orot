@@ -10,16 +10,16 @@ const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const workflow = (name) => yaml.load(readFileSync('.github/workflows/' + name, 'utf8'));
 
-// Each complete CI execution uses one fresh Speech VM. Acceptance repetition belongs to separate workflow executions.
-test('each full CI schedules every cohort once and Speech requires both producers', () => {
+// Each complete CI execution uses one fresh Speech VM. Acceptance requires one complete execution, with no repeated Speech sample.
+test('each full CI schedules every cohort once after verified products are available', () => {
   const full = workflow('ios-test-validation.yml');
-  const ids = ['debug_execution', 'release_execution', 'speech_execution'];
+  const ids = ['debug_execution', 'release_core', 'release_ui', 'speech_execution'];
   assert.deepEqual(
     Object.values(full.jobs)
       .filter((job) => job.with?.cohort)
       .map((job) => job.with.cohort)
       .sort(),
-    ['debug', 'release', 'speech'],
+    ['debug', 'release-core', 'release-ui', 'speech'],
   );
   for (const id of ids) {
     const job = full.jobs[id];
@@ -28,15 +28,15 @@ test('each full CI schedules every cohort once and Speech requires both producer
   }
   const speech = full.jobs.speech_execution;
   assert.equal(speech.uses, './.github/workflows/ios-test-cohort-execution.yml');
-  assert.deepEqual(speech.needs, ['plan', 'debug_execution', 'release_execution']);
+  assert.deepEqual(speech.needs, ['plan', 'release_products']);
   assert.equal(speech.if, undefined);
   assert.equal(speech.with.artifact_name, 'ios-test-release-products');
-  assert.equal(speech.with.archive_digest, '${{ needs.release_execution.outputs.archive_digest }}');
+  assert.equal(speech.with.archive_digest, '${{ needs.release_products.outputs.archive_digest }}');
   assert.equal(
     speech.with.manifest_digest,
-    '${{ needs.release_execution.outputs.manifest_digest }}',
+    '${{ needs.release_products.outputs.manifest_digest }}',
   );
-  assert.equal(full.jobs.completeness.needs.length, 3);
+  assert.equal(full.jobs.completeness.needs.length, 5);
 });
 
 test('raw and compact evidence is isolated by CI run and attempt without intra-run samples', () => {
@@ -63,7 +63,7 @@ test('raw and compact evidence is isolated by CI run and attempt without intra-r
   assert.doesNotMatch(commands, /speech-second|speech-third/);
 });
 
-test('actual Linux plan reports three Mac jobs and one complete original inventory', () => {
+test('actual Linux plan reports five Mac jobs and one complete original inventory', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-speech-plan-'));
   try {
     const output = join(directory, 'outputs');
@@ -73,10 +73,10 @@ test('actual Linux plan reports three Mac jobs and one complete original invento
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
-    assert.equal(value.macJobs, 3);
-    assert.equal(value.maximumConcurrentMacJobs, 2);
-    assert.equal(value.uniqueTestCases, 77);
-    assert.equal(value.scheduledTestObservations, 78);
+    assert.equal(value.macJobs, 5);
+    assert.equal(value.maximumConcurrentMacJobs, 4);
+    assert.equal(value.uniqueTestCases, 82);
+    assert.equal(value.scheduledTestObservations, 82);
     assert.equal(value.focusedSelectionObservations, undefined);
     assert.equal(value.totalScheduledTestObservations, undefined);
     assert.equal(value.speechSamples, undefined);

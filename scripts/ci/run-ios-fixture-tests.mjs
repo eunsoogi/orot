@@ -10,6 +10,11 @@ import {
   resetIosTestFixtureContainer,
   removeIosTestFixtureContainer,
 } from './ios-test-fixture-container.mjs';
+import {
+  ensureIosFixtureInstalled,
+  iosFixtureResetMode,
+  runIosFixtureCommand,
+} from './ios-test-scoped-reset.mjs';
 
 const [profile, runFile, ownerFile, output, ...selected] = process.argv.slice(2);
 if (
@@ -45,10 +50,25 @@ const observations = [];
 const failures = [];
 const started = Date.now();
 let attempted = 0;
+let lastMode;
 for (const [index, identifier] of expected.entries()) {
   attempted += 1;
-  // Independent schema, form and import fixtures never share a prior database or its initialization marker.
-  resetIosTestFixtureContainer(profile, owner, app);
+  const mode = iosFixtureResetMode(profile, identifier);
+  const setupStarted = Date.now();
+  // Fresh-install/key-lifecycle cases retain the full boundary. Ordinary UI starts with observed clean app-owned state.
+  if (mode === 'scoped') {
+    if (lastMode !== 'scoped') ensureIosFixtureInstalled(profile, owner, app);
+    const reset = await runIosFixtureCommand(profile, owner, 'reset');
+    writeFileSync(
+      join(directory, `reset-${index + 1}.json`),
+      JSON.stringify(reset, null, 2) + '\n',
+    );
+  } else resetIosTestFixtureContainer(profile, owner, app);
+  lastMode = mode;
+  console.log(
+    'IOS_FIXTURE_SETUP ' +
+      JSON.stringify({ identifier, mode, elapsedMs: Date.now() - setupStarted }),
+  );
   const name = String(index + 1).padStart(2, '0');
   const resultBundle = join(directory, name + '.xcresult');
   try {
@@ -91,18 +111,33 @@ for (const [index, identifier] of expected.entries()) {
     failures.push(failure);
     console.error('IOS_FIXTURE_CASE_FAILED ' + JSON.stringify(failure));
   } finally {
-    // run-ios-tests preserves logs and xcresult before returning. Remove only this owned synthetic app, even when its first execution fails.
+    // The next scoped case resets once before use. On failure or group end, clean immediately after preserving its evidence.
     const cleanupStarted = Date.now();
-    const cleanup = removeIosTestFixtureContainer(profile, owner);
-    console.log(
-      'IOS_FIXTURE_CLEANUP_VERIFIED ' +
-        JSON.stringify({
-          profile,
-          device: owner.udid,
-          ...cleanup,
-          elapsedMs: Date.now() - cleanupStarted,
-        }),
-    );
+    try {
+      const cleanup =
+        mode === 'fresh-install'
+          ? removeIosTestFixtureContainer(profile, owner)
+          : failures.length ||
+              index === expected.length - 1 ||
+              iosFixtureResetMode(profile, expected[index + 1]) !== 'scoped'
+            ? await runIosFixtureCommand(profile, owner, 'reset')
+            : { deferredToNextSetup: true };
+      console.log(
+        'IOS_FIXTURE_CLEANUP_VERIFIED ' +
+          JSON.stringify({
+            profile,
+            mode,
+            device: owner.udid,
+            ...cleanup,
+            elapsedMs: Date.now() - cleanupStarted,
+          }),
+      );
+    } catch (error) {
+      // Cleanup has its own failed observation; it cannot erase the earlier assertion or authorize a later case.
+      const failure = { identifier, stage: 'cleanup', error: String(error) };
+      failures.push(failure);
+      console.error('IOS_FIXTURE_CLEANUP_FAILED ' + JSON.stringify(failure));
+    }
   }
   if (failures.length) break;
 }
