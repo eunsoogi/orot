@@ -149,6 +149,9 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
+		E19810000000000000000001 /* LocalE5Preparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000011 /* LocalE5Preparation.swift */; };
+		E19810000000000000000002 /* LocalE5PreparationRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000012 /* LocalE5PreparationRegression.swift */; };
+		E19810000000000000000003 /* LocalE5PreparationFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000013 /* LocalE5PreparationFixtures.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -317,6 +320,9 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
+		E19810000000000000000011 /* LocalE5Preparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5Preparation.swift; path = OrotMobile/LocalE5Preparation.swift; sourceTree = "<group>"; };
+		E19810000000000000000012 /* LocalE5PreparationRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationRegression.swift; path = LocalE5PreparationRegression.swift; sourceTree = "<group>"; };
+		E19810000000000000000013 /* LocalE5PreparationFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationFixtures.swift; path = LocalE5PreparationFixtures.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -409,6 +415,7 @@
 				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
 				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
 				F24E00000000000000000014 /* LocalE5EmbeddingRuntime.swift */,
+				E19810000000000000000011 /* LocalE5Preparation.swift */,
 				F24E00000000000000000015 /* LocalE5ModelAssetStore.swift */,
 				F24E00000000000000000016 /* LocalE5URLSessionDownloader.swift */,
 				F24E00000000000000000017 /* LocalE5ProcessMetrics.swift */,
@@ -502,6 +509,8 @@
 				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
 				79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */,
 				435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */,
+				E19810000000000000000013 /* LocalE5PreparationFixtures.swift */,
+				E19810000000000000000012 /* LocalE5PreparationRegression.swift */,
 				914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */,
 				AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */,
 				ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */,
@@ -898,6 +907,7 @@
 				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
 				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,
 				F24E00000000000000000004 /* LocalE5EmbeddingRuntime.swift in Sources */,
+				E19810000000000000000001 /* LocalE5Preparation.swift in Sources */,
 				F24E00000000000000000005 /* LocalE5ModelAssetStore.swift in Sources */,
 				F24E00000000000000000006 /* LocalE5URLSessionDownloader.swift in Sources */,
 				F24E00000000000000000007 /* LocalE5ProcessMetrics.swift in Sources */,
@@ -981,6 +991,8 @@
 				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
 				FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */,
 				A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */,
+				E19810000000000000000003 /* LocalE5PreparationFixtures.swift in Sources */,
+				E19810000000000000000002 /* LocalE5PreparationRegression.swift in Sources */,
 				62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */,
 				71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */,
 				8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */,

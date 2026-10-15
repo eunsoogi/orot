@@ -44,10 +44,11 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
-        start(requestId, resolve: resolve, reject: reject) { [weak self] in
+        start(requestId, resolve: resolve, reject: reject) { [weak self] slot in
             try await LocalE5EmbeddingRuntime.shared.prepare(requestId: requestId) { [weak self] completed, total in
                 guard let self else { return }
-                DispatchQueue.main.async {
+                await MainActor.run {
+                    guard self.isActive(slot) else { return }
                     self.sendEvent(
                         withName: "LocalE5EmbeddingEvent",
                         body: ["requestId": requestId, "completed": completed, "total": total],
@@ -66,7 +67,7 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
-        start(requestId, resolve: resolve, reject: reject) {
+        start(requestId, resolve: resolve, reject: reject) { _ in
             try await LocalE5EmbeddingRuntime.shared.embedBatch(texts, role: role, requestId: requestId)
         }
     }
@@ -81,7 +82,7 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         lock.unlock()
 
         task?.cancel()
-        Task { await LocalE5EmbeddingRuntime.shared.cancel(requestId: requestId) }
+        // Preparation binds task cancellation to its subscriber token, so a reused request ID cannot cancel a replacement.
         slot?.reject(
             "LOCAL_EMBEDDING_CANCELLED",
             "The local embedding request was cancelled.",
@@ -93,7 +94,7 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         _ requestId: String,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock,
-        operation: @escaping () async throws -> Any,
+        operation: @escaping (LocalE5EmbeddingRequestSlot) async throws -> Any,
     ) {
         guard let slot = register(requestId, reject: reject) else {
             reject("DUPLICATE_REQUEST_ID", "A local embedding request with this ID is already active.", nil)
@@ -102,7 +103,7 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
 
         let task = Task { [weak self] in
             do {
-                let result = try await operation()
+                let result = try await operation(slot)
                 if let self, finish(slot) {
                     resolve(result)
                 }
@@ -134,6 +135,12 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         if wasCancelled {
             task.cancel()
         }
+    }
+
+    private func isActive(_ slot: LocalE5EmbeddingRequestSlot) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return requests[slot.requestId] === slot && !slot.cancelled && !slot.finished
     }
 
     private func finish(_ slot: LocalE5EmbeddingRequestSlot) -> Bool {
