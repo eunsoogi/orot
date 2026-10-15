@@ -114,6 +114,8 @@ Fixtures 22개는 `navigation`, `recordings`, `questions`, `calendar` 네 묶음
 
 Release producer는 기본 production 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 먼저 검증하고, 같은 작업에서 iOS Release 제품을 만듭니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달합니다. 뒤의 iOS 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, iOS 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 
+production 캐시는 복원과 저장을 분리합니다. 앱 manifest와 생산용 의무 검증이 모두 성공한 직후, 통합 테스트 빌드 전에 검증된 DerivedData·Pods를 저장합니다. 앞 단계의 실패나 production이 아닌 실행은 저장하지 않으며, 정확한 cache key가 이미 있으면 중복 저장하지 않습니다. 이후 UI 실패는 전체 검증을 실패로 유지합니다. 실제 재사용 여부는 다음 실행의 cache hit, 입력·제품 검증, `app_reusable`과 컴파일 생략을 확인하며 저장·복원 비용도 함께 측정합니다.
+
 cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 결과를 보존하고 소유한 자료를 정리한 뒤 후속 실행을 중단합니다. 실행하지 않은 cohort 단계는 `not-run`, fixture는 `notRun` 목록에 기록하며 성공으로 집계하지 않습니다. 한 `xcodebuild` 호출 내부에서 여러 사례가 실행되는 경계는 별도이며, 이 스케줄링 중단만으로 모든 사례가 첫 실패 순간에 중단됐다고 주장하지 않습니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. Foundation Models 관련 네 사례는 명시적인 mock 응답으로 앱·브리지·workflow를 검증합니다. mock 결과를 실제 Apple 모델 실행으로 표시하거나, 실패한 앱 동작을 skip으로 처리하지 않습니다. Speech와 다른 원래 검증의 실제 실행 요구는 유지합니다.
 
 원래 55개 요구사항과 대체 테스트, 과거 관측의 범위는 [iOS 검증 목록](ios-validation.md)에 있습니다. 한 전체 실행은 Debug 17개, Release 50개, Speech 11개 관측을 포함합니다. Speech는 별도 asset 준비, 실제 통합 테스트 6개, 원래 UI 4개를 한 번씩 실행합니다. Linux 집계는 현재 head·run·attempt에 속한 세 cohort의 완전한 결과를 요구합니다. 원시 artifact와 결과 파일도 run·attempt별로 분리하며 다른 실행의 성공을 재사용해 통과시키지 않습니다.

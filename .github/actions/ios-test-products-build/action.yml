@@ -50,7 +50,8 @@ runs:
       run: scripts/ci/run-command.sh production-toolchain artifacts/ios-focus/production-toolchain.log -- bash scripts/ci/verify-toolchain.sh --cocoapods
     - name: Restore production-only DerivedData and CocoaPods intermediates
       if: inputs.production_build == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      id: production_cache_restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: |
           apps/mobile/ios/build-production
@@ -123,6 +124,15 @@ runs:
       if: inputs.production_build == 'true'
       shell: bash
       run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
+    - name: Save verified production outputs before integration validation
+      # A later test failure must not discard this validated producer cache; earlier failures still prevent saving.
+      if: success() && inputs.production_build == 'true' && steps.production_cache_restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          apps/mobile/ios/build-production
+          apps/mobile/ios/Pods
+        key: ${{ steps.production_cache_restore.outputs.cache-primary-key }}
     - name: Build without booting a Simulator
       shell: bash
       env:
