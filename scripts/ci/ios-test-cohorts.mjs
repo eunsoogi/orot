@@ -50,9 +50,8 @@ export function iosTestCohortTasks(name) {
       : definition.profiles.flatMap((profile) =>
           profile === 'core'
             ? [
-                { profile, suite: 'state-persistence', mode: 'state-persistence' },
+                { profile, suite: 'shared-persistence', mode: 'shared-persistence' },
                 { profile, suite: 'isolation', mode: 'fixture-isolation' },
-                { profile, suite: 'recording-persistence', mode: 'recording-persistence' },
                 ...['integration', 'ui'].map((suite) => ({ profile, suite, mode: 'plain' })),
               ]
             : profile === 'fixtures'

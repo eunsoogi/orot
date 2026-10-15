@@ -68,6 +68,8 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
+GitHub가 제공하는 임시 macOS 러너에서는 의존성을 풀기 전에 Data 볼륨의 Spotlight 색인 해제를 한 번 시도합니다. 명령은 15초, 별도 상태 확인은 5초로 제한하고 결과를 `spotlight.log`에 남깁니다. 해제를 확인하지 못해도 기존 빌드·테스트 검증은 그대로 실행합니다. 개발용 Mac과 자체 호스팅 러너에서는 이 명령을 실행하지 않으며, 시뮬레이터 내부 서비스나 색인 파일을 삭제하지 않습니다.
+
 로컬 Core 검증은 저장소 루트에서 다음 순서로 실행합니다. 기존 제품이나 소유권 파일과 겹치지 않는 경로를 사용하세요.
 
 ```sh
@@ -111,11 +113,11 @@ iOS 선택 검증은 기존 E2E workflow의 `focus_profile=ios/<profile>`, `focu
 
 전체 iOS CI 한 번은 총 6개 macOS 작업을 사용합니다. production·OAuth 검증, Debug 빌드·실행, Release 테스트 빌드 전용 producer가 독립적으로 시작합니다. Debug는 한 VM에서 빌드와 17개 관측을 실행합니다. Release producer는 테스트 제품 빌드·업로드까지만 수행하고 Simulator를 부팅하지 않습니다. producer가 성공하면 Release 검증 2개 작업과 새 러너의 Speech 작업이 바로 시작할 수 있으며, production과 Debug가 진행 중이면 최대 동시 Mac은 5개입니다. 각 실행 작업은 첫 실패에서 다음 사례를 중단하고 진단을 보존합니다. producer 실패 시 소비 작업은 할당하지 않지만, 독립 검증이 실패했을 때 이미 시작한 다른 작업의 비용은 발생할 수 있습니다. 전체·집중 실행은 저장소 단위 동시 실행 제한을 공유합니다. 실행 계획·선택·결과 집계는 Ubuntu에서 처리합니다. 각 소비 작업은 제품의 출처·설정·도구·무결성을 부팅 전에 검증하며 별도로 컴파일하지 않습니다. 생산용 앱과 OAuth 검증의 별도 flags·DerivedData 경로, 사례별 인식·생성·UI 대기 제한은 유지합니다. 실제 총 시간과 Mac 사용 시간, 추가 VM의 준비·전송·부팅 비용을 각각 측정합니다.
 
-Release 56개 관측은 Core·Backup·local-model·questions 39개와 navigation·recordings·calendar 17개로 나눕니다. 각 작업은 별도의 전용 Simulator를 한 번 부팅합니다. Core는 해당 작업의 첫 단계이며, Backup 복원과 local-model의 종속 단계는 기존 순서를 유지합니다. 값과 저장 상태 검사를 네이티브 단계로 옮긴 뒤 UI 21개는 기존 네 묶음과 독립된 사례별 초기화를 유지합니다. 세 번째 Release 소비 VM의 준비·전송·부팅 비용을 추가하지 않도록 questions를 Core 뒤에 배치했으며, 실제 실행 균형과 성능은 최종 hosted 결과로 판단합니다. 전체 검증에는 두 작업의 정확한 합집합이 필요합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 21개 전체를 선택합니다. Core의 새 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
+Release 56개 관측은 Core·Backup·local-model·questions 39개와 navigation·recordings·calendar 17개로 나눕니다. 각 작업은 별도의 전용 Simulator를 한 번 부팅합니다. Core는 해당 작업의 첫 단계이며, Backup 복원과 local-model의 종속 단계는 기존 순서를 유지합니다. 값과 저장 상태 검사를 네이티브 단계로 옮긴 뒤 UI 21개는 기존 네 묶음과 독립된 사례별 초기화를 유지합니다. 세 번째 Release 소비 VM의 준비·전송·부팅 비용을 추가하지 않도록 questions를 Core 뒤에 배치했으며, 실제 실행 균형과 성능은 최종 hosted 결과로 판단합니다. 전체 검증에는 두 작업의 정확한 합집합이 필요합니다. 특정 fixture 묶음은 `focus_profile=ios/fixtures`, `focus_scenario_file=scripts/ci/ios-test-fixture-groups.mjs`, `focus_scenario_name=group/<group>`으로 선택하며, `all`은 UI 21개 전체를 선택합니다. 전체 Core 실행에서는 저장 상태 3단계와 녹음 자료 2단계를 3개의 새 프로세스로 묶습니다. 첫 설치·키 생성은 첫 프로세스에서 단독 검증하고, 다음 두 프로세스는 서로 다른 UUID를 쓰는 저장 상태와 녹음 자료 검증을 함께 실행합니다. 단계 사이에는 초기화하지 않으며 두 영역의 실제 PID와 원래 판정 결과를 모두 확인합니다. 독립 선택 실행의 상태 그룹은 각각 `scripts/ci/state-persistence-test-phases.mjs`와 `group/state-persistence`, `scripts/ci/fixture-isolation-test-phases.mjs`와 `group/isolation`, `scripts/ci/recording-persistence-test-phases.mjs`와 `group/recording-persistence`를 지정합니다. Speech는 `scripts/ci/speech-journey-test-phases.mjs`와 `group/journey`를 지정하며 단일 단계 선택은 허용하지 않습니다.
 
 ## 전체 CI와 제품 재사용
 
-`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 준비합니다. 초안 PR도 Mac 할당 전에 Linux 계획 작업의 `ios-ci-admin-approval` 환경에서 관리자 승인을 기다립니다. 저장소 설정의 필수 검토자는 `eunsoogi`이며 관리자 우회는 허용하지 않습니다. 승인 없이 실행되거나 단순히 환경 이름만 존재하는 상태를 승인 완료로 간주하지 않습니다. 계획된 Mac 작업은 총 6개이며, production·OAuth 검증과 Debug, Release producer가 독립 VM에서 시작합니다. Release 제품이 준비되면 두 Release 소비 작업과 Speech를 각각 한 번 실행합니다. 동시에 실행할 수 있는 Mac 작업은 최대 5개입니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
+`E2E Test`는 PR 변경과 `main` push에서 iOS 검증 graph를 자동으로 실행합니다. 초안 PR도 별도 관리자 승인 없이 Linux 계획 작업을 거쳐 Mac 작업을 시작합니다. 전체·선택 CI는 deployment environment를 사용하지 않습니다. 계획된 Mac 작업은 총 6개이며, production·OAuth 검증과 Debug, Release producer가 독립 VM에서 시작합니다. Release 제품이 준비되면 두 Release 소비 작업과 Speech를 각각 한 번 실행합니다. 동시에 실행할 수 있는 Mac 작업은 최대 5개입니다. 같은 PR의 초안 상태 변경도 이전 실행을 중복 유지하지 않습니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량은 실제 실행 시 별도로 관측합니다.
 
 production 전용 작업은 기본 앱과 별도 OAuth harness를 각각 다른 flags·DerivedData로 검증합니다. 이 결과는 테스트 제품의 빌드 입력이 아니므로 Release producer의 선행 조건으로 두지 않습니다. 완료된 production·기본 Keychain·OAuth 검증은 현재 run·attempt·head의 결과 파일로 Linux 상태에 전달하며, 전체 집계도 production 작업의 성공을 요구합니다. 독립 iOS 컴파일이나 테스트 실패가 production 성공 기록을 지우지 않습니다. production 캐시는 실제 도구 버전·빌드 입력·CocoaPods 생성물·앱 digest를 확인하며, iOS 테스트 제품은 같은 실행의 검증된 artifact로 전달합니다.
 
@@ -129,7 +131,7 @@ cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 �
 
 ## 초안 PR과 집중 검증
 
-초안 PR은 정적 검사와 단위 테스트를 자동으로 실행하며, 전체 iOS 실행은 관리자 승인 전까지 대기합니다. 승인 거절·미승인·취소·미실행을 성공으로 처리하지 않습니다. 승인 후 실제 전체 검증이 성공해야 초안의 실행 보류 조건을 해제할 수 있으며, 최종 검증 전에는 PR을 초안으로 유지합니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에서 관리합니다. iOS 상태는 `iOS validation /` 아래의 Release UI and storage, Stateful data, Provider and capability, Speech transcription, Visit questions 다섯 개이며, 모두 동일한 전체 검증 결과를 요구합니다. 상태 이름을 바꿀 때는 실제 생성된 이름과 저장소 보호 설정의 22개 필수 검사를 함께 확인합니다.
+초안 PR도 정적 검사·단위 테스트·전체 iOS 검증을 자동으로 실행합니다. 취소·미실행·실패를 성공으로 처리하지 않으며, 실제 전체 검증이 성공해야 초안의 실행 보류 조건을 해제할 수 있습니다. 최종 검증 전에는 PR을 초안으로 유지합니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에서 관리합니다. iOS 상태는 `iOS validation /` 아래의 Release UI and storage, Stateful data, Provider and capability, Speech transcription, Visit questions 다섯 개이며, 모두 동일한 전체 검증 결과를 요구합니다. 상태 이름을 바꿀 때는 실제 생성된 이름과 저장소 보호 설정의 22개 필수 검사를 함께 확인합니다.
 
 현재 후보 브랜치에서 원래 iOS 사례 하나를 선택하려면 정확한 Swift 파일과 XCTest identifier를 지정합니다. PR 번호·저장소·열린 상태·base와 현재 head를 검증한 뒤 제품을 준비하고, 그 제품의 무결성을 확인한 consumer만 실행합니다.
 
@@ -141,4 +143,4 @@ gh workflow run e2e-test.yml --ref <PR-branch> \
   -f focus_scenario_name=OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack
 ```
 
-선택 실행은 전체 CI와 별도 경로이며 같은 승인 환경을 거친 뒤 Mac producer와 consumer 2개를 사용하고 선택·정확한 결과 검증은 Linux에서 처리합니다. 전체 CI 말미에 같은 사례를 추가로 반복하지 않습니다. 실패한 첫 시도와 원시 결과를 보존하고 원인이 확인된 변경 후에만 재실행합니다. 수동 입력은 집중 진단용이며 전체 검증을 시작하거나 충족하지 않습니다. 전체 검증은 후보 PR 변경으로 자동 생성된 실행을 관리자가 승인합니다. 최종 검증이 불완전하면 PR은 초안을 유지합니다.
+선택 실행은 전체 CI와 별도 경로이며 관리자 승인 없이 Mac producer와 consumer 2개를 사용하고 선택·정확한 결과 검증은 Linux에서 처리합니다. 전체 CI 말미에 같은 사례를 추가로 반복하지 않습니다. 실패한 첫 시도와 원시 결과를 보존하고 원인이 확인된 변경 후에만 재실행합니다. 수동 입력은 집중 진단용이며 전체 검증을 시작하거나 충족하지 않습니다. 전체 검증은 후보 PR 변경으로 자동 시작합니다. 최종 검증이 불완전하면 PR은 초안을 유지합니다.

@@ -107,6 +107,7 @@ export function iosTestInventory(profile, suite = 'all') {
       'isolation',
       'recording-persistence',
       'state-persistence',
+      'shared-persistence',
     ].includes(suite) &&
       !(profile === 'fixtures' && Object.hasOwn(iosFixtureGroups, suite))) ||
     (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
@@ -115,6 +116,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (suite === 'isolation' && profile !== 'core') ||
     (suite === 'recording-persistence' && profile !== 'core') ||
     (suite === 'state-persistence' && profile !== 'core') ||
+    (suite === 'shared-persistence' && profile !== 'core') ||
     (profile === 'fixtures' && suite !== 'all' && !Object.hasOwn(iosFixtureGroups, suite))
   )
     throw new Error('Unsupported integration test suite selection');
@@ -122,6 +124,8 @@ export function iosTestInventory(profile, suite = 'all') {
   if (suite === 'isolation') return fixtureIsolationTests.slice();
   if (suite === 'recording-persistence') return recordingPersistenceTests.slice();
   if (suite === 'state-persistence') return statePersistenceTests.slice();
+  if (suite === 'shared-persistence')
+    return [...statePersistenceTests, ...recordingPersistenceTests];
   if (suite === 'preparation')
     return [
       'OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture',

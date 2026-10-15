@@ -55,22 +55,32 @@ enum FormUITestConditions {
         reveal(input, in: app, scrollID: scrollID)
         input.tap()
         let current = input.value as? String ?? ""
+        // Populate the synthetic clipboard before opening the menu so Paste is present even on an empty editor.
+        // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
+        defer {
+            if !text.isEmpty {
+                UIPasteboard.general.string = nil
+            }
+        }
+        if !text.isEmpty {
+            UIPasteboard.general.string = text
+        }
         if !current.isEmpty, current != input.placeholderValue {
             input.press(forDuration: 1)
             let selectAll = editMenuItem(app, "Select All")
             selectAll.tap()
-            input.typeText(XCUIKeyboardKey.delete.rawValue)
+            if text.isEmpty {
+                input.typeText(XCUIKeyboardKey.delete.rawValue)
+            }
+        } else if !text.isEmpty {
+            input.press(forDuration: 1)
         }
         if !text.isEmpty {
             // One native paste event avoids controlled-input character loss and per-key XCTest idling on a cold hosted runner.
-            // The runner uses a dedicated fixture Simulator. Readback of another app's pasteboard can require permission and stall;
-            // write only this test's synthetic input, then clear it instead of inspecting or retaining prior clipboard data.
-            defer { UIPasteboard.general.string = nil }
-            UIPasteboard.general.string = text
-            input.press(forDuration: 1)
+            // Select All keeps the native edit menu and selection. Paste replaces that selection directly,
+            // avoiding a delete event and a second long press that add no editor boundary.
             let paste = editMenuItem(app, "Paste")
             paste.tap()
-            exactValue(input, equals: text)
         }
         exactValue(input, equals: text)
     }

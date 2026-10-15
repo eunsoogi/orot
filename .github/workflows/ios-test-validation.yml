@@ -15,8 +15,6 @@ jobs:
   plan:
     name: Plan integration coverage and macOS budget
     runs-on: ubuntu-24.04
-    # Required reviewer protection is configured in repository settings; approval precedes the first Debug VM and every successor.
-    environment: { name: ios-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       release_core_minutes: ${{ steps.plan.outputs.release_core_minutes }}

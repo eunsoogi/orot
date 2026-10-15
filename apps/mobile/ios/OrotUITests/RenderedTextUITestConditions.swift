@@ -5,13 +5,17 @@ import XCTest
 enum RenderedTextUITestConditions {
     /// Static text may have no activation point. Check its exact accessible text and actual rendered pixels instead of inferring visibility from hittability.
     static func verify(_ element: XCUIElement, equals expected: String, in app: XCUIApplication, testCase: XCTestCase) throws {
-        XCTAssertTrue(element.exists && !element.frame.isEmpty)
+        XCTAssertTrue(element.exists)
+        // The screen does not change during this observation; reuse the measured frames instead of asking AX for each coordinate again.
+        let elementFrame = element.frame
+        let applicationFrame = app.frame
+        XCTAssertFalse(elementFrame.isEmpty)
         XCTAssertEqual(UITestConditions.text(element), expected)
         let screenshot = app.screenshot()
         let cgImage = try XCTUnwrap(screenshot.image.cgImage)
-        let scaleX = CGFloat(cgImage.width) / app.frame.width
-        let scaleY = CGFloat(cgImage.height) / app.frame.height
-        let frame = element.frame.offsetBy(dx: -app.frame.minX, dy: -app.frame.minY)
+        let scaleX = CGFloat(cgImage.width) / applicationFrame.width
+        let scaleY = CGFloat(cgImage.height) / applicationFrame.height
+        let frame = elementFrame.offsetBy(dx: -applicationFrame.minX, dy: -applicationFrame.minY)
         let crop = CGRect(x: frame.minX * scaleX, y: frame.minY * scaleY,
                           width: frame.width * scaleX, height: frame.height * scaleY)
         let image = try XCTUnwrap(cgImage.cropping(to: crop))

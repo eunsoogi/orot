@@ -78,11 +78,11 @@ test('Core verifies the integration target before scheduling UI, without losing 
   const tasks = iosTestCohortTasks('release').filter((task) => task.profile === 'core');
   assert.deepEqual(
     tasks.map((task) => task.suite),
-    ['state-persistence', 'isolation', 'recording-persistence', 'integration', 'ui'],
+    ['shared-persistence', 'isolation', 'integration', 'ui'],
   );
   assert.deepEqual(
-    tasks.flatMap((task) => task.identifiers),
-    iosTestInventory('core'),
+    tasks.flatMap((task) => task.identifiers).sort(),
+    iosTestInventory('core').sort(),
   );
   for (const task of tasks)
     assert.equal(new Set(task.identifiers.map((id) => id.split('/')[0])).size, 1);
@@ -100,9 +100,8 @@ test('two Release destinations partition the original work exactly once and pres
     [39, 17],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
-    'core/state-persistence',
+    'core/shared-persistence',
     'core/isolation',
-    'core/recording-persistence',
     'core/integration',
     'core/ui',
     'backup/all',

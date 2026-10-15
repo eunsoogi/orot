@@ -43,23 +43,10 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(try abs(XCTUnwrap(report["actualStartMs"]) - 250), 50)
 
         tap(app, "transcript-edit-0")
-        let input = reveal(app, "transcript-input-0")
-        input.tap()
-        // Focusing changes the keyboard viewport. Recheck the real input frame before opening its edit menu.
-        _ = reveal(app, "transcript-input-0")
-        let viewport = element(app, "recording-controls-scroll")
-        let offset = CGVector(dx: input.frame.midX - viewport.frame.minX,
-                              dy: input.frame.midY - viewport.frame.minY)
-        // Select the original text through the native editor before entering a replacement.
-        viewport.coordinate(withNormalizedOffset: .zero).withOffset(offset).press(forDuration: 1.2)
-        if app.menuItems["Select All"].waitForExistence(timeout: 2) {
-            app.menuItems["Select All"].tap()
-        } else {
-            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count))
-        }
+        let input = element(app, "transcript-input-0")
         let correction = "사용자가 확인한 전사 수정"
-        input.typeText(correction)
-        UITestConditions.value(input, equals: correction)
+        // Exercise the actual native selection/paste editor and exact value readback, including wrapped menu commands.
+        FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")
         tap(app, "transcript-save-0")
         value(app, "transcript-evidence-correction-status", "saved")
         XCTAssertEqual(text(app, "transcript-text-0"), correction)

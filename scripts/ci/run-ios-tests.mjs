@@ -11,6 +11,7 @@ import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests, statePersistencePhases } from './state-persistence-test-phases.mjs';
+import { verifySharedPersistenceSelection } from './shared-persistence-test-phases.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -32,7 +33,9 @@ const fixtureSelection = fixtureProfiles.find((candidate) =>
   tests.some((test) => iosTestInventory(candidate).includes(test)),
 );
 const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
-if (tests.some((test) => statePersistenceTests.includes(test))) {
+const sharedPersistence = process.env.OROT_IOS_SHARED_PERSISTENCE_PHASE !== undefined;
+if (sharedPersistence) verifySharedPersistenceSelection(profile, tests, process.env);
+if (!sharedPersistence && tests.some((test) => statePersistenceTests.includes(test))) {
   const index = statePersistencePhases.indexOf(process.env.OROT_IOS_STATE_PHASE);
   if (
     profile !== 'core' ||
@@ -47,7 +50,7 @@ if (tests.some((test) => statePersistenceTests.includes(test))) {
       'State persistence requires its host-orchestrated fresh-install and new-process phases',
     );
 }
-if (tests.some((test) => recordingPersistenceTests.includes(test))) {
+if (!sharedPersistence && tests.some((test) => recordingPersistenceTests.includes(test))) {
   const phase = process.env.OROT_IOS_RECORDING_PHASE;
   const expected =
     phase === 'seed'

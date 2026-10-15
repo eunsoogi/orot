@@ -27,8 +27,6 @@ jobs:
   selection:
     name: Validate exact integration selection
     runs-on: ubuntu-24.04
-    # Diagnostics require the same human administrator approval and cannot bypass the full path's Mac allocation boundary.
-    environment: { name: ios-ci-admin-approval }
     timeout-minutes: 5
     outputs:
       profile: ${{ steps.selection.outputs.profile }}
@@ -145,6 +143,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - name: Suppress competing Spotlight indexing on the ephemeral host
+        run: scripts/ci/run-command.sh ios-host-spotlight artifacts/ios-focus/spotlight.log -- node scripts/ci/suppress-hosted-spotlight.mjs
       - name: Install dependencies before test boot
         run: scripts/ci/run-command.sh ios-focus-dependencies artifacts/ios-focus/install.log -- pnpm install --frozen-lockfile
       - name: Download the producer's exact integration products

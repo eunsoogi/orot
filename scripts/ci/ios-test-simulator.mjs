@@ -1,9 +1,10 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestCohort, verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
+import { iosTestResourceSampler } from './ios-test-resources.mjs';
 
 /** Preserve command failures and stdout while reporting each public simctl operation separately on stderr. */
 export function runIosSimulatorCommand(args, options = {}) {
@@ -32,6 +33,39 @@ export function runIosSimulatorCommand(args, options = {}) {
 }
 function simctl(...args) {
   return runIosSimulatorCommand(args).trim();
+}
+
+/** Keep Apple's migration/readiness progress visible while sampling the wait. No boot retry or service mutation is performed. */
+async function bootOwnedSimulator(owner, ownerPath) {
+  const stopSampling = iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
+  try {
+    simctl('boot', owner.udid);
+    const args = ['bootstatus', owner.udid, '-b'];
+    const operation = { operation: 'simctl', arguments: args };
+    const started = performance.now();
+    console.error(
+      JSON.stringify({ ...operation, timestamp: new Date().toISOString(), phase: 'started' }),
+    );
+    // execFileSync previously discarded this stdout, hiding whether a long wait was migration or readiness.
+    const command = spawn('xcrun', ['simctl', ...args], { stdio: 'inherit' });
+    const outcome = await new Promise((accept, reject) => {
+      command.once('error', reject);
+      command.once('close', (status, signal) => accept({ status, signal }));
+    });
+    console.error(
+      JSON.stringify({
+        ...operation,
+        timestamp: new Date().toISOString(),
+        phase: 'finished',
+        elapsedMs: Math.round((performance.now() - started) * 1000) / 1000,
+        ...outcome,
+      }),
+    );
+    if (outcome.status !== 0 || outcome.signal)
+      throw new Error(`iOS bootstatus failed: ${outcome.signal ?? outcome.status}`);
+  } finally {
+    stopSampling();
+  }
 }
 function inventory(owner, devices) {
   const device = devices[owner.runtime]?.find((item) => item.udid === owner.udid);
@@ -84,8 +118,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     owner.udid = simctl('create', name, config.device, config.runtime);
     writeFileSync(ownerPath, JSON.stringify(owner, null, 2) + '\n');
     verifyIosTestSimulator(owner, cohort?.profiles[0] ?? profile);
-    simctl('boot', owner.udid);
-    simctl('bootstatus', owner.udid, '-b');
+    await bootOwnedSimulator(owner, ownerPath);
     if (process.env.GITHUB_ENV)
       writeFileSync(process.env.GITHUB_ENV, `OROT_IOS_TEST_SIMULATOR_UDID=${owner.udid}\n`, {
         flag: 'a',

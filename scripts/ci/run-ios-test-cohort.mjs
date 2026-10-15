@@ -42,6 +42,7 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
       'fixture-isolation',
       'recording-persistence',
       'state-persistence',
+      'shared-persistence',
     ].includes(task.mode)
   ) {
     const results = join(taskDirectory, 'phases');
