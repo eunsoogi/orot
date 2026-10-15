@@ -2,6 +2,22 @@
 
 Current execution procedures are in [development.md](development.md), and replacement coverage is mapped in [ios-validation.md](ios-validation.md). Each measurement below belongs to its stated revision and workload. Historical Detox commands and workflow names remain as evidence of those runs. A focused historical run or a smaller inventory does not establish a current speedup.
 
+## Parallel producer attempt after cleanup
+
+[Run 38654661542](https://github.com/eunsoogi/orot/actions/runs/38654661542), attempt 1, tested PR head `94fa3cce010c0f0aeeff8a628099966c29e007c0` at merge checkout `9dcec79881970b61c364ad09c668fcc757527f4e`. Both Mac producers started at 23:33:19 UTC on October 14, 2026, with Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. They used separate VMs and verified their products before booting their owned Simulators.
+
+| Mac job | Whole job | Build action | Boot-status command | Original cohort | Result |
+| --- | --- | --- | --- | --- | --- |
+| Debug | 35m56s | 11m31s | 133.006s | 1,157.936s | 17 passed, plus one separate focused integration case |
+| Production and Release | 42m20s | 21m24s | 63.969s | 925.780s | 25 passed, one failed, 24 not run |
+| Speech samples 1–3 | Not allocated | Not run | Not run | Not run | Failed Release prerequisite |
+
+The producers overlapped for 35m56s. Their combined Mac job duration was 78m16s, while the interval from first Mac start to last Mac completion was 42m20s. This failed run stopped partway through Release and did not execute Speech; those durations do not measure the full-success critical path or establish a speedup over the earlier complete cohorts. Integration compilation took 530.503s in Debug and 419.544s in Release. Both pnpm caches hit. The production DerivedData lookup reported a miss and `app_reusable=false`; its default-entry build ran for about 6m17s. An identical production binary hash across attempts therefore does not mean this build was skipped.
+
+The first failure was `PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe`, whose body took 99.276s. Its recording shows an interactive back transition followed by cancellation, leaving the health list visible. The failed case retained its raw bundle and recording; later Release groups and its additional focused UI case did not run. The completeness job, production aggregate and all five domain statuses failed. Both owned Simulators were deleted successfully.
+
+Execution samples recorded zero swap for all 61 Debug and 54 Release observations. No compiler was present in valid process snapshots; one Release process observation was unavailable. Debug also recorded two post-boot `simctl list -j` calls lasting 50.997s and 80.852s. These are observed costs, not an established cause of the gesture failure. Continuous CPU, whole-runner peak RSS, disk I/O and the unexecuted Speech workload remain unmeasured. The retained failure and differing workload prevent a claim of improved stability.
+
 ## Integration candidate before cleanup and parallel producers
 
 [Run 38621746347](https://github.com/eunsoogi/orot/actions/runs/38621746347), attempt 1, built PR head `fdc89e1cc104dad5c9606d8a4f3423fe9cb88588` at merge checkout `9ec3f1ccc157ffde759ba5dce452e035e12a61a7`. It used the pinned Xcode 27 toolchain on macOS 27.0.1 arm64. Debug and Release used iOS 27 build 24A434; the fresh Speech VMs used iOS 26.2 build 23C54. Build and execution shared a VM for each configuration, and all Speech consumers verified the same Release artifact.
