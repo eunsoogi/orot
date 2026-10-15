@@ -13,15 +13,29 @@ function collector(program, options = {}, readyText) {
   const path = join(directory, 'speech.log');
   let invocation;
   let ready;
-  const started = new Promise((resolveReady) => (ready = resolveReady));
+  const started = new Promise((resolveReady, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Collector fixture did not become ready')),
+      10_000,
+    );
+    ready = () => {
+      clearTimeout(timer);
+      resolveReady();
+    };
+  });
   const stop = startIosSpeechDiagnostics('owned-udid', path, {
     ...options,
     spawnProcess: (command, args, settings) => {
       invocation = { command, args, settings };
       const child = spawn(process.execPath, ['-e', program], settings);
-      child.stdout.on('data', (chunk) => {
-        if (!readyText || chunk.toString().includes(readyText)) ready();
-      });
+      let observed = '';
+      // Pipes may arrive separately or split a marker. Stop only after the required output is observed.
+      for (const stream of [child.stdout, child.stderr]) {
+        stream.on('data', (chunk) => {
+          observed += chunk.toString();
+          if (!readyText || observed.includes(readyText)) ready();
+        });
+      }
       return child;
     },
   });
@@ -30,7 +44,9 @@ function collector(program, options = {}, readyText) {
 
 test('streams only selected public logs from the exact owned destination and closes its child', async () => {
   const result = collector(
-    "process.stdout.write('asset begin\\n'); process.stderr.write('speech begin\\n'); setInterval(() => {}, 1000);",
+    "process.stdout.write('asset begin\\n'); setTimeout(() => process.stderr.write('speech begin\\n'), 200); setInterval(() => {}, 1000);",
+    {},
+    'speech begin',
   );
   try {
     await result.started;
@@ -60,10 +76,11 @@ test('streams only selected public logs from the exact owned destination and clo
 
 test('caps retained bytes while preserving the latest failure instead of stopping at a noisy prelude', async () => {
   const result = collector(
-    "process.stdout.write('x'.repeat(4096) + 'LATE_FAILURE'); setInterval(() => {}, 1000);",
+    "process.stdout.write('x'.repeat(4096) + 'LATE_'); setTimeout(() => process.stdout.write('FAILURE'), 20); setInterval(() => {}, 1000);",
     {
       maxBytes: 128,
     },
+    'LATE_FAILURE',
   );
   try {
     await result.started;
@@ -149,14 +166,31 @@ for (const status of [0, 65]) {
     const config = iosTestConfig('speech');
     const owner = { ...config, name: 'owned-fixture', udid: 'owned-udid' };
     const calls = join(directory, 'calls.jsonl');
+    const collectorPid = join(directory, 'collector.pid');
     const program = `#!${process.execPath}
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 const name = require('node:path').basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify({name,args})+'\\n');
-if (name === 'xcodebuild') process.exit(${status});
-if (args.includes('stream')) process.exit(23);
-if (args[1] === 'list' && args[2] === '-j') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(config.runtime)},buildversion:${JSON.stringify(config.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(config.runtime)}]:[{udid:'owned-udid',name:'owned-fixture',deviceTypeIdentifier:${JSON.stringify(config.device)},state:'Booted'}]}}));
+// The native fixture completes only after the collector really exits, regardless of startup order.
+if (name === 'xcodebuild') {
+  const started = Date.now();
+  const awaitCollectorExit = () => {
+    try {
+      const pid = Number(fs.readFileSync(${JSON.stringify(collectorPid)}, 'utf8'));
+      process.kill(pid, 0);
+    } catch (error) {
+      if (error.code === 'ESRCH') process.exit(${status});
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (Date.now() - started > 10000) throw new Error('Collector fixture did not exit');
+    setTimeout(awaitCollectorExit, 10);
+  };
+  awaitCollectorExit();
+} else if (args.includes('stream')) {
+  fs.writeFileSync(${JSON.stringify(collectorPid)}, String(process.pid));
+  setTimeout(() => process.exit(23), 100);
+} else if (args[1] === 'list' && args[2] === '-j') console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(config.runtime)},buildversion:${JSON.stringify(config.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(config.runtime)}]:[{udid:'owned-udid',name:'owned-fixture',deviceTypeIdentifier:${JSON.stringify(config.device)},state:'Booted'}]}}));
 else console.log('fixture diagnostic');
 `;
     try {
