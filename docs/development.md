@@ -96,7 +96,7 @@ Speech 자산 준비는 한 번의 설치 요청과 기존 180초 제한을 유�
 
 iOS 선택 검증은 기존 E2E workflow의 `focus_profile=ios/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 성공하더라도 보호된 전체 검증을 충족하지 않습니다.
 
-자동 전체 실행도 Debug와 Release의 원래 사례가 모두 성공한 뒤 각각 통합 사례 하나와 UI 사례 하나를 정확히 선택해 추가 실행합니다. 선택 검증과 같은 `run-ios-focused-tests.sh`를 사용하고, 이미 검증한 제품과 부팅한 소유 Simulator를 재사용합니다. 원래 전체 관측 100개와 추가 선택 관측 2개를 별도로 보존하며, 추가 빌드·부팅·Mac 작업은 없습니다. Linux 집계는 두 선택의 정확한 identifier와 제품의 source·run·attempt·configuration을 확인합니다. 전체 실행이나 추가 선택 중 하나가 실패하면 필수 검증도 실패합니다. 자동 PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶입니다.
+자동 전체 실행은 Debug 17개, Release 50개, Speech 11개 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. 자동 PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
 
 Simulator 소유권은 각 검증 호출에서 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 

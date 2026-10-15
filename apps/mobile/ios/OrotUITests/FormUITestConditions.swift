@@ -5,13 +5,13 @@ import XCTest
 enum FormUITestConditions {
     /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
     /// Noninteractive text callers must prove rendered visibility separately when opting out of hit testing.
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true) {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scrollID: String, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45) {
         let scroll = UITestConditions.element(app, scrollID)
-        reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable)
+        reveal(target, in: app, scroll: scroll, towardTop: towardTop, horizontalPosition: horizontalPosition, requireHittable: requireHittable, maximumScrollFraction: maximumScrollFraction)
     }
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true) {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45) {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -33,7 +33,7 @@ enum FormUITestConditions {
             if attempt == 16 {
                 break
             }
-            guard let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: horizontalPosition) else {
+            guard let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: horizontalPosition, maximumScrollFraction: maximumScrollFraction) else {
                 XCTFail("The form gesture has invalid coordinates")
                 return
             }

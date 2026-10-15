@@ -50,5 +50,31 @@ enum FormScrollGeometryRegression {
         let translated = try XCTUnwrap(offset.gesture(target: nil, towardTop: false, horizontalPosition: 0.5))
         XCTAssertEqual(translated.start.dx, 187.5)
         XCTAssertEqual(translated.start.dy, 512.5)
+        try verifyPagedListTraversal()
+    }
+
+    private static func verifyPagedListTraversal() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let scroll = CGRect(x: 24, y: 86, width: 354, height: 764)
+        let geometry = try XCTUnwrap(FormScrollGeometry(application: app, scroll: scroll, keyboard: nil))
+        for towardTop in [false, true] {
+            let standard = try XCTUnwrap(geometry.gesture(target: nil, towardTop: towardTop, horizontalPosition: 0.5))
+            let paged = try XCTUnwrap(geometry.gesture(target: nil, towardTop: towardTop, horizontalPosition: 0.5, maximumScrollFraction: 0.7))
+            XCTAssertEqual(abs(standard.end.dy - standard.start.dy), scroll.height * 0.45, accuracy: 0.0001)
+            XCTAssertEqual(abs(paged.end.dy - paged.start.dy), scroll.height * 0.7, accuracy: 0.0001)
+            XCTAssertEqual(paged.end.dy > paged.start.dy, towardTop)
+            for point in [paged.start, paged.end] {
+                XCTAssertTrue(scroll.contains(CGPoint(x: point.dx, y: point.dy)))
+            }
+        }
+        // The hosted row ended two points below the viewport. Longer travel must never turn clipping into success.
+        let clipped = CGRect(x: 44, y: 761.33349609375, width: 314, height: 90.66650390625)
+        XCTAssertFalse(geometry.contains(clipped))
+        let correction = try XCTUnwrap(geometry.gesture(target: clipped, towardTop: false, horizontalPosition: 0.5, maximumScrollFraction: 0.7))
+        XCTAssertEqual(correction.start.dy - correction.end.dy, 30, accuracy: 0.0001)
+        XCTAssertTrue(geometry.contains(clipped.offsetBy(dx: 0, dy: -30)))
+        for fraction: CGFloat in [.nan, .infinity, 0, -0.1, 0.71] {
+            XCTAssertNil(geometry.gesture(target: nil, towardTop: false, horizontalPosition: 0.5, maximumScrollFraction: fraction))
+        }
     }
 }

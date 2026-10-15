@@ -2,6 +2,24 @@
 
 Current execution procedures are in [development.md](development.md), and replacement coverage is mapped in [ios-validation.md](ios-validation.md). Each measurement below belongs to its stated revision and workload. Historical Detox commands and workflow names remain as evidence of those runs. A focused historical run or a smaller inventory does not establish a current speedup.
 
+## Paged-list visibility failure after successful producer builds
+
+[Run 38694960845](https://github.com/eunsoogi/orot/actions/runs/38694960845), attempt 1, tested PR head `8a915197b514e76ede0832f44e28a6833012f5ae` at merge checkout `424da66cb6cabe28568399c46c2218a3257745c1`. Both producers used pinned Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. This execution planned one Debug, one Release and one Speech cohort, with no additional focused observations.
+
+| Mac job                | Whole job     | Build action | Boot-status command | Original cohort | Result                            |
+| ---------------------- | ------------- | ------------ | ------------------- | --------------- | --------------------------------- |
+| Debug                  | 28m25s        | 9m29s        | 37.306s             | 911.938s        | 17 passed                         |
+| Production and Release | 30m44s        | 14m21s       | 45.006s             | 772.741s        | 25 passed, one failed, 24 not run |
+| Speech                 | Not allocated | Not run      | Not run             | Not run         | Failed Release prerequisite       |
+
+Combined Mac job duration was 59m09s, with a 30m44s interval from first start to last completion. Debug and Release integration compilation took 390.224s and 305.771s. The five separate production obligations and six actual invalid-artifact rejection probes passed. The first failed case, N022, took 66.141s: after all 16 scrolls, row 55 ended two points below the viewport. Its original visibility assertion stopped the case before either back gesture. Independent inspection of 19 raw bundles found 42 passes, one failure and 35 unexecuted observations. The failed fixture group's six earlier passes remain in its raw results even though the cohort report contains only its completed groups. All six protected iOS aggregates failed and both owned Simulators were deleted.
+
+Debug's 49 execution resource samples and Release's 44 recorded zero swap. Their compressor ranges were 1,537.86–2,188.30 MiB and 1,518.34–2,087.27 MiB respectively. Each cohort had one unavailable process observation; valid snapshots contained no compiler. These are samples, not continuous peaks. Queue and approval time, continuous CPU, whole-runner peak RSS, disk I/O, child-process time and the unexecuted workload remain unmeasured. This partial failed workload does not establish a full-success duration or speedup.
+
+## Project serialization failure before integration execution
+
+[Run 38692810511](https://github.com/eunsoogi/orot/actions/runs/38692810511), attempt 1, tested `bda4f061` at merge checkout `7f5f1376519515a93c3d203e5145fcabf863b4c1`. Debug stopped at the source-integrity guard after Pods installation in a 2m34s job. Release's five separate production obligations passed before the same guard stopped integration compilation; that job took 13m20s. Combined Mac duration was 15m54s, with a 13m20s span. No test Simulator was booted, no portable integration products were produced and all 78 observations remained unexecuted. Speech was not allocated, and completeness plus all six protected iOS aggregates failed. The retained build and Pods logs support a project-ordering diagnosis; they do not measure test performance.
+
 ## Producer failures before Speech allocation
 
 [Run 38674947074](https://github.com/eunsoogi/orot/actions/runs/38674947074), attempt 1, tested PR head `179cc1c6fbbf67d88b0b64bb69d91c08cc405fc7` at merge checkout `9bb31af1b85e8113854c76c5d29893f85ef18577`. Its two producers used the same pinned Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. Both failed before Speech allocation. This historical execution still planned three Speech jobs and two additional focused observations within one workflow; the corrected acceptance procedure repeats complete CI executions separately.

@@ -23,7 +23,9 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "health-record-row-0").waitForExistence(timeout: 30))
         let row = UITestConditions.element(app, "health-record-row-55")
         // Page size is 50, so this assertion requires a genuine second-page request from the production list.
-        FormUITestConditions.reveal(row, in: app, scrollID: "health-records-scroll")
+        // Form-sized drags exhausted all 16 gestures just below this virtualized row. Traverse the list
+        // farther per gesture, retaining the same budget and full containment before checking its value.
+        FormUITestConditions.reveal(row, in: app, scrollID: "health-records-scroll", maximumScrollFraction: 0.7)
         UITestConditions.value(UITestConditions.element(app, "health-record-row-55-value"), equals: "85 count/min")
         capture(app, "health-second-page-row-55")
         captureNavigationObservation(app, "health-before-edge-back")

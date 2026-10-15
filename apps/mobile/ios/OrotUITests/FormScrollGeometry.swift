@@ -23,13 +23,16 @@ struct FormScrollGeometry {
         Self.valid(target) && target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
     }
 
-    func gesture(target: CGRect?, towardTop: Bool, horizontalPosition: CGFloat) -> (start: CGVector, end: CGVector)? {
-        guard horizontalPosition.isFinite, (0 ... 1).contains(horizontalPosition) else { return nil }
+    func gesture(target: CGRect?, towardTop: Bool, horizontalPosition: CGFloat, maximumScrollFraction: CGFloat = 0.45) -> (start: CGVector, end: CGVector)? {
+        guard horizontalPosition.isFinite, (0 ... 1).contains(horizontalPosition),
+              maximumScrollFraction.isFinite, maximumScrollFraction > 0, maximumScrollFraction <= 0.7 else { return nil }
         let measuredTarget = target.flatMap { Self.valid($0) ? $0 : nil }
         let above = measuredTarget.map { $0.minY < viewport.minY } ?? towardTop
-        let overflow = measuredTarget.map { above ? viewport.minY - $0.minY : $0.maxY - viewport.maxY } ?? viewport.height * 0.45
-        // Keep the original adaptive distance and direction, within this visible viewport and above the keyboard.
-        let distance = min(max(overflow + 8, 30), viewport.height * 0.45)
+        let travelLimit = viewport.height * maximumScrollFraction
+        let overflow = measuredTarget.map { above ? viewport.minY - $0.minY : $0.maxY - viewport.maxY } ?? travelLimit
+        // Virtualized lists can opt into longer travel while an offscreen row is being located.
+        // The 70% ceiling keeps both endpoints inside the viewport from the existing 25%/75% origins.
+        let distance = min(max(overflow + 8, 30), travelLimit)
         let x = viewport.minX + viewport.width * horizontalPosition - application.minX
         let y = viewport.minY + viewport.height * (above ? 0.25 : 0.75) - application.minY
         let endY = y + (above ? distance : -distance)
