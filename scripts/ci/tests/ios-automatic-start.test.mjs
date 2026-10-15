@@ -22,7 +22,7 @@ function assertAutomaticGraph(name, visited = new Set()) {
 }
 
 test('automatic full validation plans coverage without deployment approval and retains every required dependency', () => {
-  const full = read('ios-test-validation.yml');
+  const full = read('e2e-test.yml');
   assertAutomaticGraph('e2e-test.yml');
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.plan['continue-on-error'], undefined);
@@ -33,8 +33,8 @@ test('automatic full validation plans coverage without deployment approval and r
   assert.deepEqual(full.jobs.debug_execution.needs, ['plan', 'debug_products']);
   assert.equal(full.jobs.release_products.needs, 'plan');
   assert.deepEqual(full.jobs.release_execution.needs, ['plan', 'release_products']);
-  assert.equal(full.on.workflow_dispatch, undefined);
-  assert.ok(Object.hasOwn(full.on, 'workflow_call'));
+  assert.ok(Object.hasOwn(full.on, 'workflow_dispatch'));
+  assert.equal(full.on.workflow_call, undefined);
 });
 
 test('focused diagnostics start automatically after Linux selection without a deployment environment', () => {
@@ -49,12 +49,12 @@ test('draft PR updates and main pushes start full CI while manual diagnostics ca
   const e2e = read('e2e-test.yml');
   assert.ok(e2e.on.pull_request.types.includes('synchronize'));
   assert.deepEqual(e2e.on.push.branches, ['main']);
-  assert.doesNotMatch(e2e.jobs.ios_validation.if, /outputs\.deferred != 'true'/);
-  assert.match(e2e.jobs.ios_validation.if, /github\.event_name != 'workflow_dispatch'/);
-  assert.match(e2e.jobs.ios_validation.if, /outputs\.focused != 'true'/);
+  assert.doesNotMatch(e2e.jobs.plan.if, /outputs\.deferred != 'true'/);
+  assert.match(e2e.jobs.plan.if, /github\.event_name != 'workflow_dispatch'/);
+  assert.match(e2e.jobs.plan.if, /outputs\.focused != 'true'/);
   // Draft state cannot bypass validation: only a completed full result clears the deferred flag.
   const condition =
-    "needs.selection.outputs.deferred == 'true' && needs.ios_validation.result != 'success'";
+    "needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success'";
   assert.ok(e2e.jobs.ios_simulator_build.steps[0].env.DEFERRED.includes(condition));
   assert.ok(e2e.jobs.required_statuses.with.invalid_selection.includes(condition));
   assert.ok(e2e.jobs.required_statuses.with.invalid_selection.includes("diagnostic == 'true'"));

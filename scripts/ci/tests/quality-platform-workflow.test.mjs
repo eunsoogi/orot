@@ -162,7 +162,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
   assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
-  assert.match(e2eWorkflow, /^name: E2E$/m);
+  assert.match(e2eWorkflow, /^name: E2E Test$/m);
   for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow]) {
     assert.ok(workflow.replace(/^ {4}#.*\n/gm, '').includes(staticTriggers));
     assert.ok(
@@ -178,13 +178,10 @@ test('uses singular workflow names and matching paths with direct checks and can
     e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
     /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
-  assert.match(
-    e2eWorkflow,
-    /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}/,
-  );
-  // Ready/draft transitions of the same PR must supersede the same expensive run, not occupy separate Mac groups.
+  assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
+  // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.
   assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
-  assert.match(e2eWorkflow, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  assert.match(e2eWorkflow, /cancel-in-progress: false/);
   assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
   assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);
   assert.match(e2eWorkflow, /^ {2}pull-requests: read$/m);
@@ -192,7 +189,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
-  assert.match(buildJob, /name: E2E \/ Validate \/ Build/);
+  assert.match(buildJob, /name: Validate \/ Build/);
   assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);

@@ -3,7 +3,7 @@ description: Install the pinned JavaScript and Ruby tools once on each native bu
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/ios-host-bootstrap
+    # The calling workflow exposes host bootstrap immediately after checkout.
     - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
       with:
         version: 12.3.4

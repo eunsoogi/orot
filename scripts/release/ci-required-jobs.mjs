@@ -18,12 +18,12 @@ export const REQUIRED_CI_JOBS_BY_WORKFLOW = {
   '.github/workflows/unit-test.yml': ['TypeScript typecheck', 'Unit and component tests'],
   '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
   '.github/workflows/e2e-test.yml': [
-    'E2E / Validate / Build',
-    'E2E / Validate / UI',
-    'E2E / Validate / Storage',
-    'E2E / Validate / Provider',
-    'E2E / Validate / Speech',
-    'E2E / Validate / Questions',
+    'Validate / Build',
+    'Validate / UI',
+    'Validate / Storage',
+    'Validate / Provider',
+    'Validate / Speech',
+    'Validate / Questions',
   ],
 };
 

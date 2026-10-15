@@ -149,7 +149,7 @@ test('focused selection uses its separate workflow and never repeats cases insid
   assert.ok(
     focused.jobs.completeness.steps.some((step) => step.run?.includes('ios-focused-results.mjs')),
   );
-  const completeness = readYaml('.github/workflows/ios-test-validation.yml').jobs.completeness;
+  const completeness = readYaml('.github/workflows/ios-test-completeness.yml').jobs.completeness;
   assert.equal(completeness['runs-on'], 'ubuntu-24.04');
   assert.ok(completeness.steps.every((step) => !step.run?.includes('ios-focused-results.mjs')));
 });

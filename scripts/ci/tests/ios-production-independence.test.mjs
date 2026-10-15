@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import test from 'node:test';
+import { cohortJobs, completionJob } from './fixtures/ios-workflow.mjs';
 
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const read = (path) => yaml.load(readFileSync(path, 'utf8'));
-const full = () => read('.github/workflows/ios-test-validation.yml');
+const full = () => read('.github/workflows/e2e-test.yml');
 
 // Follow actual local actions so moving a production step into a helper cannot hide a serial prerequisite.
 function commands(steps) {
@@ -36,8 +37,7 @@ test('production and OAuth remain mandatory without delaying test-product consum
   for (const id of [
     'debug_products',
     'release_products',
-    'debug_execution',
-    'release_execution',
+    ...new Set(cohortJobs(jobs).map(([, job]) => job.callerId)),
     'oauth_products',
     'oauth_execution',
   ]) {
@@ -87,7 +87,7 @@ test('portable test producers never compile or cache unrelated production or OAu
 test('production failure, cancellation, skip or a missing result keeps final validation red', () => {
   const { jobs } = full();
   assert.ok(jobs.completeness.needs.includes('production_validation'));
-  const gate = jobs.completeness.steps.find((step) => step.env?.RESULTS);
+  const gate = completionJob(jobs).steps.find((step) => step.env?.RESULTS);
   const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
   const success = Object.fromEntries(
     jobs.completeness.needs.map((id) => [id, { result: 'success' }]),

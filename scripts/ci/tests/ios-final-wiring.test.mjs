@@ -32,60 +32,67 @@ test('five Linux integration domain leaves retain the exact required context nam
   const required = e2e.jobs.required_statuses;
   const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [required.name]);
   const expected = REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'];
-  assert.deepEqual(
-    actual.sort(),
-    expected.filter((name) => name !== 'E2E / Validate / Build').sort(),
-  );
-  assert.equal(e2e.jobs.ios_simulator_build.name, 'E2E / Validate / Build');
+  assert.deepEqual(actual.sort(), expected.filter((name) => name !== 'Validate / Build').sort());
+  assert.equal(e2e.jobs.ios_simulator_build.name, 'Validate / Build');
   assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
-  assert.equal(e2e.jobs.ios_validation.uses, './.github/workflows/ios-test-validation.yml');
-  assert.equal(e2e.jobs.ios_validation.with, undefined);
+  assert.equal(e2e.jobs.plan.needs, 'selection');
+  assert.equal(e2e.jobs.completeness.uses, './.github/workflows/ios-test-completeness.yml');
   assert.equal(e2e.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });
 
 test('full and focused visible job names use one consistent role and target', () => {
-  const entry = workflow('.github/workflows/e2e-test.yml').jobs;
-  const full = workflow(entry.ios_validation.uses.replace(/^\.\//, '')).jobs;
+  const root = workflow('.github/workflows/e2e-test.yml');
+  assert.equal(root.name, 'E2E Test');
+  assert.equal(
+    root.jobs.ios_validation,
+    undefined,
+    'The redundant Full display wrapper must be absent',
+  );
+  const entry = root.jobs;
+  const full = Object.fromEntries(
+    Object.entries(entry).filter(([id]) =>
+      [...entry.completeness.needs, 'completeness'].includes(id),
+    ),
+  );
   const names = [];
-  for (const [id, job] of Object.entries(full)) {
+  for (const job of Object.values(full)) {
     if (!job.uses) {
-      names.push(entry.ios_validation.name + ' / ' + job.name);
+      names.push(job.name);
       continue;
     }
     const leaves = Object.values(workflow(job.uses.replace(/^\.\//, '')).jobs);
-    const targets =
-      id.endsWith('_execution') && id !== 'oauth_execution'
-        ? iosTestExecutionPlan().filter(
-            (item) => item.configuration.toLowerCase() === id.split('_')[0],
-          )
-        : [job.with ?? {}];
-    for (const target of targets)
-      for (const leaf of leaves) {
-        const name = leaf.name.replace('${{ inputs.name }}', target.name);
-        names.push([entry.ios_validation.name, job.name, name].join(' / '));
-      }
+    // A matrix caller adds raw parameter suffixes in GitHub. Each feature therefore has one explicit call.
+    assert.equal(job.strategy, undefined);
+    for (const leaf of leaves) {
+      const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
+      names.push([job.name, name].join(' / '));
+    }
   }
   const expected = [
     'Plan / Coverage',
     'Validate / Complete',
     ...['Debug', 'Release', 'Production', 'OAuth'].map((name) => 'Build / ' + name),
-    ...[...iosTestExecutionPlan().map((item) => item.name), 'OAuth'].map(
-      (name) => 'Test / ' + name,
-    ),
-  ].map((name) => 'E2E / ' + name);
+    ...iosTestExecutionPlan().map((item) => 'Test / ' + item.name),
+    'Test / OAuth',
+  ];
   assert.deepEqual(names.sort(), expected.sort());
   assert.equal(new Set(names).size, names.length);
+  for (const name of names) {
+    const visible = root.name + ' / ' + name;
+    assert.equal(visible.match(/E2E/g)?.length, 1);
+    assert.doesNotMatch(name, /\$\{\{|[()\d]/);
+  }
   const focused = workflow(entry.focused_scenario.uses.replace(/^\.\//, '')).jobs;
   assert.deepEqual(
     Object.values(focused)
       .map((job) => entry.focused_scenario.name + ' / ' + job.name)
       .sort(),
     [
-      'E2E / Focus / Plan / Select',
-      'E2E / Focus / Build / ${{ needs.selection.outputs.configuration }}',
-      'E2E / Focus / Test / Selection',
-      'E2E / Focus / Validate / Complete',
+      'Focus / Plan / Select',
+      'Focus / Build / ${{ needs.selection.outputs.configuration }}',
+      'Focus / Test / Selection',
+      'Focus / Validate / Complete',
     ].sort(),
   );
 });
@@ -100,7 +107,7 @@ test('full integration execution preserves 82 scheduled observations and all eig
   const provider = iosTestInventory('provider-data');
   assert.equal(provider.length, 8);
   for (const identifier of provider) assert.ok(identifiers.has(identifier));
-  const workflowSource = readFileSync('.github/workflows/ios-test-validation.yml', 'utf8');
+  const workflowSource = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
   assert.doesNotMatch(
     workflowSource,
     /supported-provider-receipt|availability.*skip|continue-on-error/,

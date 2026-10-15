@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
+import { cohortJobs, completionJob } from './fixtures/ios-workflow.mjs';
 
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
@@ -13,39 +14,44 @@ const workflow = (name) => yaml.load(readFileSync('.github/workflows/' + name, '
 
 // Each complete CI execution uses one fresh Speech VM. Acceptance requires one complete execution, with no repeated Speech sample.
 test('each full CI schedules every cohort once after verified products are available', () => {
-  const full = workflow('ios-test-validation.yml');
-  const ids = ['debug_execution', 'release_execution'];
+  const full = workflow('e2e-test.yml');
+  const cohorts = cohortJobs(full.jobs);
+  assert.equal(cohorts.length, 15);
   assert.equal(iosTestExecutionPlan().filter((entry) => entry.cohort === 'speech').length, 1);
-  for (const id of ids) {
-    const job = full.jobs[id];
-    assert.equal(job.with.sample, undefined);
-    assert.ok(full.jobs.completeness.needs.includes(id));
+  for (const [, job] of cohorts) {
+    assert.equal(job.inputs.sample, undefined);
+    assert.ok(full.jobs.completeness.needs.includes(job.callerId));
   }
-  const speech = full.jobs.release_execution;
-  assert.equal(speech.uses, './.github/workflows/ios-test-cohort-execution.yml');
-  assert.deepEqual(speech.needs, ['plan', 'release_products']);
-  assert.equal(speech.if, undefined);
-  assert.equal(speech.with.artifact_name, 'ios-test-release-products');
-  assert.equal(speech.with.archive_digest, '${{ needs.release_products.outputs.archive_digest }}');
+  const speech = cohorts.find(([, job]) => job.inputs.cohort === 'speech')[1];
+  assert.deepEqual(speech.caller.needs, ['plan', 'release_products']);
+  assert.equal(speech.leaf.if, undefined);
+  assert.equal(speech.inputs.artifact_name, 'ios-test-release-products');
   assert.equal(
-    speech.with.manifest_digest,
+    speech.inputs.archive_digest,
+    '${{ needs.release_products.outputs.archive_digest }}',
+  );
+  assert.equal(
+    speech.inputs.manifest_digest,
     '${{ needs.release_products.outputs.manifest_digest }}',
   );
-  assert.deepEqual([...full.jobs.completeness.needs].sort(), [
-    'debug_execution',
-    'debug_products',
-    'oauth_execution',
-    'oauth_products',
-    'plan',
-    'production_validation',
-    'release_execution',
-    'release_products',
-  ]);
+  assert.deepEqual(
+    [...full.jobs.completeness.needs].sort(),
+    [
+      'debug_execution',
+      'debug_products',
+      'oauth_execution',
+      'oauth_products',
+      'plan',
+      'production_validation',
+      'release_products',
+      'release_execution',
+    ].sort(),
+  );
 });
 
 test('raw and compact evidence is isolated by CI run and attempt without intra-run samples', () => {
-  const consumer = workflow('ios-test-cohort-execution.yml');
-  assert.equal(consumer.on.workflow_call.inputs.sample, undefined);
+  for (const name of ['ios-debug-tests.yml', 'ios-release-tests.yml'])
+    assert.equal(workflow(name).on.workflow_call.inputs.sample, undefined);
   const action = yaml.load(readFileSync('.github/actions/ios-test-cohort-run/action.yml', 'utf8'));
   const execute = action.runs.steps.find(
     (step) => step.name === 'Execute every planned first attempt without compilation or retry',
@@ -60,8 +66,10 @@ test('raw and compact evidence is isolated by CI run and attempt without intra-r
     assert.ok(step.with.name.endsWith('-${{ github.run_id }}-${{ github.run_attempt }}'));
     assert.ok(!step.with.name.includes('inputs.sample'));
   }
-  const full = workflow('ios-test-validation.yml');
-  const commands = full.jobs.completeness.steps.map((step) => step.run ?? '').join('\n');
+  const full = workflow('e2e-test.yml');
+  const commands = completionJob(full.jobs)
+    .steps.map((step) => step.run ?? '')
+    .join('\n');
   assert.equal((commands.match(/ios-test-plan-results\.mjs /g) ?? []).length, 1);
   const aggregate = readFileSync('scripts/ci/ios-test-plan-results.mjs', 'utf8');
   assert.equal((aggregate.match(/speech-test-evidence\.mjs/g) ?? []).length, 1);

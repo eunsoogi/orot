@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
       - uses: ./.github/actions/ios-production-validation
       - name: Preserve the production receipt independently of test results
         if: always()

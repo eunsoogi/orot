@@ -56,9 +56,6 @@ jobs:
     name: Build / ${{ needs.selection.outputs.configuration }}
     needs: selection
     runs-on: xcode-27
-    concurrency:
-      group: ios-ci-macos-${{ github.repository }}
-      cancel-in-progress: false
     timeout-minutes: 60
     outputs:
       profile: ${{ needs.selection.outputs.profile }}
@@ -73,6 +70,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
       - uses: ./.github/actions/ios-test-products-build
         id: build
         with:
@@ -127,16 +126,14 @@ jobs:
     name: Test / Selection
     needs: products
     runs-on: xcode-27
-    concurrency:
-      group: ios-ci-macos-${{ github.repository }}
-      cancel-in-progress: false
     # Stateful local-model groups retain their original operation and setup allowances.
     timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/ios-host-bootstrap
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc

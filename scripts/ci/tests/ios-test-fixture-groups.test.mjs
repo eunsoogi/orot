@@ -39,9 +39,9 @@ test('independent hosted fixture jobs partition every logical group and retain p
     selected.map(({ suite }) => suite),
     Object.keys(iosFixtureGroups),
   );
-  const workflow = readFileSync('.github/workflows/ios-test-validation.yml', 'utf8');
-  assert.match(workflow, /cohort: \$\{\{ matrix\.cohort \}\}/);
-  assert.match(workflow, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.release_matrix\) \}\}/);
+  const workflow = readFileSync('.github/workflows/ios-release-tests.yml', 'utf8');
+  for (const { cohort } of jobs) assert.ok(workflow.includes('      cohort: ' + cohort));
+  assert.doesNotMatch(workflow, /matrix:/);
   const cohortRunner = readFileSync('scripts/ci/run-ios-test-cohort.mjs', 'utf8');
   assert.match(cohortRunner, /OROT_IOS_TEST_SUITE: suite/);
   const runner = readFileSync('scripts/ci/run-ios-fixture-tests.mjs', 'utf8');

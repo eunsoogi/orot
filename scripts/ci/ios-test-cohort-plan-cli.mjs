@@ -2,7 +2,7 @@ import { appendFileSync } from 'node:fs';
 import { iosTestExecutionPlan } from './ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from './ios-test-cohorts.mjs';
 
-// Validate exact coverage on Linux before any Mac allocation. Each matrix waits only for its compatible producer.
+// Validate coverage before Mac allocation and report compatible groups for the explicit independent feature jobs.
 if (!process.env.GITHUB_OUTPUT) throw new Error('iOS planning requires workflow outputs');
 const plan = iosTestExecutionPlan();
 for (const configuration of ['Debug', 'Release']) {

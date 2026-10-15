@@ -51,6 +51,24 @@ test('every declared macOS route disables and verifies Spotlight immediately aft
       );
       routes.push(file + '/' + id);
       assert.ok(checkout >= 0, 'Missing source checkout: ' + routes.at(-1));
+      const visibleCheckout = job.steps.findIndex((step) =>
+        step.uses?.startsWith('actions/checkout@'),
+      );
+      const visibleBootstrap = job.steps[visibleCheckout + 1];
+      // The Actions step list must expose this setup even when the build uses nested composites.
+      assert.equal(
+        visibleBootstrap?.name,
+        'Disable and verify Spotlight',
+        'Host setup must be visible immediately after checkout: ' + routes.at(-1),
+      );
+      assert.equal(visibleBootstrap.uses, './.github/actions/ios-host-bootstrap');
+      assert.equal(visibleBootstrap.if, undefined);
+      assert.equal(visibleBootstrap['continue-on-error'], undefined);
+      assert.equal(
+        steps.filter((step) => step.run?.includes('suppress-hosted-spotlight.mjs')).length,
+        1,
+        'Host setup must execute exactly once: ' + routes.at(-1),
+      );
       assert.equal(
         spotlight,
         checkout + 1,

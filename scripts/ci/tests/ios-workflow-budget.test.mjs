@@ -4,9 +4,14 @@ import { readFileSync } from 'node:fs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
-import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
+import {
+  cohortJobs,
+  completionJob,
+  expandedActionSteps,
+  workflow,
+} from './fixtures/ios-workflow.mjs';
 
-const full = () => workflow('.github/workflows/ios-test-validation.yml');
+const full = () => workflow('.github/workflows/e2e-test.yml');
 const read = (name) => workflow('.github/workflows/' + name);
 const needs = (job) => (typeof job.needs === 'string' ? [job.needs] : (job.needs ?? []));
 function ancestors(jobs, id) {
@@ -22,49 +27,55 @@ test('Debug, Release and OAuth consumers wait only for their corresponding separ
     'oauth_products',
   ])
     assert.equal(jobs[id].needs, 'plan');
-  for (const configuration of ['debug', 'release']) {
-    const consumer = jobs[configuration + '_execution'];
-    assert.deepEqual(consumer.needs, ['plan', configuration + '_products']);
-    assert.equal(consumer.uses, './.github/workflows/ios-test-cohort-execution.yml');
+  const consumers = cohortJobs(jobs);
+  const plan = iosTestExecutionPlan();
+  assert.equal(consumers.length, plan.length);
+  assert.deepEqual(
+    consumers.map(([, job]) => job.inputs.cohort).sort(),
+    plan.map((item) => item.cohort).sort(),
+  );
+  for (const [, { caller, leaf, inputs }] of consumers) {
+    const entry = plan.find((item) => item.cohort === inputs.cohort);
+    const configuration = entry.configuration.toLowerCase();
+    assert.deepEqual(caller.needs, ['plan', configuration + '_products']);
+    assert.equal(leaf.needs, undefined);
+    assert.equal(leaf.name, entry.name);
+    assert.equal(inputs.profile, entry.profile);
+    assert.equal(leaf['timeout-minutes'], entry.minutes);
+    assert.equal(inputs.artifact_name, 'ios-test-' + configuration + '-products');
     assert.equal(
-      consumer.with.archive_digest,
+      inputs.archive_digest,
       '${{ needs.' + configuration + '_products.outputs.archive_digest }}',
     );
     assert.equal(
-      consumer.with.manifest_digest,
+      inputs.manifest_digest,
       '${{ needs.' + configuration + '_products.outputs.manifest_digest }}',
     );
-    assert.equal(consumer.strategy['fail-fast'], false);
-    assert.equal(consumer.strategy['max-parallel'], undefined);
-    assert.equal(
-      consumer.strategy.matrix,
-      '${{ fromJSON(needs.plan.outputs.' + configuration + '_matrix) }}',
-    );
-    assert.equal(consumer.if, undefined);
+    // Independent named calls cannot cancel siblings or append matrix parameters to visible names.
+    assert.equal(caller.strategy, undefined);
+    assert.equal(leaf.strategy, undefined);
+    assert.equal(caller.if, undefined);
+    assert.equal(leaf.if, undefined);
   }
   assert.equal(jobs.oauth_execution.needs, 'oauth_products');
   assert.equal(jobs.oauth_execution.uses, './.github/workflows/ios-oauth-execution.yml');
   assert.equal(jobs.debug_products.with.profile, 'provider-data');
   assert.equal(jobs.release_products.with.profile, 'core');
   assert.equal(jobs.plan['runs-on'], 'ubuntu-24.04');
-  assert.equal(jobs.completeness['runs-on'], 'ubuntu-24.04');
+  assert.equal(completionJob(jobs)['runs-on'], 'ubuntu-24.04');
 });
 
 test('the finite feature plan permits independent parallel jobs without repeating builds', () => {
   const { jobs } = full();
   const plan = iosTestExecutionPlan();
-  const ids = Object.keys(jobs).filter((id) => !['plan', 'completeness'].includes(id));
-  const weight = (id) =>
-    id === 'debug_execution'
-      ? plan.filter((entry) => entry.configuration === 'Debug').length
-      : id === 'release_execution'
-        ? plan.filter((entry) => entry.configuration === 'Release').length
-        : 1;
+  const ids = jobs.completeness.needs.filter((id) => id !== 'plan');
+  const cohorts = cohortJobs(jobs);
+  const weight = (id) => cohorts.filter(([, job]) => job.callerId === id).length || 1;
   assert.equal(
-    ids.reduce((total, id) => total + weight(id), 0),
+    ids.reduce((sum, id) => sum + weight(id), 0),
     plan.length + 5,
   );
-  // Enumerate dependency-compatible active job families. Matrix leaves share no dependency on one another.
+  // Enumerate producer-specific families; every leaf inside each family is independently scheduled.
   let maximum = 0;
   for (let bits = 0; bits < 1 << ids.length; bits++) {
     const active = ids.filter((_, index) => bits & (1 << index));
@@ -73,7 +84,7 @@ test('the finite feature plan permits independent parallel jobs without repeatin
     )
       maximum = Math.max(
         maximum,
-        active.reduce((total, id) => total + weight(id), 0),
+        active.reduce((sum, id) => sum + weight(id), 0),
       );
   }
   assert.equal(maximum, plan.length + 2);
@@ -97,15 +108,19 @@ test('test producers publish portable products without booting a Simulator or ru
   const diagnostics = steps.find((step) => step.name?.startsWith('Preserve build diagnostics'));
   assert.equal(diagnostics.if, 'always()');
   assert.ok(diagnostics.with.path.split('\n').includes('artifacts/ios-focus/*.log'));
-  const execution = JSON.stringify(read('ios-test-cohort-execution.yml'));
+  const execution = JSON.stringify(workflow('.github/actions/ios-test-cohort-executor/action.yml'));
   assert.match(execution, /actions\/download-artifact@/);
   assert.doesNotMatch(execution, /ios-test-products-build|build-ios-tests/);
 });
 
 test('the final gate rejects every failed, cancelled, skipped or missing prerequisite', () => {
   const { jobs } = full();
-  const gate = jobs.completeness.steps.find((step) => step.env?.RESULTS);
-  assert.equal(jobs.completeness.if, 'always()');
+  const completion = completionJob(jobs);
+  const gate = completion.steps.find((step) => step.env?.RESULTS);
+  assert.equal(jobs.completeness.if, "${{ always() && needs.plan.result != 'skipped' }}");
+  assert.equal(jobs.completeness.with.execution_results, '${{ toJSON(needs) }}');
+  assert.equal(completion.if, 'always()');
+  assert.equal(gate.env.RESULTS, '${{ inputs.execution_results }}');
   const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
   const success = Object.fromEntries(
     jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
@@ -188,6 +203,5 @@ test('full and focused execution retain one repository allocation window and sep
   assert.equal(focus.jobs.products.needs, 'selection');
   assert.equal(focus.jobs.execution.needs, 'products');
   assert.equal(Object.values(focus.jobs).filter((job) => job['runs-on'] === 'xcode-27').length, 2);
-  for (const id of ['products', 'execution'])
-    assert.deepEqual(focus.jobs[id].concurrency, full().concurrency);
+  for (const id of ['products', 'execution']) assert.equal(focus.jobs[id].concurrency, undefined);
 });

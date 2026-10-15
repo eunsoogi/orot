@@ -14,10 +14,10 @@ const status = workflow.jobs.status;
 
 test('five domain statuses map exactly to the release gate through one reusable workflow', () => {
   const caller = readWorkflow('e2e-test.yml').jobs.required_statuses;
-  assert.equal(caller.name, 'E2E / Validate');
+  assert.equal(caller.name, 'Validate');
   assert.equal(caller.uses, './.github/workflows/ios-required-statuses.yml');
   assert.equal(caller.if, 'always()');
-  assert.deepEqual(caller.needs, ['selection', 'ios_validation']);
+  assert.deepEqual(caller.needs, ['selection', 'completeness']);
   assert.deepEqual(Object.keys(workflow.jobs), ['status']);
   assert.equal(status.name, '${{ matrix.check }}');
   assert.equal(status.if, 'always()');

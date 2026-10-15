@@ -196,8 +196,15 @@ test('the supervisor preserves a completed operation status and output', () => {
 
 test('every native producer and consumer suppresses indexing before dependencies or product download', () => {
   const stages = [
-    workflow('.github/actions/ios-native-toolchain/action.yml').runs.steps,
-    workflow('.github/workflows/ios-test-cohort-execution.yml').jobs.execution.steps,
+    workflow('.github/workflows/ios-test-products-build.yml').jobs.validation.steps,
+    workflow('.github/workflows/ios-production-validation.yml').jobs.validation.steps,
+    workflow('.github/workflows/ios-focused.yml').jobs.products.steps,
+    ...Object.values(workflow('.github/workflows/ios-debug-tests.yml').jobs).map(
+      (job) => job.steps,
+    ),
+    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs).map(
+      (job) => job.steps,
+    ),
     workflow('.github/workflows/ios-focused.yml').jobs.execution.steps,
   ].map((steps) =>
     steps.flatMap((step) =>

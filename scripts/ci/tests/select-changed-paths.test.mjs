@@ -151,7 +151,7 @@ test('the mobile ESLint config selects both language surfaces that consume it', 
 });
 
 test('reusable iOS workflow changes conservatively select every dependent check', () => {
-  const selection = selectChecksForPaths(['.github/workflows/ios-test-validation.yml']);
+  const selection = selectChecksForPaths(['.github/workflows/ios-release-tests.yml']);
 
   assert.equal(selection.policy_tests, true);
   assert.equal(selection.yaml, true);

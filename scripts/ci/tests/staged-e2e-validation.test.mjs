@@ -41,7 +41,7 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full int
     /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
   );
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(e2e, /outputs\.deferred == 'true' && needs\.ios_validation\.result != 'success'/);
+  assert.match(e2e, /outputs\.deferred == 'true' && needs\.completeness\.result != 'success'/);
   assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
   assert.match(e2e, /needs\.selection\.outputs\.focused != 'true'/);
   assert.match(

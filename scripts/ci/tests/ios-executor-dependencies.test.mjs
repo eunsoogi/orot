@@ -4,21 +4,27 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { workflow } from './fixtures/ios-workflow.mjs';
+import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
 
 test('execution jobs consume compiled products without reinstalling build dependencies', () => {
-  for (const path of [
-    'ios-test-cohort-execution.yml',
-    'ios-focused.yml',
-    'ios-oauth-execution.yml',
-  ]) {
-    const execution = workflow('.github/workflows/' + path).jobs.execution;
+  const executions = [
+    ...Object.values(workflow('.github/workflows/ios-debug-tests.yml').jobs),
+    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs),
+    workflow('.github/workflows/ios-focused.yml').jobs.execution,
+    workflow('.github/workflows/ios-oauth-execution.yml').jobs.execution,
+  ];
+  for (const execution of executions) {
+    const steps = execution.steps.flatMap((step) =>
+      step.uses?.startsWith('./.github/actions/')
+        ? expandedActionSteps(step.uses + '/action.yml')
+        : [step],
+    );
     assert.doesNotMatch(
-      JSON.stringify(execution.steps),
+      JSON.stringify(steps),
       /pnpm|ios-native-toolchain|ios-platform-dependencies/,
     );
-    assert.ok(execution.steps.some((step) => step.uses?.startsWith('actions/setup-node@')));
-    assert.ok(execution.steps.some((step) => step.uses?.startsWith('actions/download-artifact@')));
+    assert.ok(steps.some((step) => step.uses?.startsWith('actions/setup-node@')));
+    assert.ok(steps.some((step) => step.uses?.startsWith('actions/download-artifact@')));
   }
 });
 
