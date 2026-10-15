@@ -1,61 +1,7 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { rmSync } from 'node:fs';
 import test from 'node:test';
-import { iosTestConfig } from '../ios-test-config.mjs';
-
-function fixture(
-  profile,
-  {
-    preserveKeychain = false,
-    statePersistence = false,
-    state = 'Booted',
-    ownerProfile = profile,
-    action = 'reset',
-    installed = true,
-    containerError = false,
-    loseOwnershipAfterUninstall = false,
-  } = {},
-) {
-  const root = mkdtempSync(join(tmpdir(), 'orot-fixture-reset-'));
-  const spec = iosTestConfig(profile);
-  const owner = {
-    ...spec,
-    profile: ownerProfile,
-    name: 'owned-synthetic-fixture',
-    udid: '11111111-2222-4333-8444-555555555555',
-  };
-  const calls = join(root, 'calls.jsonl');
-  const removed = join(root, 'removed.flag');
-  const lostOwner = join(root, 'lost-owner.flag');
-  const program = `#!${process.execPath}
-const fs=require('node:fs');const args=process.argv.slice(2);const name=require('node:path').basename(process.argv[1]);
-fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
-if(name==='plutil')console.log(JSON.stringify(fs.existsSync(${JSON.stringify(removed)})?{}:{'com.orot.mobile':{}}));
-else if(args[1]==='list'&&args[2]==='-j')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:fs.existsSync(${JSON.stringify(lostOwner)})?'foreign-owner':${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
-else if(args[1]==='get_app_container'){if(${containerError}){console.error('Synthetic service unavailable');process.exit(1);}if(!${installed}||fs.existsSync(${JSON.stringify(removed)})){console.error('An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=2): No such file or directory');process.exit(2);}console.log('/synthetic/owned/Orot.app');}
-else {if(args[1]==='uninstall'){fs.writeFileSync(${JSON.stringify(removed)},'removed');if(${loseOwnershipAfterUninstall})fs.writeFileSync(${JSON.stringify(lostOwner)},'lost');}if(args[1]==='install'&&fs.existsSync(${JSON.stringify(removed)}))fs.unlinkSync(${JSON.stringify(removed)});console.log('synthetic fixture response');}
-`;
-  for (const name of ['xcrun', 'plutil']) writeFileSync(join(root, name), program, { mode: 0o755 });
-  const app = join(root, 'Orot.app');
-  const entry =
-    action === 'cleanup' ? 'removeIosTestFixtureContainer' : 'resetIosTestFixtureContainer';
-  const code = `import {${entry} as operation} from ${JSON.stringify(pathToFileURL(resolve('scripts/ci/ios-test-fixture-container.mjs')).href)}; operation(${JSON.stringify(profile)},${JSON.stringify(owner)},${JSON.stringify(app)},${JSON.stringify({ preserveKeychain, statePersistence })});`;
-  const outcome = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {
-    encoding: 'utf8',
-    env: { ...process.env, PATH: root + ':' + process.env.PATH },
-  });
-  return {
-    root,
-    owner,
-    app,
-    outcome,
-    calls: existsSync(calls) ? readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse) : [],
-  };
-}
+import { fixture } from './fixtures/ios-test-fixture-container.mjs';
 
 test('fresh isolated cases reset only their owned app and Keychain without booting another device', () => {
   for (const profile of [
@@ -120,7 +66,7 @@ test('ownership lost after one mutation prevents the next mutation instead of re
   }
 });
 
-test('completed and failed independent cases remove only their owned app container and verify absence', () => {
+test('independent cleanup directly uninstalls the exact owned bundle and proves absence in four commands', () => {
   for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-selection']) {
     const value = fixture(profile, { action: 'cleanup' });
     try {
@@ -133,12 +79,18 @@ test('completed and failed independent cases remove only their owned app contain
         [['simctl', 'uninstall', value.owner.udid, 'com.orot.mobile']],
       );
       assert.deepEqual(
-        value.calls.filter((call) => call.args[1] === 'get_app_container').map((call) => call.args),
+        value.calls.map((call) => call.args),
         [
-          ['simctl', 'get_app_container', value.owner.udid, 'com.orot.mobile', 'app'],
+          ['simctl', 'list', '-j'],
+          ['simctl', 'uninstall', value.owner.udid, 'com.orot.mobile'],
+          ['simctl', 'list', '-j'],
           ['simctl', 'get_app_container', value.owner.udid, 'com.orot.mobile', 'app'],
         ],
       );
+      assert.deepEqual(JSON.parse(value.outcome.stdout), {
+        uninstallCompleted: true,
+        installed: false,
+      });
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
@@ -162,24 +114,22 @@ test('completed and failed independent cases remove only their owned app contain
   }
 });
 
-test('absent owned bundles are distinguished from container service errors before mutation', () => {
-  for (const action of ['reset', 'cleanup']) {
-    const absent = fixture('fixtures', { action, installed: false });
-    const unavailable = fixture('fixtures', { action, containerError: true });
-    try {
-      assert.equal(absent.outcome.status, 0, absent.outcome.stderr);
-      assert.ok(!absent.calls.some((call) => call.args[1] === 'uninstall'));
-      assert.notEqual(unavailable.outcome.status, 0);
-      assert.match(unavailable.outcome.stderr, /Synthetic service unavailable/);
-      assert.ok(
-        !unavailable.calls.some((call) =>
-          ['uninstall', 'install', 'keychain'].includes(call.args[1]),
-        ),
-      );
-    } finally {
-      rmSync(absent.root, { recursive: true, force: true });
-      rmSync(unavailable.root, { recursive: true, force: true });
-    }
+test('fresh setup distinguishes absent owned bundles from container service errors before mutation', () => {
+  const absent = fixture('fixtures', { installed: false });
+  const unavailable = fixture('fixtures', { containerError: true });
+  try {
+    assert.equal(absent.outcome.status, 0, absent.outcome.stderr);
+    assert.ok(!absent.calls.some((call) => call.args[1] === 'uninstall'));
+    assert.notEqual(unavailable.outcome.status, 0);
+    assert.match(unavailable.outcome.stderr, /Synthetic service unavailable/);
+    assert.ok(
+      !unavailable.calls.some((call) =>
+        ['uninstall', 'install', 'keychain'].includes(call.args[1]),
+      ),
+    );
+  } finally {
+    rmSync(absent.root, { recursive: true, force: true });
+    rmSync(unavailable.root, { recursive: true, force: true });
   }
 });
 

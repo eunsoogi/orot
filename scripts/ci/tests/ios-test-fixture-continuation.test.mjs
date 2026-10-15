@@ -139,6 +139,28 @@ test('all successful first cases retain their complete exact observation list', 
   }
 });
 
+test('cleanup failure retains a passed first case and prevents the next fresh case', () => {
+  const value = fixture({ failFirst: false, cleanupFailure: true });
+  try {
+    assert.notEqual(value.outcome.status, 0);
+    assert.equal(value.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+    const report = value.report();
+    assert.equal(report.passed, false);
+    assert.deepEqual(
+      report.observations.map((item) => item.identifier),
+      [value.identifiers[0]],
+    );
+    assert.equal(report.observations[0].result, 'Passed');
+    assert.equal(report.failures.length, 1);
+    assert.equal(report.failures[0].stage, 'cleanup');
+    assert.deepEqual(report.notRun, [value.identifiers[1]]);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'keychain').length, 1);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'install').length, 1);
+  } finally {
+    value.dispose();
+  }
+});
+
 test('scoped cases reuse one installation, reset the exact bundle before each case and clean after failure or group completion', () => {
   for (const failFirst of [true, false]) {
     const value = fixture({ scoped: true, failFirst });

@@ -25,12 +25,13 @@ export function removeIosTestFixtureContainer(profile, owner) {
       throw new Error('Fixture cleanup requires its booted owned destination');
     return runIosSimulatorCommand(args, { timeout: 30000 });
   }
-  const installed = () =>
-    hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args));
-  const removed = installed();
-  if (removed) simctl('uninstall', owner.udid, bundleIdentifier);
-  if (installed()) throw new Error('Owned fixture application remained after cleanup');
-  return { removed, installed: false };
+  // The supported simctl also completes uninstall for an absent bundle. Every command error still propagates.
+  // Verify ownership immediately before the exact deletion, then independently prove absence after it.
+  simctl('uninstall', owner.udid, bundleIdentifier);
+  if (hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args)))
+    throw new Error('Owned fixture application remained after cleanup');
+  // This receipt proves the command completed and the app is absent, not that an app existed before deletion.
+  return { uninstallCompleted: true, installed: false };
 }
 
 /** Fresh-install fixtures and Core's dedicated persistence phase may replace their owned container and Keychain. Speech is excluded. */
