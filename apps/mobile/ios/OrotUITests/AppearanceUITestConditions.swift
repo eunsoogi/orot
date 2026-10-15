@@ -1,88 +1,103 @@
-import UIKit
+import CoreFoundation
 import XCTest
 
 @MainActor
 enum AppearanceUITestConditions {
+    private static let session = UUID().uuidString
+    static let observationArguments = ["-OROT_TEST_APPEARANCE_OBSERVATION", "YES", "-OROT_TEST_APPEARANCE_SESSION", session]
+
     struct Snapshot {
-        let dark: Bool
-        let automatic: Bool
+        let appearance: XCUIDevice.Appearance
+        let applicationScheme: String
+        let originalOverride: Int
     }
 
-    /// Change the dedicated Simulator's real system preference while retaining the target app process and restore it afterward.
+    /// Change the owned device's system style through XCTest while retaining the app process and its unsaved state.
     static func select(_ dark: Bool, returningTo app: XCUIApplication, testCase: XCTestCase,
                        captureOriginal: ((Snapshot) -> Void)? = nil) throws -> Snapshot
     {
-        XCTAssertNotEqual(app.state, .notRunning)
-        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
-        settings.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        // launch() terminates a running Settings instance. Reuse the owned English session instead; the actual controls below still verify its language and appearance state.
-        if settings.state == .notRunning {
-            settings.launch()
-        } else {
-            settings.activate()
-        }
-        XCTAssertEqual(settings.state, .runningForeground, settings.debugDescription)
-        // The pinned iOS 27 controls combine their sample clock and mode in one accessible label.
-        let light = settings.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Light")).firstMatch
-        let darkButton = settings.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Dark")).firstMatch
-        if !light.exists || !darkButton.exists {
-            // The pinned iOS 27 Settings app exposes a locale-independent identifier for its Appearance route.
-            let display = settings.buttons["com.apple.settings.appearance"]
-            // A previous Settings session can reopen its root at the old scroll offset.
-            for _ in 0 ..< 4 where !display.exists || !display.isHittable {
-                settings.swipeDown()
-            }
-            UITestConditions.scrollTo(display, in: settings)
-            display.tap()
-        }
-        XCTAssertTrue(UITestConditions.exists(light), settings.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(darkButton), settings.debugDescription)
-        let automatic = settings.switches["Automatic"]
-        XCTAssertTrue(UITestConditions.exists(automatic), settings.debugDescription)
-        XCTAssertNotEqual(light.isSelected, darkButton.isSelected, settings.debugDescription)
-        let automaticValue = try XCTUnwrap(automatic.value as? String)
-        XCTAssertTrue(["0", "1"].contains(automaticValue), automatic.debugDescription)
-        let snapshot = Snapshot(dark: darkButton.isSelected, automatic: automaticValue == "1")
+        let marker = UITestConditions.element(app, "application-appearance-observation")
+        XCTAssertTrue(UITestConditions.exists(marker))
+        let original = UITestConditions.text(marker)
+        XCTAssertTrue(["light", "dark"].contains(original), original)
+        let refresh = readyObservation(app)
+        let snapshot = Snapshot(appearance: XCUIDevice.shared.appearance, applicationScheme: original,
+                                originalOverride: refreshObservation(refresh)["originalOverrideStyle"] as? Int ?? -1)
         // Record recovery state before the first mutation, including when a later assertion ends the test.
         captureOriginal?(snapshot)
-        let selected = dark ? darkButton : light
-        selected.tap()
-        let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in selected.isSelected }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed, settings.debugDescription)
-        let attachment = XCTAttachment(screenshot: settings.screenshot())
-        attachment.name = dark ? "system-dark-appearance-selected" : "system-light-appearance-selected"
-        attachment.lifetime = .keepAlways
-        testCase.add(attachment)
-        app.activate()
-        XCTAssertEqual(app.state, .runningForeground)
-        settledWindow(app)
+        try apply(dark ? .dark : .light, applicationScheme: dark ? "dark" : "light", expectedOverride: dark ? 2 : 1,
+                  to: app, testCase: testCase, stage: "selected")
         return snapshot
     }
 
     static func restore(_ snapshot: Snapshot, returningTo app: XCUIApplication, testCase: XCTestCase) throws {
-        _ = try select(snapshot.dark, returningTo: app, testCase: testCase)
-        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
-        settings.activate()
-        let automatic = settings.switches["Automatic"]
-        XCTAssertTrue(UITestConditions.exists(automatic))
-        if (automatic.value as? String == "1") != snapshot.automatic {
-            automatic.tap()
-        }
-        XCTAssertEqual(automatic.value as? String == "1", snapshot.automatic)
-        app.activate()
-        settledWindow(app)
+        try apply(snapshot.appearance, applicationScheme: snapshot.applicationScheme, expectedOverride: snapshot.originalOverride,
+                  to: app, testCase: testCase, stage: "restored")
     }
 
-    /// Foreground state precedes the native activation animation; require the actual window to occupy the Simulator screen before inspecting controls.
-    private static func settledWindow(_ app: XCUIApplication) {
-        let bounds = UIScreen.main.bounds
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let window = app.windows.firstMatch
-            guard window.exists else { return false }
-            let frame = window.frame
-            return abs(frame.minX - bounds.minX) <= 1 && abs(frame.minY - bounds.minY) <= 1 &&
-                abs(frame.width - bounds.width) <= 1 && abs(frame.height - bounds.height) <= 1
+    /// Refresh the existing test window from the public device readback without Settings, process restart, or direct JS theme substitution.
+    private static func apply(_ appearance: XCUIDevice.Appearance, applicationScheme: String, expectedOverride: Int, to app: XCUIApplication,
+                              testCase: XCTestCase, stage: String) throws
+    {
+        XCTAssertEqual(app.state, .runningForeground)
+        let previous = XCUIDevice.shared.appearance
+        let refreshMarker = readyObservation(app)
+        let previousRefresh = refreshObservation(refreshMarker)["appliedCount"] as? Int ?? 0
+        XCUIDevice.shared.appearance = appearance
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            XCUIDevice.shared.appearance == appearance
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed, app.debugDescription)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed)
+        let observed = XCUIDevice.shared.appearance
+        XCTAssertTrue([XCUIDevice.Appearance.light, .dark].contains(observed))
+        let command = stage == "restored" ? "restore" : (observed == .dark ? "dark" : "light")
+        let name = CFNotificationName("com.orot.tests.appearance.\(session).\(command)" as CFString)
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+        // The acknowledgement and independent application subscription must both change; an API readback alone cannot pass.
+        let marker = UITestConditions.element(app, "application-appearance-observation")
+        let applicationChanged = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let refresh = refreshObservation(refreshMarker)
+            return marker.exists && UITestConditions.text(marker) == applicationScheme &&
+                refresh["status"] as? String == "refreshed" && (refresh["appliedCount"] as? Int ?? 0) > previousRefresh &&
+                refresh["windowStyle"] as? Int == (applicationScheme == "dark" ? 2 : 1) &&
+                refresh["overrideStyle"] as? Int == expectedOverride
+        }, object: nil)
+        let applicationResult = XCTWaiter.wait(for: [applicationChanged], timeout: 10)
+        let evidence: [String: Any] = [
+            "stage": stage, "previous": previous.rawValue, "requested": appearance.rawValue,
+            "observed": XCUIDevice.shared.appearance.rawValue, "appState": app.state.rawValue,
+            "expectedApplicationScheme": applicationScheme, "applicationScheme": UITestConditions.text(marker),
+            "refresh": refreshObservation(refreshMarker),
+        ]
+        let record = try XCTAttachment(data: JSONSerialization.data(withJSONObject: evidence, options: [.sortedKeys]),
+                                       uniformTypeIdentifier: "public.json")
+        record.name = "system-appearance-\(stage)"
+        record.lifetime = .keepAlways
+        testCase.add(record)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "system-appearance-\(appearance.rawValue)-\(stage)"
+        screenshot.lifetime = .keepAlways
+        testCase.add(screenshot)
+        XCTAssertEqual(applicationResult, .completed, "Expected application appearance \(applicationScheme), observed \(UITestConditions.text(marker))")
+        XCTAssertEqual(refreshObservation(refreshMarker)["windowStyle"] as? Int, applicationScheme == "dark" ? 2 : 1)
+        XCTAssertEqual(refreshObservation(refreshMarker)["overrideStyle"] as? Int, expectedOverride)
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
+    private static func refreshObservation(_ marker: XCUIElement) -> [String: Any] {
+        guard marker.exists, let data = UITestConditions.text(marker).data(using: .utf8),
+              let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+        return value
+    }
+
+    /// Observe registration before sending the one-way signal so no command can be lost during bridge startup.
+    private static func readyObservation(_ app: XCUIApplication) -> XCUIElement {
+        let marker = UITestConditions.element(app, "application-appearance-refresh")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let value = refreshObservation(marker)
+            return value["status"] as? String == "refreshed" && value["session"] as? String == session
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, app.debugDescription)
+        return marker
     }
 }

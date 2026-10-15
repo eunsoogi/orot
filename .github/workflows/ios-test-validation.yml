@@ -60,34 +60,6 @@ jobs:
     uses: ./.github/workflows/ios-test-cohort-execution.yml
     with:
       cohort: speech
-      sample: first
-      profile: speech
-      artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
-  speech_sample_2:
-    name: Fresh Speech acceptance sample 2
-    needs: [plan, release_execution, speech_execution]
-    # A failed first attempt stays failed. The next fresh VM runs only after all original integration and UI assertions passed.
-    if: ${{ needs.speech_execution.result == 'success' }}
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
-    with:
-      cohort: speech
-      sample: second
-      profile: speech
-      artifact_name: ios-test-release-products
-      archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
-      manifest_digest: ${{ needs.release_execution.outputs.manifest_digest }}
-      timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
-  speech_sample_3:
-    name: Fresh Speech acceptance sample 3
-    needs: [plan, release_execution, speech_sample_2]
-    if: ${{ needs.speech_sample_2.result == 'success' }}
-    uses: ./.github/workflows/ios-test-cohort-execution.yml
-    with:
-      cohort: speech
-      sample: third
       profile: speech
       artifact_name: ios-test-release-products
       archive_digest: ${{ needs.release_execution.outputs.archive_digest }}
@@ -95,7 +67,8 @@ jobs:
       timeout_minutes: ${{ fromJSON(needs.plan.outputs.speech_minutes) }}
   completeness:
     name: iOS test completeness
-    needs: [release_execution, speech_execution, speech_sample_2, speech_sample_3, debug_execution]
+    # Acceptance repeats the entire workflow separately; this run requires one complete result from every cohort.
+    needs: [release_execution, speech_execution, debug_execution]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -122,33 +95,9 @@ jobs:
         with:
           name: ios-cohort-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-reports/debug
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-cohort-report-speech-second-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/speech-second
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-cohort-report-speech-third-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/speech-third
       - name: Verify complete current-head integration observations and authentic Speech
         run: |
           node scripts/ci/ios-test-cohort-results.mjs release artifacts/ios-reports/release/results.json artifacts/ios-reports/release-verified.json
           node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech/results.json artifacts/ios-reports/speech-verified.json
           node scripts/ci/ios-test-cohort-results.mjs debug artifacts/ios-reports/debug/results.json artifacts/ios-reports/debug-verified.json
           node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech/speech-integration/attachments artifacts/ios-reports/speech-accuracy.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech-second/results.json artifacts/ios-reports/speech-second-verified.json second
-          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-second/speech-integration/attachments artifacts/ios-reports/speech-second-accuracy.json
-          node scripts/ci/ios-test-cohort-results.mjs speech artifacts/ios-reports/speech-third/results.json artifacts/ios-reports/speech-third-verified.json third
-          node scripts/ci/speech-test-evidence.mjs artifacts/ios-reports/speech-third/speech-integration/attachments artifacts/ios-reports/speech-third-accuracy.json
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-focused-report-debug-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/focused-debug
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-focused-report-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-reports/focused-release
-      - name: Require both separate exact integration and UI selection observations
-        run: |
-          node scripts/ci/ios-focused-results.mjs ios/provider-data apps/mobile/ios/OrotIntegrationTests/AppleModelIntegrationTests.swift OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures artifacts/ios-reports/focused-debug
-          node scripts/ci/ios-focused-results.mjs ios/fixtures apps/mobile/ios/OrotUITests/RootNavigationUITests.swift OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack artifacts/ios-reports/focused-release

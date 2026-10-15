@@ -5,7 +5,6 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { selectFocusedIosTests } from '../ios-focused-selection.mjs';
 
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
@@ -119,55 +118,25 @@ test('the first focused failure prevents verification and any retry or fallback'
   }
 });
 
-test('automatic focus follows full success, shares the exact dispatcher, and remains separate from full observations', () => {
+test('focused selection uses its separate workflow and never repeats cases inside full CI', () => {
   const action = readYaml('.github/actions/ios-test-cohort-run/action.yml').runs.steps;
-  const selection = action.find((step) => step.id === 'focused');
-  const execution = action.find((step) =>
-    step.run?.includes('bash scripts/ci/run-ios-focused-tests.sh'),
-  );
   const full = action.find((step) => step.run?.includes('run-ios-test-cohort.mjs'));
   const cleanup = action.find((step) => step.run?.includes('ios-test-simulator.mjs cleanup'));
-  assert.ok(action.indexOf(full) < action.indexOf(selection));
-  assert.ok(action.indexOf(selection) < action.indexOf(execution));
-  assert.ok(action.indexOf(execution) < action.indexOf(cleanup));
-  assert.equal(selection.if, "inputs.cohort != 'speech'");
-  assert.equal(execution.if, "inputs.cohort != 'speech'");
+  assert.ok(action.indexOf(full) < action.indexOf(cleanup));
+  assert.equal(action.filter((step) => step.run?.includes('run-ios-test-cohort.mjs')).length, 1);
+  assert.ok(action.every((step) => !step.run?.includes('focused')));
+  assert.ok(action.every((step) => !step.with?.name?.startsWith('ios-focused-')));
   assert.equal(cleanup.if, 'always()');
-  assert.match(execution.run, /cp "\$PRODUCT_DIRECTORY\/manifest.json"/);
-  assert.doesNotMatch(execution.run, /prepare|build|boot|dispatch|retry/);
-  const manual = readYaml('.github/workflows/ios-focused.yml').jobs.execution.steps;
+  const focused = readYaml('.github/workflows/ios-focused.yml');
+  const manual = focused.jobs.execution.steps;
   assert.equal(
     manual.filter((step) => step.run?.includes('bash scripts/ci/run-ios-focused-tests.sh')).length,
     1,
   );
-  const reports = action.find((step) => step.with?.name?.startsWith('ios-focused-report-'));
-  assert.match(reports.if, /always\(\)/);
-  for (const file of [
-    'focused/results.json',
-    'focused/fixtures/results.json',
-    'focused/product-artifact/manifest.json',
-  ])
-    assert.ok(reports.with.path.includes(file));
+  assert.ok(
+    focused.jobs.completeness.steps.some((step) => step.run?.includes('ios-focused-results.mjs')),
+  );
   const completeness = readYaml('.github/workflows/ios-test-validation.yml').jobs.completeness;
   assert.equal(completeness['runs-on'], 'ubuntu-24.04');
-  const verification = completeness.steps.find((step) =>
-    step.run?.includes('ios-focused-results.mjs'),
-  );
-  const selected = verification.run
-    .trim()
-    .split('\n')
-    .map((line) => {
-      const [, , profile, file, identifier] = line.trim().split(/\s+/);
-      assert.ok(selection.env.PROFILE.includes(profile));
-      assert.ok(selection.env.SOURCE_FILE.includes(file));
-      assert.ok(selection.env.TEST_ID.includes(identifier));
-      return selectFocusedIosTests(profile, file, identifier);
-    });
-  assert.deepEqual(
-    selected.map((value) => [value.configuration, value.expectedCount, value.suite]),
-    [
-      ['Debug', 1, 'integration'],
-      ['Release', 1, 'ui'],
-    ],
-  );
+  assert.ok(completeness.steps.every((step) => !step.run?.includes('ios-focused-results.mjs')));
 });

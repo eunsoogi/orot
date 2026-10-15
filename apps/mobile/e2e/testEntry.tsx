@@ -22,6 +22,7 @@ import { startTestOperationRunner } from './testOperationRunner';
 import { registerCapabilityTestEntry } from './capabilityTestEntry';
 import { registerTestApplicationRenderer } from './testApplicationRenderer';
 import { registerNavigationTestObserver } from '../src/navigation/navigationTestObservation';
+import { AppearanceTestObservation } from './AppearanceTestObservation';
 
 const settingsManager = NativeModules.SettingsManager as
   | {
@@ -35,6 +36,10 @@ const route = selectTestRoute(settings);
 const lifecycleObservation =
   settings.OROT_TEST_NAVIGATION_OBSERVATION === 'YES' ||
   settings.OROT_TEST_EXPORT_OBSERVATION === 'YES';
+const appearanceObservation =
+  settings.OROT_TEST_APPEARANCE_OBSERVATION === 'YES';
+const geometryObservation =
+  settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation;
 if (lifecycleObservation) {
   registerNavigationTestObserver(value =>
     NativeModules.OrotTestControl.recordObservation(value),
@@ -42,8 +47,8 @@ if (lifecycleObservation) {
 }
 
 // XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.
-if (settings.OROT_TEST_UI_GEOMETRY === 'YES' || lifecycleObservation) {
-  AppRegistry.setWrapperComponentProvider(() => GeometryTestWrapper);
+if (geometryObservation || appearanceObservation) {
+  AppRegistry.setWrapperComponentProvider(() => TestObservationWrapper);
 }
 
 // This entry is bundled only for integration test products. An app-hosted XCTest must
@@ -79,6 +84,20 @@ function IntegrationTestHost() {
       style={styles.host}
       testID="integration-test-host"
     />
+  );
+}
+
+// Test wrappers observe layout and reapply XCTest appearance through a test-only native window refresh, retaining the production screen tree.
+function TestObservationWrapper({ children }: PropsWithChildren) {
+  const content = geometryObservation ? (
+    <GeometryTestWrapper>{children}</GeometryTestWrapper>
+  ) : (
+    children
+  );
+  return appearanceObservation ? (
+    <AppearanceTestObservation>{content}</AppearanceTestObservation>
+  ) : (
+    content
   );
 }
 

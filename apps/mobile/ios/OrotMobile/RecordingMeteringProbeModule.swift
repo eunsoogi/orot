@@ -12,6 +12,8 @@
         private var file: RecordingMeteringProbeFile?
         private var timer: DispatchSourceTimer?
         private var deadline: DispatchWorkItem?
+        // Permission readiness belongs to the main queue; audio and file state remain on the probe queue.
+        private var permission: RecordingMeteringPermission?
         private var observers: [NSObjectProtocol] = []
         private var status = "idle"
         private var reason = "none"
@@ -70,7 +72,9 @@
                 guard self.status == "idle" else { reject("METERING_ALREADY_STARTED", "This bounded probe can run once per launch.", nil); return }
                 self.status = "permission"
                 DispatchQueue.main.async {
-                    let permissionResult: (Bool) -> Void = { granted in
+                    let permission = RecordingMeteringPermission()
+                    self.permission = permission
+                    permission.request { granted in
                         self.queue.async {
                             guard self.status == "permission" else {
                                 reject("METERING_CANCELED", "The microphone probe was stopped before permission returned.", nil)
@@ -90,12 +94,6 @@
                                 reject("METERING_START_FAILED", "The unlinked microphone probe could not start.", nil)
                             }
                         }
-                    }
-                    // Match production permission availability without changing the capture or file boundary.
-                    if #available(iOS 17.0, *) {
-                        AVAudioApplication.requestRecordPermission(completionHandler: permissionResult)
-                    } else {
-                        AVAudioSession.sharedInstance().requestRecordPermission(permissionResult)
                     }
                 }
             }
@@ -196,6 +194,11 @@
         }
 
         private func finishSession(reason: String) {
+            // Ending while the permission sheet is closing must not leave a future activation able to start capture.
+            DispatchQueue.main.async { [weak self] in
+                self?.permission?.cancel()
+                self?.permission = nil
+            }
             timer?.cancel()
             timer = nil
             deadline?.cancel()

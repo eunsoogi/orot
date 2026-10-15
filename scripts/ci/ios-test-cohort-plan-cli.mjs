@@ -1,5 +1,5 @@
 import { appendFileSync } from 'node:fs';
-import { iosTestCohort, iosTestCohortTasks, IOS_SPEECH_SAMPLES } from './ios-test-cohorts.mjs';
+import { iosTestCohort, iosTestCohortTasks } from './ios-test-cohorts.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
 // This Linux-only planning stage validates coverage and configuration before consuming any macOS slot.
@@ -13,7 +13,6 @@ const profiles = definitions.flatMap((value) => value.profiles);
 const primaryObservations = names.flatMap((name) =>
   iosTestCohortTasks(name).flatMap((task) => task.identifiers),
 );
-const speechObservations = iosTestCohortTasks('speech').flatMap((task) => task.identifiers);
 const expected = new Set([
   ...profiles.flatMap((profile) => iosTestInventory(profile)),
   ...iosTestInventory('speech', 'preparation'),
@@ -26,17 +25,11 @@ appendFileSync(
 );
 console.log(
   JSON.stringify({
-    // Independent Debug and Release VMs can overlap. Speech starts only after both pass, then uses three sequential fresh VMs.
-    macJobs: 2 + IOS_SPEECH_SAMPLES.length,
+    // One complete inventory per CI execution. Acceptance repeats the whole workflow with a separate run/attempt identity.
+    macJobs: definitions.length,
     maximumConcurrentMacJobs: 2,
     uniqueTestCases: actual.size,
-    scheduledTestObservations:
-      primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length,
-    // The two selectors run after the original Debug/Release cohorts; their reports never replace full observations.
-    focusedSelectionObservations: 2,
-    totalScheduledTestObservations:
-      primaryObservations.length + (IOS_SPEECH_SAMPLES.length - 1) * speechObservations.length + 2,
-    speechSamples: IOS_SPEECH_SAMPLES,
+    scheduledTestObservations: primaryObservations.length,
     builds: ['Release', 'Debug'],
     cohorts: definitions.map((value) => ({ name: value.name, profiles: value.profiles })),
   }),

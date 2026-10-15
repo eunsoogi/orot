@@ -23,9 +23,9 @@ function macJobs(file) {
   }, 0);
 }
 
-test('full integration graph uses five Mac jobs and stops dependent allocation after any failed prerequisite', () => {
+test('full integration graph uses three Mac jobs and stops dependent allocation after any failed prerequisite', () => {
   const full = workflow('.github/workflows/ios-test-validation.yml');
-  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 5);
+  assert.equal(macJobs('.github/workflows/ios-test-validation.yml'), 3);
   assert.equal(full.jobs.plan['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.completeness['runs-on'], 'ubuntu-24.04');
   assert.equal(full.jobs.release_execution.needs, 'plan');
@@ -38,13 +38,7 @@ test('full integration graph uses five Mac jobs and stops dependent allocation a
   assert.equal(full.jobs.release_execution.with.profile, 'core');
   assert.equal(full.jobs.debug_execution.with.profile, 'provider-data');
   // Enumerate possible overlap states in the Mac dependency graph, rather than relying only on a max-parallel setting.
-  const ids = [
-    'release_execution',
-    'speech_execution',
-    'debug_execution',
-    'speech_sample_2',
-    'speech_sample_3',
-  ];
+  const ids = ['release_execution', 'speech_execution', 'debug_execution'];
   const ancestors = (id) => {
     const needs = full.jobs[id].needs ?? [];
     return (Array.isArray(needs) ? needs : [needs]).flatMap((dependency) => [
@@ -57,7 +51,7 @@ test('full integration graph uses five Mac jobs and stops dependent allocation a
     const active = ids.filter((_, index) => bits & (1 << index));
     if (
       active.every((id) => {
-        // A later fresh sample cannot overlap any earlier prerequisite, including through the intervening sample.
+        // Speech cannot overlap either producer whose verified output and successful tests it requires.
         return !ancestors(id).some((dependency) => active.includes(dependency));
       })
     )

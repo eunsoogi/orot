@@ -10,7 +10,7 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
     @MainActor
     func testProviderSelectionUsesTheRealRecordsRouteAcrossAppearanceChangesBeforeImport() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {

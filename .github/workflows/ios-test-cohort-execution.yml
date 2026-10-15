@@ -9,7 +9,6 @@ on:
       archive_digest: { required: true, type: string }
       manifest_digest: { required: true, type: string }
       timeout_minutes: { required: true, type: number }
-      sample: { required: false, type: string, default: first }
 
 permissions:
   contents: read
@@ -52,12 +51,11 @@ jobs:
           product_directory: artifacts/ios-cohort/product-artifact
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
-          sample: ${{ inputs.sample }}
       - name: Preserve setup failures before cohort execution
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ios-cohort-setup-${{ inputs.cohort }}-${{ inputs.sample }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ios-cohort-setup-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/ios-cohort/*.log
             artifacts/ios-cohort/*.jsonl

@@ -10,7 +10,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
     @MainActor
     func testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
         app.launch()
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {
@@ -26,8 +26,9 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         let boundary = node(app, "next-visit-probe-boundary")
         XCTAssertTrue(UITestConditions.exists(boundary))
         XCTAssertEqual(UITestConditions.text(boundary), "합성 화면 흐름 · 실제 AI 제공자와 영구 저장소는 검증하지 않음")
-        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
+        // The native tools modal hides the application accessibility tree; close it before observing the actual screen theme.
         tap(app, "next-visit-probe-close-tools")
+        _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
         DebugUITestConditions.dismissWarningToast(app)
         let scroll = node(app, "next-visit-questions-scroll")
         XCTAssertTrue(UITestConditions.exists(scroll))

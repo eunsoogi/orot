@@ -10,9 +10,8 @@ import { verifyIosTestCohortResults } from '../ios-test-cohort-results.mjs';
 const context = { sourceSha: 'a'.repeat(40), runId: '101', attempt: '1' };
 function report(cohort) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     cohort,
-    sample: 'first',
     passed: true,
     ...context,
     tasks: iosTestCohortTasks(cohort).map((task) => ({
@@ -73,36 +72,33 @@ test('missing, failed, cancelled-like, focused-only, repeated and stale receipts
   }
 });
 
-test('a first Speech result cannot certify another fresh sample or an unidentified sample', () => {
-  const value = { ...report('speech'), sample: 'first' };
-  assert.throws(() =>
-    verifyIosTestCohortResults(value, 'speech', { ...context, sample: 'second' }),
-  );
-  const missing = report('speech');
-  delete missing.sample;
-  assert.throws(() =>
-    verifyIosTestCohortResults(missing, 'speech', { ...context, sample: 'first' }),
-  );
+test('one complete Speech result cannot certify a different CI run or attempt', () => {
+  for (const changedContext of [
+    { ...context, runId: '102' },
+    { ...context, attempt: '2' },
+  ])
+    assert.throws(() => verifyIosTestCohortResults(report('speech'), 'speech', changedContext));
 });
 
-test('each fresh sample requires its own complete observations and rejects unknown identities', () => {
-  for (const sample of ['first', 'second', 'third']) {
-    const value = { ...report('speech'), sample };
-    assert.equal(verifyIosTestCohortResults(value, 'speech', { ...context, sample }).length, 11);
+test('each separate complete CI execution requires its own observations and rejects old intra-run reports', () => {
+  for (const attempt of ['1', '2', '3']) {
+    const value = { ...report('speech'), attempt };
+    assert.equal(verifyIosTestCohortResults(value, 'speech', { ...context, attempt }).length, 11);
     value.tasks[2].status = 'failed';
-    assert.throws(() => verifyIosTestCohortResults(value, 'speech', { ...context, sample }));
+    assert.throws(() => verifyIosTestCohortResults(value, 'speech', { ...context, attempt }));
   }
-  for (const sample of ['retry', '', 'fourth'])
+  for (const sample of ['first', 'second', 'third'])
     assert.throws(() =>
-      verifyIosTestCohortResults(report('speech'), 'speech', { ...context, sample }),
+      verifyIosTestCohortResults(
+        { ...report('speech'), schemaVersion: 1, sample },
+        'speech',
+        context,
+      ),
     );
-  assert.throws(() =>
-    verifyIosTestCohortResults(report('debug'), 'debug', { ...context, sample: 'second' }),
-  );
 });
 
-test('CLI rejects a reused first result and emits the explicit identity for a complete later sample', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-cohort-sample-'));
+test('CLI rejects a previous attempt and preserves the identity of its own complete execution', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-cohort-execution-'));
   try {
     const input = join(directory, 'results.json');
     const output = join(directory, 'verified.json');
@@ -110,18 +106,20 @@ test('CLI rejects a reused first result and emits the explicit identity for a co
       ...process.env,
       GITHUB_SHA: context.sourceSha,
       GITHUB_RUN_ID: context.runId,
-      GITHUB_RUN_ATTEMPT: context.attempt,
+      GITHUB_RUN_ATTEMPT: '2',
     };
-    const args = ['scripts/ci/ios-test-cohort-results.mjs', 'speech', input, output, 'second'];
+    const args = ['scripts/ci/ios-test-cohort-results.mjs', 'speech', input, output];
     writeFileSync(input, JSON.stringify(report('speech')));
     const rejected = spawnSync(process.execPath, args, { env, encoding: 'utf8' });
     assert.equal(rejected.status, 1);
     assert.equal(existsSync(output), false);
-    writeFileSync(input, JSON.stringify({ ...report('speech'), sample: 'second' }));
+    writeFileSync(input, JSON.stringify({ ...report('speech'), attempt: '2' }));
     const accepted = spawnSync(process.execPath, args, { env, encoding: 'utf8' });
     assert.equal(accepted.status, 0, accepted.stderr);
     const value = JSON.parse(readFileSync(output, 'utf8'));
-    assert.equal(value.sample, 'second');
+    assert.equal(value.runId, context.runId);
+    assert.equal(value.attempt, '2');
+    assert.equal(value.sample, undefined);
     assert.equal(value.observations.length, 11);
   } finally {
     rmSync(directory, { recursive: true, force: true });

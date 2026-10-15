@@ -10,7 +10,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
     @MainActor
     func testSavedAudioPlaybackStopsCompletesAndReopensBeforeMissingFileRecovery() throws {
         let app = XCUIApplication()
-        RecordingFixtureUITestConditions.launch(app, playback: "seed", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"])
+        RecordingFixtureUITestConditions.launch(app, playback: "seed", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
         var appearance: AppearanceUITestConditions.Snapshot?
         defer { restore(appearance, app: app) }
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
@@ -31,7 +31,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         absent(stop, timeout: 10)
         // Resume never reseeds audio or metadata, so this restart exercises the actual saved file.
         app.terminate()
-        RecordingFixtureUITestConditions.launch(app, playback: "resume", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"])
+        RecordingFixtureUITestConditions.launch(app, playback: "resume", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
         let restored = savedRow(app)
         restored.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail"), timeout: 5))
@@ -40,7 +40,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         absent(node(app, "recording-playback-stop"), timeout: 10)
         XCTAssertTrue(node(app, "recording-detail-duration").exists)
         app.terminate()
-        RecordingFixtureUITestConditions.launch(app, playback: "missing", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"])
+        RecordingFixtureUITestConditions.launch(app, playback: "missing", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
         let retained = savedRow(app)
         retained.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail-duration")))
@@ -56,7 +56,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
     @MainActor
     func testPlaybackRecoversAfterTheSimulatedOutputRouteLoss() throws {
         let app = XCUIApplication()
-        RecordingFixtureUITestConditions.launch(app, playback: "route", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"])
+        RecordingFixtureUITestConditions.launch(app, playback: "route", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
         var appearance: AppearanceUITestConditions.Snapshot?
         defer { restore(appearance, app: app) }
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })

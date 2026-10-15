@@ -37,7 +37,7 @@
 
     /// The test entry consumes commands and returns observations through the normal RN native bridge.
     @objc(OrotTestControl)
-    final class OrotTestControl: NSObject {
+    final class OrotTestControl: RCTEventEmitter {
         // Weak UIKit identity keeps IDs stable while alive without extending a controller or recognizer's lifetime.
         private let observationIDs = NSMapTable<NSObject, NSString>(keyOptions: [.weakMemory, .objectPointerPersonality], valueOptions: .strongMemory)
         private let observedNavigations = NSHashTable<UINavigationController>.weakObjects()
@@ -46,8 +46,12 @@
         private var gestureEvents: [[String: Any]] = []
         private let navigationObservationID = UUID().uuidString
 
-        @objc static func requiresMainQueueSetup() -> Bool {
+        @objc override static func requiresMainQueueSetup() -> Bool {
             false
+        }
+
+        override func supportedEvents() -> [String]! {
+            ["appearanceRefreshed"]
         }
 
         @objc(nextRequest:rejecter:)
@@ -69,6 +73,23 @@
         func recordObservation(_ observation: [String: Any]) {
             guard let event = observation["event"] as? String else { return }
             TestLifecycleObservation.record(event, fields: observation)
+        }
+
+        /// Register the isolated test refresh channel and expose actual UIKit observations through the usual RN bridge.
+        @objc(refreshAppearance:rejecter:)
+        func refreshAppearance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+            DispatchQueue.main.async {
+                guard UserDefaults.standard.string(forKey: "OROT_TEST_APPEARANCE_OBSERVATION") == "YES",
+                      let session = UserDefaults.standard.string(forKey: "OROT_TEST_APPEARANCE_SESSION"), UUID(uuidString: session) != nil,
+                      let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow)
+                else {
+                    reject("appearance_unavailable", "An opted-in foreground test window is required", nil)
+                    return
+                }
+                resolve(TestAppearanceRefresh.shared.observe(window: window, session: session) { [weak self] observation in
+                    self?.sendEvent(withName: "appearanceRefreshed", body: observation)
+                })
+            }
         }
 
         /// Observe public UIKit navigation state while preserving recognizer configuration, delegates and route guards.

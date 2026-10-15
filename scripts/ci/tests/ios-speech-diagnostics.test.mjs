@@ -161,7 +161,7 @@ test('records unavailable spawn and preserves existing evidence instead of overw
 });
 
 for (const status of [0, 65]) {
-  test(`an unavailable Speech log stream preserves the first native test exit ${status}`, () => {
+  test(`an unavailable Speech log stream preserves the first test-process exit ${status}`, () => {
     const directory = mkdtempSync(join(tmpdir(), 'orot-speech-runner-'));
     const config = iosTestConfig('speech');
     const owner = { ...config, name: 'owned-fixture', udid: 'owned-udid' };

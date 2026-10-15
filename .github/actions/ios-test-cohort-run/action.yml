@@ -16,9 +16,6 @@ inputs:
   manifest_digest:
     description: Producer manifest SHA-256.
     required: true
-  sample:
-    description: Distinct first, second or third Speech acceptance sample.
-    default: first
 runs:
   using: composite
   steps:
@@ -55,40 +52,7 @@ runs:
       env:
         COHORT: ${{ inputs.cohort }}
         TEST_RUN: ${{ steps.verify.outputs.test_run }}
-        OROT_IOS_TEST_SAMPLE: ${{ inputs.sample }}
       run: scripts/ci/run-command.sh ios-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
-    - name: Bind one additional exact selection to the current automatic checkout
-      if: inputs.cohort != 'speech'
-      id: focused
-      shell: bash
-      env:
-        PROFILE: ${{ inputs.cohort == 'debug' && 'ios/provider-data' || 'ios/fixtures' }}
-        SOURCE_FILE: ${{ inputs.cohort == 'debug' && 'apps/mobile/ios/OrotIntegrationTests/AppleModelIntegrationTests.swift' || 'apps/mobile/ios/OrotUITests/RootNavigationUITests.swift' }}
-        TEST_ID: ${{ inputs.cohort == 'debug' && 'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures' || 'OrotUITests/RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack' }}
-      # The automatic PR checkout is a merge SHA. The optional manual PR-head binding remains in the same selector.
-      run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID"
-    - name: Execute the selected observation on the existing verified products and destination
-      if: inputs.cohort != 'speech'
-      shell: bash
-      env:
-        PROFILE: ${{ steps.focused.outputs.profile }}
-        MODE: ${{ steps.focused.outputs.mode }}
-        TEST_ID: ${{ steps.focused.outputs.identifier }}
-        OROT_IOS_TEST_SUITE: ${{ steps.focused.outputs.fixtureSuite }}
-        TEST_RUN: ${{ steps.verify.outputs.test_run }}
-        PRODUCT_DIRECTORY: ${{ inputs.product_directory }}
-      # Full-cohort failure prevents this step. It is a separate observation, never a retry or replacement.
-      run: |
-        mkdir -p artifacts/ios-cohort/focused/product-artifact
-        cp "$PRODUCT_DIRECTORY/manifest.json" artifacts/ios-cohort/focused/product-artifact/manifest.json
-        bash scripts/ci/run-ios-focused-tests.sh "$PROFILE" "$MODE" "$TEST_ID" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/focused
-    - name: Preserve selected integration attachments before owned cleanup
-      if: always() && inputs.cohort != 'speech'
-      shell: bash
-      run: |
-        if [[ -d artifacts/ios-cohort/focused/results.xcresult ]]; then
-          xcrun xcresulttool export attachments --path artifacts/ios-cohort/focused/results.xcresult --output-path artifacts/ios-cohort/focused/attachments
-        fi
     - name: Remove only the owned destination
       if: always()
       shell: bash
@@ -102,33 +66,21 @@ runs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: ios-cohort-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: ios-cohort-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
           artifacts/ios-cohort/*.log
           artifacts/ios-cohort/*.json
           artifacts/ios-cohort/*.jsonl
           artifacts/ios-cohort/results
           artifacts/ios-cohort/artifact-rejections/results.json
-          artifacts/ios-cohort/focused
           ${{ inputs.product_directory }}/manifest.json
-        if-no-files-found: warn
-        retention-days: 7
-    - name: Publish separate focused reports for Linux selection verification
-      if: always() && inputs.cohort != 'speech'
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: ios-focused-report-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
-        path: |
-          artifacts/ios-cohort/focused/results.json
-          artifacts/ios-cohort/focused/fixtures/results.json
-          artifacts/ios-cohort/focused/product-artifact/manifest.json
         if-no-files-found: warn
         retention-days: 7
     - name: Publish compact reports for Linux aggregation
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: ios-cohort-report-${{ inputs.cohort }}${{ inputs.sample != 'first' && format('-{0}', inputs.sample) || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+        name: ios-cohort-report-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: |
           artifacts/ios-cohort/results/results.json
           artifacts/ios-cohort/results/speech-integration/attachments/*.json
