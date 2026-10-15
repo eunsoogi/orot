@@ -21,6 +21,7 @@ interface RecordingExportPanelProps {
   transcriptService?: TranscriptEvidenceService;
   exportService?: RecordingExportService;
   onBusyChange?: (busy: boolean) => void;
+  actionsDisabled?: boolean;
 }
 
 type ExportError =
@@ -53,6 +54,7 @@ export default function RecordingExportPanel({
   transcriptService = transcriptEvidenceService,
   exportService = recordingExportService,
   onBusyChange,
+  actionsDisabled = false,
 }: RecordingExportPanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +104,7 @@ export default function RecordingExportPanel({
   }, [recordingSourceId, transcriptService]);
 
   async function shareAudio(): Promise<void> {
+    if (busy || actionsDisabled) return;
     // Audio export reads the saved file directly and must stay available if transcript lookup fails.
     const requestRevision = selectionRevision.current;
     updateBusy(true);
@@ -122,6 +125,7 @@ export default function RecordingExportPanel({
   }
 
   async function shareTranscript(): Promise<void> {
+    if (busy || actionsDisabled) return;
     const requestRevision = selectionRevision.current;
     updateBusy(true);
     setError(null);
@@ -167,14 +171,14 @@ export default function RecordingExportPanel({
       <Text accessibilityRole="header">{t('recording.export.title')}</Text>
       {/* Native sharing can wait for user input; keep its result inside the panel, not press dispatch. */}
       <Button
-        disabled={busy}
+        disabled={busy || actionsDisabled}
         onPress={handleShareAudioPress}
         testID="recording-export-audio"
         title={t('recording.export.audio')}
       />
       {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
       <Button
-        disabled={busy || loading}
+        disabled={busy || actionsDisabled || loading}
         onPress={handleShareTranscriptPress}
         testID="recording-export-transcript"
         title={t('recording.export.transcript')}

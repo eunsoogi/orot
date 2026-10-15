@@ -10,6 +10,10 @@ import type { TranscriptEvidenceService } from '../../transcription/transcriptEv
 import RecordingLibraryPanel from '../RecordingLibraryPanel';
 import { recordingExportService } from '../recordingExportService';
 import { savedSource } from '../recordingScreenSupport';
+import {
+  confirmNativeDeletion,
+  mockNativeDeletionAlert,
+} from '../testSupport/nativeDeletionAlert';
 
 const current = { ...savedSource, id: 'current-share-source' };
 const older = {
@@ -87,6 +91,7 @@ test.each(['audio', 'transcript'] as const)(
         screen.getByTestId(`recording-playback-list-button-${older.id}`),
       ).toBeDisabled();
       expect(screen.getByTestId(`recording-delete-${older.id}`)).toBeDisabled();
+      expect(screen.queryByTestId('recording-delete-progress')).toBeNull();
       await fireEvent.press(row);
       expect(screen.queryByTestId('recording-detail')).toBeNull();
       await act(async () => {
@@ -113,5 +118,73 @@ test.each(['audio', 'transcript'] as const)(
       await panel.unmount();
       share.mockRestore();
     }
+  },
+);
+
+test.each(['audio', 'transcript'] as const)(
+  '%s export cannot release a pending deletion lock',
+  async kind => {
+    let finishDelete!: (result: { audioCleanupPending: boolean }) => void;
+    const pendingDelete = new Promise<{ audioCleanupPending: boolean }>(
+      resolve => {
+        finishDelete = resolve;
+      },
+    );
+    const library = {
+      list: async () => [current, older],
+      deleteRecording: jest.fn(() => pendingDelete),
+    };
+    const transcriptService: TranscriptEvidenceService = {
+      load: async () => ({
+        source: current,
+        segments: [segment],
+        staleArtifacts: [],
+      }),
+      transcribe: async () => [],
+      correct: async () => segment,
+      play: jest.fn(),
+    };
+    const share = jest
+      .spyOn(
+        recordingExportService,
+        kind === 'audio' ? 'shareAudio' : 'shareTranscript',
+      )
+      .mockResolvedValue('cancelled');
+    const alert = mockNativeDeletionAlert();
+    await render(
+      <RecordingLibraryPanel
+        service={library}
+        transcriptService={transcriptService}
+        fallbackExportSourceId={current.id}
+      />,
+    );
+    const row = await screen.findByTestId(`recording-details-${current.id}`);
+    await waitFor(() =>
+      expect(screen.getByTestId(`recording-export-${kind}`)).toBeEnabled(),
+    );
+    await fireEvent.press(screen.getByTestId(`recording-delete-${older.id}`));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+    await confirmNativeDeletion(alert);
+    await waitFor(() =>
+      expect(library.deleteRecording).toHaveBeenCalledWith(older.id),
+    );
+    // An attempted share must neither start nor publish a settlement into deletion's pending state.
+    await fireEvent.press(screen.getByTestId(`recording-export-${kind}`));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(row).toBeDisabled();
+    expect(screen.getByTestId('recording-delete-progress')).toBeTruthy();
+    expect(share).not.toHaveBeenCalled();
+    expect(screen.getByTestId(`recording-export-${kind}`)).toBeDisabled();
+    await act(async () => {
+      finishDelete({ audioCleanupPending: false });
+      await pendingDelete;
+    });
+    await waitFor(() => expect(row).toBeEnabled());
+    expect(screen.queryByTestId('recording-delete-progress')).toBeNull();
+    expect(screen.queryByTestId(`recording-details-${older.id}`)).toBeNull();
+    await fireEvent.press(row);
+    expect(await screen.findByTestId('recording-detail')).toBeTruthy();
   },
 );

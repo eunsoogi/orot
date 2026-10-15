@@ -14,6 +14,7 @@ import RecordingDeletionConfirmation from './RecordingDeletionConfirmation';
 import { recordingLibraryStyles as styles } from './RecordingLibraryPanel.styles';
 import {
   loadRecordingLibrarySummaries,
+  recordingLibrarySources,
   type RecordingDeleteNotice,
   type RecordingLibraryService,
   type RecordingLibrarySummary,
@@ -59,6 +60,8 @@ export default function RecordingLibraryPanel({
   const [deletedIds] = useState(() => new Set<string>());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Each operation owns its settlement; export completion must never clear an outstanding deletion.
+  const [exportBusy, setExportBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState<RecordingDeleteNotice>(null);
 
@@ -129,7 +132,7 @@ export default function RecordingLibraryPanel({
 
   async function confirmDelete(): Promise<void> {
     const target = deleteTarget;
-    if (!target || busy) return;
+    if (!target || busy || exportBusy || actionsDisabled) return;
     setBusy(true);
     onBusyChange?.(true);
     setDeleteNotice(null);
@@ -160,24 +163,19 @@ export default function RecordingLibraryPanel({
     }
   }
 
-  const disabled = busy || actionsDisabled;
+  const disabled = busy || exportBusy || actionsDisabled;
   function selectSource(sourceId: string, autoPlay = false): void {
     if (disabled) return;
     // Both list actions share the same source and busy boundary; playback still uses the detail control.
     setPlaybackRequestSourceId(autoPlay ? sourceId : null);
     setSelectedSourceId(sourceId);
   }
-  const exportSourceId = selected?.source.id ?? fallbackExportSourceId ?? null;
-  const transcriptSourceId =
-    selected?.source.id ??
-    automaticTranscription?.sourceId ??
-    fallbackExportSourceId ??
-    null;
-  const transcriptionStatus =
-    automaticTranscription &&
-    automaticTranscription.sourceId === transcriptSourceId
-      ? automaticTranscription.status
-      : undefined;
+  const { exportSourceId, transcriptSourceId, transcriptionStatus } =
+    recordingLibrarySources(
+      selected?.source.id,
+      automaticTranscription,
+      fallbackExportSourceId,
+    );
 
   return (
     <View style={styles.container} testID="recording-library-panel">
@@ -235,11 +233,12 @@ export default function RecordingLibraryPanel({
         <RecordingExportPanel
           recordingSourceId={exportSourceId}
           transcriptService={transcriptService}
-          onBusyChange={setBusy}
+          onBusyChange={setExportBusy}
+          actionsDisabled={busy || actionsDisabled}
         />
       ) : null}
       <RecordingDeletionConfirmation
-        busy={disabled}
+        busy={busy || actionsDisabled}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         target={deleteTarget}
