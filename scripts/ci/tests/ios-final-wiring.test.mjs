@@ -83,16 +83,17 @@ test('full and focused visible job names use one consistent role and target', ()
     assert.equal(visible.match(/E2E/g)?.length, 1);
     assert.doesNotMatch(name, /\$\{\{|[()\d]/);
   }
-  const focused = workflow(entry.focused_scenario.uses.replace(/^\.\//, '')).jobs;
+  const selected = workflow('.github/workflows/e2e-selected.yml').jobs.selected;
+  const focused = workflow(selected.uses.replace(/^\.\//, '')).jobs;
   assert.deepEqual(
     Object.values(focused)
-      .map((job) => entry.focused_scenario.name + ' / ' + job.name)
+      .map((job) => selected.name + ' / ' + job.name)
       .sort(),
     [
-      'Focus / Plan / Select',
-      'Focus / Build / ${{ needs.selection.outputs.configuration }}',
-      'Focus / Test / Selection',
-      'Focus / Validate / Complete',
+      'iOS / Plan / Select',
+      'iOS / Build / ${{ needs.selection.outputs.configuration }}',
+      'iOS / Test / Selection',
+      'iOS / Validate / Complete',
     ].sort(),
   );
 });

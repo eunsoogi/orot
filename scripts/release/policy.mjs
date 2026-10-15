@@ -1,5 +1,5 @@
 import {
-  ACCEPTED_CI_WORKFLOW_EVENTS,
+  isAcceptedCiWorkflowEvent,
   REQUIRED_CI_JOB_WORKFLOW_PATH,
   REQUIRED_CI_JOBS,
   TRUSTED_CI_WORKFLOW_PATHS,
@@ -38,7 +38,7 @@ export function validateCandidate(context) {
   if (context.currentMainSha?.toLowerCase() !== context.sourceSha?.toLowerCase())
     errors.push('main advanced or no longer points to the workflow candidate');
 
-  // A manual full run may replace path-filtered pushes only for its exact trusted main workflow.
+  // Only supported events from the exact trusted main workflow may attest its required checks.
   const ciRuns = context.ciRuns ?? [];
   const trustedPaths = new Set(TRUSTED_CI_WORKFLOW_PATHS);
   const runByPath = new Map();
@@ -56,7 +56,7 @@ export function validateCandidate(context) {
     const [run] = matches;
     runByPath.set(path, run);
     if (
-      !ACCEPTED_CI_WORKFLOW_EVENTS.includes(run.event) ||
+      !isAcceptedCiWorkflowEvent(path, run.event) ||
       run.head_branch !== 'main' ||
       run.head_sha?.toLowerCase() !== context.sourceSha?.toLowerCase() ||
       run.status !== 'completed' ||

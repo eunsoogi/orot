@@ -1,5 +1,5 @@
 import { collectPaginatedItems } from './version-tags.mjs';
-import { ACCEPTED_CI_WORKFLOW_EVENTS, TRUSTED_CI_WORKFLOW_PATHS } from './ci-required-jobs.mjs';
+import { isAcceptedCiWorkflowEvent } from './ci-required-jobs.mjs';
 
 const RUN_PAGE_SIZE = 100;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
@@ -36,18 +36,15 @@ function runOrder(left, right) {
   );
 }
 
-// Only trusted paths on the exact main SHA qualify; the newest event of either type wins.
+// The newest permitted event on each trusted path wins; selected diagnostics cannot replace full evidence.
 export function latestMainValidationRuns(sourceSha, workflowRuns) {
   if (!FULL_SHA.test(sourceSha ?? '')) throw new Error('source commit SHA is invalid');
-  const trustedPaths = new Set(TRUSTED_CI_WORKFLOW_PATHS);
-  const acceptedEvents = new Set(ACCEPTED_CI_WORKFLOW_EVENTS);
   const selected = new Map();
   for (const run of workflowRuns) {
     if (
-      !acceptedEvents.has(run.event) ||
+      !isAcceptedCiWorkflowEvent(run.path, run.event) ||
       run.head_branch !== 'main' ||
-      run.head_sha?.toLowerCase() !== sourceSha.toLowerCase() ||
-      !trustedPaths.has(run.path)
+      run.head_sha?.toLowerCase() !== sourceSha.toLowerCase()
     ) {
       continue;
     }

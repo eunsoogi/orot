@@ -28,7 +28,15 @@ export const REQUIRED_CI_JOBS_BY_WORKFLOW = {
 };
 
 export const TRUSTED_CI_WORKFLOW_PATHS = Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW);
-export const ACCEPTED_CI_WORKFLOW_EVENTS = ['push', 'workflow_dispatch'];
+
+// Full iOS evidence comes from automatic main pushes. Selected diagnostics never attest release readiness.
+export function isAcceptedCiWorkflowEvent(path, event) {
+  if (!TRUSTED_CI_WORKFLOW_PATHS.includes(path)) return false;
+  return (
+    event === 'push' || (event === 'workflow_dispatch' && path !== '.github/workflows/e2e-test.yml')
+  );
+}
+
 export const REQUIRED_CI_JOBS = Object.values(REQUIRED_CI_JOBS_BY_WORKFLOW).flat();
 export const REQUIRED_CI_JOB_WORKFLOW_PATH = Object.fromEntries(
   Object.entries(REQUIRED_CI_JOBS_BY_WORKFLOW).flatMap(([path, jobs]) =>

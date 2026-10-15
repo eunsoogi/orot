@@ -43,7 +43,7 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full int
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
   assert.match(e2e, /outputs\.deferred == 'true' && needs\.completeness\.result != 'success'/);
   assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
-  assert.match(e2e, /needs\.selection\.outputs\.focused != 'true'/);
+  assert.doesNotMatch(e2e, /workflow_dispatch:|focused_scenario:/);
   assert.match(
     e2e,
     /test "\$COMPLETE" = true && test "\$DEFERRED" != true && test "\$DIAGNOSTIC" != true/,
@@ -62,8 +62,8 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full int
 });
 
 test('manual focus uses exact integration selection and retains PR-scoped supersession', () => {
-  const e2e = read('.github/workflows/e2e-test.yml');
-  assert.match(e2e, /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
+  const selected = read('.github/workflows/e2e-selected.yml');
+  assert.match(selected, /selected:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
   const focus = read('.github/workflows/ios-focused.yml');
   assert.match(
     focus,

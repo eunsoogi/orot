@@ -160,14 +160,10 @@ test('PR focus binds the actual workflow branch, repository and exact open head'
     assert.throws(() => verifyFocusedIosPullRequest(context, number, pr));
 });
 
-test('integration focus routing leaves full protected statuses failing without a legacy fallback', () => {
-  const dispatcher = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
-  assert.match(
-    dispatcher,
-    /focused_scenario:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/,
-  );
-  assert.match(dispatcher, /DIAGNOSTIC: \$\{\{ needs\.selection\.outputs\.diagnostic \}\}/);
-  assert.match(dispatcher, /test "\$DIAGNOSTIC" != true/);
+test('integration focus routing uses its independent entry without a legacy fallback', () => {
+  const dispatcher = readFileSync('.github/workflows/e2e-selected.yml', 'utf8');
+  assert.match(dispatcher, /selected:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
+  assert.doesNotMatch(dispatcher, /ios-required-statuses|ios-test-completeness|Validate \/ Build/);
   assert.doesNotMatch(dispatcher, /detox-e2e-focused|e2e-focused\.yml/);
 });
 

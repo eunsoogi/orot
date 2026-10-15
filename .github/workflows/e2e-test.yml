@@ -4,17 +4,11 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      focus_pr_number: { type: string, default: '' }
-      focus_profile: { type: string, default: '' }
-      focus_scenario_file: { type: string, default: '' }
-      focus_scenario_name: { type: string, default: '' }
 permissions:
   contents: read
   pull-requests: read
 concurrency:
-  # One allocation window covers full and focused routes; the dedicated manager cancels stale PR runs.
+  # The selected entry shares this allocation window; the dedicated manager cancels stale PR runs.
   group: ios-ci-macos-${{ github.repository }}
   cancel-in-progress: false
 jobs:
@@ -26,7 +20,7 @@ jobs:
       complete: ${{ steps.select.outputs.selection_complete }}
       deferred: ${{ steps.select.outputs.full_validation_deferred }}
       run_ios: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true' }}
-      focused: ${{ github.event_name == 'workflow_dispatch' && (inputs.focus_pr_number != '' || inputs.focus_profile != '' || inputs.focus_scenario_file != '' || inputs.focus_scenario_name != '') }}
+      # Reject an unsupported manual event without allowing it to attest full validation.
       diagnostic: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -39,7 +33,7 @@ jobs:
   plan:
     name: Plan / Coverage
     needs: selection
-    if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.focused != 'true' && needs.selection.outputs.run_ios == 'true' }}
+    if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.run_ios == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -156,13 +150,3 @@ jobs:
       selected: ${{ needs.selection.outputs.run_ios == 'true' }}
       invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
       execution_result: ${{ needs.completeness.result }}
-  focused_scenario:
-    name: Focus
-    needs: selection
-    if: ${{ github.event_name == 'workflow_dispatch' && needs.selection.outputs.focused == 'true' }}
-    uses: ./.github/workflows/ios-focused.yml
-    with:
-      pr_number: ${{ inputs.focus_pr_number }}
-      profile: ${{ inputs.focus_profile }}
-      scenario_file: ${{ inputs.focus_scenario_file }}
-      scenario_name: ${{ inputs.focus_scenario_name }}
