@@ -39,7 +39,6 @@
 		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
 		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
 		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
-		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
 		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
 		9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */; };
@@ -86,6 +85,7 @@
 		A64F00000000000000000010 /* RecordingMeteringProbeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */; };
 		A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000011 /* RecordingMeteringProbeModule.m */; };
 		A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000012 /* RecordingMeteringPermission.swift */; };
+		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
@@ -207,7 +207,6 @@
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
-		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
 		9422961FF39A9392CEC9AE63 /* TestControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControl.swift; path = OrotMobile/TestControl.swift; sourceTree = "<group>"; };
 		95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceUITestConditions.swift; sourceTree = "<group>"; };
 		9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupPersistenceUITests.swift; sourceTree = "<group>"; };
@@ -253,6 +252,7 @@
 		B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringProbeModule.swift; path = OrotMobile/RecordingMeteringProbeModule.swift; sourceTree = "<group>"; };
 		B64F00000000000000000011 /* RecordingMeteringProbeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingMeteringProbeModule.m; path = OrotMobile/RecordingMeteringProbeModule.m; sourceTree = "<group>"; };
 		B64F00000000000000000012 /* RecordingMeteringPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringPermission.swift; path = OrotMobile/RecordingMeteringPermission.swift; sourceTree = "<group>"; };
+		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
