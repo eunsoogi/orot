@@ -8,6 +8,7 @@ actor LocalE5Preparation<Value> {
     private struct Subscriber {
         let token: UUID
         let generation: UUID
+        let cancellation: LocalE5PreparationCancellation
         let progress: Progress
         let continuation: CheckedContinuation<Value, Error>
     }
@@ -28,32 +29,46 @@ actor LocalE5Preparation<Value> {
         subscribers.count
     }
 
-    func prepare(requestId: String, total: Int64, onProgress: @escaping Progress, load: @escaping Loader) async throws -> Value {
+    func prepare(
+        requestId: String,
+        total: Int64,
+        cancellation: LocalE5PreparationCancellation = LocalE5PreparationCancellation(),
+        onProgress: @escaping Progress,
+        load: @escaping Loader,
+    ) async throws -> Value {
         try Task.checkCancellation()
+        try cancellation.check()
+        removeCancelledSubscribers()
         if let cached {
             await onProgress(total, total)
             try Task.checkCancellation()
+            try cancellation.check()
             return cached
         }
         let token = UUID()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 // Cancellation before registration must not leave an unobserved shared download behind.
-                guard !Task.isCancelled else {
+                guard !Task.isCancelled, !cancellation.isCancelled else {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
+                // An earlier public cancellation may still be waiting for its cleanup Task to enter this actor.
+                removeCancelledSubscribers()
                 guard subscribers[requestId] == nil else {
                     continuation.resume(throwing: PreparationError.duplicateRequest)
                     return
                 }
                 let generation = flight?.generation ?? UUID()
-                subscribers[requestId] = Subscriber(token: token, generation: generation, progress: onProgress, continuation: continuation)
+                subscribers[requestId] = Subscriber(
+                    token: token, generation: generation, cancellation: cancellation, progress: onProgress, continuation: continuation,
+                )
                 if flight == nil {
                     start(generation: generation, load: load)
                 }
             }
         } onCancel: {
+            cancellation.cancel()
             Task { await self.cancel(requestId: requestId, token: token) }
         }
     }
@@ -83,11 +98,19 @@ actor LocalE5Preparation<Value> {
     }
 
     private func deliver(_ completed: Int64, total: Int64, generation: UUID) async {
+        removeCancelledSubscribers()
         for (requestId, subscriber) in subscribers where subscriber.generation == generation {
             // Awaiting a consumer is reentrant: cancellation or replacement can happen between subscribers.
             guard flight?.generation == generation else { return }
             guard subscribers[requestId]?.token == subscriber.token else { continue }
+            guard !subscriber.cancellation.isCancelled else { continue }
             await subscriber.progress(completed, total)
+        }
+    }
+
+    private func removeCancelledSubscribers() {
+        for (requestId, subscriber) in subscribers where subscriber.cancellation.isCancelled {
+            cancel(requestId: requestId, token: subscriber.token)
         }
     }
 
@@ -104,6 +127,7 @@ actor LocalE5Preparation<Value> {
     }
 
     private func settle(generation: UUID, result: Result<Value, Error>) {
+        removeCancelledSubscribers()
         guard flight?.generation == generation else { return }
         if case let .success(value) = result {
             cached = value

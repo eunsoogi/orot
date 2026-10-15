@@ -41,12 +41,16 @@ actor LocalE5EmbeddingRuntime {
 
     func prepare(
         requestId: String,
+        cancellation: LocalE5PreparationCancellation,
         onProgress: @escaping (Int64, Int64) async -> Void,
     ) async throws {
-        let model = try await preparation.prepare(requestId: requestId, total: LocalE5ModelAssets.totalByteCount, onProgress: onProgress) { progress in
+        let model = try await preparation.prepare(
+            requestId: requestId, total: LocalE5ModelAssets.totalByteCount, cancellation: cancellation, onProgress: onProgress,
+        ) { progress in
             try await self.loadModel(onProgress: progress)
         }
         try Task.checkCancellation()
+        try cancellation.check()
         preparedModel = model
     }
 

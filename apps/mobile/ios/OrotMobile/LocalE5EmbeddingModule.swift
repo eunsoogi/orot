@@ -45,14 +45,17 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         rejecter reject: @escaping RCTPromiseRejectBlock,
     ) {
         start(requestId, resolve: resolve, reject: reject) { [weak self] slot in
-            try await LocalE5EmbeddingRuntime.shared.prepare(requestId: requestId) { [weak self] completed, total in
+            try await LocalE5EmbeddingRuntime.shared.prepare(requestId: requestId, cancellation: slot.preparationCancellation) { [weak self] completed, total in
                 guard let self else { return }
                 await MainActor.run {
-                    guard self.isActive(slot) else { return }
-                    self.sendEvent(
-                        withName: "LocalE5EmbeddingEvent",
-                        body: ["requestId": requestId, "completed": completed, "total": total],
-                    )
+                    LocalE5ProgressDelivery.submit(lock: self.lock, isActive: {
+                        self.requests[slot.requestId] === slot && !slot.cancelled && !slot.finished
+                    }) {
+                        self.sendEvent(
+                            withName: "LocalE5EmbeddingEvent",
+                            body: ["requestId": requestId, "completed": completed, "total": total],
+                        )
+                    }
                 }
             }
             return ["prepared": true]
@@ -78,6 +81,8 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         let slot = requests.removeValue(forKey: requestId)
         slot?.cancelled = true
         slot?.finished = true
+        // Publish cancellation before releasing the ID, even if task attachment or actor cleanup has not run yet.
+        slot?.preparationCancellation.cancel()
         let task = slot?.task
         lock.unlock()
 
@@ -135,12 +140,6 @@ public final class LocalE5EmbeddingModule: RCTEventEmitter {
         if wasCancelled {
             task.cancel()
         }
-    }
-
-    private func isActive(_ slot: LocalE5EmbeddingRequestSlot) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return requests[slot.requestId] === slot && !slot.cancelled && !slot.finished
     }
 
     private func finish(_ slot: LocalE5EmbeddingRequestSlot) -> Bool {

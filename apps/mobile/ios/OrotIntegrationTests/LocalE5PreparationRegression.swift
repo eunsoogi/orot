@@ -8,6 +8,9 @@ enum LocalE5PreparationRegression {
     enum Failure: Error { case assertion(String), expectedLoaderFailure }
 
     static func verify() async throws {
+        try LocalE5PreparationLifetimeRegression.atomicSubmission()
+        try await LocalE5PreparationLifetimeRegression.immediateReplacement(requestId: "old")
+        try await LocalE5PreparationLifetimeRegression.immediateReplacement(requestId: "new")
         try await burstAndDrain(fails: false)
         try await burstAndDrain(fails: true)
         try await sharedSubscribers()
