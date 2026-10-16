@@ -3,21 +3,14 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { runIosSimulatorCommand, verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { verifyIosFixtureReceipt } from './ios-test-fixture-receipt.mjs';
+export { verifyIosFixtureReceipt } from './ios-test-fixture-receipt.mjs';
 import {
   iosPreparationFailure,
   recordIosPreparationDiagnostic,
 } from './ios-test-preparation-diagnostics.mjs';
 
 const bundle = 'com.orot.mobile';
-const pathNames = ['database', 'wal', 'shm', 'recordings', 'deletions', 'exports'];
-const serviceNames = [
-  'com.orot.mobile.database-encryption-key.v1',
-  'com.orot.mobile.database-initialization.v1',
-  'com.orot.mobile.provider-selection.v1',
-  'com.orot.provider.openai.credentials',
-  'com.orot.provider.openai.simulator-fixture',
-];
-
 /** Future cases default to full installation isolation until their actual state boundary is classified. */
 export function iosFixtureResetMode(profile, identifier) {
   const scopedClasses = [
@@ -41,52 +34,7 @@ export function iosFixtureResetMode(profile, identifier) {
     : 'fresh-install';
 }
 
-function exactBooleans(value, names, expected) {
-  return (
-    value &&
-    Object.keys(value).length === names.length &&
-    names.every((name) => value[name] === expected)
-  );
-}
-
-/** Observed absence is mandatory; a successful launch or omitted field cannot stand in for state reset. */
-export function verifyIosFixtureReceipt(receipt, action, token) {
-  if (
-    receipt?.token !== token ||
-    receipt?.action !== action ||
-    receipt?.ok !== true ||
-    !Number.isSafeInteger(receipt.processIdentifier) ||
-    receipt.processIdentifier <= 0
-  )
-    throw new Error('Missing, stale or failed scoped fixture receipt');
-  const state = receipt.state;
-  if (
-    action === 'reset' &&
-    (!exactBooleans(state?.paths, pathNames, false) ||
-      !exactBooleans(state?.keys, serviceNames, false) ||
-      state.keyFingerprint !== null ||
-      state.preferencesEmpty !== true ||
-      state.pollutedPreferencesAbsent !== true ||
-      state.microphoneUndetermined !== true ||
-      state.speechUndetermined !== true)
-  )
-    throw new Error('Scoped reset left database, files, keys, preferences or permissions');
-  if (
-    action === 'seed' &&
-    (!exactBooleans(state?.paths, pathNames, true) ||
-      !exactBooleans(state?.keys, serviceNames, true) ||
-      !/^[a-f0-9]{64}$/.test(state.keyFingerprint ?? '') ||
-      state.preferencesEmpty !== false ||
-      state.pollutedPreferencesAbsent !== false ||
-      state.microphoneGranted !== true ||
-      state.foreignFile !== true ||
-      state.foreignKey !== true)
-  )
-    throw new Error('Scoped reset regression did not inject every required contamination category');
-  return receipt;
-}
-
-/** Each public mutation rechecks exact simulator ownership. No other bundle or system Keychain is reset. */
+/** Each command rechecks exact ownership and awaits its real exit; hosted job cancellation is the outer limit. */
 export function ownedFixtureCommand(profile, owner, args) {
   if (
     !['fixtures', 'core'].includes(profile) ||
@@ -95,11 +43,11 @@ export function ownedFixtureCommand(profile, owner, args) {
     throw new Error(
       'Scoped fixture commands require an owned booted fixture or isolation destination',
     );
-  return runIosSimulatorCommand(args, { timeout: 30000 }).trim();
+  return runIosSimulatorCommand(args).trim();
 }
 
 /** One read-only observation shares five seconds across fresh ownership and container lookup.
- * SIGKILL bounds a diagnostic child even if it ignores SIGTERM; the original install keeps its own deadline.
+ * SIGKILL bounds only this optional observation; ordinary installation awaits its actual command exit.
  * An installed result after a failed install is evidence only and never resumes reset or XCTest. */
 function observeFailedInstall(profile, owner) {
   const started = performance.now();
@@ -207,8 +155,10 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
     token,
   );
   const launched = Date.now();
+  let failure;
+  let result;
   try {
-    // Public container/privacy/launch commands have their own deadlines. Their cost cannot consume the app's unchanged ten-second receipt window.
+    // Command completion precedes this separate ten-second app-receipt window; preparation cannot consume it.
     while (!existsSync(receiptPath) && Date.now() - launched < 10000) await setTimeout(50);
     if (!existsSync(receiptPath)) throw new Error('Scoped fixture receipt deadline exceeded');
     const receipt = verifyIosFixtureReceipt(
@@ -217,14 +167,15 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
       token,
     );
     unlinkSync(receiptPath);
-    return {
+    result = {
       ...receipt,
       preparationElapsedMs: launched - started,
       receiptElapsedMs: Date.now() - launched,
       elapsedMs: Date.now() - started,
     };
   } catch (error) {
-    // Preserve the failed first launch and both measured phases before terminating its owned process.
+    failure = error;
+    // Keep the first failure primary even if terminating its owned process also fails.
     console.error(
       'IOS_FIXTURE_COMMAND_FAILED ' +
         JSON.stringify({
@@ -236,8 +187,14 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
           error: String(error),
         }),
     );
-    throw error;
   } finally {
-    command('terminate', owner.udid, bundle);
+    try {
+      command('terminate', owner.udid, bundle);
+    } catch (cleanupError) {
+      if (failure) console.error('IOS_FIXTURE_TERMINATE_FAILED ' + String(cleanupError));
+      else failure = cleanupError;
+    }
   }
+  if (failure) throw failure;
+  return result;
 }

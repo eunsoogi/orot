@@ -23,7 +23,8 @@ export function removeIosTestFixtureContainer(profile, owner) {
   function simctl(...args) {
     if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
       throw new Error('Fixture cleanup requires its booted owned destination');
-    return runIosSimulatorCommand(args, { timeout: 30000 });
+    // A slow successful uninstall/query is valid; the hosted job supplies the outer cancellation boundary.
+    return runIosSimulatorCommand(args);
   }
   // The supported simctl also completes uninstall for an absent bundle. Every command error still propagates.
   // Verify ownership immediately before the exact deletion, then independently prove absence after it.
@@ -62,7 +63,8 @@ export function resetIosTestFixtureContainer(
   function simctl(...args) {
     if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
       throw new Error('Fixture reset requires its booted owned destination');
-    return runIosSimulatorCommand(args, { timeout: 30000 }).trim();
+    // Wait for public command completion instead of imposing an unrelated per-command deadline.
+    return runIosSimulatorCommand(args).trim();
   }
   if (hasInstalledApp((command, ...args) => simctl(command, owner.udid, ...args)))
     simctl('uninstall', owner.udid, bundleIdentifier);

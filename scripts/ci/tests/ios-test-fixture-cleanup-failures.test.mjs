@@ -52,27 +52,48 @@ test('cleanup rejects a remaining app, lost ownership and service errors without
   }
 });
 
-test('uninstall and absence-query timeouts retain the real thirty-second deadline and stop cleanup', () => {
-  for (const timeoutOperation of ['uninstall', 'get_app_container']) {
-    const value = fixture('fixtures', { action: 'cleanup', timeoutOperation });
+test('cleanup waits for an actual successful child beyond thirty seconds and then verifies absence', () => {
+  const value = fixture('fixtures', { action: 'cleanup', slowOperation: 'uninstall' });
+  try {
+    assert.equal(value.outcome.status, 0, value.outcome.stderr);
+    assert.deepEqual(JSON.parse(value.outcome.stdout), {
+      uninstallCompleted: true,
+      installed: false,
+    });
+    const completed = value.outcome.stderr
+      .split('\n')
+      .filter((line) => line.startsWith('{'))
+      .map(JSON.parse)
+      .find((item) => item.phase === 'finished' && item.arguments[0] === 'uninstall');
+    assert.equal(completed.status, 0);
+    assert.equal(completed.signal, null);
+    assert.ok(completed.elapsedMs >= 31000);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'uninstall').length, 1);
+    assert.equal(value.calls.filter((call) => call.args[1] === 'get_app_container').length, 1);
+  } finally {
+    rmSync(value.root, { recursive: true, force: true });
+  }
+});
+
+test('a signaled uninstall or absence query cannot become a successful cleanup or retry', () => {
+  for (const signalOperation of ['uninstall', 'get_app_container']) {
+    const value = fixture('fixtures', { action: 'cleanup', signalOperation });
     try {
       assert.equal(value.outcome.status, 1, value.outcome.stderr);
-      assert.match(value.outcome.stderr, /ETIMEDOUT/);
       assert.doesNotMatch(value.outcome.stdout, /uninstallCompleted/);
-      const timeout = value.outcome.stderr
+      const failed = value.outcome.stderr
         .split('\n')
         .filter((line) => line.startsWith('{'))
         .map(JSON.parse)
-        .find((item) => item.phase === 'finished' && item.errorCode === 'ETIMEDOUT');
-      assert.equal(timeout.arguments[0], timeoutOperation);
-      assert.equal(timeout.status, null);
-      assert.equal(timeout.signal, 'SIGTERM');
-      assert.ok(timeout.elapsedMs >= 30000 && timeout.elapsedMs < 40000);
+        .find((item) => item.phase === 'finished' && item.signal === 'SIGTERM');
+      assert.equal(failed.arguments[0], signalOperation);
+      assert.equal(failed.status, null);
+      assert.equal(failed.signal, 'SIGTERM');
       // Neither an uninstall nor its postcondition is retried after the first failed command.
       assert.equal(value.calls.filter((call) => call.args[1] === 'uninstall').length, 1);
       assert.equal(
         value.calls.filter((call) => call.args[1] === 'get_app_container').length,
-        timeoutOperation === 'uninstall' ? 0 : 1,
+        signalOperation === 'uninstall' ? 0 : 1,
       );
     } finally {
       rmSync(value.root, { recursive: true, force: true });

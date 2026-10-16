@@ -3,7 +3,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { posix } from 'node:path';
 import test from 'node:test';
-import { fixture } from './fixtures/ios-test-runner.mjs';
+import { authFixtureRecord, fixture } from './fixtures/ios-test-runner.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
 const identifier =
@@ -17,6 +17,18 @@ for (const status of [0, 65]) {
       assert.ok(existsSync(result.result + '.auth.jsonl'));
       const metadata = JSON.parse(readFileSync(result.result + '.auth.jsonl.json', 'utf8'));
       assert.equal(metadata.closed, true);
+      assert.equal(metadata.complete, true);
+      assert.equal(metadata.accepted, 1);
+      assert.equal(metadata.rejected, 0);
+      assert.equal(metadata.exitedBeforeStop, false);
+      assert.equal(metadata.signal, 'SIGTERM');
+      assert.deepEqual(
+        readFileSync(result.result + '.auth.jsonl', 'utf8')
+          .trim()
+          .split('\n')
+          .map(JSON.parse),
+        [authFixtureRecord],
+      );
       const streams = result.calls.filter((call) => call.args.includes('stream'));
       assert.equal(streams.length, 1);
       assert.equal(streams[0].args[2], 'fixture-udid');
@@ -30,6 +42,51 @@ for (const status of [0, 65]) {
     }
   });
 }
+
+// A collector stopped before its first record remains unavailable while the original test exit wins.
+for (const status of [0, 65]) {
+  test(`Selection preserves exit ${status} with held collector startup`, () => {
+    const result = fixture(status, 'provider-selection', 'ui', [identifier], {}, 'held');
+    try {
+      assert.equal(result.outcome.status, status, result.outcome.stderr);
+      const metadata = JSON.parse(readFileSync(result.result + '.auth.jsonl.json', 'utf8'));
+      assert.equal(metadata.closed, true);
+      assert.equal(metadata.complete, false);
+      assert.equal(metadata.accepted, 0);
+      assert.equal(readFileSync(result.result + '.auth.jsonl', 'utf8'), '');
+      assert.match(result.outcome.stderr, /IOS_AUTH_DIAGNOSTIC_UNAVAILABLE/);
+      assert.equal(result.calls.filter((call) => call.args.includes('stream')).length, 0);
+      assert.equal(result.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+      assert.equal(metadata.signal, 'SIGTERM');
+      assert.equal(metadata.stopRequested, true);
+      assert.equal(metadata.unexpectedExit, false);
+    } finally {
+      rmSync(result.directory, { recursive: true, force: true });
+    }
+  });
+}
+
+test('a missing synthetic auth capture fails its bounded handshake', { timeout: 20000 }, () => {
+  const started = performance.now();
+  const result = fixture(0, 'provider-selection', 'ui', [identifier], {}, 'stalled');
+  try {
+    assert.equal(
+      result.outcome.error,
+      undefined,
+      'The inner handshake must end before the CLI guard',
+    );
+    assert.equal(result.outcome.status, 1, result.outcome.stderr);
+    assert.match(result.outcome.stderr, /Synthetic auth handshake timed out/);
+    assert.ok(performance.now() - started < 15000);
+    const metadata = JSON.parse(readFileSync(result.result + '.auth.jsonl.json', 'utf8'));
+    assert.equal(metadata.complete, false);
+    assert.equal(metadata.closed, true);
+    assert.equal(metadata.accepted, 0);
+    assert.equal(result.calls.filter((call) => call.name === 'xcodebuild').length, 1);
+  } finally {
+    rmSync(result.directory, { recursive: true, force: true });
+  }
+});
 
 test('ordinary cases do not start the Selection auth collector', () => {
   const result = fixture(0);

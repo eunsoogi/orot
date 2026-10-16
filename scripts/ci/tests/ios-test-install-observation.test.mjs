@@ -22,7 +22,7 @@ function fixture({ failure = 'status', post = 'absent', ownershipDelay = 0 } = {
   const output = join(value.root, 'results');
   writeFileSync(ownerFile, JSON.stringify(owner));
   const program = `#!${process.execPath}
-const fs=require('node:fs'), path=require('node:path'); const args=process.argv.slice(2);
+const fs=require('node:fs'), path=require('node:path'), cp=require('node:child_process'); const args=process.argv.slice(2);
 const name=path.basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(trace)},JSON.stringify({name,args})+'\\n');
 const attempted=fs.existsSync(${JSON.stringify(attempted)});
@@ -40,7 +40,7 @@ if(args[1]==='list'){
  else {console.error(attempted&&${JSON.stringify(post)}==='service-error'?'Synthetic service unavailable':'domain=NSPOSIXErrorDomain, code=2');process.exit(attempted&&${JSON.stringify(post)}==='service-error'?9:2);}
 } else if(args[1]==='install'){
  fs.writeFileSync(${JSON.stringify(attempted)},'attempted');
- if(${JSON.stringify(failure)}==='timeout')Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,35000);
+ if(${JSON.stringify(failure)}==='cancelled'){cp.spawn(process.execPath,['-e','process.kill('+process.pid+',"SIGTERM")'],{stdio:'ignore'});setInterval(()=>{},1000);}
  else if(${JSON.stringify(failure)}==='signal')process.kill(process.pid,'SIGABRT');
  else {console.error('original-install-failure');process.exit(7);}
 } else process.exit(92);
@@ -134,20 +134,21 @@ test('an actual install SIGABRT stays the primary failure after a successful dia
   }
 });
 
-test('the actual install keeps its thirty-second SIGTERM timeout even when its post-state is installed', () => {
-  const value = fixture({ failure: 'timeout', post: 'installed' });
+test('external termination of an install stays failed even when its observed post-state is installed', () => {
+  const value = fixture({ failure: 'cancelled', post: 'installed' });
   try {
     assertFailureStopsIsolation(value, 2);
-    assert.equal(value.diagnostics[0].errorCode, 'ETIMEDOUT');
     assert.equal(value.diagnostics[0].signal, 'SIGTERM');
+    assert.equal(value.diagnostics[0].status, null);
     assert.equal(value.diagnostics[1].state, 'installed');
     const install = value.outcome.stderr
       .split('\n')
       .filter((line) => line.startsWith('{'))
       .map(JSON.parse)
       .find((record) => record.arguments?.[0] === 'install' && record.phase === 'finished');
-    assert.ok(install.elapsedMs >= 30000 && install.elapsedMs < 35000);
-    assert.match(value.outcome.stderr, /code: 'ETIMEDOUT'/);
+    assert.equal(install.status, null);
+    assert.equal(install.signal, 'SIGTERM');
+    assert.match(value.outcome.stderr, /signal: 'SIGTERM'/);
   } finally {
     value.dispose();
   }

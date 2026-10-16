@@ -19,7 +19,8 @@ export function fixture(
     uninstallError = false,
     retainAppAfterUninstall = false,
     loseOwnershipAfterUninstall = false,
-    timeoutOperation,
+    slowOperation,
+    signalOperation,
   } = {},
 ) {
   const root = mkdtempSync(join(tmpdir(), 'orot-fixture-reset-'));
@@ -36,7 +37,8 @@ export function fixture(
   const program = `#!${process.execPath}
 const fs=require('node:fs');const args=process.argv.slice(2);const name=require('node:path').basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
-if(args[1]===${JSON.stringify(timeoutOperation)} && (args[1]!=='get_app_container'||fs.existsSync(${JSON.stringify(removed)}))) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,35000);
+if(args[1]===${JSON.stringify(slowOperation)}) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,31000);
+if(args[1]===${JSON.stringify(signalOperation)}) {process.kill(process.pid,'SIGTERM');process.exit(90);}
 if(name==='plutil')console.log(JSON.stringify(fs.existsSync(${JSON.stringify(removed)})?{}:{'com.orot.mobile':{}}));
 else if(args[1]==='list'&&args[2]==='-j')console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:fs.existsSync(${JSON.stringify(lostOwner)})?'foreign-owner':${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:${JSON.stringify(state)}}]}}));
 else if(args[1]==='get_app_container'){if(${containerError}){console.error('Synthetic service unavailable');process.exit(1);}if(!${installed}||fs.existsSync(${JSON.stringify(removed)})){console.error('An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=2): No such file or directory');process.exit(2);}console.log('/synthetic/owned/Orot.app');}
@@ -50,7 +52,7 @@ else {if(args[1]==='uninstall'){if(${uninstallError}){console.error('Synthetic u
   const outcome = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {
     encoding: 'utf8',
     env: { ...process.env, PATH: root + ':' + process.env.PATH },
-    // The helper retains its real 30-second command deadline; this outer bound only catches a broken harness.
+    // This is a test-harness safeguard, not a deadline imposed on a real Simulator operation.
     timeout: 40000,
   });
   return {
