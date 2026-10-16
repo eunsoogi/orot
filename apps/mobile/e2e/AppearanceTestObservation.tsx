@@ -61,7 +61,11 @@ export function AppearanceTestObservation({ children }: PropsWithChildren) {
         </Text>
         <Text
           accessible
-          accessibilityLabel={JSON.stringify(refresh)}
+          // Both sources belong to this render; a native payload cannot replace the independent hook.
+          accessibilityLabel={JSON.stringify({
+            ...refresh,
+            applicationScheme: appearance ?? 'unspecified',
+          })}
           style={styles.text}
           testID="application-appearance-refresh"
         >

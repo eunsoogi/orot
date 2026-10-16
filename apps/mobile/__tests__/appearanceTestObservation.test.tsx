@@ -96,6 +96,7 @@ test('refreshes from UIKit on foreground without remounting content or replacing
       overrideStyle: 0,
       status: 'refreshed',
       count: 2,
+      applicationScheme: 'light',
     }),
   );
   // The diagnostic native value cannot make the independent application subscription pass.
@@ -162,10 +163,54 @@ test('preserves refresh failures instead of reporting a successful application t
       status: 'failed',
       count: 0,
       error: 'Error: No foreground window',
+      applicationScheme: 'light',
     }),
   );
   expect(
     screen.getByTestId('application-appearance-observation').props
       .accessibilityLabel,
   ).toBe('light');
+});
+
+test('publishes the independent application scheme with the same native acknowledgement snapshot', async () => {
+  const view = await render(<AppearanceTestObservation />);
+  const read = () =>
+    JSON.parse(
+      screen.getByTestId('application-appearance-refresh').props
+        .accessibilityLabel,
+    );
+  await waitFor(() => expect(read().count).toBe(1));
+  await act(() =>
+    DeviceEventEmitter.emit('appearanceRefreshed', {
+      session: 'owned-session',
+      command: 'dark',
+      appliedCount: 1,
+      windowStyle: 2,
+      overrideStyle: 2,
+      originalOverrideStyle: 0,
+      applicationScheme: 'dark',
+    }),
+  );
+  // A native payload cannot impersonate the independent hook, even if its field name collides.
+  expect(read()).toMatchObject({
+    applicationScheme: 'light',
+    windowStyle: 2,
+    appliedCount: 1,
+    session: 'owned-session',
+    count: 2,
+  });
+  jest.mocked(useColorScheme).mockReturnValue('dark');
+  await view.rerender(<AppearanceTestObservation />);
+  expect(read()).toMatchObject({
+    applicationScheme: 'dark',
+    appliedCount: 1,
+    count: 2,
+  });
+  jest.mocked(useColorScheme).mockReturnValue(null);
+  await view.rerender(<AppearanceTestObservation />);
+  expect(read()).toMatchObject({
+    applicationScheme: 'unspecified',
+    appliedCount: 1,
+    count: 2,
+  });
 });
