@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
 // Drive the actual CLI with public-command fixtures; policy tests must never boot a device or sample their host.
-function run(bootStatus, hosted = false, cacheStatus = 0) {
+function run(bootStatus, hosted = false, cacheStatus = 0, blockedDiagnostic = false) {
   const root = mkdtempSync(join(tmpdir(), 'orot-boot-observation-'));
   const ownerPath = join(root, 'owner.json');
   const config = iosTestConfig('speech');
@@ -16,7 +16,9 @@ function run(bootStatus, hosted = false, cacheStatus = 0) {
   const runtimes = [
     { identifier: config.runtime, buildversion: config.runtimeBuild, isAvailable: true },
   ];
-  const snapshot = { runtimes, devices: { [config.runtime]: [device] } };
+  const snapshot = { runtimes, devices: { [config.runtime]: [device] }, pairs: {} };
+  if (blockedDiagnostic) mkdirSync(ownerPath + '.preparation.jsonl');
+  const environment = join(root, 'github-env');
   const calls = join(root, 'calls.jsonl');
   writeFileSync(
     join(root, 'xcrun'),
@@ -27,7 +29,11 @@ const command=args[1];
 if(command==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else if(command==='create')console.log('owned-device');
 else if(command==='runtime') { console.log('Runtime shared cache ready'); process.exit(${cacheStatus}); }
-else if(command==='bootstatus') { console.log('Waiting for Data Migration'); process.exit(${bootStatus}); }
+else if(command==='bootstatus') {
+ console.log('Waiting for Data Migration');
+ if(${blockedDiagnostic}){const file=${JSON.stringify(ownerPath + '.boot.resources.jsonl')};fs.unlinkSync(file);fs.mkdirSync(file);}
+ ${typeof bootStatus === 'string' ? `process.kill(process.pid,${JSON.stringify(bootStatus)});` : `process.exit(${bootStatus});`}
+}
 else if(command!=='boot')process.exit(99);
 `,
     { mode: 0o755 },
@@ -50,7 +56,7 @@ else if(command!=='boot')process.exit(99);
         PATH: root + ':' + process.env.PATH,
         GITHUB_RUN_ID: 'local',
         GITHUB_RUN_ATTEMPT: '1',
-        GITHUB_ENV: '',
+        GITHUB_ENV: environment,
         GITHUB_ACTIONS: String(hosted),
         RUNNER_ENVIRONMENT: hosted ? 'github-hosted' : 'self-hosted',
       },
@@ -59,6 +65,7 @@ else if(command!=='boot')process.exit(99);
   return {
     root,
     ownerPath,
+    environment,
     outcome,
     calls: readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse),
   };
@@ -112,6 +119,42 @@ test('hosted preparation completes only the selected runtime cache before creati
       } else {
         assert.ok(value.calls.every((args) => !['create', 'boot', 'bootstatus'].includes(args[1])));
       }
+    } finally {
+      rmSync(value.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('a real bootstatus SIGABRT preserves the original signal and prevents readiness publication', () => {
+  for (const blockedDiagnostic of [false, true]) {
+    const value = run('SIGABRT', false, 0, blockedDiagnostic);
+    try {
+      assert.notEqual(value.outcome.status, 0);
+      assert.match(value.outcome.stderr, /bootstatus failed: SIGABRT/);
+      assert.equal(existsSync(value.environment), false);
+      const records = value.outcome.stderr
+        .split('\n')
+        .filter((line) => line.startsWith('IOS_PREPARATION_DIAGNOSTIC '))
+        .map((line) => JSON.parse(line.slice('IOS_PREPARATION_DIAGNOSTIC '.length)));
+      const failure = records.find((record) => record.event === 'boot-failed');
+      assert.equal(failure?.signal, 'SIGABRT');
+      assert.equal(failure?.status, null);
+      assert.equal(failure?.stage, 'bootstatus');
+      if (!blockedDiagnostic) {
+        const saved = readFileSync(value.ownerPath + '.preparation.jsonl', 'utf8')
+          .trim()
+          .split('\n')
+          .map(JSON.parse);
+        assert.equal(saved[0].event, 'pre-boot-inventory');
+        assert.deepEqual(saved[0].pairs, { status: 'observed-empty', entryCount: 0 });
+        assert.equal(saved.at(-1).signal, 'SIGABRT');
+      } else {
+        assert.match(value.outcome.stderr, /diagnostic-write-failed/);
+        assert.match(value.outcome.stderr, /resource-write-failed/);
+      }
+      assert.equal(value.calls.filter((args) => args[1] === 'boot').length, 1);
+      assert.equal(value.calls.filter((args) => args[1] === 'bootstatus').length, 1);
+      assert.equal(value.calls.filter((args) => args[1] === 'list' && args[2] === '-j').length, 1);
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }

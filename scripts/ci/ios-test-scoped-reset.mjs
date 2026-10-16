@@ -3,6 +3,10 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { runIosSimulatorCommand, verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import {
+  iosPreparationFailure,
+  recordIosPreparationDiagnostic,
+} from './ios-test-preparation-diagnostics.mjs';
 
 const bundle = 'com.orot.mobile';
 const pathNames = ['database', 'wal', 'shm', 'recordings', 'deletions', 'exports'];
@@ -94,6 +98,50 @@ export function ownedFixtureCommand(profile, owner, args) {
   return runIosSimulatorCommand(args, { timeout: 30000 }).trim();
 }
 
+/** One read-only observation shares five seconds across fresh ownership and container lookup.
+ * SIGKILL bounds a diagnostic child even if it ignores SIGTERM; the original install keeps its own deadline.
+ * An installed result after a failed install is evidence only and never resumes reset or XCTest. */
+function observeFailedInstall(profile, owner) {
+  const started = performance.now();
+  const deadline = started + 5000;
+  let stage = 'ownership';
+  const options = () => {
+    const remaining = Math.floor(deadline - performance.now());
+    if (remaining <= 0)
+      throw Object.assign(new Error('Diagnostic deadline exceeded'), { code: 'ETIMEDOUT' });
+    return { timeout: remaining, killSignal: 'SIGKILL', stdio: ['ignore', 'pipe', 'pipe'] };
+  };
+  let observation;
+  try {
+    if (
+      !['core', 'fixtures'].includes(profile) ||
+      verifyIosTestSimulator(owner, profile, options()).state !== 'Booted'
+    )
+      throw new Error('Diagnostic ownership unavailable');
+    stage = 'container';
+    const path = runIosSimulatorCommand(
+      ['get_app_container', owner.udid, bundle, 'app'],
+      options(),
+    ).trim();
+    observation = { state: isAbsolute(path) ? 'installed' : 'unknown' };
+  } catch (error) {
+    const absent =
+      stage === 'container' &&
+      error.status === 2 &&
+      String(error.stderr).includes('domain=NSPOSIXErrorDomain, code=2');
+    observation = { state: absent ? 'absent' : 'unknown', ...iosPreparationFailure(error) };
+  }
+  const elapsedMs = Math.round((performance.now() - started) * 1000) / 1000;
+  if (elapsedMs >= 5000) observation = { ...observation, state: 'unknown', errorCode: 'ETIMEDOUT' };
+  recordIosPreparationDiagnostic({
+    event: 'install-post-state',
+    stage,
+    budgetMs: 5000,
+    elapsedMs,
+    ...observation,
+  });
+}
+
 /** Reuse the verified installed product; only an absent owned bundle needs installation. */
 export function ensureIosFixtureInstalled(profile, owner, application) {
   try {
@@ -107,7 +155,24 @@ export function ensureIosFixtureInstalled(profile, owner, application) {
   } catch (error) {
     if (error.status !== 2 || !String(error.stderr).includes('domain=NSPOSIXErrorDomain, code=2'))
       throw error;
-    ownedFixtureCommand(profile, owner, ['install', owner.udid, application]);
+    try {
+      ownedFixtureCommand(profile, owner, ['install', owner.udid, application]);
+    } catch (installError) {
+      recordIosPreparationDiagnostic({
+        event: 'install-failed',
+        ...iosPreparationFailure(installError),
+      });
+      try {
+        observeFailedInstall(profile, owner);
+      } catch (diagnosticError) {
+        // An unexpected observation failure cannot replace the original install outcome.
+        recordIosPreparationDiagnostic({
+          event: 'install-diagnostic-failed',
+          ...iosPreparationFailure(diagnosticError),
+        });
+      }
+      throw installError;
+    }
   }
 }
 

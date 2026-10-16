@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestCohort, verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
+import {
+  iosPreparationFailure,
+  iosPreparationInventory,
+  recordIosPreparationDiagnostic,
+} from './ios-test-preparation-diagnostics.mjs';
 
 /** Preserve command failures and stdout while reporting each public simctl operation separately on stderr. */
 export function runIosSimulatorCommand(args, options = {}) {
@@ -38,8 +43,11 @@ function simctl(...args) {
 /** Keep Apple's migration/readiness progress visible while sampling the wait. No boot retry or service mutation is performed. */
 async function bootOwnedSimulator(owner, ownerPath) {
   const stopSampling = iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
+  let stage = 'boot';
+  let failure;
   try {
     simctl('boot', owner.udid);
+    stage = 'bootstatus';
     const args = ['bootstatus', owner.udid, '-b'];
     const operation = { operation: 'simctl', arguments: args };
     const started = performance.now();
@@ -62,10 +70,29 @@ async function bootOwnedSimulator(owner, ownerPath) {
       }),
     );
     if (outcome.status !== 0 || outcome.signal)
-      throw new Error(`iOS bootstatus failed: ${outcome.signal ?? outcome.status}`);
+      throw Object.assign(
+        new Error(`iOS bootstatus failed: ${outcome.signal ?? outcome.status}`),
+        outcome,
+      );
+  } catch (error) {
+    failure = error;
+    recordIosPreparationDiagnostic(
+      { event: 'boot-failed', stage, ...iosPreparationFailure(error) },
+      ownerPath + '.preparation.jsonl',
+    );
   } finally {
-    stopSampling();
+    try {
+      stopSampling();
+    } catch (error) {
+      // A resource sidecar failure must not replace the original boot failure or signal.
+      failure ??= error;
+      recordIosPreparationDiagnostic({
+        event: 'resource-write-failed',
+        ...iosPreparationFailure(error),
+      });
+    }
   }
+  if (failure) throw failure;
 }
 function inventory(owner, devices) {
   const device = devices[owner.runtime]?.find((item) => item.udid === owner.udid);
@@ -74,16 +101,28 @@ function inventory(owner, devices) {
   return device;
 }
 
-export function verifyIosTestSimulator(owner, profile) {
+export function verifyIosTestSimulator(
+  owner,
+  profile,
+  { timeout, killSignal, stdio, diagnosticPath } = {},
+) {
   const config = verifyIosSimulatorOwnerContract(owner, profile);
   // One fresh public inventory contains both boundaries. Never cache it across mutations.
-  const snapshot = JSON.parse(simctl('list', '-j'));
+  const snapshot = JSON.parse(
+    runIosSimulatorCommand(['list', '-j'], { timeout, killSignal, stdio }),
+  );
   const runtime = snapshot.runtimes.find(
     (item) => item.identifier === config.runtime && item.isAvailable,
   );
   if (!runtime || (config.runtimeBuild && runtime.buildversion !== config.runtimeBuild))
     throw new Error('Approved integration test runtime is unavailable');
-  return inventory(owner, snapshot.devices);
+  const device = inventory(owner, snapshot.devices);
+  if (diagnosticPath)
+    recordIosPreparationDiagnostic(
+      iosPreparationInventory(owner, snapshot, device, runtime),
+      diagnosticPath,
+    );
+  return device;
 }
 
 const [command, profile, path] = process.argv.slice(2);
@@ -133,7 +172,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     }
     owner.udid = simctl('create', name, config.device, config.runtime);
     writeFileSync(ownerPath, JSON.stringify(owner, null, 2) + '\n');
-    verifyIosTestSimulator(owner, cohort?.profiles[0] ?? profile);
+    verifyIosTestSimulator(owner, cohort?.profiles[0] ?? profile, {
+      diagnosticPath: ownerPath + '.preparation.jsonl',
+    });
     await bootOwnedSimulator(owner, ownerPath);
     if (process.env.GITHUB_ENV)
       writeFileSync(process.env.GITHUB_ENV, `OROT_IOS_TEST_SIMULATOR_UDID=${owner.udid}\n`, {
