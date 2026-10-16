@@ -94,6 +94,8 @@
 		A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000011 /* RecordingMeteringProbeModule.m */; };
 		A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000012 /* RecordingMeteringPermission.swift */; };
 		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
+		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
+		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
@@ -157,8 +159,6 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
-		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
-		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -273,6 +273,8 @@
 		B64F00000000000000000011 /* RecordingMeteringProbeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingMeteringProbeModule.m; path = OrotMobile/RecordingMeteringProbeModule.m; sourceTree = "<group>"; };
 		B64F00000000000000000012 /* RecordingMeteringPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringPermission.swift; path = OrotMobile/RecordingMeteringPermission.swift; sourceTree = "<group>"; };
 		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
+		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
+		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
@@ -335,8 +337,6 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
-		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
-		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
