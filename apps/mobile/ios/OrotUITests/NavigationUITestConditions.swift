@@ -76,7 +76,7 @@ enum NavigationUITestConditions {
             return
         }
         let ready = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 30), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
     }
 
     static func openTab(_ app: XCUIApplication, _ tab: String, markers: [String]) throws {

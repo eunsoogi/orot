@@ -35,12 +35,14 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         XCTAssertEqual(text(app, "transcript-range-0"), "00:00.250–00:01.801")
         tap(app, "transcript-play-0")
         let playback = element(app, "transcript-evidence-playback-result")
-        XCTAssertTrue(playback.waitForExistence(timeout: 30))
+        XCTAssertTrue(playback.waitForAppearance())
         let data = try XCTUnwrap(UITestConditions.text(playback).data(using: .utf8))
-        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Double])
-        XCTAssertEqual(report["startMs"], 250)
-        XCTAssertEqual(report["endMs"], 1801)
-        XCTAssertLessThanOrEqual(try abs(XCTUnwrap(report["actualStartMs"]) - 250), 50)
+        let report = try JSONDecoder().decode(TranscriptPlaybackReport.self, from: data)
+        XCTAssertEqual(report.startMs, 250)
+        XCTAssertEqual(report.endMs, 1801)
+        XCTAssertLessThanOrEqual(abs(report.actualStartMs - 250), 50)
+        XCTAssertEqual(report.completion, "completed")
+        XCTAssertEqual(report.actualEndMs, 1801)
 
         tap(app, "transcript-edit-0")
         let input = element(app, "transcript-input-0")
@@ -58,14 +60,14 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         // Full memory/vector invalidation and new-process readback belong to RecordingPersistenceIntegrationTests.
         tap(app, "recording-detail-delete", upward: true)
         let confirmation = app.alerts["녹음을 삭제할까요?"]
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+        XCTAssertTrue(confirmation.waitForAppearance())
         confirmation.buttons["취소"].tap()
         XCTAssertTrue(element(app, "recording-library-item-\(source)").exists)
         tap(app, "recording-detail-delete", upward: true)
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
+        XCTAssertTrue(confirmation.waitForAppearance())
         confirmation.buttons["삭제"].tap()
         let absent = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element(app, "recording-library-item-\(source)"))
-        XCTAssertEqual(XCTWaiter.wait(for: [absent], timeout: 30), .completed)
+        XCTAssertEqual(UITestConditions.wait(for: [absent]), .completed)
         ownedSource = nil
     }
 
@@ -115,4 +117,14 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
     private func value(_ app: XCUIApplication, _ id: String, _ expected: String) {
         UITestConditions.value(element(app, id), equals: expected)
     }
+}
+
+/// Decode numeric playback evidence strictly while retaining the native string completion reason.
+/// Missing or nonnumeric clocks must fail rather than disappearing in a heterogeneous dictionary cast.
+struct TranscriptPlaybackReport: Decodable {
+    let startMs: Double
+    let endMs: Double
+    let actualStartMs: Double
+    let actualEndMs: Double
+    let completion: String
 }

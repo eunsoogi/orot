@@ -47,8 +47,8 @@ if(args[1]==='privacy'){
 }
 if(args[1]==='launch'){
  const action=args.at(-2),token=args.at(-1),folder=path.join(${JSON.stringify(directory)},'Library/Caches/OrotFixtureReceipts');fs.mkdirSync(folder,{recursive:true});
- fs.writeFileSync(path.join(folder,token+'-'+action+'.json'),JSON.stringify({token,action,ok:!${invalidReceipt},processIdentifier:123,state:${JSON.stringify(state)}}));
- console.log('com.orot.mobile: 123');
+ fs.writeFileSync(path.join(folder,token+'-'+action+'.json'),JSON.stringify({token,action,ok:!${invalidReceipt},processIdentifier:process.pid,state:${JSON.stringify(state)}}));
+ console.log('com.orot.mobile: '+process.pid);
 }
 if(args[1]==='terminate'&&${terminateFailure}){console.error('secondary-terminate-failure');process.exit(8);}
 `;

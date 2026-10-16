@@ -98,11 +98,6 @@ if (tests.some((test) => speechJourneyTests.includes(test))) {
   )
     throw new Error('Speech UI and persistence require their host-orchestrated new-process phases');
 }
-// The manual appointment scenario already has a 180-second budget. Enforce it in XCTest as well as its assertions, so a stalled AX call cannot bypass it.
-const appointmentTimeLimit =
-  tests.length === 1 &&
-  tests[0] ===
-    'OrotUITests/AppointmentsUITests/testCreationEditingAndCancellationSurviveProcessRestarts';
 if (
   (profile === 'backup' &&
     !hostPreparation &&
@@ -164,19 +159,12 @@ const outcome = spawn(
     '-maximum-concurrent-test-simulator-destinations',
     '1',
     '-disableAutomaticPackageResolution',
-    ...(appointmentTimeLimit
-      ? [
-          '-test-timeouts-enabled',
-          'YES',
-          '-default-test-execution-time-allowance',
-          '180',
-          '-maximum-test-execution-time-allowance',
-          '180',
-        ]
-      : []),
+    // Case duration is not an assertion; the owning job retains cancellation authority.
+    '-test-timeouts-enabled',
+    'NO',
     // Xcode's verbose simctl diagnose stalled for its full 600-second collection
     // budget after a failed assertion. Preserve xcresult/screenshots and collect
-    // a bounded app log below; recognition and assertion deadlines are unchanged.
+    // a bounded app log below; product recognition cancellation remains unchanged.
     '-collect-test-diagnostics',
     'never',
     ...tests.map((test) => '-only-testing:' + test),

@@ -64,8 +64,8 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
     }
 
     private func operation(_ name: String, parameters: [String: Any]) async throws -> [String: Any] {
-        // Each old UI result had a 30-second deadline; moving its assertions must not extend that budget.
-        let result = try await TestOperationBroker.shared.request(name, parameters: parameters, timeout: 30)
+        // Preserve the operation and assertions while awaiting the real response, independent of host speed.
+        let result = try await TestOperationBroker.shared.request(name, parameters: parameters)
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         return result

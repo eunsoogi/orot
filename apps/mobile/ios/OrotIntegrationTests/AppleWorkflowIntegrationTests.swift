@@ -5,7 +5,7 @@ import XCTest
 /// Uses the shipping Apple bridge and workflows with raw model-response mocks and synthetic source/context boundaries.
 final class AppleWorkflowIntegrationTests: OrotFailFastTestCase {
     func testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence() async throws {
-        let result = try await TestOperationBroker.shared.request("calendar-classification", timeout: 255)
+        let result = try await TestOperationBroker.shared.request("calendar-classification")
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
         attachment.name = "mock-apple-calendar-classifications-and-two-imports"
         attachment.lifetime = .keepAlways
@@ -44,7 +44,7 @@ final class AppleWorkflowIntegrationTests: OrotFailFastTestCase {
     }
 
     func testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation() async throws {
-        let result = try await TestOperationBroker.shared.request("apple-workflow", timeout: 300)
+        let result = try await TestOperationBroker.shared.request("apple-workflow")
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: result), uniformTypeIdentifier: "public.json")
         attachment.name = "mock-apple-workflow-synthetic-inputs"
         attachment.lifetime = .keepAlways

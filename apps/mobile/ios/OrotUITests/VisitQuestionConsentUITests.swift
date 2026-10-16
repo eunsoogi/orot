@@ -20,7 +20,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         let metrics = node(app, "visit-question-probe-metrics")
         let failure = node(app, "visit-question-probe-failure")
         let finished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in metrics.exists || failure.exists }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [finished], timeout: 30), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [finished]), .completed, app.debugDescription)
         XCTAssertTrue(metrics.exists, failure.exists ? UITestConditions.text(failure) : app.debugDescription)
         UITestConditions.value(node(app, "visit-question-probe-metrics"), equals: "synthetic=true · provider calls=3 · evidence references=2 · raw IDs exposed=false")
         let citations = node(app, "visit-question-probe-scroll").descendants(matching: .staticText).matching(NSPredicate(format: "label == %@", "이 프로브에만 쓰는 합성 검사 기록입니다."))
@@ -45,7 +45,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             priority.isSelected
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed, app.debugDescription)
         try assertRenderedPriority(priority, in: app)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "synthetic-cited-questions-explicit-priority"
@@ -61,7 +61,7 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         reveal(target, in: app)
         let frame = target.frame
         XCTAssertTrue(!frame.isEmpty && app.frame.contains(frame), target.debugDescription)

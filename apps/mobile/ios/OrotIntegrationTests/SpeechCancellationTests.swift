@@ -4,21 +4,28 @@ import XCTest
 
 final class SpeechCancellationTests: OrotFailFastTestCase {
     func testProductionDeadlineCancellationPropagatesAndCancelsWorker() async {
-        let began = expectation(description: "operation began")
-        let cancelled = expectation(description: "operation received cancellation")
+        let (began, beganSignal) = AsyncStream<Void>.makeStream()
+        let (cancelled, cancelledSignal) = AsyncStream<Void>.makeStream()
         let operation = Task {
             try await SpeechTranscriptionDeadline.run {
-                began.fulfill()
+                beganSignal.yield()
+                beganSignal.finish()
                 do {
-                    try await Task.sleep(nanoseconds: 60_000_000_000)
+                    // A suspended worker has no test deadline; explicit cancellation must still reach it.
+                    let suspended = AsyncStream<Void> { _ in }
+                    for await _ in suspended {}
+                    try Task.checkCancellation()
                     return "unexpected completion"
                 } catch {
-                    cancelled.fulfill()
+                    cancelledSignal.yield()
+                    cancelledSignal.finish()
                     throw error
                 }
             }
         }
-        await fulfillment(of: [began], timeout: 5)
+        for await _ in began {
+            break
+        }
         operation.cancel()
         do {
             _ = try await operation.value
@@ -28,6 +35,8 @@ final class SpeechCancellationTests: OrotFailFastTestCase {
         } catch {
             XCTFail("Unexpected cancellation error: \(error)")
         }
-        await fulfillment(of: [cancelled], timeout: 5)
+        for await _ in cancelled {
+            break
+        }
     }
 }

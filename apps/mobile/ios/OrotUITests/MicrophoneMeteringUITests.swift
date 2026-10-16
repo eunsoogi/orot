@@ -27,7 +27,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
         screenshot.lifetime = .keepAlways
         add(screenshot)
         tap(app, "metering-pause")
-        status(app, "paused", timeout: 5)
+        status(app, "paused")
         let paused = dictionary(report(app, name: "microphone-paused"), "state")
         try await Task.sleep(for: .seconds(1))
         let after = report(app, name: "microphone-paused-after-window")
@@ -40,7 +40,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(number(dictionary(dictionary(resumed, "statistics"), "resumed"), "samples"), 0)
         XCTAssertGreaterThan(number(dictionary(resumed, "state"), "ticks"), number(paused, "ticks"))
         tap(app, "metering-finish")
-        status(app, "completed", timeout: 5)
+        status(app, "completed")
         let completed = dictionary(report(app, name: "microphone-explicit-stop"), "state")
         XCTAssertEqual(completed["cleanupComplete"] as? Bool, true)
         XCTAssertEqual(number(completed, "amplitude"), 0)
@@ -52,7 +52,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         defer { app.terminate() }
         start(app)
-        status(app, "completed", timeout: 30)
+        status(app, "completed")
         let completed = dictionary(report(app, name: "microphone-wall-clock-deadline"), "state")
         XCTAssertEqual(completed["reason"] as? String, "timeout")
         XCTAssertEqual(completed["cleanupComplete"] as? Bool, true)
@@ -62,7 +62,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     private func start(_ app: XCUIApplication) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "metering"]
         app.launch()
-        status(app, "idle", timeout: 120)
+        status(app, "idle")
         DebugUITestConditions.dismissWarningToast(app)
         XCTAssertFalse(node(app, "metering-start").isEnabled)
         tap(app, "metering-consent")
@@ -74,7 +74,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
         let permissionOrRecording = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             alert.exists || UITestConditions.text(self.node(app, "metering-status")) == "recording"
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [permissionOrRecording], timeout: 20), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [permissionOrRecording]), .completed, app.debugDescription)
         if alert.exists {
             let description = alert.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
             XCTAssertTrue(description.localizedCaseInsensitiveContains("microphone") || description.contains("마이크"), description)
@@ -86,7 +86,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
             add(permission)
             allow.tap()
         }
-        status(app, "recording", timeout: 20)
+        status(app, "recording")
     }
 
     @MainActor
@@ -102,13 +102,13 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(UITestConditions.exists(target, timeout: 10), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         target.tap()
     }
 
     @MainActor
-    private func status(_ app: XCUIApplication, _ expected: String, timeout: TimeInterval) {
-        UITestConditions.value(node(app, "metering-status"), equals: expected, timeout: timeout)
+    private func status(_ app: XCUIApplication, _ expected: String) {
+        UITestConditions.value(node(app, "metering-status"), equals: expected)
     }
 
     @MainActor

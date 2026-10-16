@@ -35,13 +35,13 @@ final class CalendarSelectionUITests: OrotFailFastTestCase {
         capture(app, "calendar-seven-column-grid")
         tap(app, "calendar-day-2035-06-02")
         let candidate = UITestConditions.element(app, "calendar-candidate-calendar-synthetic-clinic")
-        XCTAssertTrue(candidate.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(candidate.waitForAppearance(), app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "calendar-candidate-calendar-synthetic-unrelated").exists)
         tap(app, "calendar-candidate-calendar-synthetic-clinic")
         tap(app, "calendar-confirm-selected")
         let confirmation = UITestConditions.element(app, "calendar-confirm-selected")
         let absent = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !confirmation.exists }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [absent], timeout: 30), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [absent]), .completed, app.debugDescription)
         let title = UITestConditions.element(app, "calendar-next-visit-title")
         UITestConditions.value(title, equals: "합성 외래 방문")
         FormUITestConditions.reveal(title, in: app, scrollID: "calendar-screen")
@@ -52,7 +52,7 @@ final class CalendarSelectionUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = UITestConditions.element(app, identifier)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         FormUITestConditions.reveal(target, in: app, scrollID: "calendar-screen")
         target.tap()
     }

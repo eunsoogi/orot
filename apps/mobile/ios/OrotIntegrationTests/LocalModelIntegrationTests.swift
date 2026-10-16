@@ -6,7 +6,7 @@ import XCTest
 final class LocalModelIntegrationTests: OrotFailFastTestCase {
     func testFreshE5RetrievalMeasurementsAndInferenceCancellation() async throws {
         try await LocalE5PreparationRegression.verify()
-        let result = try await run("local-e5", parameters: ["mode": "fresh"], timeout: 900)
+        let result = try await run("local-e5", parameters: ["mode": "fresh"])
         try e5(result, mode: "fresh")
         XCTAssertGreaterThan(try number(result, "progressEvents"), 0)
         XCTAssertEqual(result["cancellation"] as? String, "cancelled")
@@ -17,20 +17,20 @@ final class LocalModelIntegrationTests: OrotFailFastTestCase {
     }
 
     func testE5IndexAndKoreanRetrievalSurviveProcessRestart() async throws {
-        let result = try await run("local-e5", parameters: ["mode": "restart"], timeout: 300)
+        let result = try await run("local-e5", parameters: ["mode": "restart"])
         try e5(result, mode: "restart")
     }
 
     func testFreshHybridSearchPreservesFiltersLocatorsAndTemporaryTableCleanup() async throws {
-        try await hybrid(run("hybrid-retrieval", timeout: 900), mode: "indexed")
+        try await hybrid(run("hybrid-retrieval"), mode: "indexed")
     }
 
     func testHybridRetainedVectorSurvivesProcessRestartWithoutReindexing() async throws {
-        try await hybrid(run("hybrid-retrieval", timeout: 900), mode: "reopened")
+        try await hybrid(run("hybrid-retrieval"), mode: "reopened")
     }
 
-    private func run(_ operation: String, parameters: [String: Any] = [:], timeout: TimeInterval) async throws -> [String: Any] {
-        let envelope = try await TestOperationBroker.shared.request(operation, parameters: parameters, timeout: timeout)
+    private func run(_ operation: String, parameters: [String: Any] = [:]) async throws -> [String: Any] {
+        let envelope = try await TestOperationBroker.shared.request(operation, parameters: parameters)
         XCTAssertEqual(envelope["platform"] as? String, "ios")
         XCTAssertEqual(envelope["runtime"] as? String, "Hermes")
         XCTAssertEqual(envelope["syntheticCorpus"] as? Bool, true)

@@ -66,7 +66,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         let completed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             summary.exists && UITestConditions.text(summary).contains("replayIdempotent=true")
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 240), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [completed]), .completed, app.debugDescription)
         XCTAssertTrue(UITestConditions.text(node(app, "common-observations-status")).contains("선택한 기록의 변경을 가져왔어요. 2개 저장, 0개 삭제, 0개 미지원"))
         let value = UITestConditions.text(summary)
         for expected in ["initial=complete:2:0:0:cursor=true", "heartRate=72 count/min", "steps=1200 count", "bodyMass=empty", "readAuthorization=notObservable", "replay=empty:0:0:cursor=false", "records=2", "availability=available", "writeTypes=0", "storage=encrypted-local", "source=synthetic", "replayIdempotent=true"] {
@@ -111,7 +111,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         UITestConditions.scrollTo(target, in: app)
         target.tap()
     }

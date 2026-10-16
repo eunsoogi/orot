@@ -61,9 +61,7 @@ let guiLaunch = 'unavailable';
 if (guiApplication === 'DeviceHub') {
   try {
     // Launch Services may initialize the hosted GUI connection. No undocumented device-selection argument or preference is used.
-    execFileSync('open', ['-a', resolve(developer, '../Applications/DeviceHub.app')], {
-      timeout: 30000,
-    });
+    execFileSync('open', ['-a', resolve(developer, '../Applications/DeviceHub.app')]);
     guiLaunch = 'opened';
   } catch {
     // A successful launch alone does not prove a selected destination or Accessibility; the original XCUI cases still decide that result.
@@ -72,11 +70,13 @@ if (guiApplication === 'DeviceHub') {
 }
 let screenshot = 'unavailable';
 try {
-  execFileSync(
-    'xcrun',
-    ['simctl', 'io', owner.udid, 'screenshot', resolve(evidence, 'initial-simulator.png')],
-    { timeout: 30000 },
-  );
+  execFileSync('xcrun', [
+    'simctl',
+    'io',
+    owner.udid,
+    'screenshot',
+    resolve(evidence, 'initial-simulator.png'),
+  ]);
   const bytes = readFileSync(resolve(evidence, 'initial-simulator.png'));
   if (
     bytes.length < 32 ||

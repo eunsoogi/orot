@@ -15,7 +15,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         app.launch()
         defer { app.terminate() }
         // Preserve failed fixtures for diagnosis; the runner resets only its dedicated test container before a fresh suite.
-        value(app, "automatic-transcription-phase", "ready", timeout: 60)
+        value(app, "automatic-transcription-phase", "ready")
         let refusal = try report(app, id: "automatic-transcription-refusal", name: "automatic-save-refusal")
         XCTAssertEqual(refusal["rejectionCode"] as? String, "RECORDING_FILE_PROTECTION_FAILED")
         XCTAssertEqual(refusal["absentSource"] as? Bool, true)
@@ -28,7 +28,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         tap(app, "recording-start")
         tap(app, "recording-stop")
         // This observes the completed screen-owned job; it never starts or retries recognition from the harness.
-        value(app, "automatic-transcription-phase", "complete", timeout: 150)
+        value(app, "automatic-transcription-phase", "complete")
         let result = try report(app, id: "automatic-transcription-result", name: "automatic-saved-result")
         XCTAssertEqual(result["providerCalls"] as? Int, 1)
         XCTAssertEqual(result["events"] as? [String], [
@@ -46,7 +46,7 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         XCTAssertEqual(native["speechRequests"] as? Int, 1)
         // Select this exact saved source and inspect the shipping transcript view, not the diagnostic JSON alone.
         tap(app, "recording-details-\(sourceID)")
-        XCTAssertTrue(UITestConditions.element(app, "recording-detail").waitForExistence(timeout: 30))
+        XCTAssertTrue(UITestConditions.element(app, "recording-detail").waitForAppearance())
         let transcript = UITestConditions.element(app, "transcript-text-0")
         FormUITestConditions.reveal(transcript, in: app, scrollID: "recording-controls-scroll")
         UITestConditions.value(transcript, equals: firstText)
@@ -63,8 +63,8 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func value(_ app: XCUIApplication, _ id: String, _ expected: String, timeout: TimeInterval = 30) {
-        UITestConditions.value(UITestConditions.element(app, id), equals: expected, timeout: timeout)
+    private func value(_ app: XCUIApplication, _ id: String, _ expected: String) {
+        UITestConditions.value(UITestConditions.element(app, id), equals: expected)
     }
 
     @MainActor

@@ -11,7 +11,7 @@ final class BackupPersistenceUITests: OrotFailFastTestCase {
     func testKeyAndMemoryTombstonesSurviveProcessRestart() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        _ = try probe(app, mode: "seed", timeout: 90)
+        _ = try probe(app, mode: "seed")
         app.terminate()
         let result = try probe(app, mode: "recover")
         XCTAssertEqual(result["evidenceScope"] as? String, "synthetic-simulator-process-restart")
@@ -29,7 +29,7 @@ final class BackupPersistenceUITests: OrotFailFastTestCase {
     func testLegacyRecordingRetainsStrictSourceProtectionGate() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        let result = try probe(app, mode: "legacy-recording", timeout: 90)
+        let result = try probe(app, mode: "legacy-recording")
         let recording = try XCTUnwrap(result["recording"] as? [String: Any])
         truths(recording, ["legacyExcludedBefore", "fileReadable"])
         XCTAssertEqual(recording["excludedFromBackup"] as? Bool, false)
@@ -96,21 +96,21 @@ final class BackupPersistenceUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func probe(_ app: XCUIApplication, mode: String, timeout: TimeInterval = 120, recordingID: String? = nil) throws -> [String: Any] {
+    private func probe(_ app: XCUIApplication, mode: String, recordingID: String? = nil) throws -> [String: Any] {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "backup", "-OROT_BACKUP_PROBE", mode]
         if let recordingID {
             app.launchArguments += ["-OROT_BACKUP_PROBE_RECORDING_ID", recordingID]
         }
         app.launch()
         let start = UITestConditions.element(app, "backup-probe-start")
-        XCTAssertTrue(start.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(start.waitForAppearance(), app.debugDescription)
         start.tap()
         let success = UITestConditions.element(app, "backup-probe-\(mode)-success")
         let failure = UITestConditions.element(app, "backup-probe-\(mode)-failure")
         let finished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             success.exists || failure.exists
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [finished], timeout: timeout), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [finished]), .completed, app.debugDescription)
         XCTAssertTrue(success.exists, app.debugDescription)
         let output = UITestConditions.text(UITestConditions.element(app, "backup-probe-result"))
         let data = Data(output.utf8)

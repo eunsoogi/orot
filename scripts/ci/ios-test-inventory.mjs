@@ -20,7 +20,7 @@ const coreTests = [
   'OrotIntegrationTests/HermesDomainIntegrationTests/testEncryptedSourceEvidenceAndRagRelationships',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence',
   'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
-  'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandTimesOut',
+  'OrotIntegrationTests/TestOperationBrokerTests/testUnconsumedCommandWaitsForCancellation',
   'OrotIntegrationTests/TestOperationBrokerTests/testCancellationDoesNotWaitForJavascript',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testDisabledAccessibilityTracksUIKitStateAndPreservesSelectionAcrossUpdates',

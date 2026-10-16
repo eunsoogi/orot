@@ -48,7 +48,7 @@ export function iosTestCohort(name) {
     if (!isDeepStrictEqual(comparable(iosTestConfig(profile)), comparable(config)))
       throw new Error('iOS cohort contains incompatible configuration or destination');
   }
-  // These are sums of the previous profile-job allowances, not extensions of a recognition, model, UI or cancellation deadline.
+  // These are outer hosted job cancellation boundaries; individual test/setup observations have no elapsed-time allowance.
   return { name, profiles: cohort.profiles.slice(), config, minutes: cohort.minutes };
 }
 

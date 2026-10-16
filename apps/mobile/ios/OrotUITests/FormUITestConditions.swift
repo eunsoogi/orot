@@ -99,7 +99,7 @@ enum FormUITestConditions {
             next.tap()
         }
         let item = menuItem.exists ? menuItem : button
-        XCTAssertTrue(UITestConditions.exists(item, timeout: 5), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(item), app.debugDescription)
         return item
     }
 
@@ -113,6 +113,6 @@ enum FormUITestConditions {
             return
         }
         let exact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in matches() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [exact], timeout: 30), .completed, input.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [exact]), .completed, input.debugDescription)
     }
 }

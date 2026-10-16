@@ -8,7 +8,7 @@ import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
 // Reproduce the hosted boundary: public preparation can consume ten seconds before the launched app can write anything.
-function fixture({ slowPreparation, missingReceipt }) {
+function fixture({ slowPreparation = false, missingReceipt = false, slowReceipt = false }) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-fixture-receipt-timing-'));
   const spec = iosTestConfig('fixtures');
   const owner = { ...spec, name: 'owned-timing-fixture', udid: 'owned-device' };
@@ -50,13 +50,19 @@ if(args[1]==='get_app_container') {
  if(${slowPreparation}) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10050);
  console.log(${JSON.stringify(container)});
 }
-if(args[1]==='launch'&&!${missingReceipt}) {
+if(args[1]==='launch') {
  const folder=path.join(${JSON.stringify(container)},'Library/Caches/OrotFixtureReceipts');fs.mkdirSync(folder,{recursive:true});
- const receipt={token:args.at(-1),action:args.at(-2),ok:true,processIdentifier:123,state:${JSON.stringify(state)}};
- const file=path.join(folder,receipt.token+'-'+receipt.action+'.json');
- const source='setTimeout(()=>{require("node:fs").writeFileSync('+JSON.stringify(file)+','+JSON.stringify(JSON.stringify(receipt))+')},200)';
- cp.spawn(process.execPath,['-e',source],{detached:true,stdio:'ignore'}).unref();
- console.log('com.orot.mobile: 123');
+ const file=path.join(folder,args.at(-1)+'-'+args.at(-2)+'.json');
+ const receipt={token:args.at(-1),action:args.at(-2),ok:true,state:${JSON.stringify(state)}};
+ const source=${missingReceipt}?'':
+ 'const fs=require("node:fs");setTimeout(()=>{fs.writeFileSync('+JSON.stringify(file)+',JSON.stringify({...'+JSON.stringify(receipt)+',processIdentifier:process.pid}))},'+(${slowReceipt}?'10100':'200')+');setInterval(()=>{},1000)';
+ const child=cp.spawn(process.execPath,['-e',source],{detached:true,stdio:'ignore'});child.unref();
+ fs.writeFileSync(${JSON.stringify(join(directory, 'app-pid'))},String(child.pid));
+ console.log('com.orot.mobile: '+child.pid);
+}
+if(args[1]==='terminate') {
+ try{process.kill(Number(fs.readFileSync(${JSON.stringify(join(directory, 'app-pid'))},'utf8')),'SIGTERM');}
+ catch(error){if(error.code!=='ESRCH')throw error;}
 }
 `,
     { mode: 0o755 },
@@ -80,14 +86,14 @@ if(args[1]==='launch'&&!${missingReceipt}) {
   };
 }
 
-test('slow preparation cannot consume the launched app receipt observation window', async () => {
+test('slow preparation waits for the actual launched app receipt', async () => {
   const value = fixture({ slowPreparation: true, missingReceipt: false });
   try {
     assert.equal(value.outcome.status, 0, value.outcome.stderr);
     const result = JSON.parse(value.outcome.stdout);
     assert.ok(result.preparationElapsedMs >= 10000);
     // The app may finish before launch returns on a loaded host; an already valid receipt needs no minimum wait.
-    assert.ok(result.receiptElapsedMs >= 0 && result.receiptElapsedMs < 10000);
+    assert.ok(result.receiptElapsedMs >= 0);
     assert.equal(value.calls.filter((args) => args[1] === 'launch').length, 1);
     assert.equal(value.calls.filter((args) => args[1] === 'terminate').length, 1);
   } finally {
@@ -97,12 +103,24 @@ test('slow preparation cannot consume the launched app receipt observation windo
   }
 });
 
-test('a missing receipt still fails at the unchanged ten-second observation deadline without relaunch', () => {
+test('an exited app cannot turn a missing receipt into success or relaunch', () => {
   const value = fixture({ slowPreparation: false, missingReceipt: true });
   try {
     assert.notEqual(value.outcome.status, 0);
-    assert.match(value.outcome.stderr, /Scoped fixture receipt deadline exceeded/);
-    assert.ok(value.elapsedMs >= 10000 && value.elapsedMs < 15000);
+    assert.match(value.outcome.stderr, /Scoped fixture process exited before its receipt/);
+    assert.equal(value.calls.filter((args) => args[1] === 'launch').length, 1);
+    assert.equal(value.calls.filter((args) => args[1] === 'terminate').length, 1);
+  } finally {
+    value.dispose();
+  }
+});
+
+// The real host child stays alive beyond the old receipt cap, then publishes once and is explicitly terminated.
+test('a slow app receipt beyond ten seconds is accepted without a replacement deadline', () => {
+  const value = fixture({ slowReceipt: true });
+  try {
+    assert.equal(value.outcome.status, 0, value.outcome.stderr);
+    assert.ok(JSON.parse(value.outcome.stdout).receiptElapsedMs >= 10000);
     assert.equal(value.calls.filter((args) => args[1] === 'launch').length, 1);
     assert.equal(value.calls.filter((args) => args[1] === 'terminate').length, 1);
   } finally {

@@ -13,7 +13,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         launch(app, probe: "medical-appointment-classification")
         tap(app, "medical-appointment-import")
-        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
         let preview = node(app, "inference-disclosure-message-1")
         XCTAssertTrue(preview.exists)
         let scroll = node(app, "inference-disclosure-preview")
@@ -25,7 +25,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         failureNotice(app)
         UITestConditions.value(node(app, "issue40-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
         tap(app, "medical-appointment-import")
-        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
         tap(app, "inference-disclosure-allow")
         failureNotice(app)
         UITestConditions.value(node(app, "issue40-synthetic-provider-calls"), equals: "syntheticProviderCalls=1")
@@ -41,16 +41,16 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         defer { app.terminate() }
         launch(app, probe: "medical-appointment-app-navigation")
-        XCTAssertTrue(node(app, "welcome-title").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "welcome-title").waitForAppearance())
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         tap(app, "open-medical-appointments")
-        XCTAssertTrue(app.staticTexts["기기 안에서 분류해요."].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.staticTexts["기기 안에서 분류해요."].waitForAppearance())
         tap(app, "medical-appointment-manual")
-        XCTAssertTrue(node(app, "appointment-add").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "appointment-add").waitForAppearance())
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        XCTAssertTrue(node(app, "medical-appointment-manual").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "medical-appointment-manual").waitForAppearance())
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        XCTAssertTrue(node(app, "calendar-title").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "calendar-title").waitForAppearance())
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
         capture(app, "manual-classification-schedule-home")
     }
@@ -63,7 +63,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
 
     @MainActor
     private func failureNotice(_ app: XCUIApplication) {
-        XCTAssertTrue(app.staticTexts["일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요."].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.staticTexts["일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요."].waitForAppearance())
     }
 
     @MainActor
@@ -74,7 +74,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         UITestConditions.scrollTo(target, in: app)
         target.tap()
     }

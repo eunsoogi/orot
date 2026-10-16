@@ -12,12 +12,10 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
         }
         let started = ProcessInfo.processInfo.systemUptime
         let trace = PreparationTrace()
-        // Cold asset downloads have a separate setup budget; recognition retains the production 120-second deadline.
+        // Asset setup awaits the actual API; production recognition keeps its service cancellation semantics.
         let result: [String: Any]
         do {
-            result = try await SpeechTranscriptionDeadline.run(timeoutNanoseconds: 180_000_000_000) {
-                try await Self.installSelectedAssets(trace: trace)
-            }
+            result = try await Self.installSelectedAssets(trace: trace)
         } catch {
             // Keep the first failure and the last unfinished public API even when cancellation returns before that API does.
             let failure = trace.snapshot().merging(["error": String(describing: error)]) { _, new in new }
@@ -80,7 +78,7 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
     }
 
     /// Test-only timing uses monotonic elapsed milliseconds and contains no audio, transcript or user data.
-    /// The deadline task and asset operation can finish independently, so a lock protects the failure snapshot.
+    /// The framework progress and operation can update independently, so a lock protects the snapshot.
     private final class PreparationTrace: @unchecked Sendable {
         private let lock = NSLock()
         private let started = ProcessInfo.processInfo.systemUptime
@@ -90,7 +88,7 @@ final class SpeechAssetPreparationTests: OrotFailFastTestCase {
         private var initialProgress: [String: Any]?
 
         /// Public work units describe the framework's progress, not necessarily bytes or network activity.
-        /// Retaining the object lets the deadline snapshot read current counters without awaiting the stalled API.
+        /// Retaining the object lets a failure snapshot retain the current counters without another framework operation.
         func trackInstallationProgress(_ progress: Progress) {
             lock.withLock {
                 installationProgress = progress

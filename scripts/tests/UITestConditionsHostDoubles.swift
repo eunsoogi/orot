@@ -126,6 +126,8 @@ final class XCUIApplication: XCUIElement {
 final class XCTNSPredicateExpectation {
     let predicate: NSPredicate
     let object: Any?
+    var isInverted = false
+    var handler: (() -> Bool)?
 
     init(predicate: NSPredicate, object: Any?) {
         self.predicate = predicate
@@ -138,7 +140,7 @@ final class XCTNSPredicateExpectation {
 
 @MainActor
 enum XCTWaiter {
-    enum Result: Equatable { case completed, timedOut }
+    enum Result: Equatable { case completed, timedOut, interrupted }
 
     static func wait(for conditions: [XCTNSPredicateExpectation], timeout: TimeInterval) -> Result {
         let deadline = UIObservationHost.time + timeout
@@ -165,5 +167,17 @@ func XCTAssertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: @autocl
 func XCTAssertTrue(_ actual: Bool, _ message: @autoclosure () -> String = "") {
     if !actual {
         UIObservationHost.failures.append(message())
+    }
+}
+
+/// Advances only the host regression clock; this is scheduling, never a successful condition.
+@MainActor
+enum RunLoop {
+    static let current = Loop()
+    @MainActor
+    struct Loop {
+        func run(until _: Date) {
+            UIObservationHost.time += 1
+        }
     }
 }

@@ -12,6 +12,6 @@ enum DebugUITestConditions {
         app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: frame.maxX - app.frame.minX - 22,
                                                                         dy: frame.midY - app.frame.minY)).tap()
         let absent = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !warning.exists }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [absent], timeout: 10), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [absent]), .completed, app.debugDescription)
     }
 }

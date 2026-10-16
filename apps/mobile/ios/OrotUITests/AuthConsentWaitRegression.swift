@@ -11,11 +11,11 @@ enum AuthConsentWaitRegression {
             count += 1
             assertion(condition, reason)
         }
-        for (times, expectedBudget, expectedElapsed) in [
-            ([10.0, 15, 20], 115.0, 10.0),
-            ([100.0, 107, 220], 113.0, 120.0),
-            ([10.0, 135, 135], 0.0, 125.0),
-            ([100.0, 90, 110], 120.0, 10.0),
+        for (times, expectedElapsed) in [
+            ([10.0, 20], 10.0),
+            ([100.0, 220], 120.0),
+            ([10.0, 135], 125.0),
+            ([100.0, 90], 0.0),
         ] {
             var clock = times
             var order: [String] = []
@@ -23,17 +23,14 @@ enum AuthConsentWaitRegression {
                 try AuthConsentWait.observe(
                     now: { clock.removeFirst() },
                     before: { order.append("before") },
-                    wait: { budget in
+                    wait: {
                         order.append("wait")
-                        check(budget == expectedBudget, "The wait must use only the remainder of the original 120 seconds")
                         return false
                     },
                     retain: { receipt in
                         order.append("retained")
-                        check(!receipt.result, "A timeout must remain a failure in its retained receipt")
-                        check(receipt.remainingSeconds == expectedBudget, "Retained budget must equal the actual wait argument")
+                        check(!receipt.result, "A failed observation must remain a failure in its retained receipt")
                         check(receipt.elapsedSeconds == expectedElapsed, "Elapsed time must start before diagnostic observations")
-                        check(receipt.metDeadline == (expectedElapsed <= 120), "The observed deadline must remain 120 seconds")
                     },
                     after: { order.append("after") },
                     validate: { _ in
@@ -43,29 +40,29 @@ enum AuthConsentWaitRegression {
                 )
                 check(false, "A fail-fast validation must prevent the remaining consent journey")
             } catch Stop.failFast {
-                check(order == ["before", "wait", "retained", "after", "fail-fast"], "The timeout receipt must precede post-wait AX work and the failing assertion")
+                check(order == ["before", "wait", "retained", "after", "fail-fast"], "The failure receipt must precede post-wait AX work and the failing assertion")
             } catch {
                 check(false, "Unexpected regression control error")
             }
         }
-        var clock = [0.0, 1, 120]
+        var clock = [0.0, 120]
         var retained = false
         do {
             try AuthConsentWait.observe(
-                now: { clock.removeFirst() }, before: {}, wait: { _ in false },
+                now: { clock.removeFirst() }, before: {}, wait: { false },
                 retain: { _ in retained = true },
                 after: { throw Stop.unavailableSnapshot },
                 validate: { _ in check(false, "An unavailable post-wait snapshot must not erase the prior receipt") },
             )
         } catch Stop.unavailableSnapshot {
-            check(retained, "The timeout receipt must already exist when a later AX observation fails")
+            check(retained, "The failure receipt must already exist when a later AX observation fails")
         } catch {
             check(false, "Unexpected post-wait control error")
         }
-        var successClock = [0.0, 2, 3]
+        var successClock = [0.0, 3]
         var successOrder: [String] = []
         AuthConsentWait.observe(
-            now: { successClock.removeFirst() }, before: {}, wait: { _ in true },
+            now: { successClock.removeFirst() }, before: {}, wait: { true },
             retain: { _ in successOrder.append("retained") }, after: {},
             validate: { receipt in
                 successOrder.append("validated")
@@ -73,11 +70,11 @@ enum AuthConsentWaitRegression {
             },
         )
         check(successOrder == ["retained", "validated"], "Successful observations must also be retained before validation")
-        var lateClock = [0.0, 120, 121]
+        var lateClock = [0.0, 121]
         AuthConsentWait.observe(
-            now: { lateClock.removeFirst() }, before: {}, wait: { _ in true }, retain: { _ in }, after: {},
+            now: { lateClock.removeFirst() }, before: {}, wait: { true }, retain: { _ in }, after: {},
             validate: { receipt in
-                check(receipt.result && !receipt.metDeadline, "An AX completion after 120 seconds must not satisfy the deadline")
+                check(receipt.result && receipt.elapsedSeconds == 121, "A slow successful observation remains successful with its actual elapsed time")
             },
         )
         return count

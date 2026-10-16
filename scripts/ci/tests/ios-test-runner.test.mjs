@@ -59,6 +59,10 @@ for (const status of [0, 65]) {
       const runs = result.calls.filter((call) => call.name === 'xcodebuild');
       assert.equal(runs.length, 1);
       assert.equal(runs[0].args[0], 'test-without-building');
+      // A slow case remains running; only its outcome or the owning job's cancellation ends it.
+      assert.equal(runs[0].args[runs[0].args.indexOf('-test-timeouts-enabled') + 1], 'NO');
+      assert.ok(!runs[0].args.includes('-default-test-execution-time-allowance'));
+      assert.ok(!runs[0].args.includes('-maximum-test-execution-time-allowance'));
       assert.equal(runs[0].args[runs[0].args.indexOf('-collect-test-diagnostics') + 1], 'never');
       assert.equal(runs[0].args[runs[0].args.indexOf('-parallel-testing-enabled') + 1], 'NO');
       assert.ok(!runs[0].args.some((arg) => arg.includes('retry')));

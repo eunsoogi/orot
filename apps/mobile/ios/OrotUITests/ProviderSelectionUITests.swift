@@ -19,7 +19,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         reset(app)
         tap(app, "provider-selection-auth-cancel")
         tap(app, "chatgpt-account-action")
-        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-cancel-sign-in"), timeout: 120))
+        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-cancel-sign-in")))
         back(app)
         cleared(app)
         tap(app, "provider-selection-auth-cancel")
@@ -51,7 +51,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         // Fixture controls and the real safe area can shorten the catalog viewport; scroll the actual model row into view before selecting it.
         FormUITestConditions.reveal(node(app, "provider-option-1"), in: app, scrollID: "provider-selection-screen")
         tap(app, "provider-option-1")
-        XCTAssertTrue(UITestConditions.exists(node(app, "provider-option-12"), timeout: 120))
+        XCTAssertTrue(UITestConditions.exists(node(app, "provider-option-12")))
         DebugUITestConditions.dismissWarningToast(app)
         let confirm = node(app, "provider-selection-confirm")
         FormUITestConditions.reveal(confirm, in: app, scroll: footerScroll(app))
@@ -76,7 +76,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         // The real catalog keeps sign-out inside expanded account management; open it before starting the original lifecycle assertions.
         FormUITestConditions.reveal(node(app, "chatgpt-account-details"), in: app, scrollID: "provider-selection-screen")
         tap(app, "chatgpt-account-details")
-        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-sign-out"), timeout: 120))
+        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-sign-out")))
         try message(app, "ChatGPT 계정 1 로그아웃")
         tap(app, "provider-selection-sign-out-request")
         value(app, "provider-selection-sign-out-response", "pending-after-delta")
@@ -95,11 +95,11 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         tap(app, "provider-selection-sign-out-reopen")
         FormUITestConditions.reveal(node(app, "chatgpt-account-details"), in: app, scrollID: "provider-selection-screen")
         tap(app, "chatgpt-account-details")
-        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-status"), timeout: 120))
+        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-status")))
         try message(app, unavailable)
         tap(app, "chatgpt-account-action")
         try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.")
-        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-sign-out"), timeout: 120))
+        XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-sign-out")))
         capture(app, "synthetic-sign-out-reopened-and-relogin-confirmed")
         back(app)
         reset(app)
@@ -125,7 +125,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
             app.launchArguments.append("-OROT_AUTH_SESSION_DIAGNOSTICS")
         }
         app.launch()
-        XCTAssertTrue(UITestConditions.exists(node(app, "provider-selection-probe-reset"), timeout: 240))
+        XCTAssertTrue(UITestConditions.exists(node(app, "provider-selection-probe-reset")))
         DebugUITestConditions.dismissWarningToast(app)
         return app
     }
@@ -142,14 +142,14 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         let ready = NSPredicate { _, _ in target.exists && target.isHittable && !target.frame.isEmpty && app.frame.contains(target.frame) }
         if !ready.evaluate(with: nil) {
             let condition = XCTNSPredicateExpectation(predicate: ready, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [condition], timeout: 120), .completed, app.debugDescription)
+            XCTAssertEqual(UITestConditions.wait(for: [condition]), .completed, app.debugDescription)
         }
         target.tap()
     }
 
     @MainActor
     private func value(_ app: XCUIApplication, _ id: String, _ text: String) {
-        UITestConditions.value(node(app, id), equals: text, timeout: 120)
+        UITestConditions.value(node(app, id), equals: text)
     }
 
     @MainActor
@@ -186,7 +186,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         DebugUITestConditions.dismissWarningToast(app)
         // React Native groups action titles into their native Button. Match the exact accessible label before checking visibility for its actual role.
         let target = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", text)).firstMatch
-        XCTAssertTrue(UITestConditions.exists(target, timeout: 120), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         let footer = node(app, "provider-selection-footer")
         let inFooter = footer.descendants(matching: .any).matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
         // Native ScrollViews retain content ownership even when React Native flattens tagged containers. Offscreen main content can overlap the footer's frame, so ancestry takes priority over geometry.

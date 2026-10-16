@@ -150,7 +150,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         captureNavigationObservation(app, "after-full-edge-back")
         let ai = UITestConditions.element(app, "ai-features-screen")
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in ai.exists && ai.isHittable && !scroll.exists }, object: nil)
-        let returnResult = XCTWaiter.wait(for: [returned], timeout: 30)
+        let returnResult = UITestConditions.wait(for: [returned])
         // Preserve the failed ordering too: XCTest's assertion exception can bypass Swift defer.
         captureNavigationObservation(app, "after-return-wait")
         XCTAssertEqual(returnResult, .completed, app.debugDescription)
@@ -186,7 +186,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let element = UITestConditions.element(app, identifier)
-        XCTAssertTrue(element.waitForExistence(timeout: 30))
+        XCTAssertTrue(element.waitForAppearance())
         UITestConditions.scrollTo(element, in: app)
         element.tap()
     }

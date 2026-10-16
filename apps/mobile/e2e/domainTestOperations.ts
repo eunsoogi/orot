@@ -128,7 +128,7 @@ export async function runDomainTestOperation(
     case 'rag-workflow': {
       const { runRagWorkflowProbe } =
         require('./ragWorkflowProbe') as typeof import('./ragWorkflowProbe');
-      // Public-query authorization, real Europe PMC retrieval and the 120-second deadline remain owned by the probe.
+      // Public-query authorization and real Europe PMC retrieval remain owned by the probe; shipping workflow budgets are unchanged.
       return {
         ...(await withMockAppleModel(appleModelMockScript(operation), () =>
           runRagWorkflowProbe(() => {}, new AbortController().signal),

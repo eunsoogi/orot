@@ -5,7 +5,7 @@ import XCTest
 final class AppleModelIntegrationTests: OrotFailFastTestCase {
     func testMockAvailabilityGenerationStreamingCancellationAndFailures() async throws {
         // The shipping bridge runs against a test-only raw-response mock; this does not measure Apple inference.
-        let result = try await TestOperationBroker.shared.request("apple-model", timeout: 240)
+        let result = try await TestOperationBroker.shared.request("apple-model")
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         XCTAssertEqual(result["inferenceStop"] as? String, "unverified")

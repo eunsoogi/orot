@@ -67,8 +67,8 @@ final class RecordingExportUITests: OrotFailFastTestCase {
             ready = (frame, application, snapshot, point)
             return true
         }
-        // AX exposes the dismissal element before UIKit finishes presenting it. Use the same 30-second readiness budget for both boundaries.
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: presented, object: nil)], timeout: 30), .completed)
+        // AX exposes the dismissal element before UIKit finishes presenting it. Await both presentation boundaries.
+        XCTAssertEqual(UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: presented, object: nil)]), .completed)
         let geometry = try XCTUnwrap(ready)
         let frame = geometry.frame
         let point = geometry.point
@@ -143,7 +143,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     private func launch(_ app: XCUIApplication) {
         app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "recording-export", "-OROT_TEST_EXPORT_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        XCTAssertTrue(element(app, "transcript-evidence-setup-status").waitForExistence(timeout: 30))
+        XCTAssertTrue(element(app, "transcript-evidence-setup-status").waitForAppearance())
     }
 
     @MainActor
@@ -158,14 +158,14 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     @MainActor
     private func json(_ target: XCUIElement) throws -> [String: Any] {
         let ready = NSPredicate { _, _ in UITestConditions.text(target).hasPrefix("{") }
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: nil)], timeout: 30), .completed)
+        XCTAssertEqual(UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: nil)]), .completed)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(target).utf8)) as? [String: Any])
     }
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
         let target = element(app, identifier)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         if ["recording-export-transcript", "recording-export-audio"].contains(identifier) {
             FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll")
         }

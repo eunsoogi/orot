@@ -157,6 +157,8 @@
 		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
 		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
 		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
+		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
+		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -333,6 +335,8 @@
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
+		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
+		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -401,6 +405,8 @@
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
+				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
+				B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */,
 				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F0000000000000000000E /* RecordingMetering.swift */,
 				B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */,
@@ -898,6 +904,8 @@
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
+				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
+				A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */,
 				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
 				A64F0000000000000000000E /* RecordingMetering.swift in Sources */,
 				A64F0000000000000000000F /* RecordingMeteringProbeFile.swift in Sources */,

@@ -7,7 +7,6 @@
     final class TestOperationBroker: @unchecked Sendable {
         static let shared = TestOperationBroker()
         enum Failure: Error {
-            case timedOut(String)
             case javascript(String)
         }
 
@@ -17,14 +16,12 @@
         private var pending: [String: CheckedContinuation<[String: Any], Error>] = [:]
         private var cancelled: Set<String> = []
 
-        func request(_ operation: String, parameters: [String: Any] = [:], timeout: TimeInterval = 60) async throws -> [String: Any] {
+        /// Await the actual JS response; caller cancellation removes queued and pending work exactly once.
+        func request(_ operation: String, parameters: [String: Any] = [:]) async throws -> [String: Any] {
             let identifier = UUID().uuidString
             return try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation { continuation in
                     enqueue(identifier, operation: operation, parameters: parameters, continuation: continuation)
-                    DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                        self.finish(identifier, result: .failure(Failure.timedOut(operation)))
-                    }
                 }
             } onCancel: {
                 self.cancel(identifier)
@@ -76,7 +73,7 @@
             let continuation = pending.removeValue(forKey: identifier)
             queued.removeAll { $0["id"] as? String == identifier }
             lock.unlock()
-            // A late JS completion cannot revive a cancelled or timed-out test operation.
+            // A late JS completion cannot revive a cancelled test operation.
             continuation?.resume(with: result)
         }
 

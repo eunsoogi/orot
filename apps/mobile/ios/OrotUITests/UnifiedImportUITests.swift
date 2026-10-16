@@ -83,14 +83,14 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         }
         tap(app, "unified-import-toggle-eventKit")
         tap(app, "unified-import-start")
-        terminal(app, id: "unified-import-status", allowed: ["complete", "empty"], timeout: 240)
+        terminal(app, id: "unified-import-status", allowed: ["complete", "empty"])
         for feature in features {
-            terminal(app, id: "unified-import-feature-status-\(feature)", allowed: ["complete", "empty"], timeout: 30)
+            terminal(app, id: "unified-import-feature-status-\(feature)", allowed: ["complete", "empty"])
         }
         XCTAssertTrue(node(app, "unified-import-eventkit-candidate-0").exists)
         tap(app, "unified-import-eventkit-select-0")
         tap(app, "unified-import-eventkit-confirm")
-        XCTAssertTrue(node(app, "unified-import-eventkit-confirmed").waitForExistence(timeout: 30))
+        XCTAssertTrue(node(app, "unified-import-eventkit-confirmed").waitForAppearance())
         let summary = UITestConditions.text(node(app, "unified-import-probe-measurements"))
         XCTAssertNotNil(summary.range(of: measurementPattern(), options: .regularExpression), summary)
         capture(app, "unified-import-explicit-synthetic-confirmation")
@@ -107,7 +107,7 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         }
         tap(app, "unified-import-start")
         UITestConditions.value(node(app, "unified-import-status"), equals: "preparingStorage")
-        XCTAssertTrue(node(app, "unified-import-cancel").waitForExistence(timeout: 10))
+        XCTAssertTrue(node(app, "unified-import-cancel").waitForAppearance())
         // The gate is released after run.cancel(), so no query or write may begin before cancellation.
         tap(app, "unified-import-cancel")
         UITestConditions.value(node(app, "unified-import-status"), equals: "cancelled")
@@ -143,7 +143,7 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
     private func launch(_ app: XCUIApplication, mode: String) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "unified-import", "-OROT_UNIFIED_IMPORT_PROBE", mode]
         app.launch()
-        UITestConditions.value(node(app, "unified-import-probe-status"), equals: "probe=ready;source=\(mode);systemSheets=not-observed", timeout: 120)
+        UITestConditions.value(node(app, "unified-import-probe-status"), equals: "probe=ready;source=\(mode);systemSheets=not-observed")
         DebugUITestConditions.dismissWarningToast(app)
         let scroll = node(app, "unified-import-scroll")
         XCTAssertTrue(scroll.exists && scroll.frame.height > 0, app.debugDescription)
@@ -155,18 +155,18 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func terminal(_ app: XCUIApplication, id: String, allowed: [String], timeout: TimeInterval) {
+    private func terminal(_ app: XCUIApplication, id: String, allowed: [String]) {
         let target = node(app, id)
         let completed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             target.exists && allowed.contains(UITestConditions.text(target))
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: timeout), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [completed]), .completed, app.debugDescription)
     }
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(target.waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(target.waitForAppearance(), app.debugDescription)
         let scroll = node(app, "unified-import-scroll")
         // The diagnostics reduce this standalone viewport; an app-wide swipe can miss the actual ScrollView entirely.
         FormUITestConditions.reveal(target, in: app, scrollID: "unified-import-scroll",

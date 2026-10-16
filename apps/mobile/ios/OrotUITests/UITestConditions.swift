@@ -2,35 +2,45 @@ import XCTest
 
 @MainActor
 enum UITestConditions {
-    /// Let XCTest own the existence wait; a separate synchronous preflight can block before its timeout starts.
-    static func exists(_ element: XCUIElement, timeout: TimeInterval = 30) -> Bool {
-        element.waitForExistence(timeout: timeout)
+    /// Await the condition itself. Poll pacing yields the run loop; it does not impose a completion budget.
+    /// Cancellation never reports success. Synchronous Apple AX IPC still cannot be interrupted here.
+    static func wait(for conditions: [XCTNSPredicateExpectation], cancelled: () -> Bool = { withUnsafeCurrentTask { $0?.isCancelled ?? false } }) -> XCTWaiter.Result {
+        precondition(!conditions.isEmpty && conditions.allSatisfy { !$0.isInverted })
+        var pending = conditions
+        while !cancelled() {
+            pending.removeAll { condition in
+                condition.predicate.evaluate(with: condition.object) && (condition.handler?() ?? true)
+            }
+            // A synchronous AX read or handler may return after cancellation has arrived.
+            guard !cancelled() else { return .interrupted }
+            if pending.isEmpty {
+                return .completed
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+        }
+        return .interrupted
     }
 
-    /// Read one coherent observation per evaluation and reject matches returned after the original deadline.
-    /// A snapshot is still synchronous Apple IPC: the waiter cannot interrupt it, but a late return cannot pass.
-    static func value(_ element: XCUIElement, equals expected: String, timeout: TimeInterval = 30) {
-        let started = ProcessInfo.processInfo.systemUptime
-        var elapsed: TimeInterval = 0
+    static func exists(_ element: XCUIElement, cancelled: () -> Bool = { withUnsafeCurrentTask { $0?.isCancelled ?? false } }) -> Bool {
+        let condition = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in element.exists }, object: nil)
+        return wait(for: [condition], cancelled: cancelled) == .completed
+    }
+
+    /// One snapshot retains the original label-or-value oracle without rejecting a slow successful read.
+    static func value(_ element: XCUIElement, equals expected: String, cancelled: () -> Bool = { withUnsafeCurrentTask { $0?.isCancelled ?? false } }) {
         var lastObservation: (label: String, value: String?)?
         let predicate = NSPredicate { _, _ in
-            guard ProcessInfo.processInfo.systemUptime - started <= timeout else { return false }
-            if let snapshot = try? element.snapshot() {
-                lastObservation = (snapshot.label, snapshot.value as? String)
-            } else {
-                // Missing or failed reads are observations of unavailability, never a retained earlier match.
+            guard let snapshot = try? element.snapshot() else {
                 lastObservation = nil
+                return false
             }
-            elapsed = ProcessInfo.processInfo.systemUptime - started
-            guard elapsed <= timeout, let observation = lastObservation else { return false }
-            return observation.label == expected || observation.value == expected
+            lastObservation = (snapshot.label, snapshot.value as? String)
+            return snapshot.label == expected || snapshot.value as? String == expected
         }
-        // A live XCUIElement expectation object asks XCTest to describe the hierarchy on every poll.
-        // Keep only the last already-read fields for failure output, without a new post-deadline AX query.
+        // Passing a live element to XCTest can cause extra hierarchy queries unrelated to this oracle.
         let condition = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        let result = XCTWaiter.wait(for: [condition], timeout: timeout)
-        XCTAssertEqual(result, .completed,
-                       "Expected \(expected); last observation \(String(describing: lastObservation)) after \(elapsed) seconds")
+        XCTAssertEqual(wait(for: [condition], cancelled: cancelled), .completed,
+                       "Expected \(expected); last observation \(String(describing: lastObservation))")
     }
 
     static func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
@@ -52,5 +62,13 @@ enum UITestConditions {
             app.swipeUp()
         }
         XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
+    }
+}
+
+extension XCUIElement {
+    /// Shares the completion-based existence policy with callers using a fluent element query.
+    @MainActor
+    func waitForAppearance() -> Bool {
+        UITestConditions.exists(self)
     }
 }

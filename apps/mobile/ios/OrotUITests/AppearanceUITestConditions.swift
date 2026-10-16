@@ -68,7 +68,7 @@ enum AppearanceUITestConditions {
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             XCUIDevice.shared.appearance == appearance
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 10), .completed)
+        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
         let observed = XCUIDevice.shared.appearance
         XCTAssertTrue([XCUIDevice.Appearance.light, .dark].contains(observed))
         let command = stage == "restored" ? "restore" : (observed == .dark ? "dark" : "light")
@@ -82,13 +82,13 @@ enum AppearanceUITestConditions {
         let applicationChanged = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             lastObservation = readObservation(refreshMarker)
             observationElapsed = ProcessInfo.processInfo.systemUptime - observationStarted
-            // An AX call can block beyond XCTest's waiter budget; a late matching receipt is still a failure.
-            return observationElapsed <= 10 && lastObservation?.matches(
+            // Receipt identity and state decide completion; elapsed time remains diagnostic only.
+            return lastObservation?.matches(
                 session: session, command: command, scheme: applicationScheme, after: previousObservation.appliedCount,
                 override: expectedOverride, originalOverride: previousObservation.originalOverrideStyle,
             ) == true
         }, object: nil)
-        let applicationResult = XCTWaiter.wait(for: [applicationChanged], timeout: 10)
+        let applicationResult = UITestConditions.wait(for: [applicationChanged])
         let evidence: [String: Any] = try [
             "stage": stage, "previous": previous.rawValue, "requested": appearance.rawValue,
             "observed": XCUIDevice.shared.appearance.rawValue, "appState": app.state.rawValue,
@@ -126,7 +126,7 @@ enum AppearanceUITestConditions {
             return observation.status == "refreshed" && observation.session == session && observation.appliedCount >= 0 &&
                 ["light", "dark"].contains(observation.applicationScheme) && (0 ... 2).contains(observation.originalOverrideStyle)
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, "Appearance observation must register the owned session")
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "Appearance observation must register the owned session")
         return try (marker, XCTUnwrap(observation))
     }
 }

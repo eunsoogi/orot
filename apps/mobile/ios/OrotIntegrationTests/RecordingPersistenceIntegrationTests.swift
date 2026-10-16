@@ -38,16 +38,15 @@ final class RecordingPersistenceIntegrationTests: OrotFailFastTestCase {
     private func cancelTranscriptExport() async throws {
         let module = RecordingModule()
         RecordingExportFiles.armCancellation()
-        let completion = expectation(description: "Actual share presentation and synthetic cancellation complete")
-        var result: String?
-        module.shareRecordingTranscript("합성 전사 café🙂\n", resolver: { value in
-            result = value as? String
-            completion.fulfill()
-        }, rejecter: { code, message, _ in
-            XCTFail("Export failed: \(code ?? "unknown") \(message ?? "")")
-            completion.fulfill()
-        })
-        await fulfillment(of: [completion], timeout: 30)
+        // Await the real native completion/error callback; host scheduling does not determine the export result.
+        let result: String? = try await withCheckedThrowingContinuation { continuation in
+            module.shareRecordingTranscript("합성 전사 café🙂\n", resolver: { value in
+                continuation.resume(returning: value as? String)
+            }, rejecter: { code, message, error in
+                continuation.resume(throwing: error ?? NSError(domain: code ?? "ExportFailure", code: 1,
+                                                               userInfo: [NSLocalizedDescriptionKey: message ?? "Export failed"]))
+            })
+        }
         XCTAssertEqual(result, "cancelled")
         XCTAssertFalse(RecordingExportFiles.consumeSimulatorCancellation())
     }

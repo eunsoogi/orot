@@ -8,7 +8,7 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_HOST", "YES"]
         app.launch()
-        XCTAssertTrue(app.otherElements["integration-test-host"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.otherElements["integration-test-host"].waitForAppearance())
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "test-host"
         screenshot.lifetime = .keepAlways

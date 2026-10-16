@@ -130,7 +130,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
     capabilities: modelProvider.capabilities,
     async generate(request, options) {
       const requestPhase = phase;
-      // Keep dispatch distinct from completion when a bounded workflow aborts an outstanding synthetic request; timestamps are epoch milliseconds.
+      // Keep dispatch distinct from completion when a workflow cancels an outstanding synthetic request; timestamps are epoch milliseconds.
       diagnostics.push({
         phase: requestPhase,
         stage: 'requested',
@@ -170,7 +170,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
       signal,
     });
   progress(phase);
-  const calendar = await bounded(runCalendar);
+  const calendar = await observeWorkflow(runCalendar);
   phase = 'nextVisit';
   progress(phase);
   const modelId = 'apple-foundation-models-system-default';
@@ -189,7 +189,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
       ],
       signal,
     });
-  const nextVisit = await bounded(runNextVisit);
+  const nextVisit = await observeWorkflow(runNextVisit);
   phase = 'cancellation';
   progress(phase);
   const controller = new AbortController();
@@ -199,7 +199,7 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
     started = true;
     timer = setTimeout(() => controller.abort(), 50);
   };
-  const cancelled = await bounded(signal => {
+  const cancelled = await observeWorkflow(signal => {
     signal.addEventListener('abort', () => controller.abort(), { once: true });
     // Exercise cancellation through the same next-visit workflow used by its UI.
     return runNextVisit(controller.signal);
@@ -219,28 +219,17 @@ export async function runAppleWorkflowProbe(progress: (phase: string) => void) {
   };
 }
 
-/** A 90-second per-workflow deadline aborts work and reports timeout as a failure. */
-async function bounded<T>(
+/** Observe actual workflow completion/errors. Shipping workflow budgets and explicit cancellation stay authoritative. */
+async function observeWorkflow<T>(
   run: (signal: AbortSignal) => Promise<T>,
 ): Promise<T | { status: 'probe-error'; message: string }> {
   const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await Promise.race([
-      run(controller.signal),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Error('Probe deadline exceeded: 90000 ms'));
-        }, 90_000);
-      }),
-    ]);
+    return await run(controller.signal);
   } catch (error) {
     return {
       status: 'probe-error',
       message: error instanceof Error ? error.message : String(error),
     };
-  } finally {
-    if (timer) clearTimeout(timer);
   }
 }

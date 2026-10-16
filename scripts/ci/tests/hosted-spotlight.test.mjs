@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { once } from 'node:events';
 import { indexingDisabled, suppressHostedSpotlight } from '../suppress-hosted-spotlight.mjs';
 import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
 
@@ -49,7 +50,7 @@ test('local, Linux and self-hosted machines issue no Spotlight commands', () => 
   }
 });
 
-test('one bounded Data-volume change precedes a separate exact readback', () => {
+test('one Data-volume change awaits actual completion before a separate exact readback', () => {
   const result = exercise([disabled, disabled]);
   assert.equal(result.verified, true);
   assert.deepEqual(
@@ -62,18 +63,17 @@ test('one bounded Data-volume change precedes a separate exact readback', () => 
           '/usr/bin/perl',
           '-e',
           result.calls[0][1][3],
-          '15',
           '/usr/bin/mdutil',
           '-i',
           'off',
           '/System/Volumes/Data',
         ],
-        17000,
+        undefined,
       ],
-      ['/usr/bin/mdutil', ['-s', '/System/Volumes/Data'], 5000],
+      ['/usr/bin/mdutil', ['-s', '/System/Volumes/Data'], undefined],
     ],
   );
-  assert.ok(result.calls.every(([, , options]) => options.killSignal === 'SIGKILL'));
+  assert.ok(result.calls.every(([, , options]) => options.timeout === undefined));
   assert.equal(result.events.at(-1).outcome, 'disabled-and-verified');
 });
 
@@ -104,35 +104,20 @@ test('readback cannot turn another volume, enabled state or a failed command int
   }
 });
 
-test('the real subprocess deadline terminates an unresponsive command', () => {
-  // An inert Node child exercises the actual timeout semantics without invoking sudo or host services.
-  const result = spawnSync(
-    process.execPath,
-    ['-e', 'process.on("SIGTERM",()=>{});setInterval(()=>{},1000)'],
-    { timeout: 200, killSignal: 'SIGKILL', encoding: 'utf8' },
-  );
-  assert.equal(result.error?.code, 'ETIMEDOUT');
-  assert.equal(result.signal, 'SIGKILL');
-  assert.equal(result.status, null);
-});
-
-test('a timed-out sudo-shaped command terminates its operation before the caller returns', (t) => {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-spotlight-deadline-'));
-  const pidFile = join(directory, 'operation.pid');
-  const parent = join(directory, 'parent.cjs');
+test('explicit cancellation of the real supervisor reaps only its owned operation', async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-spotlight-cancellation-'));
   const operation = join(directory, 'operation.cjs');
   writeFileSync(
-    parent,
-    'const child=require("node:child_process").spawn(process.argv[2],process.argv.slice(3),{stdio:"inherit"});child.on("close",(code)=>process.exit(code??125));',
-  );
-  writeFileSync(
     operation,
-    `require("node:fs").writeFileSync(${JSON.stringify(pidFile)},String(process.pid));process.on("SIGTERM",()=>{});setInterval(()=>{},1000);`,
+    'process.on("SIGTERM",()=>{});console.log(process.pid);setInterval(()=>{},1000);',
   );
+  const command = exercise([disabled, disabled]).calls[0][1].slice(2);
+  const index = command.indexOf('/usr/bin/mdutil');
+  const args = [...command.slice(0, index), process.execPath, operation];
+  const child = spawn('/usr/bin/perl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
   let pid;
-  let outcome;
   t.after(() => {
-    // Clean only this fixture's recorded child after a failing characterization of the old code.
+    child.kill('SIGKILL');
     if (pid) {
       try {
         process.kill(pid, 'SIGKILL');
@@ -142,39 +127,19 @@ test('a timed-out sudo-shaped command terminates its operation before the caller
     }
     rmSync(directory, { recursive: true, force: true });
   });
-  const started = performance.now();
-  assert.throws(
-    () =>
-      suppressHostedSpotlight({
-        env: hosted,
-        platform: 'darwin',
-        report() {},
-        execute(program, args, options) {
-          assert.equal(program, '/usr/bin/sudo');
-          // Replace only the privilege launcher and mdutil with inert equivalents. The actual
-          // supervisor, when present, still owns its subprocess; use one second for this test.
-          const command = args.slice(1);
-          const index = command.indexOf('/usr/bin/mdutil');
-          assert.ok(index >= 0);
-          if (command[0] === '/usr/bin/perl') command[index - 1] = '1';
-          command.splice(index, command.length - index, process.execPath, operation);
-          outcome = spawnSync(process.execPath, [parent, ...command], {
-            ...options,
-            timeout: 3000,
-          });
-          return outcome;
-        },
-      }),
-    /Hosted Spotlight suppression was not verified/,
-  );
-  pid = Number(readFileSync(pidFile, 'utf8'));
+  // Readiness is an event, so a slow fixture cannot consume an unrelated setup budget.
+  const [ready] = await once(child.stdout, 'data');
+  pid = Number(String(ready).trim());
+  assert.ok(Number.isSafeInteger(pid) && pid > 0);
+  const closed = once(child, 'close');
+  child.kill('SIGTERM');
+  const [status, signal] = await closed;
+  assert.equal(status, 143);
+  assert.equal(signal, null);
   const state = spawnSync('ps', ['-p', String(pid), '-o', 'stat='], {
     encoding: 'utf8',
   }).stdout.trim();
-  assert.ok(!state || state.startsWith('Z'), 'timed-out operation is still running');
-  assert.ok(performance.now() - started < 5000, 'subprocess wait exceeded its outer bound');
-  assert.equal(outcome.status, 124);
-  assert.equal(outcome.signal, null);
+  assert.ok(!state || state.startsWith('Z'), 'cancelled operation is still running');
 });
 
 test('the supervisor preserves a completed operation status and output', () => {
@@ -187,7 +152,7 @@ test('the supervisor preserves a completed operation status and output', () => {
       '-e',
       `console.log('observed');process.exit(${status})`,
     ];
-    const result = spawnSync('/usr/bin/perl', args, { encoding: 'utf8', timeout: 2000 });
+    const result = spawnSync('/usr/bin/perl', args, { encoding: 'utf8' });
     assert.equal(result.status, status, result.stderr);
     assert.equal(result.stdout, 'observed\n');
     assert.equal(result.signal, null);

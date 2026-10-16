@@ -49,7 +49,6 @@ export async function runRagWorkflowProbe(
   let terminal = 'notobserved';
   let outcome: RagConversationOutcome | undefined;
   let failure: string | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   const modelProvider = new AppleFoundationModelsProvider({
     ...appleFoundationModelsNativeBridge,
     cancel(requestId) {
@@ -125,74 +124,60 @@ export async function runRagWorkflowProbe(
     },
   );
   try {
-    await Promise.race([
-      (async () => {
-        onPhase('apple-availability');
-        availability = (await modelProvider.getAvailability()).status;
-        if (availability !== 'available' || controller.signal.aborted) {
-          terminal = controller.signal.aborted
-            ? 'cancelled'
-            : 'provider-unavailable';
-          return;
-        }
-        outcome = await runRagConversationTurn(
-          {
-            question,
-            previousMessages: [],
-            loadCurrentEvidence: async () => ({
-              batch: { items: [], coverage: [], conflicts: [] },
-              chunks: [],
-            }),
-            // No chunks exist: reaching local retrieval would violate the diagnostic's empty-library boundary.
-            rag: {
-              search: async () => {
-                throw new Error('Unexpected personal-record retrieval');
-              },
-            },
-            workflow: {
-              provider,
-              execution: {
-                operationRunId: 'synthetic-europe-pmc-' + Date.now(),
-                providerId: provider.id,
-                modelId: 'apple-foundation-models-system-default',
-                recipient: 'on-device',
-                remoteProcessing: false,
-                allowedScope: {
-                  sourceKinds: ['external_medical'],
-                  sourceIds: ['europe-pmc'],
-                },
-                budget: RAG_CONVERSATION_BUDGET,
-              },
-              tools: [external.tool],
-              consent: {
-                authorize: async () =>
-                  controller.signal.aborted ? 'renewal_required' : 'authorized',
-              },
-              revalidateEvidence: async (references, signal) =>
-                !signal.aborted &&
-                references.every(reference => external.validates(reference)),
+    // The shipping workflow keeps its budget; only actual completion, errors or owner cancellation settle this probe.
+    onPhase('apple-availability');
+    availability = (await modelProvider.getAvailability()).status;
+    if (availability !== 'available' || controller.signal.aborted) {
+      terminal = controller.signal.aborted
+        ? 'cancelled'
+        : 'provider-unavailable';
+    } else {
+      outcome = await runRagConversationTurn(
+        {
+          question,
+          previousMessages: [],
+          loadCurrentEvidence: async () => ({
+            batch: { items: [], coverage: [], conflicts: [] },
+            chunks: [],
+          }),
+          // No chunks exist: reaching local retrieval would violate the diagnostic's empty-library boundary.
+          rag: {
+            search: async () => {
+              throw new Error('Unexpected personal-record retrieval');
             },
           },
-          { signal: controller.signal },
-        );
-        if (terminal !== 'deadline-exceeded') {
-          terminal = controller.signal.aborted ? 'cancelled' : outcome.status;
-        }
-      })(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          terminal = 'deadline-exceeded';
-          controller.abort();
-          reject(new Error('Diagnostic deadline exceeded: 120000 ms'));
-        }, 120_000);
-      }),
-    ]);
+          workflow: {
+            provider,
+            execution: {
+              operationRunId: 'synthetic-europe-pmc-' + Date.now(),
+              providerId: provider.id,
+              modelId: 'apple-foundation-models-system-default',
+              recipient: 'on-device',
+              remoteProcessing: false,
+              allowedScope: {
+                sourceKinds: ['external_medical'],
+                sourceIds: ['europe-pmc'],
+              },
+              budget: RAG_CONVERSATION_BUDGET,
+            },
+            tools: [external.tool],
+            consent: {
+              authorize: async () =>
+                controller.signal.aborted ? 'renewal_required' : 'authorized',
+            },
+            revalidateEvidence: async (references, signal) =>
+              !signal.aborted &&
+              references.every(reference => external.validates(reference)),
+          },
+        },
+        { signal: controller.signal },
+      );
+      terminal = controller.signal.aborted ? 'cancelled' : outcome.status;
+    }
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
-    if (terminal !== 'deadline-exceeded')
-      terminal = controller.signal.aborted ? 'cancelled' : 'probe-error';
+    terminal = controller.signal.aborted ? 'cancelled' : 'probe-error';
   } finally {
-    if (timer) clearTimeout(timer);
     parentSignal.removeEventListener('abort', abort);
   }
   onPhase(terminal);

@@ -158,14 +158,27 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
   let failure;
   let result;
   try {
-    // Command completion precedes this separate ten-second app-receipt window; preparation cannot consume it.
-    while (!existsSync(receiptPath) && Date.now() - launched < 10000) await setTimeout(50);
-    if (!existsSync(receiptPath)) throw new Error('Scoped fixture receipt deadline exceeded');
+    // simctl launch returns the actual host PID. A live owned app may finish slowly;
+    // process exit or ownership loss fails instead of manufacturing a receipt or relaunching.
+    const match = /^com\.orot\.mobile:\s+(\d+)\s*$/m.exec(launchOutput);
+    const pid = Number(match?.[1]);
+    if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid fixture launch PID');
+    while (!existsSync(receiptPath)) {
+      if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
+        throw new Error('Fixture destination stopped before its receipt');
+      try {
+        process.kill(pid, 0);
+      } catch (error) {
+        throw new Error('Scoped fixture process exited before its receipt', { cause: error });
+      }
+      await setTimeout(50);
+    }
     const receipt = verifyIosFixtureReceipt(
       JSON.parse(readFileSync(receiptPath, 'utf8')),
       action,
       token,
     );
+    if (receipt.processIdentifier !== pid) throw new Error('Fixture receipt process mismatch');
     unlinkSync(receiptPath);
     result = {
       ...receipt,

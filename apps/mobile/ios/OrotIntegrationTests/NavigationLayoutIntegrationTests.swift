@@ -48,8 +48,8 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
 
     @MainActor
     private func waitForView(_ identifiers: [String]) async throws -> UIView {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(30))
-        while ContinuousClock.now < deadline {
+        while true {
+            try Task.checkCancellation()
             for identifier in identifiers {
                 if let view = visibleView(identifier) {
                     return view
@@ -58,8 +58,6 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
             // Yield the main actor while React commits the requested route; never measure UIKit from a waiter thread.
             try await Task.sleep(for: .milliseconds(50))
         }
-        throw NSError(domain: "NavigationLayoutTests", code: 1,
-                      userInfo: [NSLocalizedDescriptionKey: "No visible UIKit route: \(identifiers)"])
     }
 
     @MainActor

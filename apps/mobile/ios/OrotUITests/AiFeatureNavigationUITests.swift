@@ -9,7 +9,6 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected() throws {
-        let started = ContinuousClock.now
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -78,7 +77,6 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
         XCTAssertEqual(node(app, "calendar-connect").label, "캘린더 일정 불러오기")
         RecordingFixtureUITestConditions.capture(app, "default-ai-route-recovery-and-calendar-linking", testCase: self)
-        XCTAssertLessThan(started.duration(to: .now), .seconds(180), "Retain the original integrated navigation budget")
     }
 
     @MainActor

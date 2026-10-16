@@ -18,7 +18,7 @@ final class StorageMigrationUITests: OrotFailFastTestCase {
         let finished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             success.exists || failure.exists
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [finished], timeout: 30), .completed, app.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [finished]), .completed, app.debugDescription)
         XCTAssertTrue(success.exists, app.debugDescription)
         app.terminate()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments"]

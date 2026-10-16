@@ -16,28 +16,33 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
         let row = try RecordingFixtureUITestConditions.select(app, testCase: self)
         row.tap()
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail"), timeout: 5))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail")))
         let play = reveal(app, "recording-playback-button")
         play.tap()
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts["녹음 재생 중…"], timeout: 5))
+        XCTAssertTrue(UITestConditions.exists(app.staticTexts["녹음 재생 중…"]))
         progress(app)
         let stop = app.buttons["recording-playback-stop"]
-        XCTAssertTrue(UITestConditions.exists(stop, timeout: 2))
+        XCTAssertTrue(UITestConditions.exists(stop))
         XCTAssertTrue(stop.isHittable)
         stop.tap()
-        absent(stop, timeout: 5)
-        play.tap()
-        progress(app)
-        absent(stop, timeout: 10)
+        terminal(app, expected: "stopped")
+        absent(stop)
+        // The explicit Stop fixture owns its lifetime. Natural completion uses the original one-shot saved file.
+        app.terminate()
+        resume(app)
+        savedRow(app).tap()
+        reveal(app, "recording-playback-button").tap()
+        terminal(app, expected: "completed")
+        absent(node(app, "recording-playback-stop"))
         // Resume never reseeds audio or metadata, so this restart exercises the actual saved file.
         app.terminate()
         RecordingFixtureUITestConditions.launch(app, playback: "resume", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
         let restored = savedRow(app)
         restored.tap()
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail"), timeout: 5))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail")))
         reveal(app, "recording-playback-button").tap()
-        progress(app)
-        absent(node(app, "recording-playback-stop"), timeout: 10)
+        terminal(app, expected: "completed")
+        absent(node(app, "recording-playback-stop"))
         XCTAssertTrue(node(app, "recording-detail-duration").exists)
         app.terminate()
         RecordingFixtureUITestConditions.launch(app, playback: "missing", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
@@ -46,7 +51,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-detail-duration")))
         reveal(app, "recording-playback-button").tap()
         let error = node(app, "recording-playback-error")
-        XCTAssertTrue(UITestConditions.exists(error, timeout: 5))
+        XCTAssertTrue(UITestConditions.exists(error))
         XCTAssertTrue(UITestConditions.text(error).contains("백업"))
         XCTAssertTrue(retained.exists)
         XCTAssertTrue(node(app, "recording-detail-duration").exists)
@@ -65,20 +70,24 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(whole, in: app, scrollID: "recording-controls-scroll")
         whole.tap()
         let error = node(app, "recording-playback-error")
-        XCTAssertTrue(UITestConditions.exists(error, timeout: 10))
+        XCTAssertTrue(UITestConditions.exists(error))
         XCTAssertTrue(UITestConditions.text(error).contains("오디오 기기"))
         let play = reveal(app, "recording-playback-button")
         play.tap()
-        // The recovered two-second source can finish while AX remeasures its
-        // already-visible row. Stop this playback first, then observe progress
-        // in a separate playback without racing both assertions in one second.
-        let stop = app.buttons["recording-playback-stop"]
-        XCTAssertTrue(UITestConditions.exists(stop, timeout: 5))
-        stop.tap()
-        absent(stop, timeout: 5)
-        play.tap()
+        // The recovered real player loops only in the Stop fixture, so observer speed cannot remove the control.
         progress(app)
-        absent(stop, timeout: 10)
+        let stop = app.buttons["recording-playback-stop"]
+        XCTAssertTrue(UITestConditions.exists(stop))
+        XCTAssertTrue(stop.isHittable)
+        stop.tap()
+        terminal(app, expected: "stopped")
+        absent(stop)
+        app.terminate()
+        resume(app)
+        savedRow(app).tap()
+        reveal(app, "recording-playback-button").tap()
+        terminal(app, expected: "completed")
+        absent(node(app, "recording-playback-stop"))
         RecordingFixtureUITestConditions.capture(app, "simulated-output-route-recovered", testCase: self)
     }
 
@@ -101,16 +110,53 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
 
     @MainActor
     private func progress(_ app: XCUIApplication) {
-        // The two-second fixture leaves a short 00:01 interval. Filter the native text snapshot once instead of fetching existence, label and value separately.
-        let observed = app.staticTexts.matching(identifier: "recording-playback-position")
-            .matching(NSPredicate(format: "label == %@", "00:01")).firstMatch
-        XCTAssertTrue(UITestConditions.exists(observed, timeout: 5), app.debugDescription)
+        let receipt = observation(app) {
+            ($0["maximumPositionMs"] as? Double ?? 0) >= 1000 || ["failed", "completed"].contains($0["phase"] as? String ?? "")
+        }
+        // The exact 00:01 rendering assertion remains in RecordingPlaybackControls.test.tsx.
+        // Here a retained real clock observation cannot disappear when the saved clip loops.
+        XCTAssertEqual(receipt["phase"] as? String, "requested")
+        XCTAssertEqual(receipt["nativePlaying"] as? Bool, true)
+        XCTAssertGreaterThanOrEqual(receipt["maximumPositionMs"] as? Double ?? 0, 1000)
     }
 
     @MainActor
-    private func absent(_ element: XCUIElement, timeout: TimeInterval) {
+    private func terminal(_ app: XCUIApplication, expected: String) {
+        let receipt = observation(app) { ["completed", "stopped", "failed"].contains($0["phase"] as? String ?? "") }
+        XCTAssertEqual(receipt["phase"] as? String, expected, String(describing: receipt))
+        XCTAssertEqual(receipt["nativePlaying"] as? Bool, true)
+        guard let range = receipt["range"] as? [String: Any] else { return XCTFail("Missing real player completion") }
+        XCTAssertEqual(range["completion"] as? String, expected)
+        XCTAssertEqual(range["actualStartMs"] as? Int, 0)
+        if expected == "completed" {
+            XCTAssertEqual(range["actualEndMs"] as? Int, range["endMs"] as? Int)
+            XCTAssertGreaterThan(range["actualEndMs"] as? Int ?? 0, 0)
+        }
+    }
+
+    @MainActor
+    private func observation(_ app: XCUIApplication, matching condition: @escaping ([String: Any]) -> Bool) -> [String: Any] {
+        var retained: [String: Any] = [:]
+        let target = node(app, "recording-playback-observation")
+        let observed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let snapshot = try? target.snapshot(), let data = snapshot.label.data(using: .utf8),
+                  let value = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return false }
+            retained = value
+            return condition(value)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [observed]), .completed)
+        return retained
+    }
+
+    @MainActor
+    private func resume(_ app: XCUIApplication) {
+        RecordingFixtureUITestConditions.launch(app, playback: "resume", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"] + AppearanceUITestConditions.observationArguments)
+    }
+
+    @MainActor
+    private func absent(_ element: XCUIElement) {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: timeout), .completed)
+        XCTAssertEqual(UITestConditions.wait(for: [gone]), .completed)
     }
 
     @MainActor

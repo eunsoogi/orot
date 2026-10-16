@@ -15,22 +15,24 @@ final class TestOperationBrokerTests: OrotFailFastTestCase {
         } reject: {
             _, _, _ in XCTFail("Unexpected concurrent command consumer")
         }
-        let result = try await broker.request("synthetic-command", timeout: 1)
+        let result = try await broker.request("synthetic-command")
         XCTAssertEqual(result["completed"] as? Bool, true)
     }
 
-    func testUnconsumedCommandTimesOut() async {
+    func testUnconsumedCommandWaitsForCancellation() async {
+        let task = Task { try await TestOperationBroker().request("unconsumed") }
+        // Cancellation is an explicit failure even without a JavaScript consumer; elapsed time is not a result.
+        task.cancel()
         do {
-            _ = try await TestOperationBroker().request("unconsumed", timeout: 0.02)
-            XCTFail("An unconsumed operation must not report success")
-        } catch TestOperationBroker.Failure.timedOut("unconsumed") {
-            // The operation-specific deadline fails the test rather than silently returning an empty result.
+            _ = try await task.value
+            XCTFail("An unconsumed cancelled operation must not report success")
+        } catch is CancellationError {
         } catch { XCTFail("Unexpected error: \(error)") }
     }
 
     func testCancellationDoesNotWaitForJavascript() async {
         let broker = TestOperationBroker()
-        let task = Task { try await broker.request("cancel-before-consumption", timeout: 1) }
+        let task = Task { try await broker.request("cancel-before-consumption") }
         task.cancel()
         do {
             _ = try await task.value

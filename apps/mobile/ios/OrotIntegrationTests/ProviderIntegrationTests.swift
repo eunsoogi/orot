@@ -13,7 +13,7 @@ final class ProviderIntegrationTests: OrotFailFastTestCase {
 
     private func verify(_ operation: String, assertions: String) async throws {
         // The original probe uses the native Simulator transport fixture. No real account or network access is inferred.
-        let result = try await TestOperationBroker.shared.request(operation, timeout: 240)
+        let result = try await TestOperationBroker.shared.request(operation)
         XCTAssertEqual(result["platform"] as? String, "ios")
         XCTAssertEqual(result["runtime"] as? String, "Hermes")
         XCTAssertEqual(result["synthetic"] as? Bool, true)
