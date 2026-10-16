@@ -157,7 +157,7 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
 
 test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
   const staticTriggers =
-    'on:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+    'on:\n  pull_request:\n    types: [opened, synchronize, reopened]\n  push:\n    branches: [main]\n  workflow_dispatch:';
 
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
@@ -176,7 +176,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   }
   assert.match(
     e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
-    /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
+    /pull_request:\n\s+types: \[opened, synchronize, reopened\]/,
   );
   assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
   // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.

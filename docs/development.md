@@ -125,7 +125,7 @@ Release 56개 관측과 Speech 9개 관측은 위의 독립 기능 작업 11개�
 
 `E2E Test`는 PR 변경과 `main` push에서 전체 검증 graph를 자동으로 실행합니다. 초안 PR도 별도 관리자 승인 없이 Linux 계획 작업을 거쳐 Mac 작업을 시작합니다. 전체·선택 CI는 deployment environment를 사용하지 않습니다. GitHub는 workflow 이름과 check 이름을 함께 표시합니다. `E2E Test / Build / Debug`, `E2E Test / Test / Speech`처럼 역할·짧은 대상으로 통일하고, check 이름에 E2E를 다시 붙이지 않습니다. 기능별 호출을 명시적 독립 작업으로 선언해 matrix 괄호·내부 파라미터·시간 제한 숫자가 이름에 나타나지 않게 합니다. 집중 진단은 `E2E Test - Selected / iOS /` 아래에서 Plan·Build·Test·Validate 단계와 대상을 표시합니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량과 실제 runner 대기는 실행 시 별도로 관측합니다.
 
-전체·선택 entry workflow는 Linux 선택부터 결과 집계까지 같은 저장소 실행 구간을 공유하므로 서로 겹치지 않습니다. 별도 `Cancel superseded CI`가 같은 PR의 이전 전체 head 실행과 생성 시각이 확인되는 이전 ready·draft 상태 실행만 취소합니다. 이 관리 작업에만 Actions 쓰기 권한을 주며, checkout 없이 정적 코드로 정확한 저장소·workflow·PR·최신 head를 다시 확인합니다. 다른 PR·workflow·현재 이벤트의 새 실행·수동 재시도는 제외하고, 신원이나 시간 순서가 모호하면 실행을 보존합니다. 집중 실행 취소는 해당 PR의 별도 그룹으로 한정하며, 실행을 시작할 때도 실제 PR head를 다시 검증합니다.
+전체·선택 entry workflow는 Linux 선택부터 결과 집계까지 같은 저장소 실행 구간을 공유하므로 서로 겹치지 않습니다. 별도 `Cancel superseded CI`가 같은 PR의 이전 전체 head 실행과 재오픈 시각보다 이른 같은 head 실행만 취소합니다. ready·draft 상태 전환은 대체 실행을 만들지 않으므로 진행 중인 전체 검증을 취소하지 않습니다. 이 관리 작업에만 Actions 쓰기 권한을 주며, checkout 없이 정적 코드로 정확한 저장소·workflow·PR·최신 head를 다시 확인합니다. 다른 PR·workflow·현재 이벤트의 새 실행·수동 재시도는 제외하고, 신원이나 시간 순서가 모호하면 실행을 보존합니다. 집중 실행 취소는 해당 PR의 별도 그룹으로 한정하며, 실행을 시작할 때도 실제 PR head를 다시 검증합니다.
 
 Production 빌드는 기본 entry·flags의 앱, 실제 Apple SDK 연결, 기본 Keychain 설정을 검증합니다. OAuth 빌드는 별도 DerivedData에서 Simulator harness와 macOS XCTest bundle을 컴파일하고 정확한 test inventory·내장 fixture·source·run·attempt·toolchain·digest를 함께 전달합니다. OAuth 실행은 이를 검증한 뒤 별도 VM에서 68개 package 테스트를 컴파일 없이 실행합니다. 실행 결과와 두 빌드 의무는 Linux의 Build 상태가 함께 검증합니다. Production과 OAuth는 Debug·Release producer의 선행 조건이 아니며 모두 최종 통과 조건으로 남습니다. 독립 iOS 컴파일이나 테스트 실패가 완료된 생산용 결과를 지우지 않습니다.
 
@@ -140,6 +140,8 @@ cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 �
 ## 초안 PR과 집중 검증
 
 초안 PR도 정적 검사·단위 테스트·전체 iOS 검증을 자동으로 실행합니다. 취소·미실행·실패를 성공으로 처리하지 않으며, 실제 전체 검증이 성공해야 초안의 실행 보류 조건을 해제할 수 있습니다. 최종 검증 전에는 PR을 초안으로 유지합니다. 선택 실행도 전체 필수 상태를 통과시키지 않습니다. 보호 상태의 정확한 이름은 `scripts/release/ci-required-jobs.mjs`에서 관리합니다. iOS 필수 상태는 `Validate /` 아래의 Build·UI·Storage·Provider·Speech·Questions 여섯 개입니다. Build는 생산용·OAuth 의무를, 나머지 다섯 상태는 동일한 전체 검증 결과를 요구합니다. 상태 이름을 바꿀 때는 실제 생성된 이름과 저장소 보호 설정의 22개 필수 검사를 함께 확인합니다.
+
+`Code Quality`·`Policy Check`·`Unit Test`·`E2E Test`는 PR의 `opened`·`synchronize`·`reopened`와 `main` push에서 실행합니다. 같은 커밋의 ready·draft 상태 전환은 이 네 workflow의 새 실행을 시작하지 않으며 진행 중인 전체 검증도 취소하지 않습니다.
 
 현재 후보 브랜치에서 원래 iOS 사례 하나를 선택하려면 정확한 Swift 파일과 XCTest identifier를 지정합니다. PR 번호·저장소·열린 상태·브랜치·현재 head를 검증한 뒤 제품을 준비하고, 그 제품의 무결성을 확인한 consumer만 실행합니다. 최초 도입 시에는 수동 workflow의 [기본 브랜치 등록 요건](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)을 먼저 확인합니다. PR 브랜치에 새 파일이 있다는 사실만으로 수동 진입점이 준비됐다고 판단하지 않습니다.
 

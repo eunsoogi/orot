@@ -1,7 +1,8 @@
 name: E2E Test
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    # Drafts already validate source events; status-only transitions reuse the same head's checks.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 permissions:
@@ -118,7 +119,7 @@ jobs:
       - name: Require full current-head selection
         env:
           COMPLETE: ${{ needs.selection.outputs.complete }}
-          DEFERRED: ${{ needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success' }}
+          DEFERRED: ${{ needs.selection.outputs.run_ios == 'true' && needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success' }}
           DIAGNOSTIC: ${{ needs.selection.outputs.diagnostic }}
         run: test "$COMPLETE" = true && test "$DEFERRED" != true && test "$DIAGNOSTIC" != true
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -141,12 +142,12 @@ jobs:
         if: needs.selection.outputs.run_ios == 'true'
         run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json artifacts/oauth-receipt/products/receipt.json
   required_statuses:
-    # These five domain checks require the same complete current-head validation.
+    # Selected iOS paths require full validation; complete exclusions also pass for drafts.
     name: Validate
     needs: [selection, completeness]
     if: always()
     uses: ./.github/workflows/ios-required-statuses.yml
     with:
       selected: ${{ needs.selection.outputs.run_ios == 'true' }}
-      invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
+      invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.run_ios == 'true' && needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
       execution_result: ${{ needs.completeness.result }}

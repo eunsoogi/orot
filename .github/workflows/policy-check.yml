@@ -3,7 +3,8 @@ name: Policy Check
 on:
   pull_request:
     # Policy checks also gate feature-branch parents used by stacked PRs.
-    types: [opened, synchronize, reopened, ready_for_review]
+    # Drafts validate source events too; status-only transitions must not replace their checks.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   workflow_dispatch:

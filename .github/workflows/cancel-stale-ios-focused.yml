@@ -3,7 +3,8 @@ name: Cancel superseded CI
 on:
   pull_request:
     # A stacked PR's new head also supersedes its previous focused selection.
-    types: [synchronize, reopened, ready_for_review, converted_to_draft]
+    # Draft/ready metadata supplies no replacement run and must preserve active validation.
+    types: [synchronize, reopened]
 
 permissions: {}
 
@@ -30,7 +31,7 @@ jobs:
             const workflowPath = '.github/workflows/e2e-test.yml';
             const validSha = (value) => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
             const validId = (value) => Number.isSafeInteger(value) && value > 0;
-            const allowedActions = ['synchronize', 'reopened', 'ready_for_review', 'converted_to_draft'];
+            const allowedActions = ['synchronize', 'reopened'];
             if (context.eventName !== 'pull_request' || !allowedActions.includes(action) ||
                 repo.owner !== 'eunsoogi' || repo.repo !== 'orot' ||
                 repository?.id !== 1400991370 || repository.full_name !== 'eunsoogi/orot' ||
@@ -43,7 +44,7 @@ jobs:
               return;
             }
             const readCurrent = async () => (await github.rest.pulls.get({...repo, pull_number: eventPr.number})).data;
-            // A delayed manager cannot act for an old head or an older ready/draft transition.
+            // A delayed manager cannot act after the event's head or PR state has changed.
             const currentEvent = (pr) => pr.id === eventPr.id && pr.number === eventPr.number &&
               pr.state === 'open' && pr.head?.sha === eventPr.head.sha &&
               pr.head?.repo?.id === repository.id && pr.base?.repo?.id === repository.id &&
@@ -64,8 +65,8 @@ jobs:
                   run.pull_requests?.length !== 1 || run.pull_requests[0].id !== eventPr.id ||
                   run.pull_requests[0].number !== eventPr.number) return false;
               if (run.head_sha !== eventPr.head.sha) return true;
-              // Same-head state transitions supersede only demonstrably earlier runs; equal/unknown timestamps are ambiguous.
-              if (!['reopened', 'ready_for_review', 'converted_to_draft'].includes(action)) return false;
+              // Reopening starts a replacement run; metadata-only draft/ready changes do not.
+              if (action !== 'reopened') return false;
               const created = Date.parse(run.created_at);
               const changed = Date.parse(eventPr.updated_at);
               return Number.isFinite(created) && Number.isFinite(changed) && created + 1000 <= changed;

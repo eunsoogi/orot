@@ -36,12 +36,12 @@ test('draft mode does not weaken conservative changed-path selection', () => {
 
 test('unapproved drafts, focused and diagnostic runs cannot satisfy the full integration gate', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
+  assert.match(e2e, /types: \[opened, synchronize, reopened\]/);
+  assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
   assert.match(
     e2e,
-    /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/,
+    /outputs\.run_ios == 'true' && needs\.selection\.outputs\.deferred == 'true' && needs\.completeness\.result != 'success'/,
   );
-  assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(e2e, /outputs\.deferred == 'true' && needs\.completeness\.result != 'success'/);
   assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
   assert.doesNotMatch(e2e, /workflow_dispatch:|focused_scenario:/);
   assert.match(
@@ -58,7 +58,7 @@ test('unapproved drafts, focused and diagnostic runs cannot satisfy the full int
   assert.match(status, /if: ['"]!inputs.selected['"]/);
   assert.doesNotMatch(e2e, /detox-e2e-profile|run-detox/);
   for (const path of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml'])
-    assert.match(read('.github/workflows/' + path), /ready_for_review/);
+    assert.match(read('.github/workflows/' + path), /types: \[opened, synchronize, reopened\]/);
 });
 
 test('manual focus uses exact integration selection and retains PR-scoped supersession', () => {

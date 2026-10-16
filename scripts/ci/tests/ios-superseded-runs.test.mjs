@@ -90,6 +90,7 @@ async function inspect({
 }
 
 test('only the static cancellation job receives write permission and it never checks out PR code', () => {
+  assert.deepEqual(manager.on.pull_request.types, ['synchronize', 'reopened']);
   assert.deepEqual(manager.permissions, {});
   assert.deepEqual(job.permissions, { actions: 'write', 'pull-requests': 'read' });
   assert.equal(manager.jobs.cancel_superseded_focus.permissions, undefined);
@@ -109,6 +110,13 @@ test('only the static cancellation job receives write permission and it never ch
 
 test('a verified older head of this workflow and PR is cancelled once', async () => {
   assert.deepEqual(await inspect(), [{ owner: 'eunsoogi', repo: 'orot', run_id: 10 }]);
+});
+
+test('draft and ready metadata preserve active full runs without a replacement source event', async () => {
+  for (const action of ['ready_for_review', 'converted_to_draft']) {
+    for (const head_sha of [head, previous])
+      assert.deepEqual(await inspect({ action, runs: [{ ...candidate, head_sha }] }), []);
+  }
 });
 
 test('other identities, the current head, reruns and completed runs are excluded', async () => {
@@ -136,13 +144,14 @@ test('other identities, the current head, reruns and completed runs are excluded
     );
 });
 
-test('same-head ready or draft transitions require strictly earlier timestamps and a still-current event', async () => {
+test('same-head reopening requires strictly earlier timestamps and a still-current event', async () => {
   const sameHead = { ...candidate, head_sha: head };
-  for (const action of ['reopened', 'ready_for_review', 'converted_to_draft']) {
-    assert.equal((await inspect({ action, runs: [sameHead] })).length, 1);
-    for (const created_at of ['2026-10-15T18:00:00Z', '2026-10-15T18:00:01Z', 'invalid'])
-      assert.deepEqual(await inspect({ action, runs: [{ ...sameHead, created_at }] }), []);
-  }
+  assert.equal((await inspect({ action: 'reopened', runs: [sameHead] })).length, 1);
+  for (const created_at of ['2026-10-15T18:00:00Z', '2026-10-15T18:00:01Z', 'invalid'])
+    assert.deepEqual(
+      await inspect({ action: 'reopened', runs: [{ ...sameHead, created_at }] }),
+      [],
+    );
   for (const stale of [
     { ...pullRequest, head: { ...pullRequest.head, sha: previous } },
     { ...pullRequest, updated_at: '2026-10-15T18:00:01Z' },
