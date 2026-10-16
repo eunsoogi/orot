@@ -3,6 +3,7 @@ import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { AppleFoundationModelsNativeBridge } from '@orot/provider-apple';
 import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
 import { serializeAppleRequest } from '../src/providers/apple/serializeRequest';
+import { modelMockFailureDiagnostics } from './appleModelMockDiagnostics';
 
 export interface MockAppleReply {
   readonly text?: string;
@@ -97,7 +98,15 @@ export async function withMockAppleModel<T>(
       observation.remainingReplies !== 0
     )
       throw new Error(
-        'The model mock script was not consumed exactly once at the native boundary',
+        'The model mock script was not consumed exactly once at the native boundary; diagnostics=' +
+          JSON.stringify(
+            modelMockFailureDiagnostics(
+              script.length,
+              dispatched,
+              observation,
+              result,
+            ),
+          ),
       );
     return {
       ...result,

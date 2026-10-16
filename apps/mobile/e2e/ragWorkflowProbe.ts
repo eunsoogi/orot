@@ -7,10 +7,9 @@ import type { ExternalMedicalPublication } from '../src/externalMedicalEvidence/
 import { createExternalConversationEvidence } from '../src/aiFeatures/integration/externalConversationEvidence';
 import { runRagConversationTurn } from '../src/ragConversation/service';
 import type { RagConversationOutcome } from '../src/ragConversation/service';
+import { RAG_WORKFLOW_PUBLIC_QUERY } from './appleModelMockFixtures';
 
-const approvedQuery = 'sleep duration adults';
-const question =
-  'This is a synthetic general-literature question, with no personal health records. Search Europe PMC using the exact query "sleep duration adults". Summarize what the returned publications say about adult sleep duration, cite their supplied evidence IDs and publication dates, and explain the limits of this search sample. Do not give individual medical advice.';
+const question = `This is a synthetic general-literature question, with no personal health records. Search Europe PMC using the exact query "${RAG_WORKFLOW_PUBLIC_QUERY}". Summarize what the returned publications say about adult sleep duration, cite their supplied evidence IDs and publication dates, and explain the limits of this search sample. Do not give individual medical advice.`;
 
 export interface RagWorkflowProbeResult {
   readonly availability: string;
@@ -115,7 +114,7 @@ export async function runRagWorkflowProbe(
       async authorize(request) {
         // This diagnostic authorizes exactly one public synthetic phrase, never model-expanded queries.
         const decision =
-          request.query === approvedQuery && !request.signal.aborted
+          request.query === RAG_WORKFLOW_PUBLIC_QUERY && !request.signal.aborted
             ? 'authorized'
             : 'denied';
         consent.push({ query: request.query, decision });

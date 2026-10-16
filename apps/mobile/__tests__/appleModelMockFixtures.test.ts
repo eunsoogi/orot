@@ -68,7 +68,7 @@ test('literature fixture requests the allowlisted public query before citing ret
   expect(JSON.parse(script[1](planner).text!)).toEqual({
     toolId: 'europe-pmc-publication-search',
     sourceKind: 'external_medical',
-    input: { query: 'sleep duration adults' },
+    input: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
   });
   const output = JSON.parse(
     script[2](request(['returned-publication-1', 'returned-publication-2']))

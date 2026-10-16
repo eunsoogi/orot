@@ -1,6 +1,11 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { MockAppleStep } from './appleModelMockBridge';
 
+// This success scenario requires abstracts; missing abstracts must still fail shipping coverage checks.
+// Europe PMC documents HAS_ABSTRACT:y in its Web Service Reference Guide.
+export const RAG_WORKFLOW_PUBLIC_QUERY =
+  '(sleep duration adults) AND HAS_ABSTRACT:y';
+
 function requireFormat(request: LanguageModelRequest, name: string) {
   if (request.responseFormat?.name !== name)
     throw new Error(
@@ -124,7 +129,7 @@ export function appleModelMockScript(
           text: JSON.stringify({
             toolId: 'europe-pmc-publication-search',
             sourceKind: 'external_medical',
-            input: { query: 'sleep duration adults' },
+            input: { query: RAG_WORKFLOW_PUBLIC_QUERY },
           }),
         };
       },
