@@ -59,6 +59,13 @@ function environment(source, dependencies = {}) {
 }
 const source = (file) => readFileSync(new URL(file, mobile), 'utf8');
 
+test('controlled source modules reject dependencies that were not supplied', () => {
+  assert.throws(
+    () => environment("import value from './unsupplied'; export { value };"),
+    /Unexpected probe dependency: .\/unsupplied/,
+  );
+});
+
 test('Apple workflow waits beyond the former 90-second probe cap without manufacturing a terminal result', async () => {
   const full = source('e2e/appleWorkflowProbe.ts');
   const match = /async function (\w+)<T>/.exec(full);
@@ -133,12 +140,15 @@ test('Calendar import is not aborted by the former 120-second test-only cap', as
 function ragFixture(availability = 'available') {
   const started = deferred(),
     work = deferred();
-  let signal, forwardedBudget;
+  let signal, forwardedBudget, question;
+  // Evaluate real fixture exports through the same closed dependency boundary as the probe.
+  const fixture = environment(source('e2e/appleModelMockFixtures.ts')).exports;
   // Keep the shipping budget object intact; only the extra test-probe deadline is under test.
   const budget = environment(source('src/ragConversation/budget.ts'), {
     '@orot/agent-runtime': { DEFAULT_MULTI_AGENT_BUDGET: { maxModelCalls: 3 } },
   }).exports.RAG_CONVERSATION_BUDGET;
   const clock = environment(source('e2e/ragWorkflowProbe.ts'), {
+    './appleModelMockFixtures': fixture,
     '../src/ragConversation/budget': { RAG_CONVERSATION_BUDGET: budget },
     '@orot/provider-apple': {
       AppleFoundationModelsProvider: class {
@@ -156,6 +166,7 @@ function ragFixture(availability = 'available') {
     },
     '../src/ragConversation/service': {
       async runRagConversationTurn(input, options) {
+        question = input.question;
         signal = options.signal;
         forwardedBudget = input.workflow.execution.budget;
         signal.addEventListener('abort', () => work.reject(new Error('owner cancelled work')), {
@@ -176,6 +187,8 @@ function ragFixture(availability = 'available') {
     started,
     signal: () => signal,
     budget,
+    fixture,
+    question: () => question,
     forwardedBudget: () => forwardedBudget,
   };
 }
@@ -193,6 +206,8 @@ test('RAG probe preserves the shipping budget and waits beyond its former outer 
     assert.equal(settled, false);
     assert.equal(value.signal().aborted, false);
     assert.equal(value.forwardedBudget(), value.budget);
+    assert.equal(typeof value.fixture.RAG_WORKFLOW_PUBLIC_QUERY, 'string');
+    assert.ok(value.question().includes(`"${value.fixture.RAG_WORKFLOW_PUBLIC_QUERY}"`));
     assert.equal(value.budget.timeoutMs, 90_000);
   } finally {
     value.work.resolve({ status: 'complete' });
