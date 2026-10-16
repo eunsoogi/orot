@@ -8,6 +8,7 @@ import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
 import { startIosSpeechDiagnostics } from './ios-speech-diagnostics.mjs';
+import { authDiagnosticTest, startIosAuthDiagnostics } from './ios-auth-diagnostics.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
 import { statePersistenceTests, statePersistencePhases } from './state-persistence-test-phases.mjs';
@@ -143,6 +144,10 @@ const stopDiagnostics =
   profile === 'speech' && tests.some((test) => test.includes('/SpeechAssetPreparationTests/'))
     ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')
     : async () => {};
+const stopAuthDiagnostics =
+  profile === 'provider-selection' && tests.length === 1 && tests[0] === authDiagnosticTest
+    ? startIosAuthDiagnostics(owner.udid, resolve(results) + '.auth.jsonl')
+    : async () => {};
 const started = Date.now();
 const outcome = spawn(
   'xcodebuild',
@@ -188,6 +193,7 @@ try {
     outcome.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
   await stopDiagnostics();
+  await stopAuthDiagnostics();
   if (status !== 0) {
     const diagnostic = spawnSync(
       'xcrun',
@@ -219,5 +225,6 @@ try {
   process.exitCode = status;
 } finally {
   await stopDiagnostics();
+  await stopAuthDiagnostics();
   stopSampling();
 }

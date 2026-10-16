@@ -9,11 +9,12 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
 
     @MainActor
     func testAuthSessionCancellationRouteExitRetryAndCallbackKeepSelectionExplicit() throws {
-        let app = launch()
+        AuthConsentWaitRegression.verify { XCTAssertTrue($0, $1) }
+        let app = launch(authDiagnostics: true)
         defer { app.terminate() }
         reset(app)
         tap(app, "provider-selection-auth-session-cancel")
-        try continueLocalConsent(app)
+        try ProviderAuthUITestDiagnostics.continueLocalConsent(app, stage: .firstNativeCancellation, testCase: self)
         summary(app, "authSessionCancellation=verified; realAccount=unverified")
         reset(app)
         tap(app, "provider-selection-auth-cancel")
@@ -29,7 +30,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         cleared(app)
         tap(app, "provider-selection-auth-success")
         tap(app, "chatgpt-account-action")
-        try continueLocalConsent(app)
+        try ProviderAuthUITestDiagnostics.continueLocalConsent(app, stage: .secondNativeReturn, testCase: self)
         try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.")
         try message(app, "선택한 계정의 모델 목록 불러오기")
         back(app)
@@ -117,28 +118,16 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch() -> XCUIApplication {
+    private func launch(authDiagnostics: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "provider-selection", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        if authDiagnostics {
+            app.launchArguments.append("-OROT_AUTH_SESSION_DIAGNOSTICS")
+        }
         app.launch()
         XCTAssertTrue(UITestConditions.exists(node(app, "provider-selection-probe-reset"), timeout: 240))
         DebugUITestConditions.dismissWarningToast(app)
         return app
-    }
-
-    @MainActor
-    private func continueLocalConsent(_ app: XCUIApplication) throws {
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let presented = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            app.alerts.firstMatch.exists || springboard.alerts.firstMatch.exists
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [presented], timeout: 120), .completed)
-        let alert = app.alerts.firstMatch.exists ? app.alerts.firstMatch : springboard.alerts.firstMatch
-        let text = alert.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
-        XCTAssertTrue(text.contains("127.0.0.1") || text.contains("localhost"), text)
-        let consent = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Continue", "계속"])).firstMatch
-        XCTAssertTrue(consent.exists && consent.isHittable, alert.debugDescription)
-        consent.tap()
     }
 
     @MainActor
