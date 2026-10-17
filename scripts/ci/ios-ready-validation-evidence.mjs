@@ -7,7 +7,7 @@ import {
   verifyReusableReadySelection,
 } from './ios-ready-validation-evidence-policy.mjs';
 
-// Authenticated Actions adapter and receipt writer for metadata-only PR edits.
+// Authenticated Actions adapter; current-run identity keeps a metadata run from matching itself.
 function reject(message) {
   throw new Error(message);
 }
@@ -18,6 +18,7 @@ function currentEventFromEnvironment() {
     repository: process.env.GITHUB_REPOSITORY,
     event: process.env.GITHUB_EVENT_NAME,
     action: payload.action,
+    currentRunId: process.env.GITHUB_RUN_ID,
     changes: payload.changes,
     metadataOnlyEdit: process.env.OROT_METADATA_ONLY_EDIT === 'true',
     selectionComplete: process.env.OROT_SELECTION_COMPLETE === 'true',

@@ -1,23 +1,15 @@
 import { IOS_TEST_COHORT_NAMES, iosTestExecutionPlan } from './ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from './ios-test-cohorts.mjs';
+import {
+  activeArtifact,
+  completionConclusion,
+  jobConclusion,
+  validateCandidate,
+  validateCurrentEvent,
+} from './ios-ready-validation-evidence-source-policy.mjs';
 
-// Metadata edits may reuse protected results only from a successful Ready run of this exact PR head and base.
-const REQUIRED_SUCCESS_JOBS = [
-  'Plan / Select',
-  'Validate / Build',
-  'Validate / UI',
-  'Validate / Storage',
-  'Validate / Provider',
-  'Validate / Speech',
-  'Validate / Questions',
-];
-const CONDITIONAL_JOBS = ['Plan / Coverage', 'Validate / Complete'];
-// A successful reuse job cannot become a future source run, so evidence never chains through metadata edits.
-const REUSE_JOB = 'Reuse / Ready evidence';
-const SELECTION_PREFIX = 'ios-e2e-selection-';
-const RESULTS_PREFIX = 'ios-e2e-results-';
+// Validate downloaded selection and result reports after source discovery binds the run to this PR edit.
 const SHA = /^[a-f0-9]{40}$/;
-const RUN_ID = /^[1-9]\d*$/;
 
 function reject(message) {
   throw new Error(message);
@@ -27,122 +19,7 @@ function exactArray(actual, expected) {
   return Array.isArray(actual) && JSON.stringify(actual) === JSON.stringify(expected);
 }
 
-function validateCurrentEvent(current) {
-  const pr = current?.pullRequest;
-  const keys =
-    current?.changes && typeof current.changes === 'object' ? Object.keys(current.changes) : [];
-  if (
-    current?.event !== 'pull_request' ||
-    current?.action !== 'edited' ||
-    current?.metadataOnlyEdit !== true ||
-    current?.selectionComplete !== true ||
-    pr?.draft !== false ||
-    !Number.isSafeInteger(pr?.number) ||
-    pr.number < 1 ||
-    !SHA.test(pr?.baseSha ?? '') ||
-    !SHA.test(pr?.headSha ?? '') ||
-    !pr.baseRef ||
-    !pr.headRef ||
-    keys.length === 0 ||
-    keys.some((key) => !['body', 'title'].includes(key))
-  )
-    reject('Reusable validation is available only for a complete non-draft body or title edit');
-  if (!/^[^/]+\/[^/]+$/.test(current.repository ?? ''))
-    reject('Reusable validation requires the current repository identity');
-}
-
-function jobConclusion(jobs, name) {
-  const matches = jobs.filter((job) => job.name === name);
-  return matches.length === 1 && matches[0].status === 'completed'
-    ? matches[0].conclusion
-    : undefined;
-}
-
-function matchingPullRequest(run, current) {
-  return run.pull_requests?.some(
-    (pr) =>
-      pr.number === current.pullRequest.number &&
-      pr.base?.ref === current.pullRequest.baseRef &&
-      pr.base?.sha === current.pullRequest.baseSha &&
-      pr.head?.ref === current.pullRequest.headRef &&
-      pr.head?.sha === current.pullRequest.headSha,
-  );
-}
-
-function expectedArtifactNames(run) {
-  return {
-    selection: `${SELECTION_PREFIX}${run.id}-${run.run_attempt}`,
-    results: `${RESULTS_PREFIX}${run.id}-${run.run_attempt}`,
-  };
-}
-
-function activeArtifact(artifacts, name) {
-  return artifacts.some((artifact) => artifact.name === name && artifact.expired === false);
-}
-
-function eligibleRunContext(run, current) {
-  if (
-    !RUN_ID.test(String(run.id)) ||
-    !Number.isSafeInteger(run.run_attempt) ||
-    run.run_attempt < 1 ||
-    run.status !== 'completed' ||
-    run.conclusion !== 'success' ||
-    run.event !== 'pull_request' ||
-    run.path !== '.github/workflows/e2e-test.yml' ||
-    run.head_sha !== current.pullRequest.headSha ||
-    run.head_branch !== current.pullRequest.headRef ||
-    !matchingPullRequest(run, current)
-  )
-    return false;
-  return true;
-}
-
-function eligibleJobs(jobs) {
-  if (REQUIRED_SUCCESS_JOBS.some((name) => jobConclusion(jobs, name) !== 'success')) return false;
-  if (CONDITIONAL_JOBS.some((name) => !['success', 'skipped'].includes(jobConclusion(jobs, name))))
-    return false;
-  return jobConclusion(jobs, REUSE_JOB) === 'skipped';
-}
-
-function eligibleRun(run, jobs, artifacts, current) {
-  if (!eligibleRunContext(run, current) || !eligibleJobs(jobs)) return false;
-  const names = expectedArtifactNames(run);
-  return (
-    activeArtifact(artifacts, names.selection) &&
-    (jobConclusion(jobs, 'Validate / Complete') !== 'success' ||
-      activeArtifact(artifacts, names.results))
-  );
-}
-
-// Injected API calls keep discovery policy testable while production reads authenticated Actions data.
-export async function discoverReadyValidationCandidate(api, current) {
-  validateCurrentEvent(current);
-  const runs = await api.listRuns(current);
-  const ordered = [...runs].sort(
-    (a, b) => Date.parse(b.created_at ?? 0) - Date.parse(a.created_at ?? 0),
-  );
-  for (const run of ordered) {
-    if (!eligibleRunContext(run, current)) continue;
-    const jobs = await api.listJobs(run);
-    if (!eligibleJobs(jobs)) continue;
-    const artifacts = await api.listArtifacts(run);
-    if (eligibleRun(run, jobs, artifacts, current))
-      return { run, jobs, artifacts: artifacts.map(({ name, expired }) => ({ name, expired })) };
-  }
-  reject('No successful Ready validation exists for this exact PR head and base');
-}
-
-function validateCandidate(candidate, current) {
-  const { run, jobs, artifacts } = candidate ?? {};
-  if (
-    !run ||
-    !Array.isArray(jobs) ||
-    !Array.isArray(artifacts) ||
-    !eligibleRun(run, jobs, artifacts, current)
-  )
-    reject('Reusable source run is missing or no longer satisfies the ready-validation policy');
-  return expectedArtifactNames(run);
-}
+export { discoverReadyValidationCandidate } from './ios-ready-validation-evidence-source-policy.mjs';
 
 function validateCohorts(selected, notSelected) {
   if (!Array.isArray(selected) || new Set(selected).size !== selected.length)
@@ -185,7 +62,7 @@ function validateSelectionReport(selection, candidate, current) {
   );
   const selected = selection.selectedCohorts;
   const plan = jobConclusion(candidate.jobs, 'Plan / Coverage');
-  const complete = jobConclusion(candidate.jobs, 'Validate / Complete');
+  const complete = completionConclusion(candidate.jobs);
   if (selected.length > 0) {
     if (
       plan !== 'success' ||

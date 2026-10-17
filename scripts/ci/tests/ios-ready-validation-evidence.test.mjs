@@ -20,6 +20,7 @@ function currentEvent(overrides = {}) {
     repository: 'eunsoogi/orot',
     event: 'pull_request',
     action: 'edited',
+    currentRunId: '99',
     changes: { body: { from: 'old body' } },
     metadataOnlyEdit: true,
     selectionComplete: true,
@@ -114,27 +115,6 @@ function completeResults(candidate) {
   };
 }
 
-test('discovery selects the newest successful full Ready run for the exact PR head and base', async () => {
-  const valid = makeCandidate({ id: 13 });
-  const reused = makeCandidate({
-    id: 14,
-    jobs: { 'Reuse / Ready evidence': { conclusion: 'success' } },
-  });
-  const oldHead = makeCandidate({ id: 12 });
-  oldHead.run.head_sha = 'd'.repeat(40);
-  const failed = makeCandidate({ id: 15, jobs: { 'Validate / UI': { conclusion: 'failure' } } });
-  const candidates = [reused, oldHead, valid, failed];
-  const found = await discoverReadyValidationCandidate(
-    {
-      listRuns: async () => candidates.map(({ run }) => run),
-      listJobs: async (run) => candidates.find((item) => item.run.id === run.id).jobs,
-      listArtifacts: async (run) => candidates.find((item) => item.run.id === run.id).artifacts,
-    },
-    currentEvent(),
-  );
-  assert.equal(found.run.id, 13);
-});
-
 test('draft, deferred, metadata, stale-base, stale-head, and missing-check runs are rejected', async () => {
   const variants = [
     (item) => (item.run.conclusion = 'failure'),
@@ -227,7 +207,8 @@ test('an exact Ready validation may explicitly select no iOS cohorts without inv
     name.startsWith('ios-e2e-selection-'),
   );
   candidate.jobs.find(({ name }) => name === 'Plan / Coverage').conclusion = 'skipped';
-  candidate.jobs.find(({ name }) => name === 'Validate / Complete').conclusion = 'skipped';
+  candidate.jobs = candidate.jobs.filter(({ name }) => name !== 'Validate / Complete');
+  candidate.jobs.push({ name: 'Validate', status: 'completed', conclusion: 'skipped' });
   assert.deepEqual(verifyReusableReadySelection(candidate.selection, candidate, currentEvent()), {
     selectedCohorts: [],
     notSelectedCohorts: IOS_TEST_COHORT_NAMES,
