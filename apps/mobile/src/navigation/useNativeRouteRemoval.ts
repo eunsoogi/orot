@@ -6,6 +6,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NavigationRoute } from './navigationController';
 import type { NativeRouteParamList } from './nativeRouteRegistry';
+import { observeNavigationTest } from './navigationTestObservation';
 
 interface UseNativeRouteRemovalOptions<Name extends string> {
   readonly navigationRef: NavigationContainerRefWithCurrent<NativeRouteParamList>;
@@ -94,6 +95,12 @@ export function useNativeRouteRemoval<Name extends string>({
   const markNativeTransitionComplete = useCallback(
     (routeKey: string, closing: boolean) => {
       const nativeKeys = readNativeRouteKeys();
+      observeNavigationTest('removal-transition', {
+        routeKey,
+        closing,
+        nativeKeys,
+        logicalKeys: latestRouteKeys.current,
+      });
       const previousNativeKeys = observedNativeRouteKeys.current;
       const removedNativeKeys =
         previousNativeKeys?.filter(key => key && !nativeKeys?.includes(key)) ??

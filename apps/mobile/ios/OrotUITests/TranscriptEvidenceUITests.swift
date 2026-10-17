@@ -1,0 +1,130 @@
+import XCTest
+
+final class TranscriptEvidenceUITests: OrotFailFastTestCase {
+    @MainActor private var ownedSource: String?
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+    }
+
+    @MainActor
+    func testNativeReviewHistoryPlaybackAndDeleteConfirmation() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "transcript-evidence"]
+        addTeardownBlock { @MainActor in
+            guard let source = self.ownedSource else { return }
+            app.terminate()
+            app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "transcript-evidence", "-OROT_TEST_TRANSCRIPT_CLEANUP_ID", source]
+            app.launch()
+            UITestConditions.value(UITestConditions.element(app, "transcript-evidence-setup-status"), equals: "cleaned")
+            app.terminate()
+        }
+        app.launch()
+        defer { app.terminate() }
+        value(app, "transcript-evidence-setup-status", "ready")
+        let source = UITestConditions.text(element(app, "transcript-evidence-source-id"))
+        ownedSource = source
+        XCTAssertNotNil(UUID(uuidString: source))
+        tap(app, "recording-details-\(source)")
+        tap(app, "transcript-create")
+        let original = text(app, "transcript-text-0")
+        XCTAssertFalse(original.isEmpty)
+        XCTAssertEqual(text(app, "transcript-review-0"), "검토 전 초안")
+        XCTAssertFalse(element(app, "transcript-engine-0").exists)
+        XCTAssertFalse(element(app, "transcript-runtime-0").exists)
+        XCTAssertEqual(text(app, "transcript-range-0"), "00:00.250–00:01.801")
+        tap(app, "transcript-play-0")
+        let playback = element(app, "transcript-evidence-playback-result")
+        XCTAssertTrue(playback.waitForAppearance())
+        let data = try XCTUnwrap(UITestConditions.text(playback).data(using: .utf8))
+        let report = try JSONDecoder().decode(TranscriptPlaybackReport.self, from: data)
+        XCTAssertEqual(report.startMs, 250)
+        XCTAssertEqual(report.endMs, 1801)
+        XCTAssertLessThanOrEqual(abs(report.actualStartMs - 250), 50)
+        XCTAssertEqual(report.completion, "completed")
+        XCTAssertEqual(report.actualEndMs, 1801)
+
+        tap(app, "transcript-edit-0")
+        let input = element(app, "transcript-input-0")
+        let correction = "사용자가 확인한 전사 수정"
+        // Exercise the actual native selection/paste editor and exact value readback, including wrapped menu commands.
+        FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")
+        tap(app, "transcript-save-0")
+        value(app, "transcript-evidence-correction-status", "saved")
+        XCTAssertEqual(text(app, "transcript-text-0"), correction)
+        let history = text(app, "transcript-history-0-1", upward: true)
+        XCTAssertTrue(history.contains("이전 버전 1:"))
+        XCTAssertTrue(history.contains(original))
+        XCTAssertEqual(text(app, "transcript-review-0", upward: true), "수정됨 · 다시 확인 필요")
+        XCTAssertTrue(text(app, "transcript-stale-artifacts", upward: true).contains("1개"))
+        // Full memory/vector invalidation and new-process readback belong to RecordingPersistenceIntegrationTests.
+        tap(app, "recording-detail-delete", upward: true)
+        let confirmation = app.alerts["녹음을 삭제할까요?"]
+        XCTAssertTrue(confirmation.waitForAppearance())
+        confirmation.buttons["취소"].tap()
+        XCTAssertTrue(element(app, "recording-library-item-\(source)").exists)
+        tap(app, "recording-detail-delete", upward: true)
+        XCTAssertTrue(confirmation.waitForAppearance())
+        confirmation.buttons["삭제"].tap()
+        let absent = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element(app, "recording-library-item-\(source)"))
+        XCTAssertEqual(UITestConditions.wait(for: [absent]), .completed)
+        ownedSource = nil
+    }
+
+    @MainActor
+    private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        UITestConditions.element(app, id)
+    }
+
+    @MainActor
+    private func reveal(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> XCUIElement {
+        let target = element(app, id)
+        let scroll = element(app, "recording-controls-scroll")
+        for _ in 0 ..< 12 {
+            if unobscured(app, target) {
+                return target
+            }
+            // Stay inside the production screen's bounded scroll viewport, above the keyboard.
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.15 : 0.35))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.35 : 0.15))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTAssertTrue(unobscured(app, target), app.debugDescription)
+        return target
+    }
+
+    @MainActor
+    private func unobscured(_ app: XCUIApplication, _ target: XCUIElement) -> Bool {
+        guard target.exists, target.isHittable else { return false }
+        let frame = target.frame
+        let keyboard = app.keyboards.firstMatch
+        let bottom = keyboard.exists ? min(app.frame.maxY, keyboard.frame.minY) : app.frame.maxY
+        // AX reported the covered save button hittable while the failure video showed it below the keyboard.
+        return !frame.isEmpty && frame.minY >= app.frame.minY && frame.maxY <= bottom
+    }
+
+    @MainActor
+    private func tap(_ app: XCUIApplication, _ id: String, upward: Bool = false) {
+        reveal(app, id, upward: upward).tap()
+    }
+
+    @MainActor
+    private func text(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> String {
+        UITestConditions.text(reveal(app, id, upward: upward))
+    }
+
+    @MainActor
+    private func value(_ app: XCUIApplication, _ id: String, _ expected: String) {
+        UITestConditions.value(element(app, id), equals: expected)
+    }
+}
+
+/// Decode numeric playback evidence strictly while retaining the native string completion reason.
+/// Missing or nonnumeric clocks must fail rather than disappearing in a heterogeneous dictionary cast.
+struct TranscriptPlaybackReport: Decodable {
+    let startMs: Double
+    let endMs: Double
+    let actualStartMs: Double
+    let actualEndMs: Double
+    let completion: String
+}

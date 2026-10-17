@@ -30,25 +30,38 @@ function getProbeMode(): AgentMemoryProbeMode | null {
 
 function AgentMemoryProbe() {
   const mode = getProbeMode();
+  const settingsManager = NativeModules.SettingsManager;
+  const fixtureIdentifier =
+    settingsManager?.settings?.OROT_TEST_MEMORY_FIXTURE ??
+    settingsManager?.getConstants?.().settings?.OROT_TEST_MEMORY_FIXTURE;
   const [status, setStatus] = useState<'running' | 'success' | 'failure'>(
     'running',
   );
+  const [failureDetail, setFailureDetail] = useState('');
 
   useEffect(() => {
     if (!mode) {
       setStatus('failure');
       return;
     }
-    runAgentMemoryProbe(mode).then(
+    runAgentMemoryProbe(
+      mode,
+      typeof fixtureIdentifier === 'string' ? fixtureIdentifier : undefined,
+    ).then(
       () => setStatus('success'),
-      () => {
-        console.error('Agent memory probe failed.');
+      error => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Agent memory probe failed:', message);
+        setFailureDetail(message);
         setStatus('failure');
       },
     );
-  }, [mode]);
+  }, [mode, fixtureIdentifier]);
 
-  const label = 'Agent memory probe ' + status;
+  const label =
+    'Agent memory probe ' +
+    status +
+    (failureDetail ? ': ' + failureDetail : '');
   return (
     <View style={styles.container}>
       <Text

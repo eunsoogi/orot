@@ -108,6 +108,9 @@ public extension RecordingModule {
         reject: @escaping RCTPromiseRejectBlock,
     ) {
         DispatchQueue.main.async {
+            #if OROT_TESTS
+                TestLifecycleObservation.record("export-presentation-enqueued", fields: ["syntheticCancellation": simulateCancellationAfterPresentation])
+            #endif
             guard let presenter = Self.activePresenter() else {
                 guard self.finishExport(operation, reject: reject) else { return }
                 reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet is unavailable.", nil)
@@ -119,6 +122,9 @@ public extension RecordingModule {
             )
             // UIKit distinguishes a user cancel from an activity failure; always remove the temporary copy after dismissal.
             let completeExport: (Bool, Error?) -> Void = { completed, error in
+                #if OROT_TESTS
+                    TestLifecycleObservation.record("export-completion", fields: ["completed": completed, "hasError": error != nil])
+                #endif
                 guard self.finishExport(operation, reject: reject) else { return }
                 if let error {
                     reject("RECORDING_EXPORT_FAILED", "The selected export activity failed.", error as NSError)
@@ -139,17 +145,32 @@ public extension RecordingModule {
                     height: 1,
                 )
             }
+            #if OROT_TESTS
+                TestLifecycleObservation.record("export-present-called")
+            #endif
             presenter.present(activity, animated: true) {
+                #if OROT_TESTS
+                    TestLifecycleObservation.record("export-presentation-completion", fields: ["presenterMatches": activity.presentingViewController === presenter])
+                #endif
                 guard activity.presentingViewController === presenter else {
                     guard self.finishExport(operation, reject: reject) else { return }
                     reject("RECORDING_EXPORT_UNAVAILABLE", "The iOS share sheet could not be presented.", nil)
                     return
                 }
                 if simulateCancellationAfterPresentation {
+                    #if OROT_TESTS
+                        TestLifecycleObservation.record("export-synthetic-cancel-scheduled")
+                    #endif
                     DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)) {
+                        #if OROT_TESTS
+                            TestLifecycleObservation.record("export-synthetic-cancel-executed")
+                        #endif
                         // Programmatic dismissal is synthetic, so pass its cancelled result through the app's cleanup and bridge path explicitly.
                         activity.completionWithItemsHandler = nil
                         activity.dismiss(animated: true) {
+                            #if OROT_TESTS
+                                TestLifecycleObservation.record("export-synthetic-dismiss-completion")
+                            #endif
                             completeExport(false, nil)
                         }
                     }
@@ -182,58 +203,4 @@ public extension RecordingModule {
         }
         return presenter
     }
-
-    #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
-        @objc(prepareSyntheticExportResidue:rejecter:)
-        func prepareSyntheticExportResidue(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter reject: @escaping RCTPromiseRejectBlock,
-        ) {
-            workQueue.async {
-                do {
-                    try RecordingExportFiles.prepareSyntheticResidue()
-                    resolve(RecordingExportFiles.residueCount())
-                } catch {
-                    reject("RECORDING_EXPORT_PROBE_FAILED", "Synthetic export residue could not be prepared.", error as NSError)
-                }
-            }
-        }
-
-        @objc(getSyntheticExportResidueCount:rejecter:)
-        func getSyntheticExportResidueCount(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter _: @escaping RCTPromiseRejectBlock,
-        ) {
-            workQueue.async { resolve(RecordingExportFiles.residueCount()) }
-        }
-
-        /// Checks fixture source bytes without returning a path or file contents to the probe.
-        @objc(isSyntheticTranscriptionFixtureUnchanged:resolver:rejecter:)
-        func isSyntheticTranscriptionFixtureUnchanged(
-            _ recordingID: String,
-            resolver resolve: @escaping RCTPromiseResolveBlock,
-            rejecter reject: @escaping RCTPromiseRejectBlock,
-        ) {
-            workQueue.async {
-                do {
-                    let unchanged = try RecordingFileSecurity.isSyntheticTranscriptionFixtureUnchanged(id: recordingID)
-                    resolve(unchanged)
-                } catch {
-                    // The probe reports only a fixed failure code; native paths and file contents stay private.
-                    reject("RECORDING_EXPORT_PROBE_FAILED", "The synthetic source could not be checked.", nil)
-                }
-            }
-        }
-
-        @objc(armSyntheticExportCancellation:rejecter:)
-        func armSyntheticExportCancellation(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter _: @escaping RCTPromiseRejectBlock,
-        ) {
-            workQueue.async {
-                RecordingExportFiles.armCancellation()
-                resolve(true)
-            }
-        }
-    #endif
 }

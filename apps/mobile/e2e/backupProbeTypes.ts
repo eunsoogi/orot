@@ -15,7 +15,7 @@ export type PreparationErrorCode =
   | 'protection-not-applied'
   | 'backup-eligibility-not-applied'
   | 'recording-preparation-failed'
-  | 'other-native-error';
+  | 'other-backup-error';
 
 export interface RecordingProbeState {
   readonly fileProtection: ProbeFileProtection;
@@ -30,7 +30,7 @@ export interface LegacyRecordingProbeState extends RecordingProbeState {
   readonly preparationReady: boolean;
 }
 
-export interface NativeBackupProbeModule {
+export interface BackupProbeModule {
   armPostUpdateReadbackFailureForProbe(): Promise<boolean>;
   postUpdateReadbackFailureWasTriggeredForProbe(): Promise<boolean>;
   prepareLegacyRecordingForBackupProbe(

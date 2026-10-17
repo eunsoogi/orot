@@ -27,6 +27,9 @@ export interface RecordingPlaybackRange {
   readonly startMs: number;
   readonly endMs: number;
   readonly actualStartMs: number;
+  /** Native terminal reason and player clock, captured before the player is released. */
+  readonly completion?: 'completed' | 'stopped';
+  readonly actualEndMs?: number;
 }
 
 /** Current native player state; positions and durations are milliseconds. */

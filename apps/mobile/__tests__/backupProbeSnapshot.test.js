@@ -17,8 +17,8 @@ jest.mock('../src/storage/secureDatabase', () => ({
 jest.mock('../e2e/backupProbeConfig', () => ({
   getBackupProbeRecordingId: jest.fn(),
 }));
-jest.mock('../e2e/backupProbeNative', () => ({
-  requireNativeBackupProbe: jest.fn(),
+jest.mock('../e2e/backupProbeBridge', () => ({
+  requireBackupProbeBridge: jest.fn(),
 }));
 jest.mock('../e2e/backupProbePreparation', () => ({
   verifyRecordingProbeState: jest.fn(),

@@ -1,5 +1,6 @@
-import type { RecordMap, RecordKind } from '@orot/storage';
+import type { RecordKind } from '@orot/storage';
 import { buildPersistedEvidenceChunks } from '@orot/rag';
+import { createStorageProbeFixtures } from './storageProbeFixtures';
 import {
   getCipherVersion,
   hasDatabaseKey,
@@ -10,126 +11,17 @@ import {
 
 export type StorageProbeMode = 'fresh' | 'restart' | 'legacy';
 
-const sampleRecord = {
-  id: 'storage-e2e-record',
-  effectiveAt: '2026-01-01T00:00:00Z',
-  recordedAt: '2026-01-01T00:00:00Z',
-  ingestedAt: '2026-01-01T00:00:00Z',
-  provenance: { origin: 'user_reported', sourceRecordIds: [] },
-  reviewState: { status: 'unreviewed' },
-  sourceKind: 'user_note',
-  title: 'Synthetic storage probe',
-  contentHash: 'sha256:' + 'c'.repeat(64),
-} satisfies RecordMap['source_record'];
-
-const sampleEvidenceSpan = {
-  id: 'storage-e2e-evidence',
-  effectiveAt: '2026-01-01T00:00:00Z',
-  recordedAt: '2026-01-01T00:00:00Z',
-  ingestedAt: '2026-01-01T00:00:00Z',
-  provenance: { origin: 'imported', sourceRecordIds: [sampleRecord.id] },
-  reviewState: { status: 'unreviewed' },
-  sourceRecordId: sampleRecord.id,
-  text: 'Synthetic storage evidence excerpt.',
-  locator: { kind: 'text_range', startOffset: 0, endOffset: 35 },
-} satisfies RecordMap['evidence_span'];
-
-// These synthetic records exercise local SQLite chunking without reading external health data.
-const ragBaseTime = '2026-01-02T08:00:00.000Z';
-type SyntheticOrigin = RecordMap['source_record']['provenance']['origin'];
-
-// Shared timestamps keep the synthetic repository records internally consistent.
-function syntheticMetadata(
-  id: string,
-  origin: SyntheticOrigin,
-  ...sourceIds: string[]
-) {
-  return {
-    id,
-    effectiveAt: ragBaseTime,
-    recordedAt: ragBaseTime,
-    ingestedAt: ragBaseTime,
-    provenance: { origin, sourceRecordIds: sourceIds },
-    reviewState: { status: 'unreviewed' as const },
-  };
-}
-
-const ragMedicationText = 'Metformin 500 mg once daily after breakfast.';
-const ragMedicationSpan = {
-  ...syntheticMetadata(
-    'rag-e2e-medication-span',
-    'user_reported',
-    sampleRecord.id,
-  ),
-  sourceRecordId: sampleRecord.id,
-  text: ragMedicationText,
-  locator: {
-    kind: 'text_range',
-    startOffset: 0,
-    endOffset: ragMedicationText.length,
-  },
-} satisfies RecordMap['evidence_span'];
-
-const ragAudioSourceRecord = {
-  ...syntheticMetadata('rag-e2e-recording-source', 'user_reported'),
-  sourceKind: 'audio_recording',
-  title: 'Synthetic RAG transcript recording',
-  contentHash: 'sha256:' + 'e'.repeat(64),
-} satisfies RecordMap['source_record'];
-
-const ragTranscript = {
-  ...syntheticMetadata(
-    'rag-e2e-transcript:segment:0:r1',
-    'derived',
-    ragAudioSourceRecord.id,
-  ),
-  transcriptId: 'rag-e2e-transcript:segment:0',
-  recordingSourceId: ragAudioSourceRecord.id,
-  segmentOrdinal: 0,
-  revision: 1,
-  text: 'Metformin 250 mg before breakfast.',
-  language: 'en-US',
-  recordingDurationMs: 5000,
-  audioRange: { startMs: 250, endMs: 1800 },
-  effectiveAt: '2026-01-02T08:00:00.250Z',
-  recordedAt: '2026-01-02T08:01:00.000Z',
-  ingestedAt: '2026-01-02T08:01:00.000Z',
-  provenance: {
-    origin: 'derived',
-    sourceRecordIds: [ragAudioSourceRecord.id],
-    source: {
-      system: 'Synthetic RAG probe',
-      sourceIdentifier: 'fixture-transcriber',
-      sourceVersion: '1',
-    },
-  },
-} satisfies RecordMap['transcript_segment'];
-
-const staleTranscriptSpan = {
-  ...syntheticMetadata(
-    'rag-e2e-stale-transcript-span',
-    'derived',
-    ragAudioSourceRecord.id,
-    ragTranscript.id,
-  ),
-  effectiveAt: ragTranscript.effectiveAt,
-  recordedAt: ragTranscript.recordedAt,
-  ingestedAt: ragTranscript.ingestedAt,
-  sourceRecordId: ragAudioSourceRecord.id,
-  text: ragTranscript.text,
-  locator: { kind: 'audio_time_range', startMs: 250, endMs: 1800 },
-} satisfies RecordMap['evidence_span'];
-
-const ragObservation = {
-  ...syntheticMetadata('rag-e2e-observation', 'imported', sampleRecord.id),
-  observationKind: 'measurement',
-  concept: 'weight',
-  value: { kind: 'quantity', amount: 70.5, unit: 'kg' },
-} satisfies RecordMap['health_observation'];
-
 async function seedRagProbe(
   repository: Awaited<ReturnType<typeof openLocalStorage>>,
+  fixtures: ReturnType<typeof createStorageProbeFixtures>,
 ) {
+  const {
+    ragMedicationSpan,
+    ragAudioSourceRecord,
+    ragTranscript,
+    staleTranscriptSpan,
+    ragObservation,
+  } = fixtures;
   await repository.sourceRecords.create(ragAudioSourceRecord);
   await repository.evidenceSpans.create(ragMedicationSpan);
   await repository.transcripts.append([ragTranscript]);
@@ -144,7 +36,14 @@ async function seedRagProbe(
 
 async function verifyRagProbe(
   repository: Awaited<ReturnType<typeof openLocalStorage>>,
+  fixtures: ReturnType<typeof createStorageProbeFixtures>,
 ) {
+  const {
+    ragMedicationSpan,
+    ragTranscript,
+    staleTranscriptSpan,
+    ragObservation,
+  } = fixtures;
   const chunks = await buildPersistedEvidenceChunks(repository);
   const currentTranscript = chunks.find(
     chunk =>
@@ -170,7 +69,7 @@ async function verifyRagProbe(
     currentTranscript.metadata.reviewState.status !== 'needs_review' ||
     currentTranscript.metadata.effectiveTime !== ragTranscript.effectiveAt ||
     currentTranscript.metadata.evidenceLocator.kind !== 'audio_time_range' ||
-    medication?.text !== ragMedicationText ||
+    medication?.text !== ragMedicationSpan.text ||
     observation?.metadata.recordType !== 'health_observation' ||
     !observation.text.includes('"amount":70.5') ||
     !observation.text.includes('"unit":"kg"') ||
@@ -190,7 +89,12 @@ async function verifyRagProbe(
   }
 }
 
-export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
+export async function runStorageProbe(
+  mode: StorageProbeMode,
+  fixtureIdentifier?: string,
+): Promise<void> {
+  const fixtures = createStorageProbeFixtures(fixtureIdentifier);
+  const { sampleRecord, sampleEvidenceSpan } = fixtures;
   if (mode === 'legacy') await prepareLegacyStorageForE2e(sampleRecord);
   const repository = await openLocalStorage();
   const cipherVersion = await getCipherVersion();
@@ -215,8 +119,8 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
       );
     }
     await repository.evidenceSpans.create(sampleEvidenceSpan);
-    await seedRagProbe(repository);
-    await verifyRagProbe(repository);
+    await seedRagProbe(repository, fixtures);
+    await verifyRagProbe(repository, fixtures);
     return;
   }
   const stored =
@@ -239,6 +143,6 @@ export async function runStorageProbe(mode: StorageProbeMode): Promise<void> {
     ) {
       throw new Error('The synthetic evidence span was not preserved.');
     }
-    await verifyRagProbe(repository);
+    await verifyRagProbe(repository, fixtures);
   }
 }

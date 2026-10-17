@@ -36,7 +36,7 @@ test('pull requests compare their merge base with the head commit', () => {
   assert.equal(comparison.complete, true);
   assert.equal(selection.policy_tests, true);
   assert.equal(selection.ios_build, false);
-  assert.equal(selection.detox_release, false);
+  assert.equal(selection.ios_tests, false);
 });
 
 test('main pushes compare the event before and after commits', () => {
@@ -51,7 +51,7 @@ test('main pushes compare the event before and after commits', () => {
   assert.equal(comparison.complete, true);
   assert.equal(selection.ios_build, true);
   assert.equal(selection.unit_tests, true);
-  assert.equal(selection.detox_release, true);
+  assert.equal(selection.ios_tests, true);
 });
 
 test('deletions and both sides of renames remain in the changed path set', () => {
@@ -67,8 +67,7 @@ test('deletions and both sides of renames remain in the changed path set', () =>
   ]);
   assert.equal(selection.policy_tests, true);
   assert.equal(selection.typescript, true);
-  assert.equal(selection.detox_next_visit, true);
-  assert.equal(selection.detox_transcription, false);
+  assert.equal(selection.ios_tests, true);
   assert.equal(selection.ios_build, false);
 });
 
@@ -77,12 +76,11 @@ test('docs and AGENTS changes keep policy checks while skipping app builds and E
     const selection = selectChecksForPaths([path]);
     assert.equal(selection.policy_tests, true, path);
     assert.equal(selection.ios_build, false, path);
-    assert.equal(selection.detox_release, false, path);
     assert.equal(selection.unit_tests, false, path);
   }
 });
 
-test('non-app images are ignored while mobile bundle images validate native outputs', () => {
+test('non-app images are ignored while mobile bundle images validate integration outputs', () => {
   const documentationImage = selectChecksForPaths(['docs/architecture.png']);
   const appImage = selectChecksForPaths(['apps/mobile/ios/OrotMobile/Images.xcassets/icon.png']);
 
@@ -91,49 +89,45 @@ test('non-app images are ignored while mobile bundle images validate native outp
     false,
   );
   assert.equal(appImage.ios_build, true);
-  assert.equal(appImage.detox_release, true);
+  assert.equal(appImage.ios_tests, true);
 });
 
-test('an E2E fixture image selects the profile that consumes its scenario assets', () => {
+test('an E2E fixture image selects the full iOS gate', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.fixture.png']);
 
-  assert.equal(selection.detox_next_visit, true);
-  assert.equal(selection.detox_release, false);
+  assert.equal(selection.ios_tests, true);
 });
 
-test('a dedicated E2E test file selects its profile and its language checks', () => {
+test('a dedicated E2E test path selects shared unit, iOS and language checks', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.e2e.js']);
 
   assert.equal(selection.javascript, true);
   assert.equal(selection.source_loc, true);
-  assert.equal(selection.detox_next_visit, true);
-  assert.equal(selection.detox_release, false);
+  assert.equal(selection.ios_tests, true);
   assert.equal(selection.ios_build, false);
-  assert.equal(selection.unit_tests, false);
+  assert.equal(selection.unit_tests, true);
 });
 
-test('Release E2E consumers keep AI feature visit-question paths in the Release profile', () => {
+test('AI feature visit-question inputs retain the full iOS gate', () => {
   for (const path of [
     'apps/mobile/e2e/ai-feature-visit-questions.e2e.js',
     'apps/mobile/e2e/aiFeatureVisitQuestionsProbeEntry.tsx',
   ]) {
     const selection = selectChecksForPaths([path]);
 
-    assert.equal(selection.detox_release, true, path);
-    assert.equal(selection.detox_next_visit, false, path);
+    assert.equal(selection.ios_tests, true, path);
   }
 });
 
-test('Navigation Glass E2E and its dedicated helper select only the Release profile', () => {
-  for (const file of ['navigation-glass.e2e.js', 'navigationGlassLayoutAssertions.js']) {
+test('navigation test inputs retain iOS, unit and policy checks', () => {
+  for (const file of ['navigation-glass.e2e.js', 'navigationTestEntry.tsx']) {
     const selection = selectChecksForPaths([`apps/mobile/e2e/${file}`]);
-    const selectedProfiles = Object.keys(selection)
-      .filter((key) => key.startsWith('detox_') && selection[key])
-      .sort();
 
-    assert.deepEqual(selectedProfiles, ['detox_release'], file);
-    assert.ok(selection.javascript && selection.source_loc, file);
-    assert.ok(!selection.ios_build && !selection.unit_tests, file);
+    assert.equal(selection.ios_tests, true, file);
+    assert.equal(selection.policy_tests, true, file);
+    assert.equal(selection.source_loc, true, file);
+    assert.equal(selection.ios_build, false, file);
+    assert.equal(selection.unit_tests, true, file);
   }
 });
 
@@ -153,19 +147,16 @@ test('the mobile ESLint config selects both language surfaces that consume it', 
   assert.equal(selection.typecheck, false);
   assert.equal(selection.unit_tests, false);
   assert.equal(selection.ios_build, false);
-  assert.equal(selection.detox_release, false);
+  assert.equal(selection.ios_tests, false);
 });
 
-test('reusable Detox workflow changes select policy, YAML, and every dependent E2E leaf', () => {
-  const selection = selectChecksForPaths(['.github/workflows/detox-e2e-profile.yml']);
+test('reusable iOS workflow changes conservatively select every dependent check', () => {
+  const selection = selectChecksForPaths(['.github/workflows/ios-release-tests.yml']);
 
   assert.equal(selection.policy_tests, true);
   assert.equal(selection.yaml, true);
-  assert.equal(selection.detox_release, true);
-  assert.equal(selection.detox_openai, true);
-  assert.equal(selection.detox_transcription, true);
-  assert.equal(selection.detox_next_visit, true);
-  assert.equal(selection.ios_build, false);
+  assert.equal(selection.ios_tests, true);
+  assert.equal(selection.ios_build, true);
 });
 
 test('shared package resolution and CI tooling changes run every affected check', () => {

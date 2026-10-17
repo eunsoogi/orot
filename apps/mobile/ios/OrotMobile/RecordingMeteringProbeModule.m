@@ -1,7 +1,7 @@
 #import <TargetConditionals.h>
 
-// The Swift and Objective-C conditions must both be supplied by the dedicated probe build.
-#if OROT_RECORDING_METERING_SIMULATOR_TEST && TARGET_OS_SIMULATOR
+// Swift and Objective-C expose this isolated capture boundary only in simulator test products.
+#if (OROT_RECORDING_METERING_SIMULATOR_TEST || OROT_TESTS) && TARGET_OS_SIMULATOR
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 @interface RCT_EXTERN_MODULE (RecordingMeteringProbeModule, RCTEventEmitter)

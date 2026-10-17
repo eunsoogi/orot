@@ -50,12 +50,18 @@ export function taskResponseSchema<TResult>(
   return {
     title: 'TaskResponse',
     description:
-      'Choose a task result or a necessary evidence request using the task instructions and supplied evidence.',
+      'Choose a task result or a necessary evidence request using the task instructions and supplied evidence. ' +
+      (input?.research
+        ? `Research can be requested for this response: ${input.research.canRequestEvidence}. Scope and query consent remain separate.`
+        : 'Research availability is unspecified; follow the task instructions.'),
     anyOf: [
       {
         title: 'RequestAdditionalEvidence',
         description:
-          'Use only when the task permits additional search and current evidence cannot support its result.',
+          'Use only when the task permits additional search and current evidence cannot support its result. ' +
+          (input?.research?.canRequestEvidence === false
+            ? 'No further research handoff is available for this response.'
+            : 'An empty evidence set is not a completed search; request missing supporting facts when research is available.'),
         type: 'object',
         additionalProperties: false,
         required: ['type', 'need'],

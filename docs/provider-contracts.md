@@ -1,5 +1,7 @@
 # Language model provider contracts
 
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
+
 `@orot/model-runtime` defines one normalized `LanguageModelProvider` interface
 for the in-memory fake, Apple Foundation Models, and the ChatGPT plan adapter.
 The shared conformance suite is in
@@ -73,25 +75,8 @@ unsupported input/capabilities, mapped availability or authorization failures,
 and stream-consumer cancellation. It proves adapter conformance to those
 fixtures; it does not prove that Apple or ChatGPT generated a result.
 
-The Apple Foundation Models Detox probe uses synthetic visit text and the real
-native module on the selected Simulator. It reports the live availability
-state. If available, it runs structured generation, checks the synthetic
-source ID, and requests cancellation. If unavailable, those operations are
-`not-run`. Its `inferenceStop=unverified` value is deliberate: bridge
-cancellation is observable, underlying model termination is not.
+The `provider-data` integration profile invokes the Apple bridge with deterministic model-call responses compiled only into test Simulator products. It verifies availability mapping, structured generation, source identifiers, streaming, cancellation and workflow behavior, and reports `modelExecution=mock` and `actualModel=not-run`. Production keeps the real SDK. The separately recorded real-model run in [apple-intelligence.md](apple-intelligence.md) does not establish current CI inference or underlying inference termination.
 
-The ChatGPT provider and local-tool Detox probes execute the app's native and
-TypeScript adapter paths with a separate synthetic Keychain account and
-intercepted HTTP routes. They cover model discovery, a completed stream, a plan
-usage error, consumer cancellation, local tool-call normalization and a local
-tool-result round trip. Their output includes `realAccount=unverified`; it is
-not evidence of a real OAuth account or remote inference. Keep any separately
-captured live-account result tied to its own device, environment, request, and
-revision rather than presenting fixture output as remote execution.
+`ProviderIntegrationTests` exercises the ChatGPT provider and local-tool paths with a separate synthetic Keychain account and intercepted HTTP routes. It covers model discovery, a completed stream, a plan usage error, consumer cancellation, local tool-call normalization and a local tool-result round trip. Its `realAccount=unverified` report does not prove real OAuth account access or remote inference. Keep any live-account result tied to its own device, environment, request and revision.
 
-Run the focused Simulator probes with the repository's explicit-device Detox
-configs after setting each config's documented simulator UDID and dedicated
-DerivedData path. The Apple instructions are in
-[`docs/apple-intelligence.md`](apple-intelligence.md); the ChatGPT provider and
-tool instructions are in [`docs/chatgpt-streaming-inference.md`](chatgpt-streaming-inference.md)
-and [`docs/openai-tool-calling.md`](openai-tool-calling.md).
+Use the `provider-data` profile and exact integration selection described in [development.md](development.md). The provider behavior is documented in [chatgpt-streaming-inference.md](chatgpt-streaming-inference.md) and [openai-tool-calling.md](openai-tool-calling.md).

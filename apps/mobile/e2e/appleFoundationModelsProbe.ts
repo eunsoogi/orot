@@ -1,7 +1,7 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
 import { createLanguageModelProviderGraph } from '@orot/agent-runtime';
-import { appleFoundationModelsNativeBridge } from '../src/providers/apple/nativeBridge';
+import { appleFoundationModelsProbeBridge as appleFoundationModelsNativeBridge } from './appleModelMockBridge';
 import { readVisitQuestionOutput } from './appleFoundationModelsProbeValidation';
 
 const sourceId = 'synthetic-source-42';

@@ -1,5 +1,7 @@
 # HealthKit boundary
 
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
+
 ## Change contract
 
 - **Requested behavior:** Report whether HealthKit is available, request read access for one named Orot feature or an explicit selected feature batch only when its caller asks, expose a reusable native query boundary, and locally import medication, blood-pressure, sleep, and supported quantity observations through their owning feature flows. Never request write access or claim that a read request was granted or denied.
@@ -38,79 +40,23 @@ Each observed component becomes a separate `HealthObservation` with its exact He
 
 Before querying, the importer requests feature-scoped HealthKit read authorization. HealthKit does not expose whether a read grant was made, so request completion remains `readAuthorization=notObservable`. The importer does not write HealthKit data.
 
-## Simulator probe
+## Simulator integration and UI checks
 
-The dedicated probe can be built and run with `pnpm exec detox test --config-path e2e/healthkit-probe.detox.config.js --configuration ios.sim.debug.healthkit-probe` from `apps/mobile`. Its debug-only adapter reports the real `HKHealthStore.isHealthDataAvailable()` result separately, checks every feature's selected native sample type and read plan, and supplies synthetic authorization-completion, sample, empty-query, and medication-definition responses. It does not request real HealthKit access, save HealthKit samples, or prove that real samples are readable. The adapter is compiled only for Debug Simulator builds and is absent from Release and device builds.
+The Debug `provider-data` profile runs `HealthIntegrationTests`. Its Simulator-only adapter reports the real `HKHealthStore.isHealthDataAvailable()` result separately, checks each feature's selected sample type and read plan, and supplies synthetic authorization-completion, sample, empty-query and medication-definition responses. It requests no real HealthKit access, writes no HealthKit samples and does not prove that personal samples are readable. The adapter is absent from Release and device builds.
 
-The common-observation flow has a separate probe configured with `e2e/common-observations-probe.detox.config.js` and `e2e/common-observations-probe.e2e.js`. It prepares a multi-feature synthetic fixture, verifies that the native batch plan equals the union of the supported selected plans for all six HealthKit features, then checks the visible common-observation import, encrypted local transactions, and cursor replay. The summary includes only request/query/transaction counts and aggregate durations for the first import and replay. Because authorization completion comes from the synthetic adapter, `authorization_ms` is only the local bridge round trip; it does not measure a real OS permission sheet or the user's iPhone delay. This HealthKit-only probe has no following EventKit prompt to time, and the two systems' consent screens remain independent.
+The `health-import` profile uses `HealthImportUITests` and `UnifiedImportUITests` for visible import, encrypted local writes, cursor replay, explicit Calendar confirmation and cancellation. The common-observation case verifies that the batch plan equals the union of supported selected plans for all six HealthKit features. Its summary contains only aggregate counts and durations. A synthetic `authorization_ms` value measures a bridge round trip, not an OS sheet or the user's iPhone delay.
 
-After installing dependencies and syncing iOS Pods from the repository root, set a dedicated Simulator UDID, DerivedData path, and unused Metro port. For example, from `apps/mobile`:
+Build and execution commands, including the fresh app and Keychain boundary before each fixture, are in [development.md](development.md). The remaining probe entries and Metro configurations support diagnostic inspection; they are also inputs to the shared test entry, so they are retained after the old runner's removal.
 
-```sh
-export OROT_COMMON_OBSERVATIONS_SIMULATOR_UDID="replace-with-dedicated-simulator-uuid"
-export OROT_COMMON_OBSERVATIONS_DERIVED_DATA_PATH="/tmp/orot-common-observations-unique-run"
-export OROT_COMMON_OBSERVATIONS_METRO_PORT=8220
-pnpm exec react-native start \
-  --config e2e/common-observations-probe.metro.config.js \
-  --port "$OROT_COMMON_OBSERVATIONS_METRO_PORT"
-```
+### Blood-pressure persistence
 
-In a second terminal from `apps/mobile`, run the probe on that same Simulator:
+`HealthImportUITests/testSyntheticBloodPressurePersistsAndReplaysAfterProcessRestart` starts with an isolated app, imports a synthetic correlation through the blood-pressure screen and relaunches the app. It compares the stored components, exact timestamps, sources, unavailable original-pair display and fixture cursor, then replays the fixture with zero new writes or cursor advancement and two stored observations. The cursor is compared with a known fixture value; no raw HealthKit anchor is exposed.
 
-```sh
-pnpm exec detox build --config-path e2e/common-observations-probe.detox.config.js \
-  --configuration ios.sim.debug.common-observations
-pnpm exec detox test --config-path e2e/common-observations-probe.detox.config.js \
-  --configuration ios.sim.debug.common-observations --headless --no-start --cleanup
-```
+The earlier Detox attempt 20 on iOS 27 remains historical process-restart evidence, separate from the maintained XCUITest result. The synthetic path reports `productionQuery=notRun` and `productionSamples=unverified`, with no personal values or HealthKit writes. Canonical pressure values remain in mmHg; preserve an original pair only when the source supplies an authoritative pair, and otherwise retain the unavailable state.
 
-The result reports `source=synthetic`; its phase durations contain no feature names, source identifiers, sample IDs, or values. The simulator and synthetic timings do not verify the reported real-device delay, real read access, user cancellation UX, or Calendar/EventKit prompting.
+### Sleep normalization
 
-The iOS Simulator cannot establish real device data availability, a user's read grant, or the contents of the user's HealthKit store. The probe logs real HealthKit availability and labels all record responses as synthetic; it does not claim physical-device or real-sample verification.
-
-### Blood-pressure probe
-
-After installing workspace dependencies and synchronizing iOS Pods from the repository root, create a task-owned Simulator and choose unique DerivedData and artifact paths plus a free Metro port (the example uses 8222):
-
-```sh
-pnpm install --frozen-lockfile
-pnpm --filter @orot/mobile ios:pods
-```
-
-From `apps/mobile`, set the same simulator, DerivedData path, and port in both terminals:
-
-```sh
-export OROT_BLOOD_PRESSURE_SIMULATOR_UDID="replace-with-dedicated-simulator-uuid"
-export OROT_BLOOD_PRESSURE_DERIVED_DATA_PATH="/tmp/orot-blood-pressure-unique-run"
-export OROT_BLOOD_PRESSURE_METRO_PORT=8222
-export OROT_BLOOD_PRESSURE_ARTIFACTS_DIR="/tmp/orot-blood-pressure-unique-run-artifacts"
-```
-
-Keep the probe-configured Metro server running in one terminal:
-
-```sh
-pnpm exec react-native start \
-  --config e2e/blood-pressure-probe.metro.config.js \
-  --port "$OROT_BLOOD_PRESSURE_METRO_PORT"
-```
-
-Build the probe app and run its Detox test from the other terminal:
-
-```sh
-pnpm exec detox build --config-path e2e/blood-pressure-probe.detox.config.js \
-  --configuration ios.sim.debug.blood-pressure-probe
-pnpm exec detox test --config-path e2e/blood-pressure-probe.detox.config.js \
-  --configuration ios.sim.debug.blood-pressure-probe --headless \
-  --artifacts-location "$OROT_BLOOD_PRESSURE_ARTIFACTS_DIR"
-```
-
-The current probe starts from a fresh install, imports one synthetic correlation through the visible blood-pressure screen into the app's SQLCipher-backed repository, and terminates and relaunches the app. It reads both saved components and the stored fixture cursor after restart, compares each exact timestamp, source, and unavailable original-pair display with the pre-restart values, then replays the same fixture and asserts zero upserts/deletions, no cursor advance, and two stored observations. The probe reports `sqlCipher=available`; the cursor display is only a comparison to the known synthetic fixture value and never exposes a raw HealthKit anchor.
-
-The current process-restart evidence is Detox attempt 20 on a dedicated iOS 27 Simulator. Attempt 16 remains historical evidence from its earlier source revision and is superseded for this claim. This probe still does not query real HealthKit samples: `productionQuery=notRun`, `productionSamples=unverified`, and personal values are withheld. It performs no HealthKit writes or physical-device validation. The imported canonical pressure values are in mmHg; preserve an original pair only when the source explicitly provides an authoritative pair, and otherwise store and display the unavailable state.
-
-### Sleep probe
-
-Issue #19 has a dedicated sleep probe. From `apps/mobile`, build it with `pnpm exec detox build --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe`, then run `pnpm exec detox test --config-path ./e2e/sleep-import-probe.detox.config.js --configuration ios.sim.debug.sleep-import-probe --headless --no-start --cleanup`. Set `OROT_SLEEP_IMPORT_DERIVED_DATA_PATH` and `OROT_SLEEP_IMPORT_SIMULATOR_UDID` to isolate the build and simulator. `--no-start` keeps Metro from replacing the embedded probe entry, and omitting `--reuse` ensures Detox installs the configured app rather than launching another probe left on the simulator. The Debug-only adapter returns synthetic sleep samples; the probe checks the native category, interval, and source fields, normalizes the anchored addition, and verifies cursor resumption. It reports `source=synthetic` and `realSamples=unverified`; it does not establish real sample access or exercise persistence/deletion through the simulator database. Focused importer tests cover atomic page writes, retry, raw upsert, deletion, and retention of overlapping samples with distinct IDs. Issue #19 does not require a physical-device run for 0.1.0.
+`HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume` uses synthetic category, interval and source fields and checks normalized additions and cursor resumption. Its `source=synthetic` and `realSamples=unverified` fields remain explicit. Importer unit tests separately cover atomic page writes, retry, raw upsert, deletion and retention of overlapping samples with distinct IDs. These checks do not establish access to real sleep samples or physical-device behavior.
 
 ## Selected HealthKit and EventKit import
 
@@ -124,27 +70,11 @@ Each run emits provider, phase, transition, monotonic offset from the app action
 
 `UnifiedImportRun.cancel()` waits for an active provider API call to return, then stops before the next query or feature. It cannot dismiss an active iOS consent sheet or interrupt an in-flight provider query or feature import. Identical selections across the same providers share one run, while different selections are queued so consent prompts and anchored writes do not race. A completed or failed run can be explicitly retried.
 
-### Selected HealthKit and EventKit Simulator probe
+### Selected HealthKit and EventKit Simulator checks
 
-Run the deterministic synthetic path from `apps/mobile` on a dedicated, task-assigned iOS Simulator:
+`UnifiedImportUITests/testSyntheticConsentMeasurementsAndExplicitCalendarConfirmation` runs in the `health-import` profile. It selects all six HealthKit features and EventKit, supplies synthetic HealthKit and Calendar records, and writes only synthetic observations plus the explicitly confirmed appointment into the Simulator's encrypted store. It checks the one-batch request, per-feature outcomes, confirmation and privacy-safe relative-offset/duration fields. The companion cancellation test stops before querying or persisting data and retains the explicit same-selection retry. A coordinator unit test verifies authorization/query ordering.
 
-```sh
-export OROT_UNIFIED_IMPORT_SIMULATOR_UDID="ASSIGNED_SIMULATOR_UDID"
-export OROT_UNIFIED_IMPORT_DERIVED_DATA_PATH=ios/build-unified-import-probe
-pnpm exec detox build --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe
-pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.debug.unified-import-probe --headless --no-start --cleanup
-```
-
-The automated run selects all six HealthKit features and EventKit, uses the synthetic HealthKit adapter and a synthetic calendar candidate, and writes only synthetic health observations plus the one explicitly confirmed synthetic appointment into the simulator's encrypted local store. It checks the one-batch HealthKit request, per-feature outcomes, candidate confirmation, and the presence of privacy-safe relative-offset and duration fields. A separate coordinator unit test verifies authorization/query ordering. The Detox run does not trigger or observe OS consent sheets or use personal HealthKit or Calendar data. The Detox setup uninstalls the app and clears the simulator keychain; use only the assigned Simulator.
-
-To inspect the production HealthKit and EventKit bridges interactively, build and run the live Detox profile on the assigned Simulator. The Release profile embeds the probe entry point; Debug uses Metro's fixed `index` bundle and is not suitable for this live probe. The run selects heart rate, steps, and EventKit in one app action, then waits for both consent API calls and the terminal import state. It does not prepare synthetic fixtures, confirm a returned calendar event, or reset permission settings; an already-decided permission may suppress either system sheet. The probe reports aggregate phase measurements only and marks `systemSheets=not-captured`; observe and time each visible sheet separately. Use a task-assigned Simulator with no personal calendar data, and keep Detox logs, screenshots, and video capture disabled. Simulator evidence does not establish behavior on the user's physical iPhone; no real-device timing should be inferred from the synthetic Detox run.
-
-The dedicated Jest config gives the synthetic case five minutes to cover its 240-second terminal-state wait and setup/assertion margin, and the live case eleven minutes to cover its 600-second consent wait and margin. Detox's four-minute `setupTimeout` applies only while setting up the suite; it does not extend a running Jest test. These are test deadlines, not observed consent durations.
-
-```sh
-pnpm exec detox build --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.release.unified-import-probe
-OROT_UNIFIED_IMPORT_PROBE_MODE=live pnpm exec detox test --config-path ./e2e/unified-import-probe.detox.config.js --configuration ios.sim.release.unified-import-probe --no-start --cleanup --record-logs none --take-screenshots none --record-videos none
-```
+These synthetic checks do not trigger or observe OS consent sheets. The retained `unifiedImportProbeEntry.tsx` also has an explicit live diagnostic mode for inspecting the production bridges; it is not part of the automated acceptance suite. A manual observation must use a task-owned Simulator without personal calendar data, must not confirm returned events or reset permission settings, and must avoid capturing values, logs, screenshots or video containing personal information. Existing permission decisions may suppress sheets. Record actual visible-sheet intervals separately from the probe's aggregate measurements and `systemSheets=not-captured` result. Simulator results do not establish physical-iPhone timings.
 
 ## Apple API references
 

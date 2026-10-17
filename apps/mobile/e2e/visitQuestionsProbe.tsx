@@ -118,7 +118,9 @@ function requestText(request: LanguageModelRequest): string {
 function citationReferences(
   request: LanguageModelRequest,
 ): EvidenceReference[] {
-  const marker = 'Allowed citation references (cite exact objects only):\n';
+  // This non-guided fixture reads the current runtime's full reference objects; production validation still restores their opaque aliases.
+  const marker =
+    'Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n';
   for (let index = request.messages.length - 1; index >= 0; index -= 1) {
     const message = request.messages[index];
     if (

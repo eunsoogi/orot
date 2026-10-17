@@ -1,0 +1,88 @@
+name: Verify and execute one integration cohort
+description: Consume verified portable products on the current runner, boot once and retain first failures without retries.
+inputs:
+  cohort:
+    description: Compatible execution cohort.
+    required: true
+  profile:
+    description: Representative profile used to verify product compatibility.
+    required: true
+  product_directory:
+    description: Local portable archive and manifest from the producer or artifact download.
+    required: true
+  archive_digest:
+    description: Producer archive SHA-256.
+    required: true
+  manifest_digest:
+    description: Producer manifest SHA-256.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Verify configuration, source and product integrity before boot
+      id: verify
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+        PRODUCT_DIRECTORY: ${{ inputs.product_directory }}
+        ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
+        MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
+      run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" "$PRODUCT_DIRECTORY" "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+    - name: Observe invalid products rejected before any test boot
+      if: inputs.cohort == 'core-integration'
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+        PRODUCT_DIRECTORY: ${{ inputs.product_directory }}
+        ARCHIVE_DIGEST: ${{ inputs.archive_digest }}
+        MANIFEST_DIGEST: ${{ inputs.manifest_digest }}
+      run: scripts/ci/run-command.sh ios-artifact-rejections artifacts/ios-cohort/artifact-rejections.log -- node scripts/ci/probe-ios-test-products.mjs "$PROFILE" "$PRODUCT_DIRECTORY" "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST" artifacts/ios-cohort/artifact-rejections
+    - name: Provision the pinned Speech runtime
+      if: inputs.cohort == 'speech'
+      shell: bash
+      run: bash scripts/ci/prepare-ios-test-runtime.sh speech
+    - name: Boot the explicitly owned compatible destination once
+      shell: bash
+      env:
+        COHORT: ${{ inputs.cohort }}
+      run: scripts/ci/run-command.sh ios-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
+    - name: Execute every planned first attempt without compilation or retry
+      # The original Hermes host case remains in Core's inventory. Repeating it as a GUI preflight adds no unique coverage.
+      shell: bash
+      env:
+        COHORT: ${{ inputs.cohort }}
+        TEST_RUN: ${{ steps.verify.outputs.test_run }}
+      run: scripts/ci/run-command.sh ios-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
+    - name: Remove only the owned destination
+      if: always()
+      shell: bash
+      env:
+        COHORT: ${{ inputs.cohort }}
+      run: |
+        if [[ -f artifacts/ios-cohort/simulator-owner.json ]]; then
+          node scripts/ci/ios-test-simulator.mjs cleanup "$COHORT" artifacts/ios-cohort/simulator-owner.json
+        fi
+    - name: Preserve all first-attempt diagnostics
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: ios-cohort-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          artifacts/ios-cohort/*.log
+          artifacts/ios-cohort/*.json
+          artifacts/ios-cohort/*.jsonl
+          artifacts/ios-cohort/results
+          artifacts/ios-cohort/artifact-rejections/results.json
+          ${{ inputs.product_directory }}/manifest.json
+        if-no-files-found: warn
+        retention-days: 7
+    - name: Publish compact reports for Linux aggregation
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: ios-cohort-report-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          artifacts/ios-cohort/results/results.json
+          artifacts/ios-cohort/results/speech-integration/attachments/*.json
+        if-no-files-found: warn
+        retention-days: 7

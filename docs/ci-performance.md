@@ -1,4 +1,95 @@
-# Detox CI performance
+# CI performance measurements
+
+Current execution procedures are in [development.md](development.md), and replacement coverage is mapped in [ios-validation.md](ios-validation.md). Each measurement below belongs to its stated revision and workload. Historical Detox commands and workflow names remain as evidence of those runs. A focused historical run or a smaller inventory does not establish a current speedup.
+
+## Paged-list visibility failure after successful producer builds
+
+[Run 38694960845](https://github.com/eunsoogi/orot/actions/runs/38694960845), attempt 1, tested PR head `8a915197b514e76ede0832f44e28a6833012f5ae` at merge checkout `424da66cb6cabe28568399c46c2218a3257745c1`. Both producers used pinned Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. This execution planned one Debug, one Release and one Speech cohort, with no additional focused observations.
+
+| Mac job                | Whole job     | Build action | Boot-status command | Original cohort | Result                            |
+| ---------------------- | ------------- | ------------ | ------------------- | --------------- | --------------------------------- |
+| Debug                  | 28m25s        | 9m29s        | 37.306s             | 911.938s        | 17 passed                         |
+| Production and Release | 30m44s        | 14m21s       | 45.006s             | 772.741s        | 25 passed, one failed, 24 not run |
+| Speech                 | Not allocated | Not run      | Not run             | Not run         | Failed Release prerequisite       |
+
+Combined Mac job duration was 59m09s, with a 30m44s interval from first start to last completion. Debug and Release integration compilation took 390.224s and 305.771s. The five separate production obligations and six actual invalid-artifact rejection probes passed. The first failed case, N022, took 66.141s: after all 16 scrolls, row 55 ended two points below the viewport. Its original visibility assertion stopped the case before either back gesture. Independent inspection of 19 raw bundles found 42 passes, one failure and 35 unexecuted observations. The failed fixture group's six earlier passes remain in its raw results even though the cohort report contains only its completed groups. All six protected iOS aggregates failed and both owned Simulators were deleted.
+
+Debug's 49 execution resource samples and Release's 44 recorded zero swap. Their compressor ranges were 1,537.86–2,188.30 MiB and 1,518.34–2,087.27 MiB respectively. Each cohort had one unavailable process observation; valid snapshots contained no compiler. These are samples, not continuous peaks. Queue and approval time, continuous CPU, whole-runner peak RSS, disk I/O, child-process time and the unexecuted workload remain unmeasured. This partial failed workload does not establish a full-success duration or speedup.
+
+The production cache missed in this run, reported `derived_data_absent` and `app_reusable=false`, and rebuilt the default app from 06:54:33.029 to 06:58:15.738 UTC, about 222.7s. The pinned combined [cache action](https://github.com/actions/cache/blob/55cc8345863c7cc4c66a329aec7e433d2d1c52a9/action.yml) saves only under `post-if: success()`, so a later UI failure prevents a new production cache from being saved. This does not explain every historical cache miss. The follow-up splits restore and save at the same pinned revision, saving only after the manifest and all five production obligations succeed and before integration compilation. Exact hits skip redundant saving; failed prerequisites and non-production jobs cannot save. Actual upload, later restore, `app_reusable`, skipped compilation and net elapsed savings still require hosted observations. Integration products retain their existing run/attempt provenance and are not cached across executions by this change.
+
+## Project serialization failure before integration execution
+
+[Run 38692810511](https://github.com/eunsoogi/orot/actions/runs/38692810511), attempt 1, tested `bda4f061` at merge checkout `7f5f1376519515a93c3d203e5145fcabf863b4c1`. Debug stopped at the source-integrity guard after Pods installation in a 2m34s job. Release's five separate production obligations passed before the same guard stopped integration compilation; that job took 13m20s. Combined Mac duration was 15m54s, with a 13m20s span. No test Simulator was booted, no portable integration products were produced and all 78 observations remained unexecuted. Speech was not allocated, and completeness plus all six protected iOS aggregates failed. The retained build and Pods logs support a project-ordering diagnosis; they do not measure test performance.
+
+## Producer failures before Speech allocation
+
+[Run 38674947074](https://github.com/eunsoogi/orot/actions/runs/38674947074), attempt 1, tested PR head `179cc1c6fbbf67d88b0b64bb69d91c08cc405fc7` at merge checkout `9bb31af1b85e8113854c76c5d29893f85ef18577`. Its two producers used the same pinned Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. Both failed before Speech allocation. This historical execution still planned three Speech jobs and two additional focused observations within one workflow; the corrected acceptance procedure repeats complete CI executions separately.
+
+| Mac job | Whole job | Build action | Boot-status command | Original cohort | Result |
+| --- | --- | --- | --- | --- | --- |
+| Debug | 23m44s | 9m59s | 64.052s | 558.299s | 13 passed, one failed, three not run |
+| Production and Release | 59m07s | 20m17s | 57.328s | 1,949.699s | 32 passed, one failed, 17 not run |
+| Speech samples 1–3 | Not allocated | Not run | Not run | Not run | Failed producer prerequisites |
+
+The two Mac jobs used 82m51s combined and overlapped for 23m43s; the interval from first start to last completion was 59m08s. Integration compilation took 412.792s in Debug and 490.418s in Release. Release's pnpm and lockfile-verification caches hit, while production DerivedData missed and the default build ran. The five separate production, real Foundation Models boundary, default Keychain and OAuth obligations passed. The original 100-observation plan recorded 45 passes, two failures and 53 unexecuted observations; both additional focused observations also did not run. These incomplete workloads do not establish a full-success duration or speedup.
+
+Debug's microphone deadline case failed in 15.201s with `reason=interruption`, `interruptionOrigin=application-inactive` and only 146ms of capture. Cleanup and unlinking succeeded. A subsequent local lifecycle trace placed the permission reply before UIKit's inactive/active transition. Release's review case failed in 250.495s during final system-appearance restoration: the Settings process had disappeared from process samples, but XCTest retained its previous background state until activation and then reported `Not Running`. The diagnostics contain no exit reason for Settings. Release's 110 execution samples recorded 6.62 MiB swap, while Debug's 30 recorded zero; each had one unavailable process observation. Valid snapshots contained no compiler. These sampled values are not continuous peaks or proof of an operating-system termination cause. The completeness job and all six protected iOS aggregates failed, and both owned Simulators were deleted.
+
+## Completed producers and first Speech preparation failure
+
+[Run 38661869417](https://github.com/eunsoogi/orot/actions/runs/38661869417), attempt 1, tested PR head `6aa26e6ac1666b12304199efb319c215cad73a00` at merge checkout `b096edf9efb8bad399fe33dc3ab24602a21a193c`. It retained Xcode 27 build 27A266a, macOS 27.0.1 arm64, iOS 27 build 24A434 for the producers and iOS 26.2 build 23C54 for Speech. Independent raw inspection confirmed both complete producer cohorts and their separate focused cases. First Speech preparation failed; its recognition and UI tasks and the remaining two fresh runners did not execute.
+
+| Mac job | Whole job | Build action | Boot-status command | Original cohort | Result |
+| --- | --- | --- | --- | --- | --- |
+| Debug | 30m35s | 8m48s | 79.000s | 964.279s | 17 passed, plus one separate focused integration case |
+| Production and Release | 57m52s | 15m55s | 47.665s | 2,180.831s | 50 passed, plus one separate focused UI case |
+| Speech first sample | 26m43s | Reused verified Release products | 500.832s | 843.164s | Preparation failed; recognition and UI not run |
+| Speech samples 2–3 | Not allocated | Not run | Not run | Not run | Failed first-Speech prerequisite |
+
+The producers overlapped for 30m31s. The three allocated Mac jobs used 115m10s combined, and the interval from first Mac start to last Mac completion was 1h24m46s. These are failed-run costs; the full-success critical path remains unmeasured. Debug and Release integration compilation took 396.871s and 327.345s. Their pnpm and lockfile-verification caches hit; production DerivedData missed and the default build ran. Speech downloaded the verified product artifact in two seconds and separately downloaded the 10.47GB pinned runtime. Its boot command took 10.085s before the boot-status wait. The cohort timer starts after its initial Simulator verification: Debug's execution step also includes an earlier 126.257s inventory call and startup time absent from that cohort figure.
+
+Speech's Xcode invocation began around 01:57:16 UTC, while the test case began at 02:07:35. Xcode setup, installation and app-host startup therefore cost about 10m18s before the separate 180-second preparation deadline; that interval is not attributed entirely to app launch. Availability took 30.442s; `downloadAndInstall()` began at 46.091s and remained unfinished at the 180.182s failure snapshot. The test body failed in 180.630s with `TRANSCRIPTION_TIMEOUT`. The wrapper took 836.590s, including a failed 30-second attempt to collect app logs. That unavailable diagnostic does not establish a network failure or healthy asset service. The first failure stopped dependent work; all six protected iOS aggregates failed, and all three owned Simulators were deleted successfully.
+
+Debug's 51 execution samples and Release's 143 recorded zero swap, with two and one unavailable process observations respectively. Speech's 37 samples recorded 4,639.12–9,335.75 MiB of swap and two unavailable process observations. Valid execution snapshots contained no compiler. Speech process paths belonged to one iOS 26.2 runtime; alternate `/var/run` spellings do not indicate multiple runtimes. Among observed processes, News and wallpaper extensions had substantial resident sets, including one News process at 480,032 KiB. Individual RSS values include shared pages and must not be summed as physical usage. The earlier successful Speech sample also reached 8,421.06 MiB of swap and installed assets in 37.984s, so memory pressure alone does not explain this failure.
+
+The original plan recorded 67 passes, one failure and 32 unexecuted observations; the two additional focused observations passed separately. These are 102 planned observations, not 102 executed tests. Continuous CPU, whole-runner peak RSS, disk I/O, child-process time and the unexecuted Speech workload remain unmeasured. The next test-only diagnostic retains public installation progress counters before the call and at success or failure, without another request or a longer deadline. A local preparation case passed in 1.607s and recorded `0/0` initial units and `1/1` at completion; these are not download bytes, and the local host's asset cache state is unknown. The diagnostic is not a demonstrated hosted repair.
+
+The follow-up also starts a public log stream on the verified owned Simulator before the preparation invocation. It selects Orot Speech diagnostics and the asset/Speech process names observed in the failed runner, retaining the most recent 8 MiB so a long startup cannot consume the entire output allowance before the failure. The stream has a 90-minute ceiling matching the existing Speech job budget and stops when its test invocation ends, allowing two seconds for graceful collector termination and two for forced termination. Only that collector child is signalled; system services and logging privacy are unchanged. Truncation, failed collection and unconfirmed termination remain explicit metadata and do not replace the native test exit. Actual hosted diagnostic completeness and overhead remain to be measured.
+
+## Parallel producer attempt after cleanup
+
+[Run 38654661542](https://github.com/eunsoogi/orot/actions/runs/38654661542), attempt 1, tested PR head `94fa3cce010c0f0aeeff8a628099966c29e007c0` at merge checkout `9dcec79881970b61c364ad09c668fcc757527f4e`. Both Mac producers started at 23:33:19 UTC on October 14, 2026, with Xcode 27 build 27A266a, macOS 27.0.1 arm64 and iOS 27 build 24A434. They used separate VMs and verified their products before booting their owned Simulators.
+
+| Mac job | Whole job | Build action | Boot-status command | Original cohort | Result |
+| --- | --- | --- | --- | --- | --- |
+| Debug | 35m56s | 11m31s | 133.006s | 1,157.936s | 17 passed, plus one separate focused integration case |
+| Production and Release | 42m20s | 21m24s | 63.969s | 925.780s | 25 passed, one failed, 24 not run |
+| Speech samples 1–3 | Not allocated | Not run | Not run | Not run | Failed Release prerequisite |
+
+The producers overlapped for 35m56s. Their combined Mac job duration was 78m16s, while the interval from first Mac start to last Mac completion was 42m20s. This failed run stopped partway through Release and did not execute Speech; those durations do not measure the full-success critical path or establish a speedup over the earlier complete cohorts. Integration compilation took 530.503s in Debug and 419.544s in Release. Both pnpm caches hit. The production DerivedData lookup reported a miss and `app_reusable=false`; its default-entry build ran for about 6m17s. An identical production binary hash across attempts therefore does not mean this build was skipped.
+
+The first failure was `PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe`, whose body took 99.276s. Its recording shows an interactive back transition followed by cancellation, leaving the health list visible. The failed case retained its raw bundle and recording; later Release groups and its additional focused UI case did not run. The completeness job, production aggregate and all five domain statuses failed. Both owned Simulators were deleted successfully.
+
+Execution samples recorded zero swap for all 61 Debug and 54 Release observations. No compiler was present in valid process snapshots; one Release process observation was unavailable. Debug also recorded two post-boot `simctl list -j` calls lasting 50.997s and 80.852s. These are observed costs, not an established cause of the gesture failure. Continuous CPU, whole-runner peak RSS, disk I/O and the unexecuted Speech workload remain unmeasured. The retained failure and differing workload prevent a claim of improved stability.
+
+## Integration candidate before cleanup and parallel producers
+
+[Run 38621746347](https://github.com/eunsoogi/orot/actions/runs/38621746347), attempt 1, built PR head `fdc89e1cc104dad5c9606d8a4f3423fe9cb88588` at merge checkout `9ec3f1ccc157ffde759ba5dce452e035e12a61a7`. It used the pinned Xcode 27 toolchain on macOS 27.0.1 arm64. Debug and Release used iOS 27 build 24A434; the fresh Speech VMs used iOS 26.2 build 23C54. Build and execution shared a VM for each configuration, and all Speech consumers verified the same Release artifact.
+
+| Mac job | Whole job | Owned boot | Cohort execution | Result |
+| --- | --- | --- | --- | --- |
+| Debug | 37m43s | 153.831s | 1,120.880s | 17 passed |
+| Release, including production and OAuth | 93m15s | 90.743s | 3,361.569s | 50 passed |
+| Speech first sample | 36m24s | 496.281s | 1,394.913s | 11 passed |
+| Speech second sample | 24m05s | 431.089s | 673.108s | Asset preparation failed; recognition and UI did not run |
+| Speech third sample | Not allocated | Not run | Not run | Failed prerequisite |
+
+The serial graph took 3h11m54s from the first Mac start to the last Mac completion. This is a failed-run measurement, not a full-success time. Release's build action took 1,689s, including separate production, default Keychain and OAuth obligations; its integration build helper took 612.000s. The first Speech preparation, integration and UI tasks took 445.559s, 243.175s and 706.171s. In the second sample the preparation helper took 666.092s and the test body failed after 227.317s against its unchanged 180-second asynchronous preparation deadline. Existing logs do not identify which asset API remained unfinished.
+
+Raw execution resource samples recorded swap ranges of 5.44 MiB for Debug, 0–3.81 MiB for Release, 4,012–8,421.06 MiB for Speech first and 4,751–7,812.88 MiB for Speech second. Valid process snapshots showed no compiler process during these execution stages. Three Release, one first-Speech and two second-Speech process observations were unavailable, not zero. Both successful and failed Speech samples had high swap, so that observation alone does not establish the failure cause. Samples are not continuous peaks; cumulative CPU time, whole-runner peak RSS, disk I/O, child-process time and total fixture bytes were not measured.
+
+The follow-up preserves all assertions, relaunches and fresh-install boundaries while reading repeated UI frames once per observation and taking one fresh `simctl list -j` inventory before each owned mutation. Per-command timings and per-API Speech preparation stages expose previously unattributed time. Independent Debug and Release VMs may overlap, with Speech still requiring both to succeed. The previous Debug duration gives a calculated maximum overlap of 37m43s if all other durations remain unchanged; it is not a measured speedup. A failed producer can leave its already-started sibling consuming time while preserving diagnostics. Final-candidate measurements and three successful fresh Speech samples remain outstanding.
 
 ## Historical cache fingerprint candidate: app-input scope
 

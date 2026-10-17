@@ -8,7 +8,10 @@ enum SpeechTranscriptionEngine {
     }
 
     static func transcribe(_ request: [String: Any]) async throws -> [String: Any] {
-        try await SpeechTranscriptionDeadline.run {
+        #if OROT_TESTS
+            TestSpeechObservation.recordRequest()
+        #endif
+        return try await SpeechTranscriptionDeadline.run {
             try await transcribeAudioRequest(request)
         }
     }
@@ -32,7 +35,10 @@ enum SpeechTranscriptionEngine {
     }
 
     static func transcribeRecording(_ request: [String: Any]) async throws -> [String: Any] {
-        try await SpeechTranscriptionDeadline.run {
+        #if OROT_TESTS
+            TestSpeechObservation.recordRequest()
+        #endif
+        return try await SpeechTranscriptionDeadline.run {
             try await transcribeRecordingRequest(request)
         }
     }

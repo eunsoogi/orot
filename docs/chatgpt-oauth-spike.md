@@ -53,7 +53,7 @@ xcodebuild \
   build
 ```
 
-CI runs both commands in the existing `iOS Simulator Build` check and retains their logs with that check's artifacts. A passing build verifies package/harness compatibility; it does not verify browser handoff, background behavior, user consent, the granted provider scope, or live provider access.
+CI separates compilation and execution. `E2E Test / Build / OAuth` compiles the package tests and Simulator harness, then transfers the self-contained XCTest bundle with its fixtures, discovered inventory and authenticated build provenance. `E2E Test / Test / OAuth` verifies and executes that bundle on another Mac without compiling it. `Validate / Build` requires both obligations alongside the default production app. Logs retain the first failure. Package tests use signed fixtures; a passing build/test does not verify browser handoff, background behavior, user consent, granted provider scope or live provider access.
 
 ## Boundaries
 

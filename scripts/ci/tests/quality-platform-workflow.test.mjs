@@ -156,15 +156,15 @@ test('pins the policy-test Ruby runtime and keeps its logs outside checkout inve
 });
 
 test('uses singular workflow names and matching paths with direct checks and cancellation rules', () => {
-  const directTriggers =
-    'on:\n  pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:';
+  const staticTriggers =
+    'on:\n  pull_request:\n    types: [opened, synchronize, reopened]\n  push:\n    branches: [main]\n  workflow_dispatch:';
 
   assert.match(codeWorkflow, /^name: Code Quality$/m);
   assert.match(unitTestWorkflow, /^name: Unit Test$/m);
   assert.match(policyCheckWorkflow, /^name: Policy Check$/m);
   assert.match(e2eWorkflow, /^name: E2E Test$/m);
-  for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow, e2eWorkflow]) {
-    assert.ok(workflow.includes(directTriggers));
+  for (const workflow of [codeWorkflow, unitTestWorkflow, policyCheckWorkflow]) {
+    assert.ok(workflow.replace(/^ {4}#.*\n/gm, '').includes(staticTriggers));
     assert.ok(
       workflow.includes(
         'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
@@ -174,10 +174,23 @@ test('uses singular workflow names and matching paths with direct checks and can
     assert.match(workflow, /^permissions:\n {2}contents: read/m);
     assert.doesNotMatch(workflow, /workflow_call/);
   }
+  assert.match(
+    e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
+    /pull_request:\n\s+types: \[opened, synchronize, reopened\]/,
+  );
+  assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
+  // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.
+  assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
+  assert.match(e2eWorkflow, /cancel-in-progress: false/);
+  assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
+  assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);
+  assert.match(e2eWorkflow, /^ {2}pull-requests: read$/m);
+  assert.doesNotMatch(e2eWorkflow, /workflow_call/);
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
-  assert.match(e2eWorkflow, /^\x20{2}ios-simulator-build:\n\x20{4}name: iOS Simulator Build$/m);
-  assert.match(e2eWorkflow, /runs-on: xcode-27/);
+  const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
+  assert.match(buildJob, /name: Validate \/ Build/);
+  assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });

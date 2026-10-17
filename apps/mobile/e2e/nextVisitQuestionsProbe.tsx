@@ -72,7 +72,7 @@ export function NextVisitQuestionsProbe() {
     signal,
   ) => {
     setAdapterStatus('synthetic-generating');
-    // Keep loading observable until Detox explicitly releases this synthetic request.
+    // Keep loading observable until the UI test explicitly releases this synthetic request.
     await new Promise<void>(resolve => {
       const finish = () => {
         signal.removeEventListener('abort', finish);

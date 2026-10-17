@@ -18,17 +18,25 @@ export const REQUIRED_CI_JOBS_BY_WORKFLOW = {
   '.github/workflows/unit-test.yml': ['TypeScript typecheck', 'Unit and component tests'],
   '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
   '.github/workflows/e2e-test.yml': [
-    'iOS Simulator Build',
-    'Detox E2E profiles / Release shards / Release UI and storage / Detox release iOS E2E',
-    'Detox E2E profiles / Release shards / Release stateful-data / Detox release iOS E2E',
-    'Detox E2E profiles / OpenAI Debug E2E / Detox openai-provider iOS E2E',
-    'Detox E2E profiles / Speech Transcription E2E / Detox transcription iOS E2E',
-    'Detox E2E profiles / Next Visit Questions E2E / Detox next-visit-questions iOS E2E',
+    'Validate / Build',
+    'Validate / UI',
+    'Validate / Storage',
+    'Validate / Provider',
+    'Validate / Speech',
+    'Validate / Questions',
   ],
 };
 
 export const TRUSTED_CI_WORKFLOW_PATHS = Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW);
-export const ACCEPTED_CI_WORKFLOW_EVENTS = ['push', 'workflow_dispatch'];
+
+// Full iOS evidence comes from automatic main pushes. Selected diagnostics never attest release readiness.
+export function isAcceptedCiWorkflowEvent(path, event) {
+  if (!TRUSTED_CI_WORKFLOW_PATHS.includes(path)) return false;
+  return (
+    event === 'push' || (event === 'workflow_dispatch' && path !== '.github/workflows/e2e-test.yml')
+  );
+}
+
 export const REQUIRED_CI_JOBS = Object.values(REQUIRED_CI_JOBS_BY_WORKFLOW).flat();
 export const REQUIRED_CI_JOB_WORKFLOW_PATH = Object.fromEntries(
   Object.entries(REQUIRED_CI_JOBS_BY_WORKFLOW).flatMap(([path, jobs]) =>

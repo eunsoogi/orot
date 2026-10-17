@@ -1,185 +1,153 @@
 name: E2E Test
-
 on:
   pull_request:
-    branches: [main]
+    # Drafts already validate source events; status-only transitions reuse the same head's checks.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      detox_trace:
-        description: Emit Detox lifecycle and device-call traces for diagnosis.
-        required: false
-        type: boolean
-        default: false
-      detox_resource_sampling:
-        description: Collect bounded process and memory samples for diagnosis.
-        required: false
-        type: boolean
-        default: false
-
 permissions:
   contents: read
-
+  pull-requests: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-env:
-  CI: 'true'
-  TZ: UTC
-  EXPECTED_NODE_VERSION: '22.23.2'
-  EXPECTED_PNPM_VERSION: '12.3.4'
-  EXPECTED_RUBY_VERSION: '4.0.7'
-  EXPECTED_COCOAPODS_VERSION: '1.17.0'
-  EXPECTED_APPLESIMUTILS_VERSION: '0.9.12'
-  # Validate pinned build tools while recording the actual runner release for cache identity.
-  EXPECTED_XCODE_VERSION: '27.0'
-  EXPECTED_IOS_SIMULATOR_SDK: '27.0'
-
+  # The selected entry shares this allocation window; the dedicated manager cancels stale PR runs.
+  group: ios-ci-macos-${{ github.repository }}
+  cancel-in-progress: false
 jobs:
-  ios-simulator-build:
-    name: iOS Simulator Build
-    # Preserve the production/OAuth build independently of Linux leaf failures.
-    if: ${{ !cancelled() }}
-    runs-on: xcode-27
-    timeout-minutes: 75
+  selection:
+    name: Plan / Select
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
-      selection_complete: ${{ steps.select.outputs.selection_complete }}
-      ios_build: ${{ steps.select.outputs.ios_build }}
-      detox_release: ${{ steps.select.outputs.detox_release }}
-      detox_openai: ${{ steps.select.outputs.detox_openai }}
-      detox_transcription: ${{ steps.select.outputs.detox_transcription }}
-      detox_next_visit: ${{ steps.select.outputs.detox_next_visit }}
-    env:
-      # Only the Xcode-backed production/OAuth build needs this macOS toolchain location.
-      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+      complete: ${{ steps.select.outputs.selection_complete }}
+      deferred: ${{ steps.select.outputs.full_validation_deferred }}
+      run_ios: ${{ steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true' }}
+      # Reject an unsupported manual event without allowing it to attest full validation.
+      diagnostic: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      # Keep selector errors in the required iOS build context.
-      - name: Select checks for changed paths
-        id: select
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        # A PR comparison needs its base history; incomplete selection must not bypass required checks.
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - id: select
         run: node scripts/ci/select-changed-paths.mjs
-      - name: Cache pnpm lockfile verification
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        uses: ./.github/actions/pnpm-lockfile-verification
-        with:
-          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
-      - name: Set up Ruby
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
-        with:
-          ruby-version: '4.0.7'
-          bundler-cache: false
-      - name: Install CocoaPods
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: |
-          scripts/ci/run-command.sh cocoapods-install artifacts/ios-build/cocoapods-install.log -- gem install cocoapods --version "${EXPECTED_COCOAPODS_VERSION}" --no-document
-      - name: Verify runner toolchain
-        id: verify_toolchain
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: scripts/ci/verify-toolchain.sh --cocoapods
-      - name: Install frozen workspace dependencies
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: scripts/ci/run-command.sh install artifacts/ios-build/install.log -- pnpm install --frozen-lockfile
-      - name: Compute production app cache fingerprints
-        id: production_app_fingerprint
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: node scripts/ci/detox-cache-fingerprint-cli.mjs --derived-data-only
-      - name: Cache production app DerivedData and CocoaPods
-        id: production_app_cache
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        timeout-minutes: 10
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: |
-            apps/mobile/ios/build-production
-            apps/mobile/ios/Pods
-          key: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-build-${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          restore-keys: orot-ios-app-deriveddata-v5-${{ runner.os }}-${{ runner.arch }}-macos-${{ steps.verify_toolchain.outputs.macos_version }}-node-${{ env.EXPECTED_NODE_VERSION }}-pnpm-${{ env.EXPECTED_PNPM_VERSION }}-ruby-${{ env.EXPECTED_RUBY_VERSION }}-cocoapods-${{ env.EXPECTED_COCOAPODS_VERSION }}-xcode-${{ env.EXPECTED_XCODE_VERSION }}-build-${{ steps.verify_toolchain.outputs.xcodebuild_fingerprint }}-sdk-${{ env.EXPECTED_IOS_SIMULATOR_SDK }}-production-native-${{ steps.production_app_fingerprint.outputs.native_dependencies }}-
-      - name: Prepare production app DerivedData cache
-        id: prepare_production_app_cache
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        env:
-          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
-          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
-          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
-          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
-          APP_CACHE_HIT: ${{ steps.production_app_cache.outputs.cache-hit }}
-        run: |
-          set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs prepare production 2>&1 | tee artifacts/ios-build/native-cache.log
-          printf 'derived_data_cache_hit=%s\n' "${APP_CACHE_HIT:-false}" >> artifacts/ios-build/native-cache.log
-      - name: Install app CocoaPods dependencies
-        if: ${{ steps.select.outputs.ios_build == 'true' && steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
-        run: scripts/ci/run-command.sh app-pods artifacts/ios-build/pods-install.log -- bash scripts/ci/build-ios-simulator-app.sh pods
-
-      - name: Build the iOS Simulator app
-        if: ${{ steps.select.outputs.ios_build == 'true' && steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
-        run: scripts/ci/run-command.sh ios-simulator-build artifacts/ios-build/build.log -- bash scripts/ci/build-ios-simulator-app.sh build
-
-      - name: Write production app DerivedData manifest
-        if: ${{ steps.select.outputs.ios_build == 'true' && steps.prepare_production_app_cache.outputs.app_reusable != 'true' }}
-        env:
-          DETOX_CACHE_RUNNER_OS: ${{ runner.os }}
-          DETOX_CACHE_RUNNER_ARCH: ${{ runner.arch }}
-          EXPECTED_DETOX_BUILD_INPUT_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.build_inputs }}
-          EXPECTED_DETOX_NATIVE_DEPENDENCY_FINGERPRINT: ${{ steps.production_app_fingerprint.outputs.native_dependencies }}
-          EXPECTED_PRIVACY_MANIFEST_INPUT_SHA256: ${{ steps.production_app_fingerprint.outputs.privacy_manifest_input_sha256 }}
-          MACOS_VERSION: ${{ steps.verify_toolchain.outputs.macos_version }}
-          EXPECTED_XCODE_VERSION: ${{ env.EXPECTED_XCODE_VERSION }}
-          EXPECTED_IOS_SIMULATOR_SDK: ${{ env.EXPECTED_IOS_SIMULATOR_SDK }}
-        run: set -o pipefail; node scripts/ci/detox-derived-data-cache.mjs write production 2>&1 | tee -a artifacts/ios-build/native-cache.log
-
-      - name: Verify Simulator defaults and test OAuth package
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: node scripts/ci/verify-simulator-keychain-defaults.mjs && scripts/ci/run-command.sh openai-oauth-tests artifacts/ios-build/openai-oauth-tests.log -- swift test --package-path packages/provider-openai
-
-      - name: Build the standalone ChatGPT OAuth Simulator harness
-        if: ${{ steps.select.outputs.ios_build == 'true' }}
-        run: |
-          scripts/ci/run-command.sh openai-oauth-ios-build artifacts/ios-build/openai-oauth-ios-build.log -- xcodebuild \
-            -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
-            -scheme ChatGPTOAuthSpike \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/orot-openai-oauth-derived" \
-            CODE_SIGNING_ALLOWED=NO build
-
-      - name: Upload iOS build log
-        if: ${{ always() && steps.select.outputs.ios_build == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-ios-build-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-build/
-          if-no-files-found: error
-          retention-days: 14
-
-  detox_profiles:
-    name: Detox E2E profiles
-    needs: ios-simulator-build
-    if: ${{ always() && !cancelled() }}
-    uses: ./.github/workflows/detox-e2e-profiles.yml
+  plan:
+    name: Plan / Coverage
+    needs: selection
+    if: ${{ always() && !cancelled() && github.event_name != 'workflow_dispatch' && needs.selection.outputs.run_ios == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Validate all independent feature suites before Mac allocation
+        id: plan
+        run: node scripts/ci/ios-test-cohort-plan-cli.mjs
+  production_validation:
+    name: Build
+    needs: plan
+    uses: ./.github/workflows/ios-production-validation.yml
+  oauth_products:
+    name: Build
+    needs: plan
+    uses: ./.github/workflows/ios-oauth-build.yml
+  oauth_execution:
+    name: Test
+    needs: oauth_products
+    uses: ./.github/workflows/ios-oauth-execution.yml
     with:
-      trace_logging: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_trace == true }}
-      resource_sampling: ${{ github.event_name == 'workflow_dispatch' && inputs.detox_resource_sampling == true }}
-      run_release: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_release == 'true' }}
-      run_openai: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_openai == 'true' }}
-      run_transcription: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_transcription == 'true' }}
-      run_next_visit: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' || needs.ios-simulator-build.outputs.detox_next_visit == 'true' }}
-      path_selection_failed: ${{ needs.ios-simulator-build.outputs.selection_complete != 'true' }}
+      archive_digest: ${{ needs.oauth_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.oauth_products.outputs.manifest_digest }}
+  debug_products:
+    name: Build
+    needs: plan
+    uses: ./.github/workflows/ios-test-products-build.yml
+    with:
+      name: Debug
+      profile: provider-data
+      artifact_name: ios-test-debug-products
+      timeout_minutes: 60
+  release_products:
+    name: Build
+    needs: plan
+    uses: ./.github/workflows/ios-test-products-build.yml
+    with:
+      name: Release
+      profile: core
+      artifact_name: ios-test-release-products
+      timeout_minutes: 60
+  debug_execution:
+    name: Test
+    needs: [plan, debug_products]
+    uses: ./.github/workflows/ios-debug-tests.yml
+    with:
+      archive_digest: ${{ needs.debug_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.debug_products.outputs.manifest_digest }}
+  release_execution:
+    name: Test
+    needs: [plan, release_products]
+    uses: ./.github/workflows/ios-release-tests.yml
+    with:
+      archive_digest: ${{ needs.release_products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
+  completeness:
+    name: Validate
+    needs:
+      [
+        plan,
+        production_validation,
+        oauth_products,
+        oauth_execution,
+        debug_products,
+        release_products,
+        debug_execution,
+        release_execution,
+      ]
+    if: ${{ always() && needs.plan.result != 'skipped' }}
+    uses: ./.github/workflows/ios-test-completeness.yml
+    with:
+      execution_results: ${{ toJSON(needs) }}
+  ios_simulator_build:
+    name: Validate / Build
+    needs: [selection, completeness]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require full current-head selection
+        env:
+          COMPLETE: ${{ needs.selection.outputs.complete }}
+          DEFERRED: ${{ needs.selection.outputs.run_ios == 'true' && needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success' }}
+          DIAGNOSTIC: ${{ needs.selection.outputs.diagnostic }}
+        run: test "$COMPLETE" = true && test "$DEFERRED" != true && test "$DIAGNOSTIC" != true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Read the completed production build receipt
+        if: needs.selection.outputs.run_ios == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/production-receipt
+      - name: Read the separate OAuth execution receipt
+        if: needs.selection.outputs.run_ios == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/oauth-receipt
+      - name: Verify production receipt at this run and head
+        if: needs.selection.outputs.run_ios == 'true'
+        run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json artifacts/oauth-receipt/products/receipt.json
+  required_statuses:
+    # Selected iOS paths require full validation; complete exclusions also pass for drafts.
+    name: Validate
+    needs: [selection, completeness]
+    if: always()
+    uses: ./.github/workflows/ios-required-statuses.yml
+    with:
+      selected: ${{ needs.selection.outputs.run_ios == 'true' }}
+      invalid_selection: ${{ needs.selection.outputs.complete != 'true' || (needs.selection.outputs.run_ios == 'true' && needs.selection.outputs.deferred == 'true' && needs.completeness.result != 'success') || needs.selection.outputs.diagnostic == 'true' || github.event_name == 'workflow_dispatch' }}
+      execution_result: ${{ needs.completeness.result }}

@@ -10,35 +10,6 @@ const EXPECTED_APP_METADATA = {
 };
 
 export const APP_PROFILES = {
-  release: {
-    derivedDataPath: 'apps/mobile/ios/build-detox-release',
-    configuration: 'Release-iphonesimulator',
-    productPath: 'Build/Products/Release-iphonesimulator/Orot.app',
-    binaryPath: 'Build/Products/Release-iphonesimulator/Orot.app/Orot',
-    embeddedBundlePath: 'Build/Products/Release-iphonesimulator/Orot.app/main.jsbundle',
-  },
-  'openai-provider': {
-    derivedDataPath: 'apps/mobile/ios/build-detox-openai-provider',
-    configuration: 'Debug-iphonesimulator',
-    productPath: 'Build/Products/Debug-iphonesimulator/Orot.app',
-    binaryPath: 'Build/Products/Debug-iphonesimulator/Orot.app/Orot',
-    embeddedBundlePath: 'Build/Products/Debug-iphonesimulator/Orot.app/main.jsbundle',
-  },
-  transcription: {
-    derivedDataPath: 'apps/mobile/ios/build-detox-transcription',
-    configuration: 'Release-iphonesimulator',
-    productPath: 'Build/Products/Release-iphonesimulator/Orot.app',
-    binaryPath: 'Build/Products/Release-iphonesimulator/Orot.app/Orot',
-    embeddedBundlePath: 'Build/Products/Release-iphonesimulator/Orot.app/main.jsbundle',
-  },
-  // Keep the synthetic screen probe isolated because it builds a separate Metro entry.
-  'next-visit-questions': {
-    derivedDataPath: 'apps/mobile/ios/build-detox-next-visit-questions',
-    configuration: 'Debug-iphonesimulator',
-    productPath: 'Build/Products/Debug-iphonesimulator/Orot.app',
-    binaryPath: 'Build/Products/Debug-iphonesimulator/Orot.app/Orot',
-    embeddedBundlePath: 'Build/Products/Debug-iphonesimulator/Orot.app/main.jsbundle',
-  },
   production: {
     derivedDataPath: 'apps/mobile/ios/build-production',
     configuration: 'Debug-iphonesimulator',
@@ -128,7 +99,7 @@ export function removeDerivedDataRoot(profile, dataRoot) {
 
 export function clearAppOutputs(profile, dataRoot) {
   const configuration = getProfile(profile).configuration;
-  // Compatible native dependencies keep their Pods products; only the app's intermediates and bundle need rebuilding.
+  // Compatible platform dependencies keep their Pods products; only the app's intermediates and bundle need rebuilding.
   const outputs = [
     join(dataRoot, 'Build/Intermediates.noindex/OrotMobile.build', configuration),
     join(dataRoot, 'Build/Products', configuration, 'Orot.app'),
@@ -191,7 +162,9 @@ export function inspectCachedApp(profile, dataRoot, expectedArtifacts) {
 
   const architecture = process.arch === 'x64' ? 'x86_64' : process.arch;
   try {
-    const actual = execFileSync('xcrun', ['lipo', '-archs', binary], { encoding: 'utf8' })
+    const actual = execFileSync('xcrun', ['lipo', '-archs', binary], {
+      encoding: 'utf8',
+    })
       .trim()
       .split(/\s+/)
       .filter(Boolean)

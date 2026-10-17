@@ -177,6 +177,35 @@ describe('visit-question response correction', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('keeps incomplete coverage terminal even when question formatting could be corrected', async () => {
+    const current = preparedContext();
+    const prepared = {
+      ...current,
+      evidence: {
+        ...current.evidence,
+        batch: {
+          ...current.evidence.batch,
+          coverage: current.evidence.batch.coverage.map(coverage => ({
+            ...coverage,
+            gaps: ['Synthetic selected-record coverage is incomplete.'],
+          })),
+        },
+      },
+    };
+    const { provider, requests } = makeProvider([
+      suggestionOutput('수면 패턴의 변화를 더 구체적으로 확인해야 합니다.'),
+      suggestionOutput('수면 변화와 관련해 어떤 점을 관찰하면 좋을까요?'),
+    ]);
+    const { selection, option } = selectedOption(provider, 'on-device');
+    const result = await runVisitQuestionWorkflow({
+      prepared,
+      selection,
+      providerOptions: [option],
+    });
+    expect(result.status).toBe('needs_clarification');
+    expect(requests).toHaveLength(1);
+  });
+
   it('does not start a correction request after cancellation', async () => {
     const prepared = preparedContext();
     const controller = new AbortController();
