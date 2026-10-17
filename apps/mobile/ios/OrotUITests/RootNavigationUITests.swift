@@ -46,7 +46,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         for identifier in ["settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
-            let control = UITestConditions.element(app, identifier)
+            let control = app.buttons[identifier]
             XCTAssertTrue(control.exists && control.isHittable)
         }
         capture(app, "settings-root-light")
@@ -185,7 +185,9 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String) {
-        let element = UITestConditions.element(app, identifier)
+        // These actions are buttons. A typed, unique query avoids the remote first-match walk through unrelated
+        // containers and text nodes; it still resolves the live control again after every route change.
+        let element = app.buttons[identifier]
         XCTAssertTrue(element.waitForAppearance())
         UITestConditions.scrollTo(element, in: app)
         element.tap()

@@ -4,6 +4,12 @@ import { createServer } from 'node:net';
 
 /** One loopback connection binds each XCTest boundary to host preparation; host exit closes the waiting client. */
 export async function executeIosFixtureSession({ identifiers, command, handle }) {
+  // The runner's lifecycle barrier uses XCUIApplication; app-hosted integration targets must not enter this session.
+  if (
+    !identifiers.length ||
+    identifiers.some((identifier) => !identifier.startsWith('OrotUITests/'))
+  )
+    throw new Error('Fixture sessions require explicit UI test identifiers');
   const session = randomUUID();
   const seen = new Set();
   const entered = new Set();

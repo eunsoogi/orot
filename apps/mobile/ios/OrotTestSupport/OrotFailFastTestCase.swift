@@ -93,15 +93,14 @@ private final class OrotTestInvocationState: @unchecked Sendable {
 
     /// Finish inside the final teardown while XCTest can still record thrown errors; observers run after stop.
     /// Failure/skip counts describe the active run without assuming hasSucceeded before XCTest stops it.
-    func finish(_ testCase: XCTestCase) throws {
+    func finish(_ name: String, passed: Bool) throws {
         try lock.withLock {
             let file = try marker()
-            guard try String(contentsOf: file, encoding: .utf8) == testCase.name else { return }
-            let passed = testCase.testRun?.totalFailureCount == 0 && testCase.testRun?.skipCount == 0
-            try fixtureBoundary("complete", name: testCase.name, passed: passed)
+            guard try String(contentsOf: file, encoding: .utf8) == name else { return }
+            try fixtureBoundary("complete", name: name, passed: passed)
             guard passed else { return }
             try FileManager.default.removeItem(at: file)
-            print("OROT_TEST_CASE_CLEARED \(testCase.name)")
+            print("OROT_TEST_CASE_CLEARED \(name)")
         }
     }
 }
@@ -109,15 +108,41 @@ private final class OrotTestInvocationState: @unchecked Sendable {
 /// Compiled into test targets only. Each xcodebuild invocation owns a fresh namespace in its runner sandbox.
 /// This cannot intercept bootstrap failures before setup, or coordinate different test-target sandboxes.
 class OrotFailFastTestCase: XCTestCase {
-    /// XCTest still invokes nonthrowing setup after a skip; subclasses must keep it limited to local flags.
-    override final func setUpWithError() throws {
-        try super.setUpWithError()
-        try OrotTestInvocationState.shared.enter(name)
+    /// Host reset may launch and stop the app. Keep XCTest's main run loop free to consume those lifecycle events.
+    override final func setUp() async throws {
+        try await super.setUp()
+        let caseName = name
+        try await Task.detached {
+            try OrotTestInvocationState.shared.enter(caseName)
+        }.value
+        #if os(iOS)
+            if ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] != nil {
+                try await observeFixtureAppStopped()
+            }
+        #endif
     }
+
+    #if os(iOS)
+        /// A host acknowledgement proves simctl finished, not that XCTest has consumed the stopped-process update.
+        /// Fixture sessions contain UI cases only. The body keeps ownership of the next launch and all original assertions.
+        @MainActor
+        private func observeFixtureAppStopped() async throws {
+            let application = XCUIApplication(bundleIdentifier: "com.orot.mobile")
+            while application.state != .notRunning {
+                // Observation pacing yields lifecycle delivery; it is neither a deadline nor a launch retry.
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+            print("OROT_FIXTURE_APP_STOPPED \(name)")
+        }
+    #endif
 
     /// XCTest runs async teardown after registered blocks and both synchronous teardown hooks.
     override final func tearDown() async throws {
         try await super.tearDown()
-        try OrotTestInvocationState.shared.finish(self)
+        let caseName = name
+        let passed = testRun?.totalFailureCount == 0 && testRun?.skipCount == 0
+        try await Task.detached {
+            try OrotTestInvocationState.shared.finish(caseName, passed: passed)
+        }.value
     }
 }
