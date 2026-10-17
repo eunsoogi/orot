@@ -67,7 +67,13 @@ test('ownership lost after one mutation prevents the next mutation instead of re
 });
 
 test('independent cleanup directly uninstalls the exact owned bundle and proves absence in four commands', () => {
-  for (const profile of ['fixtures', 'health-import', 'microphone', 'provider-selection']) {
+  for (const profile of [
+    'fixtures',
+    'health-import',
+    'microphone',
+    'provider-selection',
+    'backup',
+  ]) {
     const value = fixture(profile, { action: 'cleanup' });
     try {
       assert.equal(value.outcome.status, 0, value.outcome.stderr);
@@ -97,7 +103,7 @@ test('independent cleanup directly uninstalls the exact owned bundle and proves 
   }
   for (const [profile, options] of [
     ['core', {}],
-    ['backup', {}],
+    ['backup', { ownerProfile: 'core' }],
     ['local-model', {}],
     ['fixtures', { ownerProfile: 'core' }],
     ['fixtures', { state: 'Shutdown' }],

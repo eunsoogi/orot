@@ -33,7 +33,7 @@ test('cleanup failure preserves the original case failure and withholds all late
       assert.equal(report.passed, false);
       assert.equal(report.failures.length, 2);
       assert.equal(report.failures[0].identifier, value.identifiers[0]);
-      assert.match(report.failures[0].error, /Command failed/);
+      assert.match(report.failures[0].error, /Original XCTest case failed/);
       assert.equal(report.failures[1].stage, 'cleanup');
       assert.deepEqual(report.notRun, [value.identifiers[1]]);
     } finally {
@@ -89,10 +89,7 @@ test('scoped cases reuse one installation, reset the exact bundle before each ca
       assert.ok(
         privacy.every((call) => call.args.slice(3).join(' ') === 'reset all com.orot.mobile'),
       );
-      assert.equal(
-        value.calls.filter((call) => call.name === 'xcodebuild').length,
-        failFirst ? 1 : 2,
-      );
+      assert.equal(value.calls.filter((call) => call.name === 'xcodebuild').length, 1);
       assert.equal(value.report().passed, !failFirst);
       assert.equal(value.report().notRun.length, failFirst ? 1 : 0);
     } finally {

@@ -4,8 +4,9 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
-export function verifyIosTestResults(report, expected) {
-  if (!Array.isArray(report.testNodes) || !expected.length)
+/** Preserve raw first-execution outcomes even when the strict acceptance check must reject them. */
+export function readIosTestObservations(report) {
+  if (!Array.isArray(report.testNodes))
     throw new Error('iOS results require an explicit expected test inventory');
   const observations = [];
   function visit(node, target) {
@@ -31,7 +32,11 @@ export function verifyIosTestResults(report, expected) {
     for (const child of node.children ?? []) visit(child, currentTarget);
   }
   report.testNodes.forEach((node) => visit(node, undefined));
-  return verifyIosObservationList(observations, expected);
+  return observations;
+}
+
+export function verifyIosTestResults(report, expected) {
+  return verifyIosObservationList(readIosTestObservations(report), expected);
 }
 
 /** JSON aggregation on Linux applies the same exact first-execution oracle as the Mac xcresult exporter. */

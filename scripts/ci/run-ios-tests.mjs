@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
-import { iosTestInventory } from './ios-test-inventory.mjs';
+import { backupTests, iosTestInventory } from './ios-test-inventory.mjs';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
 import { isIosHostPreparation } from './ios-test-preparation-contract.mjs';
@@ -34,6 +34,9 @@ const fixtureSelection = fixtureProfiles.find((candidate) =>
   tests.some((test) => iosTestInventory(candidate).includes(test)),
 );
 const hostPreparation = isIosHostPreparation(tests, process.env.OROT_IOS_TEST_PHASE);
+const fixtureSession = /^[a-f0-9-]{36}$/i.test(
+  process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION ?? '',
+);
 const sharedPersistence = process.env.OROT_IOS_SHARED_PERSISTENCE_PHASE !== undefined;
 if (sharedPersistence) verifySharedPersistenceSelection(profile, tests, process.env);
 if (!sharedPersistence && tests.some((test) => statePersistenceTests.includes(test))) {
@@ -101,7 +104,11 @@ if (tests.some((test) => speechJourneyTests.includes(test))) {
 if (
   (profile === 'backup' &&
     !hostPreparation &&
-    (tests.length !== 1 || !iosTestInventory('backup').includes(tests[0]))) ||
+    (fixtureSession
+      ? !selected.length ||
+        new Set(tests).size !== tests.length ||
+        tests.some((test) => !backupTests.slice(0, 3).includes(test))
+      : tests.length !== 1 || !iosTestInventory('backup').includes(tests[0]))) ||
   (backupSelection && profile !== 'backup')
 )
   throw new Error(
@@ -110,7 +117,10 @@ if (
 if (
   (fixtureProfiles.includes(profile) &&
     !hostPreparation &&
-    (selected.length !== 1 || !iosTestInventory(profile).includes(tests[0]))) ||
+    (!selected.length ||
+      new Set(tests).size !== tests.length ||
+      (!fixtureSession && selected.length !== 1) ||
+      tests.some((test) => !iosTestInventory(profile).includes(test)))) ||
   (fixtureSelection && profile !== fixtureSelection)
 )
   throw new Error('Fresh fixture cases require their dedicated host-orchestrated destination');
@@ -140,7 +150,7 @@ const stopDiagnostics =
     ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')
     : async () => {};
 const stopAuthDiagnostics =
-  profile === 'provider-selection' && tests.length === 1 && tests[0] === authDiagnosticTest
+  profile === 'provider-selection' && tests.includes(authDiagnosticTest)
     ? startIosAuthDiagnostics(owner.udid, resolve(results) + '.auth.jsonl')
     : async () => {};
 const started = Date.now();

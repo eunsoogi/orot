@@ -16,9 +16,11 @@ function hasInstalledApp(simctl) {
   }
 }
 
-/** Restore the original independent-case uninstall boundary after success or failure; snapshot and model restart phases are deliberately excluded. */
+/** Restore independent-case uninstall after success or failure. Backup's caller admits only its first three cases; snapshot/model restart drivers do not use this cleanup. */
 export function removeIosTestFixtureContainer(profile, owner) {
-  if (!['fixtures', 'health-import', 'microphone', 'provider-selection'].includes(profile))
+  if (
+    !['fixtures', 'health-import', 'microphone', 'provider-selection', 'backup'].includes(profile)
+  )
     throw new Error('Fixture cleanup requires an independent dedicated execution profile');
   function simctl(...args) {
     if (verifyIosTestSimulator(owner, profile).state !== 'Booted')

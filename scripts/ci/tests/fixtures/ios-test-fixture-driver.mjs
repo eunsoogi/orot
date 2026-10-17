@@ -12,24 +12,34 @@ export function fixture({
   scoped = false,
   setupFailure,
   afterFirstCase = false,
+  selectedIdentifiers,
+  profile = 'fixtures',
+  invalidRequest,
+  cancelAfterComplete = false,
+  replayToken = false,
+  reverse = false,
+  qualifiedName = false,
 } = {}) {
   const repository = process.cwd();
-  const value = createProductFixture('fixtures');
-  const spec = iosTestConfig('fixtures');
+  const value = createProductFixture(profile);
+  const spec = iosTestConfig(profile);
   const owner = {
     ...spec,
     name: 'owned-continuation-fixture',
     udid: '11111111-2222-4333-8444-555555555555',
   };
-  const identifiers = scoped
-    ? iosTestInventory('fixtures', 'calendar').slice(-2)
-    : [
-        ...iosTestInventory('fixtures').filter((identifier) =>
-          identifier.includes('/StorageMigrationUITests/'),
-        ),
-        iosTestInventory('fixtures', 'calendar').at(-1),
-      ];
+  const identifiers =
+    selectedIdentifiers ??
+    (scoped
+      ? iosTestInventory('fixtures', 'calendar').slice(-2)
+      : [
+          ...iosTestInventory('fixtures').filter((identifier) =>
+            identifier.includes('/StorageMigrationUITests/'),
+          ),
+          iosTestInventory('fixtures', 'calendar').at(-1),
+        ]);
   const trace = join(value.root, 'calls.jsonl');
+  writeFileSync(trace, '');
   const installed = join(value.root, 'installed.flag');
   const container = join(value.root, 'data');
   mkdirSync(container);
@@ -39,21 +49,37 @@ export function fixture({
   const program = `#!${process.execPath}
 const fs=require('node:fs');const path=require('node:path');const args=process.argv.slice(2);const name=path.basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(trace)},JSON.stringify({name,args})+'\\n');
-const caseEntered=fs.readFileSync(${JSON.stringify(trace)},'utf8').trim().split('\\n').map(JSON.parse).some(x=>x.name==='xcodebuild');
-if(name==='xcrun'&&args[0]==='simctl'&&args[1]===${JSON.stringify(setupFailure)}&&(!${afterFirstCase}||caseEntered)){console.error('original-'+args[1]+'-setup-failure');process.exit(9);}
+const caseEntered=fs.readFileSync(${JSON.stringify(trace)},'utf8').trim().split('\\n').map(JSON.parse).some(x=>x.name==='xcrun'&&x.args[1]==='launch');
+if(name==='xcrun'&&args[0]==='simctl'&&args[1]===${JSON.stringify(setupFailure)}&&(args[1]!=='get_app_container'||args[3]==='com.orot.mobile')&&(!${afterFirstCase}||caseEntered)){console.error('original-'+args[1]+'-setup-failure');process.exit(9);}
 if(name==='xcodebuild'){
- const identifier=args.find(x=>x.startsWith('-only-testing:')).slice(14);
- const result=args[args.indexOf('-resultBundlePath')+1]; fs.mkdirSync(result); fs.writeFileSync(path.join(result,'identifier'),identifier);
- process.exit(${failFirst}&&identifier===${JSON.stringify(identifiers[0])}?65:0);
+ (async()=>{
+ const selected=args.filter(x=>x.startsWith('-only-testing:')).map(x=>x.slice(14));
+ const result=args[args.indexOf('-resultBundlePath')+1]; fs.mkdirSync(result);
+ const session=process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION;
+ let previousToken;
+ const request=(stage,identifier,passed)=>new Promise((resolve,reject)=>{const token=${replayToken}&&stage==='complete'?previousToken:require('node:crypto').randomUUID();previousToken=token;const [target,cls,method]=identifier.split('/');let input='';const socket=require('node:net').connect(Number(process.env.TEST_RUNNER_OROT_IOS_FIXTURE_PORT),'127.0.0.1',()=>socket.write(JSON.stringify({session,token,name:'-['+(${qualifiedName}?target+'.':'')+cls+' '+method+']',stage:${JSON.stringify(invalidRequest)}&&stage==='prepare'?'unexpected':stage,passed})+'\\n'));socket.on('data',x=>input+=x);socket.on('error',reject);socket.on('end',()=>{try{resolve(JSON.parse(input).ok);}catch(error){reject(error);}});});
+ let failed=false;const observations=[];
+ for(const identifier of (${reverse}?selected.slice().reverse():selected)){
+  if(failed){observations.push({identifier,result:'Skipped'});continue;}
+  const ready=!session||await request('prepare',identifier);
+  const passed=ready&&!(${failFirst}&&identifier===${JSON.stringify(identifiers[0])});
+  observations.push({identifier,result:passed?'Passed':'Failed'});
+  const clean=!session||await request('complete',identifier,passed);
+  failed=!passed||!clean;
+ }
+ fs.writeFileSync(path.join(result,'observations.json'),JSON.stringify(observations));
+ if(${cancelAfterComplete}&&!failed){process.on('SIGTERM',()=>process.exit(0));process.kill(Number(process.env.FIXTURE_DRIVER_PID),'SIGTERM');setInterval(()=>{},1000);return;}
+ process.exit(failed?65:0);
+ })().catch(error=>{console.error(error);process.exit(65);});return;
 }
 if(name!=='xcrun'){console.log('synthetic resource sample');process.exit(0);}
 if(args[0]==='xcresulttool'){
  if(args[1]==='export'){fs.mkdirSync(args[args.indexOf('--output-path')+1],{recursive:true});process.exit(0);}
- const result=args[args.indexOf('--path')+1];const identifier=fs.readFileSync(path.join(result,'identifier'),'utf8');
- console.log(JSON.stringify({testNodes:[{nodeType:'UI test bundle',name:'OrotUITests',children:[{nodeType:'Test Case',nodeIdentifier:identifier.split('/').slice(1).join('/')+'()',result:'Passed'}]}]}));process.exit(0);
+ const result=args[args.indexOf('--path')+1];const observations=JSON.parse(fs.readFileSync(path.join(result,'observations.json'),'utf8'));
+ console.log(JSON.stringify({testNodes:[{nodeType:'UI test bundle',name:'OrotUITests',children:observations.map(x=>({nodeType:'Test Case',nodeIdentifier:x.identifier.split('/').slice(1).join('/')+'()',result:x.result}))}]}));process.exit(0);
 }
 if(args[1]==='list'&&args[2]==='-j'){console.log(JSON.stringify({runtimes:[{identifier:${JSON.stringify(spec.runtime)},buildversion:${JSON.stringify(spec.runtimeBuild)},isAvailable:true}],devices:{[${JSON.stringify(spec.runtime)}]:[{udid:${JSON.stringify(owner.udid)},name:${JSON.stringify(owner.name)},deviceTypeIdentifier:${JSON.stringify(spec.device)},state:'Booted'}]}}));process.exit(0);}
-if(args[1]==='get_app_container'){if(fs.existsSync(${JSON.stringify(installed)})){console.log(${JSON.stringify(container)});process.exit(0);}console.error('domain=NSPOSIXErrorDomain, code=2');process.exit(2);}
+if(args[1]==='get_app_container'){if(args[3].endsWith('.xctrunner')||fs.existsSync(${JSON.stringify(installed)})){console.log(${JSON.stringify(container)});process.exit(0);}console.error('domain=NSPOSIXErrorDomain, code=2');process.exit(2);}
 if(args[1]==='install')fs.writeFileSync(${JSON.stringify(installed)},'installed');
 if(args[1]==='uninstall'&&!${cleanupFailure})fs.rmSync(${JSON.stringify(installed)});
 if(args[1]==='launch'){
@@ -69,20 +95,34 @@ console.log('synthetic owned fixture operation');
 `;
   for (const name of ['xcrun', 'xcodebuild', 'ps', 'vm_stat', 'sysctl'])
     writeFileSync(join(value.root, 'bin', name), program, { mode: 0o755 });
-  mkdirSync(join(value.products, 'Release-iphonesimulator', 'Orot.app'), { recursive: true });
-  const outcome = spawnSync(
-    process.execPath,
-    [
-      resolve(repository, 'scripts/ci/run-ios-fixture-tests.mjs'),
-      'fixtures',
-      join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
-      ownerFile,
-      output,
-      ...identifiers,
-    ],
-    { cwd: repository, env: value.env, encoding: 'utf8' },
+  mkdirSync(join(value.products, spec.configuration + '-iphonesimulator', 'Orot.app'), {
+    recursive: true,
+  });
+  writeFileSync(
+    join(
+      value.products,
+      spec.configuration + '-iphonesimulator',
+      'OrotUITests-Runner.app',
+      'Info.plist',
+    ),
+    JSON.stringify({ CFBundleIdentifier: 'com.orot.mobile.OrotUITests.xctrunner' }),
   );
-  const calls = readFileSync(trace, 'utf8').trim().split('\n').map(JSON.parse);
+  const driverArgs = [
+    resolve(repository, 'scripts/ci/run-ios-fixture-tests.mjs'),
+    profile,
+    join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
+    ownerFile,
+    output,
+    ...identifiers,
+  ];
+  const bootstrap = `process.env.FIXTURE_DRIVER_PID=String(process.pid);process.argv=${JSON.stringify([process.execPath, ...driverArgs])};await import(${JSON.stringify(driverArgs[0])});`;
+  const outcome = spawnSync(process.execPath, ['--input-type=module', '-e', bootstrap], {
+    cwd: repository,
+    env: value.env,
+    encoding: 'utf8',
+  });
+  const recordedCalls = readFileSync(trace, 'utf8').trim();
+  const calls = recordedCalls ? recordedCalls.split('\n').map(JSON.parse) : [];
   return {
     ...value,
     outcome,

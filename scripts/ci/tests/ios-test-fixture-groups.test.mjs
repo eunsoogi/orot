@@ -47,5 +47,8 @@ test('independent hosted fixture jobs partition every logical group and retain p
   const runner = readFileSync('scripts/ci/run-ios-fixture-tests.mjs', 'utf8');
   assert.match(runner, /selected\.length \? selected : iosTestInventory\(profile, suite\)/);
   assert.match(runner, /resetIosTestFixtureContainer\(profile, owner, app\)/);
-  assert.match(runner, /finally[\s\S]*removeIosTestFixtureContainer\(profile, owner\)/);
+  assert.match(
+    runner,
+    /mode === 'fresh-install'[\s\S]*removeIosTestFixtureContainer\(profile, owner\)/,
+  );
 });

@@ -47,6 +47,37 @@ function digests(root, paths) {
   );
 }
 const results = await executeBackupPhases({
+  runIndependent(identifiers) {
+    const output = join(directory, 'independent');
+    execFileSync(
+      'scripts/ci/run-command.sh',
+      [
+        'backup-independent',
+        join(directory, 'independent.log'),
+        '--',
+        process.execPath,
+        'scripts/ci/run-ios-fixture-tests.mjs',
+        'backup',
+        runFile,
+        ownerFile,
+        output,
+        ...identifiers,
+      ],
+      { stdio: 'inherit' },
+    );
+    observations.push(
+      ...JSON.parse(readFileSync(join(output, 'results.json'), 'utf8')).observations,
+    );
+    phase = 3;
+    return identifiers.map((identifier, index) =>
+      readBackupAttachment(
+        join(output, 'attachments'),
+        identifier,
+        ['recover', 'legacy-recording', 'rollback-recover'][index],
+        owner.udid,
+      ),
+    );
+  },
   reset({ preserveKeychain }) {
     // Independent cases reset the dedicated destination's Keychain, matching the original fresh-install contract.
     // Snapshot reinstall intentionally retains it: file transfer cannot substitute for the separate key restore boundary.

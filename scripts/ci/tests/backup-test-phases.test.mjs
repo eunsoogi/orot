@@ -15,6 +15,14 @@ const recordingID = '11111111-2222-4333-8444-555555555555';
 function fixture(fail) {
   const calls = [];
   const operations = {
+    async runIndependent(identifiers) {
+      const results = [];
+      for (const identifier of identifiers) {
+        await operations.reset({ preserveKeychain: false });
+        results.push(await operations.run(identifier));
+      }
+      return results;
+    },
     reset(options) {
       calls.push(['reset', options]);
     },

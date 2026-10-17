@@ -29,11 +29,10 @@ export function readBackupAttachment(directory, identifier, mode, udid) {
 
 /** Each independent case starts fresh. Snapshot recovery continues only after actual seed and host restore succeed. */
 export async function executeBackupPhases(operations) {
-  const results = [];
-  for (const identifier of backupTests.slice(0, 3)) {
-    await operations.reset({ preserveKeychain: false });
-    results.push(await operations.run(identifier));
-  }
+  // Independent cases share the common UI runner but retain a complete fresh container and Keychain before each body.
+  const results = await operations.runIndependent(backupTests.slice(0, 3));
+  if (!Array.isArray(results) || results.length !== 3)
+    throw new Error('Missing independent backup results');
   await operations.reset({ preserveKeychain: false });
   const seeded = await operations.run(backupTests[3]);
   results.push(seeded);
