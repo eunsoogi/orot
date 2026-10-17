@@ -6,6 +6,9 @@ import type { MockAppleStep } from './appleModelMockBridge';
 export const RAG_WORKFLOW_PUBLIC_QUERY =
   '(sleep duration adults) AND HAS_ABSTRACT:y';
 
+const ALLOWED_CITATION_REFERENCES_PREFIX =
+  'Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n';
+
 function requireFormat(request: LanguageModelRequest, name: string) {
   if (request.responseFormat?.name !== name)
     throw new Error(
@@ -13,20 +16,39 @@ function requireFormat(request: LanguageModelRequest, name: string) {
     );
 }
 
-/** Citation IDs come from the request's supplied evidence, including real Europe PMC results; the answer is a declared fixture. */
+/** Reads the prompt allowlist because the native output schema omits citation enums that Apple expands. */
 function citationIds(request: LanguageModelRequest): string[] {
   requireFormat(request, 'task_response');
-  const schema = request.responseFormat!.schema as unknown as {
-    anyOf: readonly {
-      properties: { citations?: { items: { enum?: string[] } } };
-    }[];
-  };
-  const ids = schema.anyOf.flatMap(
-    choice => choice.properties.citations?.items.enum ?? [],
+  const allowlistMessage = request.messages.find(
+    message =>
+      message.role === 'user' &&
+      'content' in message &&
+      typeof message.content === 'string' &&
+      message.content.startsWith(ALLOWED_CITATION_REFERENCES_PREFIX),
   );
-  if (!ids.length)
+  if (
+    !allowlistMessage ||
+    !('content' in allowlistMessage) ||
+    typeof allowlistMessage.content !== 'string'
+  )
     throw new Error('A grounded mock response requires supplied citation IDs');
-  return ids;
+
+  let references: unknown;
+  try {
+    references = JSON.parse(
+      allowlistMessage.content.slice(ALLOWED_CITATION_REFERENCES_PREFIX.length),
+    );
+  } catch {
+    throw new Error('The supplied citation allowlist was invalid');
+  }
+  if (
+    !Array.isArray(references) ||
+    !references.length ||
+    references.some(reference => typeof reference !== 'string')
+  )
+    throw new Error('A grounded mock response requires supplied citation IDs');
+
+  return references;
 }
 
 const calendar =
