@@ -1,5 +1,5 @@
 import Foundation
-#if canImport(FoundationModels)
+#if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
     import FoundationModels
 #endif
 import React
@@ -28,8 +28,9 @@ func appleFoundationModelsFailure(_ code: String, _ message: String, _ status: S
 }
 
 func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
+    // Simulator tests use the mock call boundary, so classify SDK-specific refusals only in production.
     // Preserve native safety refusals separately from app input errors and missing records.
-    #if canImport(FoundationModels)
+    #if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
         if #available(iOS 27.0, *), let modelError = error as? LanguageModelError {
             switch modelError {
             case .refusal, .guardrailViolation:
