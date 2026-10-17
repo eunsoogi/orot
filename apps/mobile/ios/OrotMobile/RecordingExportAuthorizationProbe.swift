@@ -119,4 +119,62 @@
             }
         }
     }
+
+    /// Keep simulator-only export controls beside the authorization probe.
+    public extension RecordingModule {
+        @objc(prepareSyntheticExportResidue:rejecter:)
+        func prepareSyntheticExportResidue(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter reject: @escaping RCTPromiseRejectBlock,
+        ) {
+            workQueue.async {
+                do {
+                    try RecordingExportFiles.prepareSyntheticResidue()
+                    resolve(RecordingExportFiles.residueCount())
+                } catch {
+                    reject("RECORDING_EXPORT_PROBE_FAILED", "Synthetic export residue could not be prepared.", error as NSError)
+                }
+            }
+        }
+
+        @objc(getSyntheticExportResidueCount:rejecter:)
+        func getSyntheticExportResidueCount(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter _: @escaping RCTPromiseRejectBlock,
+        ) {
+            workQueue.async { resolve(RecordingExportFiles.residueCount()) }
+        }
+
+        /// Checks fixture source bytes without returning a path or file contents to the probe.
+        @objc(isSyntheticTranscriptionFixtureUnchanged:resolver:rejecter:)
+        func isSyntheticTranscriptionFixtureUnchanged(
+            _ recordingID: String,
+            resolver resolve: @escaping RCTPromiseResolveBlock,
+            rejecter reject: @escaping RCTPromiseRejectBlock,
+        ) {
+            workQueue.async {
+                do {
+                    let unchanged = try RecordingFileSecurity.isSyntheticTranscriptionFixtureUnchanged(id: recordingID)
+                    resolve(unchanged)
+                } catch {
+                    // The probe reports only a fixed failure code; native paths and file contents stay private.
+                    reject("RECORDING_EXPORT_PROBE_FAILED", "The synthetic source could not be checked.", nil)
+                }
+            }
+        }
+
+        @objc(armSyntheticExportCancellation:rejecter:)
+        func armSyntheticExportCancellation(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter _: @escaping RCTPromiseRejectBlock,
+        ) {
+            workQueue.async {
+                RecordingExportFiles.armCancellation()
+                #if OROT_TESTS
+                    TestLifecycleObservation.record("export-synthetic-cancel-armed")
+                #endif
+                resolve(true)
+            }
+        }
+    }
 #endif

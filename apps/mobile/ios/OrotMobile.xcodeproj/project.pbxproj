@@ -7,10 +7,51 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
+		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
+		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
+		0C2288C598E4BFD070081E6E /* PagedHealthRecordsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */; };
 		0C80B921A6F3F58F76C31292 /* libPods-OrotMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */; };
+		12D0939BEAED8755996F1E07 /* ProviderSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		165B7B0D6D7095B471560BD2 /* BackupProbeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */; };
+		1CAAB1771D624B768AF1BD22 /* ProviderAuthUITestDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1FCB337FC3473EA50FC8C2 /* ProviderAuthUITestDiagnostics.swift */; };
+		251D8DD5C2413086401EAB78 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
+		2594B796D49220F636D98934 /* DebugUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */; };
+		2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */; };
+		283304E73431063EB5C4206B /* TestSpeechObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0CC908B80A06121230581D /* TestSpeechObservation.swift */; };
+		2E36EE573FDE4C56822B9AC1 /* AuthConsentWaitRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */; };
+		2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */; };
+		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
+		33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F894914E4F39E9162E577E /* RecordingExportUITests.swift */; };
+		332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */; };
+		3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */; };
+		403636589BB5F1697E88C9F7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
+		4D43610E1739E517D500E672 /* StorageMigrationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */; };
+		4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */; };
+		5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */; };
+		62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */; };
+		6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */; };
+		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
+		71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */; };
+		72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		761BB559E6B44B51D6F155FF /* SpeechCancellationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */; };
+		7AB35518B76698A667A12727 /* TestFixtureCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE20E19DC0DABAC32B10AFCD /* TestFixtureCommand.swift */; };
+		807264C8B705441EA53BFE56 /* AuthConsentWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */; };
+		864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */; };
+		864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */; };
+		876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */; };
+		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
+		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
+		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
+		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
+		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
+		9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */; };
+		9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */; };
+		9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
@@ -19,11 +60,19 @@
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
+		A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */; };
+		A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */; };
+		A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */; };
+		A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62440000000000000000002 /* TranscriptEvidenceUITests.swift */; };
+		A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62450000000000000000002 /* HealthIntegrationTests.swift */; };
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
 		A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */; };
 		A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */; };
+		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
+		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
+		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
 		A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000002 /* OpenAIProviderModule.m */; };
 		A63F00000000000000000003 /* OpenAIProvider in Frameworks */ = {isa = PBXBuildFile; productRef = D63F00000000000000000001 /* OpenAIProvider */; };
@@ -45,13 +94,28 @@
 		A64F0000000000000000000F /* RecordingMeteringProbeFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */; };
 		A64F00000000000000000010 /* RecordingMeteringProbeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */; };
 		A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000011 /* RecordingMeteringProbeModule.m */; };
+		A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000012 /* RecordingMeteringPermission.swift */; };
+		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
+		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
+		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
-		A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */; };
-		A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */; };
+		A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */; };
+		A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarTestModule.m */; };
+		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
+		B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
+		BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */; };
+		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
+		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
+		C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */; };
+		CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */; };
+		CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2F722F9A5281E9B9A73231 /* TestControl.m */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
+		DAB96891474DE7DFC4A63BB8 /* libPods-OrotIntegrationTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F502DE5A77E3F51FB2915E76 /* libPods-OrotIntegrationTests.a */; };
+		DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */; };
 		E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */; };
 		E12A00000000000000000002 /* OpenAIProviderAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12A00000000000000000012 /* OpenAIProviderAuthSession.swift */; };
 		E12A00000000000000000003 /* OpenAIProviderRequestRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12A00000000000000000013 /* OpenAIProviderRequestRegistry.swift */; };
@@ -71,6 +135,17 @@
 		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
+		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
+		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
+		E19810000000000000000001 /* LocalE5Preparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000011 /* LocalE5Preparation.swift */; };
+		E19810000000000000000002 /* LocalE5PreparationRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000012 /* LocalE5PreparationRegression.swift */; };
+		E19810000000000000000003 /* LocalE5PreparationFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000013 /* LocalE5PreparationFixtures.swift */; };
+		E19810000000000000000004 /* LocalE5PreparationLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000014 /* LocalE5PreparationLifetime.swift */; };
+		E19810000000000000000005 /* LocalE5PreparationLifetimeRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000015 /* LocalE5PreparationLifetimeRegression.swift */; };
+		E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */; };
+		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
+		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
+		E8CD30C28EBA26EB15F6597C /* AutomaticTranscriptionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */; };
 		F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */; };
 		F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000012 /* LocalE5EmbeddingModule.m */; };
 		F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */; };
@@ -81,18 +156,89 @@
 		F24E00000000000000000008 /* LocalE5SentencePieceTokenizer.mm in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */; settings = {COMPILER_FLAGS = "-fcxx-modules"; }; };
 		F24E00000000000000000009 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = F24E00000000000000000021 /* onnxruntime */; };
 		F24E0000000000000000000A /* swift-package-support-sentencepiece in Frameworks */ = {isa = PBXBuildFile; productRef = F24E00000000000000000022 /* swift-package-support-sentencepiece */; };
+		F5C1F537290F12893BBE97E9 /* TestFixtureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE6F89196C20B76EB9AEC58 /* TestFixtureState.swift */; };
+		F7534DE9B1E4004AF1E0777B /* RecordingFixtureUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */; };
+		FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */; };
+		FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */; };
+		FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		031C7C299C0F702C3C26194A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
+			remoteInfo = OrotMobile;
+		};
+		4F6B6A2DC1E61026B98547A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
+			remoteInfo = OrotMobile;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
+		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
+		125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationLayoutIntegrationTests.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Orot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = OrotMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = OrotMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingFixtureUITestConditions.swift; sourceTree = "<group>"; };
+		193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.release.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.release.xcconfig"; sourceTree = "<group>"; };
+		1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RenderedTextUITestConditions.swift; sourceTree = "<group>"; };
+		1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingLibraryUITests.swift; sourceTree = "<group>"; };
+		2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentsUITests.swift; sourceTree = "<group>"; };
+		2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleModelIntegrationTests.swift; sourceTree = "<group>"; };
+		2D0CC908B80A06121230581D /* TestSpeechObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestSpeechObservation.swift; path = OrotMobile/TestSpeechObservation.swift; sourceTree = "<group>"; };
+		35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HermesDomainIntegrationTests.swift; sourceTree = "<group>"; };
+		38F894914E4F39E9162E577E /* RecordingExportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportUITests.swift; sourceTree = "<group>"; };
+		39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MicrophoneMeteringUITests.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.debug.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.debug.xcconfig"; sourceTree = "<group>"; };
+		4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedHealthRecordsUITests.swift; sourceTree = "<group>"; };
+		418ED459FC663BD5BF8F8725 /* synthetic-korean.json */ = {isa = PBXFileReference; includeInIndex = 1; path = "synthetic-korean.json"; sourceTree = "<group>"; };
+		435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalModelIntegrationTests.swift; sourceTree = "<group>"; };
+		4D1FCB337FC3473EA50FC8C2 /* ProviderAuthUITestDiagnostics.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderAuthUITestDiagnostics.swift; sourceTree = "<group>"; };
+		4DD0E61F7D56E61215372EFE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPlaybackUITests.swift; sourceTree = "<group>"; };
+		5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestOperationBrokerTests.swift; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-OrotMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.release.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.release.xcconfig"; sourceTree = "<group>"; };
+		5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderIntegrationTests.swift; sourceTree = "<group>"; };
+		5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AiFeatureNavigationUITests.swift; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OrotMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHostConnectionTests.swift; sourceTree = "<group>"; };
+		703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentConsentUITests.swift; sourceTree = "<group>"; };
+		71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechIntegrationTests.swift; sourceTree = "<group>"; };
+		722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestOperationBroker.swift; path = OrotMobile/TestOperationBroker.swift; sourceTree = "<group>"; };
+		75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StorageMigrationUITests.swift; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OrotMobile/AppDelegate.swift; sourceTree = "<group>"; };
+		79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingMeteringBoundaryTests.swift; sourceTree = "<group>"; };
+		7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticTranscriptionUITests.swift; sourceTree = "<group>"; };
+		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
+		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
+		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
+		9422961FF39A9392CEC9AE63 /* TestControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControl.swift; path = OrotMobile/TestControl.swift; sourceTree = "<group>"; };
+		95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceUITestConditions.swift; sourceTree = "<group>"; };
+		9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupPersistenceUITests.swift; sourceTree = "<group>"; };
+		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
+		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
+		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
+		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
+		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
+		A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VisitQuestionConsentUITests.swift; sourceTree = "<group>"; };
+		A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportUITests.swift; sourceTree = "<group>"; };
+		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
+		AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticSpeechPersistenceTests.swift; sourceTree = "<group>"; };
+		ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixtureIsolationTests.swift; sourceTree = "<group>"; };
+		AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
+		AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatePersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
@@ -106,6 +252,9 @@
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
 		B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsRequestSlot.swift; path = OrotMobile/AppleFoundationModelsRequestSlot.swift; sourceTree = "<group>"; };
 		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
+		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
+		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
+		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
 		B63F00000000000000000002 /* OpenAIProviderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = OpenAIProviderModule.m; path = OrotMobile/OpenAIProviderModule.m; sourceTree = "<group>"; };
 		B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderErrorDetails.swift; path = OrotMobile/OpenAIProviderErrorDetails.swift; sourceTree = "<group>"; };
@@ -126,12 +275,27 @@
 		B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringProbeFile.swift; path = OrotMobile/RecordingMeteringProbeFile.swift; sourceTree = "<group>"; };
 		B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringProbeModule.swift; path = OrotMobile/RecordingMeteringProbeModule.swift; sourceTree = "<group>"; };
 		B64F00000000000000000011 /* RecordingMeteringProbeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingMeteringProbeModule.m; path = OrotMobile/RecordingMeteringProbeModule.m; sourceTree = "<group>"; };
+		B64F00000000000000000012 /* RecordingMeteringPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringPermission.swift; path = OrotMobile/RecordingMeteringPermission.swift; sourceTree = "<group>"; };
+		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
+		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
+		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
-		B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarDetoxModule.swift; path = OrotMobile/SyntheticCalendarDetoxModule.swift; sourceTree = "<group>"; };
-		B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarDetoxModule.m; path = OrotMobile/SyntheticCalendarDetoxModule.m; sourceTree = "<group>"; };
+		B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SyntheticCalendarTestModule.swift; path = OrotMobile/SyntheticCalendarTestModule.swift; sourceTree = "<group>"; };
+		B66F00000000000000000002 /* SyntheticCalendarTestModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = SyntheticCalendarTestModule.m; path = OrotMobile/SyntheticCalendarTestModule.m; sourceTree = "<group>"; };
+		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
+		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
+		BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechCancellationTests.swift; sourceTree = "<group>"; };
+		BE2F722F9A5281E9B9A73231 /* TestControl.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = TestControl.m; path = OrotMobile/TestControl.m; sourceTree = "<group>"; };
+		C12D46B0C240DC6518A5EF57 /* OrotUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotFailFastTestCase.swift; sourceTree = "<group>"; };
+		C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RagWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
 		C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationProbeSupport.swift; path = OrotMobile/BackupMigrationProbeSupport.swift; sourceTree = "<group>"; };
+		C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackupProbeBridge.swift; path = OrotMobile/BackupProbeBridge.swift; sourceTree = "<group>"; };
+		CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWaitRegression.swift; sourceTree = "<group>"; };
+		CDD4E90BE735FE6F178A85C8 /* Pods-OrotIntegrationTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotIntegrationTests.debug.xcconfig"; path = "Target Support Files/Pods-OrotIntegrationTests/Pods-OrotIntegrationTests.debug.xcconfig"; sourceTree = "<group>"; };
+		CE20E19DC0DABAC32B10AFCD /* TestFixtureCommand.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestFixtureCommand.swift; path = OrotMobile/TestFixtureCommand.swift; sourceTree = "<group>"; };
 		E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderAuthCoordinator.swift; path = OrotMobile/OpenAIProviderAuthCoordinator.swift; sourceTree = "<group>"; };
 		E12A00000000000000000012 /* OpenAIProviderAuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderAuthSession.swift; path = OrotMobile/OpenAIProviderAuthSession.swift; sourceTree = "<group>"; };
 		E12A00000000000000000013 /* OpenAIProviderRequestRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderRequestRegistry.swift; path = OrotMobile/OpenAIProviderRequestRegistry.swift; sourceTree = "<group>"; };
@@ -151,6 +315,14 @@
 		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
+		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
+		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
+		E19810000000000000000011 /* LocalE5Preparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5Preparation.swift; path = OrotMobile/LocalE5Preparation.swift; sourceTree = "<group>"; };
+		E19810000000000000000012 /* LocalE5PreparationRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationRegression.swift; path = LocalE5PreparationRegression.swift; sourceTree = "<group>"; };
+		E19810000000000000000013 /* LocalE5PreparationFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationFixtures.swift; path = LocalE5PreparationFixtures.swift; sourceTree = "<group>"; };
+		E19810000000000000000014 /* LocalE5PreparationLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationLifetime.swift; path = OrotMobile/LocalE5PreparationLifetime.swift; sourceTree = "<group>"; };
+		E19810000000000000000015 /* LocalE5PreparationLifetimeRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationLifetimeRegression.swift; path = LocalE5PreparationLifetimeRegression.swift; sourceTree = "<group>"; };
+		E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormUITestConditions.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingModule.swift; path = OrotMobile/LocalE5EmbeddingModule.swift; sourceTree = "<group>"; };
 		F24E00000000000000000012 /* LocalE5EmbeddingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocalE5EmbeddingModule.m; path = OrotMobile/LocalE5EmbeddingModule.m; sourceTree = "<group>"; };
@@ -162,6 +334,13 @@
 		F24E00000000000000000018 /* LocalE5SentencePieceTokenizer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = LocalE5SentencePieceTokenizer.mm; path = OrotMobile/LocalE5SentencePieceTokenizer.mm; sourceTree = "<group>"; };
 		F24E00000000000000000019 /* LocalE5SentencePieceTokenizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = LocalE5SentencePieceTokenizer.h; path = OrotMobile/LocalE5SentencePieceTokenizer.h; sourceTree = "<group>"; };
 		F24E0000000000000000001A /* OrotMobile-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "OrotMobile-Bridging-Header.h"; path = "OrotMobile/OrotMobile-Bridging-Header.h"; sourceTree = "<group>"; };
+		F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometryRegression.swift; sourceTree = "<group>"; };
+		F502DE5A77E3F51FB2915E76 /* libPods-OrotIntegrationTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OrotIntegrationTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarSelectionUITests.swift; sourceTree = "<group>"; };
+		FAE6F89196C20B76EB9AEC58 /* TestFixtureState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestFixtureState.swift; path = OrotMobile/TestFixtureState.swift; sourceTree = "<group>"; };
+		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
+		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
+		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -174,6 +353,23 @@
 				E16A00000000000000000001 /* HealthKit.framework in Frameworks */,
 				F24E00000000000000000009 /* onnxruntime in Frameworks */,
 				F24E0000000000000000000A /* swift-package-support-sentencepiece in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D26494F95156698ABE7F5D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				403636589BB5F1697E88C9F7 /* Foundation.framework in Frameworks */,
+				DAB96891474DE7DFC4A63BB8 /* libPods-OrotIntegrationTests.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1208D8CCF1ACA53E11BABB7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				251D8DD5C2413086401EAB78 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,6 +387,9 @@
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
 				B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */,
 				B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */,
+				B62F00000000000000000008 /* AppleFoundationModelsMock.m */,
+				B62F00000000000000000007 /* AppleFoundationModelsMock.swift */,
+				B62F00000000000000000006 /* AppleFoundationModelsSession.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
 				E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */,
@@ -210,11 +409,14 @@
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
+				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
+				B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */,
 				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F0000000000000000000E /* RecordingMetering.swift */,
 				B64F0000000000000000000F /* RecordingMeteringProbeFile.swift */,
 				B64F00000000000000000010 /* RecordingMeteringProbeModule.swift */,
 				B64F00000000000000000011 /* RecordingMeteringProbeModule.m */,
+				B64F00000000000000000012 /* RecordingMeteringPermission.swift */,
 				B64F00000000000000000007 /* RecordingSyntheticCapture.swift */,
 				B64F00000000000000000008 /* RecordingExportShare.swift */,
 				B64F00000000000000000009 /* RecordingExportFiles.swift */,
@@ -227,12 +429,14 @@
 				B65F00000000000000000001 /* EventKitCalendarModule.swift */,
 				B65F00000000000000000002 /* EventKitCalendarModule.m */,
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
-				B66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift */,
-				B66F00000000000000000002 /* SyntheticCalendarDetoxModule.m */,
+				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
+				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
 				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
 				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
 				F24E00000000000000000014 /* LocalE5EmbeddingRuntime.swift */,
+				E19810000000000000000011 /* LocalE5Preparation.swift */,
+				E19810000000000000000014 /* LocalE5PreparationLifetime.swift */,
 				F24E00000000000000000015 /* LocalE5ModelAssetStore.swift */,
 				F24E00000000000000000016 /* LocalE5URLSessionDownloader.swift */,
 				F24E00000000000000000017 /* LocalE5ProcessMetrics.swift */,
@@ -250,6 +454,14 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
+				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
+				B64F00000000000000000013 /* TestAppearanceRefresh.swift */,
+				BE2F722F9A5281E9B9A73231 /* TestControl.m */,
+				C60F4CF70A8C3D12CEC24152 /* BackupProbeBridge.swift */,
+				2D0CC908B80A06121230581D /* TestSpeechObservation.swift */,
+				FAE6F89196C20B76EB9AEC58 /* TestFixtureState.swift */,
+				CE20E19DC0DABAC32B10AFCD /* TestFixtureCommand.swift */,
 			);
 			name = OrotMobile;
 			sourceTree = "<group>";
@@ -260,6 +472,8 @@
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				E16A00000000000000000016 /* HealthKit.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */,
+				C895843851352D41013B56D9 /* iOS */,
+				F502DE5A77E3F51FB2915E76 /* libPods-OrotIntegrationTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -279,6 +493,10 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				ABFF46896F35DA79FC1B1F87 /* OrotIntegrationTests */,
+				F32CAB7D3C19AE0A162CCDC4 /* OrotTestSupport */,
+				CFF66607983B8DBE758C7293 /* OrotUITests */,
+				FB2DCF8F796AD07FCF2D9E97 /* TestFixtures */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -289,8 +507,40 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Orot.app */,
+				8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */,
+				C12D46B0C240DC6518A5EF57 /* OrotUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		ABFF46896F35DA79FC1B1F87 /* OrotIntegrationTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */,
+				86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */,
+				71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */,
+				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
+				A62450000000000000000002 /* HealthIntegrationTests.swift */,
+				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
+				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
+				5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */,
+				2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */,
+				81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */,
+				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
+				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
+				79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */,
+				435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */,
+				E19810000000000000000013 /* LocalE5PreparationFixtures.swift */,
+				E19810000000000000000012 /* LocalE5PreparationRegression.swift */,
+				E19810000000000000000015 /* LocalE5PreparationLifetimeRegression.swift */,
+				914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */,
+				AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */,
+				ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */,
+				AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */,
+				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
+			);
+			name = OrotIntegrationTests;
+			path = OrotIntegrationTests;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -298,6 +548,8 @@
 			children = (
 				3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */,
 				5709B34CF0A7D63546082F79 /* Pods-OrotMobile.release.xcconfig */,
+				193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */,
+				CDD4E90BE735FE6F178A85C8 /* Pods-OrotIntegrationTests.debug.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -313,6 +565,75 @@
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
 			);
 			path = Navigation;
+			sourceTree = "<group>";
+		};
+		C895843851352D41013B56D9 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				4DD0E61F7D56E61215372EFE /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		CFF66607983B8DBE758C7293 /* OrotUITests */ = {
+			isa = PBXGroup;
+			children = (
+				5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */,
+				A89139838EEBFC807829E10F /* UITestConditions.swift */,
+				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
+				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
+				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
+				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
+				E19800000000000000000003 /* ExportDismissalGeometry.swift */,
+				E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */,
+				9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */,
+				75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */,
+				2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */,
+				E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */,
+				FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */,
+				A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */,
+				B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */,
+				703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */,
+				A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */,
+				9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */,
+				39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */,
+				4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */,
+				7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */,
+				FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */,
+				95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */,
+				FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */,
+				0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */,
+				4D1FCB337FC3473EA50FC8C2 /* ProviderAuthUITestDiagnostics.swift */,
+				A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */,
+				CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */,
+				1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */,
+				17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */,
+				1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */,
+				56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */,
+				B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */,
+				5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */,
+				FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */,
+				F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */,
+			);
+			name = OrotUITests;
+			path = OrotUITests;
+			sourceTree = "<group>";
+		};
+		F32CAB7D3C19AE0A162CCDC4 /* OrotTestSupport */ = {
+			isa = PBXGroup;
+			children = (
+				C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */,
+			);
+			path = OrotTestSupport;
+			sourceTree = "<group>";
+		};
+		FB2DCF8F796AD07FCF2D9E97 /* TestFixtures */ = {
+			isa = PBXGroup;
+			children = (
+				418ED459FC663BD5BF8F8725 /* synthetic-korean.json */,
+			);
+			name = TestFixtures;
+			path = ../e2e/transcription/fixtures;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -344,6 +665,43 @@
 			productReference = 13B07F961A680F5B00A75B9A /* Orot.app */;
 			productType = "com.apple.product-type.application";
 		};
+		802F8E75C06DAD003C3FD1B9 /* OrotUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C3BB58FCC5491D1420C86D66 /* Build configuration list for PBXNativeTarget "OrotUITests" */;
+			buildPhases = (
+				AA24007F817E3A58DD6BB848 /* Sources */,
+				E1208D8CCF1ACA53E11BABB7 /* Frameworks */,
+				FD7EC4426CD4D66B26D20890 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				27010F1710B33EB1E7A080E5 /* PBXTargetDependency */,
+			);
+			name = OrotUITests;
+			productName = OrotUITests;
+			productReference = C12D46B0C240DC6518A5EF57 /* OrotUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		C3381A7416339E895E9FCEB3 /* OrotIntegrationTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBB440C6F483E399DA46D2C9 /* Build configuration list for PBXNativeTarget "OrotIntegrationTests" */;
+			buildPhases = (
+				6112475B2D281A35DBB81369 /* [CP] Check Pods Manifest.lock */,
+				E90183B546B344402A633FA6 /* Sources */,
+				B3D26494F95156698ABE7F5D /* Frameworks */,
+				59CFDAC4EB7E8616FC53973D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D051D35A7B02AA0DBAD3D120 /* PBXTargetDependency */,
+			);
+			name = OrotIntegrationTests;
+			productName = OrotIntegrationTests;
+			productReference = 8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -354,6 +712,14 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+					};
+					802F8E75C06DAD003C3FD1B9 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 13B07F861A680F5B00A75B9A;
+					};
+					C3381A7416339E895E9FCEB3 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 13B07F861A680F5B00A75B9A;
 					};
 				};
 			};
@@ -376,6 +742,8 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* OrotMobile */,
+				C3381A7416339E895E9FCEB3 /* OrotIntegrationTests */,
+				802F8E75C06DAD003C3FD1B9 /* OrotUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -388,6 +756,21 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59CFDAC4EB7E8616FC53973D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD7EC4426CD4D66B26D20890 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -425,6 +808,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OrotMobile/Pods-OrotMobile-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		6112475B2D281A35DBB81369 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-OrotIntegrationTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
@@ -485,6 +890,9 @@
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
 				A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */,
 				A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */,
+				A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */,
+				A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */,
+				A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
 				E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */,
@@ -504,11 +912,14 @@
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
+				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
+				A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */,
 				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
 				A64F0000000000000000000E /* RecordingMetering.swift in Sources */,
 				A64F0000000000000000000F /* RecordingMeteringProbeFile.swift in Sources */,
 				A64F00000000000000000010 /* RecordingMeteringProbeModule.swift in Sources */,
 				A64F00000000000000000011 /* RecordingMeteringProbeModule.m in Sources */,
+				A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */,
 				A64F00000000000000000008 /* RecordingExportShare.swift in Sources */,
 				A64F00000000000000000009 /* RecordingExportFiles.swift in Sources */,
 				A64F0000000000000000000A /* RecordingExportAuthorizationProbe.swift in Sources */,
@@ -521,12 +932,14 @@
 				A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */,
 				A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */,
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
-				A66F00000000000000000001 /* SyntheticCalendarDetoxModule.swift in Sources */,
-				A66F00000000000000000002 /* SyntheticCalendarDetoxModule.m in Sources */,
+				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
+				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
 				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
 				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,
 				F24E00000000000000000004 /* LocalE5EmbeddingRuntime.swift in Sources */,
+				E19810000000000000000001 /* LocalE5Preparation.swift in Sources */,
+				E19810000000000000000004 /* LocalE5PreparationLifetime.swift in Sources */,
 				F24E00000000000000000005 /* LocalE5ModelAssetStore.swift in Sources */,
 				F24E00000000000000000006 /* LocalE5URLSessionDownloader.swift in Sources */,
 				F24E00000000000000000007 /* LocalE5ProcessMetrics.swift in Sources */,
@@ -539,10 +952,107 @@
 				E14B00000000000000000006 /* SpeechTranscriptionModule.swift in Sources */,
 				E14B00000000000000000007 /* SpeechTranscriptionModule.m in Sources */,
 				E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */,
+				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
+				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
+				A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */,
+				CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */,
+				165B7B0D6D7095B471560BD2 /* BackupProbeBridge.swift in Sources */,
+				283304E73431063EB5C4206B /* TestSpeechObservation.swift in Sources */,
+				F5C1F537290F12893BBE97E9 /* TestFixtureState.swift in Sources */,
+				7AB35518B76698A667A12727 /* TestFixtureCommand.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA24007F817E3A58DD6BB848 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */,
+				BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */,
+				32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */,
+				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
+				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
+				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,
+				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
+				E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */,
+				E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */,
+				64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */,
+				4D43610E1739E517D500E672 /* StorageMigrationUITests.swift in Sources */,
+				5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */,
+				876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */,
+				72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */,
+				3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */,
+				2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */,
+				9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */,
+				BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */,
+				2594B796D49220F636D98934 /* DebugUITestConditions.swift in Sources */,
+				E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */,
+				0C2288C598E4BFD070081E6E /* PagedHealthRecordsUITests.swift in Sources */,
+				E8CD30C28EBA26EB15F6597C /* AutomaticTranscriptionUITests.swift in Sources */,
+				8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */,
+				062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */,
+				FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */,
+				12D0939BEAED8755996F1E07 /* ProviderSelectionUITests.swift in Sources */,
+				1CAAB1771D624B768AF1BD22 /* ProviderAuthUITestDiagnostics.swift in Sources */,
+				807264C8B705441EA53BFE56 /* AuthConsentWait.swift in Sources */,
+				2E36EE573FDE4C56822B9AC1 /* AuthConsentWaitRegression.swift in Sources */,
+				2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */,
+				F7534DE9B1E4004AF1E0777B /* RecordingFixtureUITestConditions.swift in Sources */,
+				FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */,
+				075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */,
+				332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */,
+				4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */,
+				9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */,
+				A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E90183B546B344402A633FA6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */,
+				761BB559E6B44B51D6F155FF /* SpeechCancellationTests.swift in Sources */,
+				C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */,
+				C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */,
+				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
+				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
+				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
+				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
+				E2793A4887DFBF27D9620B74 /* ProviderIntegrationTests.swift in Sources */,
+				AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */,
+				E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */,
+				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
+				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
+				FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */,
+				A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */,
+				E19810000000000000000003 /* LocalE5PreparationFixtures.swift in Sources */,
+				E19810000000000000000002 /* LocalE5PreparationRegression.swift in Sources */,
+				E19810000000000000000005 /* LocalE5PreparationLifetimeRegression.swift in Sources */,
+				62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */,
+				71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */,
+				8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */,
+				864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */,
+				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		27010F1710B33EB1E7A080E5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = OrotMobile;
+			target = 13B07F861A680F5B00A75B9A /* OrotMobile */;
+			targetProxy = 4F6B6A2DC1E61026B98547A4 /* PBXContainerItemProxy */;
+		};
+		D051D35A7B02AA0DBAD3D120 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = OrotMobile;
+			target = 13B07F861A680F5B00A75B9A /* OrotMobile */;
+			targetProxy = 031C7C299C0F702C3C26194A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -610,6 +1120,27 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		64B1A7FDB76E178D405E72DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				DEVELOPMENT_TEAM = OROTSIM000;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotuitests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = OrotMobile;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -769,6 +1300,71 @@
 			};
 			name = Release;
 		};
+		98DFA4B15404FFEDF0B4DB12 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 193134B9C1038B897CDFD6FE /* Pods-OrotIntegrationTests.release.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				DEVELOPMENT_TEAM = OROTSIM000;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotintegrationtests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orot.app/Orot";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		9EC1954BEB403C3DE3905B8B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				DEVELOPMENT_TEAM = OROTSIM000;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotuitests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = OrotMobile;
+			};
+			name = Debug;
+		};
+		E29BCCA1E3585F7A36B0988D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CDD4E90BE735FE6F178A85C8 /* Pods-OrotIntegrationTests.debug.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				DEVELOPMENT_TEAM = OROTSIM000;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.orot.mobile.orotintegrationtests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orot.app/Orot";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -786,6 +1382,24 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C3BB58FCC5491D1420C86D66 /* Build configuration list for PBXNativeTarget "OrotUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64B1A7FDB76E178D405E72DB /* Release */,
+				9EC1954BEB403C3DE3905B8B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FBB440C6F483E399DA46D2C9 /* Build configuration list for PBXNativeTarget "OrotIntegrationTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				98DFA4B15404FFEDF0B4DB12 /* Release */,
+				E29BCCA1E3585F7A36B0988D /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,8 +1,5 @@
-import type { EmbeddingProvider } from '@orot/agent-memory';
 import { LOCAL_EMBEDDING_IDENTITY } from '@orot/rag';
-import type { RecordMap } from '@orot/storage';
 import {
-  AGENT_MEMORY_PROBE_CHUNK_ID,
   assertAgentMemoryRagProbeSearch,
   createAgentMemoryProbeRagVector,
 } from './agentMemoryRagProbe';
@@ -17,49 +14,23 @@ import {
   openLocalStorage,
 } from '../storage/secureDatabase';
 
+import {
+  createAgentMemoryProbeFixture,
+  deterministicProvider,
+  originalText,
+  correctedText,
+} from './agentMemoryProbeFixtures';
+export { deterministicProvider } from './agentMemoryProbeFixtures';
+
 type DeletionProbeMode = 'delete' | 'tombstone-restart' | 'verify-deletion';
 export type AgentMemoryProbeMode = 'fresh' | 'restart' | DeletionProbeMode;
 
-const sourceRecord = {
-  id: 'agent-memory-synthetic-source',
-  effectiveAt: '2026-01-02T00:00:00Z',
-  recordedAt: '2026-01-02T00:00:00Z',
-  ingestedAt: '2026-01-02T00:00:00Z',
-  provenance: { origin: 'user_reported', sourceRecordIds: [] },
-  reviewState: { status: 'unreviewed' },
-  sourceKind: 'user_note',
-  title: 'Synthetic preference source',
-  contentHash: 'sha256:' + 'a'.repeat(64),
-} satisfies RecordMap['source_record'];
-
-const originalText = '사용자는 외래 일정 알림을 하루 전에 받고 싶어 한다.';
-const correctedText = '사용자는 외래 일정 알림을 오전 10시에 받고 싶어 한다.';
-const memoryInput = {
-  memoryKey: 'preference:outpatient-reminder',
-  kind: 'preference' as const,
-  provenance: {
-    sourceIds: [sourceRecord.id],
-    sourceDates: [{ sourceId: sourceRecord.id, date: sourceRecord.recordedAt }],
-    reviewState: 'user_confirmed' as const,
-  },
-};
-
-export const deterministicProvider: EmbeddingProvider = {
-  kind: 'embedding',
-  id: 'agent-memory-e2e-fixture',
-  displayName: 'Synthetic test embedding',
-  capabilities: { inputTypes: ['text'] },
-  async embed({ input }) {
-    return {
-      ok: true,
-      value: { vectors: input.map(deterministicVector) },
-    };
-  },
-};
-
 export async function runAgentMemoryProbe(
   mode: AgentMemoryProbeMode,
+  fixtureIdentifier?: string,
 ): Promise<void> {
+  const { sourceRecord, memoryInput, chunkId } =
+    createAgentMemoryProbeFixture(fixtureIdentifier);
   const originalFetch = globalThis.fetch;
   const networkGlobals = globalThis as typeof globalThis & {
     XMLHttpRequest: typeof XMLHttpRequest;
@@ -92,7 +63,7 @@ export async function runAgentMemoryProbe(
       );
       await embeddingStorage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
         {
-          chunkId: AGENT_MEMORY_PROBE_CHUNK_ID,
+          chunkId,
           vector: createAgentMemoryProbeRagVector(),
           sourceRecordIds: [sourceRecord.id],
         },
@@ -133,10 +104,11 @@ export async function runAgentMemoryProbe(
       const vectors = await embeddingStorage.listForModel(
         LOCAL_EMBEDDING_IDENTITY,
       );
-      if (
-        vectors.length !== 1 ||
-        vectors[0]?.chunkId !== AGENT_MEMORY_PROBE_CHUNK_ID
-      ) {
+      // Other native cases share this model index; verify this source's exact vector rather than its neighbors.
+      const sourceVectors = vectors.filter(
+        vector => vector.chunkId === chunkId,
+      );
+      if (sourceVectors.length !== 1 || sourceVectors[0]?.chunkId !== chunkId) {
         throw new Error(
           'The synthetic source vector did not survive relaunch.',
         );
@@ -145,6 +117,7 @@ export async function runAgentMemoryProbe(
         embeddingDatabase,
         sourceRecord.id,
         true,
+        chunkId,
       );
       const recalled = await memory.recall(correctedText, {
         minSimilarity: 0.999,
@@ -167,8 +140,9 @@ export async function runAgentMemoryProbe(
         throw new Error('The removed source record remained in local storage.');
       }
       if (
-        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY))
-          .length !== 0
+        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY)).some(
+          vector => vector.chunkId === chunkId,
+        )
       ) {
         throw new Error('The removed source vector remained in local storage.');
       }
@@ -203,8 +177,9 @@ export async function runAgentMemoryProbe(
         embeddingDatabase,
       );
       if (
-        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY))
-          .length !== 0
+        (await embeddingStorage.listForModel(LOCAL_EMBEDDING_IDENTITY)).some(
+          vector => vector.chunkId === chunkId,
+        )
       ) {
         throw new Error('The removed source vector returned after relaunch.');
       }
@@ -212,6 +187,7 @@ export async function runAgentMemoryProbe(
         embeddingDatabase,
         sourceRecord.id,
         false,
+        chunkId,
       );
       if (
         (await memory.recall(correctedText, { minSimilarity: 0.999 })).length
@@ -236,13 +212,4 @@ export async function runAgentMemoryProbe(
     networkGlobals.XMLHttpRequest = originalXhr;
     await closeLocalAgentMemory();
   }
-}
-
-function deterministicVector(text: string): number[] {
-  const vector = new Array<number>(64).fill(0);
-  for (let index = 0; index < text.length; index += 1) {
-    const bucket = text.charCodeAt(index) % vector.length;
-    vector[bucket] += (index % 3) + 1;
-  }
-  return vector;
 }

@@ -18,18 +18,27 @@ export function runCocoapodsFixture({
   subclassRealdirpathError = false,
   pnpmSymlinkError = false,
   pnpmSymlinkNulPath = false,
+  pnpmSymlinkPackage = 'react-native',
 } = {}) {
   const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'orot-cocoapods-realdirpath-'));
   if (pnpmSymlinkError || pnpmSymlinkNulPath) {
-    // Model the app alias; pnpm error cases inject the recorded error at File.realdirpath.
-    const link = path.join(temporaryRoot, 'apps/mobile/node_modules/react-native');
+    // Model either autolinked package alias; the test injects the recorded error at File.realdirpath.
+    const packageVersion = pnpmSymlinkPackage === 'react-native-screens' ? '4.27.0' : '0.87.1';
+    const link = path.join(temporaryRoot, 'apps/mobile/node_modules', pnpmSymlinkPackage);
     const store = path.join(temporaryRoot, 'node_modules/.pnpm');
-    const target = path.join(store, 'react-native@0.87.1/node_modules/react-native');
+    const target = path.join(
+      store,
+      `${pnpmSymlinkPackage}@${packageVersion}/node_modules`,
+      pnpmSymlinkPackage,
+    );
     mkdirSync(path.dirname(link), { recursive: true });
     mkdirSync(target, { recursive: true });
     symlinkSync(path.relative(path.dirname(link), target), link);
-    basePath = path.join(link, 'ReactCommon');
-    sourcePath = path.join(basePath, 'source.h');
+    const sourceDirectory = pnpmSymlinkPackage === 'react-native-screens' ? 'ios' : 'ReactCommon';
+    const sourceFile =
+      pnpmSymlinkPackage === 'react-native-screens' ? 'UIWindow+RNScreens.h' : 'source.h';
+    basePath = path.join(link, sourceDirectory);
+    sourcePath = path.join(basePath, sourceFile);
   } else if (success) {
     basePath = realpathSync(temporaryRoot);
     sourcePath = path.join(basePath, 'source.h');

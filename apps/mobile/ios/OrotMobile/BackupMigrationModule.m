@@ -9,7 +9,7 @@ RCT_EXTERN_METHOD(databaseFileState : (NSString *)name location : (NSString *)lo
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(prepareRecordingsForBackup : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
-#if OROT_BACKUP_PROBE_TEST
+#if OROT_BACKUP_PROBE_TEST || OROT_TESTS
 RCT_EXTERN_METHOD(armPostUpdateReadbackFailureForProbe : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(postUpdateReadbackFailureWasTriggeredForProbe : (RCTPromiseResolveBlock)

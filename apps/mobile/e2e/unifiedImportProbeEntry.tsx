@@ -17,6 +17,7 @@ import { unifiedImportProbeCopy } from './unifiedImportProbeCopy';
 import type { UnifiedImportMeasurement as ProbeMeasurement } from '../src/healthkit/unifiedImport/types';
 import { unifiedHealthImportCoordinator } from '../src/healthkit/unifiedImport/localImport';
 import type { CalendarEvent } from '../src/calendar/types';
+import { ImportProbeShell } from './ImportProbeShell';
 
 // Fixture-backed mode still invokes HealthKit; cancellable mode uses in-memory adapters.
 // API completion timings do not measure the visibility of either system sheet.
@@ -216,7 +217,7 @@ function UnifiedImportProbe() {
   }
 
   return (
-    <View>
+    <ImportProbeShell>
       <HealthKitImportScreen
         coordinator={
           mode === 'live'
@@ -242,7 +243,7 @@ function UnifiedImportProbe() {
           {summarizeCancellableProbe(measurements)}
         </Text>
       ) : null}
-    </View>
+    </ImportProbeShell>
   );
 }
 

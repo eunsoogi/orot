@@ -1,5 +1,7 @@
 # Apple Intelligence provider
 
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
+
 Orot exposes Apple's on-device Foundation Models through the existing
 `@orot/model-runtime` provider contract. The adapter uses the system model only;
 it does not send prompts to a server or fall back to another provider. Apple
@@ -56,35 +58,17 @@ Korean strings used by the mobile app when it presents these states.
 
 ## Verification
 
+The maintained Simulator integration suite mocks only the Foundation Models call boundary. It exercises the shipping bridge, structured-response codec, streaming, cancellation and application workflows, and records `modelExecution=mock` and `actualModel=not-run`. Production builds keep the real SDK and exclude the mock control endpoint. See [development.md](development.md) for the current commands and product checks.
+
 The unit suite uses a deterministic fake native boundary for provider
 capabilities, structured responses, input errors, unavailable states, streaming,
 and cancellation. It does not claim Apple framework inference occurred.
 
-The separate Detox probe uses only synthetic visit text and the real native
-module. Create one dedicated iOS Simulator, then set these values to that
-device's exact identifiers and to an evidence directory outside the checkout:
+The `provider-data` profile runs `AppleModelIntegrationTests` and `AppleWorkflowIntegrationTests` with the test-only model boundary. They check fixed raw SDK responses, stream completion and rewriting, cancellation, failures, Calendar classification and cited question generation. They do not require a host Apple Intelligence model or establish real inference quality.
 
-```sh
-export OROT_APPLE_FOUNDATION_MODELS_SIMULATOR_UDID="<dedicated simulator UDID>"
-export OROT_APPLE_FOUNDATION_MODELS_DERIVED_DATA_PATH="<new dedicated build path>"
-export OROT_APPLE_FOUNDATION_MODELS_EVIDENCE_DIR="<evidence directory>"
-```
+## Historical real-model observation
 
-Build and run the probe with:
-
-```sh
-pnpm --filter @orot/mobile e2e:build:ios:apple-foundation-models
-pnpm --filter @orot/mobile e2e:test:ios:apple-foundation-models
-```
-
-The build and Detox runner both target the explicit simulator UDID, avoiding an
-implicit default device. The probe always reports the live availability state. It attempts
-structured generation, verifies the synthetic source ID, and requests native
-cancellation only when the model reports `available`. If the model is
-unavailable, generation, source-ID verification, and cancellation are recorded
-as `not-run`. If the request finishes before cancellation, the probe reports
-`completed-before-cancel`. Its `inferenceStop=unverified` field makes clear that
-the framework's underlying inference termination was not observed.
+The following result belongs to the original 2026-10-04 Simulator run and is separate from the maintained mock-based CI checks.
 
 On 2026-10-04, the dedicated iPhone 18 Pro Max Simulator on iOS 27.0 (`Orot Apple
 Models 62 Retest`, UDID `6CA4652D-1842-4DA7-90DD-E7041F6C6A5E`) first reported
@@ -109,7 +93,7 @@ availability=available; generation=passed; sourceIdPreserved=passed; cancellatio
 The independent semantic sample review confirmed that the question naturally
 addresses the clinician from the patient's perspective and stays grounded in
 the reported change. The test rejects unsafe diagnosis and medication-change
-instructions, but does not hardcode an expected sentence. The current run's
+instructions, but does not hardcode an expected sentence. That recorded run's
 actual input, output, summary, and screenshot are retained outside the checkout
 in `/tmp/orot-issue-62-apple-foundation-models-20261004-r9/detox/`.
 `inferenceStop=unverified` is intentional: cancellation rejected the bridge

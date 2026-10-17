@@ -1,0 +1,28 @@
+name: Integration completeness
+on:
+  workflow_call:
+    inputs:
+      execution_results: { required: true, type: string }
+permissions: { contents: read }
+jobs:
+  completeness:
+    name: Complete
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with: { node-version-file: .nvmrc }
+      - name: Require every producer and executor to succeed
+        # The caller passes every required job result, including failures and skips, before report aggregation.
+        env:
+          RESULTS: ${{ inputs.execution_results }}
+        run: node -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) throw new Error("Incomplete integration validation");'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-reports
+      - name: Verify every planned first attempt and authentic Korean Speech evidence
+        run: node scripts/ci/ios-test-plan-results.mjs artifacts/ios-reports

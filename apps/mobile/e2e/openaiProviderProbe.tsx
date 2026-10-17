@@ -27,7 +27,7 @@ export function OpenAIProviderProbe() {
   const [result, setResult] = useState('ChatGPT plan provider probe running');
 
   useEffect(() => {
-    runProbe().then(
+    runOpenAIProviderIntegrationProbe().then(
       () =>
         setResult(
           'ChatGPT plan provider synthetic probe passed: catalog=visible-model-only, terminal=completed, usageLimit=rate_limited, cancellation=resolved, realAccount=unverified',
@@ -52,7 +52,8 @@ export function OpenAIProviderProbe() {
   );
 }
 
-async function runProbe() {
+/** Keep the native transport assertions callable without rendering the probe's status view. */
+export async function runOpenAIProviderIntegrationProbe() {
   let fixtureInstalled = false;
   try {
     const fixture = await fixtureModule.prepareSyntheticFixture('completed');

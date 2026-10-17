@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { name as appName } from '../app.json';
+import { formatNumber, t } from '../src/i18n';
 import { AppText as Text } from '../src/layout/AppText';
 import { appColors } from '../src/layout/appColors';
 import SafeAreaLayout from '../src/layout/SafeAreaLayout';
@@ -24,7 +25,7 @@ function SafeAreaProbeEntry() {
   const largeTextEnabled = PixelRatio.getFontScale() >= 1.5;
 
   useEffect(() => {
-    // Read the native keyboard frame because Detox has no supported keyboard-frame matcher.
+    // Expose the UIKit keyboard frame so UI tests can measure actual viewport occlusion.
     const updateFrame = (event: {
       endCoordinates: { screenY: number; height: number };
     }) => {
@@ -52,17 +53,21 @@ function SafeAreaProbeEntry() {
   return (
     <SafeAreaLayout scrollable>
       <View style={styles.content}>
-        <Text accessibilityRole="header">안전 영역과 키보드 확인</Text>
+        <Text accessibilityRole="header">{t('probe.layout.title')}</Text>
         <Text
           accessible
-          accessibilityLabel={
-            largeTextEnabled ? '큰 글자 사용 중' : '큰 글자 사용 안 함'
-          }
+          accessibilityLabel={t(
+            largeTextEnabled
+              ? 'probe.layout.largeTextEnabled'
+              : 'probe.layout.largeTextDisabled',
+          )}
           testID="safe-area-large-text-state"
         >
-          글자 배율: {PixelRatio.getFontScale()}
+          {t('probe.layout.fontScale', {
+            scale: formatNumber(PixelRatio.getFontScale()),
+          })}
         </Text>
-        {/* Detox waits on an ID because the dynamic label matcher timed out on iOS. */}
+        {/* Keep a stable identifier while the measured keyboard label changes. */}
         <Text
           accessible
           accessibilityLabel={
@@ -76,27 +81,37 @@ function SafeAreaProbeEntry() {
               : 'safe-area-keyboard-hidden'
           }
         >
-          키보드 {keyboardFrame ? '표시' : '숨김'}
+          {t(
+            keyboardFrame
+              ? 'probe.layout.keyboardVisible'
+              : 'probe.layout.keyboardHidden',
+          )}
         </Text>
         <TextInput
-          accessibilityLabel="메모 입력"
+          accessibilityLabel={t('probe.layout.noteLabel')}
           onChangeText={setValue}
-          placeholder="메모를 입력하세요"
+          placeholder={t('probe.layout.notePlaceholder')}
           placeholderTextColor={appColors.secondary}
           style={styles.input}
           testID="safe-area-keyboard-input"
           value={value}
         />
         {Array.from({ length: 12 }, (_, index) => (
-          <Text key={index}>스크롤 내용 {index + 1}</Text>
+          <Text key={index}>
+            {t('probe.layout.scrollContent', {
+              index: formatNumber(index + 1),
+            })}
+          </Text>
         ))}
         {actionCompleted ? (
-          <Text testID="safe-area-keyboard-action-done">완료</Text>
+          <Text testID="safe-area-keyboard-action-done">
+            {t('probe.layout.done')}
+          </Text>
         ) : (
           <Button
             onPress={() => setActionCompleted(true)}
             testID="safe-area-keyboard-action"
-            title="계속"
+            title={t('probe.layout.continue')}
           />
         )}
       </View>

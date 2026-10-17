@@ -16,7 +16,7 @@ import { saveRecordingSource } from '../src/recording/recordingPersistence';
 import { openLocalStorage } from '../src/storage/secureDatabase';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import syntheticFixture from './transcription/fixtures/synthetic-korean.json';
-import { requireNativeBackupProbe } from './backupProbeNative';
+import { requireBackupProbeBridge } from './backupProbeBridge';
 import {
   isExpectedProtectionMetadataGap,
   verifyRecordingProbeState,
@@ -51,7 +51,7 @@ export async function runKeyRollbackProbe(): Promise<BackupProbeResult> {
   if (saved === false)
     throw new Error('The device-only rollback fixture was not saved.');
 
-  const probe = requireNativeBackupProbe();
+  const probe = requireBackupProbeBridge();
   if ((await probe.backupKeyAccessibilityForProbe()) !== 'this-device-only') {
     throw new Error('The rollback probe did not start from a device-only key.');
   }
@@ -151,7 +151,7 @@ export async function prepareLegacyRecording(): Promise<BackupProbeResult> {
   const recording = await installSyntheticTranscriptionRecording(audio.base64);
   try {
     const migrated =
-      await requireNativeBackupProbe().prepareLegacyRecordingForBackupProbe(
+      await requireBackupProbeBridge().prepareLegacyRecordingForBackupProbe(
         recording.id,
       );
     verifyRecordingProbeState(migrated);

@@ -7,6 +7,7 @@ import {
   runBackupProbe,
   type BackupProbeResult,
 } from './backupProbe';
+import { backupProbeFailureReason } from './backupProbeFailure';
 
 type ProbeState = 'idle' | 'running' | 'success' | 'failure';
 
@@ -16,7 +17,7 @@ function BackupProbe() {
     mode === null ? 'failure' : 'idle',
   );
   const [result, setResult] = useState<
-    BackupProbeResult | { stage: string } | null
+    BackupProbeResult | { stage: string; reason?: string } | null
   >(mode === null ? { stage: 'invalid-mode' } : { stage: 'awaiting-start' });
   const active = useRef(true);
   const started = useRef(false);
@@ -38,12 +39,13 @@ function BackupProbe() {
         setResult(value);
         setState('success');
       },
-      () => {
+      error => {
         if (!active.current) return;
         setState('failure');
-        setResult({ stage: mode });
-        // Keep diagnostics to a fixed stage; native errors can include paths or device details.
-        console.error('Backup probe failed at stage:', mode);
+        const reason = backupProbeFailureReason(error);
+        setResult({ stage: mode, reason });
+        // Only fixed categories are reported; arbitrary native errors may include private paths or device details.
+        console.error('Backup probe failed at stage:', mode, reason);
       },
     );
   };

@@ -34,8 +34,8 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.axis = .horizontal
         innerActions.alignment = .center
         innerActions.spacing = 12
-        // Retain the shared toolbar identifier used by shipping-screen accessibility probes.
-        innerActions.accessibilityIdentifier = "navigation-native-toolbar"
+        // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
+        innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -43,7 +43,7 @@ final class NavigationGlassSurfaceView: UIView {
                 view.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
                 view.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
                 view.centerYAnchor.constraint(equalTo: centerYAnchor),
-                view.heightAnchor.constraint(equalToConstant: view === rootBar ? 52 : 48),
+                view.heightAnchor.constraint(equalToConstant: view === rootBar ? 60 : 48),
             ])
         }
     }
@@ -86,7 +86,8 @@ final class NavigationGlassSurfaceView: UIView {
             let button = NavigationGlassButton.make(for: action, onAction: onAction)
             if action.id != "home" {
                 // Preserve localized Generate/Cancel width and the 48pt primary target.
-                let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13)]).width
+                // Measure the displayed 14pt title so localized primary labels are not clipped.
+                let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
                 button.widthAnchor.constraint(greaterThanOrEqualToConstant: max(88, titleWidth + 24)).isActive = true
             }
             innerActions.addArrangedSubview(button)

@@ -2,7 +2,9 @@ name: Code Quality
 
 on:
   pull_request:
-    branches: [main]
+    # Stacked PRs target feature branches and need the same check contexts before their parent reaches main.
+    # Drafts validate source events too; status-only transitions must not replace their checks.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   workflow_dispatch:

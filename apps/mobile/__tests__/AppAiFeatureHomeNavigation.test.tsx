@@ -49,7 +49,7 @@ function VisitQuestionsHomeRouteProbe({
 }
 
 test('shows three explained AI actions and keeps literature inside conversation', async () => {
-  // Jest's native-stack does not emit UIKit transitionEnd; Detox covers animated completion.
+  // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
@@ -90,7 +90,7 @@ test('shows three explained AI actions and keeps literature inside conversation'
 }, 30_000);
 
 test('keeps recording under Records when leaving an AI route', async () => {
-  // This host-level flow checks the route result; native animation completion is covered in Detox.
+  // This host-level flow checks the route result; XCUITest covers UIKit animation completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);

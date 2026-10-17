@@ -38,10 +38,10 @@ enum NavigationGlassButton {
             }
             configuration.imagePlacement = action.titleBelowImage ? .top : .leading
             configuration.imagePadding = action.showsTitleWithSystemImage ? 2 : 6
-            configuration.titleLineBreakMode = .byClipping
             configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
                 var updated = attributes
-                let titleSize: CGFloat = action.titleBelowImage ? 10 : 13
+                // Match the shipping toolbar's readable title size without clipping localized text.
+                let titleSize: CGFloat = action.titleBelowImage ? 10 : 14
                 updated.font = .systemFont(ofSize: titleSize, weight: .medium)
                 return updated
             }

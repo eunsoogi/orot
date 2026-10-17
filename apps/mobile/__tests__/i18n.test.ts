@@ -25,6 +25,19 @@ describe('Korean-only localization', () => {
     ).toBe('Clinic {name} 예약 취소');
   });
 
+  it('localizes verification controls and keeps their diagnostic inputs intact', () => {
+    expect(t('probe.cleanup')).toBe('합성 검증 자료 정리');
+    expect(t('probe.microphone.title', { seconds: 25 })).toBe(
+      '실제 마이크 진단 (최대 25초)',
+    );
+    expect(t('probe.layout.scrollContent', { index: 12 })).toBe(
+      '스크롤 내용 12',
+    );
+    expect(t('probe.visit.failure', { message: 'OROT_{fixture}' })).toBe(
+      'probe 실패: OROT_{fixture}',
+    );
+  });
+
   it('formats dates, times, and numbers with Korean conventions', () => {
     const value = new Date('2027-06-02T00:45:00.000Z');
 

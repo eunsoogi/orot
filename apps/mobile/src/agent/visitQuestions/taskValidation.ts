@@ -158,6 +158,8 @@ export function validateVisitQuestionTaskResult(
     input.evidence.items.map(item => [item.evidenceId, item]),
   );
   const questions: VisitQuestionCandidate[] = [];
+  // Only expose formatting as retryable after every question passes its other checks.
+  let missingQuestionMark = false;
   for (const rawQuestion of result.questions) {
     const question = asObject(rawQuestion);
     if (
@@ -176,15 +178,21 @@ export function validateVisitQuestionTaskResult(
     }
     const questionText = readNonEmptyKoreanText(question.questionText, 300);
     const rationale = readNonEmptyKoreanText(question.rationale, 400);
+    if (!questionText) {
+      return {
+        status: 'invalid',
+        reason: 'A question text is invalid.',
+      };
+    }
+    // Keep the validator strict; the task contract may request one bounded regeneration.
+    if (!questionText.endsWith('?')) missingQuestionMark = true;
     if (
-      !questionText ||
       !rationale ||
-      !questionText.endsWith('?') ||
       (question.priority !== 'routine' && question.priority !== 'important')
     ) {
       return {
         status: 'invalid',
-        reason: 'A question text, rationale, or priority is invalid.',
+        reason: 'A rationale or priority is invalid.',
       };
     }
     if (
@@ -226,6 +234,12 @@ export function validateVisitQuestionTaskResult(
       priority: question.priority,
       citations: exactCitations,
     });
+  }
+  if (missingQuestionMark) {
+    return {
+      status: 'invalid',
+      reason: 'A visit question must end with a question mark.',
+    };
   }
   return { status: 'valid', value: { status: 'suggestions', questions } };
 }

@@ -1,11 +1,6 @@
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-} from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationViewport } from './NavigationViewport';
 import { NavigationActionBar } from './NavigationActionBar';
@@ -22,7 +17,11 @@ import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
-import { NavigationMotionContext } from './NavigationMotionContext';
+import { observeNavigationTest } from './navigationTestObservation';
+import {
+  NavigationMotionContext,
+  useNavigationReduceMotion,
+} from './NavigationMotionContext';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -78,37 +77,9 @@ export function NavigationRouteAdapter<Name extends string>({
   onNativeRouteRemovalComplete,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const reduceMotionRef = useRef(false);
+  const reduceMotion = useNavigationReduceMotion();
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
-
-  useEffect(() => {
-    let mounted = true;
-    let changeObserved = false;
-    const updateReduceMotion = (enabled: boolean) => {
-      changeObserved = true;
-      if (!mounted || reduceMotionRef.current === enabled) return;
-      reduceMotionRef.current = enabled;
-      setReduceMotion(enabled);
-    };
-
-    // Subscribe before the asynchronous snapshot so a later settings change wins if it returns late.
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      updateReduceMotion,
-    );
-    AccessibilityInfo.isReduceMotionEnabled().then(
-      enabled => {
-        if (mounted && !changeObserved) updateReduceMotion(enabled);
-      },
-      () => undefined,
-    );
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
-  }, []);
   const leaveStateRef = useRef(leaveState);
   const registeredLeaveStates = useRef(
     new Map<string, RegisteredLeaveState<Name>>(),
@@ -125,6 +96,7 @@ export function NavigationRouteAdapter<Name extends string>({
     (routeKey: string, source: NavigationLeaveStateSource<Name>) => {
       const registration = { token: Symbol('navigation-leave-state'), source };
       registeredLeaveStates.current.set(routeKey, registration);
+      observeNavigationTest('leave-state-register', { routeKey });
       setLeaveStateVersion(version => version + 1);
       return () => {
         if (
@@ -134,16 +106,31 @@ export function NavigationRouteAdapter<Name extends string>({
           return;
         }
         registeredLeaveStates.current.delete(routeKey);
+        observeNavigationTest('leave-state-cleanup', {
+          routeKey,
+          logicalKeys: controller.getSnapshot().routes.map(item => item.key),
+        });
         setLeaveStateVersion(version => version + 1);
       };
     },
-    [],
+    [controller],
   );
 
   const canNativeGoBack = (routeKey: string) => {
-    if (snapshot.isTransitioning) return false;
+    if (snapshot.isTransitioning) {
+      observeNavigationTest('native-guard-transitioning', { routeKey });
+      return false;
+    }
     try {
       const state = getLeaveStateSource(routeKey)?.readState();
+      observeNavigationTest('native-guard-state', {
+        routeKey,
+        hasState: !!state,
+        canLeave: state?.canLeave !== false,
+        dirty: !!state?.hasUnsavedChanges,
+        recording: !!state?.isRecording,
+        ongoing: !!state?.hasOngoingOperation,
+      });
       return (
         !!state &&
         state.canLeave !== false &&
@@ -152,6 +139,7 @@ export function NavigationRouteAdapter<Name extends string>({
         !state.hasOngoingOperation
       );
     } catch {
+      observeNavigationTest('native-guard-read-failed', { routeKey });
       return false;
     }
   };

@@ -31,8 +31,7 @@ actor LocalE5EmbeddingRuntime {
 
     private let assetStore = LocalE5ModelAssetStore()
     private var preparedModel: LocalE5PreparedModel?
-    private var preparationTask: Task<LocalE5PreparedModel, Error>?
-    private var progressHandlers: [String: (Int64, Int64) -> Void] = [:]
+    private let preparation = LocalE5Preparation<LocalE5PreparedModel>()
     private var downloadMilliseconds: Double?
     private var sessionLoadMilliseconds: Double?
     private var footprintBeforeLoad: UInt64?
@@ -42,62 +41,41 @@ actor LocalE5EmbeddingRuntime {
 
     func prepare(
         requestId: String,
-        onProgress: @escaping (Int64, Int64) -> Void,
+        cancellation: LocalE5PreparationCancellation,
+        onProgress: @escaping (Int64, Int64) async -> Void,
     ) async throws {
-        progressHandlers[requestId] = onProgress
-        defer { progressHandlers.removeValue(forKey: requestId) }
-        if preparedModel != nil {
-            onProgress(LocalE5ModelAssets.totalByteCount, LocalE5ModelAssets.totalByteCount)
-            return
+        let model = try await preparation.prepare(
+            requestId: requestId, total: LocalE5ModelAssets.totalByteCount, cancellation: cancellation, onProgress: onProgress,
+        ) { progress in
+            try await self.loadModel(onProgress: progress)
         }
-
-        // This actor-inheriting task lets concurrent callers share one download, session build, and metrics update.
-        let loading: Task<LocalE5PreparedModel, Error>
-        if let preparationTask {
-            loading = preparationTask
-        } else {
-            loading = Task { [self, assetStore] in
-                let downloadStart = ProcessInfo.processInfo.systemUptime
-                let files = try await assetStore.prepare { [weak self] completed, total in
-                    Task { await self?.reportProgress(completed, total) }
-                }
-                recordDownloadTime((ProcessInfo.processInfo.systemUptime - downloadStart) * 1000)
-                try Task.checkCancellation()
-
-                let footprintBefore = LocalE5ProcessMetrics.physicalFootprintBytes()
-                let sampler = LocalE5MemorySampler()
-                sampler.start()
-                let loadStart = ProcessInfo.processInfo.systemUptime
-                let tokenizer = try OrotSentencePieceTokenizer(modelPath: files.tokenizer.path)
-                let environment = try ORTEnv(loggingLevel: ORTLoggingLevel.warning)
-                let options = try ORTSessionOptions()
-                try options.setIntraOpNumThreads(2)
-                // Keep the validated iOS path on ORT's CPU provider; this integration does not claim Core ML or Neural Engine execution.
-                let session = try ORTSession(env: environment, modelPath: files.model.path, sessionOptions: options)
-                let loadTime = (ProcessInfo.processInfo.systemUptime - loadStart) * 1000
-                let footprintAfter = LocalE5ProcessMetrics.physicalFootprintBytes()
-                let loadPeak = sampler.stop()
-                recordLoadMetrics(loadTime, before: footprintBefore, after: footprintAfter, peak: loadPeak)
-                return LocalE5PreparedModel(session: session, tokenizer: tokenizer)
-            }
-            preparationTask = loading
-        }
-
-        do {
-            let model = try await loading.value
-            preparedModel = model
-            preparationTask = nil
-        } catch {
-            preparationTask = nil
-            throw error
-        }
+        try Task.checkCancellation()
+        try cancellation.check()
+        preparedModel = model
     }
 
-    func cancel(requestId: String) {
-        progressHandlers.removeValue(forKey: requestId)
-        if progressHandlers.isEmpty {
-            preparationTask?.cancel()
-        }
+    private func loadModel(onProgress: @escaping (Int64, Int64) -> Void) async throws -> LocalE5PreparedModel {
+        let downloadStart = ProcessInfo.processInfo.systemUptime
+        let files = try await assetStore.prepare(onProgress: onProgress)
+        try Task.checkCancellation()
+        recordDownloadTime((ProcessInfo.processInfo.systemUptime - downloadStart) * 1000)
+
+        let footprintBefore = LocalE5ProcessMetrics.physicalFootprintBytes()
+        let sampler = LocalE5MemorySampler()
+        sampler.start()
+        let loadStart = ProcessInfo.processInfo.systemUptime
+        let tokenizer = try OrotSentencePieceTokenizer(modelPath: files.tokenizer.path)
+        let environment = try ORTEnv(loggingLevel: ORTLoggingLevel.warning)
+        let options = try ORTSessionOptions()
+        try options.setIntraOpNumThreads(2)
+        // Keep the validated iOS path on ORT's CPU provider; this integration does not claim Core ML or Neural Engine execution.
+        let session = try ORTSession(env: environment, modelPath: files.model.path, sessionOptions: options)
+        let loadTime = (ProcessInfo.processInfo.systemUptime - loadStart) * 1000
+        let footprintAfter = LocalE5ProcessMetrics.physicalFootprintBytes()
+        let loadPeak = sampler.stop()
+        try Task.checkCancellation()
+        recordLoadMetrics(loadTime, before: footprintBefore, after: footprintAfter, peak: loadPeak)
+        return LocalE5PreparedModel(session: session, tokenizer: tokenizer)
     }
 
     func embedBatch(_ texts: [String], role: String, requestId _: String) throws -> [[Double]] {
@@ -228,10 +206,6 @@ actor LocalE5EmbeddingRuntime {
             vectors.append(mean.map { Double($0) / norm })
         }
         return vectors
-    }
-
-    private func reportProgress(_ completed: Int64, _ total: Int64) {
-        progressHandlers.values.forEach { $0(completed, total) }
     }
 
     private func boxed(_ value: Any?) -> Any {

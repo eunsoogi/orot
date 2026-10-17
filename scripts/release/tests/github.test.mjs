@@ -22,14 +22,14 @@ function run(id, path, overrides = {}) {
   };
 }
 
-test('selects the newest trusted main validation run across push and dispatch events', () => {
+test('selects the newest permitted main run while full iOS requires an automatic push', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', {
       event: 'workflow_dispatch',
       conclusion: 'failure',
     }),
-    run(3, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
+    run(3, '.github/workflows/e2e-test.yml'),
     run(4, '.github/workflows/unit-test.yml', { event: 'pull_request' }),
     run(5, '.github/workflows/policy-check.yml', { head_sha: 'b'.repeat(40) }),
     run(6, '.github/workflows/other.yml', { head_branch: 'release' }),
@@ -38,6 +38,8 @@ test('selects the newest trusted main validation run across push and dispatch ev
       event: 'workflow_dispatch',
       head_branch: 'feature',
     }),
+    run(9, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
+    run(10, '.github/workflows/e2e-selected.yml', { event: 'workflow_dispatch' }),
   ];
   assert.deepEqual(
     latestMainValidationRuns(sourceSha, runs).map(({ id }) => id),
@@ -49,7 +51,7 @@ test('collects jobs only from each selected main validation run', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', { run_number: 2 }),
-    run(3, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
+    run(3, '.github/workflows/e2e-test.yml'),
   ];
   const jobs = collectJobsForMainValidation(sourceSha, runs, (id) => [{ name: `run-${id}` }]);
   assert.deepEqual(jobs, [

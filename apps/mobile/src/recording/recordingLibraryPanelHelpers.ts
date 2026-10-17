@@ -2,6 +2,7 @@ import type {
   RecordingLibraryService,
   RecordingLibrarySummary,
 } from './recordingLibraryService';
+import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
 
 export type {
   RecordingLibraryService,
@@ -20,4 +21,23 @@ export async function loadRecordingLibrarySummaries(
     durationMs: source.recordingDurationMs ?? null,
     transcriptReviewState: 'unavailable',
   }));
+}
+
+/** Selection overrides session fallbacks; only matching live transcription status belongs to the displayed source. */
+export function recordingLibrarySources(
+  selectedSourceId: string | undefined,
+  automaticTranscription: AutomaticTranscriptionSnapshot | null,
+  fallbackExportSourceId?: string | null,
+) {
+  const exportSourceId = selectedSourceId ?? fallbackExportSourceId ?? null;
+  const transcriptSourceId =
+    selectedSourceId ??
+    automaticTranscription?.sourceId ??
+    fallbackExportSourceId ??
+    null;
+  const transcriptionStatus =
+    automaticTranscription?.sourceId === transcriptSourceId
+      ? automaticTranscription?.status
+      : undefined;
+  return { exportSourceId, transcriptSourceId, transcriptionStatus };
 }

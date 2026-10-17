@@ -166,7 +166,15 @@ enum SpeechTranscriptionAnalyzer {
             let analyzer = SpeechAnalyzer(modules: [module])
             do {
                 return try await SpeechTranscriptionTaskCancellation.withAnalyzerCancellation(
-                    start: { try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true) },
+                    start: {
+                        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                            NSLog("OROT_SPEECH_DIAGNOSTIC analyzer_start stage=begin")
+                        #endif
+                        try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true)
+                        #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                            NSLog("OROT_SPEECH_DIAGNOSTIC analyzer_start stage=returned")
+                        #endif
+                    },
                     collectResults: collectResults,
                     cancel: { await analyzer.cancelAndFinishNow() },
                 )
@@ -208,6 +216,12 @@ enum SpeechTranscriptionAnalyzer {
     ) async throws -> [SpeechTranscriptionSegment] {
         var segments: [SpeechTranscriptionSegment] = []
         for try await result in transcriber.results {
+            // Report stream progress without logging recognized speech from the synthetic fixture.
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                if segments.isEmpty {
+                    NSLog("OROT_SPEECH_DIAGNOSTIC result_stream stage=first_result")
+                }
+            #endif
             let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
             if text.isEmpty {
                 continue

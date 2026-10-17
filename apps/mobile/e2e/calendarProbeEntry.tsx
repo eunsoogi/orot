@@ -20,10 +20,10 @@ function syntheticProbeRequested(): boolean {
 }
 
 function CalendarProbeEntry() {
-  const nativeProbe = (
-    NativeModules as unknown as { SyntheticCalendarDetoxModule?: unknown }
-  ).SyntheticCalendarDetoxModule;
-  if (!syntheticProbeRequested() || !nativeProbe) {
+  const calendarProbeBridge = (
+    NativeModules as unknown as { SyntheticCalendarTestModule?: unknown }
+  ).SyntheticCalendarTestModule;
+  if (!syntheticProbeRequested() || !calendarProbeBridge) {
     return (
       <View>
         <Text testID="calendar-probe-disabled">
@@ -36,7 +36,7 @@ function CalendarProbeEntry() {
   return (
     <App
       calendarBridge={createCalendarBridge(
-        nativeProbe as Parameters<typeof createCalendarBridge>[0],
+        calendarProbeBridge as Parameters<typeof createCalendarBridge>[0],
       )}
     />
   );

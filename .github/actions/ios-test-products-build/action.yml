@@ -1,0 +1,36 @@
+name: Build portable integration test products
+description: Prepare platform dependencies and build verified test products without booting a Simulator.
+inputs:
+  profile:
+    description: Validated integration execution profile selecting its compatible build specification.
+    required: true
+outputs:
+  archive_digest:
+    description: SHA-256 of the portable integration product archive.
+    value: ${{ steps.products.outputs.archive_digest }}
+  manifest_digest:
+    description: SHA-256 of the source and product provenance manifest.
+    value: ${{ steps.products.outputs.manifest_digest }}
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/ios-native-toolchain
+    - uses: ./.github/actions/ios-platform-dependencies
+    - name: Build without booting a Simulator
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+      run: scripts/ci/run-command.sh ios-focus-build artifacts/ios-focus/build.log -- node scripts/ci/build-ios-tests.mjs "$PROFILE" artifacts/ios-focus/DerivedData
+    - name: Verify test products contain only the mock model call boundary
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+      run: |
+        configuration="$(node --input-type=module -e 'import {iosTestConfig} from "./scripts/ci/ios-test-config.mjs"; console.log(iosTestConfig(process.env.PROFILE).configuration)')"
+        node scripts/ci/verify-apple-model-product.mjs integration-test "artifacts/ios-focus/DerivedData/Build/Products/$configuration-iphonesimulator/Orot.app"
+    - name: Package portable test products
+      id: products
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
+      run: scripts/ci/run-command.sh ios-focus-products artifacts/ios-focus/products.log -- node scripts/ci/ios-test-products.mjs create "$PROFILE" artifacts/ios-focus/DerivedData/Build/Products artifacts/ios-focus/product-artifact

@@ -18,8 +18,8 @@ test('verifies the transcription profile runtime and device against their pinned
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime26.identifier,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
+      EXPECTED_IOS_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
+      EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
     },
     {
       availableRuntimes: [runtime27, runtime26],
@@ -75,8 +75,8 @@ for (const profile of acceptedHostProfiles) {
         EXPECTED_IOS_SIMULATOR_SDK: profile.simulatorSdk,
         EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: profile.runtime.name,
         EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: profile.runtime.identifier,
-        EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: profile.device.name,
-        EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: profile.device.deviceTypeIdentifier,
+        EXPECTED_IOS_SIMULATOR_DEVICE_NAME: profile.device.name,
+        EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID: profile.device.deviceTypeIdentifier,
       },
       {
         availableRuntimes: [runtime27, runtime26],
@@ -111,8 +111,8 @@ test('still rejects a missing pinned Simulator runtime on macOS 99.17.42', () =>
       EXPECTED_IOS_SIMULATOR_SDK: '26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: 'iOS 26.2',
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime26.identifier,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
+      EXPECTED_IOS_SIMULATOR_DEVICE_NAME: transcriptionSimulator.name,
+      EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID: transcriptionSimulator.deviceTypeIdentifier,
     },
     {
       availableRuntimes: [runtime27],
@@ -133,8 +133,8 @@ test('still rejects a missing pinned Simulator device on macOS 99.17.42', () => 
       EXPECTED_IOS_SIMULATOR_SDK: '27.0',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: runtime27.name,
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime27.identifier,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_NAME: currentSimulator.name,
-      EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID: currentSimulator.deviceTypeIdentifier,
+      EXPECTED_IOS_SIMULATOR_DEVICE_NAME: currentSimulator.name,
+      EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID: currentSimulator.deviceTypeIdentifier,
     },
     {
       availableRuntimes: [runtime27],

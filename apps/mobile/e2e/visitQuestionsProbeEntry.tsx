@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { name as appName } from '../app.json';
+import { formatNumber, t } from '../src/i18n';
 import { VisitQuestionReview } from '../src/agent/visitQuestions/VisitQuestionReview';
 import type { VisitQuestionCandidate } from '../src/agent/visitQuestions/taskContract';
 import { runVisitQuestionWorkflow } from '../src/agent/visitQuestions/workflow';
@@ -141,42 +142,45 @@ function VisitQuestionsProbeEntry() {
       testID="visit-question-probe-scroll"
     >
       <Text accessibilityRole="header" style={styles.title}>
-        진료 질문 합성 검증
+        {t('probe.visit.title')}
       </Text>
-      <Text style={styles.notice}>
-        테스트 전용 합성 자료와 모델을 사용합니다. 실제 계정이나 건강 기록은
-        사용하지 않습니다.
-      </Text>
+      <Text style={styles.notice}>{t('probe.visit.notice')}</Text>
       <View style={styles.actions}>
         <Button
           disabled={!syntheticMode || status === 'running'}
           onPress={checkDeclinedConsent}
           testID="visit-question-probe-decline-consent"
-          title="외부 전송 거절 확인"
+          title={t('probe.visit.declineConsent')}
         />
         <Button
           disabled={!syntheticMode || status === 'running'}
           onPress={prepareQuestions}
           testID="visit-question-probe-prepare"
-          title="질문 준비"
+          title={t('probe.visit.prepare')}
         />
       </View>
       {!syntheticMode ? (
         <Text testID="visit-question-probe-mode-required">
-          OROT_VISIT_QUESTIONS_PROBE=synthetic으로 실행해 주세요.
+          {t('probe.visit.modeRequired', {
+            mode: 'OROT_VISIT_QUESTIONS_PROBE=synthetic',
+          })}
         </Text>
       ) : null}
       {consentChecked ? (
         <Text testID="visit-question-probe-consent-result">
-          외부 전송 동의 거절 · provider sends: {consentSends}
+          {t('probe.visit.consentResult', {
+            count: consentSends === null ? '' : formatNumber(consentSends),
+          })}
         </Text>
       ) : null}
       {status === 'running' ? (
-        <Text testID="visit-question-probe-running">합성 workflow 실행 중</Text>
+        <Text testID="visit-question-probe-running">
+          {t('probe.visit.running')}
+        </Text>
       ) : null}
       {status === 'failure' ? (
         <Text accessibilityRole="alert" testID="visit-question-probe-failure">
-          probe 실패: {message}
+          {t('probe.visit.failure', { message })}
         </Text>
       ) : null}
       {status === 'review' ? (
@@ -210,5 +214,5 @@ const styles = StyleSheet.create({
   actions: { gap: 12 },
 });
 
-// A separate AppRegistry entry lets Detox exercise the real screen without changing the app router.
+// A separate AppRegistry entry lets UI tests exercise the real screen without changing the app router.
 AppRegistry.registerComponent(appName, () => VisitQuestionsProbeEntry);

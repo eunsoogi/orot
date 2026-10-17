@@ -1,6 +1,6 @@
 import UIKit
 
-/// One joined glass bar with a persistent selection view that moves between root targets.
+/// One joined 60pt glass surface with 52pt root targets and a moving selection view.
 final class NavigationRootGlassBar: UIVisualEffectView {
     private let stack = UIStackView()
     private let indicator = UIView()
@@ -18,7 +18,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         }
         super.init(effect: material)
         accessibilityIdentifier = "navigation-root-tabs-glass-backdrop"
-        layer.cornerRadius = 26
+        layer.cornerRadius = 30
         layer.cornerCurve = .continuous
         clipsToBounds = true
         indicator.accessibilityIdentifier = "navigation-root-selection-indicator"
@@ -27,6 +27,8 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         indicator.layer.cornerRadius = 24
         contentView.addSubview(indicator)
         stack.axis = .horizontal
+        // Center the 52pt hit targets in the 60pt material surface with 4pt vertical margins.
+        stack.alignment = .center
         stack.distribution = .fillEqually
         stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -61,7 +63,12 @@ final class NavigationRootGlassBar: UIVisualEffectView {
             button.isEnabled = !action.disabled
             button.isSelected = action.selected
             button.accessibilityLabel = action.accessibilityLabel
-            button.accessibilityTraits = action.selected ? [.button, .selected] : [.button]
+            // Custom traits replace UIKit defaults, so disabled root tabs need the explicit trait too.
+            var traits: UIAccessibilityTraits = action.selected ? [.button, .selected] : [.button]
+            if action.disabled {
+                traits.insert(.notEnabled)
+            }
+            button.accessibilityTraits = traits
             let color = action.selected ? NavigationGlassPalette.selectedRootTabForeground : UIColor.label
             button.tintColor = color
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {

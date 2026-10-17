@@ -77,6 +77,9 @@ public extension RecordingModule {
                 return
             }
 
+            #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                RecordingPlaybackFixtureLifetime.configure(player, synthetic: syntheticFixture, start: start, end: end)
+            #endif
             player.currentTime = Double(start) / 1000
             player.delegate = self
             self.playbackPlayer = player
@@ -124,11 +127,11 @@ public extension RecordingModule {
         )
         timer.setEventHandler { [weak self, weak player] in
             guard let self, let player, playbackPlayer === player else { return }
-            if let endMs = playbackEndMs,
+            if player.numberOfLoops == 0, let endMs = playbackEndMs,
                player.currentTime * 1000 >= Double(endMs)
             {
                 player.currentTime = Double(endMs) / 1000
-                stopPlayback()
+                stopPlayback(completed: true)
                 return
             }
             emitPlaybackState()
@@ -137,44 +140,11 @@ public extension RecordingModule {
         timer.resume()
     }
 
-    func stopPlayback(
-        code: String? = nil,
-        message: String? = nil,
-        error: NSError? = nil,
-    ) {
-        let player = playbackPlayer
-        let hadPlayback = player != nil || playbackTimer != nil || playbackResolve != nil
-        guard hadPlayback else { return }
-
-        playbackTimer?.cancel()
-        playbackTimer = nil
-        player?.delegate = nil
-        player?.stop()
-        playbackPlayer = nil
-        deactivateAudioSession()
-
-        let resolve = playbackResolve
-        let reject = playbackReject
-        let result = playbackResult
-        playbackResolve = nil
-        playbackReject = nil
-        playbackResult = nil
-        playbackRecordingID = nil
-        playbackEndMs = nil
-        emitPlaybackState()
-
-        if let code, let reject {
-            reject(code, message ?? "The recording could not be played.", error)
-        } else {
-            resolve?(result)
-        }
-    }
-
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         workQueue.async { [weak self, weak player] in
             guard let self, let player, playbackPlayer === player else { return }
             if flag {
-                stopPlayback()
+                stopPlayback(completed: true)
             } else {
                 stopPlayback(
                     code: "RECORDING_PLAYBACK_FAILED",

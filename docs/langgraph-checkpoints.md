@@ -1,5 +1,7 @@
 # Local LangGraph checkpoints
 
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
+
 Orot's LangGraph saver implements the upstream `BaseCheckpointSaver` contract
 and writes checkpoint state through the app's existing SQLCipher connection.
 It adds no backend, hosted checkpoint service, or native bridge. The mobile app
@@ -34,7 +36,8 @@ tables' rows for every namespace in one transaction.
 
 After a completed node's checkpoint is saved, reopening the database and
 resuming that thread continues from the saved state without running that node
-again. The mobile Detox probe verifies this across an app process restart.
+again. `PersistenceUITests/testUtf8CheckpointResumesWithoutRepeatingCompletedNode`
+verifies this across an app process restart in the `core` profile.
 
 A node can run again if it fails or is interrupted after a local effect but
 before LangGraph saves its completed checkpoint. Checkpointing alone cannot
@@ -51,6 +54,6 @@ provider authentication or provider-side behavior.
 
 Run portable checks with `pnpm --filter @orot/agent-runtime test:unit`,
 `pnpm --filter @orot/storage test:unit`, and
-`pnpm --filter @orot/mobile test:unit`. The dedicated simulator probe is
-`pnpm --filter @orot/mobile e2e:test:ios:checkpoint` after building it with
-`pnpm --filter @orot/mobile e2e:build:ios:checkpoint`.
+`pnpm --filter @orot/mobile test:unit`. The maintained Simulator check belongs
+to the `core` profile. Use the development guide's owned-Simulator procedure;
+its relaunch assertion must retain the existing checkpoint instead of starting a new thread.

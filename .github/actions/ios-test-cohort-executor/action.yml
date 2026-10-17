@@ -1,0 +1,27 @@
+name: Download and execute one verified integration cohort
+description: Prepare only the dependency-free executor after visible host bootstrap, then run the producer's exact products.
+inputs:
+  cohort: { required: true }
+  profile: { required: true }
+  artifact_name: { default: ios-test-release-products }
+  archive_digest: { required: true }
+  manifest_digest: { required: true }
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with: { node-version-file: .nvmrc }
+    # Compilation dependencies belong to the producer; consumers use Node built-ins and checked-in helpers.
+    - name: Download the exact compatible products
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: ${{ inputs.artifact_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/ios-cohort/product-artifact
+    - name: Verify and execute the exact downloaded cohort
+      uses: ./.github/actions/ios-test-cohort-run
+      with:
+        cohort: ${{ inputs.cohort }}
+        profile: ${{ inputs.profile }}
+        product_directory: artifacts/ios-cohort/product-artifact
+        archive_digest: ${{ inputs.archive_digest }}
+        manifest_digest: ${{ inputs.manifest_digest }}

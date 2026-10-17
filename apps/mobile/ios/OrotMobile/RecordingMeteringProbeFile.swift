@@ -1,4 +1,4 @@
-#if OROT_RECORDING_METERING_SIMULATOR_TEST && targetEnvironment(simulator)
+#if (OROT_RECORDING_METERING_SIMULATOR_TEST || OROT_TESTS) && targetEnvironment(simulator)
     import AVFoundation
     import Foundation
 

@@ -45,6 +45,18 @@ export interface TaskResponderInput {
   readonly request: string;
   readonly context?: JsonValue;
   readonly evidence: EvidenceBatch;
+  /** Capacity to ask the bounded planner; candidates do not guarantee adapter scope support, results, or query consent. */
+  readonly research?: {
+    readonly canRequestEvidence: boolean;
+    readonly allowedScope: AllowedEvidenceScope;
+    readonly candidateTools: readonly Pick<
+      import('./evidenceContracts').EvidenceSearchTool,
+      'id' | 'sourceKind' | 'execution'
+    >[];
+    readonly remainingModelCalls: number;
+    readonly remainingToolCalls: number;
+    readonly remainingResearchCycles: number;
+  };
 }
 
 export type TaskResultValidation<TResult> =
@@ -68,6 +80,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
+  /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
+  correctionInstructionForInvalidResult?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
 

@@ -17,6 +17,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         self.launchOptions = launchOptions
 
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if TestFixtureCommand.runIfRequested() {
+                return true
+            }
+            if !TestFixtureCommand.prepareIsolationIfRequested() {
+                return true
+            }
+        #endif
+
         let delegate = ReactNativeDelegate()
         let factory = RCTReactNativeFactory(delegate: delegate)
         delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -62,7 +71,11 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     }
 
     override func bundleURL() -> URL? {
-        #if DEBUG
+        #if OROT_TESTS
+            // Native test products embed their own entry, including Debug provider fixtures;
+            // a consumer must not depend on a producer's Metro process or rebuild the app.
+            Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+        #elseif DEBUG
             RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
         #else
             Bundle.main.url(forResource: "main", withExtension: "jsbundle")

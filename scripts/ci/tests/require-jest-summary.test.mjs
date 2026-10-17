@@ -69,81 +69,6 @@ test('validates every Jest summary when the root command runs multiple packages'
   assert.match(firstRunEmpty.stderr, /run 1 discovered zero tests or suites/);
 });
 
-test('requires both the Release and OpenAI Debug E2E summaries', () => {
-  const release = 'Test Suites: 1 passed, 1 total\nTests: 21 passed, 21 total\n';
-  const debug = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
-  const complete = runGuard(release + debug, 'e2e');
-  assert.equal(complete.status, 0, complete.stderr);
-  assert.match(complete.stdout, /22\/22 tests passed across 2 suites in 2 Jest runs/);
-
-  const missingDebug = runGuard(release, 'e2e');
-  assert.notEqual(missingDebug.status, 0);
-  assert.match(missingDebug.stderr, /expected one Release and one OpenAI Debug Jest summary/);
-
-  const incompleteRelease = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 13 passed, 13 total\n' + debug,
-    'e2e',
-  );
-  assert.notEqual(incompleteRelease.status, 0);
-  assert.match(incompleteRelease.stderr, /Release summary expected 21 test cases, received 13/);
-});
-
-test('validates a single CI profile and publishes only its proven counts', () => {
-  const release = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 21 passed, 21 total\n',
-    'e2e-release',
-    true,
-  );
-  assert.equal(release.status, 0, release.stderr);
-  assert.match(release.stdout, /21\/21 tests passed across 1 suites in 1 Jest runs/);
-  assert.equal(release.githubOutput, 'e2e_profile=release\ne2e_test_cases=21\ne2e_test_suites=1\n');
-
-  const debug = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
-    'e2e-openai-provider',
-    true,
-  );
-  assert.equal(debug.status, 0, debug.stderr);
-  assert.match(debug.stdout, /1\/1 tests passed across 1 suites in 1 Jest runs/);
-  assert.equal(
-    debug.githubOutput,
-    'e2e_profile=openai-provider\ne2e_test_cases=1\ne2e_test_suites=1\n',
-  );
-
-  const transcription = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
-    'e2e-transcription',
-    true,
-  );
-  assert.equal(transcription.status, 0, transcription.stderr);
-  assert.equal(
-    transcription.githubOutput,
-    'e2e_profile=transcription\ne2e_test_cases=1\ne2e_test_suites=1\n',
-  );
-
-  assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 13 passed, 13 total\n', 'e2e-release').status,
-    0,
-  );
-  assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 0 total\n', 'e2e-openai-provider').status,
-    0,
-  );
-  assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 2 passed, 2 total\n', 'e2e-transcription')
-      .status,
-    0,
-  );
-  assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 9 passed, 9 total\n', 'e2e', true).status,
-    0,
-  );
-  assert.notEqual(
-    runGuard('Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n', 'e2e-typo').status,
-    0,
-  );
-});
-
 test('rejects missing summaries and zero discovered tests', () => {
   const missing = runGuard('No Jest summary was emitted\n');
   assert.notEqual(missing.status, 0);
@@ -151,26 +76,6 @@ test('rejects missing summaries and zero discovered tests', () => {
   const zero = runGuard('Test Suites: 0 total\nTests: 0 total\n');
   assert.notEqual(zero.status, 0);
   assert.match(zero.stderr, /zero tests or suites/);
-});
-
-test('requires exactly the Next Visit Questions synthetic probe case', () => {
-  const nextVisit = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n',
-    'e2e-next-visit-questions',
-    true,
-  );
-  assert.equal(nextVisit.status, 0, nextVisit.stderr);
-  assert.equal(
-    nextVisit.githubOutput,
-    'e2e_profile=next-visit-questions\ne2e_test_cases=1\ne2e_test_suites=1\n',
-  );
-
-  const unexpectedExtraTest = runGuard(
-    'Test Suites: 1 passed, 1 total\nTests: 2 passed, 2 total\n',
-    'e2e-next-visit-questions',
-  );
-  assert.notEqual(unexpectedExtraTest.status, 0);
-  assert.match(unexpectedExtraTest.stderr, /expected 1 test cases, received 2/);
 });
 
 test('rejects skipped, pending, and todo tests even when another test passed', () => {
@@ -181,4 +86,11 @@ test('rejects skipped, pending, and todo tests even when another test passed', (
     assert.notEqual(result.status, 0, `accepted ${state} result`);
     assert.match(result.stderr, /failure, skip, pending test, or todo/);
   }
+});
+
+test('rejects obsolete E2E modes instead of accepting a Jest fallback', () => {
+  assert.notEqual(
+    runGuard('Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n', 'e2e-release').status,
+    0,
+  );
 });

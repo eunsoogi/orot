@@ -5,7 +5,7 @@ function selectEntryRoute(settings) {
     settings && typeof settings === 'object' ? settings : {};
 
   if (owns(launchSettings, 'OROT_E2E_PROBE')) {
-    // Only an explicit Detox launch argument may opt into a synthetic app entry.
+    // Only an explicit test launch argument may opt into a synthetic app entry.
     const probe = launchSettings.OROT_E2E_PROBE;
     if (
       probe !== 'appointments' &&
