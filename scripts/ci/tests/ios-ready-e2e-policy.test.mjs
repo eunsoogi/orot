@@ -186,6 +186,27 @@ test('selected reusable workflow jobs are gated by their cohort and configuratio
   }
 });
 
+test('the protected Build check consumes OAuth evidence only when the selected plan requires it', () => {
+  const build = read('e2e-test.yml').jobs.ios_simulator_build;
+  const oauthDownload = build.steps.find(
+    (step) => step.name === 'Read the separate OAuth execution receipt',
+  );
+  const verify = build.steps.find(
+    (step) => step.name === 'Verify production receipt at this run and head',
+  );
+
+  assert.ok(build.needs.includes('plan'));
+  assert.equal(
+    oauthDownload.if,
+    "needs.selection.outputs.run_ios == 'true' && needs.plan.outputs.oauth_required == 'true'",
+  );
+  assert.equal(verify.if, "needs.selection.outputs.run_ios == 'true'");
+  assert.equal(verify.env.OROT_IOS_OAUTH_REQUIRED, '${{ needs.plan.outputs.oauth_required }}');
+  assert.match(verify.env.OROT_IOS_OAUTH_RECEIPT_PATH, /needs\.plan\.outputs\.oauth_required/);
+  assert.match(verify.run, /ios-production-receipt\.mjs verify/);
+  assert.doesNotMatch(verify.run, /oauth-receipt/);
+});
+
 test('the selection artifact records the event decision and the result artifact records executed cohorts', () => {
   const source = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
   const selector = readFileSync('scripts/ci/select-changed-paths.mjs', 'utf8');

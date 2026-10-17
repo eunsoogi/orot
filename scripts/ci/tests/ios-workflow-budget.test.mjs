@@ -206,6 +206,7 @@ test('production verifies actual tools before cache, Pods and its isolated app b
 test('full and focused execution retain one repository allocation window and separate build and test jobs', () => {
   assert.deepEqual(full().concurrency, {
     group: 'ios-ci-macos-${{ github.repository }}',
+    queue: 'max',
     'cancel-in-progress': false,
   });
   const focus = read('ios-focused.yml');

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import test from 'node:test';
 import { iosTestImpactForPath } from '../ios-test-impact.mjs';
 
@@ -39,6 +40,30 @@ test('native test files map to the cohort that owns their original assertions', 
     sorted(health.cohorts),
     sorted(['core-integration', 'health', 'calendar', 'provider', 'questions']),
   );
+});
+
+test('maintained native tests select each cohort that owns their assertions', () => {
+  const cases = [
+    ['apps/mobile/ios/OrotUITests/RecordingExportUITests.swift', ['core-ui']],
+    ['apps/mobile/ios/OrotUITests/TranscriptEvidenceUITests.swift', ['core-ui']],
+    ['apps/mobile/ios/OrotUITests/PagedHealthRecordsUITests.swift', ['navigation']],
+    ['apps/mobile/ios/OrotUITests/UnifiedImportUITests.swift', ['core-ui', 'health', 'navigation']],
+    ['apps/mobile/ios/OrotUITests/StorageMigrationUITests.swift', ['calendar']],
+    [
+      'apps/mobile/ios/OrotIntegrationTests/NavigationLayoutIntegrationTests.swift',
+      ['core-integration'],
+    ],
+  ];
+
+  for (const [path, owners] of cases) {
+    assert.ok(existsSync(path), `${path} must remain in the maintained test inventory`);
+    const impact = iosTestImpactForPath(path);
+    assert.deepEqual(
+      [...impact.cohorts].sort(),
+      [...owners].sort(),
+      `${path} must select exactly its maintained owners`,
+    );
+  }
 });
 
 test('domain E2E helpers are focused while shared test drivers keep the full inventory', () => {

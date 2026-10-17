@@ -11,6 +11,8 @@ permissions:
 concurrency:
   # The selected entry shares this allocation window; the dedicated manager cancels stale PR runs.
   group: ios-ci-macos-${{ github.repository }}
+  # Preserve ready-head validations when metadata or diagnostic runs are queued.
+  queue: max
   cancel-in-progress: false
 jobs:
   selection:
@@ -142,7 +144,7 @@ jobs:
       oauth_required: ${{ needs.plan.outputs.oauth_required == 'true' }}
   ios_simulator_build:
     name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred / Build' || 'Validate / Build' }}
-    needs: [selection, completeness]
+    needs: [selection, plan, completeness]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -165,14 +167,17 @@ jobs:
           name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/production-receipt
       - name: Read the separate OAuth execution receipt
-        if: needs.selection.outputs.run_ios == 'true'
+        if: needs.selection.outputs.run_ios == 'true' && needs.plan.outputs.oauth_required == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/oauth-receipt
       - name: Verify production receipt at this run and head
         if: needs.selection.outputs.run_ios == 'true'
-        run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json artifacts/oauth-receipt/products/receipt.json
+        env:
+          OROT_IOS_OAUTH_REQUIRED: ${{ needs.plan.outputs.oauth_required }}
+          OROT_IOS_OAUTH_RECEIPT_PATH: ${{ needs.plan.outputs.oauth_required == 'true' && 'artifacts/oauth-receipt/products/receipt.json' || '' }}
+        run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json
   required_statuses:
     # Draft and metadata-only contexts are intentionally distinct from the protected ready-head names.
     name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred' || 'Validate' }}

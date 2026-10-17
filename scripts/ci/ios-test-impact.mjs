@@ -1,4 +1,5 @@
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
+import { maintainedNativeTestOwners } from './ios-test-impact-owners.mjs';
 
 const all = IOS_TEST_COHORT_NAMES;
 const ui = [
@@ -35,6 +36,7 @@ const provider = [
   'calendar',
   'health',
 ];
+
 function canonical(cohorts) {
   const selected = new Set(cohorts);
   return all.filter((cohort) => selected.has(cohort));
@@ -130,6 +132,8 @@ function sourceImpact(path) {
 function nativeTestImpact(path) {
   const file = path.split('/').at(-1);
   const lower = file.toLowerCase();
+  const maintainedOwners = maintainedNativeTestOwners.get(path.toLowerCase());
+  if (maintainedOwners) return impact(maintainedOwners, 'maintained-native-test-owner');
 
   if (path.includes('/OrotTestSupport/')) return full('shared-native-test-support');
   if (path.includes('/OrotUITests/')) {

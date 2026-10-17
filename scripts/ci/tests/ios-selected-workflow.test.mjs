@@ -79,6 +79,7 @@ test('full and selected entries share allocation while PR supersession remains s
   assert.deepEqual(entry.concurrency, full.concurrency);
   assert.deepEqual(entry.concurrency, {
     group: 'ios-ci-macos-${{ github.repository }}',
+    queue: 'max',
     'cancel-in-progress': false,
   });
   assert.deepEqual(entry.permissions, { contents: 'read', 'pull-requests': 'read' });
