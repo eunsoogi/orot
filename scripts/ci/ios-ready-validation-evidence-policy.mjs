@@ -108,15 +108,22 @@ export function verifyReusableReadyResults(selection, complete, candidate, curre
     complete.observations.length !== expected.length
   )
     reject('Source result artifact does not match its exact selected cohort inventory');
-  for (let index = 0; index < expected.length; index += 1) {
-    const observation = complete.observations[index];
+
+  // Xcode's result order can differ from inventory order; membership and uniqueness bind the exact executed set.
+  const expectedIdentifiers = new Set(expected);
+  const observedIdentifiers = new Set();
+  for (const observation of complete.observations) {
     if (
-      observation.identifier !== expected[index] ||
+      !expectedIdentifiers.has(observation.identifier) ||
+      observedIdentifiers.has(observation.identifier) ||
       observation.result !== 'Passed' ||
       !Number.isFinite(observation.duration) ||
       observation.duration < 0
     )
       reject('Source result artifact contains a missing, unexpected, or failed observation');
+    observedIdentifiers.add(observation.identifier);
   }
+  if (observedIdentifiers.size !== expected.length)
+    reject('Source result artifact contains a missing, unexpected, or failed observation');
   return { ...verified, observationCount: expected.length };
 }

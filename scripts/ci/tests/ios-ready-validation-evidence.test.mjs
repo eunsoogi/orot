@@ -189,6 +189,8 @@ test('complete source observations must match every selected test identifier and
   );
   for (const mutate of [
     (report) => report.observations.pop(),
+    (report) => (report.observations[0].identifier = 'OrotUITests/UnexpectedTests/testUnexpected'),
+    (report) => (report.observations[1].identifier = report.observations[0].identifier),
     (report) => (report.observations[0].result = 'Failed'),
     (report) => (report.notExecutedCohorts = ['core-ui']),
     (report) => (report.executedCohorts = []),
@@ -199,6 +201,17 @@ test('complete source observations must match every selected test identifier and
       verifyReusableReadyResults(candidate.selection, changed, candidate, currentEvent()),
     );
   }
+});
+
+test('complete source observations may arrive in a different order from the maintained inventory', () => {
+  const candidate = makeCandidate({ selected: ['core-ui'] });
+  const complete = completeResults(candidate);
+  complete.observations.reverse();
+  assert.equal(
+    verifyReusableReadyResults(candidate.selection, complete, candidate, currentEvent())
+      .observationCount,
+    complete.observations.length,
+  );
 });
 
 test('an exact Ready validation may explicitly select no iOS cohorts without inventing a result artifact', () => {
