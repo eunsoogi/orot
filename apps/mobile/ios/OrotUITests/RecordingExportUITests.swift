@@ -9,6 +9,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    // This regression observes the system share sheet through the real app process.
     func testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource() throws {
         try ExportDismissalGeometryRegression.verify()
         try FormScrollGeometryRegression.verify()
