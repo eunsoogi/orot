@@ -52,10 +52,10 @@ for (const conclusion of ['success', 'failure', 'skipped', 'cancelled']) {
   });
 }
 
-test('release rejects a legacy full-path manual run even if it claims every required job passed', () => {
+test('release rejects a legacy full-path push run even if it claims every required job passed', () => {
   const context = validContext();
   const manual = context.ciRuns.map((run) =>
-    run.path === fullPath ? { ...run, event: 'workflow_dispatch' } : run,
+    run.path === fullPath ? { ...run, event: 'push' } : run,
   );
   assert.equal(validateCandidate({ ...context, ciRuns: manual }).valid, false);
   assert.equal(

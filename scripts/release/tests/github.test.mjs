@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { isAcceptedCiWorkflowEvent } from '../ci-required-jobs.mjs';
 import {
   collectJobsForMainValidation,
   latestMainValidationRuns,
@@ -22,7 +23,7 @@ function run(id, path, overrides = {}) {
   };
 }
 
-test('selects the newest permitted main run while full iOS requires an automatic push', () => {
+test('selects the newest permitted main run while full iOS requires an explicit dispatch', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', {
@@ -43,15 +44,29 @@ test('selects the newest permitted main run while full iOS requires an automatic
   ];
   assert.deepEqual(
     latestMainValidationRuns(sourceSha, runs).map(({ id }) => id),
-    [2, 3],
+    [2, 9],
   );
+});
+
+test('release evidence accepts a full E2E dispatch on main and excludes push and diagnostics', () => {
+  assert.equal(
+    isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'workflow_dispatch'),
+    true,
+  );
+  assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'push'), false);
+  assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'pull_request'), false);
+  assert.equal(
+    isAcceptedCiWorkflowEvent('.github/workflows/e2e-selected.yml', 'workflow_dispatch'),
+    false,
+  );
+  assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/code-quality.yml', 'push'), true);
 });
 
 test('collects jobs only from each selected main validation run', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', { run_number: 2 }),
-    run(3, '.github/workflows/e2e-test.yml'),
+    run(3, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
   ];
   const jobs = collectJobsForMainValidation(sourceSha, runs, (id) => [{ name: `run-${id}` }]);
   assert.deepEqual(jobs, [

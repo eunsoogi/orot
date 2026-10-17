@@ -37,3 +37,29 @@ test('new process, reset, restore and Speech preparation dependencies remain ins
     assert.equal(tasks[0].mode, 'fixture');
   }
 });
+
+test('selected plans retain full original task groups while omitting unrelated cohorts', () => {
+  const selected = iosTestExecutionPlan(['backup', 'recordings']);
+  const actual = selected.flatMap((job) =>
+    iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
+  );
+  const expected = ['backup', 'recordings'].flatMap((cohort) =>
+    iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
+  );
+
+  assert.deepEqual(
+    selected.map((job) => job.cohort),
+    ['backup', 'recordings'],
+  );
+  assert.deepEqual(actual, expected);
+  assert.equal(new Set(actual).size, actual.length);
+  assert.equal(
+    selected.some((job) => job.cohort === 'speech'),
+    false,
+  );
+});
+
+test('invalid, empty, duplicated or unknown selections cannot create a partial plan', () => {
+  for (const selected of [[], ['backup', 'backup'], ['not-a-cohort']])
+    assert.throws(() => iosTestExecutionPlan(selected), /unique known cohorts/);
+});

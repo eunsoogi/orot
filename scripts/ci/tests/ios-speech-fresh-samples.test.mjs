@@ -24,7 +24,7 @@ test('each full CI schedules every cohort once after verified products are avail
   }
   const speech = cohorts.find(([, job]) => job.inputs.cohort === 'speech')[1];
   assert.deepEqual(speech.caller.needs, ['plan', 'release_products']);
-  assert.equal(speech.leaf.if, undefined);
+  assert.equal(speech.leaf.if, "${{ contains(fromJSON(inputs.cohorts), 'speech') }}");
   assert.equal(speech.inputs.artifact_name, 'ios-test-release-products');
   assert.equal(
     speech.inputs.archive_digest,
@@ -82,7 +82,14 @@ test('actual Linux plan reports separate producers, independent suites and the c
     const output = join(directory, 'outputs');
     const result = spawnSync(process.execPath, ['scripts/ci/ios-test-cohort-plan-cli.mjs'], {
       encoding: 'utf8',
-      env: { ...process.env, GITHUB_OUTPUT: output },
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: output,
+        OROT_IOS_TEST_COHORTS: JSON.stringify([
+          ...new Set(iosTestExecutionPlan().map((entry) => entry.cohort)),
+        ]),
+        OROT_IOS_OAUTH_TESTS: 'true',
+      },
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);

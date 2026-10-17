@@ -2,16 +2,15 @@ name: Cancel superseded CI
 
 on:
   pull_request:
-    # A stacked PR's new head also supersedes its previous focused selection.
-    # Draft/ready metadata supplies no replacement run and must preserve active validation.
-    types: [synchronize, reopened]
+    # Ready/draft transitions and base changes replace or defer the active full validation.
+    types: [synchronize, reopened, ready_for_review, converted_to_draft, edited]
 
 permissions: {}
 
 jobs:
   cancel_superseded_full:
     name: Cancel stale full run for updated PR
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (github.event.action != 'edited' || github.event.changes.base.ref != null) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
@@ -31,13 +30,16 @@ jobs:
             const workflowPath = '.github/workflows/e2e-test.yml';
             const validSha = (value) => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
             const validId = (value) => Number.isSafeInteger(value) && value > 0;
-            const allowedActions = ['synchronize', 'reopened'];
+            const allowedActions = ['synchronize', 'reopened', 'ready_for_review', 'converted_to_draft', 'edited'];
+            const baseRefChange = context.payload.changes?.base?.ref;
             if (context.eventName !== 'pull_request' || !allowedActions.includes(action) ||
+                (action === 'edited' && (typeof baseRefChange?.from !== 'string' || typeof baseRefChange?.to !== 'string')) ||
                 repo.owner !== 'eunsoogi' || repo.repo !== 'orot' ||
                 repository?.id !== 1400991370 || repository.full_name !== 'eunsoogi/orot' ||
                 !validId(eventPr?.number) || context.payload.number !== eventPr.number ||
                 !validId(eventPr?.id) || !validSha(eventPr.head?.sha) || typeof eventPr.draft !== 'boolean' ||
                 typeof eventPr.updated_at !== 'string' || !Number.isFinite(Date.parse(eventPr.updated_at)) ||
+                !validSha(eventPr.base?.sha) || typeof eventPr.base?.ref !== 'string' || !eventPr.base.ref ||
                 eventPr.head?.repo?.id !== repository.id || eventPr.base?.repo?.id !== repository.id ||
                 typeof eventPr.head.ref !== 'string' || !eventPr.head.ref) {
               core.info('No cancellation: event identity is outside the supported boundary.');
@@ -48,7 +50,8 @@ jobs:
             const currentEvent = (pr) => pr.id === eventPr.id && pr.number === eventPr.number &&
               pr.state === 'open' && pr.head?.sha === eventPr.head.sha &&
               pr.head?.repo?.id === repository.id && pr.base?.repo?.id === repository.id &&
-              pr.head?.ref === eventPr.head.ref && pr.updated_at === eventPr.updated_at && pr.draft === eventPr.draft;
+              pr.head?.ref === eventPr.head.ref && pr.base?.sha === eventPr.base.sha &&
+              pr.base?.ref === eventPr.base.ref && pr.updated_at === eventPr.updated_at && pr.draft === eventPr.draft;
             if (!currentEvent(await readCurrent())) {
               core.info('No cancellation: the PR has changed since this event.');
               return;
@@ -61,12 +64,12 @@ jobs:
                   run.path !== workflowPath || run.repository?.id !== repository.id ||
                   run.head_repository?.id !== repository.id || run.event !== 'pull_request' ||
                   run.head_branch !== eventPr.head.ref || !validSha(run.head_sha) ||
-                  !active.has(run.status) || run.conclusion !== null || run.run_attempt !== 1 ||
+                  !active.has(run.status) || run.conclusion !== null || !validId(run.run_attempt) ||
                   run.pull_requests?.length !== 1 || run.pull_requests[0].id !== eventPr.id ||
                   run.pull_requests[0].number !== eventPr.number) return false;
               if (run.head_sha !== eventPr.head.sha) return true;
-              // Reopening starts a replacement run; metadata-only draft/ready changes do not.
-              if (action !== 'reopened') return false;
+              // Head-preserving transitions must cancel only runs created before this replacement event.
+              if (!['reopened', 'ready_for_review', 'converted_to_draft', 'edited'].includes(action)) return false;
               const created = Date.parse(run.created_at);
               const changed = Date.parse(eventPr.updated_at);
               return Number.isFinite(created) && Number.isFinite(changed) && created + 1000 <= changed;
@@ -87,7 +90,8 @@ jobs:
                 return;
               }
               const run = (await github.rest.actions.getWorkflowRun({...repo, run_id: candidate.id})).data;
-              if (!superseded(run) || run.id !== candidate.id || run.head_sha !== candidate.head_sha) continue;
+              if (!superseded(run) || run.id !== candidate.id || run.head_sha !== candidate.head_sha ||
+                  run.run_attempt !== candidate.run_attempt) continue;
               await github.rest.actions.cancelWorkflowRun({...repo, run_id: run.id});
               core.info(`Cancellation requested for superseded run ${run.id}.`);
             }

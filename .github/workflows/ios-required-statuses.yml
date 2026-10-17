@@ -3,8 +3,10 @@ on:
   workflow_call:
     inputs:
       selected: { required: true, type: boolean }
+      selected_cohorts: { required: true, type: string }
       invalid_selection: { required: true, type: boolean }
       execution_result: { required: true, type: string }
+      non_protected_contexts: { required: true, type: boolean }
 permissions: { contents: read }
 jobs:
   status:
@@ -16,20 +18,57 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check:
-          - UI
-          - Storage
-          - Provider
-          - Speech
-          - Questions
+        include:
+          - check: UI
+            cohorts: '["core-integration","core-ui","navigation","recordings","questions","calendar","provider","health","microphone","selection"]'
+          - check: Storage
+            cohorts: '["persistence","isolation","backup","local-model","recordings"]'
+          - check: Provider
+            cohorts: '["provider","selection","local-model","questions","calendar","health"]'
+          - check: Speech
+            cohorts: '["speech","microphone","recordings"]'
+          - check: Questions
+            cohorts: '["questions","provider","calendar"]'
     steps:
-      - name: Reject diagnostic and incomplete selection
-        env: { INVALID: '${{ inputs.invalid_selection }}' }
-        run: test "$INVALID" = false
-      - name: Require the full integration current-head gate when selected
-        if: inputs.selected
-        env: { RESULT: '${{ inputs.execution_result }}' }
-        run: test "$RESULT" = success
-      - name: Record a complete affected-path exclusion
-        if: '!inputs.selected'
-        run: echo 'The complete path selector did not select iOS validation.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Require this domain's selected cohorts to succeed
+        env:
+          SELECTED: ${{ inputs.selected }}
+          SELECTED_COHORTS: ${{ inputs.selected_cohorts }}
+          CHECK_COHORTS: ${{ matrix.cohorts }}
+          INVALID: ${{ inputs.invalid_selection }}
+          NON_PROTECTED_CONTEXTS: ${{ inputs.non_protected_contexts }}
+          EXECUTION_RESULT: ${{ inputs.execution_result }}
+          CHECK_NAME: ${{ matrix.check }}
+        run: |
+          node --input-type=module -e '
+            import { appendFileSync } from "node:fs";
+            const fail = (message) => { throw new Error(message); };
+            if (process.env.INVALID === "true") fail("Invalid or incomplete iOS E2E selection");
+            if (process.env.NON_PROTECTED_CONTEXTS === "true") {
+              console.log(process.env.CHECK_NAME + " is informational for this draft, metadata-only, or diagnostic event");
+              process.exit(0);
+            }
+            let selected;
+            let domain;
+            try {
+              selected = JSON.parse(process.env.SELECTED_COHORTS ?? "");
+              domain = JSON.parse(process.env.CHECK_COHORTS ?? "");
+            } catch {
+              fail("Protected status requires valid selected cohort lists");
+            }
+            if (!Array.isArray(selected) || !Array.isArray(domain)) fail("Protected status requires cohort arrays");
+            const relevant = selected.filter((cohort) => domain.includes(cohort));
+            if (process.env.SELECTED === "true") {
+              if (selected.length === 0) fail("Selected E2E validation has no cohorts");
+              if (relevant.length > 0 && process.env.EXECUTION_RESULT !== "success")
+                fail(process.env.CHECK_NAME + " requires selected cohorts to complete successfully");
+              if (relevant.length === 0)
+                console.log(process.env.CHECK_NAME + " has no affected selected cohorts");
+            } else {
+              if (selected.length > 0 || process.env.EXECUTION_RESULT !== "skipped")
+                fail("An unselected E2E run must have no cohorts and no execution");
+              console.log(process.env.CHECK_NAME + " is an explicit affected-path exclusion");
+            }
+            if (process.env.GITHUB_STEP_SUMMARY)
+              appendFileSync(process.env.GITHUB_STEP_SUMMARY, process.env.CHECK_NAME + ": " + (relevant.join(", ") || "no affected cohorts") + ".\\n");
+          '
