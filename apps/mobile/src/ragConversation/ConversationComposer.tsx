@@ -39,7 +39,8 @@ export function ConversationComposer({
       >
         <TextInput
           accessibilityLabel={copy.placeholder}
-          editable={!busy}
+          // Keep the keyboard available so users can draft while a response runs.
+          editable
           maxLength={1000}
           multiline
           scrollEnabled

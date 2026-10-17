@@ -46,40 +46,6 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes() throws {
-        let app = launch()
-        defer { app.terminate() }
-        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
-        for identifier in ["settings-open-provider", "settings-open-accounts", "settings-open-privacy", "settings-open-backup"] {
-            let control = app.buttons[identifier]
-            XCTAssertTrue(control.exists && control.isHittable)
-        }
-        capture(app, "settings-root-light")
-        tap(app, "settings-open-accounts")
-        NavigationUITestConditions.route(app, markers: ["settings-accounts-screen"])
-        XCTAssertTrue(app.staticTexts["연결된 계정"].exists)
-        XCTAssertTrue(UITestConditions.element(app, "chatgpt-account-setup").exists)
-        try backToSettings(app)
-        tap(app, "settings-open-backup")
-        NavigationUITestConditions.route(app, markers: ["settings-backup-title"])
-        XCTAssertTrue(UITestConditions.element(app, "backup-status-message").isHittable)
-        XCTAssertTrue(UITestConditions.element(app, "backup-prepare").isHittable)
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-backup-scroll", contentID: "backup-open-system-settings")
-        XCTAssertTrue(UITestConditions.element(app, "backup-open-system-settings").isHittable)
-        capture(app, "settings-backup-light")
-        try backToSettings(app)
-        tap(app, "settings-open-privacy")
-        NavigationUITestConditions.route(app, markers: ["settings-privacy-title"])
-        for title in ["마이크", "음성 인식", "건강 앱", "캘린더"] {
-            XCTAssertTrue(app.staticTexts[title].exists)
-        }
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "settings-privacy-scroll", contentID: "privacy-open-system-settings")
-        XCTAssertTrue(UITestConditions.element(app, "privacy-open-system-settings").isHittable)
-        capture(app, "settings-privacy-light")
-        try backToSettings(app)
-    }
-
-    @MainActor
     func testLargeTextKeepsRootTabsAndRecordingActionsReachable() throws {
         let normal = launch()
         let normalTitleHeight = UITestConditions.element(normal, "welcome-title").frame.height
@@ -96,15 +62,15 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         tap(app, "records-new-recording")
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
         try NavigationUITestConditions.scrollToBottom(app, "recording-controls-scroll")
-        let start = UITestConditions.element(app, "recording-start")
-        XCTAssertTrue(start.exists && start.isHittable)
+        let microphone = UITestConditions.element(app, "recording-microphone-control")
+        XCTAssertTrue(microphone.exists && microphone.isHittable)
         capture(app, "recording-xxxl-navigation")
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
     }
 
     @MainActor
-    private func launch(_ arguments: [String] = []) -> XCUIApplication {
+    func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + arguments
         app.launch()
@@ -219,7 +185,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func tap(_ app: XCUIApplication, _ identifier: String) {
+    func tap(_ app: XCUIApplication, _ identifier: String) {
         // These actions are buttons. A typed, unique query avoids the remote first-match walk through unrelated
         // containers and text nodes; it still resolves the live control again after every route change.
         let element = app.buttons[identifier]
@@ -229,13 +195,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func backToSettings(_ app: XCUIApplication) throws {
+    func backToSettings(_ app: XCUIApplication) throws {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
     }
 
     @MainActor
-    private func capture(_ app: XCUIApplication, _ name: String) {
+    func capture(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways

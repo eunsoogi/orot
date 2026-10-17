@@ -1,6 +1,7 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { healthKitAutoSyncCheckpointKey } from '../../autoSyncCheckpoint';
 import { syncHealthKitMedications } from '../importer';
 import type { MedicationSyncOptions } from '../importer';
 import { doseSample, now, page } from '../testSupport';
@@ -63,7 +64,12 @@ describe('HealthKit medication importer with SQLite storage', () => {
       await runMigrations(database);
       const repository = createRecordRepository(database);
       const { healthKit, setResponse } = healthKitForDosePage();
-      const options = { healthKit, repository, now: () => now };
+      const options = {
+        healthKit,
+        repository,
+        now: () => now,
+        rememberForAutoSync: true,
+      };
 
       const first = await syncHealthKitMedications(options);
       const doseId = 'healthkit-dose-event:new-event-id';
@@ -71,6 +77,11 @@ describe('HealthKit medication importer with SQLite storage', () => {
         status: 'completed',
         upserted: 1,
       });
+      expect(
+        await repository.getSyncCheckpoint(
+          healthKitAutoSyncCheckpointKey('medications'),
+        ),
+      ).toMatchObject({ value: 'requested', updatedAt: now });
       const stored = await repository.get('dose_event', doseId);
       expect(stored).toMatchObject({
         eventKind: 'observed',

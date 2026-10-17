@@ -61,7 +61,7 @@ test('keeps a running RAG turn on cancel and aborts it after confirmed leave', a
   );
   await pressAlertButton(alert, 0);
   expect(signal?.aborted).toBe(false);
-  expect(route.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(route.getByTestId('rag-conversation-progress')).toBeTruthy();
 
   await fireEvent.press(route.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));

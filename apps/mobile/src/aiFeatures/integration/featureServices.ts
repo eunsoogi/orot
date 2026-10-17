@@ -4,8 +4,10 @@ import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceBatch,
   EvidenceReference,
+  MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
+import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { runRagConversationTurn as defaultRagRunner } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
@@ -42,11 +44,13 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
   ): Promise<SavedVisitQuestionsLoadState>;
   generateDiseaseHypotheses(
     signal?: AbortSignal,
+    observer?: AiWorkflowObserver,
   ): Promise<DiseaseHypothesisRunOutcome>;
   sendRagMessage(
     question: string,
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
+    observer?: Pick<MultiAgentInvocation, 'onProgress' | 'onTaskStreamEvent'>,
   ): Promise<RagConversationOutcome>;
   resolveSource(reference: EvidenceReference): EvidenceReference | undefined;
   readSource(
@@ -117,7 +121,7 @@ export function createAiFeatureServices(
         registry,
       });
     },
-    async generateDiseaseHypotheses(signal) {
+    async generateDiseaseHypotheses(signal, observer) {
       const selected = await selectedAi();
       const data = await privateLocalData();
       const operationSignal = signal ?? new AbortController().signal;
@@ -156,12 +160,13 @@ export function createAiFeatureServices(
         workflow,
         diseaseInventory,
         {
+          ...observer,
           signal: operationSignal,
         },
         reference => registry.resolve(reference),
       );
     },
-    async sendRagMessage(question, previousMessages, parentSignal) {
+    async sendRagMessage(question, previousMessages, parentSignal, observer) {
       const normalizedQuestion = question.trim();
       if (!normalizedQuestion || normalizedQuestion.length > 1000) {
         return { status: 'unavailable' };
@@ -226,7 +231,7 @@ export function createAiFeatureServices(
               external,
             }),
           },
-          { signal },
+          { ...observer, signal },
         );
         return boundedRag.didOmitEvidence()
           ? { status: 'insufficient' }

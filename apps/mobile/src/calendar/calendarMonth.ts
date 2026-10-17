@@ -1,4 +1,4 @@
-import type { CalendarEvent } from './types';
+import type { CalendarEvent, CalendarQueryCoverage } from './types';
 
 export interface CalendarGridDay {
   dateKey: string;
@@ -191,6 +191,25 @@ export function calendarQueryWindow(start: Date): CalendarQueryWindow {
   end.setDate(1);
   end.setFullYear(year, month, 1);
   end.setDate(Math.min(day, new Date(year, month + 1, 0).getDate()));
+  return {
+    startDay: calendarDateKey(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
+    ),
+    endDay: calendarDateKey(end.getFullYear(), end.getMonth(), end.getDate()),
+  };
+}
+
+/** Uses EventKit's actual exclusive query bounds for empty and out-of-range dates. */
+export function calendarQueryWindowFromCoverage(
+  coverage: CalendarQueryCoverage,
+): CalendarQueryWindow | null {
+  const start = new Date(coverage.fromInclusive);
+  const end = new Date(coverage.toExclusive);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+    return null;
+  }
   return {
     startDay: calendarDateKey(
       start.getFullYear(),

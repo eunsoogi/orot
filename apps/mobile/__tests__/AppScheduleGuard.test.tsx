@@ -29,13 +29,17 @@ jest.mock(
 
 function createCalendarBridge(event: CalendarEvent): CalendarBridge {
   return {
+    listUpcomingEvents: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      events: [event],
+    })),
     requestAccessAndListUpcomingEvents: jest.fn(async () => ({
       access: 'fullAccess' as const,
       events: [event],
     })),
     findEvent: jest.fn(async () => ({
       access: 'fullAccess' as const,
-      event: null,
+      event,
     })),
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
   };
@@ -67,7 +71,7 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   );
 
   await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
-  await fireEvent.press(screen.getByTestId('calendar-connect'));
+  expect(screen.queryByTestId('calendar-connect')).toBeNull();
   await fireEvent.press(
     await screen.findByTestId('calendar-candidate-selected-visit'),
   );

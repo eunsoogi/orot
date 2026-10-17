@@ -10,6 +10,8 @@ import type { RagConversationMessage } from './task';
 export interface DisplayMessage extends RagConversationMessage {
   readonly id: number;
   readonly citations?: readonly EvidenceReference[];
+  readonly activity?: string;
+  readonly streaming?: boolean;
 }
 
 /** Citation labels reveal source type and date; opaque record aliases remain implementation details. */
@@ -38,9 +40,24 @@ export function ConversationMessage({
         </View>
       )}
       <View style={!user && styles.assistantBody}>
-        <Text selectable style={[styles.messageText, user && styles.userText]}>
-          {message.content}
-        </Text>
+        {message.content ? (
+          <Text
+            selectable
+            style={[styles.messageText, user && styles.userText]}
+            testID={message.streaming ? 'rag-conversation-stream' : undefined}
+          >
+            {message.content}
+          </Text>
+        ) : null}
+        {message.activity ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={styles.activity}
+            testID={message.streaming ? 'rag-conversation-progress' : undefined}
+          >
+            {message.activity}
+          </Text>
+        ) : null}
         {message.citations?.map((reference, index) => {
           const external = reference.sourceKind === 'external_medical';
           const locator = reference.locator as Record<string, unknown> | null;

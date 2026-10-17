@@ -20,5 +20,9 @@ export function getDiseaseHypothesisCopy() {
     noAdditionalInfo: t('diseaseHypotheses.noAdditionalInfo'),
     source: (sourceId: string) => t('diseaseHypotheses.source', { sourceId }),
     retry: t('diseaseHypotheses.retry'),
+    cancel: t('aiActivity.cancel'),
+    cancelled: t('aiActivity.cancelled'),
+    draftHeading: t('aiActivity.draft.heading'),
+    draftNote: t('aiActivity.draft.note'),
   };
 }

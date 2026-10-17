@@ -27,6 +27,12 @@ export type RagConversationOutcome =
   | { readonly status: 'insufficient' }
   | { readonly status: 'unavailable' };
 
+/** Screen observers receive safe progress and task-projected text, never request or evidence payloads. */
+export type RagConversationObserver = Pick<
+  MultiAgentInvocation,
+  'onProgress' | 'onTaskStreamEvent'
+>;
+
 export interface RagConversationRunOptions {
   readonly question: string;
   readonly previousMessages: readonly RagConversationMessage[];

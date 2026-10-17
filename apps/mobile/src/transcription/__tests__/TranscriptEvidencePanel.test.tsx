@@ -125,14 +125,14 @@ test('shows review provenance and range, preserves correction history, and plays
 
   await fireEvent.press(screen.getByTestId('transcript-edit-0'));
   const transcriptInput = screen.getByTestId('transcript-input-0');
-  // Keep save and cancel after the editor so the parent can scroll them into view.
+  // Keep cancel and save after the editor so the parent can scroll them into view.
   expect(
     screen
       .getAllByTestId(
         /^(?:transcript-input-0|transcript-save-0|transcript-cancel-0)$/,
       )
       .map(control => control.props.testID),
-  ).toEqual(['transcript-input-0', 'transcript-save-0', 'transcript-cancel-0']);
+  ).toEqual(['transcript-input-0', 'transcript-cancel-0', 'transcript-save-0']);
   await fireEvent.changeText(transcriptInput, correction.text);
   await fireEvent.press(screen.getByTestId('transcript-save-0'));
 
@@ -149,6 +149,12 @@ test('shows review provenance and range, preserves correction history, and plays
 test('uses appearance-aware colors for transcript content and editing surfaces', () => {
   expect(transcriptEvidenceStyles.container.borderTopColor).toBe(
     appColors.border,
+  );
+  expect(transcriptEvidenceStyles.segment.backgroundColor).toBe(
+    appColors.surface,
+  );
+  expect(transcriptEvidenceStyles.audioCard.backgroundColor).toBe(
+    appColors.background,
   );
   expect(transcriptEvidenceStyles.title.color).toBe(appColors.text);
   expect(transcriptEvidenceStyles.copy.color).toBe(appColors.secondary);

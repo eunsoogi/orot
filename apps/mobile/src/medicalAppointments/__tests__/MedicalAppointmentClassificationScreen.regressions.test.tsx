@@ -1,15 +1,14 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import type { CalendarEvent } from '../../calendar/types';
 import * as workflow from '../classificationWorkflow';
 import {
+  calendarSyncState,
   event,
   renderScreen,
   repository,
   result,
 } from '../MedicalAppointmentClassificationScreenTestFixtures';
 
-const importAction = () =>
-  screen.getByRole('button', { name: '캘린더에서 진료 일정 가져오기' });
+const importAction = () => screen.getByTestId('medical-appointment-import');
 afterEach(() => jest.restoreAllMocks());
 
 test('classifies every event before automatically saving only confirmed medical results', async () => {
@@ -113,39 +112,36 @@ test('blocks another import while a medical save is pending and confirms success
   expect(importAction().props.accessibilityState.busy).toBe(true);
   expect(screen.queryByText('일정을 저장했습니다.')).toBeNull();
   await fireEvent.press(importAction());
-  expect(bridge.requestAccessAndListUpcomingEvents).toHaveBeenCalledTimes(1);
+  expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   expect(screen.queryByText('B 진료')).toBeNull();
   await act(async () => finish());
   await waitFor(() => expect(importAction()).not.toBeDisabled());
   expect(screen.getAllByText('일정을 저장했습니다.').length).toBeGreaterThan(0);
 });
 
-test('clears the previous event progress as soon as a new query starts', async () => {
+test('uses the latest synced events when the user starts another classification', async () => {
   const first = event('first', '기존 진료', '2035-06-02');
   const next = event('next', '새 진료', '2035-06-03');
   const appointments = repository();
-  jest
+  const classify = jest
     .spyOn(workflow, 'classifyCalendarEvents')
     .mockImplementation(async input => result(input.events));
-  const { bridge } = await renderScreen([[first], [next]], appointments);
+  const { updateCalendarSync } = await renderScreen(
+    [[first], [next]],
+    appointments,
+  );
   await fireEvent.press(importAction());
   await waitFor(() => expect(importAction()).not.toBeDisabled());
   expect(screen.getByText('일정 1건 · 분류 완료')).toBeTruthy();
-  let finish!: (value: {
-    access: 'fullAccess';
-    events: CalendarEvent[];
-  }) => void;
-  jest.mocked(bridge.requestAccessAndListUpcomingEvents).mockImplementationOnce(
-    () =>
-      new Promise(resolve => {
-        finish = resolve;
-      }),
-  );
+  await updateCalendarSync(calendarSyncState([next]));
   await fireEvent.press(importAction());
-  expect(screen.queryByText('일정 1건 · 분류 완료')).toBeNull();
-  expect(screen.queryByText('기존 진료')).toBeNull();
-  await act(async () => finish({ access: 'fullAccess', events: [next] }));
   await waitFor(() =>
     expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(next),
   );
+  expect(classify).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({ events: [next] }),
+  );
+  expect(screen.queryByText('기존 진료')).toBeNull();
+  expect(screen.getByText('새 진료')).toBeTruthy();
 });

@@ -20,9 +20,12 @@ async function errorCode(pending: Promise<unknown>) {
   }
   throw new Error('Expected the native bridge to reject');
 }
-async function packets(cancel = false) {
+async function packets(
+  cancel = false,
+  sourceRequest: LanguageModelRequest = request,
+) {
   const result: AppleNativeStreamPacket[] = [];
-  for await (const packet of bridge.stream(request, 'mock-stream')) {
+  for await (const packet of bridge.stream(sourceRequest, 'mock-stream')) {
     result.push(packet);
     if (cancel && packet.type === 'snapshot') bridge.cancel('mock-stream');
   }
@@ -64,12 +67,51 @@ export async function runAppleModelMockBridgeProbe() {
     [() => ({ snapshots: ['원래', '변경'] })],
     async () => ({ packets: await packets() }),
   );
-  const rewriteError = rewritten.packets[1];
   check(
-    rewritten.packets.length === 2 &&
-      rewriteError?.type === 'error' &&
-      rewriteError.code === 'STREAM_REWRITE',
-    'Rewritten snapshots must fail without a completed event',
+    rewritten.packets.length === 3 &&
+      rewritten.packets[0]?.type === 'snapshot' &&
+      rewritten.packets[0].text === '원래' &&
+      rewritten.packets[1]?.type === 'snapshot' &&
+      rewritten.packets[1].text === '변경' &&
+      rewritten.packets[2]?.type === 'completed' &&
+      rewritten.packets[2].response.text === '변경',
+    'Rewritten snapshots must replace the earlier partial response and complete',
+  );
+
+  const guidedRequest: LanguageModelRequest = {
+    messages: [{ role: 'user', content: 'Return the final answer.' }],
+    responseFormat: {
+      name: 'answer',
+      schema: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string' },
+          sourceId: { type: 'string' },
+        },
+        required: ['answer', 'sourceId'],
+        additionalProperties: false,
+      },
+    },
+  };
+  const guidedJson = '{"answer":"final","sourceId":"synthetic-source-42"}';
+  const guided = await withMockAppleModel(
+    [() => ({ snapshots: ['{"answer":"draft"}', guidedJson] })],
+    async () => ({ packets: await packets(false, guidedRequest) }),
+  );
+  const guidedCompletion = guided.packets.at(-1);
+  const nativeRequest = guided.mockObservation.requests[0] as {
+    request?: { mode?: string; schema?: unknown };
+    streaming?: boolean;
+  };
+  check(
+    nativeRequest.streaming === true &&
+      nativeRequest.request?.mode === 'structured' &&
+      nativeRequest.request.schema !== undefined &&
+      guidedCompletion?.type === 'completed' &&
+      guidedCompletion.response.structuredOutput !== undefined &&
+      (guidedCompletion.response.structuredOutput as { sourceId?: string })
+        .sourceId === 'synthetic-source-42',
+    'Guided native streaming must use the schema and normalize its final result',
   );
 
   const failed = await withMockAppleModel(
@@ -154,6 +196,10 @@ export async function runAppleModelMockBridgeProbe() {
     streamed: streamed.packets,
     cancelled: cancelled.packets,
     rewritten: rewritten.packets,
+    guided: {
+      packets: guided.packets,
+      requests: guided.mockObservation.requests,
+    },
     failed: failed.code,
     invalid: invalid.code,
     unavailable,

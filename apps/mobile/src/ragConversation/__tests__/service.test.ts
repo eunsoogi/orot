@@ -117,6 +117,38 @@ test('loads a fresh snapshot for each turn and passes only E5-selected evidence 
   ).toBe('2');
 });
 
+test('forwards safe progress and task-stream observers to the workflow', async () => {
+  jest.mocked(runMultiAgentWorkflow).mockClear();
+  const current = snapshot(baseReference);
+  const onProgress = jest.fn();
+  const onTaskStreamEvent = jest.fn();
+  const search = jest.fn(async () => [
+    { chunk: current.chunks[0], score: 1, lexicalRank: 1, vectorRank: 1 },
+  ]);
+  jest
+    .mocked(runMultiAgentWorkflow)
+    .mockResolvedValueOnce(result(baseReference, '근거 기반 답변'));
+
+  await runRagConversationTurn(
+    {
+      question: '기록을 요약해 줘',
+      previousMessages: [],
+      loadCurrentEvidence: async () => current,
+      rag: { search } as never,
+      workflow: {
+        consent: { authorize: jest.fn(async () => 'authorized') },
+      } as never,
+    },
+    { onProgress, onTaskStreamEvent },
+  );
+
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
+  expect(jest.mocked(runMultiAgentWorkflow).mock.calls[0]?.[1]).toEqual({
+    onProgress,
+    onTaskStreamEvent,
+  });
+});
+
 test('does not call a model when retrieval finds no current evidence', async () => {
   jest.mocked(runMultiAgentWorkflow).mockClear();
   const loadCurrentEvidence = jest.fn(async () => snapshot(baseReference));

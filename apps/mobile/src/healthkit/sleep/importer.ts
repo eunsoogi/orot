@@ -1,6 +1,7 @@
 import type { RecordRepository } from '@orot/storage';
 import type { HealthKitNativeModule, HealthKitSampleSnapshot } from '../types';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
+import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
 import { SleepImportError } from './errors';
 import {
   mapSleepObservationToHealthRecord,
@@ -28,6 +29,7 @@ export interface SleepSyncOptions {
   readonly healthKit: SleepHealthKitClient;
   readonly repository: SleepSyncRepository;
   readonly now: () => string;
+  readonly rememberForAutoSync?: boolean;
 }
 
 export interface SleepSyncResult {
@@ -48,6 +50,13 @@ export interface SleepSyncResult {
 export async function syncHealthKitSleep(
   options: SleepSyncOptions,
 ): Promise<SleepSyncResult> {
+  if (options.rememberForAutoSync) {
+    await rememberHealthKitAutoSyncRequest(
+      options.repository,
+      'sleep',
+      options.now,
+    );
+  }
   const checkpoint = await options.repository.getSyncCheckpoint(
     SLEEP_SAMPLE_CHECKPOINT_KEY,
   );

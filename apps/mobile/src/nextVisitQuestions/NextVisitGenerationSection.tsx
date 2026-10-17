@@ -1,4 +1,5 @@
 import { ActivityIndicator, Text, View } from 'react-native';
+import { t } from '../i18n';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { ActionButton } from './NextVisitComponents';
 import { EvidenceCaveats } from './EvidenceCaveats';
@@ -48,9 +49,22 @@ export function NextVisitGenerationSection<
             accessibilityLabel={copy.generation.loading}
             testID="next-visit-generation-loading"
           />
-          <Text accessibilityLiveRegion="polite" style={styles.body}>
-            {copy.generation.loading}
+          <Text
+            accessibilityLiveRegion="polite"
+            style={styles.body}
+            testID="next-visit-generation-progress"
+          >
+            {controller.generationActivity ?? copy.generation.loading}
           </Text>
+          {controller.generationPreview ? (
+            <View testID="next-visit-generation-preview">
+              <Text style={styles.muted}>{t('aiActivity.draft.heading')}</Text>
+              <Text accessibilityLiveRegion="polite" style={styles.body}>
+                {controller.generationPreview}
+              </Text>
+              <Text style={styles.muted}>{t('aiActivity.draft.note')}</Text>
+            </View>
+          ) : null}
           {!hasSharedAction ? (
             <ActionButton
               label={copy.generation.cancel}

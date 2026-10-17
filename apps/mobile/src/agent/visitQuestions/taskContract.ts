@@ -1,4 +1,5 @@
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { validateVisitQuestionTaskResult } from './taskValidation';
 import {
   visitQuestionResultSchema,
@@ -83,6 +84,15 @@ export function createVisitQuestionTaskResponder() {
     allowRankedLocalEvidence: true,
     systemPrompt: visitQuestionSystemPrompt,
     resultSchema: visitQuestionResultSchema,
+    /** Exposes one question candidate while keeping the structured evidence envelope private. */
+    projectStreamedText(rawOutput: string) {
+      return extractPartialJsonStringAtPath(rawOutput, [
+        'value',
+        'questions',
+        0,
+        'questionText',
+      ]);
+    },
     createMessages(
       input: VisitQuestionResponderInput,
     ): readonly LanguageModelMessage[] {

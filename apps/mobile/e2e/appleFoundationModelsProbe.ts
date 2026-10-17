@@ -1,6 +1,8 @@
-import type { LanguageModelRequest } from '@orot/model-runtime';
+import type {
+  LanguageModelRequest,
+  LanguageModelResponse,
+} from '@orot/model-runtime';
 import { AppleFoundationModelsProvider } from '@orot/provider-apple';
-import { createLanguageModelProviderGraph } from '@orot/agent-runtime';
 import { appleFoundationModelsProbeBridge as appleFoundationModelsNativeBridge } from './appleModelMockBridge';
 import { readVisitQuestionOutput } from './appleFoundationModelsProbeValidation';
 
@@ -65,6 +67,7 @@ export interface AppleFoundationModelsProbeResult {
   readonly generation: 'not-run' | 'passed';
   readonly sourceIdPreserved: 'not-run' | 'passed' | 'failed';
   readonly questionText: string | 'not-run';
+  readonly streamedUpdates: number | 'not-run';
   readonly cancellation: 'not-run' | 'cancelled' | 'completed-before-cancel';
   readonly inferenceStop: 'unverified';
 }
@@ -80,31 +83,37 @@ export async function runAppleFoundationModelsProbe(): Promise<AppleFoundationMo
       generation: 'not-run',
       sourceIdPreserved: 'not-run',
       questionText: 'not-run',
+      streamedUpdates: 'not-run',
       cancellation: 'not-run',
       inferenceStop: 'unverified',
     };
   }
 
-  const graph = createLanguageModelProviderGraph(provider);
-  const generatedState = await graph.invoke({ request: visitRequest });
-  const generated = generatedState.result;
-  if (!generated)
-    throw new Error('LangGraph returned without a normalized provider result.');
-  if (!generated.ok) {
-    throw new Error(
-      'Generation failed: ' +
-        generated.error.code +
-        ': ' +
-        generated.error.message,
-    );
+  let generated: LanguageModelResponse | undefined;
+  let streamedUpdates = 0;
+  // Exercise the guided native stream because that path previously fell back to non-streaming generation.
+  for await (const event of provider.stream(visitRequest)) {
+    if (!event.ok) {
+      throw new Error(
+        'Generation failed: ' + event.error.code + ': ' + event.error.message,
+      );
+    }
+    if (
+      event.value.type === 'text_delta' ||
+      event.value.type === 'text_snapshot'
+    ) {
+      streamedUpdates += 1;
+    } else if (event.value.type === 'completed') {
+      generated = event.value.response;
+    }
   }
-  const visitQuestion = readVisitQuestionOutput(
-    generated.value.structuredOutput,
-  );
+  if (!generated)
+    throw new Error('The provider stream ended without a normalized response.');
+  const visitQuestion = readVisitQuestionOutput(generated.structuredOutput);
   if (typeof visitQuestion.questionText !== 'string') {
     throw new Error(
       'Generated question text was not a string: ' +
-        JSON.stringify(generated.value.structuredOutput),
+        JSON.stringify(generated.structuredOutput),
     );
   }
   const questionText = visitQuestion.questionText;
@@ -135,6 +144,7 @@ export async function runAppleFoundationModelsProbe(): Promise<AppleFoundationMo
     generation: 'passed',
     sourceIdPreserved,
     questionText,
+    streamedUpdates,
     cancellation,
     inferenceStop: 'unverified',
   };

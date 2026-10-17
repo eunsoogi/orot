@@ -1,6 +1,6 @@
 import XCTest
 
-/// These journeys use the original Simulator fixtures and production UI/storage. They do not prove access to personal HealthKit samples.
+/// Uses Simulator fixtures only; these journeys do not read personal HealthKit samples.
 final class HealthImportUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -11,96 +11,176 @@ final class HealthImportUITests: OrotFailFastTestCase {
     func testDisplayOnlyBloodPressureCompletionCounts() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        try openBloodPressure(app, scenario: "blood-pressure-visual")
-        tap(app, "blood-pressure-import")
-        assertCompletion(app, saved: "3개", deleted: "1개", status: "가져오기가 끝났어요")
-        capture(app, "blood-pressure-display-only-completion")
+        launch(app, scenario: "blood-pressure-visual")
+
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        XCTAssertTrue(node(app, "records-new-recording").exists)
+        XCTAssertTrue(node(app, "records-open-health-library").exists)
+        XCTAssertFalse(node(app, "records-health-import").exists)
+        XCTAssertFalse(node(app, "records-open-blood-pressure").exists)
+
+        try openHealthDataSettings(app)
+        let bloodPressure = node(app, "health-data-feature-bloodPressure")
+        XCTAssertTrue(bloodPressure.exists && bloodPressure.isHittable)
+        XCTAssertGreaterThanOrEqual(bloodPressure.frame.height, 44)
+        XCTAssertFalse(node(app, "unified-import-start").exists)
+        capture(app, "settings-compact-blood-pressure-choice")
     }
 
     @MainActor
     func testSyntheticBloodPressurePersistsAndReplaysAfterProcessRestart() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        try openBloodPressure(app, scenario: "blood-pressure")
-        UITestConditions.value(node(app, "blood-pressure-read-authorization"), equals: "HealthKit 읽기 허용 여부는 앱에서 확인할 수 없어요.")
-        tap(app, "blood-pressure-import")
-        assertCompletion(app, saved: "2개", deleted: "0개", status: "가져오기가 끝났어요")
-        capture(app, "blood-pressure-synthetic-completion")
-        tap(app, "blood-pressure-open-library")
-        assertLibrary(app)
-        let systolic = UITestConditions.text(node(app, "health-record-row-1-time"))
-        let diastolic = UITestConditions.text(node(app, "health-record-row-0-time"))
-        XCTAssertNotNil(systolic.range(of: #"^측정 시각: \d{4}-\d\d-\d\dT"#, options: .regularExpression))
-        XCTAssertEqual(diastolic, systolic)
-        UITestConditions.value(node(app, "blood-pressure-probe-sync"), equals: "status=completed; upserted=2; deleted=0; cursorAdvanced=true")
-        capture(app, "blood-pressure-encrypted-library")
-        // Termination reopens SQLCipher and the persisted cursor rather than reusing the JS repository instance.
+        launch(app, scenario: "blood-pressure")
+        try saveAutoSyncSelection(app, features: ["bloodPressure", "medications"])
+        try assertCompletedSyncStatus(app)
+        try assertBloodPressureLibrary(app)
+        capture(app, "blood-pressure-settings-auto-sync")
+
+        // Relaunch checks the saved opt-in refreshes from its cursor without duplicating rows.
         app.terminate()
-        try openBloodPressure(app, scenario: "blood-pressure")
-        tap(app, "blood-pressure-import")
-        UITestConditions.value(node(app, "blood-pressure-status"), equals: "새로 반영된 기록이 없어요")
-        UITestConditions.value(node(app, "blood-pressure-probe-sync"), equals: "status=completed; upserted=0; deleted=0; cursorAdvanced=false")
-        capture(app, "blood-pressure-replay-completion")
-        tap(app, "blood-pressure-open-library")
-        assertLibrary(app)
-        UITestConditions.value(node(app, "health-record-row-1-time"), equals: systolic)
-        UITestConditions.value(node(app, "health-record-row-0-time"), equals: diastolic)
-        capture(app, "blood-pressure-library-after-restart")
+        launch(app, scenario: "blood-pressure")
+        try assertCompletedSyncStatus(app, fromHealthDataSettings: false)
+        try assertBloodPressureLibrary(app)
+        capture(app, "blood-pressure-library-after-auto-sync-relaunch")
     }
 
     @MainActor
     func testCommonObservationsUseEncryptedStorageAndIdempotentReplay() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        app.launchArguments = ["-OROT_TEST_SCENARIO", "common-observations"]
-        app.launch()
-        UITestConditions.value(node(app, "welcome-title"), equals: "오롯")
-        DebugUITestConditions.dismissWarningToast(app)
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "records-open-common-observations")
-        for feature in ["heartRate", "steps", "bodyMass"] {
-            tap(app, "common-observations-toggle-\(feature)")
-        }
-        tap(app, "common-observations-import")
-        let summary = node(app, "common-observations-probe-summary")
-        let completed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            summary.exists && UITestConditions.text(summary).contains("replayIdempotent=true")
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [completed]), .completed, app.debugDescription)
-        XCTAssertTrue(UITestConditions.text(node(app, "common-observations-status")).contains("선택한 기록의 변경을 가져왔어요. 2개 저장, 0개 삭제, 0개 미지원"))
-        let value = UITestConditions.text(summary)
-        for expected in ["initial=complete:2:0:0:cursor=true", "heartRate=72 count/min", "steps=1200 count", "bodyMass=empty", "readAuthorization=notObservable", "replay=empty:0:0:cursor=false", "records=2", "availability=available", "writeTypes=0", "storage=encrypted-local", "source=synthetic", "replayIdempotent=true"] {
-            XCTAssertTrue(value.contains(expected), expected + ": " + value)
-        }
-        for pattern in [#"initialTiming=authorization_calls:1,authorization_ms:\d+,query_calls:3,query_ms:\d+,storage_transactions:3,storage_ms:\d+"#, #"replayTiming=authorization_calls:1,authorization_ms:\d+,query_calls:3,query_ms:\d+,storage_transactions:0,storage_ms:0"#] {
-            XCTAssertNotNil(value.range(of: pattern, options: .regularExpression), value)
-        }
-        capture(app, "common-observations-encrypted-idempotent-import")
+        launch(app, scenario: "common-observations")
+        try saveAutoSyncSelection(app, features: ["heartRate", "steps", "bodyMass"])
+        try assertCompletedSyncStatus(app)
+        try openHealthLibrary(app)
+
+        tap(app, "health-record-open-detail-heart_rate")
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        UITestConditions.value(node(app, "health-record-row-0-value"), equals: "72 count/min")
+        tap(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        tap(app, "health-record-open-detail-steps")
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        UITestConditions.value(node(app, "health-record-row-0-value"), equals: "1200 count")
+        capture(app, "common-observations-settings-auto-sync")
     }
 
     @MainActor
-    private func openBloodPressure(_ app: XCUIApplication, scenario: String) throws {
+    private func launch(_ app: XCUIApplication, scenario: String) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", scenario]
         app.launch()
         UITestConditions.value(node(app, "welcome-title"), equals: "오롯")
         DebugUITestConditions.dismissWarningToast(app)
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        tap(app, "records-open-blood-pressure")
-        UITestConditions.value(node(app, "blood-pressure-title"), equals: "혈압 기록")
     }
 
     @MainActor
-    private func assertCompletion(_ app: XCUIApplication, saved: String, deleted: String, status: String) {
-        UITestConditions.value(node(app, "blood-pressure-result-saved-count"), equals: saved)
-        UITestConditions.value(node(app, "blood-pressure-result-deleted-count"), equals: deleted)
-        UITestConditions.value(node(app, "blood-pressure-status"), equals: status)
+    private func openHealthDataSettings(_ app: XCUIApplication) throws {
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        tap(app, "settings-open-health-data")
+        NavigationUITestConditions.route(app, markers: ["health-data-title"])
     }
 
     @MainActor
-    private func assertLibrary(_ app: XCUIApplication) {
-        for (id, value) in [("health-records-title", "건강 기록"), ("health-record-row-0-concept", "이완기"), ("health-record-row-0-value", "80 mmHg"), ("health-record-row-1-concept", "수축기"), ("health-record-row-1-value", "120 mmHg"), ("blood-pressure-probe-storage", "sqlCipher=available; rows=2; cursor=fixture-anchor")] {
-            UITestConditions.value(node(app, id), equals: value)
+    private func saveAutoSyncSelection(
+        _ app: XCUIApplication,
+        features: [String],
+    ) throws {
+        try openHealthDataSettings(app)
+        for feature in features {
+            tap(app, "health-data-feature-\(feature)")
         }
+        tap(app, "health-data-save")
+        let saved = node(app, "health-data-status")
+        let completed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            saved.exists && UITestConditions.text(saved).contains("자동 동기화 설정을 저장했어요.")
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [completed]), .completed, app.debugDescription)
+    }
+
+    @MainActor
+    private func assertCompletedSyncStatus(
+        _ app: XCUIApplication,
+        fromHealthDataSettings: Bool = true,
+    ) throws {
+        if fromHealthDataSettings {
+            tap(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["settings-title"])
+        } else {
+            try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        }
+        tap(app, "settings-open-sync-status")
+        NavigationUITestConditions.route(app, markers: ["settings-sync-status-title"])
+        XCTAssertTrue(node(app, "settings-sync-status-message").exists)
+        let message = node(app, "settings-sync-status-message")
+        XCTAssertTrue(
+            UITestConditions.text(message).contains("마지막 동기화에서 선택한 기록을 확인했어요."),
+            app.debugDescription,
+        )
+        tap(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
+    }
+
+    @MainActor
+    private func assertBloodPressureLibrary(_ app: XCUIApplication) throws {
+        try openHealthLibrary(app)
+        let categoryFilter = node(app, "health-record-category-filter")
+        let medicationFilter = node(app, "health-record-filter-medications")
+        capture(app, "blood-pressure-chart-overview")
+        let chart = node(app, "health-record-chart-blood_pressure")
+        XCTAssertTrue(chart.exists, app.debugDescription)
+        XCTAssertTrue(chart.label.contains("120 mmHg"), chart.label)
+        XCTAssertTrue(chart.label.contains("80 mmHg"), chart.label)
+        // The accessible image keeps its full summary, while visible card copy stays concise.
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label == %@", chart.label)).firstMatch.exists,
+            app.debugDescription,
+        )
+        tap(app, "health-record-open-detail-blood_pressure")
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        UITestConditions.value(
+            node(app, "health-record-row-0-systolic"),
+            equals: "수축기 120 mmHg",
+        )
+        UITestConditions.value(
+            node(app, "health-record-row-0-diastolic"),
+            equals: "이완기 80 mmHg",
+        )
+        XCTAssertTrue(node(app, "health-record-row-0-time").exists)
+        tap(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
+        // Reveal the nested horizontal filter vertically, then scroll it on its own axis.
+        FormUITestConditions.reveal(
+            categoryFilter,
+            in: app,
+            scrollID: "health-records-scroll",
+            towardTop: true,
+        )
+        for _ in 0 ..< 8 {
+            if categoryFilter.frame.contains(medicationFilter.frame) {
+                break
+            }
+            categoryFilter.swipeLeft()
+        }
+        XCTAssertTrue(categoryFilter.frame.contains(medicationFilter.frame), app.debugDescription)
+        medicationFilter.tap()
+        tap(app, "health-record-open-detail-medications")
+        NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
+        UITestConditions.value(
+            node(app, "health-record-medication-row-0-status"),
+            equals: "복용함",
+        )
+        UITestConditions.value(
+            node(app, "health-record-medication-row-0-dose"),
+            equals: "1 tablet",
+        )
+        capture(app, "medication-dose-event-detail")
+    }
+
+    @MainActor
+    private func openHealthLibrary(_ app: XCUIApplication) throws {
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tap(app, "records-open-health-library")
+        NavigationUITestConditions.route(app, markers: ["health-records-title"])
     }
 
     @MainActor

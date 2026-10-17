@@ -31,7 +31,7 @@ import type { CalendarEvent } from './types';
 interface CalendarMonthViewProps {
   appointmentsLoading: boolean;
   candidatesLoaded: boolean;
-  events: CalendarEvent[];
+  events: readonly CalendarEvent[];
   initialDate?: Date;
   linkedAppointment: Appointment | null;
   onSelectEvent: (event: CalendarEvent) => void;
@@ -58,6 +58,8 @@ export function CalendarMonthView({
   resultsMayBeIncomplete,
 }: CalendarMonthViewProps) {
   const initialDateKey = localDateKey(initialDate);
+  // The today marker follows the same local civil-day key used for initial selection.
+  const todayDateKey = localDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(initialDateKey);
   const [visibleMonth, setVisibleMonth] = useState(() => ({
     year: initialDate.getFullYear(),
@@ -162,9 +164,14 @@ export function CalendarMonthView({
                 day={day}
                 dayEvents={dayEvents}
                 key={day.dateKey}
-                label={calendarDayAccessibilityLabel(day.dateKey, dayEvents)}
+                label={calendarDayAccessibilityLabel(
+                  day.dateKey,
+                  dayEvents,
+                  day.dateKey === todayDateKey,
+                )}
                 onPress={focusDate}
                 selected={day.dateKey === selectedDate}
+                today={day.dateKey === todayDateKey}
               />
             );
           })}
@@ -199,10 +206,6 @@ export function CalendarMonthView({
             </Text>
           </>
         ) : null}
-        {candidatesLoaded &&
-        eventsOnSelectedDate.some(item => item.canSelect) ? (
-          <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
-        ) : null}
         <View testID="calendar-events-for-selected-date">
           {eventsOnSelectedDate.map(item => (
             <CalendarMonthEventRow
@@ -212,6 +215,10 @@ export function CalendarMonthView({
             />
           ))}
         </View>
+        {candidatesLoaded &&
+        eventsOnSelectedDate.some(item => item.canSelect) ? (
+          <Text style={styles.message}>{t('calendar.candidateHint')}</Text>
+        ) : null}
       </View>
     </View>
   );

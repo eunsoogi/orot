@@ -27,7 +27,7 @@ test('shows the matching debug interruption action for each probe phase', async 
   ).toMatchObject({ checked: false });
   await fireEvent.press(screen.getByTestId('recording-probe-synthetic'));
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(screen.getByTestId('recording-start'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
   expect(screen.getByTestId('recording-consent')).toBeDisabled();
 
   await fireEvent.press(

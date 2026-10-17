@@ -1,89 +1,66 @@
 import { AppState } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { Appointment, AppointmentRepository } from '@orot/storage';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
+import {
+  appointmentFor,
+  bridge,
+  event,
+  repository,
+  syncedCalendar,
+} from '../calendarLinkingTestFixtures';
 import { calendarDateKey } from '../calendarMonth';
-import type { CalendarBridge, CalendarEvent } from '../types';
-
-function event(
-  identifier: string,
-  effectiveAt = '2035-06-02T00:00:00.000Z',
-): CalendarEvent {
-  const endsAt = new Date(
-    new Date(effectiveAt).getTime() + 60 * 60 * 1000,
-  ).toISOString();
-  return {
-    calendarEventIdentifier: identifier,
-    effectiveAt,
-    endsAt,
-    calendarEventSnapshot: {
-      title: identifier,
-      timeZoneIdentifier: 'Asia/Seoul',
-      isAllDay: false,
-      occurrenceDate: null,
-      isDetached: false,
-      recurrenceRules: [],
-    },
-  };
-}
-
-function appointmentFor(selected: CalendarEvent): Appointment {
-  return {
-    id: 'calendar-appointment-1',
-    effectiveAt: selected.effectiveAt,
-    endsAt: selected.endsAt,
-    recordedAt: '2035-01-01T00:00:00.000Z',
-    ingestedAt: '2035-01-01T00:00:00.000Z',
-    provenance: { origin: 'user_reported', sourceRecordIds: [] },
-    reviewState: { status: 'unreviewed' },
-    status: 'scheduled',
-    calendarEventIdentifier: selected.calendarEventIdentifier,
-    calendarEventSnapshot: selected.calendarEventSnapshot,
-  };
-}
-
-function repository(list: () => Promise<Appointment[]>) {
-  return {
-    list: jest.fn(list),
-    create: jest.fn(),
-    confirmCalendarEvent: jest.fn(async () => appointmentFor(event('saved'))),
-    reconfirmCalendarEvent: jest.fn(async () => appointmentFor(event('saved'))),
-    update: jest.fn(),
-    cancel: jest.fn(),
-  } as unknown as AppointmentRepository;
-}
-
-function bridge(overrides: Partial<CalendarBridge> = {}): CalendarBridge {
-  return {
-    requestAccessAndListUpcomingEvents: jest.fn(async () => ({
-      access: 'fullAccess' as const,
-      events: [],
-    })),
-    findEvent: jest.fn(async () => ({
-      access: 'fullAccess' as const,
-      event: null,
-    })),
-    addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
-    ...overrides,
-  };
-}
 
 describe('Calendar linking screen', () => {
-  it('requests Calendar access only after the user starts linking and saves only the confirmed event', async () => {
+  it('uses the schedule-first hierarchy and keeps permission detail out of the calendar view', async () => {
+    await render(
+      <CalendarLinkingScreen
+        repository={repository(async () => [])}
+        bridge={bridge()}
+        calendarSync={syncedCalendar([])}
+        heading="일정"
+        onOpenAppointments={jest.fn()}
+        onOpenMedicalAppointments={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
+    expect(screen.getByTestId('schedule-subtitle')).toHaveTextContent(
+      '일정을 확인하고 진료를 준비해요.',
+    );
+    expect(screen.getByTestId('calendar-quick-actions')).toBeTruthy();
+    expect(screen.getByTestId('calendar-month-view')).toBeTruthy();
+    expect(
+      screen.queryByText(
+        'iOS는 일정을 읽을 때 캘린더 전체 접근(읽기 및 쓰기)을 요구해요. 오롯 앱은 선택한 일정 정보만 이 기기에 저장하고, 캘린더를 수정하거나 삭제하지 않아요.',
+      ),
+    ).toBeNull();
+  });
+
+  it('uses the automatically synced candidates and saves only the event the user confirms', async () => {
     const selected = event('selected-event');
     const unrelated = event('unrelated-event', '2035-06-03T00:00:00.000Z');
     const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
       events: [unrelated, selected],
     }));
-    const calendar = bridge({ requestAccessAndListUpcomingEvents });
+    const calendar = bridge({
+      requestAccessAndListUpcomingEvents,
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: selected,
+      })),
+    });
     const appointments = repository(async () => []);
     await render(
-      <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      <CalendarLinkingScreen
+        repository={appointments}
+        bridge={calendar}
+        calendarSync={syncedCalendar([unrelated, selected])}
+      />,
     );
 
     expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('calendar-connect'));
+    expect(screen.queryByTestId('calendar-connect')).toBeNull();
     expect(
       await screen.findByTestId('calendar-candidate-selected-event'),
     ).toBeTruthy();
@@ -132,9 +109,12 @@ describe('Calendar linking screen', () => {
     const appointments = repository(async () => []);
 
     await render(
-      <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      <CalendarLinkingScreen
+        repository={appointments}
+        bridge={calendar}
+        calendarSync={syncedCalendar([])}
+      />,
     );
-    await fireEvent.press(screen.getByTestId('calendar-connect'));
 
     expect(await screen.findByTestId('calendar-empty')).toHaveTextContent(
       '조회된 일정이 없어요.',
@@ -161,14 +141,15 @@ describe('Calendar linking screen', () => {
     });
     const appointments = repository(async () => []);
     await render(
-      <CalendarLinkingScreen repository={appointments} bridge={calendar} />,
+      <CalendarLinkingScreen
+        repository={appointments}
+        bridge={calendar}
+        calendarSync={syncedCalendar([], 'denied')}
+      />,
     );
 
-    await fireEvent.press(screen.getByTestId('calendar-connect'));
-
-    expect(
-      await screen.findByTestId('calendar-access-state'),
-    ).toHaveTextContent(/캘린더 접근을 허용하지 않았어요\./u);
+    expect(screen.queryByTestId('calendar-connect')).toBeNull();
+    expect(screen.queryByTestId('calendar-access-state')).toBeNull();
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   });
 

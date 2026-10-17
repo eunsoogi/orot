@@ -24,10 +24,14 @@ export function RecordingConsentControl({
       style={recordingControlStyles.consentRow}
       testID="recording-consent"
     >
-      <View testID="recording-consent-indicator">
+      {/* The participant icon matches the consent card; the native checkbox state remains exposed to assistive technology. */}
+      <View
+        style={recordingControlStyles.consentIndicator}
+        testID="recording-consent-indicator"
+      >
         <AppSymbol
-          name={checked ? 'checkmark.circle.fill' : 'circle'}
-          size={24}
+          name={checked ? 'person.2.fill' : 'person.2'}
+          size={26}
           color={checked ? appColors.primary : appColors.secondary}
         />
       </View>

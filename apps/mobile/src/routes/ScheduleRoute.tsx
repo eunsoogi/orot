@@ -7,12 +7,14 @@ import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import CalendarLinkingScreen from '../calendar/CalendarLinkingScreen';
 import type { CalendarBridge } from '../calendar/types';
+import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 
 interface ScheduleRouteProps {
   readonly appointmentRepository: AppointmentRepository | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
   readonly bridge: CalendarBridge;
+  readonly calendarSync: CalendarAutoSyncState;
   readonly onRetry: () => void;
   readonly onOpenAppointments: () => void;
   readonly onOpenMedicalAppointments: () => void;
@@ -24,6 +26,7 @@ export function ScheduleRoute({
   appointmentRepository,
   appointmentState,
   bridge,
+  calendarSync,
   onRetry,
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -42,6 +45,7 @@ export function ScheduleRoute({
     return (
       <CalendarLinkingScreen
         bridge={bridge}
+        calendarSync={calendarSync}
         heading={t('schedule.title')}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}

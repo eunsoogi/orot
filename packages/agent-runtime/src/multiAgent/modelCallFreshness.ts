@@ -1,4 +1,5 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
+import type { LanguageModelStreamEvent } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
 import { callModel, observeUntilAbort } from './modelCall';
 import type { ModelCallOutcome } from './modelCall';
@@ -45,6 +46,9 @@ export async function revalidateCurrentEvidence<TResult>(
 export async function callModelWithEvidenceFreshness<TResult>(
   context: RuntimeContext<TResult>,
   request: LanguageModelRequest,
+  onTextEvent?: (
+    event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>,
+  ) => void,
 ): Promise<ModelCallOutcome | undefined> {
   const { options, signal } = context;
   const ensureCurrent = (providerStop: 'not_started' | 'underlying_call_unconfirmed') =>
@@ -64,7 +68,15 @@ export async function callModelWithEvidenceFreshness<TResult>(
   };
 
   if (!options.execution.remoteProcessing && !(await ensureCurrent('not_started'))) return;
-  const outcome = await callModel(options.provider, request, options.execution, consent, signal);
+  const outcome = await callModel(
+    options.provider,
+    request,
+    options.execution,
+    consent,
+    signal,
+    undefined,
+    onTextEvent,
+  );
   if (staleAfterConsent || context.outcome) return;
   if (outcome.status !== 'response') return outcome;
   return (await ensureCurrent('underlying_call_unconfirmed')) ? outcome : undefined;

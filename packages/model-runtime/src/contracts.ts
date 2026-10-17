@@ -115,6 +115,8 @@ export interface LanguageModelResponse {
 
 export type LanguageModelStreamEvent =
   | { readonly type: 'text_delta'; readonly text: string }
+  /** Replaces the current partial response when a structured provider revises its snapshot. */
+  | { readonly type: 'text_snapshot'; readonly text: string }
   | { readonly type: 'tool_call'; readonly toolCall: ToolCall }
   | { readonly type: 'completed'; readonly response: LanguageModelResponse };
 

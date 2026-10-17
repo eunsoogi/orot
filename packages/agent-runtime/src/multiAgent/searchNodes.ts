@@ -2,7 +2,7 @@ import { hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
 import { referencesFromBatch, sameReference, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { canceled, completeState, operationKey, stop } from './runtimeContext';
+import { canceled, completeState, operationKey, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -48,6 +48,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
+    reportProgress(context, {
+      type: 'evidence_search',
+      status: 'started',
+      sourceKind: tool.sourceKind,
+    });
     let batch: EvidenceBatch;
     try {
       const searched = await observeUntilAbort(
@@ -84,6 +89,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       else stop(context, 'The allowlisted evidence search failed.', 'unavailable');
       return completeState();
     }
+    reportProgress(context, {
+      type: 'evidence_search',
+      status: 'completed',
+      sourceKind: tool.sourceKind,
+    });
     if (context.signal.aborted) {
       canceled(context);
       return completeState();

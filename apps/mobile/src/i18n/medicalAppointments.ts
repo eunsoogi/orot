@@ -36,14 +36,19 @@ export const medicalAppointmentsKo = {
     '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
   'medicalAppointments.inferenceDisclosure.allow': '이 내용 전송 허용',
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
-  'medicalAppointments.actions.loadCalendar': '캘린더에서 진료 일정 가져오기',
+  'medicalAppointments.actions.loadCalendar': '선택한 AI로 분류',
   'medicalAppointments.actions.classify': '선택한 AI로 분류',
   'medicalAppointments.actions.manual': '일정 직접 입력',
   'medicalAppointments.status.loading': '캘린더 일정을 불러오는 중입니다.',
   'medicalAppointments.status.classifying': '일정을 분류하고 있습니다.',
   'medicalAppointments.status.noCandidates': '불러온 일정이 없습니다.',
   'medicalAppointments.status.permissionUnavailable':
-    '캘린더 읽기 권한을 사용할 수 없습니다. 직접 일정을 입력할 수 있습니다.',
+    '캘린더 읽기 권한이 필요해요. 설정에서 권한을 확인하거나 직접 일정을 입력할 수 있어요.',
+  'medicalAppointments.status.calendarSyncing':
+    '캘린더에서 일정을 확인하고 있어요.',
+  'medicalAppointments.status.calendarSyncError':
+    '캘린더 일정을 확인하지 못했어요. 설정에서 상태를 확인해 주세요.',
+  'medicalAppointments.actions.calendarSettings': '캘린더 설정 열기',
   'medicalAppointments.status.providerUnavailable':
     '선택된 AI를 사용할 수 없습니다. 수동으로 일정을 확인할 수 있습니다.',
   // Provider lookup can finish asynchronously; manual entry remains available meanwhile.

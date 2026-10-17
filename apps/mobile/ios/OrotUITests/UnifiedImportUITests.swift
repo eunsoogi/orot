@@ -23,53 +23,33 @@ final class UnifiedImportUITests: OrotFailFastTestCase {
         }
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        let action = node(app, "records-health-import")
+        XCTAssertTrue(node(app, "records-new-recording").exists)
+        XCTAssertTrue(node(app, "records-open-health-library").exists)
+        XCTAssertFalse(node(app, "records-health-import").exists)
+        XCTAssertFalse(node(app, "records-open-common-observations").exists)
+        XCTAssertFalse(node(app, "records-open-blood-pressure").exists)
+        try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
+        let action = node(app, "settings-open-health-data")
         FormUITestConditions.reveal(action, in: app, scrollID: "navigation-route-scroll")
         action.tap()
-        NavigationUITestConditions.route(app, markers: ["unified-import-scroll"])
-        let title = app.staticTexts.matching(NSPredicate(format: "label == %@", "건강 기록 가져오기")).firstMatch
-        XCTAssertTrue(title.exists)
-        let start = app.buttons.matching(identifier: "unified-import-start").firstMatch
-        XCTAssertTrue(UITestConditions.exists(start))
-        let surface = node(app, "navigation-toolbar")
-        XCTAssertTrue(surface.exists && surface.frame.contains(start.frame))
-        XCTAssertGreaterThanOrEqual(start.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(start.frame.height, 44)
-        // Keep the original readonly state assertion on the actual native button; its containing UIKit surface can differ between navigation implementations.
-        let candidates = app.buttons.matching(identifier: "unified-import-start").allElementsBoundByIndex
-        let observations: [[String: Any]] = candidates.map { ["label": $0.label, "enabled": $0.isEnabled, "hittable": $0.isHittable, "x": $0.frame.minX, "y": $0.frame.minY, "width": $0.frame.width, "height": $0.frame.height] }
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observations), uniformTypeIdentifier: "public.json")
-        attachment.name = "import-button-before-selection"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        XCTAssertFalse(start.isEnabled, app.debugDescription)
-        tap(app, "unified-import-toggle-healthKit")
-        XCTAssertTrue(start.isEnabled)
-        try captureNavigationStart(app, "import-button-after-selection")
-        capture(app, "unified-import-light")
+        NavigationUITestConditions.route(app, markers: ["health-data-scroll"])
+        XCTAssertTrue(node(app, "health-data-title").exists)
+        let save = node(app, "health-data-save")
+        XCTAssertTrue(UITestConditions.exists(save))
+        XCTAssertGreaterThanOrEqual(save.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(save.frame.height, 44)
+        let medication = node(app, "health-data-feature-medications")
+        XCTAssertTrue(medication.exists && medication.isHittable)
+        XCTAssertGreaterThanOrEqual(medication.frame.height, 44)
+        XCTAssertFalse(node(app, "unified-import-start").exists)
+        capture(app, "health-data-light")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
-        FormUITestConditions.reveal(node(app, "unified-import-toggle-eventKit"), in: app, scrollID: "unified-import-scroll")
-        XCTAssertTrue(node(app, "unified-import-toggle-eventKit").isHittable)
-        capture(app, "unified-import-dark")
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "unified-import-scroll", contentID: "unified-import-status")
-        // Clearing the same selection must restore the native disabled state and leave no pending import to discard.
-        tap(app, "unified-import-toggle-healthKit")
-        XCTAssertFalse(start.isEnabled, app.debugDescription)
-        try captureNavigationStart(app, "import-button-after-clear")
-        // Selection remains local. Do not invoke the import action or request personal records in this route test.
+        XCTAssertTrue(node(app, "health-data-feature-bloodPressure").isHittable)
+        capture(app, "health-data-dark")
+        try NavigationUITestConditions.contentAboveBar(app, scrollID: "health-data-scroll", contentID: "health-data-save")
+        // The route test only observes compact controls; it never saves an opt-in or requests personal records.
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["records-title"])
-    }
-
-    @MainActor
-    private func captureNavigationStart(_ app: XCUIApplication, _ name: String) throws {
-        let values: [[String: Any]] = app.buttons.matching(identifier: "unified-import-start").allElementsBoundByIndex.map {
-            ["label": $0.label, "enabled": $0.isEnabled, "hittable": $0.isHittable, "x": $0.frame.minX, "y": $0.frame.minY, "width": $0.frame.width, "height": $0.frame.height]
-        }
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: values), uniformTypeIdentifier: "public.json")
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        NavigationUITestConditions.route(app, markers: ["settings-title"])
     }
 
     @MainActor

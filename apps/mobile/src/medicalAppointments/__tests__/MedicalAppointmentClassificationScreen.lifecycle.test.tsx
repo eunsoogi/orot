@@ -3,14 +3,14 @@ import type { CalendarEvent } from '../../calendar/types';
 import * as workflow from '../classificationWorkflow';
 import { medicalAppointmentCopy as copy } from '../copy.ko';
 import {
+  calendarSyncState,
   event,
   renderScreen,
   repository,
   result,
 } from '../MedicalAppointmentClassificationScreenTestFixtures';
 
-const importAction = () =>
-  screen.getByRole('button', { name: '캘린더에서 진료 일정 가져오기' });
+const importAction = () => screen.getByTestId('medical-appointment-import');
 afterEach(() => jest.restoreAllMocks());
 
 test.each(['medium', 'high', undefined] as const)(
@@ -34,24 +34,23 @@ test.each(['medium', 'high', undefined] as const)(
   },
 );
 
-test('ignores calendar retrieval completing after screen unmount', async () => {
-  const candidate = event('late-query', '늦은 진료', '2035-06-02');
+test('does not request Calendar access when the synced snapshot is unavailable', async () => {
+  const candidate = event('calendar-unavailable', '진료', '2035-06-02');
   const appointments = repository();
   const classify = jest.spyOn(workflow, 'classifyCalendarEvents');
-  const { bridge, view } = await renderScreen([[candidate]], appointments);
-  let finish!: (value: {
-    access: 'fullAccess';
-    events: CalendarEvent[];
-  }) => void;
-  jest.mocked(bridge.requestAccessAndListUpcomingEvents).mockImplementationOnce(
-    () =>
-      new Promise(resolve => {
-        finish = resolve;
-      }),
+  const { bridge, onOpenCalendarSettings } = await renderScreen(
+    [[candidate]],
+    appointments,
+    undefined,
+    calendarSyncState([], 'denied'),
   );
   await fireEvent.press(importAction());
-  await view.unmount();
-  await act(async () => finish({ access: 'fullAccess', events: [candidate] }));
+  expect(await screen.findByText(copy.permissionUnavailable)).toBeTruthy();
+  await fireEvent.press(
+    screen.getByTestId('medical-appointment-calendar-settings'),
+  );
+  expect(onOpenCalendarSettings).toHaveBeenCalledTimes(1);
+  expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   expect(classify).not.toHaveBeenCalled();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
 });

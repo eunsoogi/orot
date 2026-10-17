@@ -1,5 +1,11 @@
 import type { HealthKitAutoSyncResult } from './autoSync';
 import { runHealthKitAutoSync } from './autoSync';
+import { configureHealthKitAutoSync } from './autoSyncSettings';
+import {
+  loadHealthKitAutoSyncSelection,
+  loadHealthKitAutoSyncStatus,
+} from './autoSyncCheckpoint';
+import type { HealthKitAutoSyncFeature } from './autoSyncCheckpoint';
 
 let pendingLocalRun: Promise<HealthKitAutoSyncResult> | null = null;
 
@@ -14,6 +20,42 @@ export function syncLocalPreviouslyRequestedHealthKit(): Promise<HealthKitAutoSy
   };
   void run.then(clear, clear);
   return run;
+}
+
+/** Loads saved opt-ins without exposing HealthKit's unobservable read grants. */
+export async function loadLocalHealthKitAutoSyncSelection(): Promise<
+  HealthKitAutoSyncFeature[]
+> {
+  const { openLocalStorage } = await import('../storage/secureDatabase');
+  const repository = await openLocalStorage();
+  return loadHealthKitAutoSyncSelection(repository);
+}
+
+/** Reads only the last aggregate status and time for the Settings recovery view. */
+export async function loadLocalHealthKitAutoSyncStatus() {
+  const { openLocalStorage } = await import('../storage/secureDatabase');
+  const repository = await openLocalStorage();
+  return loadHealthKitAutoSyncStatus(repository);
+}
+
+/** Saves the user's category choices, requests access once, and runs the first refresh. */
+export async function configureLocalHealthKitAutoSync(
+  selected: readonly HealthKitAutoSyncFeature[],
+): Promise<HealthKitAutoSyncResult> {
+  try {
+    const [{ healthKit }, { openLocalStorage }] = await Promise.all([
+      import('.'),
+      import('../storage/secureDatabase'),
+    ]);
+    const repository = await openLocalStorage();
+    return await configureHealthKitAutoSync(selected, {
+      repository,
+      healthKit,
+      now: () => new Date().toISOString(),
+    });
+  } catch {
+    return { status: 'retryable', attemptedFeatures: [] };
+  }
 }
 
 async function syncLocalHealthKit(): Promise<HealthKitAutoSyncResult> {

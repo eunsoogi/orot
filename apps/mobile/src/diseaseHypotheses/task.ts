@@ -6,12 +6,14 @@ import type {
   TaskResponderContract,
   TaskResponderInput,
 } from '@orot/agent-runtime';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { assessHealthEvidenceCoverage } from '../healthEvidence/coverage';
 import type { HealthEvidenceInventory } from '../healthEvidence/coverage';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import {
   containsEvidenceReference,
+  canPreviewDiseaseHypothesisSummary,
   diseaseHypothesisSchema,
   validateDiseaseHypothesisResult,
 } from './resultValidation';
@@ -50,6 +52,17 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
       },
       additionalProperties: false,
     } satisfies JsonObject,
+    projectStreamedText(rawOutput) {
+      const summary = extractPartialJsonStringAtPath(rawOutput, [
+        'value',
+        'hypotheses',
+        0,
+        'summary',
+      ]);
+      return summary && canPreviewDiseaseHypothesisSummary(summary)
+        ? summary
+        : undefined;
+    },
     createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
       return [
         {

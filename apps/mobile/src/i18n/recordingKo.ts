@@ -4,6 +4,9 @@ export const recordingKo = {
   'recording.subtitle': '중요한 이야기를 놓치지 않도록',
   'recording.listening': '목소리를 듣고 있어요.',
   'recording.readyHint': '동의를 확인한 뒤 녹음을 시작해 주세요.',
+  'recording.microphone.stopHint': '마이크를 눌러 녹음을 마쳐요.',
+  'recording.microphone.pausedHint':
+    '마이크를 눌러 저장하거나 재생 아이콘으로 녹음을 이어가요.',
   'recording.saveAction': '녹음 저장',
   'recording.afterSave': '저장 후 음성을 글로 옮겨요.',
   'recording.transcript.permissionHelp':
@@ -27,6 +30,7 @@ export const recordingKo = {
   'recording.id': '녹음 ID: {id}',
   'recording.start': '녹음 시작',
   'recording.pause': '일시 정지',
+  'recording.pauseAccessibility': '녹음 일시 정지',
   'recording.resume': '녹음 재개',
   'recording.stop': '녹음 완료 및 저장',
   'recording.saved': '녹음을 이 기기에 저장했어요.',
@@ -87,7 +91,15 @@ export const recordingKo = {
   // Keep export labels with recording strings after the Korean catalog was split by feature.
   'recording.export.title': '녹음 내보내기',
   'recording.export.audio': '원본 음성 내보내기',
+  'recording.export.audioDescription':
+    '녹음한 원본 음성 파일을 선택한 앱으로 공유해요.',
+  'recording.export.audioHint': '원본 음성 파일을 공유할 앱을 선택해요.',
   'recording.export.transcript': '최신 전사 텍스트 내보내기',
+  'recording.export.transcriptDescription':
+    '최신 전사 텍스트를 선택한 앱으로 공유해요.',
+  'recording.export.transcriptHint': '최신 전사 내용을 공유할 앱을 선택해요.',
+  'recording.export.privacyNote':
+    '오디오 파일과 최신 전사 내용은 선택한 앱으로 공유돼요.',
   'recording.export.emptyTranscript': '아직 내보낼 전사 내용이 없어요.',
   'recording.export.error.load': '전사 정보를 불러오지 못했어요.',
   'recording.export.error.missingAudio': '녹음 원본 파일을 찾을 수 없어요.',

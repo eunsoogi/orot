@@ -6,6 +6,7 @@ import type {
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,
 } from '@orot/agent-runtime';
+import type { AiWorkflowObserver } from '../workflowActivity';
 import { createExecutionConsentRegistry } from '../execution/consentRegistry';
 import type {
   ProviderSelection,
@@ -35,6 +36,7 @@ export async function runVisitQuestionWorkflow(input: {
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
   readonly signal?: AbortSignal;
+  readonly observer?: AiWorkflowObserver;
 }) {
   if (!input.selection)
     return { status: 'provider_selection_required' } as const;
@@ -141,6 +143,12 @@ export async function runVisitQuestionWorkflow(input: {
   try {
     const result = await runMultiAgentWorkflow(options, {
       ...(input.signal ? { signal: input.signal } : {}),
+      ...(input.observer?.onProgress
+        ? { onProgress: input.observer.onProgress }
+        : {}),
+      ...(input.observer?.onTaskStreamEvent
+        ? { onTaskStreamEvent: input.observer.onTaskStreamEvent }
+        : {}),
     });
     return await mapVisitQuestionWorkflowResult({
       result,

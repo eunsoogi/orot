@@ -134,6 +134,45 @@ export function makeProvider(
   return { provider, requests };
 }
 
+export function makeStreamingProvider(outputs: readonly string[]) {
+  const requests: LanguageModelRequest[] = [];
+  const provider: LanguageModelProvider = {
+    kind: 'language-model',
+    id: 'streaming-selected-provider',
+    displayName: 'Selected synthetic streaming provider',
+    capabilities: {
+      inputTypes: ['text'],
+      streaming: true,
+      structuredOutput: false,
+      structuredOutputStreaming: true,
+      toolCalling: true,
+    },
+    async generate(request) {
+      const callIndex = requests.push(request) - 1;
+      return providerSuccess({
+        text: outputs[callIndex] ?? '',
+        toolCalls: [],
+        finishReason: 'complete',
+      });
+    },
+    async *stream(request) {
+      const callIndex = requests.push(request) - 1;
+      const text = outputs[callIndex] ?? '';
+      for (let index = 0; index < text.length; index += 24) {
+        yield providerSuccess({
+          type: 'text_delta',
+          text: text.slice(index, index + 24),
+        });
+      }
+      yield providerSuccess({
+        type: 'completed',
+        response: { text, toolCalls: [], finishReason: 'complete' },
+      });
+    },
+  };
+  return { provider, requests };
+}
+
 export function selectedOption(
   provider: LanguageModelProvider,
   privacyBoundary: ProviderSelectionOption['privacyBoundary'] = 'selected-context-remote',

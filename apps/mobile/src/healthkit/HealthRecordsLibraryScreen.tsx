@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, StyleSheet } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type {
   HealthObservationCursor,
@@ -7,38 +7,56 @@ import type {
 } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { t } from '../i18n';
-import { navigationText } from '../i18n/navigation';
+import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
+import { HealthRecordsLibraryHeader } from './HealthRecordsLibraryHeader';
+import { HealthRecordsCategoryCard } from './HealthRecordsCategoryCard';
+import { HealthRecordsMedicationCategoryCard } from './HealthRecordsMedicationCategoryCard';
+import type { HealthRecordsMedicationData } from './healthRecordsMedicationLibrary';
+import type {
+  HealthObservationCategory,
+  HealthRecordsDetailSelection,
+} from './healthRecordsLibraryModel';
+import {
+  classifyHealthObservation,
+  healthRecordCategories,
+  orderHealthRecordCategories,
+} from './healthRecordsLibraryModel';
 
 interface HealthRecordsLibraryScreenProps {
   readonly loadObservations: (
     cursor: HealthObservationCursor | null,
   ) => Promise<HealthObservationPage>;
   readonly onBack: () => void;
+  readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
+  readonly loadMedicationData?: () => Promise<HealthRecordsMedicationData>;
 }
 
-type LoadState = 'loading' | 'ready' | 'failed';
-
-/** Shows saved health values while keeping their import-only source metadata out of the UI. */
+/** Summarizes imported values by type and keeps pagination bounded to storage pages. */
 export function HealthRecordsLibraryScreen({
   loadObservations,
   onBack,
+  onOpenDetail,
+  loadMedicationData,
 }: HealthRecordsLibraryScreenProps) {
   const navigationInset = useNavigationContentInset();
   const [observations, setObservations] = useState<
     readonly HealthObservation[]
   >([]);
-  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'failed'>(
+    'loading',
+  );
   const [revision, setRevision] = useState(0);
   const [cursor, setCursor] = useState<HealthObservationCursor | null>(null);
+  const [selectedCategory, setSelectedCategory] =
+    useState<HealthRecordFilter>('all');
   const generation = useRef(0);
   const pending = useRef(false);
+  const initialFilterChosen = useRef(false);
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
-    // Reads do not own unsaved work and must never lock navigation.
     canLeave: true,
     hasUnsavedChanges: false,
     isRecording: false,
@@ -46,6 +64,22 @@ export function HealthRecordsLibraryScreen({
     revision,
     inputRevision: 0,
   } satisfies NavigationLeaveState);
+  const categories = healthRecordCategories();
+  const recordsByCategory = useMemo(() => {
+    const grouped = new Map<HealthObservationCategory, HealthObservation[]>();
+    for (const observation of observations) {
+      const category = classifyHealthObservation(observation);
+      const records = grouped.get(category) ?? [];
+      records.push(observation);
+      grouped.set(category, records);
+    }
+    return grouped;
+  }, [observations]);
+  // The filter promotes a record type without hiding the remaining type cards.
+  const displayedCategories = orderHealthRecordCategories(
+    categories,
+    selectedCategory,
+  );
 
   const reload = useCallback(
     async (after: HealthObservationCursor | null = null) => {
@@ -78,149 +112,81 @@ export function HealthRecordsLibraryScreen({
     setObservations([]);
     setCursor(null);
     void reload();
-    // Late responses from a previous loader or an unmounted route must not repopulate it.
     return () => {
+      // A late read from an unmounted route must not replace the next route's records.
       generation.current += 1;
     };
   }, [reload]);
 
+  useEffect(() => {
+    if (loadState !== 'ready' || initialFilterChosen.current) return;
+    initialFilterChosen.current = true;
+    if (categories.includes('blood_pressure')) {
+      setSelectedCategory('blood_pressure');
+    }
+  }, [categories, loadState]);
+
   return (
     <FlatList
-      data={observations}
-      keyExtractor={item => item.id}
-      initialNumToRender={12}
-      maxToRenderPerBatch={12}
-      windowSize={5}
+      data={displayedCategories}
+      keyExtractor={category => category}
+      contentContainerStyle={[styles.container, navigationInset]}
+      ListFooterComponent={
+        cursor ? (
+          loadState === 'failed' ? (
+            <AppButton
+              onPress={() => void reload(cursor)}
+              testID="health-records-retry"
+              title={t('healthRecords.retry')}
+              variant="secondary"
+            />
+          ) : loadState === 'loading' ? (
+            <Text testID="health-records-loading-more">
+              {t('healthRecords.loading')}
+            </Text>
+          ) : undefined
+        ) : undefined
+      }
+      ListHeaderComponent={
+        <HealthRecordsLibraryHeader
+          hasSharedNavigation={hasSharedNavigation}
+          loadState={loadState}
+          observationCount={observations.length}
+          onBack={onBack}
+          onRetry={() => void reload(null)}
+          onSelectCategory={setSelectedCategory}
+          selectedCategory={selectedCategory}
+        />
+      }
       onEndReached={() => {
         if (cursor && loadState === 'ready') void reload(cursor);
       }}
       onEndReachedThreshold={0.5}
-      contentContainerStyle={[styles.container, navigationInset]}
-      testID="health-records-scroll"
-      ListHeaderComponent={
-        <>
-          <View style={styles.topBar}>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="health-records-title"
-            >
-              {t('healthRecords.title')}
-            </Text>
-            {hasSharedNavigation ? null : (
-              <AppButton
-                accessibilityLabel={navigationText.back.accessibilityLabel}
-                onPress={onBack}
-                testID="health-records-back"
-                title={navigationText.back.label}
-                variant="secondary"
-              />
-            )}
-          </View>
-          <Text style={styles.description}>
-            {t('healthRecords.description')}
-          </Text>
-          {loadState === 'loading' ? (
-            <Text testID="health-records-loading">
-              {t('healthRecords.loading')}
-            </Text>
-          ) : null}
-          {loadState === 'failed' ? (
-            <View>
-              <Text
-                accessibilityRole="alert"
-                style={styles.error}
-                testID="health-records-error"
-              >
-                {t('healthRecords.error')}
-              </Text>
-              <AppButton
-                onPress={() => {
-                  void reload(cursor);
-                }}
-                testID="health-records-retry"
-                title={t('healthRecords.retry')}
-                variant="secondary"
-              />
-            </View>
-          ) : null}
-          {loadState === 'ready' && observations.length === 0 ? (
-            <Text testID="health-records-empty">
-              {t('healthRecords.empty')}
-            </Text>
-          ) : null}
-        </>
+      renderItem={({ item: category }) =>
+        category === 'medications' ? (
+          <HealthRecordsMedicationCategoryCard
+            loadMedicationData={loadMedicationData}
+            onOpenDetail={onOpenDetail}
+          />
+        ) : (
+          <HealthRecordsCategoryCard
+            category={category}
+            loadState={loadState}
+            observations={recordsByCategory.get(category) ?? []}
+            onOpenDetail={onOpenDetail}
+          />
+        )
       }
-      renderItem={({ item: observation, index }) => (
-        <View
-          key={observation.id}
-          style={styles.record}
-          testID={`health-record-row-${index}`}
-        >
-          <Text
-            style={styles.concept}
-            testID={`health-record-row-${index}-concept`}
-          >
-            {observationName(observation.concept)}
-          </Text>
-          <Text testID={`health-record-row-${index}-value`}>
-            {observationValue(observation)}
-          </Text>
-          <Text style={styles.date} testID={`health-record-row-${index}-time`}>
-            {t('healthRecords.measuredAt', {
-              timestamp: observation.effectiveAt,
-            })}
-          </Text>
-        </View>
-      )}
+      testID="health-records-scroll"
     />
   );
 }
 
-function observationName(concept: string): string {
-  const knownNames: Readonly<Record<string, string>> = {
-    heart_rate: t('healthkit.commonObservations.heartRate'),
-    step_count: t('healthkit.commonObservations.steps'),
-    body_mass: t('healthkit.commonObservations.bodyMass'),
-    'blood pressure systolic': t('healthkit.bloodPressure.component.systolic'),
-    'blood pressure diastolic': t(
-      'healthkit.bloodPressure.component.diastolic',
-    ),
-  };
-  return knownNames[concept] ?? concept;
-}
-
-function observationValue(observation: HealthObservation): string {
-  switch (observation.value.kind) {
-    case 'quantity':
-      return `${observation.value.amount} ${observation.value.unit}`;
-    case 'text':
-      return observation.value.text;
-    case 'boolean':
-      return observation.value.value
-        ? t('healthRecords.yes')
-        : t('healthRecords.no');
-  }
-}
-
 const styles = StyleSheet.create({
-  container: { gap: 16, padding: 20 },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  container: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 28,
   },
-  title: { color: appColors.text, fontSize: 28, fontWeight: '700' },
-  description: { color: appColors.secondary },
-  record: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 6,
-    padding: 14,
-  },
-  concept: { color: appColors.text, fontSize: 16, fontWeight: '700' },
-  date: { color: appColors.secondary, fontSize: 13 },
-  error: { color: appColors.danger, marginBottom: 8 },
 });

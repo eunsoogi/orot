@@ -23,6 +23,7 @@ test('a pending library read registers safe leave state', async () => {
       <HealthRecordsLibraryScreen
         loadObservations={() => request.promise}
         onBack={jest.fn()}
+        onOpenDetail={jest.fn()}
       />
     </NavigationLeaveStateRegistrationProvider>,
   );
@@ -43,12 +44,14 @@ test('late loader responses cannot overwrite a new library request', async () =>
     <HealthRecordsLibraryScreen
       loadObservations={() => old.promise}
       onBack={jest.fn()}
+      onOpenDetail={jest.fn()}
     />,
   );
   await view.rerender(
     <HealthRecordsLibraryScreen
       loadObservations={() => current.promise}
       onBack={jest.fn()}
+      onOpenDetail={jest.fn()}
     />,
   );
   await act(async () => current.resolve({ records: [], nextCursor: null }));
@@ -58,7 +61,9 @@ test('late loader responses cannot overwrite a new library request', async () =>
       nextCursor: { id: 'stale', effectiveAt: '2026-10-01T00:00:00Z' },
     }),
   );
-  expect(screen.getByTestId('health-records-empty')).toBeTruthy();
+  expect(
+    screen.getByTestId('health-record-category-empty-heart_rate'),
+  ).toHaveTextContent('저장된 심박수 기록이 없어요.');
   expect(screen.queryByTestId('health-records-loading')).toBeNull();
 });
 
@@ -70,7 +75,11 @@ test('coalesces repeated end events while the next page is pending', async () =>
     .mockResolvedValueOnce({ records: [], nextCursor: cursor })
     .mockImplementation(() => next.promise);
   await render(
-    <HealthRecordsLibraryScreen loadObservations={loader} onBack={jest.fn()} />,
+    <HealthRecordsLibraryScreen
+      loadObservations={loader}
+      onBack={jest.fn()}
+      onOpenDetail={jest.fn()}
+    />,
   );
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');

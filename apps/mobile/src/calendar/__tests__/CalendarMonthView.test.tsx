@@ -30,6 +30,11 @@ describe('calendar month view', () => {
     );
 
     expect(calendar.queryByTestId('calendar-date-grid-scroll')).toBeNull();
+    expect(
+      StyleSheet.flatten(
+        calendar.getByTestId('calendar-month-view').props.style,
+      ),
+    ).toMatchObject({ backgroundColor: appColors.surface, borderRadius: 20 });
     const dayCells = within(
       calendar.getByTestId('calendar-date-grid'),
     ).getAllByRole('button');
@@ -39,7 +44,7 @@ describe('calendar month view', () => {
       StyleSheet.flatten(
         calendar.getByTestId('calendar-day-2035-06-02').props.style,
       ),
-    ).toMatchObject({ width: '14.2857142857%' });
+    ).toMatchObject({ width: '14.2857142857%', minHeight: 56 });
     expect(
       within(calendar.getByTestId('calendar-weekday-row'))
         .getAllByText(/./u)
@@ -80,13 +85,13 @@ describe('calendar month view', () => {
         '2035년 6월 2일',
       ),
     );
-    // The date button summarizes these marks for screen readers; include the
-    // hidden visual children here to verify the calendar indicators themselves.
+    // The date button summarizes event titles for VoiceOver; the compact dots
+    // preserve the visual event count without filling the date cell with text.
     expect(
-      calendar.getByTestId('calendar-day-event-count-2035-06-02', {
+      calendar.getByTestId('calendar-day-event-markers-2035-06-02', {
         includeHiddenElements: true,
-      }),
-    ).toHaveTextContent('3');
+      }).props.children,
+    ).toHaveLength(3);
     expect(
       calendar.getByTestId('calendar-day-next-visit-2035-06-02', {
         includeHiddenElements: true,
@@ -95,6 +100,9 @@ describe('calendar month view', () => {
     expect(
       calendar.getByTestId('calendar-day-2035-06-02').props.accessibilityLabel,
     ).toContain('다음 외래 방문');
+    expect(
+      calendar.getByTestId('calendar-day-2035-06-02').props.accessibilityLabel,
+    ).toContain('clinic');
     expect(calendar.getByTestId('calendar-next-visit-title')).toHaveTextContent(
       'clinic',
     );
@@ -127,10 +135,10 @@ describe('calendar month view', () => {
       '2035년 6월 3일',
     );
     expect(
-      calendar.getByTestId('calendar-day-event-count-2035-06-03', {
+      calendar.getByTestId('calendar-day-event-markers-2035-06-03', {
         includeHiddenElements: true,
-      }),
-    ).toHaveTextContent('1');
+      }).props.children,
+    ).toHaveLength(1);
     expect(calendar.getByTestId('calendar-candidate-all-day')).toBeTruthy();
   });
 

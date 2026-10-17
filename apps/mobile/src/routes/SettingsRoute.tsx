@@ -11,15 +11,19 @@ interface SettingsRouteProps {
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
   readonly onOpenBackup: () => void;
+  readonly onOpenHealthData: () => void;
+  readonly onOpenSyncStatus: () => void;
 }
 
-/** Collects existing provider, account, permission, and backup settings in one root. */
+/** Separates automatic integrations from provider, privacy, and backup settings. */
 export function SettingsRoute({
   selectedProvider,
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
   onOpenBackup,
+  onOpenHealthData,
+  onOpenSyncStatus,
 }: SettingsRouteProps) {
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -43,7 +47,28 @@ export function SettingsRoute({
       </Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.aiAccounts')}</Text>
+        <Text style={styles.sectionTitle}>{t('settings.integrations')}</Text>
+        <View style={styles.group}>
+          <SettingRow
+            symbol="heart.fill"
+            onPress={onOpenHealthData}
+            summary={t('settings.healthDataSummary')}
+            testID="settings-open-health-data"
+            title={t('settings.healthData')}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            symbol="arrow.triangle.2.circlepath"
+            onPress={onOpenSyncStatus}
+            summary={t('settings.syncStatusSummary')}
+            testID="settings-open-sync-status"
+            title={t('settings.syncStatus')}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('settings.otherSettings')}</Text>
         <View style={styles.group}>
           <SettingRow
             symbol="brain"
@@ -59,19 +84,19 @@ export function SettingsRoute({
             testID="settings-open-accounts"
             title={t('settings.accounts')}
           />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.dataPrivacy')}</Text>
-        <View style={styles.group}>
+          <View style={styles.divider} />
           <SettingRow
             symbol="lock"
             onPress={onOpenPrivacy}
             testID="settings-open-privacy"
             title={t('settings.permissions')}
           />
-          <View style={styles.divider} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('settings.dataManagement')}</Text>
+        <View style={styles.group}>
           <SettingRow
             symbol="externaldrive"
             onPress={onOpenBackup}
@@ -129,7 +154,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    gap: 32,
+    gap: 24,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 28,

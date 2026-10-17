@@ -40,6 +40,8 @@ function AppleFoundationModelsProbeEntry() {
         state.result.generation +
         '; sourceIdPreserved=' +
         state.result.sourceIdPreserved +
+        '; streamedUpdates=' +
+        state.result.streamedUpdates +
         '; cancellation=' +
         state.result.cancellation +
         '; inferenceStop=' +

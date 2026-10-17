@@ -4,14 +4,15 @@ export type AppNavigationRoute =
   | 'home'
   | 'recording'
   | 'unified-import'
-  | 'common-observations'
-  | 'blood-pressure'
   | 'health-records'
+  | 'health-records-detail'
   | 'appointments'
   | 'medical'
   | 'medical-manual'
   | 'settings-provider'
   | 'settings-accounts'
   | 'settings-backup'
-  | 'settings-privacy';
+  | 'settings-privacy'
+  | 'settings-health-data'
+  | 'settings-sync-status';
 import type { AiFeatureRouteName } from '../aiFeatures/integration/aiFeatureNavigation';

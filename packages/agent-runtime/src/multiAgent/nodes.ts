@@ -3,7 +3,7 @@ import { isSourceAllowed } from './evidence';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
 import { buildResearchRequest, buildTaskRequest, responderResearchAvailability } from './requests';
 import { decodeResearchPlan } from './responses';
-import { canceled, completeState, operationKey, stop } from './runtimeContext';
+import { canceled, completeState, operationKey, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -26,6 +26,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
+    reportProgress(context, { type: 'model_started', phase });
     return {
       phase,
       modelCalls: state.modelCalls + 1,
@@ -81,6 +82,10 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
+    reportProgress(context, {
+      type: 'model_started',
+      phase: 'evidence_research',
+    });
     return {
       phase: 'evidence_research' as const,
       modelCalls: state.modelCalls + 1,

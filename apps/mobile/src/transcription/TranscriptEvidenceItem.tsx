@@ -1,5 +1,9 @@
-import { Button, Text, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
+import { AppButton } from '../layout/AppButton';
+import { AppSymbol } from '../layout/AppSymbol';
+import { AppText as Text } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.styles';
 
@@ -66,44 +70,79 @@ export default function TranscriptEvidenceItem({
       style={styles.segment}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
-      {/* Keep review state beside each segment so machine output stays visibly provisional. */}
-      <Text
-        style={styles.metadata}
-        testID={`transcript-review-${segment.segmentOrdinal}`}
-      >
-        {reviewLabel(segment)}
-      </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-origin-${segment.segmentOrdinal}`}
-      >
-        {originLabel(segment)}
-      </Text>
-      {/* Stored engine and runtime provenance remains available without crowding user-facing review. */}
-      <Text
-        style={styles.metadata}
-        testID={`transcript-range-${segment.segmentOrdinal}`}
-      >
-        {t('recording.transcript.range', {
+      <View style={styles.segmentHeader}>
+        <View style={styles.reviewBadge}>
+          <Text
+            style={styles.reviewBadgeText}
+            testID={`transcript-review-${segment.segmentOrdinal}`}
+          >
+            {reviewLabel(segment)}
+          </Text>
+        </View>
+        <Text
+          style={styles.metadata}
+          testID={`transcript-origin-${segment.segmentOrdinal}`}
+        >
+          {originLabel(segment)}
+        </Text>
+      </View>
+      {/* The single playback card keeps the reviewed segment and its exact source range together. */}
+      <Pressable
+        accessibilityHint={t('recording.transcript.range', {
           start: timeLabel(segment.audioRange.startMs),
           end: timeLabel(segment.audioRange.endMs),
         })}
-      </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-clinician-verification-${segment.segmentOrdinal}`}
+        accessibilityLabel={
+          playing
+            ? t('recording.transcript.playing')
+            : t('recording.transcript.play')
+        }
+        accessibilityRole="button"
+        accessibilityState={{ disabled: playing }}
+        disabled={playing}
+        onPress={onPlay}
+        style={styles.audioCard}
+        testID={`transcript-play-${segment.segmentOrdinal}`}
       >
-        {t('recording.transcript.verification.clinicianNotRecorded')}
-      </Text>
+        <View style={styles.audioTopRow}>
+          <View style={styles.playIcon}>
+            <AppSymbol
+              name={playing ? 'waveform' : 'play.fill'}
+              size={20}
+              color={appColors.onPrimary}
+            />
+          </View>
+          <AppSymbol name="waveform" size={34} color={appColors.secondary} />
+          <Text
+            style={styles.metadata}
+            testID={`transcript-range-${segment.segmentOrdinal}`}
+          >
+            {t('recording.transcript.range', {
+              start: timeLabel(segment.audioRange.startMs),
+              end: timeLabel(segment.audioRange.endMs),
+            })}
+          </Text>
+        </View>
+        <Text style={styles.audioCaption}>
+          {playing
+            ? t('recording.transcript.playing')
+            : t('recording.transcript.play')}
+        </Text>
+      </Pressable>
       {editing ? (
-        <TextInput
-          accessibilityLabel={t('recording.transcript.input.label')}
-          multiline
-          onChangeText={onDraftChange}
-          style={styles.input}
-          testID={`transcript-input-${segment.segmentOrdinal}`}
-          value={draft}
-        />
+        <View style={styles.editor}>
+          <Text style={styles.editorTitle}>
+            {t('recording.transcript.edit')}
+          </Text>
+          <TextInput
+            accessibilityLabel={t('recording.transcript.input.label')}
+            multiline
+            onChangeText={onDraftChange}
+            style={styles.input}
+            testID={`transcript-input-${segment.segmentOrdinal}`}
+            value={draft}
+          />
+        </View>
       ) : (
         <Text
           style={styles.text}
@@ -112,20 +151,27 @@ export default function TranscriptEvidenceItem({
           {segment.text}
         </Text>
       )}
+      <Text
+        style={styles.verification}
+        testID={`transcript-clinician-verification-${segment.segmentOrdinal}`}
+      >
+        {t('recording.transcript.verification.clinicianNotRecorded')}
+      </Text>
       {editing ? (
         // Keep actions after the editor so the parent can reveal them above the keyboard.
         <View style={styles.actions}>
-          <Button
-            disabled={busy}
-            onPress={onSave}
-            testID={`transcript-save-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.save')}
-          />
-          <Button
+          <AppButton
+            variant="secondary"
             disabled={busy}
             onPress={onCancel}
             testID={`transcript-cancel-${segment.segmentOrdinal}`}
             title={t('recording.transcript.cancel')}
+          />
+          <AppButton
+            disabled={busy}
+            onPress={onSave}
+            testID={`transcript-save-${segment.segmentOrdinal}`}
+            title={t('recording.transcript.save')}
           />
         </View>
       ) : null}
@@ -143,17 +189,8 @@ export default function TranscriptEvidenceItem({
       ))}
       {!editing ? (
         <View style={styles.actions}>
-          <Button
-            disabled={playing}
-            onPress={onPlay}
-            testID={`transcript-play-${segment.segmentOrdinal}`}
-            title={
-              playing
-                ? t('recording.transcript.playing')
-                : t('recording.transcript.play')
-            }
-          />
-          <Button
+          <AppButton
+            variant="secondary"
             disabled={busy}
             onPress={onEdit}
             testID={`transcript-edit-${segment.segmentOrdinal}`}

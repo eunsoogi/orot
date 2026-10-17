@@ -27,12 +27,12 @@ test('keeps a backup-eligible recording retryable after metadata storage fails',
   );
   await screen.findByTestId('recording-status');
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(screen.getByTestId('recording-start'));
-  await fireEvent.press(screen.getByTestId('recording-stop'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
 
   expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
   expect(screen.queryByTestId('recording-back')).toBeNull();
-  expect(screen.getByTestId('recording-start')).toBeDisabled();
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
 
   await view.unmount();
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);

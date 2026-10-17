@@ -73,8 +73,12 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
             guard let slot = register(requestId, nil, event) else { event(appleFoundationModelsPacket("error", "INVALID_REQUEST", "Duplicate request id.", nil)); return }
             let task = Task { [weak self] in
                 guard let self, isActive(slot) else { return }
-                do { try await stream(payload, slot) }
-                catch {
+                do {
+                    guard let response = try await stream(payload, slot) else { return }
+                    if finish(slot) {
+                        slot.event?(["type": "completed", "response": response] as NSDictionary)
+                    }
+                } catch {
                     if finish(slot) {
                         event(appleFoundationModelsPacket("error", "GENERATION_FAILED", error.localizedDescription, nil))
                     }
@@ -111,24 +115,12 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
 
     #if canImport(FoundationModels)
         @available(iOS 26.0, *)
-        private func stream(_ payload: NSDictionary, _ slot: AppleFoundationModelsRequestSlot) async throws {
-            var previous = ""
-            try await AppleFoundationModelsSession.stream(payload) { current in
+        private func stream(_ payload: NSDictionary, _ slot: AppleFoundationModelsRequestSlot) async throws -> [String: Any]? {
+            try await AppleFoundationModelsSession.stream(payload, requestId: slot.id) { current in
                 if Task.isCancelled {
                     return false
                 }
-                guard current.hasPrefix(previous) else {
-                    if self.finish(slot) {
-                        slot.event?(appleFoundationModelsPacket("error", "STREAM_REWRITE", "A prior text snapshot was rewritten.", nil))
-                    }
-                    return false
-                }
-                guard self.emitIfActive(slot, ["type": "snapshot", "text": current] as NSDictionary) else { return false }
-                previous = current
-                return true
-            }
-            if finish(slot) {
-                slot.event?(["type": "completed", "response": ["text": previous, "toolCalls": [], "finishReason": "complete"]] as NSDictionary)
+                return self.emitIfActive(slot, ["type": "snapshot", "text": current] as NSDictionary)
             }
         }
     #endif

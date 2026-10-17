@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import { AppSymbol } from '../layout/AppSymbol';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import {
   transcriptEvidenceService,
@@ -14,7 +15,8 @@ import {
   recordingExportService,
   type RecordingExportService,
 } from './recordingExportService';
-import { recordingControlStyles as styles } from './RecordingControls.styles';
+import RecordingExportOption from './RecordingExportOption';
+import { recordingExportPanelStyles as styles } from './RecordingExportPanel.styles';
 
 interface RecordingExportPanelProps {
   recordingSourceId: string;
@@ -167,22 +169,36 @@ export default function RecordingExportPanel({
 
   const hasTranscript = Boolean(view?.segments.length);
   return (
-    <View style={styles.result} testID="recording-export-panel">
-      <Text accessibilityRole="header">{t('recording.export.title')}</Text>
-      {/* Native sharing can wait for user input; keep its result inside the panel, not press dispatch. */}
-      <Button
+    <View style={styles.panel} testID="recording-export-panel">
+      <Text accessibilityRole="header" style={styles.title}>
+        {t('recording.export.title')}
+      </Text>
+      {/* Native sharing can wait for user input; keep each result inside its matching share card. */}
+      <RecordingExportOption
+        kind="audio"
+        title={t('recording.export.audio')}
+        description={t('recording.export.audioDescription')}
+        hint={t('recording.export.audioHint')}
         disabled={busy || actionsDisabled}
         onPress={handleShareAudioPress}
         testID="recording-export-audio"
-        title={t('recording.export.audio')}
       />
       {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
-      <Button
+      <RecordingExportOption
+        kind="transcript"
+        title={t('recording.export.transcript')}
+        description={t('recording.export.transcriptDescription')}
+        hint={t('recording.export.transcriptHint')}
         disabled={busy || actionsDisabled || loading}
         onPress={handleShareTranscriptPress}
         testID="recording-export-transcript"
-        title={t('recording.export.transcript')}
       />
+      <View style={styles.privacyNote} testID="recording-export-privacy-note">
+        <AppSymbol name="info.circle" size={20} color={appColors.secondary} />
+        <Text style={styles.privacyCopy}>
+          {t('recording.export.privacyNote')}
+        </Text>
+      </View>
       {!loading && !hasTranscript && !error ? (
         <Text>{t('recording.export.emptyTranscript')}</Text>
       ) : null}

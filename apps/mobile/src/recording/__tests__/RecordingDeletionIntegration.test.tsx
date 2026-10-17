@@ -64,8 +64,8 @@ test('deleting the latest recording from its detail clears the screen source', a
     />,
   );
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(screen.getByTestId('recording-start'));
-  await fireEvent.press(screen.getByTestId('recording-stop'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
   await screen.findByTestId(`recording-library-item-${savedSource.id}`);
   await screen.findByTestId('transcript-panel');
   expect(screen.getAllByTestId('transcript-panel')).toHaveLength(1);
@@ -115,7 +115,7 @@ test('prevents a new capture while a confirmed recording deletion is in flight',
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   await confirmNativeDeletion(alert);
   await waitFor(() => expect(library.deleteRecording).toHaveBeenCalled());
-  expect(screen.getByTestId('recording-start')).toBeDisabled();
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
   expect(screen.getByTestId('recording-delete-progress')).toBeTruthy();
   expect(finishDeletion).toBeDefined();
   finishDeletion?.();

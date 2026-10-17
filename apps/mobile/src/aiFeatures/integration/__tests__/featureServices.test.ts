@@ -89,6 +89,7 @@ describe('createAiFeatureServices local evidence integration', () => {
     let diseaseIdentityResolver:
       Parameters<typeof runDiseaseHypothesisAnalysis>[3] | undefined;
     let ragOptions: Parameters<typeof runRagConversationTurn>[0] | undefined;
+    let ragInvocation: Parameters<typeof runRagConversationTurn>[1] | undefined;
     const diseaseRunner = jest.fn(
       async (
         options: Parameters<typeof runDiseaseHypothesisAnalysis>[0],
@@ -106,8 +107,12 @@ describe('createAiFeatureServices local evidence integration', () => {
       },
     ) as unknown as typeof runDiseaseHypothesisAnalysis;
     const ragRunner = jest.fn(
-      async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      async (
+        options: Parameters<typeof runRagConversationTurn>[0],
+        invocation: Parameters<typeof runRagConversationTurn>[1],
+      ) => {
         ragOptions = options;
+        ragInvocation = invocation;
         const signal = new AbortController().signal;
         const current = await options.loadCurrentEvidence(
           options.question,
@@ -176,10 +181,17 @@ describe('createAiFeatureServices local evidence integration', () => {
       },
     });
 
-    await services.sendRagMessage('기억 내용 확인', []);
+    const onProgress = jest.fn();
+    const onTaskStreamEvent = jest.fn();
+    await services.sendRagMessage('기억 내용 확인', [], undefined, {
+      onProgress,
+      onTaskStreamEvent,
+    });
     expect(source.searchedChunks[1]).toHaveLength(records.length);
     expect(ragOptions?.workflow.provider).toBe(apple.provider);
     expect(ragOptions?.workflow.consent).toBe(consent);
+    expect(ragInvocation?.onProgress).toBe(onProgress);
+    expect(ragInvocation?.onTaskStreamEvent).toBe(onTaskStreamEvent);
     const current = await ragOptions?.loadCurrentEvidence(
       '기억 내용 확인',
       new AbortController().signal,

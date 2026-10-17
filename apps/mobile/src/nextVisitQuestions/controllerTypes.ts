@@ -18,6 +18,8 @@ export interface NextVisitQuestionsController<
   readonly savedOverride: SavedQuestionsSnapshot<TReference> | null;
   readonly caveats: readonly EvidenceCaveat[];
   readonly generationMessage: string | null;
+  readonly generationActivity: string | null;
+  readonly generationPreview: string;
   readonly saveMessage: string | null;
   readonly sourceReference: TReference | null;
   readonly isReviewValid: boolean;

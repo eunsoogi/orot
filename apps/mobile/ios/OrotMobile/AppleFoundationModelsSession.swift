@@ -50,22 +50,53 @@ import Foundation
             return ["text": text, "toolCalls": [], "finishReason": "complete"]
         }
 
-        static func stream(_ payload: NSDictionary, snapshot: @escaping (String) -> Bool) async throws {
-            guard let request = payload as? [String: Any], request["mode"] as? String == "text",
-                  request["schema"] == nil, let prompt = request["prompt"] as? String,
+        /** Structured streams may revise partial JSON; normalize only the final snapshot before returning to callers. */
+        static func stream(_ payload: NSDictionary, requestId: String,
+                           snapshot: @escaping (String) -> Bool) async throws -> [String: Any]?
+        {
+            guard let request = payload as? [String: Any],
+                  let mode = request["mode"] as? String,
+                  let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
-            else { throw appleFoundationModelsFailure("UNSUPPORTED_CAPABILITY", "Streaming supports text requests only.", nil) }
+            else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt, mode and instructions are required.", nil) }
+            let raw = request["schema"] as? [String: Any]
+            if raw == nil, mode != "text" {
+                throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided streaming needs a schema.", nil)
+            }
+            let schema = try raw.map { try GenerationSchema(root: AppleFoundationModelsCodec.schema($0), dependencies: []) }
+            let finalText: String?
             #if OROT_TESTS && targetEnvironment(simulator)
-                try await AppleFoundationModelsMock.shared.stream(request, snapshot: snapshot)
+                finalText = try await AppleFoundationModelsMock.shared.stream(request, snapshot: snapshot)
             #else
                 let session = LanguageModelSession(instructions: instructions)
                 let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
-                for try await value in session.streamResponse(to: prompt, options: options) {
-                    if Task.isCancelled || !snapshot(String(describing: value.content)) {
-                        return
+                var latest: String?
+                if let schema {
+                    for try await value in session.streamResponse(to: prompt, schema: schema, options: options) {
+                        let current = value.rawContent.jsonString
+                        latest = current
+                        if Task.isCancelled || !snapshot(current) {
+                            return nil
+                        }
+                    }
+                } else {
+                    for try await value in session.streamResponse(to: prompt, options: options) {
+                        let current = value.content
+                        latest = current
+                        if Task.isCancelled || !snapshot(current) {
+                            return nil
+                        }
                     }
                 }
+                finalText = latest
             #endif
+            guard let finalText else {
+                throw appleFoundationModelsFailure("GENERATION_FAILED", "Apple Foundation Models ended its stream without a final response.", nil)
+            }
+            if schema != nil {
+                return try AppleFoundationModelsCodec.normalize(finalText, request, requestId: requestId)
+            }
+            return ["text": finalText, "toolCalls": [], "finishReason": "complete"]
         }
     }
 #endif

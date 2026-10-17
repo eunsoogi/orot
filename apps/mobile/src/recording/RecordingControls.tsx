@@ -151,9 +151,7 @@ export default function RecordingControls({
           <Text accessibilityRole="alert" style={recordingControlStyles.status}>
             {sourceSaved ? t('recording.saved') : t('recording.sourcePending')}
           </Text>
-          <Text testID="recording-source-id">
-            {t('recording.id', { id: lastRecording.id })}
-          </Text>
+          {/* Keep the source ID for storage and export only; it is not user-facing completion detail. */}
           <Text testID="recording-saved-duration">
             {t('recording.duration', {
               duration: formatRecordingDuration(lastRecording.durationMs),

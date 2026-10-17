@@ -14,6 +14,22 @@
             ["eventStoreChanged"]
         }
 
+        @objc(requestEventAccess:rejecter:)
+        public func requestEventAccess(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter _: @escaping RCTPromiseRejectBlock,
+        ) {
+            resolve("fullAccess")
+        }
+
+        @objc(listUpcomingEvents:rejecter:)
+        public func listUpcomingEvents(
+            _ resolve: @escaping RCTPromiseResolveBlock,
+            rejecter _: @escaping RCTPromiseRejectBlock,
+        ) {
+            resolve(["access": "fullAccess", "events": Self.events] as NSDictionary)
+        }
+
         @objc(requestAccessAndListUpcomingEvents:rejecter:)
         public func requestAccessAndListUpcomingEvents(
             _ resolve: @escaping RCTPromiseResolveBlock,

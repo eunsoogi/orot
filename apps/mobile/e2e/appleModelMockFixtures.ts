@@ -113,12 +113,15 @@ export function appleModelMockScript(
       request => {
         requireFormat(request, 'visit_question');
         return {
-          text: JSON.stringify({
-            question: {
-              text: '선생님, 최근 수면 변화와 관련해 무엇을 확인하면 좋을까요?',
-            },
-            source: { id: 'synthetic-source-42' },
-          }),
+          snapshots: [
+            '{"question":{"text":"선생님, "}}',
+            JSON.stringify({
+              question: {
+                text: '선생님, 최근 수면 변화와 관련해 무엇을 확인하면 좋을까요?',
+              },
+              source: { id: 'synthetic-source-42' },
+            }),
+          ],
         };
       },
       () => ({

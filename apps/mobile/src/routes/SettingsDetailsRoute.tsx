@@ -9,12 +9,16 @@ import { SettingsAccountsRoute } from './SettingsAccountsRoute';
 import { SettingsBackupRoute } from './SettingsBackupRoute';
 import { SettingsPrivacyRoute } from './SettingsPrivacyRoute';
 import { SettingsProviderRoute } from './SettingsProviderRoute';
+import { HealthDataIntegrationRoute } from './HealthDataIntegrationRoute';
+import { SettingsSyncStatusRoute } from './SettingsSyncStatusRoute';
 import type { AppNavigationRoute } from './appNavigationRoute';
+import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
 
 interface SettingsDetailsRouteProps {
   readonly route: AppNavigationRoute;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly backupState: BackupPreparationDisplayState;
+  readonly calendarSync: CalendarAutoSyncActions;
   readonly onPrepareBackup: () => Promise<void>;
   readonly serviceDependencies?: AiFeatureServiceDependencies;
   readonly onSelectionCommitted: (
@@ -28,6 +32,7 @@ export function SettingsDetailsRoute({
   route,
   actions,
   backupState,
+  calendarSync,
   onPrepareBackup,
   serviceDependencies,
   onSelectionCommitted,
@@ -55,6 +60,15 @@ export function SettingsDetailsRoute({
       );
     case 'settings-privacy':
       return <SettingsPrivacyRoute />;
+    case 'settings-health-data':
+      return <HealthDataIntegrationRoute />;
+    case 'settings-sync-status':
+      return (
+        <SettingsSyncStatusRoute
+          calendarSync={calendarSync}
+          onConfigureHealthData={() => actions.push('settings-health-data')}
+        />
+      );
     default:
       return null;
   }

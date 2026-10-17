@@ -33,7 +33,7 @@ export function eventFromAppointment(
 
 /** Keep the saved snapshot visible until one live candidate exactly matches it. */
 export function projectCalendarMonthEvents(
-  events: CalendarEvent[],
+  events: readonly CalendarEvent[],
   linkedAppointment: Appointment | null,
 ): CalendarMonthDisplayEvent[] {
   const linkedEvent = eventFromAppointment(linkedAppointment);

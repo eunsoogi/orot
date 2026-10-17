@@ -98,7 +98,7 @@ async function renderRecordingNavigation(
 
 async function startRecording(rendered: Awaited<ReturnType<typeof render>>) {
   await fireEvent.press(rendered.getByTestId('recording-consent'));
-  await fireEvent.press(rendered.getByTestId('recording-start'));
+  await fireEvent.press(rendered.getByTestId('recording-microphone-control'));
   rendered.getByText('녹음 중');
 }
 
@@ -132,7 +132,7 @@ test('registers active recording with its stop-and-save action', async () => {
   expect(screen.queryByTestId('recording-back')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(screen.getByTestId('recording-start'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
   expect(await screen.findByTestId('recording-status')).toHaveTextContent(
     '녹음 중',
   );

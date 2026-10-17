@@ -1,18 +1,35 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** The recording mock's central microphone, clock and full-width wave share one visual axis. */
+/** Session actions follow the generated microphone-and-icon mockup while keeping large touch targets. */
 export const recordingSessionStyles = StyleSheet.create({
-  session: { alignItems: 'center', gap: 16, paddingTop: 32, paddingBottom: 12 },
+  session: { alignItems: 'center', gap: 16, paddingTop: 24, paddingBottom: 12 },
   microphone: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: appColors.surface,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    padding: 10,
+    backgroundColor: appColors.primarySoft,
+  },
+  microphoneInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: appColors.primaryAction,
+  },
+  secondaryAction: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: appColors.surface,
   },
   status: {
     fontSize: 18,
@@ -34,6 +51,10 @@ export const recordingSessionStyles = StyleSheet.create({
     lineHeight: 21,
     textAlign: 'center',
   },
-  actions: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
-  action: { flex: 1 },
+  actions: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 20,
+  },
 });

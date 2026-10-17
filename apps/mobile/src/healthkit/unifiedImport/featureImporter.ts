@@ -74,6 +74,7 @@ export function createUnifiedFeatureImporter(options: {
         healthKit: healthKitClient,
         repository: instrumentedRepository,
         now,
+        rememberForAutoSync: true,
       });
       return sleepOutcome(result);
     }
@@ -82,6 +83,7 @@ export function createUnifiedFeatureImporter(options: {
         healthKit: healthKitClient,
         repository: instrumentedRepository,
         now,
+        rememberForAutoSync: true,
       });
       return medicationOutcome(result);
     }

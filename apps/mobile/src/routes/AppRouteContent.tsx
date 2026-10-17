@@ -1,4 +1,3 @@
-import { StyleSheet, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
 import type {
@@ -13,22 +12,19 @@ import { RouteLoadError } from './RouteLoadError';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
-import type { CommonObservationsImportResult } from '../healthkit/commonObservations/CommonObservationsImportScreen';
-import type { CommonObservationFeature } from '../healthkit/commonObservations/types';
-import { CommonObservationsImportScreen } from '../healthkit/commonObservations/CommonObservationsImportScreen';
-import { commonObservationsCopy } from '../healthkit/commonObservations/copy';
-import { BloodPressureImportScreen } from '../healthkit/bloodPressure/BloodPressureImportScreen';
-import { HealthRecordsLibraryScreen } from '../healthkit/HealthRecordsLibraryScreen';
-import type { BloodPressureSyncResult } from '../healthkit/bloodPressure/types';
+import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
+import type { HealthRecordsMedicationData } from '../healthkit/healthRecordsMedicationLibrary';
 import WelcomeRoute from './WelcomeRoute';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
+import { HealthRecordsRoute } from './HealthRecordsRoute';
 import type { AppNavigationRoute } from './appNavigationRoute';
 import { FeatureEntryScreen } from '../aiFeatures/FeatureEntryScreen';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { CalendarBridge } from '../calendar/types';
+import type { CalendarAutoSyncActions } from '../calendar/useCalendarAutoSync';
 import type { BackupPreparationDisplayState } from '../backup/useBackupPreparation';
 import type { AiFeatureServiceDependencies } from '../aiFeatures/integration/featureServices';
 import type {
@@ -52,6 +48,7 @@ interface AppRouteContentProps {
   readonly refreshAppointments: () => Promise<void>;
   readonly refreshRecordings: () => Promise<void>;
   readonly calendarBridge: CalendarBridge;
+  readonly calendarSync: CalendarAutoSyncActions;
   readonly selectedProvider: string;
   readonly serviceDependencies?: AiFeatureServiceDependencies;
   readonly onProviderSelectionCommitted: (
@@ -64,13 +61,14 @@ interface AppRouteContentProps {
   readonly openRagConversation: () => void;
   readonly openExternalEvidence: () => void;
   readonly openRecording: () => void;
-  readonly importHealthObservations: (
-    features: readonly CommonObservationFeature[],
-  ) => Promise<CommonObservationsImportResult>;
-  readonly importBloodPressure: () => Promise<BloodPressureSyncResult>;
   readonly loadHealthObservations: (
     cursor: HealthObservationCursor | null,
   ) => Promise<HealthObservationPage>;
+  readonly loadHealthRecordMedications: () => Promise<HealthRecordsMedicationData>;
+  readonly healthRecordDetailSelection: HealthRecordsDetailSelection | null;
+  readonly onHealthRecordDetailSelectionChange: (
+    selection: HealthRecordsDetailSelection,
+  ) => void;
 }
 
 /** Renders the selected root or guarded detail within the shared navigation shell. */
@@ -88,6 +86,7 @@ export function AppRouteContent({
   refreshAppointments,
   refreshRecordings,
   calendarBridge,
+  calendarSync,
   selectedProvider,
   serviceDependencies,
   onProviderSelectionCommitted,
@@ -97,9 +96,10 @@ export function AppRouteContent({
   openRagConversation,
   openExternalEvidence,
   openRecording,
-  importHealthObservations,
-  importBloodPressure,
   loadHealthObservations,
+  loadHealthRecordMedications,
+  healthRecordDetailSelection,
+  onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
   if (actions.route.name === 'home') {
     switch (activeTab) {
@@ -124,10 +124,7 @@ export function AppRouteContent({
             recordingState={recordingState}
             onRetry={() => refreshRecordings()}
             onOpenRecording={openRecording}
-            onOpenUnifiedImport={() => actions.push('unified-import')}
-            onOpenHealthImport={() => actions.push('common-observations')}
             onOpenHealthLibrary={() => actions.push('health-records')}
-            onOpenBloodPressure={() => actions.push('blood-pressure')}
           />
         );
       case 'schedule':
@@ -136,6 +133,7 @@ export function AppRouteContent({
             appointmentRepository={appointmentRepository}
             appointmentState={appointmentState}
             bridge={calendarBridge}
+            calendarSync={calendarSync}
             onRetry={() => refreshAppointments()}
             onOpenAppointments={() => actions.push('appointments')}
             onOpenMedicalAppointments={() => actions.push('medical')}
@@ -159,6 +157,8 @@ export function AppRouteContent({
             onOpenAccounts={() => actions.push('settings-accounts')}
             onOpenPrivacy={() => actions.push('settings-privacy')}
             onOpenBackup={() => actions.push('settings-backup')}
+            onOpenHealthData={() => actions.push('settings-health-data')}
+            onOpenSyncStatus={() => actions.push('settings-sync-status')}
           />
         );
     }
@@ -177,33 +177,17 @@ export function AppRouteContent({
           transcriptService={transcriptEvidenceService}
         />
       );
-    case 'common-observations':
-      return (
-        <View style={styles.container}>
-          <CommonObservationsImportScreen
-            copy={commonObservationsCopy}
-            onImport={importHealthObservations}
-          />
-        </View>
-      );
-    case 'blood-pressure':
-      return (
-        <View style={styles.container}>
-          <BloodPressureImportScreen
-            onBack={actions.onBack}
-            onOpenLibrary={() => actions.push('health-records')}
-            importBloodPressure={importBloodPressure}
-          />
-        </View>
-      );
     case 'health-records':
+    case 'health-records-detail':
       return (
-        <View style={styles.container}>
-          <HealthRecordsLibraryScreen
-            loadObservations={loadHealthObservations}
-            onBack={actions.onBack}
-          />
-        </View>
+        <HealthRecordsRoute
+          actions={actions}
+          loadObservations={loadHealthObservations}
+          loadMedicationData={loadHealthRecordMedications}
+          route={actions.route.name}
+          selection={healthRecordDetailSelection}
+          onSelectionChange={onHealthRecordDetailSelectionChange}
+        />
       );
     case 'appointments':
       return appointmentRepository ? (
@@ -222,10 +206,13 @@ export function AppRouteContent({
     case 'settings-provider':
     case 'settings-backup':
     case 'settings-privacy':
+    case 'settings-health-data':
+    case 'settings-sync-status':
       return (
         <SettingsDetailsRoute
           actions={actions}
           backupState={backupPreparationState}
+          calendarSync={calendarSync}
           onPrepareBackup={retryBackupPreparation}
           onSelectionCommitted={onProviderSelectionCommitted}
           route={actions.route.name}
@@ -234,7 +221,3 @@ export function AppRouteContent({
       );
   }
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'flex-start', padding: 24 },
-});

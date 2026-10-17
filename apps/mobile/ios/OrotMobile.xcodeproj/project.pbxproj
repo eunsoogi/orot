@@ -32,6 +32,7 @@
 		5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */; };
 		62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */; };
 		6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */; };
+		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
 		71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */; };
 		72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */; };
@@ -221,6 +222,7 @@
 		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
+		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
@@ -583,6 +585,7 @@
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */,
+				A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */,
 				38F894914E4F39E9162E577E /* RecordingExportUITests.swift */,
 				E19800000000000000000003 /* ExportDismissalGeometry.swift */,
 				E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */,
@@ -973,6 +976,7 @@
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */,
+				A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */,
 				33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */,
 				E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */,
 				E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */,
