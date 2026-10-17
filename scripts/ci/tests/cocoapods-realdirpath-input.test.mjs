@@ -83,6 +83,18 @@ test('uses the pnpm-symlink fallback only after the matching realdirpath error',
   // The exact result proves CocoaPods still relativizes against the lexical symlink base.
   assert.match(fallback.stderr ?? '', /TEST_SUCCESS_RESULT=\["source\.h"\] calls=1/);
 
+  const screensFallback = runCocoapodsFixture({
+    pnpmSymlinkError: true,
+    pnpmSymlinkPackage: 'react-native-screens',
+    success: true,
+  });
+  assert.equal(screensFallback.status, 0, screensFallback.stderr);
+  assert.match(screensFallback.stderr ?? '', /PNPM_SYMLINK_REALDIRPATH/);
+  assert.match(
+    screensFallback.stderr ?? '',
+    /TEST_SUCCESS_RESULT=\["UIWindow\+RNScreens\.h"\] calls=1/,
+  );
+
   const nulPath = runCocoapodsFixture({ pnpmSymlinkNulPath: true });
   assert.equal(nulPath.status, 1, nulPath.stderr);
   assert.match(nulPath.stderr ?? '', /NULL_BYTE_DIAGNOSTIC.*nul_count=1/);
