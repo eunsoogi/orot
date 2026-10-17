@@ -94,59 +94,41 @@ function evaluateGuard(expression, context) {
 test('ready events select current-head work while drafts and metadata edits never allocate Mac jobs', () => {
   const e2e = read('e2e-test.yml');
   const selection = e2e.jobs.selection;
+  const ready = (name, overrides = {}) => ({
+    name,
+    event: 'pull_request',
+    draft: false,
+    paths: ['apps/mobile/src/App.tsx'],
+    accepted: true,
+    domainAccepted: true,
+    ...overrides,
+  });
   const cases = [
-    {
-      name: 'draft source edit',
-      event: 'pull_request',
-      draft: true,
-      paths: ['apps/mobile/src/App.tsx'],
-      accepted: true,
-      domainAccepted: true,
-    },
-    {
-      name: 'ready source success',
-      event: 'pull_request',
-      draft: false,
-      paths: ['apps/mobile/src/App.tsx'],
-      result: 'success',
-      accepted: true,
-      domainAccepted: true,
-    },
-    ...['failure', 'cancelled', 'skipped', ''].map((result) => ({
-      name: `ready source ${result || 'missing'} result`,
-      event: 'pull_request',
-      draft: false,
-      paths: ['apps/mobile/src/App.tsx'],
-      result,
-      accepted: true,
-      domainAccepted: false,
-    })),
-    {
-      name: 'metadata-only edit with existing source changes',
-      event: 'pull_request',
-      draft: false,
+    ready('draft source edit', { draft: true }),
+    ready('ready source success', { result: 'success' }),
+    ...['failure', 'cancelled', 'skipped', ''].map((result) =>
+      ready(`ready source ${result || 'missing'} result`, { result, domainAccepted: false }),
+    ),
+    ready('metadata-only edit with reusable same-head ready evidence', {
       action: 'edited',
       metadataOnlyEdit: true,
-      paths: ['apps/mobile/src/App.tsx'],
-      accepted: true,
-      domainAccepted: true,
-    },
-    {
-      name: 'ready docs change',
-      event: 'pull_request',
-      draft: false,
-      paths: ['docs/development.md'],
-      accepted: true,
-      domainAccepted: true,
-    },
-    {
-      name: 'incomplete selector output',
-      event: 'pull_request',
-      draft: false,
+      reuseResult: 'success',
+      reusedCohorts: ['core-ui'],
+    }),
+    ready('metadata-only edit without reusable ready evidence', {
+      action: 'edited',
+      metadataOnlyEdit: true,
+      reuseResult: 'failure',
+      reusedCohorts: [],
+      accepted: false,
+      domainAccepted: false,
+    }),
+    ready('ready docs change', { paths: ['docs/development.md'] }),
+    ready('incomplete selector output', {
       complete: 'false',
       accepted: false,
       domainAccepted: false,
-    },
+    }),
     {
       name: 'unsupported manual dispatch outside main',
       event: 'workflow_dispatch',
@@ -187,7 +169,16 @@ test('ready events select current-head work while drafts and metadata edits neve
         ref: scenario.ref ?? 'refs/pull/203/merge',
         event,
       },
-      needs: { completeness: { result: scenario.result ?? 'skipped' } },
+      needs: {
+        completeness: { result: scenario.result ?? 'skipped' },
+        reuse_ready_evidence: {
+          result: scenario.reuseResult ?? 'skipped',
+          outputs: {
+            selected_cohorts: JSON.stringify(scenario.reusedCohorts ?? []),
+            oauth_required: 'false',
+          },
+        },
+      },
       steps: { select: { outputs } },
     };
     outputs.run_ios = String(evaluateGuard(selection.outputs.run_ios, context));
@@ -226,6 +217,8 @@ test('ready events select current-head work while drafts and metadata edits neve
     const statusEnv = {
       INVALID: String(statusInputs.invalid_selection),
       NON_PROTECTED_CONTEXTS: String(statusInputs.non_protected_contexts),
+      METADATA_ONLY_EDIT: String(statusInputs.metadata_only_edit),
+      REUSE_RESULT: statusInputs.reuse_result,
       SELECTED: String(statusInputs.selected),
       SELECTED_COHORTS: statusInputs.selected_cohorts,
       CHECK_COHORTS: ui.cohorts,

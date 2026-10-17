@@ -49,13 +49,15 @@ test('draft, metadata and diagnostic runs cannot satisfy the full integration ga
   );
   assert.match(e2e, /metadata_only_edit != 'true'/);
   assert.match(e2e, /needs\.completeness\.result/);
-  assert.match(e2e, /test "\$COMPLETE" = true && test "\$DIAGNOSTIC" != true/);
+  assert.match(e2e, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
+  assert.match(e2e, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
   assert.match(
     e2e,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
   );
   const status = read('.github/workflows/ios-required-statuses.yml');
   assert.match(status, /process\.env\.INVALID === "true"/);
+  assert.match(status, /process\.env\.REUSE_RESULT !== "success"/);
   assert.match(status, /EXECUTION_RESULT !== "success"/);
   assert.match(status, /An unselected E2E run must have no cohorts and no execution/);
   assert.doesNotMatch(e2e, /detox-e2e-profile|run-detox/);

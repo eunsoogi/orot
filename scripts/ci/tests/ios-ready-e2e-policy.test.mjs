@@ -125,15 +125,45 @@ test('the workflow selection output never allocates native jobs for drafts or of
   }
 });
 
-test('draft and metadata-only events use check names outside branch protection', () => {
-  const workflow = read('e2e-test.yml');
-  assert.ok(workflow.jobs.ios_simulator_build.name.includes('non_protected_contexts'));
-  assert.ok(workflow.jobs.required_statuses.name.includes('non_protected_contexts'));
-  assert.equal(
-    workflow.jobs.required_statuses.with.selected_cohorts,
-    '${{ needs.selection.outputs.ios_test_cohorts }}',
+test('drafts use deferred names while metadata-only edits reuse protected validation names', () => {
+  const { jobs } = read('e2e-test.yml');
+  assert.equal(jobs.reuse_ready_evidence['runs-on'], 'ubuntu-24.04');
+  assert.equal(jobs.reuse_ready_evidence.permissions.actions, 'read');
+  const downloads = jobs.reuse_ready_evidence.steps.filter(({ uses }) =>
+    uses?.startsWith('actions/download-artifact@'),
   );
-  assert.ok(workflow.jobs.required_statuses.with.non_protected_contexts);
+  assert.equal(downloads.length, 2);
+  assert.ok(
+    downloads.every(
+      ({ with: inputs }) =>
+        inputs['run-id'] === '${{ steps.discover.outputs.source_run_id }}' &&
+        inputs['github-token'] === '${{ github.token }}',
+    ),
+  );
+  assert.equal(
+    jobs.selection.outputs.metadata_only_edit,
+    '${{ steps.select.outputs.metadata_only_edit }}',
+  );
+  assert.ok(jobs.ios_simulator_build.needs.includes('reuse_ready_evidence'));
+  assert.match(jobs.required_statuses.with.metadata_only_edit, /outputs\.metadata_only_edit/);
+  assert.match(jobs.required_statuses.with.reuse_result, /needs\.reuse_ready_evidence\.result/);
+  assert.match(
+    jobs.required_statuses.with.selected_cohorts,
+    /needs\.reuse_ready_evidence\.outputs\.selected_cohorts/,
+  );
+
+  for (const [event, draft, ref, expected] of [
+    ['pull_request', true, 'refs/pull/203/merge', true],
+    ['pull_request', false, 'refs/pull/203/merge', false],
+    ['workflow_dispatch', false, 'refs/heads/feature', true],
+  ]) {
+    assert.equal(
+      evaluate(jobs.selection.outputs.non_protected_contexts, {
+        github: { event_name: event, ref, event: { pull_request: { draft } } },
+      }),
+      expected,
+    );
+  }
 });
 
 test('selected reusable workflow jobs are gated by their cohort and configuration inputs', () => {
