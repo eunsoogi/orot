@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import test from 'node:test';
-import { cohortJobs, completionJob } from './fixtures/ios-workflow.mjs';
+import { IOS_TEST_COHORT_NAMES } from '../ios-test-execution-plan.mjs';
+import { validateIosTestExecutionResults } from '../ios-test-execution-completeness.mjs';
+import { cohortJobs } from './fixtures/ios-workflow.mjs';
 
 const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
@@ -67,7 +69,7 @@ test('production and OAuth remain mandatory without delaying test-product consum
   assert.doesNotMatch(oauthBuild, /oauth-test-products.mjs execute|xcrun xctest/);
   assert.match(oauthTest, /oauth-test-products.mjs execute/);
   assert.doesNotMatch(oauthTest, /swift build|swift test|xcodebuild/);
-  assert.equal(jobs.oauth_execution.needs, 'oauth_products');
+  assert.deepEqual(jobs.oauth_execution.needs, ['plan', 'oauth_products']);
   assert.ok(jobs.completeness.needs.includes('oauth_execution'));
 });
 
@@ -87,17 +89,14 @@ test('portable test producers never compile or cache unrelated production or OAu
 test('production failure, cancellation, skip or a missing result keeps final validation red', () => {
   const { jobs } = full();
   assert.ok(jobs.completeness.needs.includes('production_validation'));
-  const gate = completionJob(jobs).steps.find((step) => step.env?.RESULTS);
-  const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
   const success = Object.fromEntries(
     jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
   );
-  assert.doesNotThrow(() => evaluate({ env: { RESULTS: JSON.stringify(success) } }));
+  assert.doesNotThrow(() => validateIosTestExecutionResults(success, IOS_TEST_COHORT_NAMES, true));
   for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
-    assert.throws(() =>
-      evaluate({
-        env: { RESULTS: JSON.stringify({ ...success, production_validation: { result } }) },
-      }),
-    );
+    const current = structuredClone(success);
+    if (result === undefined) delete current.production_validation;
+    else current.production_validation.result = result;
+    assert.throws(() => validateIosTestExecutionResults(current, IOS_TEST_COHORT_NAMES, true));
   }
 });

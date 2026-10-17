@@ -1,9 +1,15 @@
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CHECK_KEYS, loadPolicies, selectEverything } from './changed-paths-core.mjs';
+import {
+  CHECK_KEYS,
+  emptySelection,
+  loadPolicies,
+  selectEverything,
+} from './changed-paths-core.mjs';
 import { selectChecksForPaths } from './changed-paths-select.mjs';
+import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -45,13 +51,39 @@ function gitDiff(args) {
 }
 
 export function resolveChangedPaths(eventName, payload, runDiff = gitDiff) {
-  // Keep comparisons tied to event payloads; unknown event shapes must run every check.
+  // Only known title/body edits bypass source checks; unknown payloads run every check.
   if (eventName === 'workflow_dispatch') {
     return { complete: true, forceAll: true, paths: [], reason: 'manual-full-verification' };
   }
   try {
     let args;
     if (eventName === 'pull_request') {
+      if (payload?.action === 'edited') {
+        const changes = payload.changes;
+        if (!changes || typeof changes !== 'object')
+          throw new Error('incomplete edited PR comparison');
+        const changedFields = Object.keys(changes);
+        if (
+          changedFields.length === 0 ||
+          changedFields.some((field) => !['base', 'body', 'title'].includes(field))
+        ) {
+          throw new Error('unknown or incomplete edited PR comparison');
+        }
+        if (!Object.hasOwn(changes, 'base')) {
+          return {
+            complete: true,
+            forceAll: false,
+            paths: [],
+            reason: 'metadata-only-pr-edit',
+            metadataOnlyEdit: true,
+          };
+        }
+        if (
+          typeof changes.base?.ref?.from !== 'string' ||
+          typeof changes.base?.ref?.to !== 'string'
+        )
+          throw new Error('incomplete PR base edit comparison');
+      }
       const base = payload?.pull_request?.base?.sha;
       const head = payload?.pull_request?.head?.sha;
       if (!validSha(base) || !validSha(head)) throw new Error('incomplete PR comparison');
@@ -79,6 +111,11 @@ export function resolveChangedPaths(eventName, payload, runDiff = gitDiff) {
 export function selectChecksForEvent(eventName, payload, runDiff = gitDiff, policies = null) {
   const comparison = resolveChangedPaths(eventName, payload, runDiff);
   if (comparison.forceAll || !comparison.complete) return selectEverything(comparison.reason);
+  if (comparison.metadataOnlyEdit) {
+    const selection = emptySelection(comparison.reason);
+    selection.metadata_only_edit = true;
+    return selection;
+  }
   try {
     const selection = selectChecksForPaths(comparison.paths, policies ?? loadPolicies());
     if (comparison.reason === 'no-changes') selection.reason = 'no-changes';
@@ -102,11 +139,76 @@ function writeOutputs(selection, outputPath, fullValidationDeferred) {
     'all=' + selection.all,
     'reason=' + selection.reason,
     'full_validation_deferred=' + fullValidationDeferred,
+    'metadata_only_edit=' + selection.metadata_only_edit,
+    'ios_test_cohorts=' + JSON.stringify(selection.ios_test_cohorts),
+    'ios_test_impact_reasons=' + JSON.stringify(selection.ios_test_impact_reasons),
   ];
   for (const key of CHECK_KEYS) lines.push(key + '=' + selection[key]);
   // Write completion last so dependent jobs can distinguish a finished selection from a failed selector.
   lines.push('selection_complete=true');
   appendFileSync(outputPath, lines.join('\n') + '\n');
+}
+
+function writeSelectionReport(selection, eventName, payload, fullValidationDeferred) {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+  const selectedCohorts = selection.ios_test_cohorts;
+  const notSelectedCohorts = IOS_TEST_COHORT_NAMES.filter(
+    (cohort) => !selectedCohorts.includes(cohort),
+  );
+  const report = {
+    schemaVersion: 1,
+    event: eventName || 'unknown',
+    action: payload?.action ?? null,
+    sourceSha: process.env.GITHUB_SHA ?? null,
+    runId: process.env.GITHUB_RUN_ID ?? null,
+    attempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+    ref: process.env.GITHUB_REF ?? null,
+    pullRequest: payload?.pull_request
+      ? {
+          number: payload.pull_request.number ?? null,
+          draft: payload.pull_request.draft === true,
+          baseSha: payload.pull_request.base?.sha ?? null,
+          headSha: payload.pull_request.head?.sha ?? null,
+        }
+      : null,
+    selectionComplete: true,
+    reason: selection.reason,
+    changedPaths: selection.paths,
+    impactReasons: selection.ios_test_impact_reasons,
+    selectedCheckFamilies: CHECK_KEYS.filter((key) => selection[key]),
+    selectedCohorts,
+    notSelectedCohorts,
+    oauthSelected: selection.ios_oauth,
+    fullValidationDeferred,
+    metadataOnlyEdit: selection.metadata_only_edit === true,
+  };
+  const path = 'artifacts/ios-e2e-selection.json';
+  mkdirSync('artifacts', { recursive: true });
+  writeFileSync(path, JSON.stringify(report, null, 2) + '\n');
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const disposition = fullValidationDeferred
+      ? 'deferred until the pull request is ready for review'
+      : selection.metadata_only_edit
+        ? 'metadata-only edit; no new E2E run is scheduled for the unchanged source head'
+        : selectedCohorts.length || selection.ios_oauth
+          ? 'scheduled for automatic execution'
+          : 'no iOS E2E tests selected';
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      [
+        '## iOS E2E selection',
+        '',
+        `Decision: ${disposition}.`,
+        `Reason: ${selection.reason}.`,
+        `Selected cohorts: ${selectedCohorts.join(', ') || 'none'}.`,
+        `Not selected cohorts: ${notSelectedCohorts.join(', ') || 'none'}.`,
+        `OAuth suite: ${selection.ios_oauth ? 'selected' : 'not selected'}.`,
+        '',
+        'The exact selection is saved in the `ios-e2e-selection` artifact.',
+        '',
+      ].join('\n'),
+    );
+  }
 }
 
 function main() {
@@ -129,8 +231,11 @@ function main() {
       JSON.stringify(selection.paths) +
       ' selected=' +
       JSON.stringify(selected) +
+      ' cohorts=' +
+      JSON.stringify(selection.ios_test_cohorts) +
       '\n',
   );
+  writeSelectionReport(selection, eventName, payload, fullValidationDeferred);
   writeOutputs(selection, process.env.GITHUB_OUTPUT, fullValidationDeferred);
 }
 

@@ -39,7 +39,9 @@ test('manual selection has an independent entry and cannot create full protected
   assert.equal(entry.path, directory + 'e2e-selected.yml');
   assert.equal(entry.source.name, 'E2E Test - Selected');
   assert.deepEqual(Object.keys(entry.source.on), ['workflow_dispatch']);
-  assert.equal(workflow(directory + 'e2e-test.yml').on.workflow_dispatch, undefined);
+  const full = workflow(directory + 'e2e-test.yml');
+  assert.deepEqual(full.on.workflow_dispatch, {});
+  assert.ok(!Object.values(full.jobs).some((job) => job.uses === focusedPath));
 });
 
 test('selected input forwarding and checks retain clear stages without a full-validation caller', () => {

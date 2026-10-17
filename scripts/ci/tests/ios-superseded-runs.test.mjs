@@ -14,6 +14,7 @@ const execute = new (Object.getPrototypeOf(async function () {}).constructor)(
 const repo = { id: 1400991370, full_name: 'eunsoogi/orot' };
 const head = 'a'.repeat(40);
 const previous = 'b'.repeat(40);
+const baseSha = 'c'.repeat(40);
 const pullRequest = {
   id: 2000,
   number: 200,
@@ -21,7 +22,7 @@ const pullRequest = {
   draft: true,
   updated_at: '2026-10-15T18:00:00Z',
   head: { sha: head, ref: 'eunsoogi/issue-198', repo },
-  base: { repo },
+  base: { sha: baseSha, ref: 'main', repo },
 };
 const workflowIdentity = { id: 380758490, path: '.github/workflows/e2e-test.yml' };
 const candidate = {
@@ -50,6 +51,7 @@ async function inspect({
   inventoryCount = runs.length,
   identity = workflowIdentity,
   failCancellation = false,
+  changes = action === 'edited' ? { base: { ref: { from: 'main', to: 'release' } } } : undefined,
 } = {}) {
   const requested = [];
   let reads = 0;
@@ -83,14 +85,21 @@ async function inspect({
     eventName: 'pull_request',
     repo: { owner: 'eunsoogi', repo: 'orot' },
     runId: 99,
-    payload: { repository: repo, number: event.number, pull_request: event, action },
+    payload: { repository: repo, number: event.number, pull_request: event, action, changes },
   };
   await execute(github, context, { info: () => {} });
   return requested;
 }
 
 test('only the static cancellation job receives write permission and it never checks out PR code', () => {
-  assert.deepEqual(manager.on.pull_request.types, ['synchronize', 'reopened']);
+  assert.deepEqual(manager.on.pull_request.types, [
+    'synchronize',
+    'reopened',
+    'ready_for_review',
+    'converted_to_draft',
+    'edited',
+  ]);
+  assert.match(manager.jobs.cancel_superseded_full.if, /changes\.base\.ref/);
   assert.deepEqual(manager.permissions, {});
   assert.deepEqual(job.permissions, { actions: 'write', 'pull-requests': 'read' });
   assert.equal(manager.jobs.cancel_superseded_focus.permissions, undefined);
@@ -112,11 +121,52 @@ test('a verified older head of this workflow and PR is cancelled once', async ()
   assert.deepEqual(await inspect(), [{ owner: 'eunsoogi', repo: 'orot', run_id: 10 }]);
 });
 
-test('draft and ready metadata preserve active full runs without a replacement source event', async () => {
-  for (const action of ['ready_for_review', 'converted_to_draft']) {
-    for (const head_sha of [head, previous])
-      assert.deepEqual(await inspect({ action, runs: [{ ...candidate, head_sha }] }), []);
+test('ready, draft and reopen transitions cancel active same-head runs created before the event', async () => {
+  for (const [action, draft] of [
+    ['ready_for_review', false],
+    ['converted_to_draft', true],
+    ['reopened', true],
+  ]) {
+    const event = { ...pullRequest, draft };
+    assert.deepEqual(
+      await inspect({ action, event, current: [event], runs: [{ ...candidate, head_sha: head }] }),
+      [{ owner: 'eunsoogi', repo: 'orot', run_id: 10 }],
+    );
   }
+  assert.deepEqual(
+    await inspect({
+      action: 'ready_for_review',
+      event: { ...pullRequest, draft: false },
+      current: [{ ...pullRequest, draft: false }],
+    }),
+    [{ owner: 'eunsoogi', repo: 'orot', run_id: 10 }],
+  );
+});
+
+test('base-ref edits cancel earlier same-head runs while title-only edits are ignored', async () => {
+  const event = {
+    ...pullRequest,
+    updated_at: '2026-10-15T19:00:00Z',
+    base: { sha: 'd'.repeat(40), ref: 'release', repo },
+  };
+  assert.deepEqual(
+    await inspect({
+      action: 'edited',
+      event,
+      current: [event],
+      runs: [{ ...candidate, head_sha: head }],
+      changes: { base: { ref: { from: 'main', to: 'release' } } },
+    }),
+    [{ owner: 'eunsoogi', repo: 'orot', run_id: 10 }],
+  );
+  assert.deepEqual(
+    await inspect({
+      action: 'edited',
+      event: pullRequest,
+      changes: { title: { from: 'Old', to: 'New' } },
+    }),
+    [],
+  );
 });
 
 test('other identities, the current head, reruns and completed runs are excluded', async () => {
@@ -133,7 +183,6 @@ test('other identities, the current head, reruns and completed runs are excluded
     { pull_requests: [{ id: 2001, number: 201 }] },
     { pull_requests: [] },
     { pull_requests: [candidate.pull_requests[0], { id: 2001, number: 201 }] },
-    { run_attempt: 2 },
     { status: 'completed', conclusion: 'success' },
   ];
   for (const change of cases)
@@ -157,6 +206,7 @@ test('same-head reopening requires strictly earlier timestamps and a still-curre
     { ...pullRequest, updated_at: '2026-10-15T18:00:01Z' },
     { ...pullRequest, draft: false },
     { ...pullRequest, state: 'closed' },
+    { ...pullRequest, base: { ...pullRequest.base, sha: 'd'.repeat(40) } },
   ]) {
     assert.deepEqual(await inspect({ current: [stale] }), []);
     assert.deepEqual(await inspect({ current: [pullRequest, stale] }), []);

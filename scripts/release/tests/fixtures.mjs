@@ -11,7 +11,7 @@ export function validContext(overrides = {}) {
   const ciRuns = Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW).map((path, index) => ({
     id: 1234 + index,
     path,
-    event: 'push',
+    event: path === '.github/workflows/e2e-test.yml' ? 'workflow_dispatch' : 'push',
     head_branch: 'main',
     head_sha: sourceSha,
     status: 'completed',

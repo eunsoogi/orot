@@ -20,8 +20,10 @@ const names = [
   ['speech', 'Speech'],
 ];
 
-/** This is the full hosted feature plan. Shared products never imply a dependency between independent executors. */
-export function iosTestExecutionPlan() {
+export const IOS_TEST_COHORT_NAMES = Object.freeze(names.map(([cohort]) => cohort));
+
+/** Validate the maintained full inventory before returning a requested subset of complete cohort tasks. */
+export function iosTestExecutionPlan(selectedCohorts = IOS_TEST_COHORT_NAMES) {
   const plan = names.map(([cohort, name]) => {
     const definition = iosTestCohort(cohort);
     return {
@@ -48,5 +50,13 @@ export function iosTestExecutionPlan() {
     actual.some((id) => !expected.has(id))
   )
     throw new Error('Hosted iOS plan omits or repeats maintained observations');
-  return plan;
+  if (
+    !Array.isArray(selectedCohorts) ||
+    selectedCohorts.length === 0 ||
+    new Set(selectedCohorts).size !== selectedCohorts.length ||
+    selectedCohorts.some((cohort) => !IOS_TEST_COHORT_NAMES.includes(cohort))
+  )
+    throw new Error('Hosted iOS selection must contain unique known cohorts');
+  const selected = new Set(selectedCohorts);
+  return plan.filter((entry) => selected.has(entry.cohort));
 }

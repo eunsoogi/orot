@@ -92,13 +92,13 @@ test('non-app images are ignored while mobile bundle images validate integration
   assert.equal(appImage.ios_tests, true);
 });
 
-test('an E2E fixture image selects the full iOS gate', () => {
+test('an E2E fixture image selects iOS E2E validation', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.fixture.png']);
 
   assert.equal(selection.ios_tests, true);
 });
 
-test('a dedicated E2E test path selects shared unit, iOS and language checks', () => {
+test('a dedicated E2E test path selects shared unit, language and iOS checks', () => {
   const selection = selectChecksForPaths(['apps/mobile/e2e/next-visit-questions.e2e.js']);
 
   assert.equal(selection.javascript, true);
@@ -108,7 +108,7 @@ test('a dedicated E2E test path selects shared unit, iOS and language checks', (
   assert.equal(selection.unit_tests, true);
 });
 
-test('AI feature visit-question inputs retain the full iOS gate', () => {
+test('AI feature visit-question inputs select E2E validation', () => {
   for (const path of [
     'apps/mobile/e2e/ai-feature-visit-questions.e2e.js',
     'apps/mobile/e2e/aiFeatureVisitQuestionsProbeEntry.tsx',

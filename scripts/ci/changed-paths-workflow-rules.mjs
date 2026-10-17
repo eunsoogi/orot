@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { markAllQuality } from './changed-paths-core.mjs';
+import { markAllQuality, selectAllIosTestImpact } from './changed-paths-core.mjs';
 
 // Workflow edits can change reusable-call wiring, so keep their dependent leaf checks explicit.
 export function selectWorkflowPath(path, selection) {
@@ -18,7 +18,7 @@ export function selectWorkflowPath(path, selection) {
       return true;
     case 'e2e-test.yml':
       selection.ios_build = true;
-      selection.ios_tests = true;
+      selectAllIosTestImpact(selection, 'e2e-workflow-change');
       return true;
     default:
       return false;

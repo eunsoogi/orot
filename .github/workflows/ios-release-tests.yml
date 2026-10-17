@@ -4,6 +4,7 @@ on:
     inputs:
       archive_digest: { required: true, type: string }
       manifest_digest: { required: true, type: string }
+      cohorts: { required: true, type: string }
 permissions: { contents: read }
 env:
   CI: 'true'
@@ -11,9 +12,10 @@ env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
   EXPECTED_NODE_VERSION: '22.23.2'
 jobs:
-  # The caller waits only for compatible products; these named feature jobs have no sibling dependency.
+  # Cohort conditions avoid Mac allocations while each selected job retains its complete stateful driver.
   core_integration:
     name: Core
+    if: ${{ contains(fromJSON(inputs.cohorts), 'core-integration') }}
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
@@ -34,6 +36,7 @@ jobs:
         with: { cohort: core-integration }
   core_ui:
     name: UI
+    if: ${{ contains(fromJSON(inputs.cohorts), 'core-ui') }}
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
@@ -54,6 +57,7 @@ jobs:
         with: { cohort: core-ui }
   persistence:
     name: Persistence
+    if: ${{ contains(fromJSON(inputs.cohorts), 'persistence') }}
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
@@ -74,6 +78,7 @@ jobs:
         with: { cohort: persistence }
   isolation:
     name: Isolation
+    if: ${{ contains(fromJSON(inputs.cohorts), 'isolation') }}
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
@@ -94,6 +99,7 @@ jobs:
         with: { cohort: isolation }
   backup:
     name: Backup
+    if: ${{ contains(fromJSON(inputs.cohorts), 'backup') }}
     runs-on: xcode-27
     timeout-minutes: 65
     steps:
@@ -114,6 +120,7 @@ jobs:
         with: { cohort: backup }
   local_model:
     name: Local model
+    if: ${{ contains(fromJSON(inputs.cohorts), 'local-model') }}
     runs-on: xcode-27
     timeout-minutes: 65
     steps:
@@ -134,6 +141,7 @@ jobs:
         with: { cohort: local-model }
   navigation:
     name: Navigation
+    if: ${{ contains(fromJSON(inputs.cohorts), 'navigation') }}
     runs-on: xcode-27
     timeout-minutes: 60
     steps:
@@ -154,6 +162,7 @@ jobs:
         with: { cohort: navigation }
   recordings:
     name: Recordings
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recordings') }}
     runs-on: xcode-27
     timeout-minutes: 60
     steps:
@@ -174,6 +183,7 @@ jobs:
         with: { cohort: recordings }
   questions:
     name: Questions
+    if: ${{ contains(fromJSON(inputs.cohorts), 'questions') }}
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
@@ -194,6 +204,7 @@ jobs:
         with: { cohort: questions }
   calendar:
     name: Calendar
+    if: ${{ contains(fromJSON(inputs.cohorts), 'calendar') }}
     runs-on: xcode-27
     timeout-minutes: 60
     steps:
@@ -214,6 +225,7 @@ jobs:
         with: { cohort: calendar }
   speech:
     name: Speech
+    if: ${{ contains(fromJSON(inputs.cohorts), 'speech') }}
     runs-on: xcode-27
     timeout-minutes: 90
     steps:
