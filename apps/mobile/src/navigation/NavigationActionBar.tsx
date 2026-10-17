@@ -1,5 +1,5 @@
-import type { ComponentType } from 'react';
-import { useEffect, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   Keyboard,
   Platform,
@@ -7,7 +7,10 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  SafeAreaInsetsContext,
+} from 'react-native-safe-area-context';
 import { navigationText } from '../i18n/navigation';
 import {
   NavigationGlassSurface,
@@ -22,6 +25,7 @@ import {
 import {
   NAVIGATION_ACTION_TOP_PADDING,
   NAVIGATION_ACTION_BOTTOM_PADDING,
+  ROOT_TAB_SAFE_AREA_TRANSLATION,
 } from './navigationLayout';
 import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
@@ -51,6 +55,7 @@ export interface NavigationActionBarProps<Name extends string> {
   readonly rootTabs?: NavigationRootTabs;
 }
 
+/** Keeps contextual actions fixed while root tabs reclaim a keyboard-hidden bottom inset. */
 export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
@@ -148,7 +153,7 @@ export function NavigationActionBar<Name extends string>({
     </View>
   );
 
-  const surface = (
+  const barSurface = (
     <Surface
       actions={nativeBindings.actions}
       onAction={nativeBindings.onAction}
@@ -160,6 +165,16 @@ export function NavigationActionBar<Name extends string>({
     >
       {actions}
     </Surface>
+  );
+  const reclaimRootTabInset =
+    rootTabs && !isKeyboardVisible && !safeAreaHandledByParent;
+  // Keep any transform outside the native host so UIKit geometry stays aligned.
+  const surface = (
+    <NavigationSurfacePosition
+      reclaimRootTabInset={Boolean(reclaimRootTabInset)}
+    >
+      {barSurface}
+    </NavigationSurfacePosition>
   );
 
   // Keep one home-indicator inset and a narrow side gutter around the native bar.
@@ -176,6 +191,37 @@ export function NavigationActionBar<Name extends string>({
     >
       {surface}
     </SafeAreaView>
+  );
+}
+
+/** Preserves the native surface identity while changing root-tab inset translation. */
+function NavigationSurfacePosition({
+  children,
+  reclaimRootTabInset,
+}: {
+  readonly children: ReactNode;
+  readonly reclaimRootTabInset: boolean;
+}) {
+  const insets = useContext(SafeAreaInsetsContext);
+  if (reclaimRootTabInset && insets == null) {
+    throw new Error(
+      'No safe area value available. Make sure you are rendering <SafeAreaProvider> at the top of your app.',
+    );
+  }
+  const bottomInset = insets?.bottom ?? 0;
+  const positionStyle = reclaimRootTabInset
+    ? {
+        transform: [
+          {
+            translateY: Math.min(ROOT_TAB_SAFE_AREA_TRANSLATION, bottomInset),
+          },
+        ],
+      }
+    : undefined;
+  return (
+    <View pointerEvents="box-none" style={positionStyle}>
+      {children}
+    </View>
   );
 }
 

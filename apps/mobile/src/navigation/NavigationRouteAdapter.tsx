@@ -18,6 +18,10 @@ import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
 import { observeNavigationTest } from './navigationTestObservation';
+import {
+  NavigationMotionContext,
+  useNavigationReduceMotion,
+} from './NavigationMotionContext';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -58,7 +62,7 @@ export interface NavigationRouteAdapterProps<Name extends string> {
   readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
-/** Binds route-local guards and shared actions to UIKit's native navigation stack. */
+/** Shares route guards and Reduce Motion state with the native stack and action bar. */
 export function NavigationRouteAdapter<Name extends string>({
   controller,
   leaveState,
@@ -73,6 +77,7 @@ export function NavigationRouteAdapter<Name extends string>({
   onNativeRouteRemovalComplete,
 }: NavigationRouteAdapterProps<Name>) {
   const snapshot = useNavigationSnapshot(controller);
+  const reduceMotion = useNavigationReduceMotion();
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
   const [, setLeaveStateVersion] = useState(0);
   const leaveStateRef = useRef(leaveState);
@@ -203,24 +208,27 @@ export function NavigationRouteAdapter<Name extends string>({
   );
 
   return (
-    <SafeAreaProvider style={styles.fill}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.fill}
-        testID="navigation-keyboard-avoiding-root"
-      >
-        <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
-          <NativeRouteStack
-            controller={controller}
-            canNativeGoBack={canNativeGoBack}
-            isTransitioning={snapshot.isTransitioning}
-            renderRoute={renderRoute}
-            routes={snapshot.routes}
-            onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
-          />
-        </NavigationViewport>
-      </KeyboardAvoidingView>
-    </SafeAreaProvider>
+    <NavigationMotionContext.Provider value={reduceMotion}>
+      <SafeAreaProvider style={styles.fill}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.fill}
+          testID="navigation-keyboard-avoiding-root"
+        >
+          <NavigationViewport actionBar={actionBar} childHandlesSafeArea>
+            <NativeRouteStack
+              controller={controller}
+              canNativeGoBack={canNativeGoBack}
+              isTransitioning={snapshot.isTransitioning}
+              reduceMotion={reduceMotion}
+              renderRoute={renderRoute}
+              routes={snapshot.routes}
+              onNativeRouteRemovalComplete={onNativeRouteRemovalComplete}
+            />
+          </NavigationViewport>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
+    </NavigationMotionContext.Provider>
   );
 }
 

@@ -4,8 +4,8 @@ import {
   useNavigationContainerRef,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
 import type {
   NavigationController,
@@ -27,16 +27,18 @@ interface NativeRouteStackProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly routes: readonly NavigationRoute<Name>[];
   readonly isTransitioning: boolean;
+  readonly reduceMotion: boolean;
   readonly canNativeGoBack: (routeKey: string) => boolean;
   readonly renderRoute: (route: NavigationRoute<Name>) => ReactNode;
   readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
 
-/** Mirrors the guarded app stack into UIKit's native navigation controller. */
+/** Mirrors guarded routes into UIKit and applies the shared Reduce Motion setting. */
 export function NativeRouteStack<Name extends string>({
   controller,
   routes,
   isTransitioning,
+  reduceMotion,
   canNativeGoBack,
   renderRoute,
   onNativeRouteRemovalComplete,
@@ -44,7 +46,6 @@ export function NativeRouteStack<Name extends string>({
   const navigationRef = useNavigationContainerRef<NativeRouteParamList>();
   const [ready, setReady] = useState(false);
   const [nativeRevision, setNativeRevision] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
   const allowedNativeRemoval = useRef<string | null>(null);
   const initialRouteKey = useRef(routes[0]?.key);
   const {
@@ -60,22 +61,6 @@ export function NativeRouteStack<Name extends string>({
     reduceMotion,
     onNativeRouteRemovalComplete,
   });
-
-  useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceMotionEnabled().then(
-      enabled => mounted && setReduceMotion(enabled),
-      () => mounted && setReduceMotion(false),
-    );
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion,
-    );
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
-  }, []);
 
   const registry = useMemo<NativeRouteRegistry>(
     () => ({

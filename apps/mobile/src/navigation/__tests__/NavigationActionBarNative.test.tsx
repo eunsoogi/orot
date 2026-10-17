@@ -11,6 +11,7 @@ jest.mock('react-native-safe-area-context', () => {
     require('react-native') as typeof import('react-native');
 
   return {
+    SafeAreaInsetsContext: React.createContext(null),
     SafeAreaView: ({
       children,
       edges,
@@ -74,6 +75,12 @@ describe('native bottom navigation toolbar', () => {
         primary: true,
       }),
     ]);
+    const actions = toolbar.props.actions as Array<Record<string, unknown>>;
+    expect(
+      actions.every(
+        action => action.rootTab !== true && action.selected !== true,
+      ),
+    ).toBe(true);
 
     await act(async () => {
       toolbar.props.onAction({ nativeEvent: { id: 'back' } });
@@ -101,6 +108,9 @@ describe('native bottom navigation toolbar', () => {
       true,
       true,
     ]);
+    expect(
+      actions.filter(action => action.selected).map(action => action.id),
+    ).toEqual(['tab-home']);
     expect(actions[0]).toEqual(
       expect.objectContaining({
         id: 'tab-home',
@@ -116,7 +126,7 @@ describe('native bottom navigation toolbar', () => {
       }),
     );
     expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
-      expect.objectContaining({ height: 56 }),
+      expect.objectContaining({ height: 60 }),
     );
   });
 

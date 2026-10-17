@@ -1,9 +1,18 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { useContext, useEffect, useRef } from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  useColorScheme,
+} from 'react-native';
 import type { NavigationController } from './navigationController';
 import type { NavigationRootTabs } from './rootTabs';
 import { rootTabItems } from './rootTabs';
-import { appColors } from '../layout/appColors';
+import { appColorPalettes, appColors } from '../layout/appColors';
 import { settleNavigationRequest } from './nativeNavigationActions';
+import { NavigationMotionContext } from './NavigationMotionContext';
+import { ROOT_TAB_TOUCH_TARGET_HEIGHT } from './navigationLayout';
 
 interface RootTabActionsProps<Name extends string> {
   readonly controller: NavigationController<Name>;
@@ -11,7 +20,7 @@ interface RootTabActionsProps<Name extends string> {
   readonly rootTabs: NavigationRootTabs;
 }
 
-/** Routes tab changes through leave guards and keeps selection visible without color alone. */
+/** Routes guarded tab changes and animates a selection that is also exposed to accessibility. */
 export function RootTabActions<Name extends string>({
   controller,
   disabled,
@@ -20,15 +29,11 @@ export function RootTabActions<Name extends string>({
   return (
     <>
       {rootTabItems.map(item => (
-        <Pressable
-          accessibilityLabel={item.accessibilityLabel}
-          accessibilityRole="button"
-          accessibilityState={{
-            selected: rootTabs.activeTab === item.id,
-            disabled,
-          }}
-          disabled={disabled}
+        <RootTabAction
           key={item.id}
+          accessibilityLabel={item.accessibilityLabel}
+          disabled={disabled}
+          item={item}
           onPress={() => {
             if (rootTabs.activeTab === item.id) return;
             settleNavigationRequest(
@@ -39,48 +44,110 @@ export function RootTabActions<Name extends string>({
                 ),
             );
           }}
-          style={[
-            styles.tab,
-            rootTabs.activeTab === item.id && styles.selectedTab,
-          ]}
-          testID={item.testID}
-        >
-          <Text
-            style={[
-              styles.symbol,
-              rootTabs.activeTab === item.id && styles.selectedForeground,
-            ]}
-          >
-            {item.fallbackSymbol}
-          </Text>
-          <Text
-            style={[
-              styles.label,
-              rootTabs.activeTab === item.id && styles.selectedForeground,
-            ]}
-          >
-            {item.label}
-          </Text>
-        </Pressable>
+          selected={rootTabs.activeTab === item.id}
+        />
       ))}
     </>
+  );
+}
+
+/** Animates one tab's visual selection while updating its accessibility state immediately. */
+function RootTabAction({
+  item,
+  accessibilityLabel,
+  disabled,
+  onPress,
+  selected,
+}: {
+  readonly item: (typeof rootTabItems)[number];
+  readonly accessibilityLabel: string;
+  readonly disabled: boolean;
+  readonly onPress: () => void;
+  readonly selected: boolean;
+}) {
+  const reduceMotion = useContext(NavigationMotionContext);
+  const colorScheme = useColorScheme();
+  const selectionProgress = useRef(
+    new Animated.Value(selected ? 1 : 0),
+  ).current;
+  const previousSelection = useRef(selected);
+  const unselectedForeground =
+    colorScheme === 'dark'
+      ? appColorPalettes.dark.secondary
+      : appColorPalettes.light.secondary;
+  const foregroundColor = selectionProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [unselectedForeground, appColorPalettes.light.onPrimary],
+  });
+
+  useEffect(() => {
+    if (reduceMotion) {
+      selectionProgress.stopAnimation();
+      selectionProgress.setValue(selected ? 1 : 0);
+      previousSelection.current = selected;
+      return;
+    }
+    if (previousSelection.current === selected) return;
+    previousSelection.current = selected;
+
+    const animation = Animated.timing(selectionProgress, {
+      toValue: selected ? 1 : 0,
+      duration: 140,
+      easing: Easing.out(Easing.cubic),
+      // Color interpolation needs the JS driver; the native iOS bar animates in UIKit.
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [reduceMotion, selected, selectionProgress]);
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={styles.tab}
+      testID={item.testID}
+    >
+      <Animated.View
+        accessibilityElementsHidden
+        pointerEvents="none"
+        style={[styles.selectedBackground, { opacity: selectionProgress }]}
+      />
+      <Animated.Text style={[styles.symbol, { color: foregroundColor }]}>
+        {item.fallbackSymbol}
+      </Animated.Text>
+      <Animated.Text style={[styles.label, { color: foregroundColor }]}>
+        {item.label}
+      </Animated.Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   tab: {
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 24,
+    borderRadius: 26,
     gap: 2,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: ROOT_TAB_TOUCH_TARGET_HEIGHT,
     minWidth: 44,
+    overflow: 'hidden',
     paddingHorizontal: 6,
+    position: 'relative',
   },
-  selectedTab: { backgroundColor: appColors.primaryAction },
-  symbol: { color: appColors.secondary, fontSize: 22, lineHeight: 24 },
-  label: { color: appColors.secondary, fontSize: 12, lineHeight: 16 },
-  selectedForeground: { color: appColors.onPrimary },
+  selectedBackground: {
+    backgroundColor: appColors.primaryAction,
+    borderRadius: 26,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  symbol: { fontSize: 22, lineHeight: 24 },
+  label: { fontSize: 12, lineHeight: 16 },
 });

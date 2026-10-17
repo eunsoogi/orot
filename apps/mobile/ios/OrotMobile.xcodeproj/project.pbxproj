@@ -58,6 +58,8 @@
 		A11600000000000000000001 /* BackupMigrationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000001 /* BackupMigrationModule.swift */; };
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
+		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
+		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
 		A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */; };
 		A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */; };
 		A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */; };
@@ -243,6 +245,8 @@
 		B11600000000000000000001 /* BackupMigrationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupMigrationModule.swift; path = OrotMobile/BackupMigrationModule.swift; sourceTree = "<group>"; };
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
 		B1810000B1810000B1810001 /* NavigationGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassComponents.swift; sourceTree = "<group>"; };
+		B19500000000000000000001 /* NavigationGlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassButton.swift; sourceTree = "<group>"; };
+		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
 		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
@@ -555,6 +559,8 @@
 			children = (
 				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
+				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
+				B19500000000000000000001 /* NavigationGlassButton.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
 			);
@@ -875,6 +881,8 @@
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
+				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
+				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,

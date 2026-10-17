@@ -21,6 +21,8 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.openTab(app, tab, markers: markers)
             let action = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)")
             XCTAssertEqual(action.control.label, label)
+            // Read the native accessibility selection state in addition to the rendered route.
+            XCTAssertTrue(action.control.isSelected, "Root tab \(tab) must expose selected state")
             capture(app, "selected-root-tab-\(tab)")
         }
         try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
@@ -30,7 +32,10 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(recent.exists && !recent.frame.isEmpty)
         XCTAssertTrue(root.exists && !root.frame.isEmpty)
         XCTAssertLessThanOrEqual(recent.frame.maxY, bar.frame.minY)
-        XCTAssertLessThanOrEqual(root.frame.maxY - bar.frame.maxY, 34)
+        // Preserve the original root-tab clearance bound using the live native bar frame.
+        let bottomClearance = root.frame.maxY - bar.frame.maxY
+        XCTAssertGreaterThanOrEqual(bottomClearance, 22)
+        XCTAssertLessThanOrEqual(bottomClearance, 26)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-new-recording")
         NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
@@ -136,8 +141,13 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         let title = UITestConditions.element(app, "next-visit-title")
         XCTAssertTrue(title.exists && !title.frame.isEmpty)
         XCTAssertGreaterThanOrEqual(title.frame.minY, scroll.frame.minY)
-        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-back").control.label, "이전 화면으로 돌아가기")
-        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-home").control.label, "홈 화면으로 이동")
+        let back = try NavigationUITestConditions.navigationAction(app, "navigation-back").control
+        let home = try NavigationUITestConditions.navigationAction(app, "navigation-home").control
+        XCTAssertEqual(back.label, "이전 화면으로 돌아가기")
+        XCTAssertEqual(home.label, "홈 화면으로 이동")
+        // Context actions must not present themselves as the active root tab to accessibility clients.
+        XCTAssertFalse(back.isSelected)
+        XCTAssertFalse(home.isSelected)
         capture(app, "visit-questions-safe-area")
         captureNavigationObservation(app, "before-edge-back")
         edgeBack(scroll, in: app, fraction: 0.08, velocity: XCUIGestureVelocity(rawValue: 80))
@@ -161,6 +171,31 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(scroll))
         try NavigationUITestConditions.tapNavigation(app, "navigation-home")
         NavigationUITestConditions.route(app, markers: ["welcome-title"])
+    }
+
+    @MainActor
+    func testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt() throws {
+        let app = launch()
+        defer { app.terminate() }
+        try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+        tap(app, "ai-feature-rag-conversation")
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        XCTAssertTrue(input.waitForAppearance())
+        // Focus the composer without sending text or calling a model; this checks only native navigation geometry.
+        input.tap()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(UITestConditions.exists(keyboard), app.debugDescription)
+        XCTAssertGreaterThan(keyboard.frame.height, 100)
+        for identifier in ["navigation-back", "navigation-home"] {
+            let action = try NavigationUITestConditions.navigationAction(app, identifier)
+            XCTAssertLessThanOrEqual(action.control.frame.maxY, keyboard.frame.minY + 1, "\(identifier) must remain above the keyboard")
+        }
+        capture(app, "conversation-keyboard-native-navigation")
+        try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
+        capture(app, "home-after-keyboard-navigation")
     }
 
     @MainActor

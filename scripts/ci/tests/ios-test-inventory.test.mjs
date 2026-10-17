@@ -6,7 +6,7 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 14, 5],
+    ['core', 17, 6],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -28,6 +28,17 @@ test('separate Core and Speech runners cover every registered boundary without d
     assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
   }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
+  for (const identifier of [
+    'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
+    'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
+    'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',
+  ])
+    assert.ok(iosTestInventory('core', 'integration').includes(identifier), identifier);
+  assert.ok(
+    iosTestInventory('core', 'ui').includes(
+      'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt',
+    ),
+  );
   assert.throws(() => iosTestInventory('core', 'preparation'));
   assert.throws(() => iosTestInventory('core', 'journey'));
   assert.throws(() => iosTestInventory('speech', 'unknown'));

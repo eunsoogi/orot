@@ -3,7 +3,7 @@ import test from 'node:test';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
-test('independent feature suites have distinct jobs and preserve the complete original observations', () => {
+test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
   assert.equal(plan.length, 15);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
@@ -14,7 +14,7 @@ test('independent feature suites have distinct jobs and preserve the complete or
   const original = ['release', 'debug', 'speech'].flatMap((name) =>
     iosTestCohortTasks(name).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 82);
+  assert.equal(actual.length, 86);
   assert.deepEqual(actual.slice().sort(), original.slice().sort());
 });
 

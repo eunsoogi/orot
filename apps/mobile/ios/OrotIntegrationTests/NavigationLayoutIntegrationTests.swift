@@ -4,22 +4,106 @@ import XCTest
 
 final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testDisabledAccessibilityTracksUIKitStateAndPreservesSelectionAcrossUpdates() throws {
+    func testContextualDisabledAccessibilityTracksUIKitStateWithoutTabSelection() throws {
         let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
-        // Exercise the real production constructor without a fabricated AX snapshot or a JS-only disabled assertion.
+        // Exercise the real UIKit constructor; custom traits must preserve disabled state without granting tab selection.
         for (disabled, selected) in [(true, false), (false, true), (true, true), (false, false)] {
             surface.actions = [[
                 "id": "primary", "label": "Synthetic action", "testID": "synthetic-navigation-action",
                 "accessibilityLabel": "Synthetic action", "primary": true,
                 "disabled": disabled, "selected": selected,
             ]] as NSArray
-            let toolbar = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIToolbar }.first)
-            let group = try XCTUnwrap(toolbar.items?.compactMap(\.customView).compactMap { $0 as? UIStackView }.first)
+            surface.layoutIfNeeded()
+            let group = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIStackView }.first)
             let button = try XCTUnwrap(group.arrangedSubviews.compactMap { $0 as? UIButton }.first)
             XCTAssertEqual(button.isEnabled, !disabled)
             XCTAssertTrue(button.accessibilityTraits.contains(.button))
             XCTAssertEqual(button.accessibilityTraits.contains(.notEnabled), disabled)
-            XCTAssertEqual(button.accessibilityTraits.contains(.selected), selected)
+            XCTAssertFalse(button.accessibilityTraits.contains(.selected))
+        }
+    }
+
+    @MainActor
+    func testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether() throws {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 60))
+        surface.actions = [
+            [
+                "id": "tab-home", "label": "Home", "testID": "navigation-tab-home",
+                "accessibilityLabel": "Home tab", "systemImageName": "house.fill",
+                "rootTab": true, "selected": true, "disabled": true,
+            ],
+            [
+                "id": "tab-records", "label": "Records", "testID": "navigation-tab-records",
+                "accessibilityLabel": "Records tab", "systemImageName": "doc.text",
+                "rootTab": true, "selected": false, "disabled": false,
+            ],
+        ] as NSArray
+        surface.layoutIfNeeded()
+
+        let rootBar = try XCTUnwrap(surface.subviews.compactMap { $0 as? NavigationRootGlassBar }.first)
+        rootBar.layoutIfNeeded()
+        let stack = try XCTUnwrap(rootBar.contentView.subviews.compactMap { $0 as? UIStackView }.first)
+        stack.layoutIfNeeded()
+        let buttons = stack.arrangedSubviews.compactMap { $0 as? UIButton }
+        XCTAssertEqual(rootBar.bounds.height, 60, accuracy: 0.5)
+        XCTAssertEqual(buttons.count, 2)
+        for button in buttons {
+            XCTAssertEqual(button.bounds.height, 52, accuracy: 0.5)
+            XCTAssertEqual(button.frame.minY, 4, accuracy: 0.5)
+        }
+        XCTAssertEqual(buttons[0].isEnabled, false)
+        XCTAssertTrue(buttons[0].accessibilityTraits.contains(.notEnabled))
+        XCTAssertTrue(buttons[0].accessibilityTraits.contains(.selected))
+        XCTAssertEqual(buttons[1].isEnabled, true)
+        XCTAssertFalse(buttons[1].accessibilityTraits.contains(.notEnabled))
+        XCTAssertFalse(buttons[1].accessibilityTraits.contains(.selected))
+    }
+
+    @MainActor
+    func testBackAndHomeNeverExposeRootTabSelectionToAccessibility() throws {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 60))
+        surface.actions = [
+            [
+                "id": "back", "label": "Back", "testID": "navigation-back",
+                "accessibilityLabel": "Back", "selected": true,
+            ],
+            [
+                "id": "home", "label": "Home", "testID": "navigation-home",
+                "accessibilityLabel": "Home", "systemImageName": "house.fill", "selected": true,
+            ],
+        ] as NSArray
+        surface.layoutIfNeeded()
+
+        let group = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIStackView }.first)
+        let buttons = group.arrangedSubviews.compactMap { $0 as? UIButton }
+        XCTAssertEqual(buttons.count, 2)
+        for button in buttons {
+            XCTAssertTrue(button.accessibilityTraits.contains(.button))
+            XCTAssertFalse(button.accessibilityTraits.contains(.selected))
+        }
+    }
+
+    @MainActor
+    func testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize() throws {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
+        surface.actions = [
+            [
+                "id": "generate", "label": "Generate", "testID": "navigation-generate",
+                "accessibilityLabel": "Generate", "primary": true,
+            ],
+            [
+                "id": "cancel", "label": "Cancel", "testID": "navigation-cancel",
+                "accessibilityLabel": "Cancel", "primary": true,
+            ],
+        ] as NSArray
+        surface.layoutIfNeeded()
+
+        let group = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIStackView }.first)
+        let buttons = group.arrangedSubviews.compactMap { $0 as? UIButton }
+        XCTAssertEqual(buttons.count, 2)
+        for button in buttons {
+            XCTAssertGreaterThanOrEqual(button.bounds.width, 88)
+            XCTAssertEqual(button.bounds.height, 48, accuracy: 0.5)
         }
     }
 
@@ -74,7 +158,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let iconFrame = icon.convert(icon.bounds, to: button)
         let labelFrame = label.convert(label.bounds, to: button)
         XCTAssertGreaterThanOrEqual(button.bounds.width, 44)
-        XCTAssertGreaterThanOrEqual(button.bounds.height, 44)
+        XCTAssertGreaterThanOrEqual(button.bounds.height, 52)
         XCTAssertLessThanOrEqual(iconFrame.width, 23)
         XCTAssertLessThanOrEqual(iconFrame.height, 23)
         XCTAssertGreaterThanOrEqual(iconFrame.minY, 3)
