@@ -7,16 +7,16 @@ expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
 expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
 expected_simulator_runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
 expected_simulator_runtime_id="${EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:-com.apple.CoreSimulator.SimRuntime.iOS-27-0}"
-expected_simulator_device_name="${EXPECTED_DETOX_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
-expected_simulator_device_type_id="${EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
+expected_simulator_device_name="${EXPECTED_IOS_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
+expected_simulator_device_type_id="${EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID:-com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro}"
 expected_ruby="${EXPECTED_RUBY_VERSION:-4.0.7}"
 expected_cocoapods="${EXPECTED_COCOAPODS_VERSION:-1.17.0}"
 
 # Node reads the resolved Simulator targets through process.env when matching xcrun output.
 export EXPECTED_IOS_SIMULATOR_RUNTIME_NAME="$expected_simulator_runtime_name"
 export EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER="$expected_simulator_runtime_id"
-export EXPECTED_DETOX_SIMULATOR_DEVICE_NAME="$expected_simulator_device_name"
-export EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID="$expected_simulator_device_type_id"
+export EXPECTED_IOS_SIMULATOR_DEVICE_NAME="$expected_simulator_device_name"
+export EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID="$expected_simulator_device_type_id"
 
 fail_version() {
   printf 'Toolchain mismatch for %s: expected %s, got %s\n' "$1" "$2" "$3" >&2
@@ -35,7 +35,7 @@ if [[ "${1:-}" == "--cocoapods-only" ]]; then
     printf 'Usage: verify-toolchain.sh [--portable|--cocoapods|--cocoapods-only]\n' >&2
     exit 2
   }
-  # Detox already checks the full runner before requesting Simulator startup; avoid simctl enumeration during that boot.
+  # A caller can verify only CocoaPods without enumerating or booting Simulator destinations.
   verify_cocoapods
   printf 'Verified Ruby %s and CocoaPods %s\n' "$actual_ruby" "$actual_cocoapods"
   exit 0
@@ -87,12 +87,12 @@ fi
 actual_xcode_details="$(xcodebuild -version)"
 actual_xcode="$(printf '%s\n' "$actual_xcode_details" | sed -n '1s/^Xcode //p')"
 [[ "$actual_xcode" == "$expected_xcode" ]] || fail_version Xcode "$expected_xcode" "$actual_xcode"
-# Detox derives its extracted-framework directory from the complete Xcode version output.
+# Cache and portable-product identities use the complete Xcode build, not only its marketing version.
 actual_xcodebuild_fingerprint="$(printf '%s\n' "$actual_xcode_details" | shasum -a 256 | awk '{print $1}')"
 
 actual_simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 [[ "$actual_simulator_sdk" == "$expected_simulator_sdk" ]] || fail_version iOS-Simulator-SDK "$expected_simulator_sdk" "$actual_simulator_sdk"
-# Check the installed runtime and device type before profile setup creates its dedicated Simulator.
+# Check runtime and device-type support; profile setup creates the dedicated device afterward.
 actual_simulator_runtime="$(xcrun simctl list runtimes --json | node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
@@ -104,17 +104,16 @@ const runtime = data.runtimes.find((entry) =>
 process.stdout.write(runtime?.identifier ?? "");
 ')"
 [[ "$actual_simulator_runtime" == "$expected_simulator_runtime_id" ]] || fail_version iOS-Simulator-runtime "$expected_simulator_runtime_name ($expected_simulator_runtime_id)" unavailable
-actual_simulator_device="$(xcrun simctl list devices available --json | node -e '
+actual_simulator_device="$(xcrun simctl list devicetypes --json | node -e '
 const fs = require("node:fs");
 const data = JSON.parse(fs.readFileSync(0, "utf8"));
-const devices = data.devices[process.env.EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER] ?? [];
+const devices = data.devicetypes ?? [];
 const device = devices.find((entry) =>
-  entry.name === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_NAME &&
-  entry.deviceTypeIdentifier === process.env.EXPECTED_DETOX_SIMULATOR_DEVICE_TYPE_ID &&
-  entry.isAvailable
+  entry.name === process.env.EXPECTED_IOS_SIMULATOR_DEVICE_NAME &&
+  entry.identifier === process.env.EXPECTED_IOS_SIMULATOR_DEVICE_TYPE_ID
 );
 process.stdout.write(
-  device ? device.name + " (" + device.deviceTypeIdentifier + ")" : ""
+  device ? device.name + " (" + device.identifier + ")" : ""
 );
 ')"
 expected_simulator_device="$expected_simulator_device_name ($expected_simulator_device_type_id)"

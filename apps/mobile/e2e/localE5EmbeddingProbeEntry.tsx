@@ -59,7 +59,7 @@ function LocalE5EmbeddingProbeEntry() {
     );
   }, [mode]);
 
-  // The E2E-only entry exposes the full measurement record to Detox for capture.
+  // The test-only entry exposes the full measurement record for capture.
   const label =
     state.status === 'complete'
       ? `Local E5 ${mode} complete; result=${JSON.stringify(state.result)}`
@@ -67,7 +67,7 @@ function LocalE5EmbeddingProbeEntry() {
         ? 'Local E5 probe failed: ' + state.message
         : 'Local E5 probe running';
 
-  // Keep one terminal selector so Detox can surface probe failures immediately.
+  // Keep one terminal selector so UI tests can surface probe failures immediately.
   return (
     <View style={styles.container}>
       <Text

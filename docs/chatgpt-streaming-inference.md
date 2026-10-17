@@ -1,5 +1,7 @@
 # ChatGPT plan models and streaming
 
+> Current XCTest/XCUITest commands are in [development.md](development.md); the [requirement map](ios-validation.md) links the original scenarios to their maintained tests.
+
 The `@orot/provider-openai` workspace package adapts the saved ChatGPT account to Orot's `LanguageModelProvider` contract. Swift owns OAuth credentials, model discovery, Responses transport, and server-sent event decoding. TypeScript maps requests and results to the provider-neutral runtime. The React Native bridge passes the issued client ID and stream packets; it never serializes the stored account or its tokens.
 
 ## Model catalog
@@ -24,24 +26,16 @@ The byte transport yields at SSE line endings and caps partial lines at 4 KiB, s
 
 The Debug-only iOS Simulator fixture uses a separate Keychain service, a synthetic account/token, and a URL protocol that intercepts the model and Responses routes. It verifies visible-model filtering, completed streaming, a usage-limit failure after a delta, and consumer cancellation. It does not sign in or contact a real ChatGPT account; real-account behavior remains unverified by this fixture.
 
-Run the package and focused Simulator checks from the repository root:
+Run the package checks from the repository root:
 
 ```sh
 swift test --package-path packages/provider-openai
 pnpm --filter @orot/provider-openai lint
 pnpm --filter @orot/provider-openai typecheck
 pnpm --filter @orot/provider-openai test:unit
-
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-OROT_OPENAI_PROVIDER_SIMULATOR_UDID=<simulator-udid> \
-pnpm --filter @orot/mobile e2e:build:ios:openai-provider
-
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-OROT_OPENAI_PROVIDER_SIMULATOR_UDID=<simulator-udid> \
-pnpm --filter @orot/mobile e2e:test:ios:openai-provider
 ```
 
-The Detox configuration embeds its dedicated Debug entry point and accepts an explicit Simulator UDID. The test report states `realAccount=unverified` to keep synthetic and real-account evidence separate.
+`ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge` runs in the Debug `provider-data` profile. The companion local-tool test checks the tool-result round trip through the same bridge. Use the development guide for build, owned-Simulator preparation and exact test selection. The report retains `realAccount=unverified`.
 
 ## OpenAI references
 

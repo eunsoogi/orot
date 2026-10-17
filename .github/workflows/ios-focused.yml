@@ -1,0 +1,212 @@
+name: Focused integration
+
+on:
+  workflow_call:
+    inputs:
+      pr_number: { required: false, type: string, default: '' }
+      profile: { required: true, type: string }
+      scenario_file: { required: true, type: string }
+      scenario_name: { required: true, type: string }
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  # Updating the selected PR invalidates its previous diagnostic, without satisfying the full gate.
+  group: focused-ios-${{ inputs.pr_number || github.run_id }}-scenario
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  TZ: UTC
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  EXPECTED_NODE_VERSION: '22.23.2'
+
+jobs:
+  selection:
+    name: Plan / Select
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      profile: ${{ steps.selection.outputs.profile }}
+      configuration: ${{ steps.selection.outputs.configuration }}
+      mode: ${{ steps.selection.outputs.mode }}
+      suite: ${{ steps.selection.outputs.suite }}
+      identifier: ${{ steps.selection.outputs.identifier }}
+      prepare_ui: ${{ steps.selection.outputs.prepareUi }}
+      fixture_suite: ${{ steps.selection.outputs.fixtureSuite }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - name: Bind the actual head and exact selection before Mac allocation
+        id: selection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROFILE: ${{ inputs.profile }}
+          SOURCE_FILE: ${{ inputs.scenario_file }}
+          TEST_ID: ${{ inputs.scenario_name }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: node scripts/ci/ios-focused-selection-cli.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" "$PR_NUMBER"
+  products:
+    name: Build / ${{ needs.selection.outputs.configuration }}
+    needs: selection
+    runs-on: xcode-27
+    timeout-minutes: 60
+    outputs:
+      profile: ${{ needs.selection.outputs.profile }}
+      mode: ${{ needs.selection.outputs.mode }}
+      suite: ${{ needs.selection.outputs.suite }}
+      identifier: ${{ needs.selection.outputs.identifier }}
+      prepare_ui: ${{ needs.selection.outputs.prepare_ui }}
+      fixture_suite: ${{ needs.selection.outputs.fixture_suite }}
+      archive_digest: ${{ steps.build.outputs.archive_digest }}
+      manifest_digest: ${{ steps.build.outputs.manifest_digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+      - uses: ./.github/actions/ios-test-products-build
+        id: build
+        with:
+          profile: ${{ needs.selection.outputs.profile }}
+      - name: Upload exact portable integration products
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/product-artifact
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve build and selection diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-focused-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-focus/*.log
+            artifacts/ios-focus/*.jsonl
+            artifacts/ios-focus/DerivedData/Build/Products/*.xctestrun
+          if-no-files-found: warn
+          retention-days: 7
+  completeness:
+    name: Validate / Complete
+    needs: [selection, products, execution]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - name: Require selection, build and actual execution success
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node -e 'if(Object.values(JSON.parse(process.env.RESULTS)).some(job=>job.result!=="success")) throw new Error("Incomplete integration focus");'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus-results
+      - name: Apply the exact selection oracle to exported evidence
+        env:
+          PROFILE: ${{ inputs.profile }}
+          SOURCE_FILE: ${{ inputs.scenario_file }}
+          TEST_ID: ${{ inputs.scenario_name }}
+        run: node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results
+
+  execution:
+    name: Test / Selection
+    needs: products
+    runs-on: xcode-27
+    # Stateful local-model groups retain their original operation and setup allowances.
+    timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      # The verified app already contains its JavaScript bundle; execution helpers require no installed packages.
+      - name: Download the producer's exact integration products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-products-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/product-artifact
+      - name: Verify product provenance and integrity before boot
+        id: verify
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          ARCHIVE_DIGEST: ${{ needs.products.outputs.archive_digest }}
+          MANIFEST_DIGEST: ${{ needs.products.outputs.manifest_digest }}
+        run: node scripts/ci/ios-test-products.mjs verify "$PROFILE" artifacts/ios-focus/product-artifact "$ARCHIVE_DIGEST" "$MANIFEST_DIGEST"
+      - name: Provision the pinned Speech runtime
+        if: needs.products.outputs.profile == 'speech'
+        run: bash scripts/ci/prepare-ios-test-runtime.sh speech
+      - name: Boot the dedicated execution destination
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+        run: scripts/ci/run-command.sh ios-focus-boot artifacts/ios-focus/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-focus/simulator-owner.json
+      - name: Verify integration app-host preparation before UI execution
+        if: needs.products.outputs.prepare_ui == 'true'
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: scripts/ci/run-command.sh ios-focus-ui-preparation artifacts/ios-focus/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus
+      - name: Install Korean Speech assets without recognizing a fixture
+        if: needs.products.outputs.profile == 'speech'
+        env:
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: |
+          scripts/ci/run-command.sh ios-focus-speech-assets artifacts/ios-focus/speech-assets.log -- node scripts/ci/run-ios-tests.mjs speech "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus/speech-assets.xcresult OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+          node scripts/ci/ios-test-results.mjs speech artifacts/ios-focus/speech-assets.xcresult artifacts/ios-focus/speech-assets.json OrotIntegrationTests/SpeechAssetPreparationTests/testSelectedKoreanAssetsInstallWithoutRecognizingAnyFixture
+      - name: Execute the selected case or explicit phase group without compilation or retry
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+          MODE: ${{ needs.products.outputs.mode }}
+          OROT_IOS_TEST_SUITE: ${{ needs.products.outputs.fixture_suite }}
+          TEST_ID: ${{ needs.products.outputs.identifier }}
+          TEST_RUN: ${{ steps.verify.outputs.test_run }}
+        run: bash scripts/ci/run-ios-focused-tests.sh "$PROFILE" "$MODE" "$TEST_ID" "$TEST_RUN" artifacts/ios-focus/simulator-owner.json artifacts/ios-focus
+      - name: Export integration evidence attachments
+        if: always()
+        run: |
+          if [[ -d artifacts/ios-focus/results.xcresult ]]; then
+            xcrun xcresulttool export attachments --path artifacts/ios-focus/results.xcresult --output-path artifacts/ios-focus/attachments
+          fi
+      - name: Tear down the owned destination
+        if: always()
+        env:
+          PROFILE: ${{ needs.products.outputs.profile }}
+        run: |
+          if [[ -f artifacts/ios-focus/simulator-owner.json ]]; then
+            node scripts/ci/ios-test-simulator.mjs cleanup "$PROFILE" artifacts/ios-focus/simulator-owner.json
+          fi
+      - name: Preserve integration execution diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ios-focus/*.log
+            artifacts/ios-focus/*.json
+            artifacts/ios-focus/*.jsonl
+            artifacts/ios-focus/*.png
+            artifacts/ios-focus/*.xcresult
+            artifacts/ios-focus/attachments
+            artifacts/ios-focus/backup
+            artifacts/ios-focus/local-model
+            artifacts/ios-focus/fixtures
+            artifacts/ios-focus/product-artifact/manifest.json
+          if-no-files-found: warn
+          retention-days: 7

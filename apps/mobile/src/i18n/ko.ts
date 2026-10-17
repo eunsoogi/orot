@@ -7,8 +7,10 @@ import { backupKo } from './backupKo';
 import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
+import { probeKo } from './probeKo';
 
 export const ko = {
+  ...probeKo,
   ...backupKo,
   'app.welcome.title': '오롯',
   'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',

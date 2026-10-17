@@ -26,6 +26,7 @@ export function consumeResponderResponse<TResult>(
   response: LanguageModelResponse,
   input: TaskResponderInput,
   revised: boolean,
+  correctionAttempted = false,
 ): Partial<WorkflowState> {
   if (context.signal.aborted) {
     context.outcome = context.timedOut()
@@ -99,6 +100,20 @@ export function consumeResponderResponse<TResult>(
     validation = { status: 'invalid' as const, reason: 'Task validation failed.' };
   }
   if (validation.status === 'invalid') {
+    let correctionInstruction: string | undefined;
+    if (!correctionAttempted) {
+      try {
+        correctionInstruction = context.options.task.correctionInstructionForInvalidResult?.(
+          validation.reason,
+        );
+      } catch {
+        // Task correction guidance cannot turn a failed local validation into an accepted result.
+      }
+    }
+    if (correctionInstruction?.trim()) {
+      context.responseCorrectionInstruction = correctionInstruction.trim();
+      return completeState();
+    }
     stop(context, 'The task result did not pass local validation.', 'invalid_output');
     return completeState();
   }

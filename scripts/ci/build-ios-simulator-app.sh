@@ -31,7 +31,7 @@ esac
 
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   # Capture the actual CocoaPods outputs so manifest writing can detect later drift.
-  node scripts/ci/detox-derived-data-cache.mjs verify-build-inputs production
+  node scripts/ci/ios-derived-data-cache.mjs verify-build-inputs production
 fi
 
 # CI keeps Xcode outputs separate from CocoaPods Codegen under ios/build/generated.

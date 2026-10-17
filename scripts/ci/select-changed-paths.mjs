@@ -88,12 +88,21 @@ export function selectChecksForEvent(eventName, payload, runDiff = gitDiff, poli
   }
 }
 
-function writeOutputs(selection, outputPath) {
+export function resolveFullValidationDeferred(eventName, payload) {
+  // Only an explicit draft PR event may defer the required full E2E gate.
+  return eventName === 'pull_request' && payload?.pull_request?.draft === true;
+}
+
+function writeOutputs(selection, outputPath, fullValidationDeferred) {
   if (!outputPath && process.env.GITHUB_ACTIONS === 'true') {
     throw new Error('GitHub Actions did not provide an output file');
   }
   if (!outputPath) return;
-  const lines = ['all=' + selection.all, 'reason=' + selection.reason];
+  const lines = [
+    'all=' + selection.all,
+    'reason=' + selection.reason,
+    'full_validation_deferred=' + fullValidationDeferred,
+  ];
   for (const key of CHECK_KEYS) lines.push(key + '=' + selection[key]);
   // Write completion last so dependent jobs can distinguish a finished selection from a failed selector.
   lines.push('selection_complete=true');
@@ -109,6 +118,7 @@ function main() {
     // Missing event details take the same full-verification path as a failed comparison.
   }
   const selection = selectChecksForEvent(eventName, payload);
+  const fullValidationDeferred = resolveFullValidationDeferred(eventName, payload);
   const selected = CHECK_KEYS.filter((key) => selection[key]);
   process.stdout.write(
     'CI path selection: event=' +
@@ -121,7 +131,7 @@ function main() {
       JSON.stringify(selected) +
       '\n',
   );
-  writeOutputs(selection, process.env.GITHUB_OUTPUT);
+  writeOutputs(selection, process.env.GITHUB_OUTPUT, fullValidationDeferred);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

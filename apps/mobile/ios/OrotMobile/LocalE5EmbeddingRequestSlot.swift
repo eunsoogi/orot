@@ -4,6 +4,7 @@ import React
 final class LocalE5EmbeddingRequestSlot {
     let requestId: String
     let reject: RCTPromiseRejectBlock
+    let preparationCancellation = LocalE5PreparationCancellation()
     var task: Task<Void, Never>?
     var cancelled = false
     var finished = false

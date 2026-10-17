@@ -12,6 +12,10 @@ import {
 } from '../../src/recording/nativeRecordingBridge';
 import { recordingService } from '../../src/recording/recordingService';
 import { recordingLibraryService } from '../../src/recording/recordingLibraryService';
+import {
+  observedPlaybackService,
+  type PlaybackObservation,
+} from './playbackObservation';
 
 const ignorePlayback = () => {};
 const ignoreCorrectionStatus = () => {};
@@ -24,6 +28,8 @@ export function RecordingLibraryVisualProbe() {
     null,
   );
   const [setupError, setSetupError] = useState('');
+  const [playbackObservation, setPlaybackObservation] =
+    useState<PlaybackObservation | null>(null);
   const transcriptService = useMemo(() => {
     const service = createTranscriptEvidenceProbeService(
       ignorePlayback,
@@ -62,10 +68,14 @@ export function RecordingLibraryVisualProbe() {
     playbackProbeMode === 'missing' ||
     playbackProbeMode === 'route';
   const playbackService = useMemo(
-    () => ({
-      ...recordingService,
-      playRange: playSyntheticTranscriptionRange,
-    }),
+    () =>
+      observedPlaybackService(
+        {
+          ...recordingService,
+          playRange: playSyntheticTranscriptionRange,
+        },
+        setPlaybackObservation,
+      ),
     [],
   );
 
@@ -140,10 +150,19 @@ export function RecordingLibraryVisualProbe() {
         transcriptService={transcriptService}
         playbackService={playbackProbeEnabled ? playbackService : undefined}
       />
+      {playbackProbeEnabled ? (
+        <View
+          accessible
+          testID="recording-playback-observation"
+          accessibilityLabel={JSON.stringify(playbackObservation)}
+          style={styles.observation}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   viewport: { alignSelf: 'center', flex: 1 },
+  observation: { width: 1, height: 1 },
 });

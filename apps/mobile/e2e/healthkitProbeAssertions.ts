@@ -102,12 +102,12 @@ export function assertAuthorizationPlan(
 
 export async function assertSampleTypeMappings(
   plans: ReadonlyMap<HealthKitFeature, AuthorizationPlan>,
-  native: Pick<HealthKitProbeModule, 'inspectSampleType'>,
+  healthKitModule: Pick<HealthKitProbeModule, 'inspectSampleType'>,
 ): Promise<void> {
   for (const item of sampleTypeCases) {
     if (plans.get(item.feature)?.availability === 'unsupportedFeature')
       continue;
-    const actual = await native.inspectSampleType(
+    const actual = await healthKitModule.inspectSampleType(
       item.feature,
       item.sampleKind,
     );

@@ -1,0 +1,16 @@
+name: Preserve integration executor setup diagnostics
+description: Retain setup evidence even when Spotlight or product verification prevents test execution.
+inputs:
+  cohort: { required: true }
+runs:
+  using: composite
+  steps:
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      if: always()
+      with:
+        name: ios-cohort-setup-${{ inputs.cohort }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          artifacts/ios-cohort/*.log
+          artifacts/ios-cohort/*.jsonl
+        if-no-files-found: warn
+        retention-days: 7

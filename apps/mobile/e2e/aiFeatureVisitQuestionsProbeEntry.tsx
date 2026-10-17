@@ -131,7 +131,7 @@ function AiFeatureVisitQuestionsProbeEntry() {
   } | null>(null);
 
   useEffect(() => {
-    // The native keyboard event gives Detox a shared point frame for the fixed-action clearance assertion.
+    // The UIKit keyboard event gives UI tests a shared point frame for the fixed-action clearance assertion.
     const shown = Keyboard.addListener('keyboardDidShow', event =>
       setKeyboardFrame({
         screenY: event.endCoordinates.screenY,

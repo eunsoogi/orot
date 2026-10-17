@@ -27,7 +27,7 @@ jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
 
-// Detox covers this route with a synthetic HealthKit fixture; no real account is read.
+// XCUITest covers this route with a synthetic HealthKit fixture; no real account is read.
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,

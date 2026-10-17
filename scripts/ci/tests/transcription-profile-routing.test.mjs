@@ -1,126 +1,22 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { getProfile } from '../ios-derived-data-cache-paths.mjs';
+import { iosTestConfig, iosTestBuildSpec } from '../ios-test-config.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
-const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
-const requireFromRepository = createRequire(join(repositoryRoot, 'package.json'));
-
-function requireWithProfile(modulePath) {
-  const previous = process.env.OROT_DETOX_TEST_PROFILE;
-  process.env.OROT_DETOX_TEST_PROFILE = 'transcription';
-  delete requireFromRepository.cache[requireFromRepository.resolve(modulePath)];
-  try {
-    return requireFromRepository(modulePath);
-  } finally {
-    delete requireFromRepository.cache[requireFromRepository.resolve(modulePath)];
-    if (previous === undefined) delete process.env.OROT_DETOX_TEST_PROFILE;
-    else process.env.OROT_DETOX_TEST_PROFILE = previous;
-  }
-}
-
-function loadTranscriptionConfigWithCleanPathEnvironment() {
-  const environment = { ...process.env };
-  delete environment.OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH;
-  const configPath = join(repositoryRoot, 'apps/mobile/e2e/transcription.detox.config.js');
-  const script = [
-    `const config = require(${JSON.stringify(configPath)});`,
-    "const app = config.apps['ios.speech-transcription'];",
-    'process.stdout.write(JSON.stringify({ binaryPath: app.binaryPath, build: app.build }));',
-  ].join('\n');
-  const result = spawnSync(process.execPath, ['-e', script], {
-    cwd: join(repositoryRoot, 'apps/mobile'),
-    encoding: 'utf8',
-    env: environment,
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.stdout || 'Unable to load transcription Detox config.');
-  }
-  return JSON.parse(result.stdout);
-}
-
-test('routes only the dedicated transcription test and native configuration', () => {
-  const detoxProfile = requireWithProfile('./scripts/ci/detox-e2e-profile.detox.config.cjs');
-  const jestProfile = requireWithProfile('./scripts/ci/detox-e2e-profile.jest.config.cjs');
-  const transcription = requireFromRepository('./apps/mobile/e2e/transcription.detox.config.js');
-  const transcriptionJest = requireFromRepository('./apps/mobile/e2e/transcription.jest.config.js');
-
-  assert.deepEqual(detoxProfile.configurations, transcription.configurations);
-  assert.deepEqual(detoxProfile.apps, transcription.apps);
-  assert.deepEqual(jestProfile.testMatch, transcriptionJest.testMatch);
-  assert.deepEqual(jestProfile.testPathIgnorePatterns, []);
-  assert.deepEqual(transcriptionJest.testMatch, ['<rootDir>/e2e/transcription.e2e.js']);
-  assert.match(
-    transcription.apps['ios.speech-transcription'].build,
-    /OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST/,
+// Speech retains its pinned execution runtime and both authentic integration/UI boundaries while reusing compatible Release products.
+test('Speech requires authentic recognition, one UI journey and a new-process readback plus separate asset preparation', () => {
+  const spec = iosTestConfig('speech');
+  assert.match(spec.runtime, /26-2/);
+  assert.equal(spec.configuration, 'Release');
+  assert.deepEqual(iosTestBuildSpec('speech'), iosTestBuildSpec('core'));
+  const integration = iosTestInventory('speech', 'integration');
+  const journey = iosTestInventory('speech', 'journey');
+  assert.equal(integration.length, 6);
+  assert.equal(journey.length, 2);
+  assert.deepEqual([...integration, ...journey].sort(), iosTestInventory('speech').sort());
+  assert.deepEqual(
+    iosTestCohortTasks('speech').map((task) => task.suite),
+    ['preparation', 'integration', 'journey'],
   );
-  assert.match(
-    transcription.apps['ios.speech-transcription'].build,
-    /ENTRY_FILE=e2e\/transcriptionProbeEntry\.tsx/,
-  );
-  assert.ok(
-    transcription.apps['ios.speech-transcription'].build.includes(
-      'ARCHS="$(uname -m)" ONLY_ACTIVE_ARCH=YES',
-    ),
-    'the transcription build must target the host architecture checked by the CI builder',
-  );
-  assert.notEqual(
-    transcription.apps['ios.speech-transcription'].binaryPath,
-    requireFromRepository('./apps/mobile/.detoxrc.js').apps['ios.release'].binaryPath,
-  );
-});
-
-test('aligns clean-environment transcription build, cache, and Detox app paths', () => {
-  const transcription = loadTranscriptionConfigWithCleanPathEnvironment();
-  const profile = getProfile('transcription');
-  const mobileRelativeCacheRoot = profile.derivedDataPath.replace(/^apps\/mobile\//, '');
-  const builder = readFileSync(join(repositoryRoot, 'scripts/ci/build-detox-apps.sh'), 'utf8');
-  const builderDefault = builder.match(
-    /transcription_derived_data_path="\$\{OROT_SPEECH_TRANSCRIPTION_DERIVED_DATA_PATH:-([^}]+)\}"/,
-  );
-
-  assert.ok(builderDefault, 'the transcription builder must declare its default DerivedData root');
-  assert.equal(builderDefault[1], mobileRelativeCacheRoot);
-  assert.equal(transcription.binaryPath, `${mobileRelativeCacheRoot}/${profile.productPath}`);
-  assert.ok(transcription.build.includes(`-derivedDataPath ${mobileRelativeCacheRoot}`));
-});
-
-test('connects a dedicated Simulator and validates the isolated profile summary in its own job', () => {
-  const simulatorSetup = readFileSync(
-    join(repositoryRoot, 'scripts/ci/prepare-detox-simulator.sh'),
-    'utf8',
-  );
-  const builder = readFileSync(join(repositoryRoot, 'scripts/ci/build-detox-apps.sh'), 'utf8');
-  const profilesWorkflow = readFileSync(
-    join(repositoryRoot, '.github/workflows/detox-e2e-profiles.yml'),
-    'utf8',
-  );
-  const suiteRunner = readFileSync(join(repositoryRoot, 'scripts/ci/run-test-suite.sh'), 'utf8');
-  const summaryGuard = readFileSync(
-    join(repositoryRoot, 'scripts/ci/require-jest-summary.mjs'),
-    'utf8',
-  );
-  const profileWorkflow = readFileSync(
-    join(repositoryRoot, '.github/workflows/detox-e2e-profile.yml'),
-    'utf8',
-  );
-  const profileAppCacheAction = readFileSync(
-    join(repositoryRoot, '.github/actions/detox-profile-app-cache/restore/action.yml'),
-    'utf8',
-  );
-
-  assert.match(simulatorSetup, /OROT_SPEECH_TRANSCRIPTION_SIMULATOR_UDID/);
-  assert.match(builder, /ios\.sim\.release\.transcription/);
-  assert.match(profileWorkflow, /inputs\.profile == 'transcription'/);
-  // The profile workflow delegates its app path allowlist to the shared cache action.
-  assert.match(profileAppCacheAction, /build-detox-\$\{\{ inputs\.profile \}\}\/Build\/Products/);
-  assert.match(profilesWorkflow, /detox_transcription_e2e:[\s\S]*?profile: transcription/);
-  assert.doesNotMatch(profilesWorkflow, /require-detox-transcription-aggregate\.mjs/);
-  assert.match(suiteRunner, /node scripts\/ci\/require-jest-summary\.mjs/);
-  assert.match(summaryGuard, /Speech Transcription/);
-  assert.match(summaryGuard, /expected exactly one profile summary/);
 });

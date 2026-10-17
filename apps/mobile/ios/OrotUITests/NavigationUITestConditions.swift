@@ -1,0 +1,130 @@
+import XCTest
+
+@MainActor
+enum NavigationUITestConditions {
+    struct NavigationAction {
+        let control: XCUIElement
+        let toolbar: XCUIElement
+    }
+
+    struct SafeAreaObservation {
+        let frame: CGRect
+        let top: CGFloat
+        let bottom: CGFloat
+    }
+
+    /// The test-only root exposes the public native SafeAreaListener event. Compare its actual frame before using the insets for another view.
+    static func safeArea(_ app: XCUIApplication, testCase: XCTestCase? = nil) throws -> SafeAreaObservation {
+        let marker = UITestConditions.element(app, "safe-area-test-observation")
+        XCTAssertTrue(UITestConditions.exists(marker), app.debugDescription)
+        let data = try XCTUnwrap(UITestConditions.text(marker).data(using: .utf8))
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        if let testCase {
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+            attachment.name = "safe-area-test-observation"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+        }
+        let frame = try XCTUnwrap(report["frame"] as? [String: Double])
+        let insets = try XCTUnwrap(report["insets"] as? [String: Double])
+        return try SafeAreaObservation(
+            frame: CGRect(x: XCTUnwrap(frame["x"]), y: XCTUnwrap(frame["y"]), width: XCTUnwrap(frame["width"]), height: XCTUnwrap(frame["height"])),
+            top: XCTUnwrap(insets["top"]), bottom: XCTUnwrap(insets["bottom"]),
+        )
+    }
+
+    static func navigationAction(_ app: XCUIApplication, _ identifier: String) throws -> NavigationAction {
+        let query = app.buttons.matching(identifier: identifier)
+        XCTAssertTrue(UITestConditions.exists(query.firstMatch), app.debugDescription)
+        // The root glass container and contextual stack expose the same native buttons without an XCUI Toolbar role.
+        // Select only observed navigation containers, retaining containment, active geometry and 44-point requirements.
+        let bars = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", ["navigation-toolbar", "navigation-root-tabs-glass-backdrop"])).allElementsBoundByIndex
+        for bar in bars where bar.exists && bar.isHittable {
+            let barFrame = bar.frame
+            for control in query.allElementsBoundByIndex where control.exists {
+                let frame = control.frame
+                if frame.width >= 44, frame.height >= 44, barFrame.insetBy(dx: -1, dy: -1).contains(frame) {
+                    return NavigationAction(control: control, toolbar: bar)
+                }
+            }
+        }
+        throw NSError(domain: "NavigationUITests", code: 1,
+                      userInfo: [NSLocalizedDescriptionKey: "No active 44-point navigation control: \(identifier); \(app.debugDescription)"])
+    }
+
+    static func tapNavigation(_ app: XCUIApplication, _ identifier: String) throws {
+        let action = try navigationAction(app, identifier)
+        // iOS can misreport the child's activation point. Send the touch through its measured active toolbar.
+        // Read each frame once for this gesture; later gestures must observe the elements again.
+        let controlFrame = action.control.frame
+        let toolbarFrame = action.toolbar.frame
+        let offset = CGVector(dx: controlFrame.midX - toolbarFrame.minX,
+                              dy: controlFrame.midY - toolbarFrame.minY)
+        action.toolbar.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
+    }
+
+    static func route(_ app: XCUIApplication, markers: [String]) {
+        let predicate = NSPredicate { _, _ in
+            markers.contains { identifier in
+                let element = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+                guard element.exists else { return false }
+                let frame = element.frame
+                return !frame.isEmpty && frame.intersects(app.frame)
+            }
+        }
+        if predicate.evaluate(with: nil) {
+            return
+        }
+        let ready = XCTNSPredicateExpectation(predicate: predicate, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, app.debugDescription)
+    }
+
+    static func openTab(_ app: XCUIApplication, _ tab: String, markers: [String]) throws {
+        try tapNavigation(app, "navigation-tab-\(tab)")
+        route(app, markers: markers)
+    }
+
+    static func scrollToBottom(_ app: XCUIApplication, _ scrollID: String) throws {
+        let scroll = UITestConditions.element(app, scrollID)
+        XCTAssertTrue(UITestConditions.exists(scroll))
+        let viewport = scroll.scrollViews.firstMatch.exists ? scroll.scrollViews.firstMatch : scroll
+        // Rank one coherent observation rather than repeatedly querying accessibility during comparison.
+        let viewportFrame = viewport.frame
+        let content = viewport.children(matching: .any).allElementsBoundByIndex.map {
+            (element: $0, frame: $0.frame)
+        }.filter {
+            !$0.frame.isEmpty && $0.frame.width >= viewportFrame.width * 0.5
+        }
+        guard let anchor = content.max(by: { $0.frame.height < $1.frame.height }) else {
+            throw NSError(domain: "NavigationUITests", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "Missing measured scroll content: \(scrollID)"])
+        }
+        // A short import page has real content smaller than its viewport. Its fully contained native frame already proves the bottom without an artificial scroll.
+        if anchor.frame.height <= viewportFrame.height, viewportFrame.insetBy(dx: -0.5, dy: -0.5).contains(anchor.frame) {
+            return
+        }
+        var previous = anchor.frame
+        for _ in 0 ..< 20 {
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            start.press(forDuration: 0.05, thenDragTo: end)
+            let current = anchor.element.frame
+            if abs(current.minY - previous.minY) < 0.5 {
+                return
+            }
+            previous = current
+        }
+        throw NSError(domain: "NavigationUITests", code: 3,
+                      userInfo: [NSLocalizedDescriptionKey: "Scroll content did not reach a stable bottom: \(scrollID)"])
+    }
+
+    static func contentAboveBar(_ app: XCUIApplication, scrollID: String, contentID: String,
+                                navigationID: String = "navigation-back") throws
+    {
+        try scrollToBottom(app, scrollID)
+        let content = UITestConditions.element(app, contentID)
+        XCTAssertTrue(content.exists && !content.frame.isEmpty)
+        let active = try navigationAction(app, navigationID)
+        XCTAssertLessThanOrEqual(content.frame.maxY, active.toolbar.frame.minY - 16)
+    }
+}

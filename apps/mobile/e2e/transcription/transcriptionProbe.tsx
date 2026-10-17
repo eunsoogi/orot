@@ -61,13 +61,11 @@ export interface TranscriptionProbeReport {
 }
 
 const fixture = syntheticFixture as SyntheticTranscriptionFixture;
-const fixtureNativeBridge = createSyntheticFixtureNativeBridge(
+const fixtureBridge = createSyntheticFixtureNativeBridge(
   appleSpeechTranscriptionNativeBridge,
   fixture.provenance.synthetic,
 );
-const fixtureSpeechProvider = new AppleOnDeviceSpeechProvider(
-  fixtureNativeBridge,
-);
+const fixtureSpeechProvider = new AppleOnDeviceSpeechProvider(fixtureBridge);
 const EXPLICITLY_UNSUPPORTED = new Set([
   'unsupported_language',
   'unsupported_device',
@@ -97,7 +95,7 @@ export function TranscriptionProbe() {
 
   useEffect(() => {
     let mounted = true;
-    runNativeProbe().then(
+    runSpeechProbe().then(
       next => {
         if (mounted) setReport(next);
       },
@@ -120,7 +118,7 @@ export function TranscriptionProbe() {
   return <TranscriptionProbeView report={report} />;
 }
 
-async function runNativeProbe(): Promise<TranscriptionProbeReport> {
+async function runSpeechProbe(): Promise<TranscriptionProbeReport> {
   if (!fixture.provenance.synthetic) {
     throw new Error(
       'The Simulator storage exception requires a fixture marked synthetic.',

@@ -4,7 +4,7 @@ import App from '../App';
 import { runCommonObservationsStorageProbe } from '../src/healthkit/commonObservations/e2eProbe';
 import type { CommonObservationFeature } from '../src/healthkit/commonObservations/types';
 
-const native = NativeModules.HealthKitModule as Parameters<
+const healthKitModule = NativeModules.HealthKitModule as Parameters<
   typeof runCommonObservationsStorageProbe
 >[0];
 
@@ -20,7 +20,7 @@ export function CommonObservationsProbe() {
     setSummary('probe=running; storage=encrypted-local');
     try {
       const outcome = await runCommonObservationsStorageProbe(
-        native,
+        healthKitModule,
         selectedFeatures,
       );
       setSummary(outcome.summary);

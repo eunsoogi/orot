@@ -30,8 +30,8 @@ enum BackupMigrationFailure: LocalizedError {
     }
 }
 
-#if OROT_BACKUP_PROBE_TEST
-    /// Contains fault injection and recording fixtures compiled only for the dedicated backup probe.
+#if OROT_BACKUP_PROBE_TEST || OROT_TESTS
+    /// Contains fault injection and recording fixtures absent from default application builds.
     enum BackupMigrationProbeSupport {
         private final class ReadbackFault: @unchecked Sendable {
             private let lock = NSLock()
@@ -69,6 +69,16 @@ enum BackupMigrationFailure: LocalizedError {
 
         private static let readbackFault = ReadbackFault()
 
+        /// Fixed failure categories keep fixture diagnostics separate from arbitrary filesystem and Keychain errors.
+        static func failureCategory(_ error: Error) -> String {
+            switch error as? ProbeFailure {
+            case .invalidRecordingID: "invalid-recording-id"
+            case .recordingNotFound: "recording-not-found"
+            case .backupExclusionNotReadable: "backup-exclusion-not-readable"
+            case nil: "unclassified-native-failure"
+            }
+        }
+
         static func armPostUpdateReadbackFailure() {
             readbackFault.arm()
         }
@@ -104,7 +114,7 @@ enum BackupMigrationFailure: LocalizedError {
             } catch let error as RecordingFileSecurityError {
                 preparationError = preparationErrorCode(error)
             } catch {
-                preparationError = "other-native-error"
+                preparationError = "other-backup-error"
             }
 
             url.removeCachedResourceValue(forKey: .isExcludedFromBackupKey) // Drop stale exclusion metadata.
@@ -183,68 +193,4 @@ enum BackupMigrationFailure: LocalizedError {
         }
     }
 
-    extension BackupMigrationModule {
-        @objc(armPostUpdateReadbackFailureForProbe:rejecter:)
-        func armPostUpdateReadbackFailureForProbe(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter _: @escaping RCTPromiseRejectBlock,
-        ) {
-            BackupMigrationProbeSupport.armPostUpdateReadbackFailure()
-            resolve(true)
-        }
-
-        @objc(postUpdateReadbackFailureWasTriggeredForProbe:rejecter:)
-        func postUpdateReadbackFailureWasTriggeredForProbe(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter _: @escaping RCTPromiseRejectBlock,
-        ) {
-            resolve(BackupMigrationProbeSupport.postUpdateReadbackFailureWasTriggered())
-        }
-
-        @objc(prepareLegacyRecordingForBackupProbe:resolver:rejecter:)
-        func prepareLegacyRecordingForBackupProbe(
-            _ recordingID: String,
-            resolver resolve: @escaping RCTPromiseResolveBlock,
-            rejecter reject: @escaping RCTPromiseRejectBlock,
-        ) {
-            performBackupProbe(resolve: resolve, reject: reject) {
-                try BackupMigrationProbeSupport.prepareLegacyRecording(recordingID: recordingID)
-            }
-        }
-
-        @objc(inspectRecordingForBackupProbe:resolver:rejecter:)
-        func inspectRecordingForBackupProbe(
-            _ recordingID: String,
-            resolver resolve: @escaping RCTPromiseResolveBlock,
-            rejecter reject: @escaping RCTPromiseRejectBlock,
-        ) {
-            performBackupProbe(resolve: resolve, reject: reject) {
-                try BackupMigrationProbeSupport.inspectRecording(recordingID: recordingID)
-            }
-        }
-
-        @objc(backupKeyAccessibilityForProbe:rejecter:)
-        func backupKeyAccessibilityForProbe(
-            _ resolve: @escaping RCTPromiseResolveBlock,
-            rejecter reject: @escaping RCTPromiseRejectBlock,
-        ) {
-            performBackupProbe(resolve: resolve, reject: reject) {
-                try BackupMigrationModule.backupKeyAccessibilityForProbe()
-            }
-        }
-
-        private func performBackupProbe(
-            resolve: @escaping RCTPromiseResolveBlock,
-            reject: @escaping RCTPromiseRejectBlock,
-            operation: @escaping () throws -> Any,
-        ) {
-            DispatchQueue.global(qos: .utility).async {
-                do {
-                    try resolve(operation())
-                } catch {
-                    reject("BACKUP_PROBE_FAILED", "The isolated backup probe failed.", error as NSError)
-                }
-            }
-        }
-    }
 #endif

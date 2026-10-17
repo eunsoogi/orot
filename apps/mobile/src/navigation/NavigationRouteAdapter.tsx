@@ -17,6 +17,7 @@ import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
 import { appColors } from '../layout/appColors';
+import { observeNavigationTest } from './navigationTestObservation';
 
 export interface NavigationRouteActions<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -90,6 +91,7 @@ export function NavigationRouteAdapter<Name extends string>({
     (routeKey: string, source: NavigationLeaveStateSource<Name>) => {
       const registration = { token: Symbol('navigation-leave-state'), source };
       registeredLeaveStates.current.set(routeKey, registration);
+      observeNavigationTest('leave-state-register', { routeKey });
       setLeaveStateVersion(version => version + 1);
       return () => {
         if (
@@ -99,16 +101,31 @@ export function NavigationRouteAdapter<Name extends string>({
           return;
         }
         registeredLeaveStates.current.delete(routeKey);
+        observeNavigationTest('leave-state-cleanup', {
+          routeKey,
+          logicalKeys: controller.getSnapshot().routes.map(item => item.key),
+        });
         setLeaveStateVersion(version => version + 1);
       };
     },
-    [],
+    [controller],
   );
 
   const canNativeGoBack = (routeKey: string) => {
-    if (snapshot.isTransitioning) return false;
+    if (snapshot.isTransitioning) {
+      observeNavigationTest('native-guard-transitioning', { routeKey });
+      return false;
+    }
     try {
       const state = getLeaveStateSource(routeKey)?.readState();
+      observeNavigationTest('native-guard-state', {
+        routeKey,
+        hasState: !!state,
+        canLeave: state?.canLeave !== false,
+        dirty: !!state?.hasUnsavedChanges,
+        recording: !!state?.isRecording,
+        ongoing: !!state?.hasOngoingOperation,
+      });
       return (
         !!state &&
         state.canLeave !== false &&
@@ -117,6 +134,7 @@ export function NavigationRouteAdapter<Name extends string>({
         !state.hasOngoingOperation
       );
     } catch {
+      observeNavigationTest('native-guard-read-failed', { routeKey });
       return false;
     }
   };
