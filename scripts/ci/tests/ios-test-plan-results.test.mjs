@@ -82,8 +82,8 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   const outcome = run(root);
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
-  assert.equal(result.observations.length, 82);
-  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 82);
+  assert.equal(result.observations.length, 86);
+  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 86);
   assert.equal(
     JSON.parse(readFileSync(join(root, 'speech-accuracy.json'), 'utf8')).cases.length,
     3,

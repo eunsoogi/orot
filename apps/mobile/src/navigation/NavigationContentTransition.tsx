@@ -23,11 +23,22 @@ export function NavigationContentTransition({
     transitionKey,
     children,
   }));
+  const displayedContent = useRef<DisplayedContent>({
+    transitionKey,
+    children,
+  });
   const [fadeInPending, setFadeInPending] = useState(false);
   const opacity = useRef(new Animated.Value(1)).current;
   const transitionGeneration = useRef(0);
   const latestContent = useRef({ transitionKey, children });
   latestContent.current = { transitionKey, children };
+  if (displayedContent.current.transitionKey !== displayed.transitionKey) {
+    displayedContent.current = displayed;
+  }
+  if (displayed.transitionKey === transitionKey) {
+    // Refresh the retained snapshot while this route is still the visible tab.
+    displayedContent.current = { transitionKey, children };
+  }
 
   useEffect(() => {
     if (displayed.transitionKey === transitionKey) {
@@ -113,7 +124,7 @@ export function NavigationContentTransition({
     >
       {displayed.transitionKey === transitionKey
         ? children
-        : displayed.children}
+        : displayedContent.current.children}
     </Animated.View>
   );
 }

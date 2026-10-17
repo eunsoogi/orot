@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
   Keyboard,
@@ -7,7 +7,10 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { navigationText } from '../i18n/navigation';
 import {
   NavigationGlassSurface,
@@ -150,29 +153,26 @@ export function NavigationActionBar<Name extends string>({
     </View>
   );
 
-  const surface = (
-    // Keep transforms outside the legacy native host: removing one from that
-    // host can leave its UIKit content offset from the measured React frame.
-    <View
-      pointerEvents="box-none"
-      style={
-        rootTabs && !isKeyboardVisible && !safeAreaHandledByParent
-          ? styles.rootTabOverlap
-          : undefined
+  const barSurface = (
+    <Surface
+      actions={nativeBindings.actions}
+      onAction={nativeBindings.onAction}
+      testID={
+        Surface === NavigationGlassSurface && Platform.OS === 'ios'
+          ? 'navigation-bar-native-surface'
+          : 'navigation-bar-fallback'
       }
     >
-      <Surface
-        actions={nativeBindings.actions}
-        onAction={nativeBindings.onAction}
-        testID={
-          Surface === NavigationGlassSurface && Platform.OS === 'ios'
-            ? 'navigation-bar-native-surface'
-            : 'navigation-bar-fallback'
-        }
-      >
-        {actions}
-      </Surface>
-    </View>
+      {actions}
+    </Surface>
+  );
+  const reclaimRootTabInset =
+    rootTabs && !isKeyboardVisible && !safeAreaHandledByParent;
+  // Keep any transform outside the native host so UIKit geometry stays aligned.
+  const surface = reclaimRootTabInset ? (
+    <RootTabSafeAreaOverlap>{barSurface}</RootTabSafeAreaOverlap>
+  ) : (
+    <View pointerEvents="box-none">{barSurface}</View>
   );
 
   // Keep one home-indicator inset and a narrow side gutter around the native bar.
@@ -192,6 +192,29 @@ export function NavigationActionBar<Name extends string>({
   );
 }
 
+/** Reclaims only inset space available on this device, preserving zero-inset targets. */
+function RootTabSafeAreaOverlap({
+  children,
+}: {
+  readonly children: ReactNode;
+}) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{
+        transform: [
+          {
+            translateY: Math.min(ROOT_TAB_SAFE_AREA_TRANSLATION, bottomInset),
+          },
+        ],
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flexShrink: 0,
@@ -199,10 +222,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: NAVIGATION_ACTION_TOP_PADDING,
     paddingBottom: NAVIGATION_ACTION_BOTTOM_PADDING,
-  },
-  // Reclaim part of the home-indicator inset for root tabs without moving contextual actions.
-  rootTabOverlap: {
-    transform: [{ translateY: ROOT_TAB_SAFE_AREA_TRANSLATION }],
   },
   actions: {
     flexDirection: 'row',

@@ -85,6 +85,26 @@ test('keeps only the latest root tab transition when rapid taps interrupt a fade
   expect(screen.getByText('Schedule')).toBeVisible();
 });
 
+test('fades out the latest rendered content when the displayed tab props change', async () => {
+  const view = await render(transition('home', 'Home loading'));
+  await view.rerender(transition('home', 'Home ready'));
+  expect(screen.getByText('Home ready')).toBeVisible();
+
+  await view.rerender(transition('records', 'Records'));
+
+  expect(
+    screen.getByText('Home ready', { includeHiddenElements: true }),
+  ).toBeTruthy();
+  expect(screen.queryByText('Home loading')).toBeNull();
+  expect(screen.queryByText('Records')).toBeNull();
+  await act(async () => {
+    pendingAnimations[0]?.complete({ finished: true });
+  });
+  expect(
+    screen.getByText('Records', { includeHiddenElements: true }),
+  ).toBeTruthy();
+});
+
 test('switches immediately without animation when Reduce Motion is enabled', async () => {
   const view = await render(transition('home', 'Home'));
   await view.rerender(transition('records', 'Records', true));

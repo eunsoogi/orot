@@ -98,13 +98,13 @@ test('full and focused visible job names use one consistent role and target', ()
   );
 });
 
-test('full integration execution preserves 82 scheduled observations and all eight strict provider cases without a receipt substitution', () => {
+test('full integration execution preserves all 86 scheduled observations and eight strict provider cases without a receipt substitution', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(scheduled.length, 82);
+  assert.equal(scheduled.length, 86);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 82);
+  assert.equal(identifiers.size, 86);
   const provider = iosTestInventory('provider-data');
   assert.equal(provider.length, 8);
   for (const identifier of provider) assert.ok(identifiers.has(identifier));

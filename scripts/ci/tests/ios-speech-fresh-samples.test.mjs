@@ -76,7 +76,7 @@ test('raw and compact evidence is isolated by CI run and attempt without intra-r
   assert.doesNotMatch(commands, /speech-second|speech-third/);
 });
 
-test('actual Linux plan reports separate producers, independent suites and one complete original inventory', () => {
+test('actual Linux plan reports separate producers, independent suites and the complete registered inventory', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-speech-plan-'));
   try {
     const output = join(directory, 'outputs');
@@ -88,8 +88,8 @@ test('actual Linux plan reports separate producers, independent suites and one c
     const value = JSON.parse(result.stdout);
     assert.equal(value.macJobs, 20);
     assert.equal(value.maximumConcurrentMacJobs, 17);
-    assert.equal(value.uniqueTestCases, 82);
-    assert.equal(value.scheduledTestObservations, 82);
+    assert.equal(value.uniqueTestCases, 86);
+    assert.equal(value.scheduledTestObservations, 86);
     assert.equal(value.focusedSelectionObservations, undefined);
     assert.equal(value.totalScheduledTestObservations, undefined);
     assert.equal(value.speechSamples, undefined);
