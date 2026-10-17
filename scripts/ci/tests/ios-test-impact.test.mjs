@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import test from 'node:test';
+import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestImpactForPath } from '../ios-test-impact.mjs';
 
 const sorted = (value) => value.slice().sort();
 
-test('recording source changes retain every stateful and native recording dependent', () => {
+test('recording source changes retain stateful and native recording-export dependents', () => {
   const impact = iosTestImpactForPath('apps/mobile/src/recording/recordingController.ts');
 
   assert.deepEqual(
     sorted(impact.cohorts),
     sorted([
       'core-integration',
+      'core-ui',
       'persistence',
       'isolation',
       'backup',
@@ -62,6 +64,48 @@ test('maintained native tests select each cohort that owns their assertions', ()
       [...impact.cohorts].sort(),
       [...owners].sort(),
       `${path} must select exactly its maintained owners`,
+    );
+  }
+});
+
+test('source paths include cohorts owning their maintained native dependent tests', () => {
+  const cases = [
+    {
+      sourcePath: 'apps/mobile/src/recording/RecordingExportPanel.tsx',
+      testPath: 'apps/mobile/ios/OrotUITests/RecordingExportUITests.swift',
+      cohort: 'core-ui',
+      identifier:
+        'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+    },
+    {
+      sourcePath: 'apps/mobile/src/recording/recordingExportService.ts',
+      testPath: 'apps/mobile/ios/OrotUITests/RecordingExportUITests.swift',
+      cohort: 'core-ui',
+      identifier:
+        'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
+    },
+    {
+      sourcePath: 'apps/mobile/src/navigation/nativeNavigationActions.ts',
+      testPath: 'apps/mobile/ios/OrotIntegrationTests/NavigationLayoutIntegrationTests.swift',
+      cohort: 'core-integration',
+      identifier:
+        'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
+    },
+  ];
+
+  for (const { sourcePath, testPath, cohort, identifier } of cases) {
+    assert.ok(existsSync(testPath), `${testPath} must remain maintained`);
+    assert.ok(
+      iosTestCohortTasks(cohort).some((task) => task.identifiers.includes(identifier)),
+      `${identifier} must remain in the ${cohort} execution inventory`,
+    );
+    assert.ok(
+      iosTestImpactForPath(testPath).cohorts.includes(cohort),
+      `${testPath} must select its owning ${cohort} cohort`,
+    );
+    assert.ok(
+      iosTestImpactForPath(sourcePath).cohorts.includes(cohort),
+      `${sourcePath} must select the dependent test's ${cohort} cohort`,
     );
   }
 });

@@ -22,6 +22,9 @@ const recording = [
   'microphone',
   'speech',
 ];
+// The maintained plan includes recording-export UI and root-tab integration assertions.
+const recordingSource = [...recording, 'core-ui'];
+const navigationSource = [...ui, 'core-integration'];
 const questions = ['core-integration', 'questions', 'provider'];
 const calendar = ['core-integration', 'calendar', 'provider', 'questions'];
 const calendarUi = ['calendar', 'provider', 'questions'];
@@ -85,7 +88,7 @@ function sourceImpact(path) {
   const [area] = relative.split('/');
   switch (area) {
     case 'recording':
-      return impact(recording, 'recording-source');
+      return impact(recordingSource, 'recording-source');
     case 'transcription':
       return impact(
         ['core-integration', 'persistence', 'recordings', 'microphone', 'speech'],
@@ -119,6 +122,7 @@ function sourceImpact(path) {
     case 'aiFeatures':
       return impact([...provider, 'navigation', 'core-ui'], 'cross-feature-workflow-source');
     case 'navigation':
+      return impact(navigationSource, 'shared-ui-source');
     case 'layout':
     case 'routes':
     case 'i18n':
