@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import test from 'node:test';
+import { executeIosFixtureSession } from '../ios-test-fixture-session.mjs';
+
+test('app-hosted integration cases cannot enter a UI lifecycle session', async () => {
+  await assert.rejects(
+    executeIosFixtureSession({
+      identifiers: ['OrotIntegrationTests/ControlledTests/testCase'],
+      command: [process.execPath, '-e', 'process.exit(9)'],
+      handle: () => {
+        throw new Error('Preparation must not execute');
+      },
+    }),
+    /require explicit UI test identifiers/,
+  );
+});
 
 // Exercise the actual controller in a separate process so cancellation cannot signal the test harness.
 function execute(child, handle = '() => {}') {
