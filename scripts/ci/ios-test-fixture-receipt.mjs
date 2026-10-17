@@ -6,6 +6,7 @@ const serviceNames = [
   'com.orot.provider.openai.credentials',
   'com.orot.provider.openai.simulator-fixture',
 ];
+const preferenceNames = ['OrotFixturePollution', 'com.orot.provider.openai.ext-agent-host-id'];
 
 function exactBooleans(value, names, expected) {
   return (
@@ -31,7 +32,7 @@ export function verifyIosFixtureReceipt(receipt, action, token) {
     (!exactBooleans(state?.paths, pathNames, false) ||
       !exactBooleans(state?.keys, serviceNames, false) ||
       state.keyFingerprint !== null ||
-      state.preferencesEmpty !== true ||
+      !exactBooleans(state?.preferences, preferenceNames, false) ||
       state.pollutedPreferencesAbsent !== true ||
       state.microphoneUndetermined !== true ||
       state.speechUndetermined !== true)
@@ -42,8 +43,6 @@ export function verifyIosFixtureReceipt(receipt, action, token) {
     (!exactBooleans(state?.paths, pathNames, true) ||
       !exactBooleans(state?.keys, serviceNames, true) ||
       !/^[a-f0-9]{64}$/.test(state.keyFingerprint ?? '') ||
-      state.preferencesEmpty !== false ||
-      state.pollutedPreferencesAbsent !== false ||
       state.microphoneGranted !== true ||
       state.foreignFile !== true ||
       state.foreignKey !== true)

@@ -31,6 +31,10 @@ export function commandFixture({
     keys: Object.fromEntries(keys.map((name) => [name, false])),
     keyFingerprint: null,
     preferencesEmpty: true,
+    preferences: {
+      OrotFixturePollution: false,
+      'com.orot.provider.openai.ext-agent-host-id': false,
+    },
     pollutedPreferencesAbsent: true,
     microphoneUndetermined: true,
     speechUndetermined: true,

@@ -94,6 +94,9 @@
                 "paths": paths.mapValues { manager.fileExists(atPath: $0.path) }, "keys": keys,
                 "keyFingerprint": fingerprint.map { $0 as Any } ?? NSNull(),
                 "preferencesEmpty": (UserDefaults.standard.persistentDomain(forName: bundle) ?? [:]).isEmpty,
+                "preferences": Dictionary(uniqueKeysWithValues: preferenceKeys.map {
+                    ($0, UserDefaults.standard.object(forKey: $0) != nil)
+                }),
                 "pollutedPreferencesAbsent": preferenceKeys.allSatisfy { UserDefaults.standard.object(forKey: $0) == nil },
                 "microphoneUndetermined": microphone.undetermined,
                 "microphoneGranted": microphone.granted,
@@ -101,6 +104,7 @@
                 "speechGranted": SFSpeechRecognizer.authorizationStatus() == .authorized,
                 "foreignFile": (try? Data(contentsOf: foreignFile(token))) == Data(token.utf8),
                 "foreignKey": keyData("com.orot.tests.foreign.\(token)") == Data(token.utf8),
+                "foreignPreference": UserDefaults.standard.string(forKey: "OrotFixtureForeign-\(token)") == token,
             ]
         }
 
@@ -113,16 +117,24 @@
             for service in services {
                 try deleteKey(service)
             }
-            // Materialize the existing domain and publish individual deletions before removing it.
-            // A cold-process domain removal alone was observed empty locally but retained old values in the next XCTest host.
-            for key in (UserDefaults.standard.persistentDomain(forName: bundle) ?? [:]).keys {
+            // Reset only the declared fixture/provider keys. React and unrelated application preferences are not fixture-owned.
+            // Isolation invokes this in its own cold test host before React, so that host owns both mutation and observation.
+            for key in preferenceKeys {
                 UserDefaults.standard.removeObject(forKey: key)
             }
-            UserDefaults.standard.removePersistentDomain(forName: bundle)
             guard UserDefaults.standard.synchronize() else { throw NSError(domain: "OrotFixtureState", code: 3) }
         }
 
-        /// The preceding integration process created a real encrypted row and key. Seed every remaining owned category plus foreign sentinels.
+        /// Preference fixtures belong to the process exercising reset; OS preference-daemon persistence is not the transfer oracle.
+        static func preparePreferences(_ token: String) throws {
+            try validate(token)
+            for key in preferenceKeys {
+                UserDefaults.standard.set(token, forKey: key)
+            }
+            UserDefaults.standard.set(token, forKey: "OrotFixtureForeign-\(token)")
+        }
+
+        /// The preceding process closed its real encrypted database. Only files, Keychain and their sentinels cross that boundary.
         static func seedPollution(_ token: String) throws {
             try validate(token)
             guard manager.fileExists(atPath: paths["database"]!.path), try keyData(services[0]) != nil,
@@ -139,10 +151,6 @@
             for service in services.dropFirst(2) {
                 try seedKey(service, token: token)
             }
-            for key in preferenceKeys {
-                UserDefaults.standard.set(token, forKey: key)
-            }
-            UserDefaults.standard.synchronize()
             try Data(token.utf8).write(to: foreignFile(token), options: .atomic)
             try seedKey("com.orot.tests.foreign.\(token)", token: token)
         }
@@ -154,6 +162,8 @@
                 try manager.removeItem(at: foreignFile(token))
             }
             try deleteKey("com.orot.tests.foreign.\(token)")
+            UserDefaults.standard.removeObject(forKey: "OrotFixtureForeign-\(token)")
+            guard UserDefaults.standard.synchronize() else { throw NSError(domain: "OrotFixtureState", code: 3) }
         }
     }
 #endif

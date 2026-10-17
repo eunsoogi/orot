@@ -39,20 +39,7 @@ const observations = [];
 const started = Date.now();
 let phase = 0;
 const receipts = await executeFixtureIsolationPhases({
-  async reset() {
-    const receipt = await runIosFixtureCommand(
-      'core',
-      owner,
-      'reset',
-      phase ? token : randomUUID(),
-    );
-    // Keep both cold-process observations even if the later XCTest host fails.
-    writeFileSync(
-      join(directory, phase ? 'reset-after-pollution.json' : 'initial-reset.json'),
-      JSON.stringify(receipt, null, 2) + '\n',
-    );
-    return receipt;
-  },
+  token,
   async pollute() {
     // Native permission tests still exercise prompts; this explicit grant only creates a reset-regression contaminant.
     ownedFixtureCommand('core', owner, [
@@ -67,6 +54,8 @@ const receipts = await executeFixtureIsolationPhases({
     return receipt;
   },
   async run(identifier, baseline) {
+    // Permissions remain a host-owned boundary; the cold XCTest host resets its own files, keys and preferences before React.
+    ownedFixtureCommand('core', owner, ['privacy', owner.udid, 'reset', 'all', 'com.orot.mobile']);
     const name = String(++phase).padStart(2, '0');
     const bundle = join(directory, name + '.xcresult');
     let failure;
@@ -123,12 +112,17 @@ const receipts = await executeFixtureIsolationPhases({
       }
     }
     if (failure) throw failure;
-    return readAttachment(
+    const result = readAttachment(
       attachments,
       identifier,
       owner.udid,
       baseline ? 'fixture-isolation-verified' : 'fixture-isolation-seeded',
     );
+    writeFileSync(
+      join(directory, name + '-reset.json'),
+      JSON.stringify(result.reset, null, 2) + '\n',
+    );
+    return result;
   },
 });
 // The proof's newly initialized empty database is also removed before ordinary Core tests begin.

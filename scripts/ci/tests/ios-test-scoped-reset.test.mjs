@@ -22,7 +22,11 @@ const reset = {
     paths: booleans(paths, false),
     keys: booleans(keys, false),
     keyFingerprint: null,
-    preferencesEmpty: true,
+    preferencesEmpty: false,
+    preferences: {
+      OrotFixturePollution: false,
+      'com.orot.provider.openai.ext-agent-host-id': false,
+    },
     pollutedPreferencesAbsent: true,
     microphoneUndetermined: true,
     speechUndetermined: true,
@@ -37,7 +41,14 @@ test('scoped reset requires complete observed absence and rejects each contamina
     { paths: {} },
     { keys: {} },
     { keyFingerprint: 'old' },
-    { preferencesEmpty: false },
+    { preferences: {} },
+    { preferences: { ...reset.state.preferences, OrotFixturePollution: true } },
+    {
+      preferences: {
+        ...reset.state.preferences,
+        'com.orot.provider.openai.ext-agent-host-id': true,
+      },
+    },
     { pollutedPreferencesAbsent: false },
     { microphoneUndetermined: false },
     { speechUndetermined: false },
@@ -55,7 +66,7 @@ test('scoped reset requires complete observed absence and rejects each contamina
     assert.throws(() => verifyIosFixtureReceipt({ ...reset, ...change }, 'reset', token));
 });
 
-test('pollution proof requires real database, files, keys, preferences, permission and foreign sentinels', () => {
+test('cold pollution proof requires real database, files, keys, permission and foreign file/key sentinels', () => {
   const seeded = {
     ...reset,
     action: 'seed',
@@ -63,8 +74,6 @@ test('pollution proof requires real database, files, keys, preferences, permissi
       paths: booleans(paths, true),
       keys: booleans(keys, true),
       keyFingerprint: 'a'.repeat(64),
-      preferencesEmpty: false,
-      pollutedPreferencesAbsent: false,
       microphoneGranted: true,
       foreignFile: true,
       foreignKey: true,
@@ -75,7 +84,6 @@ test('pollution proof requires real database, files, keys, preferences, permissi
     { paths: { ...seeded.state.paths, database: false } },
     { keys: {} },
     { keyFingerprint: null },
-    { preferencesEmpty: true },
     { microphoneGranted: false },
     { foreignFile: false },
     { foreignKey: false },

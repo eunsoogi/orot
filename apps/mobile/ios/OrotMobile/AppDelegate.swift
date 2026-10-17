@@ -21,6 +21,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             if TestFixtureCommand.runIfRequested() {
                 return true
             }
+            if !TestFixtureCommand.prepareIsolationIfRequested() {
+                return true
+            }
         #endif
 
         let delegate = ReactNativeDelegate()
