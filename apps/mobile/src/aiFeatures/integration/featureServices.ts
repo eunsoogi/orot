@@ -1,3 +1,4 @@
+import { createPrivateEvidenceRag } from './privateEvidenceRag';
 import { createExternalConversationEvidence } from './externalConversationEvidence';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
@@ -84,6 +85,16 @@ export function createAiFeatureServices(
   const loadLocalData =
     dependencies.loadLocalData ??
     (async () => (await import('./localData')).openAiFeatureLocalData());
+  const localDataCache = new WeakMap<AiFeatureLocalData, AiFeatureLocalData>();
+  async function privateLocalData() {
+    const data = await loadLocalData();
+    let wrapped = localDataCache.get(data);
+    if (!wrapped) {
+      wrapped = { ...data, rag: createPrivateEvidenceRag(data.rag, registry) };
+      localDataCache.set(data, wrapped);
+    }
+    return wrapped;
+  }
   const diseaseRunner =
     dependencies.diseaseRunner ?? runDiseaseHypothesisAnalysis;
   const ragRunner = dependencies.ragRunner ?? defaultRagRunner;
@@ -108,7 +119,7 @@ export function createAiFeatureServices(
     },
     async generateDiseaseHypotheses(signal) {
       const selected = await selectedAi();
-      const data = await loadLocalData();
+      const data = await privateLocalData();
       const operationSignal = signal ?? new AbortController().signal;
       const snapshot = await loadFeatureEvidenceSnapshot(
         data,
@@ -158,7 +169,7 @@ export function createAiFeatureServices(
       const linked = createLinkedAbortController(parentSignal);
       try {
         const selected = await selectedAi();
-        const data = await loadLocalData();
+        const data = await privateLocalData();
         const signal = linked.controller.signal;
         const snapshot = await loadFeatureEvidenceSnapshot(
           data,

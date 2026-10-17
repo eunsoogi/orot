@@ -85,6 +85,8 @@ test('keeps the app screen mounted underneath a guarded AI route', async () => {
 
   await fireEvent.press(screen.getByTestId('open-feature-route'));
   expect(await screen.findByTestId('feature-route-probe')).toBeTruthy();
+  // AI entry must push over the retained source in the same native stack.
+  expect(screen.queryByTestId('ai-feature-overlay')).toBeNull();
   expect(mockFeatureEntryUnmount).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));

@@ -153,7 +153,7 @@ module OrotCocoapodsNullByteDiagnostic
     }
   end
 
-  # CocoaPods pairs lexical file paths with this base, so retain it only after the NUL error on a pnpm alias.
+  # CocoaPods pairs lexical paths with this base, so keep it after a pnpm symlink realpath error.
   def self.lexical_pnpm_symlink_group_base_path(receiver, path, caller_location)
     return unless receiver.instance_of?(Pathname) && !path.include?("\0")
     return unless caller_location&.base_label == 'group_for_path_in_group' &&
@@ -161,9 +161,7 @@ module OrotCocoapodsNullByteDiagnostic
 
     base_path = Pathname.new(path)
     pnpm_alias = base_path.ascend.any? do |component|
-      component.basename.to_s == 'react-native' &&
-        component.symlink? &&
-        component.readlink.each_filename.include?('.pnpm')
+      component.symlink? && component.readlink.each_filename.include?('.pnpm')
     end
     base_path.cleanpath if pnpm_alias
   rescue StandardError

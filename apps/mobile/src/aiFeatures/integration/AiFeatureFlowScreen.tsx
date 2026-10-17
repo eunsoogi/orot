@@ -117,6 +117,7 @@ export function AiFeatureFlowScreen({
           onNavigationStateChange={onFeatureNavigationStateChange}
           onBack={onBack}
           onGenerate={services.generateDiseaseHypotheses}
+          onOpenProviderSelection={onOpenProviderSelection}
           onOpenSource={onOpenSource}
         />
       );

@@ -131,7 +131,13 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
-    if (hasBlockingCoverage(combined, context.options.task.allowBoundedExternalEvidence)) {
+    if (
+      hasBlockingCoverage(
+        combined,
+        context.options.task.allowBoundedExternalEvidence,
+        context.options.task.allowRankedLocalEvidence,
+      )
+    ) {
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The available evidence has gaps, conflicts, or truncation.',

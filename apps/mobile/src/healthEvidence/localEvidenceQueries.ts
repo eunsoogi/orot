@@ -19,6 +19,7 @@ export interface HealthEvidenceQueryOptions {
 
 export type HealthEvidenceRecordFilter =
   | { readonly kind: 'all' }
+  | { readonly kind: 'after'; readonly value: string }
   | { readonly kind: 'id'; readonly value: string }
   | { readonly kind: 'source'; readonly value: string };
 
@@ -127,6 +128,9 @@ function filterCondition(
   filter: HealthEvidenceRecordFilter,
 ): { readonly sql: string; readonly parameters: readonly string[] } {
   if (filter.kind === 'all') return { sql: '1 = 1', parameters: [] };
+  if (filter.kind === 'after') {
+    return { sql: 'id > ?', parameters: [filter.value] };
+  }
   if (filter.kind === 'id') {
     return { sql: 'id = ?', parameters: [filter.value] };
   }

@@ -7,6 +7,7 @@ import type {
 import type { LocalFullTextSearchStore } from '@orot/rag';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { buildPersonalEvidence } from '../personalEvidence';
+import { createPrivateEvidenceRag } from '../privateEvidenceRag';
 import {
   healthObservation,
   inventory,
@@ -54,11 +55,11 @@ describe('personal evidence semantic search identity', () => {
       })),
     };
     const vectors: LocalEmbeddingVectorStore = {
-      // No removal fences apply to this live fixture; deletion behavior is covered by ragEmbeddingDeletion tests.
+      // Match the SQLCipher guard: a claimed root source must exist in local storage.
       deleteEvidence: jest.fn(async () => undefined),
       clear: jest.fn(async () => undefined),
-      findRemovedEvidence: jest.fn(async () => ({
-        sourceRecordIds: [],
+      findRemovedEvidence: jest.fn(async (_ids, _chunks, roots) => ({
+        sourceRecordIds: roots.filter(id => id !== source.record.id),
         chunkIds: [],
       })),
       upsertBatch: jest.fn(async () => undefined),
@@ -69,12 +70,25 @@ describe('personal evidence semantic search identity', () => {
     const lexical: LocalFullTextSearchStore = {
       search: jest.fn(async () => []),
     };
-    const hits = await searchHybridEvidenceChunks(
+    const rag = createPrivateEvidenceRag(
+      {
+        index: async () => undefined,
+        search: (query, chunks, limit, options) =>
+          searchHybridEvidenceChunks(
+            query,
+            chunks,
+            provider,
+            vectors,
+            lexical,
+            limit,
+            options,
+          ),
+      },
+      registry,
+    );
+    const hits = await rag.search(
       'words absent from the record',
       result.chunks,
-      provider,
-      vectors,
-      lexical,
       5,
     );
 

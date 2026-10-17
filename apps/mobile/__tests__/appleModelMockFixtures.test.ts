@@ -1,15 +1,23 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import { appleModelMockScript } from '../e2e/appleModelMockFixtures';
 
+const allowedCitationReferencesPrefix =
+  'Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n';
+
 function request(ids: string[]): LanguageModelRequest {
   return {
-    messages: [{ role: 'user', content: 'synthetic contract input' }],
+    messages: [
+      {
+        role: 'user',
+        content: allowedCitationReferencesPrefix + JSON.stringify(ids),
+      },
+    ],
     responseFormat: {
       name: 'task_response',
       schema: {
         anyOf: [
           { properties: {} },
-          { properties: { citations: { items: { enum: ids } } } },
+          { properties: { citations: { items: { type: 'string' } } } },
         ],
       },
     },
@@ -55,7 +63,7 @@ test('visit fixture keeps supplied aliases and a delayed cancellation request', 
   expect(() => script[1](request([]))).toThrow('supplied citation IDs');
 });
 
-test('literature fixture requests the allowlisted public query before citing retrieved evidence', () => {
+test('literature fixture reads citation IDs from the prompt allowlist without a schema enum', () => {
   const script = appleModelMockScript('rag-workflow');
   expect(JSON.parse(script[0](request([])).text!)).toEqual({
     type: 'request_evidence',
@@ -70,10 +78,17 @@ test('literature fixture requests the allowlisted public query before citing ret
     sourceKind: 'external_medical',
     input: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
   });
-  const output = JSON.parse(
-    script[2](request(['returned-publication-1', 'returned-publication-2']))
-      .text!,
-  );
+  const taskRequest = request([
+    'returned-publication-1',
+    'returned-publication-2',
+  ]);
+  const taskSchema = taskRequest.responseFormat!.schema as {
+    anyOf: readonly { properties?: { citations?: { items?: object } } }[];
+  };
+  expect(taskSchema.anyOf[1].properties?.citations?.items).toEqual({
+    type: 'string',
+  });
+  const output = JSON.parse(script[2](taskRequest).text!);
   expect(output.citations).toEqual(['returned-publication-1']);
   expect(output.value.answer).toContain('mock');
   expect(() => script[2](request([]))).toThrow('supplied citation IDs');

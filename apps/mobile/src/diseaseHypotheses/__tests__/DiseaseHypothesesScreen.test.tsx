@@ -128,3 +128,57 @@ test('shows a recoverable error when analysis cannot run', async () => {
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(await screen.findByText(/가능성을 정리하지 못했어요/)).toBeTruthy();
 });
+
+test('distinguishes provider input refusal from missing health records', async () => {
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onGenerate={async () => ({
+        status: 'workflow',
+        result: {
+          status: 'unavailable',
+          reason: 'Provider declined the request',
+          providerErrorCode: 'unsupported_input',
+          checkpoint: {} as never,
+        },
+      })}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(
+    await screen.findByText(/선택한 AI가 이 요청에 응답할 수 없어요/),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('disease-hypotheses-insufficient')).toBeNull();
+});
+
+test('explains native safety refusal and opens provider selection without automatic retry', async () => {
+  const selectProvider = jest.fn();
+  const generate = jest.fn(async () => ({
+    status: 'workflow' as const,
+    result: {
+      status: 'unavailable' as const,
+      reason: 'Model declined',
+      providerErrorCode: 'safety_refusal' as const,
+      checkpoint: {} as never,
+    },
+  }));
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onGenerate={generate}
+      onOpenProviderSelection={selectProvider}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(
+    await screen.findByText(/Apple Intelligence의 안전 정책/),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('disease-hypotheses-insufficient')).toBeNull();
+  await fireEvent.press(
+    screen.getByTestId('disease-hypotheses-select-provider'),
+  );
+  expect(selectProvider).toHaveBeenCalledTimes(1);
+  expect(generate).toHaveBeenCalledTimes(1);
+});

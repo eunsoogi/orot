@@ -16,8 +16,12 @@ import type { CommonObservationsImportResult } from './src/healthkit/commonObser
 import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
 import { importLocalBloodPressure } from './src/healthkit/bloodPressure/importLocal';
 import type { BloodPressureSyncResult } from './src/healthkit/bloodPressure/types';
-import { AiFeatureRoute } from './src/aiFeatures/integration';
-import type { FeatureScreenRoute } from './src/aiFeatures/integration/aiFeatureNavigation';
+import { AiFeatureSharedNavigationStateProvider } from './src/aiFeatures/integration/AiFeatureSharedNavigationState';
+import {
+  AppAiFeatureScene,
+  isAppAiRoute,
+  useAppAiServices,
+} from './src/routes/AppAiFeatureScene';
 import { renderVisitQuestionsRoute } from './src/aiFeatures/integration/NextVisitQuestionsRoute';
 import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
 import type { VisitQuestionsRenderInput } from './src/aiFeatures/integration/AiFeatureFlowScreen';
@@ -93,9 +97,7 @@ export default function App({
     loadHealthObservations,
     loadBloodPressureObservations,
   ]);
-  const [aiInitialRoute, setAiInitialRoute] = useState<
-    FeatureScreenRoute | 'provider-selection' | null
-  >(null);
+  const ai = useAppAiServices(aiFeatureServiceDependencies);
   const [activeTab, setActiveTab] = useState<AppRootTab>('home');
   const [selectedProvider, setSelectedProvider] = useState('');
   const [appNavigation] = useState(() =>
@@ -132,15 +134,7 @@ export default function App({
 
   return (
     <View style={styles.appShell}>
-      {/* Keep the source route alive beneath AI screens so returning does not remount it. */}
-      <View
-        accessibilityElementsHidden={aiInitialRoute !== null}
-        importantForAccessibility={
-          aiInitialRoute ? 'no-hide-descendants' : 'auto'
-        }
-        pointerEvents={aiInitialRoute ? 'none' : 'auto'}
-        style={styles.baseLayer}
-      >
+      <AiFeatureSharedNavigationStateProvider>
         <NavigationRouteAdapter
           controller={appNavigation}
           scrollable={route =>
@@ -156,8 +150,21 @@ export default function App({
         >
           {/* Settings and AI use the same account services and persisted selection. */}
           {actions =>
-            actions.route.name === 'medical' ||
-            actions.route.name === 'medical-manual' ? (
+            isAppAiRoute(actions.route.name) ? (
+              <AppAiFeatureScene
+                actions={actions}
+                consent={ai.consent}
+                services={ai.services}
+                renderVisitQuestions={
+                  renderVisitQuestions ?? renderVisitQuestionsRoute
+                }
+                serviceDependencies={aiFeatureServiceDependencies}
+                onProviderSelectionCommitted={(_, provider) =>
+                  setSelectedProvider(provider.displayName)
+                }
+              />
+            ) : actions.route.name === 'medical' ||
+              actions.route.name === 'medical-manual' ? (
               <MedicalAppointmentRoute
                 bridge={calendarBridge}
                 manual={actions.route.name === 'medical-manual'}
@@ -190,15 +197,15 @@ export default function App({
                 openProviderSettings={() =>
                   appNavigation.push('settings-provider')
                 }
-                openVisitQuestions={() => setAiInitialRoute('visit-questions')}
+                openVisitQuestions={() => appNavigation.push('visit-questions')}
                 openDiseaseHypotheses={() =>
-                  setAiInitialRoute('disease-hypotheses')
+                  appNavigation.push('disease-hypotheses')
                 }
                 openRagConversation={() =>
-                  setAiInitialRoute('rag-conversation')
+                  appNavigation.push('rag-conversation')
                 }
                 openExternalEvidence={() =>
-                  setAiInitialRoute('external-evidence')
+                  appNavigation.push('external-evidence')
                 }
                 openRecording={openRecording}
                 importHealthObservations={importHealthObservations}
@@ -208,40 +215,12 @@ export default function App({
             )
           }
         </NavigationRouteAdapter>
-      </View>
-      {aiInitialRoute ? (
-        <View style={styles.aiFeatureOverlay} testID="ai-feature-overlay">
-          <AiFeatureRoute
-            initialRoute={aiInitialRoute}
-            onBack={() => setAiInitialRoute(null)}
-            onHome={() => {
-              setAiInitialRoute(null);
-              setActiveTab('home');
-            }}
-            onOpenRecording={() => {
-              setAiInitialRoute(null);
-              openRecording();
-            }}
-            onProviderSelectionCommitted={(_, provider) =>
-              setSelectedProvider(provider.displayName)
-            }
-            renderVisitQuestions={
-              renderVisitQuestions ?? renderVisitQuestionsRoute
-            }
-            serviceDependencies={aiFeatureServiceDependencies}
-          />
-        </View>
-      ) : null}
+        {ai.disclosureSheet}
+      </AiFeatureSharedNavigationStateProvider>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   appShell: { flex: 1, backgroundColor: appColors.background },
-  baseLayer: { flex: 1 },
-  aiFeatureOverlay: {
-    ...StyleSheet.absoluteFill,
-    zIndex: 2,
-    backgroundColor: appColors.background,
-  },
 });

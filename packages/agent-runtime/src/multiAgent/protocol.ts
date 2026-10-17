@@ -82,7 +82,12 @@ export function taskResponseSchema<TResult>(
           value: guidedSchema(contract.resultSchema),
           citations: {
             type: 'array',
-            items: ids.length ? { type: 'string', enum: ids } : { type: 'string' },
+            // Generated last: cite the result already written, not every available source.
+            description:
+              'Only evidenceId values actually used in this result. If the result contains nested evidence ID arrays, return their exact unique union. Never add unused IDs.',
+            // The native generator can expand an enum into every available ID.
+            // Prompt guidance selects IDs; citationReferences enforces the allowlist locally.
+            items: { type: 'string' },
             ...(ids.length ? {} : { maxItems: 0 }),
           },
         },
@@ -191,7 +196,7 @@ export function buildTaskMessages<TResult>(
     ...messages,
     {
       role: 'user',
-      // Guided schemas already enumerate IDs; full revision/locator data stays in local validation.
+      // Guided prompts supply IDs; full revision/locator data stays in local validation.
       content: `Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n${JSON.stringify(guided ? input.evidence.items.map((item) => item.evidenceId) : referencesFromBatch(input.evidence))}`,
     },
   ];

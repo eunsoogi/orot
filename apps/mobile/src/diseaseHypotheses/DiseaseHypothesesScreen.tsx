@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
 import { appColors } from '../layout/appColors';
+import type { ProviderErrorCode } from '@orot/model-runtime';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -18,6 +19,7 @@ interface DiseaseHypothesesScreenProps {
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
+  readonly onOpenProviderSelection?: () => void;
   readonly onGenerate: (
     signal?: AbortSignal,
   ) => Promise<DiseaseHypothesisRunOutcome>;
@@ -28,7 +30,10 @@ type ScreenState =
   | { readonly status: 'idle' | 'loading' }
   | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
   | { readonly status: 'insufficient' }
-  | { readonly status: 'error' };
+  | {
+      readonly status: 'error';
+      readonly providerErrorCode?: ProviderErrorCode;
+    };
 
 function EvidenceLinks({
   title,
@@ -60,6 +65,7 @@ export function DiseaseHypothesesScreen({
   navigationRouteKey,
   onNavigationStateChange,
   onBack,
+  onOpenProviderSelection,
   onGenerate,
   onOpenSource,
 }: DiseaseHypothesesScreenProps) {
@@ -102,7 +108,14 @@ export function DiseaseHypothesesScreen({
         setState({ status: 'result', value: outcome.result.value });
       else if (outcome.result.status === 'needs_clarification')
         setState({ status: 'insufficient' });
-      else setState({ status: 'error' });
+      else
+        setState({
+          status: 'error',
+          providerErrorCode:
+            outcome.result.status === 'unavailable'
+              ? outcome.result.providerErrorCode
+              : undefined,
+        });
     } catch {
       if (!controller.signal.aborted) setState({ status: 'error' });
     } finally {
@@ -147,11 +160,28 @@ export function DiseaseHypothesesScreen({
       ) : null}
       {state.status === 'error' ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {copy.error}
+          {state.providerErrorCode === 'safety_refusal'
+            ? copy.safetyRefusal
+            : state.providerErrorCode === 'unsupported_input'
+              ? copy.unsupportedInput
+              : copy.error}
         </Text>
+      ) : null}
+      {state.status === 'error' &&
+      state.providerErrorCode === 'safety_refusal' &&
+      onOpenProviderSelection ? (
+        <Button
+          testID="disease-hypotheses-select-provider"
+          onPress={onOpenProviderSelection}
+          title={copy.selectProvider}
+        />
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
+          <Text testID="disease-hypotheses-search-scope">
+            관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한
+            진단은 아니에요.
+          </Text>
           {state.value.hypotheses.map((hypothesis, index) => (
             <View key={`${hypothesis.title}-${index}`} style={styles.card}>
               <Text accessibilityRole="header" style={styles.title}>

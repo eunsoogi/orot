@@ -67,7 +67,13 @@ export function consumeResponderResponse<TResult>(
       pendingOperation: undefined,
     };
   }
-  if (hasBlockingCoverage(input.evidence, context.options.task.allowBoundedExternalEvidence)) {
+  if (
+    hasBlockingCoverage(
+      input.evidence,
+      context.options.task.allowBoundedExternalEvidence,
+      context.options.task.allowRankedLocalEvidence,
+    )
+  ) {
     let taskClarificationMessage: string | undefined;
     try {
       const validation = context.options.task.validateResult(decoded.value as JsonValue, input);

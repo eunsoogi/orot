@@ -1,22 +1,13 @@
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, ComponentRef } from 'react';
-import { AppSymbol } from '../layout/AppSymbol';
+import { ConversationComposer } from './ConversationComposer';
 import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
-import {
-  Pressable,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  TextInput,
-  View,
-} from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
-import { appColors } from '../layout/appColors';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
@@ -46,10 +37,8 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
 }: ConversationScreenProps) {
-  const navigationInset = useNavigationContentInset();
   const copy = getRagConversationCopy();
   const [draft, setDraft] = useState('');
-  const [inputFocused, setInputFocused] = useState(false);
   const [messages, setMessages] = useState<readonly DisplayMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -160,9 +149,14 @@ export function ConversationScreen({
         testID="rag-conversation-history"
       >
         {!messages.length && (
-          <Text style={styles.empty}>
-            질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
-          </Text>
+          <View style={styles.empty}>
+            <Text style={styles.disclaimer}>
+              질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
+            </Text>
+            <Text style={styles.disclaimer}>
+              필요하면 동의를 받고 공개 의학 문헌도 찾아요.
+            </Text>
+          </View>
         )}
         {messages.map(message => (
           <ConversationMessage
@@ -188,60 +182,22 @@ export function ConversationScreen({
           </Text>
         ) : null}
       </ScrollView>
-      <View
-        style={[styles.composerArea, navigationInset]}
-        testID="rag-conversation-composer"
-      >
-        <Text style={styles.disclaimer}>
-          필요하면 동의를 받고 공개 의학 문헌도 찾아요.
-        </Text>
-        <View
-          style={[styles.composer, inputFocused && styles.inputFocused]}
-          testID="rag-conversation-composer-field"
-        >
-          <TextInput
-            accessibilityLabel={copy.placeholder}
-            editable={!busy}
-            maxLength={1000}
-            multiline
-            onChangeText={value => {
-              inputRevision.current += 1;
-              setDraft(value);
-            }}
-            placeholder={copy.placeholder}
-            placeholderTextColor={appColors.secondary}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            style={styles.input}
-            testID="rag-conversation-input"
-            value={draft}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={busy ? '답변 중단' : copy.send}
-            accessibilityState={{ busy, disabled: !busy && !draft.trim() }}
-            disabled={!busy && !draft.trim()}
-            style={[styles.send, !busy && !draft.trim() && styles.disabled]}
-            testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
-            onPress={() => {
-              if (busy) {
-                operationController.current?.abort();
-                operationController.current = null;
-                setBusy(false);
-                return;
-              }
-              send().catch(() => setError(copy.unavailable));
-            }}
-          >
-            <AppSymbol
-              name={busy ? 'stop.fill' : 'arrow.up'}
-              size={24}
-              color={appColors.onPrimary}
-            />
-          </Pressable>
-        </View>
-        <Text style={styles.disclaimer}>AI 답변은 진료를 대신하지 않아요.</Text>
-      </View>
+      <ConversationComposer
+        value={draft}
+        busy={busy}
+        onChangeText={value => {
+          inputRevision.current += 1;
+          setDraft(value);
+        }}
+        onSend={() => {
+          send().catch(() => setError(copy.unavailable));
+        }}
+        onCancel={() => {
+          operationController.current?.abort();
+          operationController.current = null;
+          setBusy(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

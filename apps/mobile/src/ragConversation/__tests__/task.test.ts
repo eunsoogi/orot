@@ -3,9 +3,7 @@ import { ragConversationTask } from '../task';
 test('guides Korean literature questions to research before declaring missing sources unavailable', () => {
   const prompt = ragConversationTask.systemPrompt;
   expect(prompt).toContain('Write the user-facing answer in Korean');
-  expect(prompt).toContain(
-    'Keep publication titles and citation IDs in their original form',
-  );
+  expect(prompt).toContain('Keep publication titles in their original form');
   expect(prompt).toContain('explicitly asks for literature');
   expect(prompt).toContain('request evidence before declaring it unavailable');
   expect(prompt).toContain(
@@ -69,6 +67,39 @@ test('asks for clarification when the current evidence set is empty', () => {
   expect(result.status).toBe('needs_clarification');
 });
 
+test.each(['scheduled', 'rescheduled', 'completed', 'cancelled'])(
+  'preserves the appointment state %s separately from its date and title',
+  status => {
+    const effectiveTime =
+      status === 'completed' ? '2025-01-03T09:00:00Z' : '2090-01-03T09:00:00Z';
+    const content = `appointment: ${JSON.stringify({
+      status,
+      calendarEventSnapshot: { title: '복용 기록 상담' },
+    })}`;
+    const input = {
+      request: '내가 먹는 약은?',
+      evidence: {
+        items: [{ ...reference, effectiveTime, content }],
+        coverage: [],
+        conflicts: [],
+      },
+    };
+    const message = ragConversationTask.createMessages(input)[0];
+    if (message.role !== 'user' || typeof message.content !== 'string')
+      throw new Error('Expected user text');
+    const body = JSON.parse(message.content);
+    expect(body.evidence[0]).toMatchObject({
+      content,
+      effectiveTime,
+      eventState: status,
+    });
+    // A calendar title alone never establishes that its consultation happened.
+    expect(body.temporalRequirements).toContain('scheduled');
+    expect(body.temporalRequirements).toContain('completed');
+    expect(body.temporalRequirements).toContain('상담 중');
+  },
+);
+
 test('keeps evidence content and coverage while leaving full citation identity for local validation', () => {
   const content =
     'Title: Synthetic publication\nAbstract: Unabridged supplied abstract.';
@@ -115,5 +146,7 @@ test('keeps evidence content and coverage while leaving full citation identity f
   ]);
   expect(body.coverage).toEqual(input.evidence.coverage);
   expect(message.content).not.toContain('private-validation-revision');
-  expect(ragConversationTask.systemPrompt).toContain('concise grounded answer');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'one short Korean sentence',
+  );
 });

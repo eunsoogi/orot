@@ -39,6 +39,8 @@ export interface EvidenceCoverage {
   readonly coveredTimeRange?: EvidenceTimeRange;
   readonly gaps: readonly string[];
   readonly truncated: boolean;
+  /** A completed search selected ranked hits; this never certifies a complete medical history. */
+  readonly selectionMethod?: 'ranked_retrieval';
   readonly resultLimit: number;
   readonly returnedCount: number;
 }

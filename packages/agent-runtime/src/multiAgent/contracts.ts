@@ -77,6 +77,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly resultSchema: JsonObject;
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
   readonly allowBoundedExternalEvidence?: boolean;
+  /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
+  readonly allowRankedLocalEvidence?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

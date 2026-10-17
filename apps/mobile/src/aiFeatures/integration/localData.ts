@@ -1,6 +1,7 @@
 import { createLocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import { createLocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
+import { readCompleteEvidenceInventory } from '../../healthEvidence/completeEvidenceInventory';
 import type {
   LocalHealthEvidenceInventory,
   LocalHealthEvidenceRepository,
@@ -53,7 +54,7 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     repository,
     rag,
     memoryStorage,
-    loadInventory: signal => repository.readInventory({ signal }),
+    loadInventory: signal => readCompleteEvidenceInventory(database, signal),
     loadPersistedChunks: () => buildPersistedEvidenceChunks(records),
     loadStaleArtifacts: () => readCurrentTranscriptInvalidations(records),
     loadMemoryRecords: () => memoryStorage.listRecords(),

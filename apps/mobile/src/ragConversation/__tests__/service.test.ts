@@ -94,10 +94,13 @@ test('loads a fresh snapshot for each turn and passes only E5-selected evidence 
   const firstOutcome = await run('혈압 기록은?');
   const secondOutcome = await run('더 최근 기록은?');
 
-  expect(firstOutcome).toMatchObject({ status: 'answer', answer: '첫 답변' });
+  expect(firstOutcome).toMatchObject({
+    status: 'answer',
+    answer: '첫 답변\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.',
+  });
   expect(secondOutcome).toMatchObject({
     status: 'answer',
-    answer: '두 번째 답변',
+    answer: '두 번째 답변\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.',
   });
   expect(loadCurrentEvidence).toHaveBeenCalledTimes(2);
   expect(search).toHaveBeenCalledTimes(2);
