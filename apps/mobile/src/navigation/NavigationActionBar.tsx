@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   Keyboard,
   Platform,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import {
   SafeAreaView,
-  useSafeAreaInsets,
+  SafeAreaInsetsContext,
 } from 'react-native-safe-area-context';
 import { navigationText } from '../i18n/navigation';
 import {
@@ -169,10 +169,12 @@ export function NavigationActionBar<Name extends string>({
   const reclaimRootTabInset =
     rootTabs && !isKeyboardVisible && !safeAreaHandledByParent;
   // Keep any transform outside the native host so UIKit geometry stays aligned.
-  const surface = reclaimRootTabInset ? (
-    <RootTabSafeAreaOverlap>{barSurface}</RootTabSafeAreaOverlap>
-  ) : (
-    <View pointerEvents="box-none">{barSurface}</View>
+  const surface = (
+    <NavigationSurfacePosition
+      reclaimRootTabInset={Boolean(reclaimRootTabInset)}
+    >
+      {barSurface}
+    </NavigationSurfacePosition>
   );
 
   // Keep one home-indicator inset and a narrow side gutter around the native bar.
@@ -192,24 +194,32 @@ export function NavigationActionBar<Name extends string>({
   );
 }
 
-/** Reclaims only inset space available on this device, preserving zero-inset targets. */
-function RootTabSafeAreaOverlap({
+/** Preserves the native surface identity while changing root-tab inset translation. */
+function NavigationSurfacePosition({
   children,
+  reclaimRootTabInset,
 }: {
   readonly children: ReactNode;
+  readonly reclaimRootTabInset: boolean;
 }) {
-  const { bottom: bottomInset } = useSafeAreaInsets();
-  return (
-    <View
-      pointerEvents="box-none"
-      style={{
+  const insets = useContext(SafeAreaInsetsContext);
+  if (reclaimRootTabInset && insets == null) {
+    throw new Error(
+      'No safe area value available. Make sure you are rendering <SafeAreaProvider> at the top of your app.',
+    );
+  }
+  const bottomInset = insets?.bottom ?? 0;
+  const positionStyle = reclaimRootTabInset
+    ? {
         transform: [
           {
             translateY: Math.min(ROOT_TAB_SAFE_AREA_TRANSLATION, bottomInset),
           },
         ],
-      }}
-    >
+      }
+    : undefined;
+  return (
+    <View pointerEvents="box-none" style={positionStyle}>
       {children}
     </View>
   );
