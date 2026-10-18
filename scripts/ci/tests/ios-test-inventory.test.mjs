@@ -6,7 +6,7 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 17, 6],
+    ['core', 18, 6],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -29,6 +29,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
   for (const identifier of [
+    'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',

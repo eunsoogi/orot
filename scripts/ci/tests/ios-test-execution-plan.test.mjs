@@ -14,7 +14,7 @@ test('independent feature suites have distinct jobs and preserve all registered 
   const original = ['release', 'debug', 'speech'].flatMap((name) =>
     iosTestCohortTasks(name).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 93);
+  assert.equal(actual.length, 94);
   assert.deepEqual(actual.slice().sort(), original.slice().sort());
 });
 

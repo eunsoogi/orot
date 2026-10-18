@@ -32,3 +32,10 @@ RCT_EXPORT_VIEW_PROPERTY(symbolName, NSString)
 RCT_EXPORT_VIEW_PROPERTY(pointSize, NSNumber)
 RCT_EXPORT_VIEW_PROPERTY(tintColor, UIColor)
 @end
+
+// Progress follows the lifetime of its mounted UIKit view, including React reuse.
+@interface RCT_EXTERN_MODULE (AppProgressViewManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(active, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(large, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(color, UIColor)
+@end

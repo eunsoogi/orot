@@ -116,13 +116,13 @@ test('full and focused visible job names use one consistent role and target', ()
   );
 });
 
-test('full integration execution preserves 93 observations, eight existing provider cases and seven native lifecycle cases', () => {
+test('full integration execution preserves 94 observations, eight existing provider cases and seven native lifecycle cases', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(scheduled.length, 93);
+  assert.equal(scheduled.length, 94);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 93);
+  assert.equal(identifiers.size, 94);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',

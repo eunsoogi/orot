@@ -9,6 +9,7 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppProgress } from '../layout/AppProgress';
 import { t } from '../i18n';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { ActionButton } from './NextVisitComponents';
@@ -46,7 +47,7 @@ export function NextVisitGenerationSection<
     <View style={styles.section}>
       {isGenerating ? (
         <>
-          <ActivityIndicator
+          <AppProgress
             accessibilityLabel={copy.generation.loading}
             testID="next-visit-generation-loading"
           />
