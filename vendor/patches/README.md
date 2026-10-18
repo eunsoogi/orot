@@ -34,10 +34,12 @@ replaces only sandbox headers while preserving read-only modes.
 
 The helper writes only header and module-map files; it does not write framework
 executables or signature files. Its synthetic regression checks that a fixture
-sentinel remains unchanged, which proves only the helper's write scope. It does
-not compare a downloaded archive with a freshly installed artifact. The
-published 0.87.1 artifact already fails strict resource-signature verification
-before these edits, so this work does not claim upstream signature validity.
+sentinel remains unchanged, which proves only the helper's write scope. The
+local archive comparisons below establish file-level consistency between
+cached artifacts and installed or built outputs. They do not establish archive
+origin or upstream signature validity. A prior check recorded that the
+published 0.87.1 artifact failed strict resource-signature verification before
+these edits.
 
 ## Verification and remaining diagnostics
 
@@ -104,13 +106,17 @@ visible. This #201 candidate does not modify those #204-owned files; rerun the
 UI case after that integration. The UI invocation was interrupted and has no
 usable result bundle, so it is not a pass.
 
-At branch head `41cc35d0`, the recorded checks do not contain the pinned archive
-and installed Debug/Release executable and signature hashes, or successful
-Debug/Release flavor-switch output, needed to establish real artifact
-integrity. The synthetic regression and the `f553e4af` Release app build do not
-provide those comparisons. This evidence remains pending. The published
-0.87.1 archive already fails strict resource-signature verification before
-these edits, so this work does not claim upstream signature validity.
+In the worktree at `4289b320`, read-only comparisons matched the cached Release
+archive to the installed Release XCFramework and the cached Debug archive to an
+existing Debug simulator build intermediate. Exact archive hashes, file counts,
+and the two Debug app-embedding differences are recorded in the [warning
+dispositions](warning-dispositions.md#local-prebuilt-archive-comparisons). The
+Debug app copy has one architecture and a rewritten resource seal; its
+signature validity was not verified. These local comparisons do not prove
+upstream archive authenticity, a fresh-install result, successful current-head
+Debug and Release flavor switches, or a clean current-head build. Those checks
+remain pending after #204 integration and return of the shared Xcode and
+Simulator slot.
 `scripts/tests/sqlcipher-counter-host.sh` checks that the configured private
 heap size reaches the wide wipe helper intact and exercises SQLCipher values
 above the 32-bit range; it needs a C compiler and OpenSSL available through
