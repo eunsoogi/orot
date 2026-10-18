@@ -4,7 +4,7 @@ import React
 import UIKit
 
 @objc(RecordingModule)
-public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate, AVAudioPlayerDelegate {
+public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
     enum Status: String {
         case idle
         case recording
@@ -18,6 +18,10 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate, AV
     var startInProgress = false
     var consentAcknowledged = false
     var recorder: AVAudioRecorder?
+    lazy var captureDelegate = RecordingCaptureDelegate(queue: workQueue) { [weak self] recorder in
+        self?.handleRecorderEncodeError(recorder)
+    }
+
     var recordingID: String?
     var recordingURL: URL?
     var pendingRecordingURL: URL?
@@ -229,19 +233,5 @@ public final class RecordingModule: RCTEventEmitter, AVAudioRecorderDelegate, AV
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
-    }
-}
-
-enum RecordingModuleError: LocalizedError {
-    case prepareFailed
-    case startFailed
-    case syntheticStartFailure
-
-    var errorDescription: String? {
-        switch self {
-        case .prepareFailed: "The audio recorder could not prepare its local file."
-        case .startFailed: "The audio recorder could not start."
-        case .syntheticStartFailure: "The synthetic recording failure probe was triggered."
-        }
     }
 }

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { iosTestBuildSpec } from './ios-test-config.mjs';
 
 export function buildInputDigest(root) {
-  // Hash the committed ios/JS inputs before generated dependency setup rewrites metadata.
+  // Hash committed app, package, and dependency-patch inputs before generated setup rewrites metadata.
   const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8' })
     .split('\0')
     .filter(Boolean);
@@ -15,6 +15,7 @@ export function buildInputDigest(root) {
       (file) =>
         file.startsWith('apps/mobile/') ||
         file.startsWith('packages/') ||
+        file.startsWith('vendor/patches/') ||
         ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', '.nvmrc'].includes(file),
     )
     .sort()) {
@@ -43,6 +44,7 @@ export function productContext(root, profile, env = process.env) {
       '--',
       'apps/mobile',
       'packages',
+      'vendor/patches',
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
       'package.json',

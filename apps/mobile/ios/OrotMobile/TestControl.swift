@@ -83,7 +83,8 @@
         /// Register the isolated test refresh channel and expose actual UIKit observations through the usual RN bridge.
         @objc(refreshAppearance:rejecter:)
         func refreshAppearance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-            DispatchQueue.main.async {
+            // The queued UI observation may outlive this bridge request, so it must not retain the module.
+            DispatchQueue.main.async { [weak self] in
                 guard UserDefaults.standard.string(forKey: "OROT_TEST_APPEARANCE_OBSERVATION") == "YES",
                       let session = UserDefaults.standard.string(forKey: "OROT_TEST_APPEARANCE_SESSION"), UUID(uuidString: session) != nil,
                       let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow)

@@ -1,9 +1,68 @@
+import AVFoundation
 @testable import Orot
+import React
 import UIKit
 import XCTest
 
+/// ARC clears the weak target; the box avoids a weak local binding that triggers Swift 6.2 diagnostics.
+private final class WeakReference<Instance: AnyObject> {
+    weak var value: Instance?
+
+    init(_ value: Instance) {
+        self.value = value
+    }
+}
+
 /// Requires settled permission/activation before capture and preserves interruptions that actually begin during capture.
 final class RecordingMeteringBoundaryTests: OrotFailFastTestCase {
+    @MainActor
+    func testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let settings: [String: Any] = [AVFormatIDKey: Int(kAudioFormatLinearPCM), AVSampleRateKey: 8000, AVNumberOfChannelsKey: 1]
+        let current = try AVAudioRecorder(url: directory.appendingPathComponent("current.caf"), settings: settings)
+        let stale = try AVAudioRecorder(url: directory.appendingPathComponent("stale.caf"), settings: settings)
+        let module = RecordingModule()
+        let event = expectation(description: "Only the current recorder emits a paused state")
+        event.assertForOverFulfill = true
+        let jsModules = RCTCallableJSModules()
+        // emitState() queues sendEvent on main, and React Native calls this injected invoker synchronously.
+        jsModules.setBridgelessJSModuleMethodInvoker { name, method, arguments, completion in
+            dispatchPrecondition(condition: .onQueue(.main))
+            XCTAssertEqual(name, "RCTDeviceEventEmitter")
+            XCTAssertEqual(method, "emit")
+            XCTAssertEqual(arguments?.first as? String, "RecordingStateChanged")
+            XCTAssertEqual((arguments?[1] as? NSDictionary)?["status"] as? String, "paused")
+            event.fulfill()
+            completion?()
+        }
+        module.callableJSModules = jsModules
+        module.addListener("RecordingStateChanged")
+        let delegate = module.workQueue.sync {
+            module.recorder = current
+            module.status = .recording
+            return module.captureDelegate
+        }
+        // A callback from main still crosses onto workQueue; each sync observes its serialized result.
+        delegate.audioRecorderEncodeErrorDidOccur(stale, error: nil)
+        module.workQueue.sync { XCTAssertEqual(module.status, .recording) }
+        delegate.audioRecorderEncodeErrorDidOccur(current, error: nil)
+        module.workQueue.sync { XCTAssertEqual(module.status, .paused) }
+        await fulfillment(of: [event], timeout: 5)
+        module.workQueue.sync { module.recorder = nil }
+        withExtendedLifetime(jsModules) {}
+
+        var released: RecordingModule? = RecordingModule()
+        let weakModule = try WeakReference(XCTUnwrap(released))
+        let queue = try XCTUnwrap(released?.workQueue)
+        let retainedDelegate = try XCTUnwrap(queue.sync { released?.captureDelegate })
+        released = nil
+        XCTAssertNil(weakModule.value, "The delegate must not keep its event emitter alive")
+        retainedDelegate.audioRecorderEncodeErrorDidOccur(stale, error: nil)
+        queue.sync {} // A callback arriving after owner teardown is a safe no-op.
+    }
+
     @MainActor
     func testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection() async throws {
         XCTAssertFalse(RecordingMeteringProbeModule.interruptionApplies(observedAt: 9, captureBeganAt: nil))

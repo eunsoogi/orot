@@ -12,6 +12,7 @@ const coreTests = [
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
+  'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',

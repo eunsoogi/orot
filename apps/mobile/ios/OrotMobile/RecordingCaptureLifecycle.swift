@@ -4,15 +4,15 @@ import OSLog
 import React
 
 extension RecordingModule {
-    public func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error _: Error?) {
-        workQueue.async {
-            guard self.recorder === recorder, self.status == .recording else { return }
-            recorder.pause()
-            self.deactivateAudioSession()
-            self.status = .paused
-            self.stopTimer()
-            self.emitState()
-        }
+    /// Called only by the delegate's work-queue hop; stale recorder callbacks cannot pause a newer session.
+    func handleRecorderEncodeError(_ recorder: AVAudioRecorder) {
+        dispatchPrecondition(condition: .onQueue(workQueue))
+        guard self.recorder === recorder, status == .recording else { return }
+        recorder.pause()
+        deactivateAudioSession()
+        status = .paused
+        stopTimer()
+        emitState()
     }
 
     func startMicrophoneRecording(
@@ -38,7 +38,7 @@ extension RecordingModule {
                 AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
             ])
         }
-        recorder.delegate = self
+        recorder.delegate = captureDelegate
         // Meter only the consented local microphone session; no audio samples cross the bridge.
         recorder.isMeteringEnabled = true
         try RecordingStartDiagnostic.run(.recorderPreparation) {
@@ -101,6 +101,38 @@ extension RecordingModule {
                 AVAudioSession.sharedInstance().requestRecordPermission(completion)
             }
         }
+    }
+}
+
+/// Capture setup distinguishes preparation, start and the explicit synthetic failure probe.
+enum RecordingModuleError: LocalizedError {
+    case prepareFailed
+    case startFailed
+    case syntheticStartFailure
+
+    var errorDescription: String? {
+        switch self {
+        case .prepareFailed: "The audio recorder could not prepare its local file."
+        case .startFailed: "The audio recorder could not start."
+        case .syntheticStartFailure: "The synthetic recording failure probe was triggered."
+        }
+    }
+}
+
+/// AVFoundation can deliver errors on another thread. This immutable adapter invokes its closure
+/// only on the recording queue; the closure weakly captures the queue-confined module. It owns no
+/// mutable capture state and does not make the RCTEventEmitter itself Sendable.
+final class RecordingCaptureDelegate: NSObject, AVAudioRecorderDelegate, @unchecked Sendable {
+    private let queue: DispatchQueue
+    private let onError: (AVAudioRecorder) -> Void
+
+    init(queue: DispatchQueue, onError: @escaping (AVAudioRecorder) -> Void) {
+        self.queue = queue
+        self.onError = onError
+    }
+
+    func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error _: Error?) {
+        queue.async { self.onError(recorder) }
     }
 }
 
