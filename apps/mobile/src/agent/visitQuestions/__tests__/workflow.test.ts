@@ -59,14 +59,14 @@ describe('visit-question shared workflow', () => {
         prepared.supplementalEvidence,
       ]),
     );
-    expect(requests).toHaveLength(3);
+    expect(requests).toHaveLength(2);
     expect(onProgress).toHaveBeenCalled();
     expect(onTaskStreamEvent).toHaveBeenCalledWith({ type: 'started' });
-    expect(confirmConsent).toHaveBeenCalledTimes(3);
+    expect(confirmConsent).toHaveBeenCalledTimes(2);
     expect(
       new Set(consentRequests.map(request => JSON.stringify(request.payload)))
         .size,
-    ).toBe(3);
+    ).toBe(2);
     expect(JSON.stringify(requests)).not.toContain('private-source-');
     expect(JSON.stringify(requests)).not.toContain('private-span-');
   });

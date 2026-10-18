@@ -138,15 +138,29 @@ export class SqlCipherRagEmbeddingStorage implements LocalEmbeddingVectorStore {
 
   async listForModel(
     model: LocalEmbeddingModelIdentity,
+    chunkIds?: readonly string[],
   ): Promise<readonly PersistedLocalEmbedding[]> {
+    if (chunkIds?.length === 0) return [];
     await this.ensureSchema();
     // Revision keys alone are insufficient when cached vectors must match the exact model and tokenizer files.
     if (!(await verifyModelRow(this.database, model))) return [];
-    const result = await this.database.execute(
-      `SELECT chunk_id, dimension, vector_blob FROM ${EMBEDDINGS_TABLE} WHERE model_id = ? AND model_revision = ? AND dimension = ? ORDER BY chunk_id`,
-      [model.id, model.revision, model.dimension],
-    );
-    return result.rows.map(row => {
+    // Candidate searches must not deserialize unrelated vectors. Bound parameter
+    // batches also keep a larger caller-owned page below SQLite's variable limit.
+    const ids = chunkIds ? [...new Set(chunkIds)] : undefined;
+    const rows = [] as Awaited<ReturnType<SqlDatabase['execute']>>['rows'];
+    for (let offset = 0; offset < (ids?.length ?? 1); offset += 100) {
+      const batch = ids?.slice(offset, offset + 100);
+      const result = await this.database.execute(
+        `SELECT chunk_id, dimension, vector_blob FROM ${EMBEDDINGS_TABLE} WHERE model_id = ? AND model_revision = ? AND dimension = ?` +
+          (batch
+            ? ` AND chunk_id IN (${batch.map(() => '?').join(', ')})`
+            : '') +
+          ' ORDER BY chunk_id',
+        [model.id, model.revision, model.dimension, ...(batch ?? [])],
+      );
+      rows.push(...result.rows);
+    }
+    return rows.map(row => {
       if (
         row.dimension !== model.dimension ||
         typeof row.chunk_id !== 'string'

@@ -35,7 +35,7 @@ describe('personal evidence source detail', () => {
     );
     const registry = new LocalEvidenceReferenceRegistry();
     const result = buildPersonalEvidence({
-      inventory: inventory(currentRecords),
+      records: inventory(currentRecords).records,
       persistedChunks: [chunk],
       repository: currentRepository,
       registry,
@@ -97,7 +97,7 @@ describe('personal evidence source detail', () => {
     );
     const registry = new LocalEvidenceReferenceRegistry();
     const result = buildPersonalEvidence({
-      inventory: inventory(currentRecords),
+      records: inventory(currentRecords).records,
       persistedChunks: [chunk],
       repository: currentRepository,
       registry,
@@ -147,7 +147,7 @@ describe('personal evidence source detail', () => {
     );
     const registry = new LocalEvidenceReferenceRegistry();
     const result = buildPersonalEvidence({
-      inventory: inventory([source, observation]),
+      records: inventory([source, observation]).records,
       persistedChunks: [chunk],
       repository: liveRepository,
       registry,

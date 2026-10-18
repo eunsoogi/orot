@@ -3,6 +3,33 @@
  * The feature adapter resolves it with `t()` so keys and placeholders stay typed.
  */
 export const medicalAppointmentsKo = {
+  'medicalAppointments.failure.configuration':
+    'AI 호출 전 실행 설정 검증에 실패했어요.',
+  'medicalAppointments.failure.input': '일정에서 AI 요청을 구성하지 못했어요.',
+  'medicalAppointments.failure.incompleteResponse':
+    'AI가 응답 생성을 끝내지 못했어요.',
+  'medicalAppointments.failure.malformedResponse':
+    'AI 응답을 분류 결과로 읽지 못했어요.',
+  'medicalAppointments.failure.citations':
+    'AI 응답의 일정 참조가 요청한 일정과 맞지 않아요.',
+  'medicalAppointments.failure.itemCount':
+    'AI가 일부 일정의 분류를 빠뜨렸어요.',
+  'medicalAppointments.failure.identity':
+    'AI가 일정 번호를 중복하거나 잘못 반환했어요.',
+  'medicalAppointments.failure.fields':
+    'AI가 분류 값이나 설명을 올바르게 반환하지 못했어요.',
+  'medicalAppointments.failure.validation':
+    'AI 응답에 빠지거나 중복된 일정, 또는 잘못된 분류 값이 있어요.',
+  'medicalAppointments.failure.summary':
+    '{batch}번째 묶음 처리 중 {seconds}초 후 중단됐어요. {reason} 완료한 분류는 유지했어요.',
+  'medicalAppointments.failure.budget':
+    'AI 처리 시간 또는 요청 크기 한도에 도달했어요.',
+  'medicalAppointments.failure.changed':
+    '분류 중 원본 일정이 바뀌었거나 다시 확인하지 못했어요.',
+  'medicalAppointments.failure.consent': '이 요청의 AI 처리 승인이 필요해요.',
+  'medicalAppointments.failure.response':
+    'AI 응답에서 모든 일정의 분류 결과를 확인하지 못했어요.',
+  'medicalAppointments.failure.provider': '선택한 AI의 응답을 받지 못했어요.',
   'medicalAppointments.title': '진료 일정 분류',
   'medicalAppointments.description': '캘린더에서 병원 일정을 찾아 가져와요.',
   'medicalAppointments.queryLimit':

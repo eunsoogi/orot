@@ -15,6 +15,7 @@ import {
 } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
+import { consumeNativeToolCall, withNativeTools } from './nativeTools';
 
 type ResponderTextEvent = Extract<
   LanguageModelStreamEvent,
@@ -61,9 +62,15 @@ export async function consumeTaskModelResponse<TResult>(
   if (onTaskText) {
     reportTaskStreamEvent(context, { type: 'started' });
   }
-  const outcome = await callModelWithEvidenceFreshness(context, request, onTaskText);
+  const outcome = await callModelWithEvidenceFreshness(
+    context,
+    withNativeTools(context, state, request),
+    onTaskText,
+  );
   if (!outcome) return completeState();
   if (outcome.status !== 'response') return finishModelFailure(context, outcome);
+  const toolCall = consumeNativeToolCall(context, state, outcome.response);
+  if (toolCall) return toolCall;
   const result = consumeResponderResponse(context, state, outcome.response, input, revised);
   const correctionInstruction = context.responseCorrectionInstruction;
   context.responseCorrectionInstruction = undefined;

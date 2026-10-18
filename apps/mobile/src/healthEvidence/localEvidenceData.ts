@@ -1,0 +1,63 @@
+import type { SqlDatabase } from '@orot/storage';
+import type { EvidenceChunk } from '@orot/rag';
+import {
+  findEvidenceIdentifiers,
+  readEvidenceCandidates,
+} from './evidenceCandidates';
+import type { LocalEvidenceCandidates } from './evidenceCandidates';
+import type { EvidenceCandidateScope } from './evidenceCandidateScope';
+import {
+  readCurrentEvidenceChunks,
+  readSelectedStaleArtifacts,
+} from './currentEvidenceChunks';
+import type { EvidenceRecordIdentity } from './currentEvidenceChunks';
+
+export interface LocalEvidenceData {
+  readCandidates(
+    query: string,
+    signal?: AbortSignal,
+    scope?: EvidenceCandidateScope,
+  ): Promise<LocalEvidenceCandidates>;
+  loadCurrentChunks(
+    identities: readonly EvidenceRecordIdentity[],
+    signal?: AbortSignal,
+  ): Promise<EvidenceChunk[]>;
+  loadStaleArtifacts(
+    identities: readonly EvidenceRecordIdentity[],
+    signal?: AbortSignal,
+  ): Promise<readonly EvidenceRecordIdentity[]>;
+  findIdentifiers(
+    text: string,
+    signal?: AbortSignal,
+  ): Promise<readonly string[]>;
+}
+
+/** Shares bounded evidence reads between all AI routes without opening another storage copy. */
+export function createLocalEvidenceData(
+  database: SqlDatabase,
+): LocalEvidenceData {
+  let prepared: Promise<void> | undefined;
+  const prepare = () => {
+    // SQL ranking may sort private values. Keep temporary query state off plaintext disk.
+    prepared ??= database
+      .execute('PRAGMA temp_store = MEMORY')
+      .then(() => undefined)
+      .catch(error => {
+        prepared = undefined;
+        throw error;
+      });
+    return prepared;
+  };
+  return {
+    async readCandidates(query, signal, scope) {
+      await prepare();
+      return readEvidenceCandidates(database, query, signal, scope);
+    },
+    loadCurrentChunks: (identities, signal) =>
+      readCurrentEvidenceChunks(database, identities, signal),
+    loadStaleArtifacts: (identities, signal) =>
+      readSelectedStaleArtifacts(database, identities, signal),
+    findIdentifiers: (text, signal) =>
+      findEvidenceIdentifiers(database, text, signal),
+  };
+}

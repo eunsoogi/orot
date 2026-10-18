@@ -1,4 +1,5 @@
 import type { Appointment } from '@orot/domain';
+import { modelResponseFixture } from './modelResponseFixture';
 import {
   providerSuccess,
   type LanguageModelProvider,
@@ -124,11 +125,7 @@ export function makeProvider(
     async generate(request) {
       const callIndex = requests.push(request) - 1;
       onGenerate?.(request, callIndex);
-      return providerSuccess({
-        text: outputs[callIndex] ?? '',
-        toolCalls: [],
-        finishReason: 'complete',
-      });
+      return providerSuccess(modelResponseFixture(outputs[callIndex] ?? ''));
     },
   };
   return { provider, requests };
@@ -149,16 +146,17 @@ export function makeStreamingProvider(outputs: readonly string[]) {
     },
     async generate(request) {
       const callIndex = requests.push(request) - 1;
-      return providerSuccess({
-        text: outputs[callIndex] ?? '',
-        toolCalls: [],
-        finishReason: 'complete',
-      });
+      return providerSuccess(modelResponseFixture(outputs[callIndex] ?? ''));
     },
     async *stream(request) {
       const callIndex = requests.push(request) - 1;
       const text = outputs[callIndex] ?? '';
-      for (let index = 0; index < text.length; index += 24) {
+      const response = modelResponseFixture(text);
+      for (
+        let index = 0;
+        !response.toolCalls.length && index < text.length;
+        index += 24
+      ) {
         yield providerSuccess({
           type: 'text_delta',
           text: text.slice(index, index + 24),
@@ -166,7 +164,7 @@ export function makeStreamingProvider(outputs: readonly string[]) {
       }
       yield providerSuccess({
         type: 'completed',
-        response: { text, toolCalls: [], finishReason: 'complete' },
+        response,
       });
     },
   };
@@ -225,11 +223,16 @@ export function successfulOutputs(
     evidenceIds: [citation.evidenceId],
   }));
   return [
-    JSON.stringify({ type: 'request_evidence', need: 'missing_coverage' }),
     JSON.stringify({
-      toolId: 'visit-question-personal-record-search',
-      sourceKind: 'personal_record',
-      input: { query: '최근 검사 결과' },
+      text: '',
+      toolCalls: [
+        {
+          id: 'model-search-1',
+          name: 'visit-question-personal-record-search',
+          arguments: { query: '최근 검사 결과' },
+        },
+      ],
+      finishReason: 'tool_calls',
     }),
     JSON.stringify({
       type: 'result',

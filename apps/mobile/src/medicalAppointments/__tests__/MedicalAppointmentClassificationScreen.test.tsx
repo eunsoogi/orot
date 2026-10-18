@@ -37,7 +37,13 @@ test.each(['allow', 'cancel'] as const)(
       screen.getByTestId(`inference-disclosure-${decision}`),
     );
     await waitFor(() => expect(importAction()).not.toBeDisabled());
-    expect(screen.getByText(copy.manualReview)).toBeTruthy();
+    expect(
+      screen.getByText(
+        decision === 'allow'
+          ? /선택한 AI의 응답을 받지 못했어요/
+          : /이 요청의 AI 처리 승인이 필요해요/,
+      ),
+    ).toBeTruthy();
     expect(selected.provider.generate).toHaveBeenCalledTimes(
       decision === 'allow' ? 1 : 0,
     );

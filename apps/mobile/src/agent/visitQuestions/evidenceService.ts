@@ -1,6 +1,5 @@
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
-import { buildPersistedEvidenceChunks } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceRevalidator,
@@ -71,14 +70,14 @@ function buildVisitContext(appointment: Appointment) {
   return { context, query };
 }
 
-/** Loads appointment evidence and returns cancellation before exposing context. */
+/** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
   readonly queryService: VisitQuestionQueryPort;
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
-  readonly buildChunks?: VisitQuestionChunkBuilder;
+  readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionContextResult> {
@@ -120,23 +119,12 @@ export async function prepareVisitQuestionContext(input: {
   }
 
   const { context, query } = buildVisitContext(appointment);
-  const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
-  let initialEvidence: VisitQuestionEvidenceCollection;
-  try {
-    initialEvidence = await searchVisitQuestionEvidence({
-      query,
-      maxEvidenceItems: input.maxEvidenceItems,
-      queryService: input.queryService,
-      repository: input.repository,
-      rag: input.rag,
-      buildChunks,
-      signal: input.signal,
-    });
-  } catch (error) {
-    // RAG adapters may reject when their caller-owned signal aborts an operation.
-    if (input.signal?.aborted) return { status: 'cancelled' };
-    throw error;
-  }
+  const buildChunks = input.buildChunks;
+  const initialEvidence: VisitQuestionEvidenceCollection = {
+    batch: { items: [], coverage: [], conflicts: [] },
+    metadataByCitation: new Map(),
+    memoryStatus: 'not_searched',
+  };
   if (input.signal?.aborted) return { status: 'cancelled' };
   // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);

@@ -19,7 +19,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-test('loads every current-period category before showing the overview and keeps the older cursor', async () => {
+test('shows the first page before requesting more current-period records', async () => {
   const now = Date.now();
   const recentHeartRates = Array.from({ length: 50 }, (_, index) => {
     const timestamp = new Date(now - (index + 1) * 60_000).toISOString();
@@ -77,7 +77,10 @@ test('loads every current-period category before showing the overview and keeps 
     />,
   );
 
-  // The second page contains this month's blood pressure data; the next cursor is outside the summary period.
+  // A dense current month must not delay first paint until every page arrives.
+  expect(loader).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('아직 불러오지 않은 기록이 있어요.')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('health-records-load-older'));
   expect(
     await screen.findByTestId('health-record-chart-blood_pressure'),
   ).toBeTruthy();

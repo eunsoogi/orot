@@ -45,9 +45,10 @@ export function isEvidenceNeed(value: unknown): value is EvidenceNeed {
 export function taskResponseSchema<TResult>(
   contract: TaskResponderContract<TResult>,
   input?: TaskResponderInput,
+  nativeResearch = false,
 ): JsonObject {
   const ids = input?.evidence.items.map((item) => item.evidenceId) ?? [];
-  return {
+  const schema = {
     title: 'TaskResponse',
     description:
       'Choose a task result or a necessary evidence request using the task instructions and supplied evidence. ' +
@@ -94,6 +95,11 @@ export function taskResponseSchema<TResult>(
       },
     ],
   } as JsonObject;
+  // Native tools own research turns. Tasks with no available research also generate
+  // only a final result, avoiding an irrelevant union branch in guided generation.
+  return nativeResearch || input?.research?.canRequestEvidence === false
+    ? (schema.anyOf as JsonObject[])[1]!
+    : schema;
 }
 
 export function researcherSchema(tools: readonly EvidenceSearchTool[]): JsonObject {

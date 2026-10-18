@@ -4,6 +4,7 @@ import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { classifyCalendarEvents } from './classificationWorkflow';
+import { classificationFailureMessage } from './classificationFailure';
 import type { CandidateReview } from './classificationWorkflow';
 import type { CalendarBridge } from '../calendar/types';
 import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
@@ -168,7 +169,10 @@ export default function MedicalAppointmentClassificationScreen({
         : copy.noMedical;
       const incomplete =
         result.status !== 'complete' && result.status !== 'empty';
-      setMessage(saveFailure || (incomplete ? copy.manualReview : summary));
+      setMessage(
+        saveFailure ||
+          (incomplete ? classificationFailureMessage(result.failure) : summary),
+      );
     } catch {
       if (isCurrent()) setMessage(copy.manualReview);
     } finally {

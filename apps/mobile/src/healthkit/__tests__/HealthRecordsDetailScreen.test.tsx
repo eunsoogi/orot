@@ -71,8 +71,8 @@ test('shows the selected period as paired source values with exact units', async
   });
 });
 
-// The overview has already loaded the month; opening details must not present one page as its total.
-test('loads all pages in the selected period before reporting the detail count', async () => {
+// Counts describe loaded rows until the selected period has no remaining pages.
+test('shows a partial period immediately and appends the next page on demand', async () => {
   const now = new Date().toISOString();
   const observations = mapBloodPressureCorrelation(
     correlation('paged-pressure'),
@@ -97,6 +97,9 @@ test('loads all pages in the selected period before reporting the detail count',
       selection={{ category: 'blood_pressure', period: 'month' }}
     />,
   );
+  expect(loadObservations).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('불러온 1개 기록')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('health-records-load-older'));
   expect(loadObservations).toHaveBeenCalledTimes(2);
   expect(
     screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
@@ -105,5 +108,35 @@ test('loads all pages in the selected period before reporting the detail count',
     screen.getByTestId('health-record-row-0-diastolic').props
       .accessibilityLabel,
   ).toBe('이완기 80 mmHg');
+  expect(screen.queryByTestId('health-records-load-older')).toBeNull();
+});
+
+// An empty category on one page must neither claim absence nor drain the database.
+test('keeps an empty page reachable without automatically scanning remaining history', async () => {
+  const now = new Date().toISOString();
+  const observations = mapBloodPressureCorrelation(
+    correlation('later-pressure'),
+    now,
+  ).observations.map(item => ({ ...item, effectiveAt: now }));
+  const cursor = { id: 'first-page', effectiveAt: now };
+  const loadObservations = jest
+    .fn()
+    .mockResolvedValueOnce({ records: [], nextCursor: cursor })
+    .mockRejectedValueOnce(new Error('Read failed'))
+    .mockResolvedValueOnce({ records: observations, nextCursor: null });
+  await render(
+    <HealthRecordsDetailScreen
+      loadObservations={loadObservations}
+      onBack={jest.fn()}
+      onSelectionChange={jest.fn()}
+      selection={{ category: 'blood_pressure', period: 'month' }}
+    />,
+  );
+  expect(loadObservations).toHaveBeenCalledTimes(1);
+  expect(screen.queryByTestId('health-records-detail-empty')).toBeNull();
+  await fireEvent.press(screen.getByTestId('health-records-load-older'));
+  await fireEvent.press(screen.getByTestId('health-records-detail-retry'));
+  expect(loadObservations).toHaveBeenLastCalledWith(cursor);
+  expect(screen.getByTestId('health-record-row-0')).toBeTruthy();
   expect(screen.queryByTestId('health-records-load-older')).toBeNull();
 });

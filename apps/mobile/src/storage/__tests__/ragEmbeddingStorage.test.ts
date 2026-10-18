@@ -23,6 +23,24 @@ describe('SQLCipher RAG embedding storage', () => {
 
   afterEach(() => close());
 
+  it('reads only requested vectors and treats an empty candidate page as empty', async () => {
+    const storage = new SqlCipherRagEmbeddingStorage(database);
+    await storage.upsertBatch(LOCAL_EMBEDDING_IDENTITY, [
+      { chunkId: 'selected', vector: vector(1), sourceRecordIds: ['source-1'] },
+      {
+        chunkId: 'unrelated',
+        vector: vector(0.5),
+        sourceRecordIds: ['source-2'],
+      },
+    ]);
+    expect(
+      await storage.listForModel(LOCAL_EMBEDDING_IDENTITY, ['selected']),
+    ).toEqual([{ chunkId: 'selected', vector: vector(1) }]);
+    expect(await storage.listForModel(LOCAL_EMBEDDING_IDENTITY, [])).toEqual(
+      [],
+    );
+  });
+
   it('persists model identity and round-trips little-endian float32 vectors', async () => {
     const storage = new SqlCipherRagEmbeddingStorage(database);
     const embedding = vector(0.75);

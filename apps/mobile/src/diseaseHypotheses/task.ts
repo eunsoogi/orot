@@ -89,15 +89,17 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
     },
   };
 
-/** Requires a truthful all-record inventory before asking #117 to analyze local evidence. */
+/** Preloaded callers must attest coverage; tool-first callers establish coverage through tool results. */
 export async function runDiseaseHypothesisAnalysis(
   options: Omit<MultiAgentWorkflowOptions<DiseaseHypothesisAnalysis>, 'task'>,
-  inventory: HealthEvidenceInventory,
+  inventory: HealthEvidenceInventory | undefined,
   invocation?: MultiAgentInvocation,
   resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver,
 ): Promise<DiseaseHypothesisRunOutcome> {
-  const assessment = assessHealthEvidenceCoverage(inventory);
-  if (assessment.status !== 'complete') {
+  const assessment = inventory
+    ? assessHealthEvidenceCoverage(inventory)
+    : undefined;
+  if (assessment && assessment.status !== 'complete') {
     return { status: 'incomplete_inventory', reason: assessment.status };
   }
   const result = await runMultiAgentWorkflow(

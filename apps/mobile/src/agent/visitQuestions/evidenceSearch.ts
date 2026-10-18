@@ -1,7 +1,6 @@
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
 import type { LocalMemoryHit } from '@orot/agent-runtime';
 import type { HybridSearchOptions } from '@orot/rag';
-import { buildPersistedEvidenceChunks } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceCollection,
@@ -61,7 +60,7 @@ export async function searchVisitQuestionEvidence(input: {
   readonly queryService: VisitQuestionQueryPort;
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
-  readonly buildChunks?: VisitQuestionChunkBuilder;
+  readonly buildChunks: VisitQuestionChunkBuilder;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionEvidenceCollection> {
   if (input.signal?.aborted) throw new Error('Evidence search was cancelled.');
@@ -77,7 +76,7 @@ export async function searchVisitQuestionEvidence(input: {
           ),
         }
       : visitQuestionEvidenceLimits(input.maxEvidenceItems);
-  const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
+  const buildChunks = input.buildChunks;
   let recordHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let transcriptHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let recordSearchTruncated = false;
@@ -113,7 +112,10 @@ export async function searchVisitQuestionEvidence(input: {
   let memoryPromise: ReturnType<typeof readReviewedMemory> | undefined;
 
   if (sourceKind !== 'reviewed_memory') {
-    const chunks = await buildChunks(input.repository);
+    const chunks = await buildChunks(input.repository, {
+      query: input.query,
+      signal: input.signal,
+    });
     if (input.signal?.aborted)
       throw new Error('Evidence search was cancelled.');
     if (input.signal) {

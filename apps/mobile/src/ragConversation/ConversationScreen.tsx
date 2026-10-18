@@ -17,6 +17,7 @@ import { progressCopy } from './conversationProgress';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 
 interface ConversationScreenProps {
   readonly providerSelection?: ReactNode;
@@ -54,6 +55,17 @@ export function ConversationScreen({
   const operationController = useRef<AbortController | null>(null);
   const inputRevision = useRef(0);
   const partialText = useRef('');
+  function cancel() {
+    operationController.current?.abort();
+    operationController.current = null;
+    setBusy(false);
+    retainPartial(copy.progressCancelled, true);
+  }
+  const hasSharedCancel = useAiCancellationAction(
+    busy,
+    cancel,
+    'rag-conversation-cancel',
+  );
 
   // Incomplete text stays visible but is excluded from future model context.
   function retainPartial(activity: string, retainEmpty = false) {
@@ -211,6 +223,7 @@ export function ConversationScreen({
       <ConversationComposer
         value={draft}
         busy={busy}
+        hasSharedCancel={hasSharedCancel}
         onChangeText={value => {
           inputRevision.current += 1;
           setDraft(value);
@@ -218,12 +231,7 @@ export function ConversationScreen({
         onSend={() => {
           send().catch(() => setError(copy.unavailable));
         }}
-        onCancel={() => {
-          operationController.current?.abort();
-          operationController.current = null;
-          setBusy(false);
-          retainPartial(copy.progressCancelled, true);
-        }}
+        onCancel={cancel}
       />
     </KeyboardAvoidingView>
   );

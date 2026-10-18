@@ -63,7 +63,8 @@ export interface MultiAgentBudget {
 
 export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
   maxModelCalls: 3,
-  maxToolCalls: 1,
+  // A second bounded search can refine an empty result without preloading other sources.
+  maxToolCalls: 2,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 768,
@@ -73,7 +74,7 @@ export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
 
 export const MAX_MULTI_AGENT_BUDGET: MultiAgentBudget = {
   maxModelCalls: 4,
-  maxToolCalls: 1,
+  maxToolCalls: 2,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,

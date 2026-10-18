@@ -11,7 +11,7 @@ import { healthRecordPeriodTitle } from './healthRecordsLibraryModel';
 import { healthRecordPeriods } from './healthRecordsDetailModel';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
 
-/** Shows period selection and honest loaded counts while unbounded history remains paged. */
+/** Shows period selection and honest loaded counts while the selected period remains paged. */
 export function HealthRecordsDetailHeader({
   title,
   hasSharedNavigation,
@@ -110,12 +110,12 @@ export function HealthRecordsDetailHeader({
           </Text>
         </View>
       </View>
-      {loadState === 'loading' && observationCount === 0 ? (
+      {loadState === 'loading' && observationCount === 0 && !hasMore ? (
         <Text testID="health-records-detail-loading">
           {t('healthRecords.loading')}
         </Text>
       ) : null}
-      {loadState === 'failed' && observationCount === 0 ? (
+      {loadState === 'failed' && observationCount === 0 && !hasMore ? (
         <View>
           <Text accessibilityRole="alert" style={styles.error}>
             {t('healthRecords.error')}

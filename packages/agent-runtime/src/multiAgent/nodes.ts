@@ -47,7 +47,13 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       request: options.request,
       context: options.context,
       evidence: context.currentEvidence,
-      research: responderResearchAvailability(options.execution, options.tools, state),
+      research: responderResearchAvailability(
+        options.execution,
+        options.tools,
+        state,
+        false,
+        options.provider.capabilities.toolCalling,
+      ),
     };
     const request = buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {
@@ -159,7 +165,13 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       request: options.request,
       context: options.context,
       evidence: context.currentEvidence,
-      research: responderResearchAvailability(options.execution, options.tools, state, true),
+      research: responderResearchAvailability(
+        options.execution,
+        options.tools,
+        state,
+        true,
+        options.provider.capabilities.toolCalling,
+      ),
     };
     const request = buildTaskRequest(options.provider, options.task, input, state.budget);
     if (request.status === 'unsupported_input') {

@@ -19,7 +19,6 @@ import {
 } from './healthRecordsLibraryModel';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
 import { buildHealthRecordsDetailRows } from './healthRecordsDetailModel';
-import { loadHealthObservationPeriod } from './loadHealthObservationPeriod';
 import { HealthRecordsDetailRecordRow } from './HealthRecordsDetailRecordRow';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
 
@@ -83,13 +82,8 @@ export function HealthRecordsDetailScreen({
       const request = ++generation.current;
       setLoadState('loading');
       try {
-        const page = after
-          ? await loadObservations(after)
-          : await loadHealthObservationPeriod(
-              loadObservations,
-              selection.period,
-              now,
-            );
+        // One request reads one storage page, even for a dense selected period.
+        const page = await loadObservations(after);
         if (request !== generation.current) return;
         setObservations(current =>
           after ? [...current, ...page.records] : page.records,
@@ -111,7 +105,7 @@ export function HealthRecordsDetailScreen({
         }
       }
     },
-    [loadObservations, start, selection.period, now],
+    [loadObservations, start],
   );
 
   useEffect(() => {
@@ -124,12 +118,6 @@ export function HealthRecordsDetailScreen({
       generation.current += 1;
     };
   }, [reload]);
-
-  useEffect(() => {
-    if (loadState === 'ready' && cursor && rows.length === 0) {
-      void reload(cursor);
-    }
-  }, [cursor, loadState, reload, rows.length]);
 
   const title = healthRecordCategoryTitle(selection.category) + ' 기록 상세';
 

@@ -29,7 +29,7 @@ describe('personal evidence semantic search identity', () => {
     const records = [source, observation];
     const registry = new LocalEvidenceReferenceRegistry();
     const result = buildPersonalEvidence({
-      inventory: inventory(records),
+      records: inventory(records).records,
       persistedChunks: [persisted],
       repository: repository(records),
       registry,

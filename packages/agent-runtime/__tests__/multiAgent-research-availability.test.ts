@@ -114,8 +114,9 @@ test('guided planning obtains exact consent and disables research on the cited r
   expect(model.requests[0]?.responseFormat?.schema.description).toContain(
     'requested for this response: true',
   );
-  expect(model.requests[2]?.responseFormat?.schema.description).toContain(
-    'requested for this response: false',
+  expect(model.requests[2]?.responseFormat?.schema).toMatchObject({ type: 'object' });
+  expect(JSON.stringify(model.requests[2]?.responseFormat?.schema)).not.toContain(
+    'request_evidence',
   );
 });
 

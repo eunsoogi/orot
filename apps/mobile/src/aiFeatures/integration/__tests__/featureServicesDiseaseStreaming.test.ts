@@ -3,7 +3,7 @@ import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { createAiFeatureServices } from '../featureServices';
 import {
   apple,
-  completeInventory,
+  completeCandidates,
   consent,
   localData,
   memoryRecord,
@@ -34,7 +34,7 @@ test('forwards disease progress and projected-text observers into the workflow',
     },
     loadLocalData: async () => ({
       ...source.data,
-      loadInventory: async () => completeInventory,
+      readCandidates: async () => completeCandidates,
     }),
     diseaseRunner,
   });

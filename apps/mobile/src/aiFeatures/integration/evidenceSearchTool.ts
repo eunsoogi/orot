@@ -95,8 +95,12 @@ function resultCoverage(
 export function createLocalEvidenceSearchTool(input: {
   readonly id: string;
   readonly sourceKind: EvidenceItem['sourceKind'];
-  readonly snapshot: LocalEvidenceSnapshot;
+  readonly snapshot?: LocalEvidenceSnapshot;
   readonly rag: Pick<LocalE5RagService, 'search'>;
+  readonly loadSnapshot?: (
+    query: string,
+    request: EvidenceSearchRequest,
+  ) => Promise<LocalEvidenceSnapshot>;
 }): EvidenceSearchTool {
   return {
     id: input.id,
@@ -111,34 +115,31 @@ export function createLocalEvidenceSearchTool(input: {
     async search(request) {
       const parsed = queryInput(request.input);
       if (!parsed) throw new Error('The local evidence query is invalid.');
-      const candidates = scopedItems(input.snapshot, request, input.sourceKind);
-      const candidateKeys = new Set(candidates.map(localEvidenceKey));
-      const chunks = input.snapshot.chunks.filter(chunk =>
-        candidateKeys.has(
-          localEvidenceKey({
-            sourceId: chunk.metadata.sourceId,
-            evidenceId: chunk.metadata.evidenceId,
-          }),
-        ),
-      );
-      if (candidates.length === 0 || chunks.length === 0) {
-        const items: EvidenceItem[] = [];
-        return {
-          items,
-          coverage: [
-            resultCoverage(
-              input.snapshot,
-              request,
-              input.sourceKind,
-              items,
-              false,
-            ),
-          ],
-          conflicts: [],
-        } satisfies EvidenceBatch;
-      }
-
+      let snapshot = input.snapshot ?? unsearchedSnapshot;
       try {
+        if (input.loadSnapshot)
+          snapshot = await input.loadSnapshot(parsed.query as string, request);
+        const candidates = scopedItems(snapshot, request, input.sourceKind);
+        const candidateKeys = new Set(candidates.map(localEvidenceKey));
+        const chunks = snapshot.chunks.filter(chunk =>
+          candidateKeys.has(
+            localEvidenceKey({
+              sourceId: chunk.metadata.sourceId,
+              evidenceId: chunk.metadata.evidenceId,
+            }),
+          ),
+        );
+        if (candidates.length === 0 || chunks.length === 0) {
+          const items: EvidenceItem[] = [];
+          return {
+            items,
+            coverage: [
+              resultCoverage(snapshot, request, input.sourceKind, items, false),
+            ],
+            conflicts: [],
+          } satisfies EvidenceBatch;
+        }
+
         const hits = await input.rag.search(
           parsed.query as string,
           chunks,
@@ -160,7 +161,7 @@ export function createLocalEvidenceSearchTool(input: {
           if (!item || seen.has(localEvidenceKey(item))) continue;
           const candidate = [...selected, item];
           const candidateCoverage = resultCoverage(
-            input.snapshot,
+            snapshot,
             request,
             input.sourceKind,
             candidate,
@@ -186,7 +187,7 @@ export function createLocalEvidenceSearchTool(input: {
           items: selected,
           coverage: [
             resultCoverage(
-              input.snapshot,
+              snapshot,
               request,
               input.sourceKind,
               selected,
@@ -206,7 +207,7 @@ export function createLocalEvidenceSearchTool(input: {
           items,
           coverage: [
             resultCoverage(
-              input.snapshot,
+              snapshot,
               request,
               input.sourceKind,
               items,
@@ -220,3 +221,20 @@ export function createLocalEvidenceSearchTool(input: {
     },
   };
 }
+
+// An unexecuted tool has no evidence or coverage claim. This fallback is used only
+// to describe a failed first read, never as an invented complete inventory.
+const unsearchedSnapshot: LocalEvidenceSnapshot = {
+  inventory: {
+    inventoryComplete: false,
+    availableKinds: [],
+    queriedKinds: [],
+    unsupportedKinds: [],
+    truncatedKinds: [],
+  },
+  items: [],
+  chunks: [],
+  coverage: [],
+  gaps: [],
+  batchFor: () => ({ items: [], coverage: [], conflicts: [] }),
+};

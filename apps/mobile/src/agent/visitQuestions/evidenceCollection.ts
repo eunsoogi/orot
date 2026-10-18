@@ -17,7 +17,10 @@ export interface VisitQuestionEvidenceCollection {
     VisitQuestionEvidenceMetadata
   >;
   readonly memoryStatus:
-    'available' | 'no_matching_current_memory' | 'local_memory_unavailable';
+    | 'available'
+    | 'no_matching_current_memory'
+    | 'local_memory_unavailable'
+    | 'not_searched';
 }
 
 export function hasConflictingHealthObservations(

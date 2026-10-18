@@ -123,6 +123,33 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The evidence item budget was exceeded.', 'budget_exceeded');
       return completeState();
     }
+    // Even an empty or incomplete search is a tool result. Let the model see it;
+    // final coverage and citation validation still prevent unsupported answers.
+    if (context.pendingNativeToolCallId) {
+      const combined = {
+        items: [...context.currentEvidence.items, ...batch.items],
+        coverage: [...context.currentEvidence.coverage, ...batch.coverage],
+        conflicts: [...context.currentEvidence.conflicts, ...batch.conflicts],
+      };
+      if (next.some((reference) => prior.some((existing) => sameReference(existing, reference)))) {
+        stop(context, 'The tool returned duplicate evidence.', 'invalid_output');
+        return completeState();
+      }
+      if (combined.items.length && !(await evidenceIsFresh(context, combined)))
+        return completeState();
+      context.currentEvidence = combined;
+      context.nativeToolMessages?.push({
+        role: 'tool',
+        toolCallId: context.pendingNativeToolCallId,
+        result: JSON.parse(canonicalJson(batch)),
+      });
+      context.pendingNativeToolCallId = undefined;
+      return {
+        phase: 'revised_response' as const,
+        evidenceReferences: referencesFromBatch(combined),
+        pendingOperation: undefined,
+      };
+    }
     if (
       next.length === 0 ||
       next.some((reference) => prior.some((existing) => sameReference(existing, reference)))

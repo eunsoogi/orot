@@ -11,6 +11,7 @@ import { getDiseaseHypothesisCopy } from './copy';
 import type { DiseaseHypothesisRunOutcome } from './task';
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { useDiseaseHypothesisGeneration } from './useDiseaseHypothesisGeneration';
+import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 
 interface DiseaseHypothesesScreenProps {
   readonly navigationRouteKey?: string;
@@ -62,6 +63,11 @@ export function DiseaseHypothesesScreen({
   const copy = getDiseaseHypothesisCopy();
   const { state, activity, preview, generate, cancel } =
     useDiseaseHypothesisGeneration(onGenerate);
+  const hasSharedCancel = useAiCancellationAction(
+    state.status === 'loading',
+    cancel,
+    'disease-hypotheses-cancel',
+  );
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -108,11 +114,13 @@ export function DiseaseHypothesesScreen({
           >
             {activity ?? copy.loading}
           </Text>
-          <Button
-            onPress={cancel}
-            testID="disease-hypotheses-cancel"
-            title={copy.cancel}
-          />
+          {!hasSharedCancel ? (
+            <Button
+              onPress={cancel}
+              testID="disease-hypotheses-cancel"
+              title={copy.cancel}
+            />
+          ) : null}
         </>
       ) : null}
       {preview ? (

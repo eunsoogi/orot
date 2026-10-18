@@ -12,7 +12,6 @@ import type { NavigationLeaveState } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { t } from '../i18n';
 import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
-import { loadHealthObservationPeriod } from './loadHealthObservationPeriod';
 import { HealthRecordsLibraryHeader } from './HealthRecordsLibraryHeader';
 import { HealthRecordsCategoryCard } from './HealthRecordsCategoryCard';
 import { HealthRecordsMedicationCategoryCard } from './HealthRecordsMedicationCategoryCard';
@@ -89,13 +88,8 @@ export function HealthRecordsLibraryScreen({
       const request = ++generation.current;
       setLoadState('loading');
       try {
-        const page = after
-          ? await loadObservations(after)
-          : await loadHealthObservationPeriod(
-              loadObservations,
-              'month',
-              new Date().toISOString(),
-            );
+        // One request reads one storage page, even for a dense selected period.
+        const page = await loadObservations(after);
         if (request !== generation.current) return;
         setObservations(current =>
           after ? [...current, ...page.records] : page.records,
@@ -151,7 +145,14 @@ export function HealthRecordsLibraryScreen({
             <Text testID="health-records-loading-more">
               {t('healthRecords.loading')}
             </Text>
-          ) : undefined
+          ) : (
+            <AppButton
+              onPress={() => void reload(cursor)}
+              testID="health-records-load-older"
+              title={t('healthRecords.loadOlder')}
+              variant="secondary"
+            />
+          )
         ) : undefined
       }
       ListHeaderComponent={
@@ -159,6 +160,7 @@ export function HealthRecordsLibraryScreen({
           hasSharedNavigation={hasSharedNavigation}
           loadState={loadState}
           observationCount={observations.length}
+          hasMore={cursor !== null}
           onBack={onBack}
           onRetry={() => void reload(null)}
           onSelectCategory={setSelectedCategory}
@@ -178,6 +180,7 @@ export function HealthRecordsLibraryScreen({
         ) : (
           <HealthRecordsCategoryCard
             category={category}
+            hasMore={cursor !== null}
             loadState={loadState}
             observations={recordsByCategory.get(category) ?? []}
             onOpenDetail={onOpenDetail}

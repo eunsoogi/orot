@@ -21,6 +21,7 @@ import {
 
 interface HealthRecordsCategoryCardProps {
   readonly category: HealthObservationCategory;
+  readonly hasMore?: boolean;
   readonly loadState: 'loading' | 'ready' | 'failed';
   readonly observations: readonly HealthObservation[];
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
@@ -29,6 +30,7 @@ interface HealthRecordsCategoryCardProps {
 /** Separates measured series from event records while keeping one clear detail action. */
 export function HealthRecordsCategoryCard({
   category,
+  hasMore = false,
   loadState,
   observations,
   onOpenDetail,
@@ -72,10 +74,15 @@ export function HealthRecordsCategoryCard({
             {title + ' 기록'}
           </Text>
           <Text style={styles.count}>
-            {t('healthRecords.categoryPeriodSummary', {
-              count,
-              period: healthRecordPeriodTitle('month'),
-            })}
+            {t(
+              hasMore
+                ? 'healthRecords.loadedCategoryPeriodSummary'
+                : 'healthRecords.categoryPeriodSummary',
+              {
+                count,
+                period: healthRecordPeriodTitle('month'),
+              },
+            )}
           </Text>
         </View>
         <AppButton
@@ -95,7 +102,12 @@ export function HealthRecordsCategoryCard({
             ? t('healthRecords.loading')
             : loadState === 'failed'
               ? t('healthRecords.error')
-              : t('healthRecords.categoryEmpty', { title })}
+              : t(
+                  hasMore
+                    ? 'healthRecords.categoryNotLoaded'
+                    : 'healthRecords.categoryEmpty',
+                  { title },
+                )}
         </Text>
       ) : eventLike ? (
         <Text style={styles.eventSummary}>

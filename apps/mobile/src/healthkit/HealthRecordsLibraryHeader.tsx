@@ -11,6 +11,7 @@ export type HealthRecordsLibraryLoadState = 'loading' | 'ready' | 'failed';
 
 interface HealthRecordsLibraryHeaderProps {
   readonly hasSharedNavigation: boolean;
+  readonly hasMore?: boolean;
   readonly loadState: HealthRecordsLibraryLoadState;
   readonly onBack: () => void;
   readonly onRetry: () => void;
@@ -22,6 +23,7 @@ interface HealthRecordsLibraryHeaderProps {
 /** Keeps the record-library title, filters, and top-level load feedback together. */
 export function HealthRecordsLibraryHeader({
   hasSharedNavigation,
+  hasMore = false,
   loadState,
   onBack,
   onRetry,
@@ -50,6 +52,7 @@ export function HealthRecordsLibraryHeader({
         )}
       </View>
       <Text style={styles.description}>{t('healthRecords.description')}</Text>
+      {hasMore ? <Text>{t('healthRecords.moreAvailable')}</Text> : null}
       <HealthRecordsCategoryFilter
         selected={selectedCategory}
         onSelect={onSelectCategory}
@@ -78,6 +81,7 @@ export function HealthRecordsLibraryHeader({
       ) : null}
       {loadState === 'ready' &&
       observationCount === 0 &&
+      !hasMore &&
       selectedCategory === 'all' ? (
         <Text testID="health-records-empty">{t('healthRecords.empty')}</Text>
       ) : null}

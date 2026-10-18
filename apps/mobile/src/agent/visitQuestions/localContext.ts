@@ -17,6 +17,8 @@ import {
   type OutboundProcessingRequest,
 } from '@orot/agent-runtime';
 import { runVisitQuestionWorkflow } from './workflow';
+import { createBoundedVisitQuestionChunkBuilder } from './boundedEvidenceChunks';
+import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 
 let localMemoryEmbedder: LocalE5EmbeddingProvider | null = null;
 
@@ -51,6 +53,11 @@ export async function prepareUpcomingVisitQuestionContext(input: {
     queryService,
     repository,
     rag,
+    buildChunks: createBoundedVisitQuestionChunkBuilder(async () =>
+      createLocalEvidenceData(
+        await secureDatabase.openLocalAgentMemoryDatabase(),
+      ),
+    ),
   });
   if (prepared.status !== 'ready') return prepared;
   return {

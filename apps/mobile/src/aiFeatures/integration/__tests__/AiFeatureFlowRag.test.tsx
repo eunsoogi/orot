@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { LocalHealthEvidenceInventory } from '../../../healthEvidence/localEvidenceRepository';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import type { AiFeatureLocalData } from '../localData';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import {
   apple,
   completeInventory,
+  candidatesForInventory,
   localData,
   selectionStore,
 } from '../featureServiceFixtures';
@@ -20,11 +20,13 @@ test('shows the insufficient-evidence response from the integrated RAG route', a
   const source = localData([]);
   const partialData: AiFeatureLocalData = {
     ...source.data,
-    loadInventory: jest.fn(async (): Promise<LocalHealthEvidenceInventory> => ({
-      ...completeInventory,
-      inventoryComplete: false,
-      truncatedKinds: ['health_observation'],
-    })),
+    readCandidates: jest.fn(async () =>
+      candidatesForInventory({
+        ...completeInventory,
+        inventoryComplete: false,
+        truncatedKinds: ['health_observation'],
+      }),
+    ),
   };
   const ragRunner = jest.fn(async () => ({
     status: 'no_evidence' as const,

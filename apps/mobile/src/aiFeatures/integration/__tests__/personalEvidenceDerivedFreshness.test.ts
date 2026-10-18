@@ -88,7 +88,7 @@ function fixture(staleArtifacts: readonly StaleEvidenceArtifact[]) {
   const registry = new LocalEvidenceReferenceRegistry();
   let currentStaleArtifacts = [...staleArtifacts];
   const result = buildPersonalEvidence({
-    inventory: inventory(records),
+    records: inventory(records).records,
     persistedChunks: [currentChunk],
     loadCurrentPersistedChunks: async () => [currentChunk],
     repository: repository(records),

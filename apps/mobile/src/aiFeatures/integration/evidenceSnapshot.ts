@@ -1,3 +1,4 @@
+import type { HealthEvidenceInventory } from '../../healthEvidence/coverage';
 import type { EvidenceBatch, EvidenceItem } from '@orot/agent-runtime';
 import type {
   AgentMemoryStorageAdapter,
@@ -5,7 +6,7 @@ import type {
 } from '@orot/agent-memory';
 import type { EvidenceChunk } from '@orot/rag';
 import type {
-  LocalHealthEvidenceInventory,
+  LocalHealthEvidenceRecord,
   LocalHealthEvidenceRepository,
 } from '../../healthEvidence/localEvidenceRepository';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -17,7 +18,7 @@ import { buildPersonalEvidence } from './personalEvidence';
 import type { StaleEvidenceArtifact } from './localData';
 
 export interface LocalEvidenceSnapshot {
-  readonly inventory: LocalHealthEvidenceInventory;
+  readonly inventory: HealthEvidenceInventory;
   readonly items: readonly EvidenceItem[];
   readonly chunks: readonly EvidenceChunk[];
   readonly coverage: EvidenceBatch['coverage'];
@@ -32,14 +33,17 @@ export function localEvidenceKey(value: {
   return `${value.sourceId}\u0000${value.evidenceId}`;
 }
 
-function inventoryGaps(inventory: LocalHealthEvidenceInventory): string[] {
+function inventoryGaps(inventory: HealthEvidenceInventory): string[] {
   return inventory.inventoryComplete
     ? []
-    : ['로컬 기록이 저장 상한을 넘어 전체 자료를 포함하지 못했어요.'];
+    : ['일부 로컬 자료를 안전하게 검색하지 못했어요.'];
 }
 
 export async function createLocalEvidenceSnapshot(input: {
-  readonly inventory: LocalHealthEvidenceInventory;
+  readonly inventory: HealthEvidenceInventory;
+  readonly records: readonly LocalHealthEvidenceRecord[];
+  readonly candidateRecords?: readonly LocalHealthEvidenceRecord[];
+  readonly hasMoreCandidates?: boolean;
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
   readonly staleArtifacts: readonly StaleEvidenceArtifact[];
@@ -76,7 +80,8 @@ export async function createLocalEvidenceSnapshot(input: {
         ...new Set(forSource('personal_record').map(item => item.sourceId)),
       ],
       gaps: personalGaps,
-      truncated: !input.inventory.inventoryComplete,
+      truncated:
+        !input.inventory.inventoryComplete || Boolean(input.hasMoreCandidates),
       ...(input.inventory.inventoryComplete
         ? { selectionMethod: 'ranked_retrieval' as const }
         : {}),

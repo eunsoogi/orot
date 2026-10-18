@@ -19,6 +19,10 @@ export const healthRecordsKo = {
   'healthRecords.category.medications': '약 및 복용',
   'healthRecords.category.all': '전체',
   'healthRecords.detail': '자세히 보기',
+  'healthRecords.moreAvailable': '아직 불러오지 않은 기록이 있어요.',
+  'healthRecords.categoryNotLoaded': '불러온 기록에는 {title} 기록이 없어요.',
+  'healthRecords.loadedCategoryPeriodSummary':
+    '불러온 {count}개 기록 · 지난 {period}',
   'healthRecords.categoryPeriodSummary': '{count}개 기록 · 지난 {period}',
   'healthRecords.latestBloodPressure': '최근 혈압',
   'healthRecords.detailHint': '{title} 측정값과 날짜를 확인합니다.',

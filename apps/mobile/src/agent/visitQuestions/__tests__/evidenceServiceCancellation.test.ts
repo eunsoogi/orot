@@ -93,6 +93,14 @@ describe('visit-question evidence cancellation', () => {
     });
 
     expect(result.status).toBe('ready');
+    if (result.status !== 'ready')
+      throw new Error('Expected a ready appointment.');
+    await result.searchEvidence(
+      '검사 기록',
+      8,
+      'personal_record',
+      controller.signal,
+    );
     expect(dependencies.rag.index).toHaveBeenCalledWith([chunk], {
       signal: controller.signal,
     });
@@ -167,7 +175,17 @@ describe('visit-question evidence cancellation', () => {
       signal: controller.signal,
     });
 
-    expect(result).toEqual({ status: 'cancelled' });
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready')
+      throw new Error('Expected a ready appointment.');
+    await expect(
+      result.searchEvidence(
+        '검사 기록',
+        8,
+        'personal_record',
+        controller.signal,
+      ),
+    ).rejects.toThrow('cancelled');
     expect(dependencies.rag.search).not.toHaveBeenCalled();
     expect(dependencies.queryService.searchMemory).not.toHaveBeenCalled();
   });

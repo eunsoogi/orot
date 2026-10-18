@@ -2,7 +2,6 @@ import { createPrivateEvidenceRag } from './privateEvidenceRag';
 import { createExternalConversationEvidence } from './externalConversationEvidence';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
-  EvidenceBatch,
   EvidenceReference,
   MultiAgentInvocation,
   MultiAgentWorkflowOptions,
@@ -15,19 +14,10 @@ import { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
 import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/task';
 import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
-import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { AiFeatureLocalData } from './localData';
-import {
-  boundRagConversationHistory,
-  createPayloadBoundedRagSearch,
-  selectInitialEvidence,
-} from './evidencePayload';
+import { boundRagConversationHistory } from './evidencePayload';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
-import {
-  indexChangedFeatureEvidence,
-  loadFeatureEvidenceSnapshot,
-} from './featureEvidenceSnapshot';
 import { requireSelectedAi, resolveSelectedAiProvider } from './provider';
 import type { SelectedAiResolverOptions } from './provider';
 import { loadSavedVisitQuestionState } from './savedVisitQuestions';
@@ -125,22 +115,8 @@ export function createAiFeatureServices(
       const selected = await selectedAi();
       const data = await privateLocalData();
       const operationSignal = signal ?? new AbortController().signal;
-      const snapshot = await loadFeatureEvidenceSnapshot(
-        data,
-        registry,
-        operationSignal,
-      );
-      await indexChangedFeatureEvidence(data, snapshot, operationSignal);
-      let hits: Awaited<ReturnType<LocalE5RagService['search']>> = [];
-      try {
-        hits = await data.rag.search(DISEASE_REQUEST, snapshot.chunks, 8, {
-          signal: operationSignal,
-        });
-      } catch {
-        // Empty initial evidence lets the runtime ask its local tools; validators reject unsupported claims.
-      }
-      const evidence = selectInitialEvidence(snapshot, hits);
-      const tools = toolsFor(snapshot, data);
+      // Records are read only after the selected model requests an allowlisted tool.
+      const tools = toolsFor(undefined, data, registry);
       const runId = dependencies.createOperationRunId?.() ?? operationRunId();
       const workflow = {
         ...executionOptions({
@@ -151,14 +127,11 @@ export function createAiFeatureServices(
           tools,
         }),
         request: DISEASE_REQUEST,
-        initialEvidence: evidence,
+        initialEvidence: { items: [], coverage: [], conflicts: [] },
       };
-      const diseaseInventory = snapshot.gaps.length
-        ? { ...snapshot.inventory, inventoryComplete: false }
-        : snapshot.inventory;
       return diseaseRunner(
         workflow,
-        diseaseInventory,
+        undefined,
         {
           ...observer,
           signal: operationSignal,
@@ -176,50 +149,21 @@ export function createAiFeatureServices(
         const selected = await selectedAi();
         const data = await privateLocalData();
         const signal = linked.controller.signal;
-        const snapshot = await loadFeatureEvidenceSnapshot(
-          data,
-          registry,
-          signal,
-        );
-        if (snapshot.gaps.length) return { status: 'insufficient' };
-        await indexChangedFeatureEvidence(data, snapshot, signal);
         const external = createExternalConversationEvidence(
           externalEvidence,
           dependencies.externalQueryConsent,
         );
-        const tools = [...toolsFor(snapshot, data), external.tool];
+        const tools = [...toolsFor(undefined, data, registry), external.tool];
         const runId = dependencies.createOperationRunId?.() ?? operationRunId();
-        const batch: {
-          items: EvidenceBatch['items'];
-          coverage: EvidenceBatch['coverage'];
-          conflicts: EvidenceBatch['conflicts'];
-        } = {
-          items: [...snapshot.items],
-          coverage: snapshot.coverage.map(coverage => ({
-            ...coverage,
-            searchedSourceIds: [],
-            resultLimit: 5,
-            returnedCount: 0,
-          })),
-          conflicts: [],
-        };
-        const boundedRag = createPayloadBoundedRagSearch({
-          rag: data.rag,
-          snapshot,
-          abort: () => linked.controller.abort(),
-          onSelection: selection => {
-            batch.coverage = selection.coverage;
-          },
-        });
         const outcome = await ragRunner(
           {
             question: normalizedQuestion,
             previousMessages: boundRagConversationHistory(previousMessages),
             loadCurrentEvidence: async () => ({
-              batch,
-              chunks: snapshot.chunks,
+              batch: { items: [], coverage: [], conflicts: [] },
+              chunks: [],
             }),
-            rag: boundedRag.rag,
+            rag: data.rag,
             resolveLocalEvidenceIdentity: reference =>
               registry.resolve(reference),
             workflow: executionOptions({
@@ -233,9 +177,7 @@ export function createAiFeatureServices(
           },
           { ...observer, signal },
         );
-        return boundedRag.didOmitEvidence()
-          ? { status: 'insufficient' }
-          : outcome;
+        return outcome;
       } finally {
         linked.dispose();
       }

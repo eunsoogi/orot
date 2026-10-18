@@ -39,7 +39,7 @@ const taskSchema = {
       },
     },
   },
-} as JsonObject;
+} satisfies JsonObject;
 
 const taskInstructions = [
   'Classify each supplied upcoming Calendar event only for whether it appears to be a medical appointment.',
@@ -52,12 +52,50 @@ const taskInstructions = [
 ].join(' ');
 
 /** Builds a bounded responder contract; local validation prevents missing or duplicated candidates. */
-export function createAppointmentClassificationTask(): TaskResponderContract<AppointmentClassificationResult> {
+export function createAppointmentClassificationTask(
+  candidateIds: readonly string[] = [],
+  onInvalid?: (reason: string) => void,
+): TaskResponderContract<AppointmentClassificationResult> {
   return {
     taskType: 'medical-appointment-classification',
-    taskVersion: '1',
+    taskVersion: '2',
     systemPrompt: taskInstructions,
-    resultSchema: taskSchema,
+    // Generation must enumerate this batch, including non-medical events. A prose
+    // instruction alone does not constrain the generated item count or IDs.
+    resultSchema: candidateIds.length
+      ? {
+          ...taskSchema,
+          properties: {
+            classifications: {
+              ...taskSchema.properties.classifications,
+              minItems: candidateIds.length,
+              maxItems: candidateIds.length,
+              items: {
+                ...taskSchema.properties.classifications.items,
+                properties: {
+                  ...taskSchema.properties.classifications.items.properties,
+                  candidateId: { type: 'string', enum: [...candidateIds] },
+                  reason: { type: 'string', minLength: 1, maxLength: 120 },
+                },
+              },
+            },
+          },
+        }
+      : taskSchema,
+    correctionInstructionForInvalidResult(reason) {
+      // One bounded retry repairs structure; it cannot relax the classification or consent rules.
+      if (
+        ![
+          'A complete classification array is required.',
+          'Every supplied candidate must be classified once.',
+          'A candidate result did not pass local validation.',
+          'A candidate identity was repeated or unknown.',
+          'A supplied candidate was omitted.',
+        ].includes(reason)
+      )
+        return undefined;
+      return 'Every supplied candidate must appear exactly once, including non_medical and uncertain events. Use only the supplied candidateId values. Include classification, a short nonempty Korean reason, and uncertainty for each item. Do not omit events or repeat an ID. Return the corrected complete result.';
+    },
     createMessages(input) {
       return [
         {
@@ -73,7 +111,9 @@ export function createAppointmentClassificationTask(): TaskResponderContract<App
       ];
     },
     validateResult(value, input) {
-      return validateAppointmentClassification(value, input);
+      const result = validateAppointmentClassification(value, input);
+      if (result.status === 'invalid') onInvalid?.(result.reason);
+      return result;
     },
   };
 }
@@ -98,6 +138,16 @@ export function validateAppointmentClassification(
   const seen = new Set<string>();
   const classifications: AppointmentClassification[] = [];
   for (const item of value.classifications) {
+    if (
+      isRecord(item) &&
+      typeof item.candidateId === 'string' &&
+      (!expected.has(item.candidateId) || seen.has(item.candidateId))
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'A candidate identity was repeated or unknown.',
+      };
+    }
     if (
       !isRecord(item) ||
       Object.keys(item).length !== 4 ||

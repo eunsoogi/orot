@@ -42,6 +42,8 @@ export interface RuntimeContext<TResult> {
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   currentEvidence: EvidenceBatch;
   researchInput?: JsonObject;
+  nativeToolMessages?: import('./nativeTools').NativeToolMessages;
+  pendingNativeToolCallId?: string;
   outcome?: PrivateOutcome<TResult>;
   /** Ephemeral task correction guidance; it is never written to graph checkpoints. */
   responseCorrectionInstruction?: string;

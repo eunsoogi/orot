@@ -24,6 +24,20 @@ export const completeInventory: LocalHealthEvidenceInventory = {
   recordCount: 0,
 };
 
+export function candidatesForInventory(
+  inventory: LocalHealthEvidenceInventory,
+) {
+  const { records, recordCount, ...catalog } = inventory;
+  return {
+    catalog: { ...catalog, totalRecordCount: recordCount },
+    candidates: records,
+    dependencies: [],
+    hasMoreCandidates: false,
+  };
+}
+
+export const completeCandidates = candidatesForInventory(completeInventory);
+
 export function memoryRecord(index: number): PersistedMemoryRecord {
   return {
     id: `memory-private-${index}`,
@@ -93,8 +107,9 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
       repository: { readRecord: jest.fn(async () => null) } as never,
       rag: rag as never,
       memoryStorage,
-      loadInventory: jest.fn(async () => completeInventory),
-      loadPersistedChunks: jest.fn(async () => []),
+      readCandidates: jest.fn(async () => completeCandidates),
+      loadCurrentChunks: jest.fn(async () => []),
+      findIdentifiers: jest.fn(async () => []),
       loadStaleArtifacts: jest.fn(async () => []),
       loadMemoryRecords: jest.fn(async () => [...currentRecords]),
     },

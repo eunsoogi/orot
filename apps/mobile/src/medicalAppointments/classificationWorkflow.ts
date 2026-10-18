@@ -13,6 +13,8 @@ import {
   MAX_CLASSIFICATION_EVIDENCE_ITEMS,
 } from './calendarEvidence';
 import { medicalAppointmentCopy } from './copy.ko';
+import { classificationFailure } from './classificationFailure';
+import type { ClassificationFailure } from './classificationFailure';
 import { createAppointmentClassificationTask } from './classificationTask';
 import type {
   AppointmentClassification,
@@ -37,6 +39,7 @@ export interface CandidateReview {
 }
 
 export interface ClassificationRunResult {
+  readonly failure?: ClassificationFailure;
   readonly status:
     'complete' | 'partial' | 'unavailable' | 'empty' | 'cancelled';
   readonly candidates: readonly CandidateReview[];
@@ -91,7 +94,6 @@ export async function classifyCalendarEvents(
   };
   if (input.signal.aborted) return stopForCancellation();
 
-  const task = createAppointmentClassificationTask();
   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
     if (input.signal.aborted) return stopForCancellation();
     const start = batchIndex * MAX_CLASSIFICATION_EVIDENCE_ITEMS;
@@ -107,6 +109,8 @@ export async function classifyCalendarEvents(
       totalBatches,
     );
     let run: MultiAgentRunResult<AppointmentClassificationResult>;
+    const startedAt = Date.now();
+    let validationReason: string | undefined;
     try {
       // Consent and every provider call in this batch share the caller's abort boundary.
       run = await runMultiAgentWorkflow(
@@ -129,7 +133,12 @@ export async function classifyCalendarEvents(
           provider: input.provider,
           request:
             'Classify every Calendar candidate in this batch for medical appointment relevance.',
-          task,
+          task: createAppointmentClassificationTask(
+            batch.evidence.items.map(item => item.evidenceId),
+            reason => {
+              validationReason = reason;
+            },
+          ),
           initialEvidence: batch.evidence,
           tools: [],
           consent: input.consent,
@@ -158,6 +167,12 @@ export async function classifyCalendarEvents(
           : 'unavailable';
       const failed = {
         status,
+        failure: classificationFailure(
+          run,
+          batchIndex,
+          startedAt,
+          validationReason,
+        ),
         candidates,
         completedBatches,
         totalBatches,

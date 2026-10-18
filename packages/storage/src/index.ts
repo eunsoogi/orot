@@ -54,3 +54,4 @@ export type {
 export type { SqlDatabase, SqlExecutor, SqlResult, SqlTransaction, SqlValue } from './sql';
 
 export type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';
+export { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
