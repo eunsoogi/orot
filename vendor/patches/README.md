@@ -70,8 +70,9 @@ RNScreens category notices, three App Intents metadata notices, and one app
 bundle-phase notice. It emitted no p-queue timer-global or Metro
 color-environment warning. The candidate now marks the app bundle phase
 `alwaysOutOfDate = 1` while leaving its output list empty; the configuration
-regression file passed 6/6 and `plutil -lint` passes. At PR head `f553e4af`, a
-clean `OrotMobile` Release app build with Xcode 27.0, arm64, and `-jobs 2`
+regression file passed 6/6 and `plutil -lint` passes. At executable candidate
+commit `f553e4af`, a clean `OrotMobile` Release app build with Xcode 27.0,
+arm64, and `-jobs 2`
 succeeded. The bundle phase ran Metro from `index.js` and produced
 `Orot.app/main.jsbundle` (7,592,545 bytes). The raw log contains 12 literal
 `warning:` lines, representing 11 diagnostics after excluding one repeated
