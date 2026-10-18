@@ -42,9 +42,13 @@ downloaded executable, while valid upstream resource signing remains unproved.
 Before the additional `p-queue` and Metro patches, the 12-patch candidate passed
 `pnpm install --frozen-lockfile`, repository quality and unit checks, focused
 patch regressions, and the SQLCipher and Keychain host regressions. On
-2026-10-18, clean local Debug and Release test-product builds, a Production app
-build, and OAuth package and harness builds returned success from base
-`732191f299c0735d5ee816391323f52872fec807`. Those logs contain 7 Debug, 10
+2026-10-18, clean-derived-data local Debug and Release test-product builds, a Production app
+build, and OAuth package and harness builds returned success with base
+`732191f299c0735d5ee816391323f52872fec807` as `HEAD`. The dirty worktree also
+contained the warning-related shared-scheme, app `Info.plist`, and generic
+destination changes, plus an unrelated `PrivacyInfo.xcprivacy` formatting edit.
+The corresponding source inputs are now in this PR, but these runs are not
+clean-commit or hosted acceptance evidence. Those logs contain 7 Debug, 10
 Release, and 9 Production warning diagnostics; OAuth package and harness logs
 contain none. Duplicate compiler source excerpts are excluded from those
 counts. A separate clean `OrotMobile` Release app build also succeeded from the
@@ -71,9 +75,12 @@ bundle-phase notice. It emitted no p-queue timer-global or Metro
 color-environment warning. The candidate now marks the app bundle phase
 `alwaysOutOfDate = 1` while leaving its output list empty; the configuration
 regression file passed 6/6 and `plutil -lint` passes. At executable candidate
-commit `f553e4af`, a clean `OrotMobile` Release app build with Xcode 27.0,
-arm64, and `-jobs 2`
-succeeded. The bundle phase ran Metro from `index.js` and produced
+commit `f553e4af`, a clean-derived-data `OrotMobile` Release app build with
+Xcode 27.0, arm64, and `-jobs 2` succeeded from a dirty worktree. Its invocation
+used a generic simulator destination; the worktree also contained the unstaged
+app `Info.plist` change and an unrelated `PrivacyInfo.xcprivacy` formatting
+edit. The result is local working-tree evidence, not clean PR-head proof. The
+bundle phase ran Metro from `index.js` and produced
 `Orot.app/main.jsbundle` (7,592,545 bytes). The raw log contains 12 literal
 `warning:` lines, representing 11 diagnostics after excluding one repeated
 Swift source excerpt: nine RNScreens category notices, one #204-owned
