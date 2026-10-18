@@ -194,6 +194,13 @@ test('complete source observations must match every selected test identifier and
     (report) => (report.observations[0].result = 'Failed'),
     (report) => (report.notExecutedCohorts = ['core-ui']),
     (report) => (report.executedCohorts = []),
+    (report) => (report.observations[0].duration = -1),
+    (report) => (report.observations[0].duration = Number.NaN),
+    (report) => (report.observations[0].duration = Number.POSITIVE_INFINITY),
+    (report) => (report.observations[0].duration = Number.NEGATIVE_INFINITY),
+    (report) => (report.observations[0].duration = null),
+    (report) => (report.observations[0].duration = '1'),
+    (report) => (report.observations[0].duration = undefined),
   ]) {
     const changed = structuredClone(complete);
     mutate(changed);
@@ -201,6 +208,14 @@ test('complete source observations must match every selected test identifier and
       verifyReusableReadyResults(candidate.selection, changed, candidate, currentEvent()),
     );
   }
+
+  const zeroDuration = completeResults(candidate);
+  zeroDuration.observations[0].duration = 0;
+  assert.equal(
+    verifyReusableReadyResults(candidate.selection, zeroDuration, candidate, currentEvent())
+      .observationCount,
+    zeroDuration.observations.length,
+  );
 });
 
 test('complete source observations may arrive in a different order from the maintained inventory', () => {
