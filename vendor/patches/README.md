@@ -70,10 +70,19 @@ RNScreens category notices, three App Intents metadata notices, and one app
 bundle-phase notice. It emitted no p-queue timer-global or Metro
 color-environment warning. The candidate now marks the app bundle phase
 `alwaysOutOfDate = 1` while leaving its output list empty; the configuration
-regression file passed 6/6 and `plutil -lint` passes, but a clean post-change
-Release app build is still pending. The Debug log has an unexplained `error:`
-message even though its xcodebuild invocation returned 0; it is not a warning
-and remains unresolved.
+regression file passed 6/6 and `plutil -lint` passes. At PR head `f553e4af`, a
+clean `OrotMobile` Release app build with Xcode 27.0, arm64, and `-jobs 2`
+succeeded. The bundle phase ran Metro from `index.js` and produced
+`Orot.app/main.jsbundle` (7,592,545 bytes). The raw log contains 12 literal
+`warning:` lines, representing 11 diagnostics after excluding one repeated
+Swift source excerpt: nine RNScreens category notices, one #204-owned
+unknown-enum warning, and one App Intents metadata-extraction warning. The
+p-queue timer-global warning, Metro `NO_COLOR`/`FORCE_COLOR` warning, and
+bundle-phase no-output warning did not appear. Xcode reports the bundle phase as
+a note that it runs each build because dependency analysis is unchecked. The
+app build does not cover Core UI runtime behavior. The Debug log has an
+unexplained `error:` message even though its xcodebuild invocation returned 0;
+it is not a warning and remains unresolved.
 
 Core Simulator state persistence passed 3/3, fixture isolation 2/2, recording
 persistence 2/2, and Core integration 18/18. The latter includes the new
