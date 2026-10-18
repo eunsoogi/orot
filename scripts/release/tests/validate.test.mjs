@@ -46,11 +46,11 @@ test('requires the root and iOS version sources, main, and candidate SHA to agre
   assert.match(sourceMismatch.errors.join(' '), /workflow candidate SHA/);
 });
 
-test('accepts static-check main dispatches alongside automatic full iOS validation', () => {
+test('accepts static-check pushes alongside explicit full iOS dispatch', () => {
   const context = validContext({
     ciRuns: validContext().ciRuns.map((run) => ({
       ...run,
-      event: run.path === '.github/workflows/e2e-test.yml' ? 'push' : 'workflow_dispatch',
+      event: run.path === '.github/workflows/e2e-test.yml' ? 'workflow_dispatch' : 'push',
     })),
   });
   const result = validateCandidate(context);

@@ -21,7 +21,9 @@ function protectedLeaves(path, parents = [], inputs = {}) {
     assert.equal(job['continue-on-error'], undefined);
     // GitHub expands the single status job into five separately named checks.
     // Preserve exact-name comparison after that expansion, including duplicate detection.
-    return (job.strategy?.matrix?.check ?? [null]).map((check) =>
+    const checks = job.strategy?.matrix?.include?.map(({ check }) => check) ??
+      job.strategy?.matrix?.check ?? [null];
+    return checks.map((check) =>
       names.join(' / ').replace(/\$\{\{ matrix\.check \}\}/g, check ?? ''),
     );
   });
@@ -30,10 +32,26 @@ function protectedLeaves(path, parents = [], inputs = {}) {
 test('five Linux integration domain leaves retain the exact required context names', () => {
   const e2e = workflow('.github/workflows/e2e-test.yml');
   const required = e2e.jobs.required_statuses;
-  const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [required.name]);
+  const protectedNameExpression =
+    /\$\{\{\s*needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred' \|\| 'Validate'\s*\}\}/;
+  assert.match(required.name, protectedNameExpression);
+  const readyName = required.name.replace(protectedNameExpression, 'Validate');
+  const deferredName = required.name.replace(protectedNameExpression, 'Deferred');
+  const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [readyName]);
   const expected = REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'];
   assert.deepEqual(actual.sort(), expected.filter((name) => name !== 'Validate / Build').sort());
-  assert.equal(e2e.jobs.ios_simulator_build.name, 'Validate / Build');
+  assert.equal(deferredName, 'Deferred');
+  const buildNameExpression =
+    /\$\{\{\s*needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred \/ Build' \|\| 'Validate \/ Build'\s*\}\}/;
+  assert.match(e2e.jobs.ios_simulator_build.name, buildNameExpression);
+  assert.equal(
+    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Validate / Build'),
+    'Validate / Build',
+  );
+  assert.equal(
+    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Deferred / Build'),
+    'Deferred / Build',
+  );
   assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.plan.needs, 'selection');
   assert.equal(e2e.jobs.completeness.uses, './.github/workflows/ios-test-completeness.yml');

@@ -11,7 +11,7 @@ import {
 
 const obligations = productionBuildObligations();
 
-const [command, path, oauthPath, ...extra] = process.argv.slice(2);
+const [command, path, ...extra] = process.argv.slice(2);
 if (extra.length) throw new Error('Unexpected production receipt arguments');
 if (command === 'write') {
   if (
@@ -42,15 +42,26 @@ if (command === 'write') {
   );
   writeFileSync(path, JSON.stringify(receipt, null, 2) + '\n');
 } else if (command === 'verify') {
-  if (!oauthPath)
-    throw new Error('Production validation requires the separate OAuth executor receipt');
-  verifyProductionReceipt(
-    JSON.parse(readFileSync(path, 'utf8')),
-    process.env,
-    JSON.parse(readFileSync(oauthPath, 'utf8')),
+  const oauthDecision = process.env.OROT_IOS_OAUTH_REQUIRED;
+  const oauthPath = process.env.OROT_IOS_OAUTH_RECEIPT_PATH;
+  if (oauthDecision !== 'true' && oauthDecision !== 'false')
+    throw new Error('Production validation requires an explicit OROT_IOS_OAUTH_REQUIRED decision');
+  if (oauthDecision === 'true' && !oauthPath)
+    throw new Error('The selected OAuth suite requires its separate executor receipt');
+  if (oauthDecision === 'false' && oauthPath)
+    throw new Error('Unexpected OAuth executor receipt for a non-OAuth selection');
+
+  const oauthReceipt = oauthPath ? JSON.parse(readFileSync(oauthPath, 'utf8')) : undefined;
+  verifyProductionReceipt(JSON.parse(readFileSync(path, 'utf8')), process.env, {
+    oauthRequired: oauthDecision === 'true',
+    oauthReceipt,
+  });
+  console.log(
+    oauthDecision === 'true'
+      ? 'Current-run production build and OAuth obligations verified'
+      : 'Current-run production build obligations verified; OAuth was not selected',
   );
-  console.log('Current-run production and OAuth build obligations verified');
 } else
   throw new Error(
-    'Usage: ios-production-receipt.mjs write <build-receipt> | verify <build-receipt> <oauth-execution-receipt>',
+    'Usage: ios-production-receipt.mjs write <build-receipt> | verify <build-receipt> (set OROT_IOS_OAUTH_REQUIRED and, when true, OROT_IOS_OAUTH_RECEIPT_PATH)',
   );

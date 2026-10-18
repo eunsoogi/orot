@@ -34,28 +34,32 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(integration.ios_tests, true);
 });
 
-test('unapproved drafts, focused and diagnostic runs cannot satisfy the full integration gate', () => {
+test('draft, metadata and diagnostic runs cannot satisfy the full integration gate', () => {
   const e2e = read('.github/workflows/e2e-test.yml');
-  assert.match(e2e, /types: \[opened, synchronize, reopened\]/);
+  assert.match(
+    e2e,
+    /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
+  );
+  assert.match(e2e, /workflow_dispatch: \{\}/);
+  assert.doesNotMatch(e2e, /\n\s+push:/);
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
   assert.match(
     e2e,
-    /outputs\.run_ios == 'true' && needs\.selection\.outputs\.deferred == 'true' && needs\.completeness\.result != 'success'/,
+    /github\.event_name == 'workflow_dispatch' && github\.ref != 'refs\/heads\/main'/,
   );
-  assert.match(e2e, /github\.event_name != 'workflow_dispatch'/);
-  assert.doesNotMatch(e2e, /workflow_dispatch:|focused_scenario:/);
-  assert.match(
-    e2e,
-    /test "\$COMPLETE" = true && test "\$DEFERRED" != true && test "\$DIAGNOSTIC" != true/,
-  );
+  assert.match(e2e, /metadata_only_edit != 'true'/);
+  assert.match(e2e, /needs\.completeness\.result/);
+  assert.match(e2e, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
+  assert.match(e2e, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
   assert.match(
     e2e,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
   );
   const status = read('.github/workflows/ios-required-statuses.yml');
-  assert.match(status, /test "\$INVALID" = false/);
-  assert.match(status, /test "\$RESULT" = success/);
-  assert.match(status, /if: ['"]!inputs.selected['"]/);
+  assert.match(status, /process\.env\.INVALID === "true"/);
+  assert.match(status, /process\.env\.REUSE_RESULT !== "success"/);
+  assert.match(status, /EXECUTION_RESULT !== "success"/);
+  assert.match(status, /An unselected E2E run must have no cohorts and no execution/);
   assert.doesNotMatch(e2e, /detox-e2e-profile|run-detox/);
   for (const path of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml'])
     assert.match(read('.github/workflows/' + path), /types: \[opened, synchronize, reopened\]/);
@@ -73,4 +77,8 @@ test('manual focus uses exact integration selection and retains PR-scoped supers
   assert.match(focus, /ios-focused-selection-cli\.mjs/);
   assert.match(focus, /ios-focused-results\.mjs/);
   assert.doesNotMatch(focus, /ios-profile-status/);
+  const full = read('.github/workflows/e2e-test.yml');
+  assert.match(full, /workflow_dispatch: \{\}/);
+  assert.match(full, /github\.ref != 'refs\/heads\/main'/);
+  assert.match(full, /diagnostic:/);
 });
