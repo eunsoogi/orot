@@ -62,10 +62,98 @@ export function candidateScopeCondition(
 /** Mirrors imported concept names so Korean queries can rank their persisted measurements. */
 const EVIDENCE_QUERY_CONCEPTS = [
   [['혈압', '수축기', '이완기'], 'blood pressure'],
-  [['심박', '맥박'], 'heart_rate'],
-  [['걸음'], 'step_count'],
+  [['심박수', '심박', '맥박'], 'heart_rate'],
+  [['걸음 수', '걸음'], 'step_count'],
   [['체중', '몸무게'], 'body_mass'],
   [['수면'], 'hkcategorytypeidentifiersleepanalysis'],
+] as const;
+
+// Summary, date, and lookup wording does not express a second evidence topic.
+const GENERIC_MEASUREMENT_REQUEST_TERMS = new Set([
+  '최근',
+  '최신',
+  '지난',
+  '이번',
+  '오늘',
+  '어제',
+  '기록',
+  '측정',
+  '데이터',
+  '날짜',
+  '시간',
+  '수치',
+  '값',
+  '결과',
+  '기간',
+  '추이',
+  '변화',
+  '요약',
+  '정리',
+  '찾아',
+  '검색',
+  '조회',
+  '확인',
+  '알려',
+  '보여',
+  '주세요',
+  '해주세요',
+  '해줘',
+  '부탁',
+  '평균',
+  '최고',
+  '최저',
+  '최대',
+  '최소',
+  '개수',
+  '합계',
+  '관련',
+  '와',
+  '과',
+  '및',
+  '또는',
+  '그리고',
+  '은',
+  '는',
+  '이',
+  '가',
+  '을',
+  '를',
+  '의',
+  '에',
+  '에서',
+  '에게',
+  '으로',
+  '로',
+  '도',
+  '만',
+  '까지',
+  '부터',
+  '들',
+  '함께',
+  '나타난',
+]);
+
+const KOREAN_QUERY_SUFFIXES = [
+  '에서',
+  '으로',
+  '까지',
+  '부터',
+  '에게',
+  '은',
+  '는',
+  '이',
+  '가',
+  '을',
+  '를',
+  '의',
+  '와',
+  '과',
+  '도',
+  '만',
+  '에',
+  '로',
+  '해',
+  '들',
 ] as const;
 
 /** Maps Korean labels to the canonical concept keys used in structured measurement chunks. */
@@ -76,10 +164,44 @@ export function evidenceQueryAliases(query: string): string[] {
   ).map(([, concept]) => concept);
 }
 
-/** Uses stored concept keys for recognized Korean measurements, while leaving other queries intact. */
+function isGenericMeasurementRequestTerm(term: string): boolean {
+  if (GENERIC_MEASUREMENT_REQUEST_TERMS.has(term)) return true;
+  return KOREAN_QUERY_SUFFIXES.some(
+    suffix =>
+      term.length > suffix.length &&
+      term.endsWith(suffix) &&
+      GENERIC_MEASUREMENT_REQUEST_TERMS.has(
+        term.slice(0, term.length - suffix.length),
+      ),
+  );
+}
+
+function hasIntentBeyondMeasurement(query: string): boolean {
+  let residual = query.normalize('NFKC').toLowerCase();
+  for (const [labels] of EVIDENCE_QUERY_CONCEPTS) {
+    for (const label of labels) residual = residual.replaceAll(label, ' ');
+  }
+  const terms = residual.match(/[\p{L}\p{M}\p{N}_]+/gu) ?? [];
+  return terms.some(term => !isGenericMeasurementRequestTerm(term));
+}
+
+/** Keeps other search intent, while measurement-only requests rank by stored concept keys. */
 export function evidenceRagSearchQuery(query: string): string {
   const aliases = evidenceQueryAliases(query);
-  return aliases.length > 0 ? aliases.join(' ') : query;
+  if (aliases.length === 0 || !hasIntentBeyondMeasurement(query))
+    return aliases.length > 0 ? aliases.join(' ') : query;
+
+  let normalized = query.normalize('NFKC');
+  for (const [labels, concept] of EVIDENCE_QUERY_CONCEPTS) {
+    const matchedLabel = labels.find(label => normalized.includes(label));
+    if (!matchedLabel) continue;
+    const labelIndex = normalized.indexOf(matchedLabel);
+    normalized =
+      normalized.slice(0, labelIndex) +
+      ` ${concept} ` +
+      normalized.slice(labelIndex + matchedLabel.length);
+  }
+  return normalized.replace(/\s+/gu, ' ').trim();
 }
 
 export function evidenceQueryTerms(query: string): string[] {

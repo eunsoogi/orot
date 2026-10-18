@@ -67,7 +67,7 @@ function heartRateMeasurement(id: string, amount: number) {
 test('Korean heart-rate search includes structured measurements without changing candidate query', async () => {
   const { database, close } = openSqliteTestDatabase(':memory:');
   try {
-    const question = '합성 심박수 기록';
+    const question = '최근 심박수 기록의 날짜와 수치';
     const measurements = Array.from({ length: 8 }, (_, index) =>
       heartRateMeasurement(`heart-rate-observation-${index + 1}`, 70 + index),
     );
@@ -185,13 +185,16 @@ test('Korean heart-rate search includes structured measurements without changing
 });
 
 test.each([
-  ['수축기 혈압', 'blood pressure'],
-  ['걸음 수', 'step_count'],
-  ['몸무게', 'body_mass'],
-  ['수면 기록', 'hkcategorytypeidentifiersleepanalysis'],
-])('adds the structured concept alias for %s', (query, alias) => {
-  expect(evidenceRagSearchQuery(query)).toBe(alias);
-});
+  ['최근 혈압 기록', 'blood pressure'],
+  ['최근 걸음 수', 'step_count'],
+  ['최근 몸무게', 'body_mass'],
+  ['최근 수면 기록', 'hkcategorytypeidentifiersleepanalysis'],
+])(
+  'uses the stored concept key for measurement-only request %s',
+  (query, expected) => {
+    expect(evidenceRagSearchQuery(query)).toBe(expected);
+  },
+);
 
 test('leaves an unrelated Korean retrieval query unchanged', () => {
   const query = '최근 저장된 방문 질문';

@@ -8,7 +8,7 @@ import { runRagConversationTurn } from '../src/ragConversation/service';
 import type { RagConversationOutcome } from '../src/ragConversation/service';
 
 export const PERFORMANCE_RAG_QUESTION =
-  '최근 합성 심박수 기록을 찾아 날짜와 수치를 요약해 주세요.';
+  '최근 심박수 기록의 날짜와 수치를 요약해 주세요.';
 
 type DiagnosticProviderSelection =
   | {

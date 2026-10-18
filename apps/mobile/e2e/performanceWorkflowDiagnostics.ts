@@ -6,7 +6,9 @@ import type { PerformanceRagDiagnosticDependencies } from './performanceRagDiagn
 export type PerformanceWorkflowDiagnostics = AiFeatureServiceDependencies &
   Pick<PerformanceRagDiagnosticDependencies, 'getTrace'>;
 
-/** Observe the real workflow without replacing its model, tools, consent, or result. No payload text is displayed. */
+/** Observe real workflows on synthetic fixtures and display selected evidence
+ * in the local diagnostic view.
+ */
 export function performanceWorkflowDiagnostics(
   report: (value: string) => void,
 ): PerformanceWorkflowDiagnostics {

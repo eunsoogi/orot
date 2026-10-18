@@ -141,7 +141,8 @@ export function createLocalEvidenceSearchTool(input: {
           } satisfies EvidenceBatch;
         }
 
-        // Candidate loading above uses the original query; recognized measurements rank by stored concept key.
+        // Candidate loading keeps the original query. Preserve mixed intent or use
+        // the canonical concept key for measurement-only ranking.
         const hits = await input.rag.search(
           evidenceRagSearchQuery(parsed.query as string),
           chunks,
