@@ -5,6 +5,7 @@ import type {
   EvidenceSearchTool,
 } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
+import { evidenceRagSearchQuery } from '../../healthEvidence/evidenceCandidateScope';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { localEvidenceKey } from './evidenceSnapshot';
@@ -140,8 +141,9 @@ export function createLocalEvidenceSearchTool(input: {
           } satisfies EvidenceBatch;
         }
 
+        // Candidate loading above uses the original query; recognized measurements rank by stored concept key.
         const hits = await input.rag.search(
-          parsed.query as string,
+          evidenceRagSearchQuery(parsed.query as string),
           chunks,
           request.resultLimit,
           { signal: request.signal },

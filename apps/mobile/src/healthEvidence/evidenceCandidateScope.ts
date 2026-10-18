@@ -60,17 +60,31 @@ export function candidateScopeCondition(
 }
 
 /** Mirrors imported concept names so Korean queries can rank their persisted measurements. */
+const EVIDENCE_QUERY_CONCEPTS = [
+  [['혈압', '수축기', '이완기'], 'blood pressure'],
+  [['심박', '맥박'], 'heart_rate'],
+  [['걸음'], 'step_count'],
+  [['체중', '몸무게'], 'body_mass'],
+  [['수면'], 'hkcategorytypeidentifiersleepanalysis'],
+] as const;
+
+/** Maps Korean labels to the canonical concept keys used in structured measurement chunks. */
+export function evidenceQueryAliases(query: string): string[] {
+  const normalized = query.normalize('NFKC').toLowerCase();
+  return EVIDENCE_QUERY_CONCEPTS.filter(([labels]) =>
+    labels.some(label => normalized.includes(label)),
+  ).map(([, concept]) => concept);
+}
+
+/** Uses stored concept keys for recognized Korean measurements, while leaving other queries intact. */
+export function evidenceRagSearchQuery(query: string): string {
+  const aliases = evidenceQueryAliases(query);
+  return aliases.length > 0 ? aliases.join(' ') : query;
+}
+
 export function evidenceQueryTerms(query: string): string[] {
   const normalized = query.normalize('NFKC').toLowerCase();
   const terms = new Set(normalized.match(/[\p{L}\p{M}\p{N}_]+/gu) ?? []);
-  for (const [labels, concept] of [
-    [['혈압', '수축기', '이완기'], 'blood pressure'],
-    [['심박', '맥박'], 'heart_rate'],
-    [['걸음'], 'step_count'],
-    [['체중', '몸무게'], 'body_mass'],
-    [['수면'], 'hkcategorytypeidentifiersleepanalysis'],
-  ] as const) {
-    if (labels.some(label => normalized.includes(label))) terms.add(concept);
-  }
+  for (const concept of evidenceQueryAliases(query)) terms.add(concept);
   return [...terms];
 }

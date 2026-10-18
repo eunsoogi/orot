@@ -4,14 +4,118 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AppRegistry, Button, Text, View } from 'react-native';
 import App from '../App';
 import { name as appName } from '../app.json';
+import { useInferenceConsent } from '../src/agent/execution/useInferenceConsent';
+import { createAiFeatureServices } from '../src/aiFeatures/integration/featureServices';
+import { resolveSelectedAiProvider } from '../src/aiFeatures/integration/provider';
 import { measurePerformanceEvidence } from './performanceEvidenceProbe';
 import { performanceWorkflowDiagnostics } from './performanceWorkflowDiagnostics';
+import type { PerformanceWorkflowDiagnostics } from './performanceWorkflowDiagnostics';
 import { performanceVisitDiagnostics } from './performanceVisitDiagnostics';
 import { probePerformanceVisitEvidence } from './performanceVisitEvidenceProbe';
+import {
+  PERFORMANCE_RAG_QUESTION,
+  runPerformanceRagQuestion,
+} from './performanceRagDiagnostics';
 import {
   PERFORMANCE_RECORD_COUNT,
   seedPerformanceData,
 } from './performanceDataSeed';
+
+interface PerformanceAppHarnessProps {
+  readonly diagnostics: PerformanceWorkflowDiagnostics;
+  readonly visitDiagnostics: NonNullable<
+    React.ComponentProps<typeof App>['renderVisitQuestions']
+  >;
+  readonly workflowReport: string;
+  readonly setWorkflowReport: (value: string) => void;
+}
+
+/** Uses the real selected Apple provider and the screen's service path for a fixed synthetic query. */
+function PerformanceAppHarness({
+  diagnostics,
+  visitDiagnostics,
+  workflowReport,
+  setWorkflowReport,
+}: PerformanceAppHarnessProps) {
+  const { consent, disclosureSheet } = useInferenceConsent();
+  const services = useMemo(
+    () => createAiFeatureServices(consent, diagnostics),
+    [consent, diagnostics],
+  );
+  const [runningRag, setRunningRag] = useState(false);
+
+  async function runRagDiagnostic() {
+    if (runningRag) return;
+    setRunningRag(true);
+    setWorkflowReport(`Submitting ${PERFORMANCE_RAG_QUESTION}`);
+    try {
+      const selection = await resolveSelectedAiProvider(diagnostics.selectedAi);
+      const result = await runPerformanceRagQuestion(
+        selection,
+        services,
+        new AbortController().signal,
+      );
+      setWorkflowReport(
+        JSON.stringify(
+          {
+            question: PERFORMANCE_RAG_QUESTION,
+            trace: diagnostics.getTrace(),
+            result,
+          },
+          null,
+          2,
+        ),
+      );
+    } catch (error) {
+      setWorkflowReport(
+        JSON.stringify({
+          status: 'diagnostic_failed',
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    } finally {
+      setRunningRag(false);
+    }
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <App
+        aiFeatureServiceDependencies={diagnostics}
+        renderVisitQuestions={visitDiagnostics}
+      />
+      <Button
+        title={runningRag ? '합성 RAG 질문 실행 중' : '합성 RAG 질문 진단'}
+        disabled={runningRag}
+        onPress={() => void runRagDiagnostic()}
+      />
+      <Button
+        title="합성 진료 근거 검사"
+        onPress={() => {
+          setWorkflowReport('Searching synthetic visit evidence…');
+          void probePerformanceVisitEvidence().then(setWorkflowReport);
+        }}
+      />
+      {workflowReport ? (
+        <Text
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: 10,
+            right: 10,
+            color: '#000',
+            backgroundColor: '#fff',
+            fontSize: 10,
+          }}
+        >
+          {workflowReport}
+        </Text>
+      ) : null}
+      {disclosureSheet}
+    </View>
+  );
+}
 
 /** Explicit Simulator entry: seeds only synthetic local storage, then mounts the shipping app and real providers. */
 function PerformanceDataEntry() {
@@ -46,35 +150,12 @@ function PerformanceDataEntry() {
   }, []);
   if (ready)
     return (
-      <View style={{ flex: 1 }}>
-        <App
-          aiFeatureServiceDependencies={diagnostics}
-          renderVisitQuestions={visitDiagnostics}
-        />
-        <Button
-          title="합성 진료 근거 검사"
-          onPress={() => {
-            setWorkflowReport('Searching synthetic visit evidence…');
-            void probePerformanceVisitEvidence().then(setWorkflowReport);
-          }}
-        />
-        {workflowReport ? (
-          <Text
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              top: 50,
-              left: 10,
-              right: 10,
-              color: '#000',
-              backgroundColor: '#fff',
-              fontSize: 10,
-            }}
-          >
-            {workflowReport}
-          </Text>
-        ) : null}
-      </View>
+      <PerformanceAppHarness
+        diagnostics={diagnostics}
+        visitDiagnostics={visitDiagnostics}
+        workflowReport={workflowReport}
+        setWorkflowReport={setWorkflowReport}
+      />
     );
   return (
     <View

@@ -50,10 +50,21 @@ describe('Test entry routing', () => {
           jest.doMock('react-native', () => ({
             AppRegistry: { registerComponent: jest.fn() },
           }));
+          // Keep this assertion about polyfill ordering, not diagnostic service initialization.
+          jest.doMock('../src/agent/execution/useInferenceConsent', () => ({
+            useInferenceConsent: jest.fn(),
+          }));
+          jest.doMock('../src/aiFeatures/integration/featureServices', () => ({
+            createAiFeatureServices: jest.fn(),
+          }));
+          jest.doMock('../src/aiFeatures/integration/provider', () => ({
+            resolveSelectedAiProvider: jest.fn(),
+          }));
           jest.doMock('react-native-get-random-values', () => ({}));
           jest.doMock('../e2e/performanceDataSeed', () => ({}));
           jest.doMock('../e2e/performanceEvidenceProbe', () => ({}));
           jest.doMock('../e2e/performanceWorkflowDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceRagDiagnostics', () => ({}));
           jest.doMock('../e2e/performanceVisitDiagnostics', () => ({}));
           jest.doMock('../e2e/performanceVisitEvidenceProbe', () => ({}));
           if (entry === 'performance') require('../e2e/performanceDataEntry');
@@ -66,10 +77,14 @@ describe('Test entry routing', () => {
         jest.dontMock('../app.json');
         jest.dontMock('../src/providers/selection/options');
         jest.dontMock('react-native');
+        jest.dontMock('../src/agent/execution/useInferenceConsent');
+        jest.dontMock('../src/aiFeatures/integration/featureServices');
+        jest.dontMock('../src/aiFeatures/integration/provider');
         jest.dontMock('react-native-get-random-values');
         jest.dontMock('../e2e/performanceDataSeed');
         jest.dontMock('../e2e/performanceEvidenceProbe');
         jest.dontMock('../e2e/performanceWorkflowDiagnostics');
+        jest.dontMock('../e2e/performanceRagDiagnostics');
         jest.dontMock('../e2e/performanceVisitDiagnostics');
         jest.dontMock('../e2e/performanceVisitEvidenceProbe');
         if (readableStreamDescriptor) {
