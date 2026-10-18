@@ -185,23 +185,12 @@ function hasIntentBeyondMeasurement(query: string): boolean {
   return terms.some(term => !isGenericMeasurementRequestTerm(term));
 }
 
-/** Keeps other search intent, while measurement-only requests rank by stored concept keys. */
+/** Adds stored measurement keys without discarding original terms from mixed searches. */
 export function evidenceRagSearchQuery(query: string): string {
   const aliases = evidenceQueryAliases(query);
-  if (aliases.length === 0 || !hasIntentBeyondMeasurement(query))
-    return aliases.length > 0 ? aliases.join(' ') : query;
-
-  let normalized = query.normalize('NFKC');
-  for (const [labels, concept] of EVIDENCE_QUERY_CONCEPTS) {
-    const matchedLabel = labels.find(label => normalized.includes(label));
-    if (!matchedLabel) continue;
-    const labelIndex = normalized.indexOf(matchedLabel);
-    normalized =
-      normalized.slice(0, labelIndex) +
-      ` ${concept} ` +
-      normalized.slice(labelIndex + matchedLabel.length);
-  }
-  return normalized.replace(/\s+/gu, ' ').trim();
+  if (aliases.length === 0) return query;
+  if (!hasIntentBeyondMeasurement(query)) return aliases.join(' ');
+  return `${aliases.join(' ')} ${query}`.trim();
 }
 
 export function evidenceQueryTerms(query: string): string[] {

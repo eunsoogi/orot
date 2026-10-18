@@ -141,8 +141,8 @@ export function createLocalEvidenceSearchTool(input: {
           } satisfies EvidenceBatch;
         }
 
-        // Candidate loading keeps the original query. Preserve mixed intent or use
-        // the canonical concept key for measurement-only ranking.
+        // Candidate loading keeps the original query. Mixed ranking adds concept keys
+        // beside it; measurement-only ranking can use those keys alone.
         const hits = await input.rag.search(
           evidenceRagSearchQuery(parsed.query as string),
           chunks,
