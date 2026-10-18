@@ -25,7 +25,19 @@ test('pinned dependency patches invalidate both native build input boundaries', 
       /source inputs differ/,
     );
     git(root, 'add', 'vendor/patches/example@1.0.0.patch');
-    git(root, 'commit', '-qm', 'Track dependency patch');
+    // Keep the follow-up commit independent of runner identity and signing defaults.
+    git(
+      root,
+      '-c',
+      'user.name=CI fixture',
+      '-c',
+      'user.email=ci-fixture@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '-qm',
+      'Track dependency patch',
+    );
     assert.notEqual(buildInputDigest(root), inputBefore);
   } finally {
     rmSync(root, { recursive: true, force: true });
