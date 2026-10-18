@@ -57,7 +57,8 @@ test('shows a provisional question stream and ignores events after cancellation'
   ).toBeTruthy();
 
   await fireEvent.press(screen.getByTestId('next-visit-generation-cancel'));
-  expect(screen.queryByTestId('next-visit-generation-preview')).toBeNull();
+  expect(screen.getByText('최근 변화는 언제부터였나요?')).toBeTruthy();
+  expect(screen.getByText('완료되지 않은 응답 초안')).toBeTruthy();
   await act(async () => {
     observer?.onTaskStreamEvent?.({
       type: 'text_delta',
@@ -71,4 +72,24 @@ test('shows a provisional question stream and ignores events after cancellation'
   expect(
     screen.getByTestId('next-visit-generation-message').props.children,
   ).toBe('질문 생성을 취소했어요.');
+});
+
+test('provider failure preserves displayed question text as an incomplete draft', async () => {
+  await render(
+    <NextVisitQuestionsScreen
+      {...makeProps({
+        onGenerate: async (_visit, _selection, _signal, observer) => {
+          observer?.onTaskStreamEvent?.({
+            type: 'text_delta',
+            text: '중단 전 질문 초안',
+          });
+          throw new Error('provider failed');
+        },
+      })}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('next-visit-generate'));
+  expect(await screen.findByText('완료되지 않은 응답 초안')).toBeTruthy();
+  expect(screen.getByText('중단 전 질문 초안')).toBeTruthy();
+  expect(screen.queryByTestId('next-visit-review-list')).toBeNull();
 });

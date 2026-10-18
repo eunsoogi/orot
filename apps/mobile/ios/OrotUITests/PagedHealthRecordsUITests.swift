@@ -27,7 +27,7 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         XCTAssertTrue(list.waitForAppearance())
         XCTAssertTrue(UITestConditions.element(app, "health-record-row-0").waitForAppearance())
         let row = UITestConditions.element(app, "health-record-row-5")
-        // Row 5 is unavailable until the separate detail list requests its next page.
+        // The selected month spans multiple storage pages; the detail list must retain the later-page value.
         FormUITestConditions.reveal(row, in: app, scrollID: "health-records-detail-scroll", maximumScrollFraction: 0.7)
         UITestConditions.value(UITestConditions.element(app, "health-record-row-5-value"), equals: "65 count/min")
         let requestText = UITestConditions.text(UITestConditions.element(app, "health-pagination-requests"))

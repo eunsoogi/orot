@@ -75,9 +75,10 @@ export function buildHealthChartSeries(
   }
 
   return [...groups.entries()].map(([key, points]) => {
-    const ordered = points
-      .sort((left, right) => left.effectiveAt.localeCompare(right.effectiveAt))
-      .slice(-5);
+    // Keep the same complete period as the category count and detail list.
+    const ordered = points.sort((left, right) =>
+      left.effectiveAt.localeCompare(right.effectiveAt),
+    );
     const first = ordered[0];
     return {
       key,
@@ -127,8 +128,16 @@ export function healthChartMaximum(
 }
 
 export function healthChartDateLabel(timestamp: string): string {
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-  }).format(new Date(timestamp));
+  return (
+    new Intl.DateTimeFormat('ko-KR', {
+      month: 'numeric',
+      day: 'numeric',
+    }).format(new Date(timestamp)) +
+    '\n' +
+    new Intl.DateTimeFormat('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(timestamp))
+  );
 }

@@ -76,3 +76,72 @@ test('shows safe answer text and separate evidence activity while generating', a
     expect(screen.queryByTestId('rag-conversation-stream')).toBeNull(),
   );
 });
+
+test.each(['cancel', 'failure'] as const)(
+  'retains %s partial output through the next turn without sending it as validated history',
+  async terminal => {
+    let observer: Parameters<
+      React.ComponentProps<typeof ConversationScreen>['onSend']
+    >[3];
+    let reject!: (error: Error) => void;
+    const onSend = jest
+      .fn<
+        ReturnType<React.ComponentProps<typeof ConversationScreen>['onSend']>,
+        Parameters<React.ComponentProps<typeof ConversationScreen>['onSend']>
+      >()
+      .mockImplementationOnce(
+        (_question, _history, _signal, currentObserver) => {
+          observer = currentObserver;
+          return new Promise((_resolve, rejectPromise) => {
+            reject = rejectPromise;
+          });
+        },
+      )
+      .mockResolvedValue({
+        status: 'answer',
+        answer: '다음 완료 답변',
+        citations: [],
+      });
+    await render(
+      <ConversationScreen
+        onBack={jest.fn()}
+        onOpenSource={jest.fn()}
+        onSend={onSend}
+      />,
+    );
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '첫 질문',
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    await act(async () => {
+      observer?.onTaskStreamEvent?.({
+        type: 'text_delta',
+        text: '보존할 부분 답변',
+      });
+    });
+    if (terminal === 'cancel') {
+      await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
+    } else {
+      await act(async () => {
+        reject(new Error('provider failed'));
+      });
+    }
+    expect(await screen.findByText('보존할 부분 답변')).toBeTruthy();
+    expect(screen.getByText('완료되지 않은 응답 초안')).toBeTruthy();
+    await act(async () => {
+      observer?.onTaskStreamEvent?.({ type: 'text_delta', text: '늦은 응답' });
+    });
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '다음 질문',
+    );
+    await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+    expect(await screen.findByText('다음 완료 답변')).toBeTruthy();
+    expect(screen.getByText('보존할 부분 답변')).toBeTruthy();
+    expect(screen.queryByText(/늦은 응답/)).toBeNull();
+    expect(onSend.mock.calls[1][1]).toEqual([
+      { role: 'user', content: '첫 질문' },
+    ]);
+  },
+);

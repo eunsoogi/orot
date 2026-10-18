@@ -13,7 +13,8 @@ import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
 import type { RagConversationOutcome } from './service';
 import type { RagConversationObserver } from './service';
-import type { MultiAgentProgressEvent } from '@orot/agent-runtime';
+import { progressCopy } from './conversationProgress';
+import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 
@@ -29,23 +30,6 @@ interface ConversationScreenProps {
     observer?: RagConversationObserver,
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
-}
-
-function progressCopy(
-  event: MultiAgentProgressEvent,
-  copy: ReturnType<typeof getRagConversationCopy>,
-): string {
-  if (event.type === 'model_started') {
-    if (event.phase === 'evidence_research') return copy.progressResearch;
-    if (event.phase === 'revised_response') return copy.progressRevisedAnswer;
-    return copy.progressAnswer;
-  }
-  if (event.status === 'completed') return copy.progressEvidenceComplete;
-  if (event.status === 'failed') return copy.progressEvidenceFailed;
-  if (event.status === 'cancelled') return copy.progressEvidenceCancelled;
-  return event.sourceKind === 'external_medical'
-    ? copy.progressExternalSearch
-    : copy.progressLocalSearch;
 }
 
 /** Keeps chat history in view state only; evidence is freshly loaded by the injected turn service. */
@@ -69,6 +53,23 @@ export function ConversationScreen({
   const nextMessageId = useRef(0);
   const operationController = useRef<AbortController | null>(null);
   const inputRevision = useRef(0);
+  const partialText = useRef('');
+
+  // Incomplete text stays visible but is excluded from future model context.
+  function retainPartial(activity: string) {
+    const content = partialText.current;
+    partialText.current = '';
+    setPendingMessage(null);
+    if (!content) return;
+    const message: DisplayMessage = {
+      id: ++nextMessageId.current,
+      role: 'assistant',
+      content,
+      activity,
+      incomplete: true,
+    };
+    setMessages(current => [...current, message]);
+  }
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -93,7 +94,9 @@ export function ConversationScreen({
   async function send() {
     const question = draft.trim();
     if (!question || busy) return;
-    const history = messages.map(({ role, content }) => ({ role, content }));
+    const history = messages
+      .filter(message => !message.incomplete)
+      .map(({ role, content }) => ({ role, content }));
     const userMessage = {
       id: ++nextMessageId.current,
       role: 'user' as const,
@@ -106,6 +109,7 @@ export function ConversationScreen({
     operationController.current = controller;
     setBusy(true);
     setError('');
+    partialText.current = '';
     setPendingMessage({ content: '', activity: copy.loading });
     const isCurrentRun = () =>
       operationController.current === controller && !controller.signal.aborted;
@@ -121,24 +125,14 @@ export function ConversationScreen({
         },
         onTaskStreamEvent: event => {
           if (!isCurrentRun()) return;
-          if (event.type === 'started') {
-            setPendingMessage({
-              content: '',
-              activity: copy.progressAnswer,
-            });
-            return;
-          }
-          setPendingMessage(current =>
-            current
-              ? {
-                  content:
-                    event.type === 'text_delta'
-                      ? current.content + event.text
-                      : event.text,
-                  activity: copy.progressAnswer,
-                }
-              : current,
+          partialText.current = applyWorkflowStreamEvent(
+            partialText.current,
+            event,
           );
+          setPendingMessage({
+            content: partialText.current,
+            activity: copy.progressAnswer,
+          });
         },
       };
       const outcome = await onSend(
@@ -147,8 +141,9 @@ export function ConversationScreen({
         controller.signal,
         observer,
       );
-      if (controller.signal.aborted) return;
-      setPendingMessage(null);
+      if (!isCurrentRun()) return;
+      if (outcome.status !== 'answer') retainPartial(copy.unavailable);
+      else setPendingMessage(null);
       const assistantContent =
         outcome.status === 'answer'
           ? outcome.answer
@@ -170,8 +165,8 @@ export function ConversationScreen({
         },
       ]);
     } catch {
-      if (!controller.signal.aborted) {
-        setPendingMessage(null);
+      if (isCurrentRun()) {
+        retainPartial(copy.unavailable);
         setError(copy.unavailable);
       }
     } finally {
@@ -227,9 +222,7 @@ export function ConversationScreen({
           operationController.current?.abort();
           operationController.current = null;
           setBusy(false);
-          setPendingMessage(current =>
-            current ? { ...current, activity: copy.progressCancelled } : null,
-          );
+          retainPartial(copy.progressCancelled);
         }}
       />
     </KeyboardAvoidingView>

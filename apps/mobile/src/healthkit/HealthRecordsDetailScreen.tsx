@@ -1,5 +1,6 @@
+import { HealthRecordsDetailHeader } from './HealthRecordsDetailHeader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { FlatList } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type {
   HealthObservationCursor,
@@ -8,7 +9,6 @@ import type {
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
-import { navigationText } from '../i18n/navigation';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
@@ -16,13 +16,10 @@ import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import {
   healthRecordCategoryTitle,
   healthRecordPeriodStart,
-  healthRecordPeriodTitle,
 } from './healthRecordsLibraryModel';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
-import {
-  buildHealthRecordsDetailRows,
-  healthRecordPeriods,
-} from './healthRecordsDetailModel';
+import { buildHealthRecordsDetailRows } from './healthRecordsDetailModel';
+import { loadHealthObservationPeriod } from './loadHealthObservationPeriod';
 import { HealthRecordsDetailRecordRow } from './HealthRecordsDetailRecordRow';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
 
@@ -86,7 +83,13 @@ export function HealthRecordsDetailScreen({
       const request = ++generation.current;
       setLoadState('loading');
       try {
-        const page = await loadObservations(after);
+        const page = after
+          ? await loadObservations(after)
+          : await loadHealthObservationPeriod(
+              loadObservations,
+              selection.period,
+              now,
+            );
         if (request !== generation.current) return;
         setObservations(current =>
           after ? [...current, ...page.records] : page.records,
@@ -108,7 +111,7 @@ export function HealthRecordsDetailScreen({
         }
       }
     },
-    [loadObservations, start],
+    [loadObservations, start, selection.period, now],
   );
 
   useEffect(() => {
@@ -168,74 +171,18 @@ export function HealthRecordsDetailScreen({
         ) : undefined
       }
       ListHeaderComponent={
-        <View style={styles.header}>
-          <View style={styles.topBar}>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="health-records-detail-title"
-            >
-              {title}
-            </Text>
-            {hasSharedNavigation ? null : (
-              <AppButton
-                accessibilityLabel={navigationText.back.accessibilityLabel}
-                onPress={onBack}
-                testID="health-records-detail-back"
-                title={navigationText.back.label}
-                variant="secondary"
-              />
-            )}
-          </View>
-          <Text style={styles.description}>
-            {t('healthRecords.detailDescription')}
-          </Text>
-          <View accessibilityRole="radiogroup" style={styles.periods}>
-            {healthRecordPeriods.map(period => (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ selected: selection.period === period }}
-                key={period}
-                onPress={() => onSelectionChange({ ...selection, period })}
-                style={[
-                  styles.period,
-                  selection.period === period && styles.selectedPeriod,
-                ]}
-                testID={'health-record-period-' + period}
-              >
-                <Text
-                  style={[
-                    styles.periodText,
-                    selection.period === period && styles.selectedPeriodText,
-                  ]}
-                >
-                  {healthRecordPeriodTitle(period)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.count}>
-            {t('healthRecords.recordCount', { count: rows.length })}
-          </Text>
-          {loadState === 'loading' && observations.length === 0 ? (
-            <Text testID="health-records-detail-loading">
-              {t('healthRecords.loading')}
-            </Text>
-          ) : null}
-          {loadState === 'failed' && observations.length === 0 ? (
-            <View>
-              <Text accessibilityRole="alert" style={styles.error}>
-                {t('healthRecords.error')}
-              </Text>
-              <AppButton
-                onPress={() => void reload(null)}
-                testID="health-records-detail-retry"
-                title={t('healthRecords.retry')}
-                variant="secondary"
-              />
-            </View>
-          ) : null}
-        </View>
+        <HealthRecordsDetailHeader
+          title={title}
+          hasSharedNavigation={hasSharedNavigation}
+          onBack={onBack}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+          recordCount={rows.length}
+          observationCount={observations.length}
+          loadState={loadState}
+          onRetry={() => void reload(null)}
+          hasMore={cursor !== null}
+        />
       }
       onEndReached={() => {
         if (cursor && loadState === 'ready') void reload(cursor);

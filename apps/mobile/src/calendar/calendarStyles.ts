@@ -7,11 +7,11 @@ export const calendarStyles = StyleSheet.create({
     flexGrow: 1,
     gap: 14,
     justifyContent: 'flex-start',
-    padding: 24,
+    padding: 20,
     backgroundColor: appColors.background,
   },
   heading: { gap: 6 },
-  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 17, lineHeight: 24 },
   message: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   card: {
@@ -23,14 +23,14 @@ export const calendarStyles = StyleSheet.create({
   eventTitle: { color: appColors.text, fontSize: 17, fontWeight: '600' },
   warning: { color: appColors.warning, fontSize: 15 },
   error: { color: appColors.danger, fontSize: 15 },
-  // The card bleeds slightly beyond the page inset to keep seven date targets usable on compact phones.
+  // A compact seven-column grid keeps each date tappable without pushing the agenda off-screen.
   calendarMonth: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     gap: 16,
-    marginHorizontal: -16,
+    marginHorizontal: 0,
     paddingHorizontal: 8,
     paddingVertical: 16,
   },
@@ -48,7 +48,7 @@ export const calendarStyles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 8,
-    minHeight: 76,
+    minHeight: 60,
     paddingHorizontal: 12,
   },
   calendarQuickActionCopy: { flex: 1, gap: 3 },
@@ -108,7 +108,7 @@ export const calendarStyles = StyleSheet.create({
   calendarDay: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    minHeight: 56,
+    minHeight: 44,
     paddingTop: 2,
     width: '14.2857142857%',
   },
@@ -133,7 +133,7 @@ export const calendarStyles = StyleSheet.create({
   calendarDayNumber: {
     color: appColors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
     lineHeight: 20,
   },
   calendarVisitMarker: {
@@ -172,6 +172,8 @@ export const calendarStyles = StyleSheet.create({
     borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: appColors.primary,
     gap: 8,
     padding: 14,
   },

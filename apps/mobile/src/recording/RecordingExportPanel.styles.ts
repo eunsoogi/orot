@@ -3,7 +3,13 @@ import { appColors } from '../layout/appColors';
 
 export const recordingExportPanelStyles = StyleSheet.create({
   panel: { gap: 14 },
-  title: { color: appColors.text, fontSize: 20, fontWeight: '700' },
+  subtitle: {
+    color: appColors.secondary,
+    fontSize: 17,
+    lineHeight: 24,
+    marginBottom: 10,
+  },
+  title: { color: appColors.text, fontSize: 32, fontWeight: '700' },
   privacyNote: {
     alignItems: 'center',
     flexDirection: 'row',

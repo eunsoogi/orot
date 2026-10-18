@@ -1,6 +1,7 @@
 /** Korean copy for local recording, transcript review, and their error states. */
 export const recordingKo = {
   'recording.title': '상담 녹음',
+  'recording.export.description': '파일을 내보낼 방법을 선택해요.',
   'recording.subtitle': '중요한 이야기를 놓치지 않도록',
   'recording.listening': '목소리를 듣고 있어요.',
   'recording.readyHint': '동의를 확인한 뒤 녹음을 시작해 주세요.',
@@ -48,6 +49,9 @@ export const recordingKo = {
   'recording.errors.generic':
     '녹음 상태를 처리하지 못했어요. 다시 시도해 주세요.',
   'recording.transcript.title': '전사 검토',
+  'recording.transcript.recordingSource': '녹음 전사',
+  'recording.transcript.expandSegment': '전사 구간 펼치기',
+  'recording.transcript.collapseSegment': '전사 구간 접기',
   'recording.transcript.localOnly':
     '전사는 Apple 기기 내 음성 인식으로 처리하고 서버로 보내지 않습니다.',
   'recording.transcript.description':

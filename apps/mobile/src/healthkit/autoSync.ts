@@ -45,6 +45,18 @@ export function runHealthKitAutoSync(
   return run;
 }
 
+/** Settings changes need a fresh traversal after any launch run that used the old selection. */
+export async function refreshHealthKitAutoSyncSelection(
+  options: RunHealthKitAutoSyncOptions,
+): Promise<HealthKitAutoSyncResult> {
+  const pending = pendingRuns.get(options.repository);
+  if (pending) {
+    // A failed prior run must not prevent retrying the newly saved selection.
+    await pending.catch(() => undefined);
+  }
+  return runHealthKitAutoSync(options);
+}
+
 async function runRequestedFeatures(
   options: RunHealthKitAutoSyncOptions,
 ): Promise<HealthKitAutoSyncResult> {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -24,6 +24,8 @@ export function HealthRecordsLineChart({
   category,
   observations,
 }: HealthRecordsLineChartProps) {
+  const { fontScale } = useWindowDimensions();
+  const dateLabelWidth = 68 * fontScale;
   const [containerWidth, setContainerWidth] = useState(0);
   const series = useMemo(
     () => buildHealthChartSeries(category, observations),
@@ -67,9 +69,22 @@ export function HealthRecordsLineChart({
       testID={'health-record-chart-' + category}
     >
       <Text style={styles.unitLabel}>{series[0]?.points[0]?.unit ?? ''}</Text>
+      {category === 'blood_pressure' ? (
+        <View style={styles.legend}>
+          <LegendItem
+            color={appColors.dangerAction}
+            label={t('healthkit.bloodPressure.component.systolic')}
+          />
+          <LegendItem
+            color={appColors.primaryAction}
+            label={t('healthkit.bloodPressure.component.diastolic')}
+          />
+        </View>
+      ) : null}
       <View
         onLayout={event => setContainerWidth(event.nativeEvent.layout.width)}
         style={styles.chartRow}
+        testID="health-record-chart-plot-row"
       >
         <View style={[styles.axis, { height: plotHeight }]}>
           {[1, 0.8, 0.6, 0.4, 0.2, 0].map(fraction => (
@@ -128,43 +143,80 @@ export function HealthRecordsLineChart({
             )),
           )}
           {series.flatMap(item =>
-            item.points.map(point => (
-              <Text
-                key={item.key + '-label-' + point.id}
-                style={[
-                  styles.pointLabel,
-                  {
-                    color: point.color,
-                    left: xFor(point.effectiveAt) - 14,
-                    top: yFor(point.amount) - 28,
-                  },
-                ]}
-              >
-                {point.amount}
-              </Text>
-            )),
+            item.points
+              .filter(
+                point =>
+                  item.points.length <= 5 ||
+                  tickTimes.includes(point.effectiveAt),
+              )
+              .map(point => (
+                <Text
+                  key={item.key + '-label-' + point.id}
+                  style={[
+                    styles.pointLabel,
+                    {
+                      color: point.color,
+                      left: xFor(point.effectiveAt) - 14,
+                      top: yFor(point.amount) - 28,
+                    },
+                  ]}
+                >
+                  {point.amount}
+                </Text>
+              )),
           )}
         </View>
       </View>
-      <View style={[styles.dateAxis, { marginLeft: axisWidth }]}>
-        {tickTimes.map(timestamp => (
-          <Text key={timestamp} style={styles.dateLabel}>
-            {healthChartDateLabel(timestamp)}
-          </Text>
-        ))}
+      <View
+        style={[
+          styles.dateAxis,
+          { marginLeft: axisWidth, minHeight: 36 * fontScale },
+        ]}
+      >
+        {tickTimes.map((timestamp, index) => {
+          const x = xFor(timestamp);
+          const first = index === 0;
+          const last = index === tickTimes.length - 1;
+          // Hide colliding interior labels, never move a date away from its measured point.
+          if (
+            !first &&
+            !last &&
+            (x < dateLabelWidth * 1.5 || plotWidth - x < dateLabelWidth * 1.5)
+          )
+            return null;
+          const offset =
+            first && !last
+              ? 0
+              : last && !first
+                ? -dateLabelWidth
+                : -dateLabelWidth / 2;
+          return (
+            <View
+              key={timestamp}
+              testID={'health-chart-date-' + timestamp}
+              style={{ position: 'absolute', left: x }}
+            >
+              <Text
+                style={[
+                  styles.dateLabel,
+                  {
+                    left: offset,
+                    width: dateLabelWidth,
+                    textAlign:
+                      first && !last
+                        ? 'left'
+                        : last && !first
+                          ? 'right'
+                          : 'center',
+                  },
+                ]}
+              >
+                {healthChartDateLabel(timestamp)}
+              </Text>
+            </View>
+          );
+        })}
       </View>
-      {category === 'blood_pressure' ? (
-        <View style={styles.legend}>
-          <LegendItem
-            color={appColors.dangerAction}
-            label={t('healthkit.bloodPressure.component.systolic')}
-          />
-          <LegendItem
-            color={appColors.primaryAction}
-            label={t('healthkit.bloodPressure.component.diastolic')}
-          />
-        </View>
-      ) : null}
       <Text style={styles.measuredOnly}>{t('healthRecords.measuredOnly')}</Text>
     </View>
   );

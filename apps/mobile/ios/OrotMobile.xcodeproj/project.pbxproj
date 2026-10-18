@@ -32,7 +32,6 @@
 		5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */; };
 		62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */; };
 		6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */; };
-		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
 		71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */; };
 		72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */; };
@@ -46,6 +45,7 @@
 		864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */; };
 		876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */; };
 		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
+		88FB7164A1DEA04EF469C5FB /* HealthKitReadAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */; };
 		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
 		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
@@ -104,6 +104,7 @@
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
 		A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */; };
 		A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B66F00000000000000000002 /* SyntheticCalendarTestModule.m */; };
+		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
@@ -114,6 +115,7 @@
 		C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */; };
 		CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */; };
 		CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2F722F9A5281E9B9A73231 /* TestControl.m */; };
+		D3F6E2F9AEE7D2059B8FD74A /* HealthKitAuthorizationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
 		DAB96891474DE7DFC4A63BB8 /* libPods-OrotIntegrationTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F502DE5A77E3F51FB2915E76 /* libPods-OrotIntegrationTests.a */; };
 		DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */; };
@@ -198,6 +200,7 @@
 		2D0CC908B80A06121230581D /* TestSpeechObservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestSpeechObservation.swift; path = OrotMobile/TestSpeechObservation.swift; sourceTree = "<group>"; };
 		35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HermesDomainIntegrationTests.swift; sourceTree = "<group>"; };
 		38F894914E4F39E9162E577E /* RecordingExportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportUITests.swift; sourceTree = "<group>"; };
+		395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitReadAuthorization.swift; path = OrotMobile/HealthKitReadAuthorization.swift; sourceTree = "<group>"; };
 		39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MicrophoneMeteringUITests.swift; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OrotMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.debug.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedHealthRecordsUITests.swift; sourceTree = "<group>"; };
@@ -222,7 +225,6 @@
 		81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingExportIntegrationTests.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OrotMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootNavigationUITests.swift; sourceTree = "<group>"; };
-		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
 		86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechFixture.swift; sourceTree = "<group>"; };
 		8A4F4D353E9DF55F80F3FD5A /* OrotIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OrotIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechAssetPreparationTests.swift; sourceTree = "<group>"; };
@@ -236,7 +238,9 @@
 		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
 		A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VisitQuestionConsentUITests.swift; sourceTree = "<group>"; };
 		A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportUITests.swift; sourceTree = "<group>"; };
+		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
 		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
+		AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitAuthorizationPlan.swift; path = OrotMobile/HealthKitAuthorizationPlan.swift; sourceTree = "<group>"; };
 		AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticSpeechPersistenceTests.swift; sourceTree = "<group>"; };
 		ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixtureIsolationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
@@ -400,6 +404,8 @@
 				E12A00000000000000000014 /* OpenAIProviderModuleSimulatorFixture.swift */,
 				E16A00000000000000000011 /* HealthKitBoundary.swift */,
 				E16A00000000000000000012 /* HealthKitModule.swift */,
+				395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */,
+				AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */,
 				E16A00000000000000000013 /* HealthKitModule.m */,
 				E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */,
 				E17A00000000000000000011 /* HealthKitMedicationQueries.swift */,
@@ -904,6 +910,8 @@
 				E12A00000000000000000004 /* OpenAIProviderModuleSimulatorFixture.swift in Sources */,
 				E16A00000000000000000002 /* HealthKitBoundary.swift in Sources */,
 				E16A00000000000000000003 /* HealthKitModule.swift in Sources */,
+				88FB7164A1DEA04EF469C5FB /* HealthKitReadAuthorization.swift in Sources */,
+				D3F6E2F9AEE7D2059B8FD74A /* HealthKitAuthorizationPlan.swift in Sources */,
 				E16A00000000000000000004 /* HealthKitModule.m in Sources */,
 				E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */,
 				E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */,

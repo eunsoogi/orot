@@ -16,6 +16,8 @@ export const healthkitSettingsKo = {
   'settings.healthData.save': '자동 동기화 설정 저장',
   'settings.healthData.saving': '설정 저장 중…',
   'settings.healthData.saved': '자동 동기화 설정을 저장했어요.',
+  'settings.healthData.selectionSaveFailed':
+    '선택한 자동 동기화 설정을 저장하지 못했어요. 다시 시도해 주세요.',
   'settings.healthData.retryable':
     '설정은 저장했지만 동기화하지 못했어요. 권한 및 동기화 상태에서 확인해 주세요.',
   'settings.healthData.disabled': '자동 동기화를 껐어요.',

@@ -44,7 +44,7 @@ describe('calendar month view', () => {
       StyleSheet.flatten(
         calendar.getByTestId('calendar-day-2035-06-02').props.style,
       ),
-    ).toMatchObject({ width: '14.2857142857%', minHeight: 56 });
+    ).toMatchObject({ width: '14.2857142857%', minHeight: 44 });
     expect(
       within(calendar.getByTestId('calendar-weekday-row'))
         .getAllByText(/./u)

@@ -3,6 +3,8 @@ export type AppNavigationRoute =
   | AiFeatureRouteName
   | 'home'
   | 'recording'
+  | 'saved-recordings'
+  | 'recording-review'
   | 'unified-import'
   | 'health-records'
   | 'health-records-detail'

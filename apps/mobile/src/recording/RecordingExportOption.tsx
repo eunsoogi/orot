@@ -45,7 +45,7 @@ export default function RecordingExportOption({
         <AppSymbol
           name={transcript ? 'doc.text' : 'waveform'}
           size={28}
-          color={transcript ? appColors.primaryText : appColors.primaryText}
+          color={transcript ? appColors.green : appColors.primaryText}
         />
       </View>
       <View style={styles.copy}>

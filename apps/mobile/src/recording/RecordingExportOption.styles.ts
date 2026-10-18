@@ -22,7 +22,7 @@ export const recordingExportOptionStyles = StyleSheet.create({
     width: 64,
   },
   audioTile: { backgroundColor: appColors.primarySoft },
-  transcriptTile: { backgroundColor: appColors.primarySoft },
+  transcriptTile: { backgroundColor: appColors.greenSoft },
   copy: { flex: 1, gap: 5 },
   title: { color: appColors.text, fontSize: 17, fontWeight: '700' },
   description: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

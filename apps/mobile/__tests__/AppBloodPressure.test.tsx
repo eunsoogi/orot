@@ -73,12 +73,12 @@ test('opens the chart-first health library without a manual blood-pressure impor
     await screen.findByTestId('health-record-chart-blood_pressure'),
   ).toBeTruthy();
   expect(
-    screen.getByTestId('health-record-chart-summary-blood_pressure').props
-      .children,
+    screen.getByTestId('health-record-chart-blood_pressure').props
+      .accessibilityLabel,
   ).toContain('120 mmHg');
   expect(
-    screen.getByTestId('health-record-chart-summary-blood_pressure').props
-      .children,
+    screen.getByTestId('health-record-chart-blood_pressure').props
+      .accessibilityLabel,
   ).toContain('80 mmHg');
   expect(loadHealthObservations).toHaveBeenCalledTimes(1);
   expect(importLocalBloodPressure).not.toHaveBeenCalled();
@@ -87,11 +87,13 @@ test('opens the chart-first health library without a manual blood-pressure impor
     screen.getByTestId('health-record-open-detail-blood_pressure'),
   );
   expect(
-    await screen.findByTestId('health-record-row-0-systolic'),
-  ).toHaveTextContent('수축기 120 mmHg');
-  expect(screen.getByTestId('health-record-row-0-diastolic')).toHaveTextContent(
-    '이완기 80 mmHg',
-  );
+    (await screen.findByTestId('health-record-row-0-systolic')).props
+      .accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
+  expect(
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
+  ).toBe('이완기 80 mmHg');
 });
 
 test('keeps the blood-pressure probe loader compatible with the chart library', async () => {

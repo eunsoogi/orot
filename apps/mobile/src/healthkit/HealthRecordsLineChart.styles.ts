@@ -27,9 +27,7 @@ export const healthRecordsChartStyles = StyleSheet.create({
     width: 34,
   },
   dateAxis: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingRight: 4,
+    position: 'relative',
   },
   dateLabel: { color: appColors.secondary, fontSize: 11 },
   legend: {

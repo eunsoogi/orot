@@ -1,9 +1,9 @@
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
-import type { RecordingExportService } from '../recordingExportService';
+import type { RecordingExportService } from './recordingExportService';
 import type {
   TranscriptEvidenceService,
   TranscriptRecordingView,
-} from '../../transcription/transcriptEvidenceService';
+} from '../transcription/transcriptEvidenceService';
 
 /** Supplies two transcript revisions so panel tests can detect stale exports without native sharing. */
 export const source: SourceRecord = {

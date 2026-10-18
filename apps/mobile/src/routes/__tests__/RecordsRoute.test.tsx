@@ -5,16 +5,14 @@ jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
-jest.mock('../../recording/RecordingLibraryPanel', () => () => null);
 
 test('keeps recording and imported records visible without manual import actions', async () => {
   const onOpenRecording = jest.fn();
   const onOpenHealthLibrary = jest.fn();
+  const onOpenSavedRecordings = jest.fn();
   await render(
     <RecordsRoute
-      refreshKey="ready"
-      recordingState="ready"
-      onRetry={jest.fn()}
+      onOpenSavedRecordings={onOpenSavedRecordings}
       onOpenRecording={onOpenRecording}
       onOpenHealthLibrary={onOpenHealthLibrary}
     />,
@@ -27,6 +25,9 @@ test('keeps recording and imported records visible without manual import actions
   expect(screen.queryByTestId('records-health-import')).toBeNull();
   expect(screen.queryByTestId('records-open-common-observations')).toBeNull();
   expect(screen.queryByTestId('records-open-blood-pressure')).toBeNull();
+  expect(screen.queryByTestId('recording-library-panel')).toBeNull();
+  await fireEvent.press(screen.getByTestId('records-open-saved-recordings'));
+  expect(onOpenSavedRecordings).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
   expect(onOpenRecording).toHaveBeenCalledTimes(1);

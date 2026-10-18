@@ -173,6 +173,7 @@ export default function RecordingExportPanel({
       <Text accessibilityRole="header" style={styles.title}>
         {t('recording.export.title')}
       </Text>
+      <Text style={styles.subtitle}>{t('recording.export.description')}</Text>
       {/* Native sharing can wait for user input; keep each result inside its matching share card. */}
       <RecordingExportOption
         kind="audio"

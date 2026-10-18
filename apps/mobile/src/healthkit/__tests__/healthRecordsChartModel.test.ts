@@ -38,13 +38,13 @@ test('keeps separate pressure series and includes only exact saved quantities', 
   const summary = healthChartSummary(series, '혈압');
 
   expect(systolicSeries?.points.map(point => point.amount)).toEqual([
-    121, 122, 123, 124, 125,
+    120, 121, 122, 123, 124, 125,
   ]);
   expect(
     series.find(item => item.key.endsWith('diastolic'))?.points,
   ).toHaveLength(1);
   expect(summary).toContain('121 mmHg');
   expect(summary).toContain('125 mmHg');
-  expect(summary).not.toContain('120 mmHg');
+  expect(summary).toContain('120 mmHg');
   expect(summary).not.toContain('asleepCore');
 });

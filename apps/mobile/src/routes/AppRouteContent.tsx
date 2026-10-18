@@ -1,3 +1,6 @@
+import { RecordingReviewRoute } from './RecordingReviewRoute';
+import RecordingScreen from '../recording/RecordingScreen';
+import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
 import type {
@@ -9,12 +12,11 @@ import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
 import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRoute';
 import { RouteLoadError } from './RouteLoadError';
-import RecordingScreen from '../recording/RecordingScreen';
-import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
 import type { HealthRecordsMedicationData } from '../healthkit/healthRecordsMedicationLibrary';
 import WelcomeRoute from './WelcomeRoute';
+import { SavedRecordingsRoute } from './SavedRecordingsRoute';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
@@ -120,9 +122,7 @@ export function AppRouteContent({
       case 'records':
         return (
           <RecordsRoute
-            refreshKey={recordingState}
-            recordingState={recordingState}
-            onRetry={() => refreshRecordings()}
+            onOpenSavedRecordings={() => actions.push('saved-recordings')}
             onOpenRecording={openRecording}
             onOpenHealthLibrary={() => actions.push('health-records')}
           />
@@ -169,8 +169,12 @@ export function AppRouteContent({
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
+    case 'saved-recordings':
+      return <SavedRecordingsRoute actions={actions} />;
+    case 'recording-review':
+      return <RecordingReviewRoute />;
     case 'recording':
-      // The screen and review panel share one job registry to coalesce automatic and manual transcription.
+      // Automatic and manual transcription share the same job registry inside the recording flow.
       return (
         <RecordingScreen
           onBack={actions.onBack}

@@ -15,6 +15,8 @@ export function useQuestionGenerationActivity() {
     setActivity(initialActivity);
     setPreview('');
   }, []);
+  // Finishing activity must not discard a response that was already displayed.
+  const finish = useCallback(() => setActivity(null), []);
   const clear = useCallback(() => {
     setActivity(null);
     setPreview('');
@@ -34,5 +36,5 @@ export function useQuestionGenerationActivity() {
     [],
   );
 
-  return { activity, preview, begin, clear, createObserver };
+  return { activity, preview, begin, clear, finish, createObserver };
 }

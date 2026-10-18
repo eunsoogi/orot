@@ -6,6 +6,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
+import { healthRecordCategoryPresentation } from './healthRecordCategoryPresentation';
 import { HealthRecordsLineChart } from './HealthRecordsLineChart';
 import type {
   HealthObservationCategory,
@@ -33,6 +34,7 @@ export function HealthRecordsCategoryCard({
   onOpenDetail,
 }: HealthRecordsCategoryCardProps) {
   const title = healthRecordCategoryTitle(category);
+  const appearance = healthRecordCategoryPresentation[category];
   const recentObservations = filterObservationsByPeriod(
     observations,
     'month',
@@ -58,15 +60,11 @@ export function HealthRecordsCategoryCard({
   return (
     <View style={styles.card} testID={'health-record-category-' + category}>
       <View style={styles.heading}>
-        <View style={styles.icon}>
+        <View style={[styles.icon, { backgroundColor: appearance.background }]}>
           <AppSymbol
-            name={categoryIcon(category)}
+            name={appearance.symbol}
             size={26}
-            color={
-              category === 'blood_pressure'
-                ? appColors.dangerAction
-                : appColors.primaryAction
-            }
+            color={appearance.color}
           />
         </View>
         <View style={styles.headingCopy}>
@@ -144,23 +142,6 @@ export function HealthRecordsCategoryCard({
       ) : null}
     </View>
   );
-}
-
-function categoryIcon(category: HealthObservationCategory): string {
-  switch (category) {
-    case 'blood_pressure':
-      return 'heart.fill';
-    case 'heart_rate':
-      return 'heart.text.square.fill';
-    case 'steps':
-      return 'figure.walk';
-    case 'body_mass':
-      return 'scalemass.fill';
-    case 'sleep':
-      return 'bed.double.fill';
-    case 'other':
-      return 'doc.text.fill';
-  }
 }
 
 const styles = StyleSheet.create({

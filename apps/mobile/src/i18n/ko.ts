@@ -36,6 +36,7 @@ export const ko = {
   'records.subtitle': '상담 기록과 가져온 자료를 확인해요.',
   'records.import': '기록 가져오기',
   'records.recordings': '진료 녹음',
+  'records.savedRecordingsSummary': '녹음과 전사 내용을 확인해요.',
   'records.healthRecords': '가져온 건강 기록',
   'schedule.title': '일정',
   'schedule.subtitle': '일정을 확인하고 진료를 준비해요.',

@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import RecordingWaveform from './RecordingWaveform';
@@ -41,16 +41,19 @@ export default function RecordingSessionPanel({
   onResume,
   onStop,
 }: RecordingSessionPanelProps) {
+  const compact = useWindowDimensions().width < 375;
   return (
     <>
       <Text
         accessibilityRole="header"
-        style={recordingControlStyles.title}
+        style={[recordingControlStyles.title, styles.heading]}
         testID="recording-title"
       >
         {t('recording.title')}
       </Text>
-      <Text style={recordingControlStyles.copy}>{t('recording.subtitle')}</Text>
+      <Text style={[recordingControlStyles.copy, styles.heading]}>
+        {t('recording.subtitle')}
+      </Text>
       <RecordingConsentControl
         checked={consentAcknowledged}
         onPress={onToggleConsent}
@@ -61,12 +64,6 @@ export default function RecordingSessionPanel({
           status === 'interrupted'
         }
       />
-      <View style={recordingControlStyles.localNotice}>
-        <AppSymbol name="lock.fill" size={20} color={appColors.secondary} />
-        <Text style={recordingControlStyles.localNoticeText}>
-          {t('recording.localOnly')}
-        </Text>
-      </View>
       <View style={styles.session}>
         <View style={recordingControlStyles.recordingStatus}>
           {status === 'recording' ? (
@@ -130,10 +127,15 @@ export default function RecordingSessionPanel({
           onPress={
             status === 'idle' || status === 'completed' ? onStart : onStop
           }
-          style={styles.microphone}
+          style={[styles.microphone, compact && styles.compactMicrophone]}
           testID="recording-microphone-control"
         >
-          <View style={styles.microphoneInner}>
+          <View
+            style={[
+              styles.microphoneInner,
+              compact && styles.compactMicrophoneInner,
+            ]}
+          >
             <AppSymbol name="mic.fill" size={52} color={appColors.onPrimary} />
           </View>
         </Pressable>
@@ -144,7 +146,10 @@ export default function RecordingSessionPanel({
             accessibilityState={{ disabled: controlsBusy }}
             disabled={controlsBusy}
             onPress={onPause}
-            style={styles.secondaryAction}
+            style={[
+              styles.secondaryAction,
+              compact && styles.compactSecondaryAction,
+            ]}
             testID="recording-pause"
           >
             <AppSymbol
@@ -160,7 +165,10 @@ export default function RecordingSessionPanel({
             accessibilityState={{ disabled: controlsBusy }}
             disabled={controlsBusy}
             onPress={onResume}
-            style={styles.secondaryAction}
+            style={[
+              styles.secondaryAction,
+              compact && styles.compactSecondaryAction,
+            ]}
             testID="recording-resume"
           >
             <AppSymbol
@@ -178,6 +186,12 @@ export default function RecordingSessionPanel({
             ? t('recording.microphone.pausedHint')
             : t('recording.afterSave')}
       </Text>
+      <View style={recordingControlStyles.localNotice}>
+        <AppSymbol name="lock.fill" size={20} color={appColors.secondary} />
+        <Text style={recordingControlStyles.localNoticeText}>
+          {t('recording.localOnly')}
+        </Text>
+      </View>
     </>
   );
 }

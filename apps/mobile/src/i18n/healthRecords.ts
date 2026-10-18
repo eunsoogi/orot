@@ -36,6 +36,7 @@ export const healthRecordsKo = {
   'healthRecords.period.six_months': '6개월',
   'healthRecords.period.year': '1년',
   'healthRecords.period.all': '전체',
+  'healthRecords.loadedRecordCount': '불러온 {count}개 기록',
   'healthRecords.recordCount': '{count}개 기록',
   'healthRecords.loadOlder': '이전 기록 더 보기',
   'healthRecords.incompleteBloodPressure': '한 항목만 저장된 혈압 기록',

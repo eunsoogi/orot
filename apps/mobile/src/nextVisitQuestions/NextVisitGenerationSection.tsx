@@ -37,6 +37,7 @@ export function NextVisitGenerationSection<
     !isGenerating &&
     hasSharedAction &&
     !controller.generationMessage &&
+    !controller.generationPreview &&
     (!controller.saveMessage || controller.phase === 'saved') &&
     (controller.caveats.length === 0 || controller.phase === 'saved')
   )
@@ -56,15 +57,7 @@ export function NextVisitGenerationSection<
           >
             {controller.generationActivity ?? copy.generation.loading}
           </Text>
-          {controller.generationPreview ? (
-            <View testID="next-visit-generation-preview">
-              <Text style={styles.muted}>{t('aiActivity.draft.heading')}</Text>
-              <Text accessibilityLiveRegion="polite" style={styles.body}>
-                {controller.generationPreview}
-              </Text>
-              <Text style={styles.muted}>{t('aiActivity.draft.note')}</Text>
-            </View>
-          ) : null}
+
           {!hasSharedAction ? (
             <ActionButton
               label={copy.generation.cancel}
@@ -83,6 +76,27 @@ export function NextVisitGenerationSection<
           theme={theme}
           testID="next-visit-generate"
         />
+      ) : null}
+      {controller.generationPreview ? (
+        <View testID="next-visit-generation-preview">
+          <Text style={styles.muted}>
+            {t(
+              isGenerating
+                ? 'aiActivity.draft.heading'
+                : 'aiActivity.draft.incompleteHeading',
+            )}
+          </Text>
+          <Text accessibilityLiveRegion="polite" style={styles.body}>
+            {controller.generationPreview}
+          </Text>
+          <Text style={styles.muted}>
+            {t(
+              isGenerating
+                ? 'aiActivity.draft.note'
+                : 'aiActivity.draft.incompleteNote',
+            )}
+          </Text>
+        </View>
       ) : null}
       {controller.generationMessage ? (
         <Text

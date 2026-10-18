@@ -113,14 +113,20 @@ export function DiseaseHypothesesScreen({
             testID="disease-hypotheses-cancel"
             title={copy.cancel}
           />
-          {preview ? (
-            <View style={styles.draft} testID="disease-hypotheses-draft">
-              <Text style={styles.label}>{copy.draftHeading}</Text>
-              <Text>{copy.draftNote}</Text>
-              <Text>{preview}</Text>
-            </View>
-          ) : null}
         </>
+      ) : null}
+      {preview ? (
+        <View style={styles.draft} testID="disease-hypotheses-draft">
+          <Text style={styles.label}>
+            {state.status === 'loading'
+              ? copy.draftHeading
+              : copy.incompleteHeading}
+          </Text>
+          <Text>
+            {state.status === 'loading' ? copy.draftNote : copy.incompleteNote}
+          </Text>
+          <Text>{preview}</Text>
+        </View>
       ) : null}
       {state.status === 'cancelled' ? (
         <Text testID="disease-hypotheses-cancelled">{copy.cancelled}</Text>

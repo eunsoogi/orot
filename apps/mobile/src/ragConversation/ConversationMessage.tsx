@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
+import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
 import type { RagConversationMessage } from './task';
 
@@ -12,6 +13,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly citations?: readonly EvidenceReference[];
   readonly activity?: string;
   readonly streaming?: boolean;
+  readonly incomplete?: boolean;
 }
 
 /** Citation labels reveal source type and date; opaque record aliases remain implementation details. */
@@ -40,6 +42,16 @@ export function ConversationMessage({
         </View>
       )}
       <View style={!user && styles.assistantBody}>
+        {message.incomplete ? (
+          <>
+            <Text style={styles.activity}>
+              {t('aiActivity.draft.incompleteHeading')}
+            </Text>
+            <Text style={styles.activity}>
+              {t('aiActivity.draft.incompleteNote')}
+            </Text>
+          </>
+        ) : null}
         {message.content ? (
           <Text
             selectable

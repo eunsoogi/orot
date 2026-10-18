@@ -3,23 +3,17 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import RecordingLibraryPanel from '../recording/RecordingLibraryPanel';
-import { recordingLibraryService } from '../recording/recordingLibraryService';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 
 interface RecordsRouteProps {
-  readonly refreshKey: string;
-  readonly recordingState: 'loading' | 'ready' | 'failed';
-  readonly onRetry: () => void;
+  readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
 }
 
 /** Keeps recording and local records discoverable without manual HealthKit entry points. */
 export function RecordsRoute({
-  refreshKey,
-  recordingState,
-  onRetry,
+  onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
 }: RecordsRouteProps) {
@@ -60,20 +54,24 @@ export function RecordsRoute({
         </Text>
       </Pressable>
 
-      <RecordingLibraryPanel
-        refreshKey={refreshKey}
-        service={recordingLibraryService}
-      />
-      {recordingState === 'failed' ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRetry}
-          style={styles.retry}
-          testID="records-retry"
-        >
-          <Text style={styles.retryTitle}>{t('appointments.retry')}</Text>
-        </Pressable>
-      ) : null}
+      {/* A separate library keeps health records reachable regardless of saved-recording count. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenSavedRecordings}
+        style={styles.healthCard}
+        testID="records-open-saved-recordings"
+      >
+        <View style={styles.healthIcon}>
+          <AppSymbol name="doc.text" size={28} color={appColors.primaryText} />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{t('recording.library.title')}</Text>
+          <Text style={styles.cardSummary}>
+            {t('records.savedRecordingsSummary')}
+          </Text>
+        </View>
+        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"
@@ -81,12 +79,10 @@ export function RecordsRoute({
         style={styles.healthCard}
         testID="records-open-health-library"
       >
-        <View style={styles.healthIcon}>
-          <AppSymbol
-            name="folder.fill"
-            size={28}
-            color={appColors.primaryText}
-          />
+        <View
+          style={[styles.healthIcon, { backgroundColor: appColors.greenSoft }]}
+        >
+          <AppSymbol name="folder" size={28} color={appColors.green} />
         </View>
         <View style={styles.cardCopy}>
           <Text style={styles.cardTitle}>{t('records.healthRecords')}</Text>
@@ -107,7 +103,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: appColors.background,
     gap: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 24,
   },
@@ -119,7 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     gap: 12,
-    minHeight: 176,
+    minHeight: 116,
     marginTop: 4,
   },
   recordingIcon: {
@@ -143,29 +139,19 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 16,
-    minHeight: 124,
+    minHeight: 94,
     paddingHorizontal: 18,
   },
   healthIcon: {
     alignItems: 'center',
     backgroundColor: appColors.primarySoft,
-    borderRadius: 18,
-    height: 64,
+    borderRadius: 14,
+    height: 48,
     justifyContent: 'center',
-    width: 64,
+    width: 48,
   },
   cardCopy: { flex: 1, gap: 4 },
   cardTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
   cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   chevron: { color: appColors.secondary, fontSize: 24 },
-  retry: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  retryTitle: { color: appColors.primaryText, fontSize: 15, fontWeight: '600' },
 });

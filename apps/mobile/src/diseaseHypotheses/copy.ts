@@ -22,6 +22,8 @@ export function getDiseaseHypothesisCopy() {
     retry: t('diseaseHypotheses.retry'),
     cancel: t('aiActivity.cancel'),
     cancelled: t('aiActivity.cancelled'),
+    incompleteHeading: t('aiActivity.draft.incompleteHeading'),
+    incompleteNote: t('aiActivity.draft.incompleteNote'),
     draftHeading: t('aiActivity.draft.heading'),
     draftNote: t('aiActivity.draft.note'),
   };

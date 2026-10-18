@@ -64,6 +64,8 @@ const featureScreens = [
       'aiActivity.cancel',
       'aiActivity.cancelled',
       'aiActivity.draft.heading',
+      'aiActivity.draft.incompleteHeading',
+      'aiActivity.draft.incompleteNote',
       'aiActivity.draft.note',
       'diseaseHypotheses.title',
       'diseaseHypotheses.explanation',

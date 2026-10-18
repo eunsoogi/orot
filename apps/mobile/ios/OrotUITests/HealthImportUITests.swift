@@ -37,11 +37,11 @@ final class HealthImportUITests: OrotFailFastTestCase {
         try assertBloodPressureLibrary(app)
         capture(app, "blood-pressure-settings-auto-sync")
 
-        // Relaunch checks the saved opt-in refreshes from its cursor without duplicating rows.
+        // Changed native values require a new launch query; persisted completion text alone cannot pass.
         app.terminate()
-        launch(app, scenario: "blood-pressure")
+        launch(app, scenario: "blood-pressure", updated: true)
         try assertCompletedSyncStatus(app, fromHealthDataSettings: false)
-        try assertBloodPressureLibrary(app)
+        try assertBloodPressureLibrary(app, systolic: 124, dose: 2)
         capture(app, "blood-pressure-library-after-auto-sync-relaunch")
     }
 
@@ -66,8 +66,11 @@ final class HealthImportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, scenario: String) {
+    private func launch(_ app: XCUIApplication, scenario: String, updated: Bool = false) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", scenario]
+        if updated {
+            app.launchArguments.append("-OROT_HEALTH_FIXTURE_UPDATED")
+        }
         app.launch()
         UITestConditions.value(node(app, "welcome-title"), equals: "오롯")
         DebugUITestConditions.dismissWarningToast(app)
@@ -121,14 +124,14 @@ final class HealthImportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func assertBloodPressureLibrary(_ app: XCUIApplication) throws {
+    private func assertBloodPressureLibrary(_ app: XCUIApplication, systolic: Int = 120, dose: Int = 1) throws {
         try openHealthLibrary(app)
         let categoryFilter = node(app, "health-record-category-filter")
         let medicationFilter = node(app, "health-record-filter-medications")
         capture(app, "blood-pressure-chart-overview")
         let chart = node(app, "health-record-chart-blood_pressure")
         XCTAssertTrue(chart.exists, app.debugDescription)
-        XCTAssertTrue(chart.label.contains("120 mmHg"), chart.label)
+        XCTAssertTrue(chart.label.contains("\(systolic) mmHg"), chart.label)
         XCTAssertTrue(chart.label.contains("80 mmHg"), chart.label)
         // The accessible image keeps its full summary, while visible card copy stays concise.
         XCTAssertFalse(
@@ -139,7 +142,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["health-records-detail-title"])
         UITestConditions.value(
             node(app, "health-record-row-0-systolic"),
-            equals: "수축기 120 mmHg",
+            equals: "수축기 \(systolic) mmHg",
         )
         UITestConditions.value(
             node(app, "health-record-row-0-diastolic"),
@@ -171,7 +174,7 @@ final class HealthImportUITests: OrotFailFastTestCase {
         )
         UITestConditions.value(
             node(app, "health-record-medication-row-0-dose"),
-            equals: "1 tablet",
+            equals: "\(dose) tablet",
         )
         capture(app, "medication-dose-event-detail")
     }

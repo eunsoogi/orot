@@ -54,6 +54,7 @@ export function useQuestionGeneration<
     preview,
     begin: beginActivity,
     clear: clearActivity,
+    finish: finishActivity,
     createObserver,
   } = useQuestionGenerationActivity();
 
@@ -112,7 +113,7 @@ export function useQuestionGeneration<
       if (request.signal.aborted || activeGeneration.current !== request)
         return;
       acceptingEvents = false;
-      clearActivity();
+      finishActivity();
       if (currentContextKeys.current.appointment !== requestAppointmentKey)
         return;
       if (currentContextKeys.current.provider !== requestProviderKey) {
@@ -127,6 +128,7 @@ export function useQuestionGeneration<
           setMessage(copy.generation.invalidResult);
           return;
         }
+        clearActivity();
         setDraftQuestions(copyQuestions(outcome.questions));
         setHasUnpersistedReview(true);
         setPhase('reviewing');
@@ -150,7 +152,7 @@ export function useQuestionGeneration<
         setMessage(copy.generation.providerChanged);
         return;
       }
-      clearActivity();
+      finishActivity();
       setPhase('error');
       setMessage(copy.generation.genericError);
     } finally {
@@ -159,6 +161,7 @@ export function useQuestionGeneration<
   }, [
     beginActivity,
     clearActivity,
+    finishActivity,
     createObserver,
     appointment,
     appointmentKey,
@@ -176,11 +179,11 @@ export function useQuestionGeneration<
   const cancelGeneration = useCallback(() => {
     activeGeneration.current?.abort();
     activeGeneration.current = null;
-    clearActivity();
+    finishActivity();
     setPhase('idle');
     setHasUnpersistedReview(false);
     setMessage(copy.generation.cancelled);
-  }, [clearActivity, setHasUnpersistedReview, setPhase]);
+  }, [finishActivity, setHasUnpersistedReview, setPhase]);
 
   return {
     activity: currentActivity,

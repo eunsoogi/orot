@@ -3,6 +3,10 @@ import { appColors } from '../layout/appColors';
 
 /** Session actions follow the generated microphone-and-icon mockup while keeping large touch targets. */
 export const recordingSessionStyles = StyleSheet.create({
+  heading: { textAlign: 'center' },
+  compactMicrophone: { width: 128, height: 128 },
+  compactMicrophoneInner: { width: 112, height: 112 },
+  compactSecondaryAction: { width: 48, height: 48 },
   session: { alignItems: 'center', gap: 16, paddingTop: 24, paddingBottom: 12 },
   microphone: {
     alignItems: 'center',
@@ -24,8 +28,10 @@ export const recordingSessionStyles = StyleSheet.create({
   secondaryAction: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 72,
-    height: 72,
+    position: 'absolute',
+    right: 0,
+    width: 64,
+    height: 64,
     borderRadius: 36,
     borderColor: appColors.border,
     borderWidth: StyleSheet.hairlineWidth,
@@ -53,8 +59,8 @@ export const recordingSessionStyles = StyleSheet.create({
   },
   actions: {
     alignItems: 'center',
-    alignSelf: 'center',
+    width: '100%',
+    justifyContent: 'center',
     flexDirection: 'row',
-    gap: 20,
   },
 });

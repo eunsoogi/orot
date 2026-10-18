@@ -15,11 +15,6 @@ enum HealthKitBoundary {
         let limit: Int
     }
 
-    struct AuthorizationPlan {
-        let shareTypes: Set<HKSampleType>
-        let readTypes: Set<HKObjectType>
-    }
-
     static func decodeSampleQuery(_ raw: NSDictionary) -> SampleRequest? {
         guard let value = raw as? [String: Any],
               let feature = value["feature"] as? String,
@@ -50,38 +45,6 @@ enum HealthKitBoundary {
             return false
         }
         return true
-    }
-
-    static func readTypes(for feature: String) -> Set<HKObjectType>? {
-        switch feature {
-        case "medications":
-            if #available(iOS 26.0, *) {
-                // Definitions and dose events are distinct HealthKit read types.
-                return [HKObjectType.userAnnotatedMedicationType(), HKObjectType.medicationDoseEventType()]
-            }
-            return nil
-        case "bloodPressure":
-            guard let systolic = HKObjectType.quantityType(forIdentifier: .bloodPressureSystolic),
-                  let diastolic = HKObjectType.quantityType(forIdentifier: .bloodPressureDiastolic) else { return nil }
-            // iOS 27 Simulator throws if a blood-pressure correlation is in this read-authorization set.
-            return [systolic, diastolic]
-        case "sleep":
-            return HKObjectType.categoryType(forIdentifier: .sleepAnalysis).map { Set<HKObjectType>([$0]) }
-        case "heartRate":
-            return HKObjectType.quantityType(forIdentifier: .heartRate).map { Set<HKObjectType>([$0]) }
-        case "steps":
-            return HKObjectType.quantityType(forIdentifier: .stepCount).map { Set<HKObjectType>([$0]) }
-        case "bodyMass":
-            return HKObjectType.quantityType(forIdentifier: .bodyMass).map { Set<HKObjectType>([$0]) }
-        default:
-            return nil
-        }
-    }
-
-    static func authorizationPlan(for feature: String) -> AuthorizationPlan? {
-        guard let readTypes = readTypes(for: feature) else { return nil }
-        // This boundary only reads HealthKit; it never asks to share samples back.
-        return AuthorizationPlan(shareTypes: [], readTypes: readTypes)
     }
 
     static func isValidSampleKind(_ kind: String, for feature: String) -> Bool {

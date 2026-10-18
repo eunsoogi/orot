@@ -71,10 +71,11 @@ export function useDiseaseHypothesisGeneration(
       const outcome = await onGenerate(controller.signal, observer);
       if (!isCurrent()) return;
       setActivity(undefined);
-      setPreview('');
+      // Keep display-approved partial text when a run cannot finish validation.
       if (outcome.status === 'incomplete_inventory') {
         setState({ status: 'insufficient' });
       } else if (outcome.result.status === 'result') {
+        setPreview('');
         setState({ status: 'result', value: outcome.result.value });
       } else if (outcome.result.status === 'needs_clarification') {
         setState({ status: 'insufficient' });
@@ -92,7 +93,6 @@ export function useDiseaseHypothesisGeneration(
     } catch {
       if (isCurrent()) {
         setActivity(undefined);
-        setPreview('');
         setState({ status: 'error' });
       }
     } finally {
@@ -108,7 +108,6 @@ export function useDiseaseHypothesisGeneration(
     operationController.current = null;
     controller.abort();
     setActivity(undefined);
-    setPreview('');
     setState({ status: 'cancelled' });
   }
 

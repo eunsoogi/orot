@@ -1,4 +1,6 @@
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { AppSymbol } from '../layout/AppSymbol';
+import { healthRecordCategoryPresentation } from './healthRecordCategoryPresentation';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -43,6 +45,17 @@ export function HealthRecordsCategoryFilter({
             style={[styles.chip, selected === category && styles.selected]}
             testID={'health-record-filter-' + category}
           >
+            {category !== 'all' ? (
+              <AppSymbol
+                name={healthRecordCategoryPresentation[category].symbol}
+                size={18}
+                color={
+                  selected === category
+                    ? appColors.onPrimary
+                    : appColors.primaryText
+                }
+              />
+            ) : null}
             <Text
               style={[
                 styles.label,
@@ -62,6 +75,8 @@ const styles = StyleSheet.create({
   content: { gap: 6, paddingVertical: 2 },
   chip: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 22,

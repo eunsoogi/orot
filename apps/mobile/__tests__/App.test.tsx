@@ -221,10 +221,11 @@ test('opens the chart overview and navigates to its period-filtered pressure row
   expect(
     await screen.findByTestId('health-records-detail-title'),
   ).toHaveTextContent('혈압 기록 상세');
-  expect(screen.getByTestId('health-record-row-0-systolic')).toHaveTextContent(
-    '수축기 120 mmHg',
-  );
-  expect(screen.getByTestId('health-record-row-0-diastolic')).toHaveTextContent(
-    '이완기 80 mmHg',
-  );
+  expect(
+    screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
+  expect(
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
+  ).toBe('이완기 80 mmHg');
 });

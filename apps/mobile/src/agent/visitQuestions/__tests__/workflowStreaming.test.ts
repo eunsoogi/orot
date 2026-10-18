@@ -2,6 +2,8 @@ import type {
   MultiAgentProgressEvent,
   MultiAgentResponderStreamEvent,
 } from '@orot/agent-runtime';
+import type { VisitQuestionResponderInput } from '../taskContract';
+import { createVisitQuestionTaskResponder } from '../taskContract';
 import { runVisitQuestionWorkflow } from '../workflow';
 import {
   makeStreamingProvider,
@@ -9,6 +11,44 @@ import {
   selectedOption,
   successfulOutputs,
 } from '../testing/workflowFixtures';
+
+test('projects only visit questions supported by available evidence and safe to ask', () => {
+  const input: VisitQuestionResponderInput = {
+    request: '혈압 기록에 대해 확인할 질문을 작성해 주세요.',
+    context: { effectiveAt: '2026-10-18T12:00:00.000Z' },
+    evidence: {
+      items: [
+        {
+          sourceKind: 'personal_record',
+          sourceId: 'record',
+          sourceRevision: 'record-revision',
+          evidenceId: 'blood-pressure',
+          evidenceRevision: 'evidence-revision',
+          locator: null,
+          effectiveTime: '2026-10-18T09:00:00.000Z',
+          reviewState: 'reviewed',
+          content: '혈압 120/80 mmHg',
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  const responder = createVisitQuestionTaskResponder();
+  const project = (questionText: string) =>
+    responder.projectStreamedText(
+      JSON.stringify({ value: { questions: [{ questionText }] } }),
+      input,
+    );
+
+  expect(project('혈압이 120/80 mmHg로 기록된 이유를 확인해도 될까요?')).toBe(
+    '혈압이 120/80 mmHg로 기록된 이유를 확인해도 될까요?',
+  );
+  expect(project('혈압이 130/80 mmHg로 기록된 이유를 확인해도 될까요?')).toBe(
+    undefined,
+  );
+  expect(project('약을 중단하세요?')).toBeUndefined();
+});
 
 test('streams only the first question field and keeps evidence activity content-free', async () => {
   const prepared = preparedContext();

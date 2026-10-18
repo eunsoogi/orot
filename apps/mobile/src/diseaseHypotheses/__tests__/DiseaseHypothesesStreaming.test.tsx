@@ -71,7 +71,7 @@ test('keeps safe response text separate from generic evidence activity', async (
   );
 });
 
-test('cancel clears previews and ignores late progress, text, and results', async () => {
+test('cancel retains incomplete previews and ignores late progress, text, and results', async () => {
   let finish!: (outcome: DiseaseHypothesisRunOutcome) => void;
   let signal: AbortSignal | undefined;
   let observer:
@@ -111,7 +111,8 @@ test('cancel clears previews and ignores late progress, text, and results', asyn
   expect(
     await screen.findByTestId('disease-hypotheses-cancelled'),
   ).toBeTruthy();
-  expect(screen.queryByTestId('disease-hypotheses-draft')).toBeNull();
+  expect(screen.getByText('임시 초안이에요.')).toBeTruthy();
+  expect(screen.getByText('완료되지 않은 응답 초안')).toBeTruthy();
 
   observer?.onProgress?.({
     type: 'model_started',
@@ -123,4 +124,24 @@ test('cancel clears previews and ignores late progress, text, and results', asyn
     expect(screen.queryByTestId('disease-hypotheses-results')).toBeNull();
     expect(screen.queryByText('늦은 응답')).toBeNull();
   });
+});
+
+test('failure retains the displayed draft without promoting it to a result', async () => {
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onGenerate={async (_signal, observer) => {
+        observer?.onTaskStreamEvent?.({
+          type: 'text_delta',
+          text: '표시된 일부 내용',
+        });
+        throw new Error('provider failed');
+      }}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
+  expect(await screen.findByText('완료되지 않은 응답 초안')).toBeTruthy();
+  expect(screen.getByText('표시된 일부 내용')).toBeTruthy();
+  expect(screen.queryByTestId('disease-hypotheses-results')).toBeNull();
 });

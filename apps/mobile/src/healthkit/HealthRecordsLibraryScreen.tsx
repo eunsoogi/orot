@@ -12,6 +12,7 @@ import type { NavigationLeaveState } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { t } from '../i18n';
 import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
+import { loadHealthObservationPeriod } from './loadHealthObservationPeriod';
 import { HealthRecordsLibraryHeader } from './HealthRecordsLibraryHeader';
 import { HealthRecordsCategoryCard } from './HealthRecordsCategoryCard';
 import { HealthRecordsMedicationCategoryCard } from './HealthRecordsMedicationCategoryCard';
@@ -88,7 +89,13 @@ export function HealthRecordsLibraryScreen({
       const request = ++generation.current;
       setLoadState('loading');
       try {
-        const page = await loadObservations(after);
+        const page = after
+          ? await loadObservations(after)
+          : await loadHealthObservationPeriod(
+              loadObservations,
+              'month',
+              new Date().toISOString(),
+            );
         if (request !== generation.current) return;
         setObservations(current =>
           after ? [...current, ...page.records] : page.records,

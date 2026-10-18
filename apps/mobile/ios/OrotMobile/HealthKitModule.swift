@@ -2,61 +2,6 @@ import Foundation
 import HealthKit
 import React
 
-/// Builds one read-only request from only the selected, supported feature set.
-enum HealthKitBatchAuthorization {
-    struct Plan {
-        let shareTypes: Set<HKSampleType>
-        let readTypes: Set<HKObjectType>
-        let requestedFeatures: [String]
-        let unsupportedFeatures: [String]
-    }
-
-    static func plan(for features: [String]) -> Plan? {
-        let knownFeatures = ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass"]
-        guard !features.isEmpty,
-              Set(features).count == features.count,
-              features.allSatisfy(knownFeatures.contains)
-        else { return nil }
-
-        var shareTypes = Set<HKSampleType>()
-        var readTypes = Set<HKObjectType>()
-        var requestedFeatures: [String] = []
-        var unsupportedFeatures: [String] = []
-        // Keep unsupported selected features visible without blocking supported reads.
-        for feature in features {
-            guard HealthKitBoundary.isSupported(feature),
-                  let featurePlan = HealthKitBoundary.authorizationPlan(for: feature)
-            else {
-                unsupportedFeatures.append(feature)
-                continue
-            }
-            shareTypes.formUnion(featurePlan.shareTypes)
-            readTypes.formUnion(featurePlan.readTypes)
-            requestedFeatures.append(feature)
-        }
-        return Plan(
-            shareTypes: shareTypes,
-            readTypes: readTypes,
-            requestedFeatures: requestedFeatures,
-            unsupportedFeatures: unsupportedFeatures,
-        )
-    }
-
-    static func result(availability: String,
-                       status: String,
-                       requestedFeatures: [String],
-                       unsupportedFeatures: [String]) -> NSDictionary
-    {
-        [
-            "availability": availability,
-            "requestStatus": status,
-            "readAuthorization": "notObservable",
-            "requestedFeatures": requestedFeatures,
-            "unsupportedFeatures": unsupportedFeatures,
-        ] as NSDictionary
-    }
-}
-
 /// Exposes feature-scoped HealthKit requests and queries to the React Native layer.
 @objc(HealthKitModule)
 public final class HealthKitModule: NSObject {
@@ -101,7 +46,7 @@ public final class HealthKitModule: NSObject {
         }
 
         // Completion confirms request processing, not whether HealthKit granted read access.
-        store.requestAuthorization(toShare: plan.shareTypes, read: plan.readTypes) { success, error in
+        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { success, error in
             if let error {
                 reject("HEALTHKIT_AUTHORIZATION_FAILED", error.localizedDescription, error as NSError)
                 return
@@ -156,7 +101,7 @@ public final class HealthKitModule: NSObject {
         }
 
         // One completion covers the selected read set; it still cannot reveal read grants.
-        store.requestAuthorization(toShare: plan.shareTypes, read: plan.readTypes) { success, error in
+        HealthKitReadAuthorization.request(store: store, readTypes: plan.readTypes, perObjectReadTypes: plan.perObjectReadTypes) { success, error in
             if let error {
                 reject("HEALTHKIT_AUTHORIZATION_FAILED", error.localizedDescription, error as NSError)
                 return

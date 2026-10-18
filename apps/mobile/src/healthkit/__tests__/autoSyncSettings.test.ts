@@ -77,3 +77,26 @@ test('saves disabled choices without requesting access or deleting sample cursor
     repository.getSyncCheckpoint(sleepCursorKey),
   ).resolves.toMatchObject({ value: 'sleep-anchor' });
 });
+
+test('reports a selection persistence failure before requesting HealthKit access', async () => {
+  const repository = new MemoryObservationRepository();
+  jest
+    .spyOn(repository, 'transaction')
+    .mockRejectedValue(new Error('encrypted store unavailable'));
+  const requestReadAuthorizations = jest.fn();
+
+  await expect(
+    configureHealthKitAutoSync(['sleep'], {
+      repository,
+      healthKit: {
+        requestReadAuthorizations,
+        querySampleChanges: jest.fn(),
+      },
+      now: () => now,
+    }),
+  ).resolves.toEqual({
+    status: 'selection_save_failed',
+    attemptedFeatures: [],
+  });
+  expect(requestReadAuthorizations).not.toHaveBeenCalled();
+});

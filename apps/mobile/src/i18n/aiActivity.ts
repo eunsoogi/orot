@@ -9,6 +9,9 @@ export const aiActivityKo = {
   'aiActivity.evidence.failed': '일부 자료를 확인하지 못했어요.',
   'aiActivity.evidence.cancelled': '자료 확인을 취소했어요.',
   'aiActivity.draft.heading': '검증 중인 응답 초안',
+  'aiActivity.draft.incompleteHeading': '완료되지 않은 응답 초안',
+  'aiActivity.draft.incompleteNote':
+    '중단되기 전 표시된 내용이며, 근거와 안전 기준 검증이 완료되지 않았어요.',
   'aiActivity.draft.note':
     '최종 결과는 근거와 안전 기준을 확인한 뒤 보여 드려요.',
   'aiActivity.cancel': '요청 취소',

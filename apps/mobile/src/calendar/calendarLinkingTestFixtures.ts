@@ -1,6 +1,6 @@
 import type { Appointment, AppointmentRepository } from '@orot/storage';
-import type { CalendarAutoSyncState } from '../calendarAutoSync';
-import type { CalendarBridge, CalendarEvent } from '../types';
+import type { CalendarAutoSyncState } from './calendarAutoSync';
+import type { CalendarBridge, CalendarEvent } from './types';
 
 /** Stable fixtures keep screen tests focused on sync and confirmation behavior without native EventKit access. */
 export function event(

@@ -1,7 +1,36 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Dimensions } from 'react-native';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation } from '../bloodPressure/testSupport';
 import { HealthRecordsDetailScreen } from '../HealthRecordsDetailScreen';
+
+test('stacks date and pressure values at accessibility text sizes', async () => {
+  const original = Dimensions.get('window');
+  Dimensions.set({ window: { ...original, width: 402, fontScale: 2 } });
+  const observations = mapBloodPressureCorrelation(
+    correlation('large-pressure'),
+    new Date().toISOString(),
+  ).observations;
+  await render(
+    <HealthRecordsDetailScreen
+      loadObservations={async () => ({
+        records: observations,
+        nextCursor: null,
+      })}
+      onBack={jest.fn()}
+      onSelectionChange={jest.fn()}
+      selection={{ category: 'blood_pressure', period: 'all' }}
+    />,
+  );
+  expect(screen.getByTestId('health-record-row-0-columns')).toHaveStyle({
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  });
+  expect(
+    screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
+  await act(() => Dimensions.set({ window: original }));
+});
 
 test('shows the selected period as paired source values with exact units', async () => {
   const observations = mapBloodPressureCorrelation(
@@ -25,10 +54,11 @@ test('shows the selected period as paired source values with exact units', async
 
   expect(await screen.findByTestId('health-record-row-0')).toBeTruthy();
   expect(
-    screen.getByTestId('health-record-row-0-systolic').props.children,
+    screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
   ).toBe('수축기 120 mmHg');
   expect(
-    screen.getByTestId('health-record-row-0-diastolic').props.children,
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
   ).toBe('이완기 80 mmHg');
   expect(
     screen.getByTestId('health-record-period-month').props.accessibilityState,
@@ -39,4 +69,41 @@ test('shows the selected period as paired source values with exact units', async
     category: 'blood_pressure',
     period: 'all',
   });
+});
+
+// The overview has already loaded the month; opening details must not present one page as its total.
+test('loads all pages in the selected period before reporting the detail count', async () => {
+  const now = new Date().toISOString();
+  const observations = mapBloodPressureCorrelation(
+    correlation('paged-pressure'),
+    now,
+  ).observations.map(item => ({ ...item, effectiveAt: now }));
+  const cursor = { id: observations[0]!.id, effectiveAt: now };
+  const loadObservations = jest
+    .fn()
+    .mockResolvedValueOnce({
+      records: observations.slice(0, 1),
+      nextCursor: cursor,
+    })
+    .mockResolvedValueOnce({
+      records: observations.slice(1),
+      nextCursor: null,
+    });
+  await render(
+    <HealthRecordsDetailScreen
+      loadObservations={loadObservations}
+      onBack={jest.fn()}
+      onSelectionChange={jest.fn()}
+      selection={{ category: 'blood_pressure', period: 'month' }}
+    />,
+  );
+  expect(loadObservations).toHaveBeenCalledTimes(2);
+  expect(
+    screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
+  expect(
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
+  ).toBe('이완기 80 mmHg');
+  expect(screen.queryByTestId('health-records-load-older')).toBeNull();
 });

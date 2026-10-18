@@ -1,12 +1,20 @@
 import type { RecordRepository } from '@orot/storage';
 import type { HealthKitNativeModule } from './types';
-import { runHealthKitAutoSync } from './autoSync';
+import type { HealthKitAutoSyncResult } from './autoSync';
+import { refreshHealthKitAutoSyncSelection } from './autoSync';
 import {
   healthKitAutoSyncFeatures,
   saveHealthKitAutoSyncSelection,
   saveHealthKitAutoSyncStatus,
 } from './autoSyncCheckpoint';
 import type { HealthKitAutoSyncFeature } from './autoSyncCheckpoint';
+
+export type HealthKitAutoSyncConfigurationResult =
+  | HealthKitAutoSyncResult
+  | {
+      readonly status: 'selection_save_failed';
+      readonly attemptedFeatures: readonly [];
+    };
 
 interface ConfigureHealthKitAutoSyncOptions {
   readonly repository: Pick<
@@ -25,7 +33,7 @@ interface ConfigureHealthKitAutoSyncOptions {
 export async function configureHealthKitAutoSync(
   requested: readonly HealthKitAutoSyncFeature[],
   options: ConfigureHealthKitAutoSyncOptions,
-) {
+): Promise<HealthKitAutoSyncConfigurationResult> {
   const selected = healthKitAutoSyncFeatures.filter(feature =>
     requested.includes(feature),
   );
@@ -35,10 +43,16 @@ export async function configureHealthKitAutoSync(
       selected,
       options.now,
     );
-    if (selected.length === 0) {
-      return { status: 'skipped' as const, attemptedFeatures: [] };
-    }
+  } catch {
+    // A failed preference write is not a sync retry; the requested selection is still unsaved.
+    return { status: 'selection_save_failed', attemptedFeatures: [] };
+  }
 
+  if (selected.length === 0) {
+    return { status: 'skipped', attemptedFeatures: [] };
+  }
+
+  try {
     const authorization =
       await options.healthKit.requestReadAuthorizations(selected);
     if (
@@ -53,9 +67,9 @@ export async function configureHealthKitAutoSync(
       return { status: 'retryable' as const, attemptedFeatures: [] };
     }
 
-    return await runHealthKitAutoSync(options);
+    return await refreshHealthKitAutoSyncSelection(options);
   } catch {
-    // Keep the requested categories for the Settings recovery action and next launch.
+    // The selection is already stored, so only the aggregate sync status needs a retry marker.
     try {
       await saveHealthKitAutoSyncStatus(
         options.repository,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
+import type { HealthKitAutoSyncConfigurationResult } from '../healthkit/autoSyncSettings';
 import {
   configureLocalHealthKitAutoSync,
   loadLocalHealthKitAutoSyncSelection,
@@ -21,7 +22,9 @@ export function HealthDataIntegrationRoute({
   readonly loadSelection?: () => Promise<readonly HealthKitAutoSyncFeature[]>;
   readonly saveSelection?: (
     features: readonly HealthKitAutoSyncFeature[],
-  ) => Promise<{ readonly status: 'complete' | 'retryable' | 'skipped' }>;
+  ) => Promise<{
+    readonly status: HealthKitAutoSyncConfigurationResult['status'];
+  }>;
 }) {
   const inset = useNavigationContentInset();
   const [selected, setSelected] = useState<
@@ -34,7 +37,7 @@ export function HealthDataIntegrationRoute({
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<
-    'complete' | 'retryable' | 'skipped' | null
+    HealthKitAutoSyncConfigurationResult['status'] | null
   >(null);
   const [revision, setRevision] = useState(0);
 
@@ -97,9 +100,11 @@ export function HealthDataIntegrationRoute({
     try {
       const result = await saveSelection(features);
       setNotice(result.status);
-      setSaved(new Set(features));
+      if (result.status !== 'selection_save_failed') {
+        setSaved(new Set(features));
+      }
     } catch {
-      setNotice('retryable');
+      setNotice('selection_save_failed');
     } finally {
       setSaving(false);
     }
@@ -167,9 +172,11 @@ export function HealthDataIntegrationRoute({
             ? t('settings.healthData.retryable')
             : notice === 'skipped'
               ? t('settings.healthData.disabled')
-              : !loaded && !loadFailed
-                ? t('settings.healthData.loading')
-                : ''}
+              : notice === 'selection_save_failed'
+                ? t('settings.healthData.selectionSaveFailed')
+                : !loaded && !loadFailed
+                  ? t('settings.healthData.loading')
+                  : ''}
       </Text>
     </ScrollView>
   );

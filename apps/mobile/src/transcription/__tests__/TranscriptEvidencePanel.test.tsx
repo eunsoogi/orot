@@ -97,10 +97,25 @@ test('shows review provenance and range, preserves correction history, and plays
       actualStartMs: segment.audioRange.startMs,
     })),
   };
+  const onInteractionChange = jest.fn();
   await render(
-    <TranscriptEvidencePanel recordingSourceId={source.id} service={service} />,
+    <TranscriptEvidencePanel
+      recordingSourceId={source.id}
+      service={service}
+      onInteractionChange={onInteractionChange}
+    />,
   );
 
+  expect(screen.getByRole('header', { name: '전사 검토' })).toBeTruthy();
+  expect(screen.getByTestId('transcript-local-notice')).toHaveTextContent(
+    '전사는 Apple 기기 내 음성 인식으로 처리하고 서버로 보내지 않습니다.',
+  );
+  expect(screen.getByTestId('transcript-summary')).toHaveTextContent(
+    /상담 녹음/,
+  );
+  expect(screen.getByTestId('transcript-summary-title')).toHaveTextContent(
+    '검토 전 초안',
+  );
   expect(await screen.findByText('복용하지 않았어요.')).toBeTruthy();
   expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
     '기계 전사',
@@ -111,6 +126,12 @@ test('shows review provenance and range, preserves correction history, and plays
   expect(screen.queryByTestId('transcript-engine-0')).toBeNull();
   expect(screen.queryByTestId('transcript-runtime-0')).toBeNull();
   expect(screen.getByText('00:00.250–00:01.801')).toBeTruthy();
+  const segmentToggle = screen.getByTestId('transcript-segment-toggle-0');
+  expect(segmentToggle.props.accessibilityState).toEqual({ expanded: true });
+  await fireEvent.press(segmentToggle);
+  expect(screen.queryByTestId('transcript-segment-body-0')).toBeNull();
+  await fireEvent.press(segmentToggle);
+  expect(screen.getByTestId('transcript-segment-body-0')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('transcript-play-0'));
   expect(service.play).toHaveBeenCalledWith(original);
   expect(service.play).toHaveBeenCalledWith(
@@ -122,8 +143,11 @@ test('shows review provenance and range, preserves correction history, and plays
       }),
     }),
   );
+  await fireEvent.press(screen.getByTestId('transcript-play-range-0'));
+  expect(service.play).toHaveBeenCalledTimes(2);
 
   await fireEvent.press(screen.getByTestId('transcript-edit-0'));
+  expect(screen.getByTestId('transcript-editor-0')).toBeTruthy();
   const transcriptInput = screen.getByTestId('transcript-input-0');
   // Keep cancel and save after the editor so the parent can scroll them into view.
   expect(
@@ -134,34 +158,80 @@ test('shows review provenance and range, preserves correction history, and plays
       .map(control => control.props.testID),
   ).toEqual(['transcript-input-0', 'transcript-cancel-0', 'transcript-save-0']);
   await fireEvent.changeText(transcriptInput, correction.text);
+  expect(onInteractionChange).toHaveBeenLastCalledWith({
+    busy: false,
+    dirty: true,
+  });
   await fireEvent.press(screen.getByTestId('transcript-save-0'));
 
   await waitFor(() => expect(screen.getByText(correction.text)).toBeTruthy());
   expect(screen.getByTestId('transcript-history-0-1')).toBeTruthy();
   expect(screen.getByTestId('transcript-stale-artifacts')).toBeTruthy();
-  expect(screen.getByText('수정됨 · 다시 확인 필요')).toBeTruthy();
+  expect(screen.getByTestId('transcript-review-0')).toHaveTextContent(
+    '수정됨 · 다시 확인 필요',
+  );
+  expect(screen.getByTestId('transcript-summary-title')).toHaveTextContent(
+    '수정됨 · 다시 확인 필요',
+  );
   expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
     '사용자 수정',
   );
   expect(service.correct).toHaveBeenCalledWith(original.id, correction.text);
+  expect(onInteractionChange).toHaveBeenLastCalledWith({
+    busy: false,
+    dirty: false,
+  });
 });
 
 test('uses appearance-aware colors for transcript content and editing surfaces', () => {
-  expect(transcriptEvidenceStyles.container.borderTopColor).toBe(
-    appColors.border,
-  );
+  expect(transcriptEvidenceStyles.segment.borderColor).toBe(appColors.border);
   expect(transcriptEvidenceStyles.segment.backgroundColor).toBe(
     appColors.surface,
   );
   expect(transcriptEvidenceStyles.audioCard.backgroundColor).toBe(
-    appColors.background,
+    appColors.surface,
   );
   expect(transcriptEvidenceStyles.title.color).toBe(appColors.text);
   expect(transcriptEvidenceStyles.copy.color).toBe(appColors.secondary);
-  expect(transcriptEvidenceStyles.text.color).toBe(appColors.text);
-  expect(transcriptEvidenceStyles.metadata.color).toBe(appColors.secondary);
+  expect(transcriptEvidenceStyles.textBubble.color).toBe(appColors.text);
+  expect(transcriptEvidenceStyles.origin.color).toBe(appColors.secondary);
   expect(transcriptEvidenceStyles.input.color).toBe(appColors.text);
-  expect(transcriptEvidenceStyles.input.borderColor).toBe(appColors.border);
+  expect(transcriptEvidenceStyles.input.borderColor).toBe(appColors.primary);
   expect(transcriptEvidenceStyles.history.color).toBe(appColors.secondary);
   expect(transcriptEvidenceStyles.error.color).toBe(appColors.danger);
+  expect(transcriptEvidenceStyles.summary.backgroundColor).toBe(
+    appColors.surface,
+  );
+  expect(transcriptEvidenceStyles.editor.backgroundColor).toBe(
+    appColors.primarySoft,
+  );
+  expect(transcriptEvidenceStyles.title.fontSize).toBe(32);
+});
+
+test('can generate missing transcript evidence and recover after a provider failure', async () => {
+  let segments: TranscriptEvidenceSegment[] = [];
+  const service: TranscriptEvidenceService = {
+    load: jest.fn(async () => ({ source, segments, staleArtifacts: [] })),
+    transcribe: jest
+      .fn()
+      .mockRejectedValueOnce(new Error('native failure'))
+      .mockImplementationOnce(async () => {
+        segments = [original];
+        return segments;
+      }),
+    correct: jest.fn(),
+    play: jest.fn(),
+  };
+  await render(
+    <TranscriptEvidencePanel recordingSourceId={source.id} service={service} />,
+  );
+  await fireEvent.press(await screen.findByTestId('transcript-create'));
+  expect(await screen.findByTestId('transcript-error')).toHaveTextContent(
+    '녹음을 전사하지 못했어요. 기기 지원 상태를 확인해 주세요.',
+  );
+  await fireEvent.press(screen.getByTestId('transcript-create'));
+  expect(await screen.findByTestId('transcript-text-0')).toHaveTextContent(
+    original.text,
+  );
+  expect(service.transcribe).toHaveBeenNthCalledWith(2, source.id);
 });
