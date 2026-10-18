@@ -75,7 +75,13 @@ export async function searchVisitQuestionEvidence(input: {
             LOCAL_MEMORY_MAX_RESULTS,
           ),
         }
-      : visitQuestionEvidenceLimits(input.maxEvidenceItems);
+      : sourceKind === 'personal_record'
+        ? {
+            recordResultLimit: input.maxEvidenceItems,
+            transcriptResultLimit: 0,
+            memoryResultLimit: 1,
+          }
+        : visitQuestionEvidenceLimits(input.maxEvidenceItems);
   const buildChunks = input.buildChunks;
   let recordHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let transcriptHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
@@ -130,7 +136,13 @@ export async function searchVisitQuestionEvidence(input: {
       memoryPromise = readReviewedMemory();
     }
     const recordFilters: HybridSearchOptions = {
-      filters: { recordTypes: PERSONAL_RECORD_TYPES },
+      // One shared ranked page lets the last slot contain either clinical or transcript evidence.
+      filters: {
+        recordTypes:
+          sourceKind === 'personal_record'
+            ? [...PERSONAL_RECORD_TYPES, 'transcript_segment']
+            : PERSONAL_RECORD_TYPES,
+      },
       ...(input.signal ? { signal: input.signal } : {}),
     };
     const transcriptFilters: HybridSearchOptions = {
@@ -144,12 +156,14 @@ export async function searchVisitQuestionEvidence(input: {
         limits.recordResultLimit + 1,
         recordFilters,
       ),
-      input.rag.search(
-        input.query,
-        chunks,
-        limits.transcriptResultLimit + 1,
-        transcriptFilters,
-      ),
+      limits.transcriptResultLimit === 0
+        ? Promise.resolve([])
+        : input.rag.search(
+            input.query,
+            chunks,
+            limits.transcriptResultLimit + 1,
+            transcriptFilters,
+          ),
     ]);
     recordSearchTruncated = recordProbe.length > limits.recordResultLimit;
     transcriptSearchTruncated =

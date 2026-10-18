@@ -78,7 +78,7 @@ export const MAX_MULTI_AGENT_BUDGET: MultiAgentBudget = {
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,
-  // Explicit literature workflows can opt into this ceiling; the default stays 45 seconds.
+  // Explicit tool-and-answer workflows can opt into this ceiling; the default stays 45 seconds.
   timeoutMs: 90_000,
   maxEvidenceItems: 8,
 };

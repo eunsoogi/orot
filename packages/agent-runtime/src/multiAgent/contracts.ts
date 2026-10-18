@@ -81,6 +81,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
+  /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
+  readonly requireAllEvidenceCitations?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

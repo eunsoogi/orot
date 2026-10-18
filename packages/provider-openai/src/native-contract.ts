@@ -37,6 +37,7 @@ export interface ChatGPTPlanRequest {
   readonly model: string;
   readonly messages: readonly ChatGPTPlanInputMessage[];
   readonly tools?: readonly ChatGPTPlanToolDefinition[];
+  readonly toolChoice?: 'required';
 }
 
 export interface ChatGPTPlanNativeError {

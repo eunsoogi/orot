@@ -52,6 +52,8 @@ test('can refine an empty search with a second model-selected tool call', async 
   expect(result.status).toBe('result');
   expect(search).toHaveBeenCalledTimes(2);
   expect(requests).toHaveLength(3);
+  expect(requests[0]?.toolChoice).toBe('required');
+  expect(requests[1]?.toolChoice).toBeUndefined();
   expect(requests[1]?.tools?.map((value) => value.name)).toContain(tool.id);
   expect(requests[2]?.messages.filter((value) => value.role === 'tool')).toHaveLength(2);
 });
@@ -91,6 +93,8 @@ test('executes the model tool call and returns its matching tool result before a
   const result = await runMultiAgentWorkflow(workflowOptions(provider, tool));
   expect(result.status).toBe('result');
   expect(requests).toHaveLength(2);
+  expect(requests[0]?.toolChoice).toBe('required');
+  expect(requests[1]?.toolChoice).toBeUndefined();
   expect(requests[0]?.responseFormat).toBeDefined();
   expect(JSON.stringify(requests[0]?.responseFormat?.schema)).not.toContain('request_evidence');
   expect(requests[0]?.tools).toContainEqual({

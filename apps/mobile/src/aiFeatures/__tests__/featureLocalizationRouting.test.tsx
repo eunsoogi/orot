@@ -97,6 +97,7 @@ const featureScreens = [
     ),
     expectedKeys: [
       'ragConversation.title',
+      'aiActivity.cancel',
       'ragConversation.description',
       'ragConversation.placeholder',
       'ragConversation.send',

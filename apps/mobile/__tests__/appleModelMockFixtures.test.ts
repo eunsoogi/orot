@@ -41,9 +41,9 @@ test('three Calendar examples remain distinct across both imports', () => {
     ]);
     expect(
       output.value.classifications.map(
-        (value: { classification: string }) => value.classification,
+        (value: { decision: string }) => value.decision,
       ),
-    ).toEqual(['medical', 'non_medical', 'uncertain']);
+    ).toEqual(['medical_low', 'non_medical_low', 'uncertain_high']);
   }
   expect(() => script[0](request(['missing-candidate']))).toThrow(
     'every original candidate',

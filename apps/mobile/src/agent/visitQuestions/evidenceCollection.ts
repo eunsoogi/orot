@@ -76,7 +76,7 @@ export async function createVisitQuestionEvidenceCollection(input: {
     !Number.isInteger(input.recordResultLimit) ||
     input.recordResultLimit < 1 ||
     !Number.isInteger(input.transcriptResultLimit) ||
-    input.transcriptResultLimit < 1 ||
+    input.transcriptResultLimit < 0 ||
     !Number.isInteger(input.memoryResultLimit) ||
     input.memoryResultLimit < 1
   ) {

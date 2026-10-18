@@ -9,6 +9,7 @@ import {
   localData,
   memoryRecord,
   selectionStore,
+  searchFixtureEvidence,
 } from '../featureServiceFixtures';
 
 jest.mock(
@@ -30,11 +31,8 @@ test('preserves the conversation and answer after opening and returning from its
   const source = localData([memoryRecord(1)]);
   const ragRunner = jest.fn(
     async (options: Parameters<typeof runRagConversationTurn>[0]) => {
-      const current = await options.loadCurrentEvidence(
-        options.question,
-        new AbortController().signal,
-      );
-      const item = current.batch.items[0];
+      const current = await searchFixtureEvidence(options.workflow.tools);
+      const item = current.items[0];
       if (!item) return { status: 'no_evidence' as const };
       return {
         status: 'answer' as const,
@@ -86,7 +84,7 @@ test('preserves generated hypotheses after opening and returning from their cita
   let citationLabel = '';
   const diseaseRunner = jest.fn(
     async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
-      const item = options.initialEvidence.items[0];
+      const item = (await searchFixtureEvidence(options.tools)).items[0];
       if (!item)
         return {
           status: 'incomplete_inventory',

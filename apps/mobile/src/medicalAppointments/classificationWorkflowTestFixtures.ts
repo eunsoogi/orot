@@ -41,11 +41,9 @@ export function workflowResponse(request: LanguageModelRequest) {
       value: {
         classifications: payload.candidates.map(candidate => ({
           candidateId: candidate.candidateId,
-          classification: candidate.candidateId.endsWith('-1')
-            ? 'medical'
-            : 'uncertain',
-          reason: '제목에 진료 목적이 나타납니다.',
-          uncertainty: 'medium',
+          decision: candidate.candidateId.endsWith('-1')
+            ? 'medical_medium'
+            : 'uncertain_medium',
         })),
       },
       citations: references,

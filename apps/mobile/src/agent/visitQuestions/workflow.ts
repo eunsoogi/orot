@@ -1,7 +1,5 @@
-import {
-  DEFAULT_MULTI_AGENT_BUDGET,
-  runMultiAgentWorkflow,
-} from '@orot/agent-runtime';
+import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 import type {
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,
@@ -78,7 +76,7 @@ export async function runVisitQuestionWorkflow(input: {
   }
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
 
-  const budget = DEFAULT_MULTI_AGENT_BUDGET;
+  const budget = EVIDENCE_WORKFLOW_BUDGET;
   const maxInitialItems = budget.maxEvidenceItems - 3;
   if (input.prepared.evidence.batch.items.length > maxInitialItems) {
     return {

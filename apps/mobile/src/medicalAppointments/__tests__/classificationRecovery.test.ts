@@ -18,7 +18,29 @@ test('constrains generation to the exact batch size and candidate identities', (
         minItems: 2,
         maxItems: 2,
         items: {
-          properties: { candidateId: { enum: ids }, reason: { minLength: 1 } },
+          required: ['candidateId', 'decision'],
+          properties: { candidateId: { enum: ids } },
+        },
+      },
+    },
+  });
+});
+
+test('uses compact bounded decisions instead of generating repeated explanations', () => {
+  const task = createAppointmentClassificationTask(['calendar-candidate-1']);
+  expect(task.resultSchema).toMatchObject({
+    properties: {
+      classifications: {
+        items: {
+          properties: {
+            decision: {
+              enum: expect.arrayContaining([
+                'medical_low',
+                'non_medical_medium',
+                'uncertain_high',
+              ]),
+            },
+          },
         },
       },
     },
@@ -48,6 +70,24 @@ test('corrects an incomplete classification once and keeps the same scoped candi
   expect(JSON.stringify(generate.mock.calls[1]?.[0].messages)).toContain(
     'Every supplied candidate',
   );
+});
+
+test('repairs missing batch citations once instead of discarding complete classifications', async () => {
+  const generate = jest.fn(async (request: LanguageModelRequest) =>
+    workflowResponse(request),
+  );
+  generate.mockImplementationOnce(async request => {
+    const result = workflowResponse(request);
+    if (!result.ok) throw new Error('Expected fixture output.');
+    const output = JSON.parse(result.value.text);
+    output.citations.pop();
+    return providerSuccess({ ...result.value, text: JSON.stringify(output) });
+  });
+  const result = await classifyCalendarEvents(
+    input([event(0), event(1)], { provider: makeProvider(generate) }),
+  );
+  expect(result.status).toBe('complete');
+  expect(generate).toHaveBeenCalledTimes(2);
 });
 
 test('reports a fixed identity failure category without including calendar payloads', async () => {

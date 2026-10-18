@@ -12,6 +12,7 @@ function fixture() {
   const data = {
     readCandidates,
     loadCurrentChunks,
+    findIdentifiers: jest.fn(async () => ['outside record / 42']),
   } as unknown as LocalEvidenceData;
   const loadData = jest.fn(async () => data);
   return {
@@ -32,6 +33,25 @@ test('opens no source before a model query and materializes only the selected wi
     [{ kind: 'health_observation', id: 'observation-42' }],
     signal,
   );
+});
+
+test('protects a candidate-external identifier in text without changing local citation identity or source', async () => {
+  const subject = fixture();
+  const original = {
+    id: 'chunk-1',
+    text: 'Related to outside record / 42. Keep this clinical text.',
+    metadata: { sourceId: 'observation-42', evidenceId: 'observation-42' },
+  };
+  subject.loadCurrentChunks.mockResolvedValue([original] as never);
+  const result = await subject.build({} as never, { query: 'recent records' });
+  expect(result[0]?.text).not.toContain('outside record / 42');
+  expect(result[0]?.text).toContain('Keep this clinical text.');
+  expect(result[0]?.metadata).toEqual(original.metadata);
+  expect(original.text).toContain('outside record / 42');
+  const reread = await subject.build({} as never, {
+    identities: [{ kind: 'health_observation', id: 'observation-42' }],
+  });
+  expect(reread).toEqual(result);
 });
 
 test('revalidates cited identities without searching or enumerating the corpus again', async () => {

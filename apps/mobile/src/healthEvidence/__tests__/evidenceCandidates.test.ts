@@ -123,3 +123,33 @@ test('rebuilds exact citations and rejects modified, removed, and stale source r
     close();
   }
 });
+
+test('large identifier tables preserve exact substring matching for arbitrary IDs', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    await database.execute(
+      `INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json)
+      WITH RECURSIVE n(value) AS (SELECT 1 UNION ALL SELECT value + 1 FROM n WHERE value < 5000)
+      SELECT 'unrelated-' || value, ?, ?, ?, '{}' FROM n`,
+      [at, at, at],
+    );
+    for (const id of ['outside record / 42', '기록/가', 'record', 'x']) {
+      await database.execute(
+        'INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
+        [id, at, at, at, '{}'],
+      );
+    }
+    expect(
+      [
+        ...(await findEvidenceIdentifiers(
+          database,
+          'prefix: outside record / 42; 기록/가; outside record / 42.',
+        )),
+      ].sort(),
+    ).toEqual(['outside record / 42', '기록/가', 'record', 'x'].sort());
+    expect(await findEvidenceIdentifiers(database, 'none here')).toEqual([]);
+  } finally {
+    close();
+  }
+});

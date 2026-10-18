@@ -81,7 +81,7 @@ function ports() {
 }
 
 describe('visit-question evidence cancellation', () => {
-  it('forwards the same signal to local indexing and both retrieval passes', async () => {
+  it('forwards the same signal to local indexing and combined retrieval', async () => {
     const dependencies = ports();
     const controller = new AbortController();
     const result = await prepareVisitQuestionContext({
@@ -104,11 +104,8 @@ describe('visit-question evidence cancellation', () => {
     expect(dependencies.rag.index).toHaveBeenCalledWith([chunk], {
       signal: controller.signal,
     });
-    expect(dependencies.rag.search).toHaveBeenCalledTimes(2);
+    expect(dependencies.rag.search).toHaveBeenCalledTimes(1);
     expect(dependencies.rag.search.mock.calls[0]?.[3]?.signal).toBe(
-      controller.signal,
-    );
-    expect(dependencies.rag.search.mock.calls[1]?.[3]?.signal).toBe(
       controller.signal,
     );
   });

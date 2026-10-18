@@ -19,7 +19,8 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     if (
       !state.selectedToolId ||
       !context.researchInput ||
-      state.toolCalls >= state.budget.maxToolCalls
+      state.toolCalls >= state.budget.maxToolCalls ||
+      state.evidenceReferences.length >= state.budget.maxEvidenceItems
     ) {
       stop(context, 'The read-only evidence search could not be started.', 'budget_exceeded');
       return completeState();
@@ -61,7 +62,9 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
           operationKey: state.pendingOperation.operationKey,
           input: context.researchInput,
           allowedScope: options.execution.allowedScope,
-          resultLimit: state.budget.maxEvidenceItems,
+          // Successive tool results share one evidence budget; do not ask an
+          // adapter for rows that the workflow cannot retain.
+          resultLimit: state.budget.maxEvidenceItems - state.evidenceReferences.length,
           maxPayloadBytes: state.budget.maxPayloadBytes,
           signal: context.signal,
         }),

@@ -64,13 +64,12 @@ const calendar =
       );
     const classifications = ids.map((candidateId, index) => ({
       candidateId,
-      classification:
-        index === 0 ? 'medical' : index === 1 ? 'non_medical' : 'uncertain',
-      reason:
+      decision:
         index === 0
-          ? '합성 일정에 진료가 명시되어 있어요.'
-          : '합성 일정의 제목에 따른 테스트 분류예요.',
-      uncertainty: index === 2 ? 'high' : 'low',
+          ? 'medical_low'
+          : index === 1
+            ? 'non_medical_low'
+            : 'uncertain_high',
     }));
     return {
       text: JSON.stringify({

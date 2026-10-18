@@ -3,6 +3,7 @@ import type { RecordKind, SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthEvidenceInventory } from './coverage';
 import type { EvidenceCandidateScope } from './evidenceCandidateScope';
 import { readRankedEvidencePage } from './rankedEvidencePages';
+import { findIdentifiersInTable } from './evidenceIdentifierSearch';
 import {
   checkHealthEvidenceAbort,
   decodeHealthEvidenceRecord,
@@ -144,10 +145,7 @@ export async function findEvidenceIdentifiers(
   if (!text) return [];
   for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
     checkHealthEvidenceAbort(signal);
-    const result = await database.execute(
-      `SELECT id FROM ${STORAGE_TABLES[kind].table} WHERE instr(?, id) > 0 LIMIT 1025`,
-      [text],
-    );
+    const result = await findIdentifiersInTable(database, kind, text);
     for (const row of result.rows) {
       if (typeof row.id !== 'string')
         throw new Error('Invalid local evidence identifier.');

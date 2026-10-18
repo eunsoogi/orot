@@ -4,7 +4,32 @@ import HealthKit
 import XCTest
 
 final class HealthIntegrationTests: OrotFailFastTestCase {
+    private func verifyMedicationPickerWaitsForDismissedSampleConsent() throws {
+        guard #available(iOS 26.0, *) else { return }
+        let medication = HKObjectType.userAnnotatedMedicationType()
+        var ready: HealthKitReadAuthorization.Completion?
+        var presented = false
+        var completed = false
+        try HealthKitReadAuthorization.request(readTypes: [XCTUnwrap(HKObjectType.quantityType(forIdentifier: .heartRate))],
+                                               perObjectReadTypes: [medication],
+                                               standard: { _, finish in finish(true, nil) },
+                                               perObject: { _, finish in presented = true; finish(true, nil) },
+                                               presentationReady: { ready = $0 },
+                                               completion: { success, _ in completed = success })
+        XCTAssertFalse(presented, "The sample callback does not prove its sheet has been dismissed")
+        XCTAssertFalse(completed)
+        try XCTUnwrap(ready)(true, nil)
+        XCTAssertTrue(presented)
+        XCTAssertTrue(completed)
+        HealthKitReadAuthorization.request(readTypes: [], perObjectReadTypes: [medication],
+                                           standard: { _, _ in XCTFail("No sample request expected") },
+                                           perObject: { _, _ in XCTFail("An unavailable presenter must not open a picker") },
+                                           presentationReady: { $0(false, nil) },
+                                           completion: { success, _ in XCTAssertFalse(success) })
+    }
+
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
+        try verifyMedicationPickerWaitsForDismissedSampleConsent()
         try verifyMedicationConsentRouting()
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {

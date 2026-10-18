@@ -5,6 +5,11 @@ import type {
   TaskResultValidation,
 } from '@orot/agent-runtime';
 
+import {
+  classificationDecisions,
+  expandClassificationDecisions,
+} from './classificationDecision';
+
 export type MedicalRelevance = 'medical' | 'non_medical' | 'uncertain';
 export type ClassificationUncertainty = 'low' | 'medium' | 'high';
 
@@ -29,12 +34,10 @@ const taskSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['candidateId', 'classification', 'reason', 'uncertainty'],
+        required: ['candidateId', 'decision'],
         properties: {
           candidateId: { type: 'string' },
-          classification: { enum: ['medical', 'non_medical', 'uncertain'] },
-          reason: { type: 'string', maxLength: 500 },
-          uncertainty: { enum: ['low', 'medium', 'high'] },
+          decision: { type: 'string', enum: classificationDecisions },
         },
       },
     },
@@ -45,7 +48,7 @@ const taskInstructions = [
   'Classify each supplied upcoming Calendar event only for whether it appears to be a medical appointment.',
   'Use only the supplied event title and time. Do not infer a diagnosis, give health advice, or invent missing details.',
   'Return exactly one item for every candidateId and no others. Use uncertain when the event is ambiguous.',
-  'Give a short Korean reason and a low, medium, or high uncertainty rating for each candidate.',
+  'Return one decision per candidate: combine medical, non_medical, or uncertain with low, medium, or high uncertainty using an underscore (for example medical_low or non_medical_high). The app supplies the fixed Korean explanation; do not generate extra fields.',
   // Confidence concerns appointment relevance, never the person's condition or diagnosis.
   'Uncertainty measures only whether this is a medical appointment. Use low when the title explicitly names a clinic, hospital visit, examination, treatment, or consultation appointment; medium or high when that purpose is unclear. Do not increase uncertainty merely because clinical details are absent.',
   'Do not request more evidence; return uncertain when the supplied event text is insufficient.',
@@ -58,8 +61,9 @@ export function createAppointmentClassificationTask(
 ): TaskResponderContract<AppointmentClassificationResult> {
   return {
     taskType: 'medical-appointment-classification',
-    taskVersion: '2',
+    taskVersion: '4',
     systemPrompt: taskInstructions,
+    requireAllEvidenceCitations: true,
     // Generation must enumerate this batch, including non-medical events. A prose
     // instruction alone does not constrain the generated item count or IDs.
     resultSchema: candidateIds.length
@@ -75,7 +79,6 @@ export function createAppointmentClassificationTask(
                 properties: {
                   ...taskSchema.properties.classifications.items.properties,
                   candidateId: { type: 'string', enum: [...candidateIds] },
-                  reason: { type: 'string', minLength: 1, maxLength: 120 },
                 },
               },
             },
@@ -91,10 +94,11 @@ export function createAppointmentClassificationTask(
           'A candidate result did not pass local validation.',
           'A candidate identity was repeated or unknown.',
           'A supplied candidate was omitted.',
+          'Every supplied evidence item must be cited.',
         ].includes(reason)
       )
         return undefined;
-      return 'Every supplied candidate must appear exactly once, including non_medical and uncertain events. Use only the supplied candidateId values. Include classification, a short nonempty Korean reason, and uncertainty for each item. Do not omit events or repeat an ID. Return the corrected complete result.';
+      return 'Every supplied candidate must appear exactly once, including non_medical and uncertain events. Use only the supplied candidateId values. Include only candidateId and a decision from the supplied enum for each item. The top-level citations must contain every supplied candidateId exactly once. Do not omit events or repeat an ID. Return the corrected complete result.';
     },
     createMessages(input) {
       return [
@@ -111,7 +115,10 @@ export function createAppointmentClassificationTask(
       ];
     },
     validateResult(value, input) {
-      const result = validateAppointmentClassification(value, input);
+      const result = validateAppointmentClassification(
+        expandClassificationDecisions(value),
+        input,
+      );
       if (result.status === 'invalid') onInvalid?.(result.reason);
       return result;
     },

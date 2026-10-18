@@ -98,6 +98,8 @@ export interface StructuredOutputFormat {
 export interface LanguageModelRequest {
   readonly messages: readonly LanguageModelMessage[];
   readonly tools?: readonly ToolDefinition[];
+  /** Require one provider-selected tool before answering; omitted keeps normal provider selection. */
+  readonly toolChoice?: 'required';
   readonly responseFormat?: StructuredOutputFormat;
   readonly maxOutputTokens?: number;
   readonly temperature?: number;

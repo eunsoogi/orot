@@ -72,7 +72,13 @@ describe('medical appointment responder contract', () => {
         classifications: {
           items: {
             properties: {
-              classification: { enum: ['medical', 'non_medical', 'uncertain'] },
+              decision: {
+                enum: expect.arrayContaining([
+                  'medical_low',
+                  'non_medical_low',
+                  'uncertain_high',
+                ]),
+              },
             },
           },
         },

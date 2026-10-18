@@ -11,6 +11,9 @@ import { localEvidenceFingerprint } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { EvidenceReference } from '@orot/agent-runtime';
+import { reloadPersonalVisitEvidence } from './reloadPersonalEvidence';
+import { visitQuestionCitationKey } from './evidence';
 import {
   searchVisitQuestionEvidence,
   type VisitQuestionSearchSource,
@@ -44,6 +47,9 @@ export type VisitQuestionContextResult =
       readonly revalidateEvidence: (
         citations: readonly VisitQuestionEvidenceItem[],
       ) => Promise<boolean>;
+      readonly reloadPersonalEvidence: (
+        reference: EvidenceReference,
+      ) => Promise<VisitQuestionEvidenceItem | undefined>;
     };
 
 function buildVisitContext(appointment: Appointment) {
@@ -186,6 +192,19 @@ export async function prepareVisitQuestionContext(input: {
     query,
     evidence,
     searchEvidence,
+    async reloadPersonalEvidence(reference) {
+      const mapped = await reloadPersonalVisitEvidence(
+        input.repository,
+        buildChunks,
+        reference,
+      );
+      if (!mapped) return undefined;
+      metadataByCitation.set(
+        visitQuestionCitationKey(mapped.item),
+        mapped.metadata,
+      );
+      return mapped.item;
+    },
     revalidateEvidence,
   };
 }

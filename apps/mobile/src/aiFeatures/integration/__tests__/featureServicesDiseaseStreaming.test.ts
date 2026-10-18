@@ -51,4 +51,14 @@ test('forwards disease progress and projected-text observers into the workflow',
   expect(invocation?.onProgress).toBe(observer.onProgress);
   expect(invocation?.onTaskStreamEvent).toBe(observer.onTaskStreamEvent);
   expect(invocation?.signal).toBeInstanceOf(AbortSignal);
+  expect(diseaseRunner).toHaveBeenCalledWith(
+    expect.objectContaining({
+      execution: expect.objectContaining({
+        budget: expect.objectContaining({ timeoutMs: 90_000 }),
+      }),
+    }),
+    undefined,
+    expect.any(Object),
+    expect.any(Function),
+  );
 });

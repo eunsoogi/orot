@@ -52,6 +52,10 @@ describe('Test entry routing', () => {
           }));
           jest.doMock('react-native-get-random-values', () => ({}));
           jest.doMock('../e2e/performanceDataSeed', () => ({}));
+          jest.doMock('../e2e/performanceEvidenceProbe', () => ({}));
+          jest.doMock('../e2e/performanceWorkflowDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceVisitDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceVisitEvidenceProbe', () => ({}));
           if (entry === 'performance') require('../e2e/performanceDataEntry');
           else require('../e2e/medicalAppointmentNavigationProbeEntry');
         });
@@ -64,6 +68,10 @@ describe('Test entry routing', () => {
         jest.dontMock('react-native');
         jest.dontMock('react-native-get-random-values');
         jest.dontMock('../e2e/performanceDataSeed');
+        jest.dontMock('../e2e/performanceEvidenceProbe');
+        jest.dontMock('../e2e/performanceWorkflowDiagnostics');
+        jest.dontMock('../e2e/performanceVisitDiagnostics');
+        jest.dontMock('../e2e/performanceVisitEvidenceProbe');
         if (readableStreamDescriptor) {
           Object.defineProperty(
             globalThis,

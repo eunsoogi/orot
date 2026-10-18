@@ -39,15 +39,18 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let model: String
     public let messages: [ChatGPTResponsesMessage]
     public let tools: [ChatGPTResponsesToolDefinition]
+    public let toolChoice: String?
 
     public init(
         model: String,
         messages: [ChatGPTResponsesMessage],
         tools: [ChatGPTResponsesToolDefinition] = [],
+        toolChoice: String? = nil,
     ) {
         self.model = model
         self.messages = messages
         self.tools = tools
+        self.toolChoice = toolChoice
     }
 }
 

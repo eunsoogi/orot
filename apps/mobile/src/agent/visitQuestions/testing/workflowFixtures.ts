@@ -104,6 +104,7 @@ export function preparedContext(): ReadyContext & {
     supplementalEvidence,
     searchEvidence: jest.fn(async () => collection(supplementalEvidence)),
     revalidateEvidence: jest.fn(async () => true),
+    reloadPersonalEvidence: jest.fn(async () => initialEvidence),
   };
 }
 

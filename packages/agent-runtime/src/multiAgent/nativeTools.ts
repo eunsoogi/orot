@@ -19,7 +19,9 @@ export function withNativeTools<TResult>(
   if (!context.options.provider.capabilities.toolCalling || context.options.tools.length === 0)
     return request;
   const available =
-    state.toolCalls < state.budget.maxToolCalls && state.modelCalls < state.budget.maxModelCalls;
+    state.toolCalls < state.budget.maxToolCalls &&
+    state.modelCalls < state.budget.maxModelCalls &&
+    state.evidenceReferences.length < state.budget.maxEvidenceItems;
   return {
     ...request,
     messages: [
@@ -34,6 +36,11 @@ export function withNativeTools<TResult>(
     ],
     ...(available
       ? {
+          // A first evidence-free answer cannot be grounded. The model still chooses
+          // the tool and query; completed empty/denied searches may end truthfully.
+          ...(state.toolCalls === 0 && state.evidenceReferences.length === 0
+            ? { toolChoice: 'required' as const }
+            : {}),
           tools: context.options.tools.map((tool) => ({
             name: tool.id,
             description: tool.description,
@@ -74,6 +81,7 @@ export function consumeNativeToolCall<TResult>(
   if (
     state.toolCalls >= state.budget.maxToolCalls ||
     state.modelCalls >= state.budget.maxModelCalls ||
+    state.evidenceReferences.length >= state.budget.maxEvidenceItems ||
     utf8ByteLength(canonicalJson(response)) > state.budget.maxPayloadBytes
   ) {
     stop(context, 'The model tool call exceeded the run budget.', 'budget_exceeded');

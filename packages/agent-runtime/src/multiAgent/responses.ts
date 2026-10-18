@@ -109,7 +109,12 @@ export function consumeResponderResponse<TResult>(
   }
   let validation;
   try {
-    validation = context.options.task.validateResult(decoded.value as JsonValue, input);
+    // Exhaustive batch tasks cannot silently accept an otherwise valid result with missing sources.
+    validation =
+      context.options.task.requireAllEvidenceCitations &&
+      citations.length !== input.evidence.items.length
+        ? { status: 'invalid' as const, reason: 'Every supplied evidence item must be cited.' }
+        : context.options.task.validateResult(decoded.value as JsonValue, input);
   } catch {
     validation = { status: 'invalid' as const, reason: 'Task validation failed.' };
   }

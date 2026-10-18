@@ -102,7 +102,8 @@ export function ports(
         },
       ): Promise<readonly HybridEvidenceSearchHit[]> => {
         order.push(
-          searchOptions?.filters?.recordTypes?.includes('transcript_segment')
+          searchOptions?.filters?.recordTypes?.length === 1 &&
+            searchOptions.filters.recordTypes[0] === 'transcript_segment'
             ? 'transcript'
             : 'records',
         );

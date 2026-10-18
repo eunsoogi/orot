@@ -63,17 +63,12 @@ describe('preparing the next visit-question context', () => {
       expect.any(String),
       3,
     );
-    expect(dependencies.order).toEqual([
-      'index',
-      'records',
-      'transcript',
-      'memory',
-    ]);
+    expect(dependencies.order).toEqual(['index', 'records', 'memory']);
     expect(dependencies.rag.search).toHaveBeenNthCalledWith(
       1,
       expect.any(String),
       [chunk],
-      5,
+      9,
       {
         filters: {
           recordTypes: [
@@ -84,6 +79,7 @@ describe('preparing the next visit-question context', () => {
             'dose_event',
             'symptom_entry',
             'evidence_span',
+            'transcript_segment',
           ],
         },
       },
@@ -96,13 +92,7 @@ describe('preparing the next visit-question context', () => {
       },
     );
     expect(await result.revalidateEvidence(memory.batch.items)).toBe(false);
-    expect(dependencies.rag.search).toHaveBeenNthCalledWith(
-      2,
-      expect.any(String),
-      [chunk],
-      3,
-      { filters: { recordTypes: ['transcript_segment'] } },
-    );
+    expect(dependencies.rag.search).toHaveBeenCalledTimes(1);
   });
 
   it('stops before RAG and memory search when no confirmed Calendar appointment exists', async () => {

@@ -66,6 +66,7 @@ function preparedContext(items: readonly VisitQuestionEvidenceItem[]) {
     appointment,
     evidence: { batch: { items } },
     searchEvidence: jest.fn(async () => ({ batch: { items } })),
+    reloadPersonalEvidence: jest.fn(async () => items[0]),
     saveReviewedQuestions: jest.fn(async () => ({ memoryStatus: 'saved' })),
     revalidateEvidence: jest.fn(async () => true),
   };
@@ -86,6 +87,24 @@ test('saves a restored citation only while its source and evidence revisions sti
   );
 
   expect(result.questions[0]?.citations).toEqual([reviewedCitation]);
+  expect(context.saveReviewedQuestions).toHaveBeenCalledTimes(1);
+});
+
+test('reloads an exact cited identity without ranking the record library again', async () => {
+  const reviewedCitation = citation();
+  const context = preparedContext([]);
+  context.reloadPersonalEvidence.mockResolvedValue(reviewedCitation);
+  await saveVisitQuestionRoute(
+    {
+      appointment,
+      questions: [savedQuestion(reviewedCitation)],
+      caveats: [],
+      resolveSource: () => reviewedCitation,
+    },
+    () => syntheticContextModule(context),
+  );
+  expect(context.reloadPersonalEvidence).toHaveBeenCalledWith(reviewedCitation);
+  expect(context.searchEvidence).not.toHaveBeenCalled();
   expect(context.saveReviewedQuestions).toHaveBeenCalledTimes(1);
 });
 

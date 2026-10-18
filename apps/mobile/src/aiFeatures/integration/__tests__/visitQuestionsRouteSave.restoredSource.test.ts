@@ -152,6 +152,7 @@ function preparedContext(items: readonly VisitQuestionEvidenceItem[]) {
     appointment,
     evidence: { batch: { items } },
     searchEvidence: jest.fn(async () => ({ batch: { items } })),
+    reloadPersonalEvidence: jest.fn(async () => items[0]),
     saveReviewedQuestions: jest.fn(async () => ({ memoryStatus: 'saved' })),
     revalidateEvidence: jest.fn(async () => true),
   };

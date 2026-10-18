@@ -44,6 +44,8 @@ export function serializeAppleRequest(
     );
   }
   const tools = request.tools ?? [];
+  if (request.toolChoice === 'required' && !tools.length)
+    throw codedError('INVALID_REQUEST', 'Required tool selection needs tools.');
   const names = new Set<string>();
   for (const tool of tools) {
     if (!tool.name || names.has(tool.name)) {
@@ -68,18 +70,26 @@ export function serializeAppleRequest(
     );
   }
   const format = request.responseFormat;
-  const mode = tools.length
-    ? format
-      ? 'mixed'
-      : 'tools'
-    : format
-      ? 'structured'
-      : 'text';
+  const mode =
+    request.toolChoice === 'required'
+      ? 'tools'
+      : tools.length
+        ? format
+          ? 'mixed'
+          : 'tools'
+        : format
+          ? 'structured'
+          : 'text';
   return {
     instructions: instructions.join('\n\n'),
     prompt: conversation.join('\n'),
     mode,
-    schema: compileResponseSchema(tools, format?.schema, format?.name),
+    schema: compileResponseSchema(
+      tools,
+      format?.schema,
+      format?.name,
+      request.toolChoice === 'required',
+    ),
     toolNames: tools.map(tool => tool.name),
     maxOutputTokens: request.maxOutputTokens,
     temperature: request.temperature,

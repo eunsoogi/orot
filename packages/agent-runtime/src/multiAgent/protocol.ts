@@ -11,6 +11,7 @@ import type {
 import type { JsonObject } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
 import { guidedSchema } from './guidedSchema';
+import { taskCitationSchema } from './citationSchema';
 
 export type TaskRoleOutput<TResult> =
   | { readonly type: 'result'; readonly value: TResult; readonly citations: readonly unknown[] }
@@ -81,16 +82,7 @@ export function taskResponseSchema<TResult>(
         properties: {
           type: { type: 'string', enum: ['result'] },
           value: guidedSchema(contract.resultSchema),
-          citations: {
-            type: 'array',
-            // Generated last: cite the result already written, not every available source.
-            description:
-              'Only evidenceId values actually used in this result. If the result contains nested evidence ID arrays, return their exact unique union. Never add unused IDs.',
-            // The native generator can expand an enum into every available ID.
-            // Prompt guidance selects IDs; citationReferences enforces the allowlist locally.
-            items: { type: 'string' },
-            ...(ids.length ? {} : { maxItems: 0 }),
-          },
+          citations: taskCitationSchema(ids, contract.requireAllEvidenceCitations),
         },
       },
     ],

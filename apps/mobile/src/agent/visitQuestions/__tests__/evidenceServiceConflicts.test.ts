@@ -119,7 +119,7 @@ describe('visit-question conflicts across evidence searches', () => {
             readonly filters?: { readonly recordTypes?: readonly string[] };
           },
         ) {
-          if (options?.filters?.recordTypes?.includes('transcript_segment'))
+          if (!options?.filters?.recordTypes?.includes('health_observation'))
             return [];
           recordSearchCount += 1;
           return [recordSearchCount === 1 ? initialHit : supplementalHit];
