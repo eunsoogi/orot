@@ -22,7 +22,7 @@ for (const name of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml']) {
 }
 
 // GitHub parses these event bytes; separate assertions cover whether the jobs allocate Mac runners.
-test('full E2E listens to ready PR events and an explicit release dispatch on main', () => {
+test('full E2E listens to ready PR events, main pushes and release dispatch', () => {
   const e2e = read('e2e-test.yml');
   assert.deepEqual(e2e.on.pull_request.types, [
     'opened',
@@ -33,7 +33,7 @@ test('full E2E listens to ready PR events and an explicit release dispatch on ma
     'edited',
   ]);
   assert.equal(e2e.on.pull_request.branches, undefined);
-  assert.equal(e2e.on.push, undefined);
+  assert.deepEqual(e2e.on.push, { branches: ['main'] });
   assert.deepEqual(e2e.on.workflow_dispatch, {});
 });
 
@@ -105,6 +105,16 @@ test('ready events select current-head work while drafts and metadata edits neve
   });
   const cases = [
     ready('draft source edit', { draft: true }),
+    ready('main push with impacted E2E changes', {
+      event: 'push',
+      ref: 'refs/heads/main',
+      result: 'success',
+    }),
+    ready('main documentation push', {
+      event: 'push',
+      ref: 'refs/heads/main',
+      paths: ['docs/development.md'],
+    }),
     ready('ready source success', { result: 'success' }),
     ...['failure', 'cancelled', 'skipped', ''].map((result) =>
       ready(`ready source ${result || 'missing'} result`, { result, domainAccepted: false }),

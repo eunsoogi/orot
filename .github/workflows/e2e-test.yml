@@ -1,9 +1,9 @@
 name: E2E Test
 on:
+  # Ready PRs and main pushes select impacts; main dispatch remains full release validation.
   pull_request:
-    # Only ready validations or verified same-head metadata reuse may use protected E2E contexts.
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
-  # Release verification dispatches the complete maintained suite from main.
+  push: { branches: [main] }
   workflow_dispatch: {}
 permissions:
   contents: read
