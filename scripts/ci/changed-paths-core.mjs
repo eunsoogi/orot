@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
+import { iosTestImpactForPath } from './ios-test-impact.mjs';
 
 export const CHECK_KEYS = Object.freeze([
   'quality_inventory',
@@ -21,6 +23,7 @@ export const CHECK_KEYS = Object.freeze([
   'policy_tests',
   'ios_build',
   'ios_tests',
+  'ios_oauth',
 ]);
 const QUALITY_KEYS = Object.freeze([
   'javascript',
@@ -53,6 +56,9 @@ export function emptySelection(reason = 'no-relevant-paths') {
     all: false,
     reason,
     paths: [],
+    ios_test_cohorts: [],
+    ios_test_impact_reasons: [],
+    metadata_only_edit: false,
     ...Object.fromEntries(CHECK_KEYS.map((key) => [key, false])),
   };
 }
@@ -62,8 +68,35 @@ export function selectEverything(reason) {
     all: true,
     reason,
     paths: [],
+    ios_test_cohorts: IOS_TEST_COHORT_NAMES.slice(),
+    ios_test_impact_reasons: [reason],
+    metadata_only_edit: false,
     ...Object.fromEntries(CHECK_KEYS.map((key) => [key, true])),
   };
+}
+
+/** Select every hosted suite when the changed boundary can alter cohort scheduling itself. */
+export function selectAllIosTestImpact(selection, reason) {
+  selection.ios_test_cohorts = IOS_TEST_COHORT_NAMES.slice();
+  selection.ios_test_impact_reasons = [
+    ...new Set([...selection.ios_test_impact_reasons, reason]),
+  ].sort();
+  selection.ios_tests = true;
+  selection.ios_oauth = true;
+  return selection;
+}
+
+/** Merge path-specific test impact without dropping a dependent suite selected by another changed file. */
+export function selectIosTestImpact(path, selection) {
+  const impact = iosTestImpactForPath(path);
+  const selected = new Set([...selection.ios_test_cohorts, ...impact.cohorts]);
+  selection.ios_test_cohorts = IOS_TEST_COHORT_NAMES.filter((cohort) => selected.has(cohort));
+  selection.ios_test_impact_reasons = [
+    ...new Set([...selection.ios_test_impact_reasons, impact.reason]),
+  ].sort();
+  selection.ios_tests = true;
+  selection.ios_oauth ||= impact.oauth;
+  return selection;
 }
 
 export function loadPolicies(root = ROOT) {

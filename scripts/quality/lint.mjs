@@ -1,6 +1,22 @@
 import { resolve } from 'node:path';
 import { createQualityTools, filesFor } from './process.mjs';
 
+const actionlintQueueWorkflows = new Set([
+  '.github/workflows/e2e-test.yml',
+  '.github/workflows/e2e-selected.yml',
+]);
+const actionlintQueueDiagnostic = 'unexpected key "queue" for "concurrency" section';
+
+/** Keep all workflows linted while isolating the pinned parser's unsupported queue-key warning. */
+export function actionlintInvocationArgs(workflows) {
+  const standard = workflows.filter((path) => !actionlintQueueWorkflows.has(path));
+  const queued = workflows.filter((path) => actionlintQueueWorkflows.has(path));
+  return [
+    ...(standard.length ? [standard] : []),
+    ...(queued.length ? [['-ignore', actionlintQueueDiagnostic, ...queued]] : []),
+  ];
+}
+
 export function runLint({ entries, env, clang, binaryPaths, root }) {
   const { invoke } = createQualityTools(root);
   const workspaceFiles = entries
@@ -74,6 +90,7 @@ export function runLint({ entries, env, clang, binaryPaths, root }) {
     path.startsWith('.github/workflows/'),
   );
   if (workflows.length) {
-    invoke(binaryPaths.actionlint, workflows, env);
+    for (const args of actionlintInvocationArgs(workflows))
+      invoke(binaryPaths.actionlint, args, env);
   }
 }

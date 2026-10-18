@@ -23,9 +23,14 @@ test('protected check workflows and stale-focus cancellation receive stacked PR 
     const event = eventBlock(path, 'pull_request');
     assert.doesNotMatch(event, /branches(?:-ignore)?:/);
     assert.match(event, /synchronize/);
-    if (!path.includes('cancel-stale'))
+    if (!path.includes('cancel-stale') && !path.endsWith('/e2e-test.yml'))
       assert.match(eventBlock(path, 'push'), /branches: \[main\]/);
   }
+  const e2eEvents = eventBlock('.github/workflows/e2e-test.yml', 'pull_request');
+  assert.match(e2eEvents, /ready_for_review/);
+  assert.match(e2eEvents, /converted_to_draft/);
+  assert.match(e2eEvents, /edited/);
+  assert.doesNotMatch(readFileSync('.github/workflows/e2e-test.yml', 'utf8'), /\n\s+push:/);
 });
 
 test('stacked comparisons use the event base and exact head, and only drafts defer the full gate', () => {

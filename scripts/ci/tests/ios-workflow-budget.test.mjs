@@ -54,10 +54,10 @@ test('Debug, Release and OAuth consumers wait only for their corresponding separ
     // Independent named calls cannot cancel siblings or append matrix parameters to visible names.
     assert.equal(caller.strategy, undefined);
     assert.equal(leaf.strategy, undefined);
-    assert.equal(caller.if, undefined);
-    assert.equal(leaf.if, undefined);
+    assert.equal(caller.if, '${{ needs.plan.outputs.has_' + configuration + " == 'true' }}");
+    assert.equal(leaf.if, "${{ contains(fromJSON(inputs.cohorts), '" + inputs.cohort + "') }}");
   }
-  assert.equal(jobs.oauth_execution.needs, 'oauth_products');
+  assert.deepEqual(jobs.oauth_execution.needs, ['plan', 'oauth_products']);
   assert.equal(jobs.oauth_execution.uses, './.github/workflows/ios-oauth-execution.yml');
   assert.equal(jobs.debug_products.with.profile, 'provider-data');
   assert.equal(jobs.release_products.with.profile, 'core');
@@ -89,7 +89,13 @@ test('the finite feature plan permits independent parallel jobs without repeatin
   }
   assert.equal(maximum, plan.length + 2);
   assert.deepEqual([...jobs.completeness.needs].sort(), ['plan', ...ids].sort());
-  for (const id of ids) assert.equal(jobs[id].if, undefined);
+  assert.equal(jobs.production_validation.if, undefined);
+  assert.equal(jobs.debug_products.if, "${{ needs.plan.outputs.has_debug == 'true' }}");
+  assert.equal(jobs.release_products.if, "${{ needs.plan.outputs.has_release == 'true' }}");
+  assert.equal(jobs.oauth_products.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
+  assert.equal(jobs.debug_execution.if, "${{ needs.plan.outputs.has_debug == 'true' }}");
+  assert.equal(jobs.release_execution.if, "${{ needs.plan.outputs.has_release == 'true' }}");
+  assert.equal(jobs.oauth_execution.if, "${{ needs.plan.outputs.oauth_required == 'true' }}");
 });
 
 test('test producers publish portable products without booting a Simulator or running tests', () => {
@@ -113,25 +119,30 @@ test('test producers publish portable products without booting a Simulator or ru
   assert.doesNotMatch(execution, /ios-test-products-build|build-ios-tests/);
 });
 
-test('the final gate rejects every failed, cancelled, skipped or missing prerequisite', () => {
+test('the completeness workflow passes selected run evidence to its exact validator', () => {
   const { jobs } = full();
   const completion = completionJob(jobs);
-  const gate = completion.steps.find((step) => step.env?.RESULTS);
+  const gate = completion.steps.find((step) => step.name?.includes('Require selected producers'));
   assert.equal(jobs.completeness.if, "${{ always() && needs.plan.result != 'skipped' }}");
   assert.equal(jobs.completeness.with.execution_results, '${{ toJSON(needs) }}');
-  assert.equal(completion.if, 'always()');
-  assert.equal(gate.env.RESULTS, '${{ inputs.execution_results }}');
-  const evaluate = new Function('process', gate.run.slice("node -e '".length, -1));
-  const success = Object.fromEntries(
-    jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
+  assert.equal(
+    jobs.completeness.with.selected_cohorts,
+    '${{ needs.plan.outputs.selected_cohorts }}',
   );
-  assert.doesNotThrow(() => evaluate({ env: { RESULTS: JSON.stringify(success) } }));
-  for (const id of jobs.completeness.needs) {
-    for (const result of ['failure', 'cancelled', 'skipped', undefined])
-      assert.throws(() =>
-        evaluate({ env: { RESULTS: JSON.stringify({ ...success, [id]: { result } }) } }),
-      );
-  }
+  assert.equal(
+    jobs.completeness.with.oauth_required,
+    "${{ needs.plan.outputs.oauth_required == 'true' }}",
+  );
+  assert.equal(completion.if, 'always()');
+  assert.equal(gate.env.OROT_IOS_EXECUTION_RESULTS, '${{ inputs.execution_results }}');
+  assert.equal(gate.env.OROT_IOS_TEST_COHORTS, '${{ inputs.selected_cohorts }}');
+  assert.equal(gate.env.OROT_IOS_OAUTH_TESTS, '${{ inputs.oauth_required }}');
+  assert.equal(gate.run, 'node scripts/ci/ios-test-execution-completeness.mjs');
+  const resultsUpload = completion.steps.find((step) =>
+    step.name?.includes('Preserve verified selected results'),
+  );
+  assert.equal(resultsUpload.if, undefined);
+  assert.equal(resultsUpload.with.path, 'artifacts/ios-reports/complete.json');
 });
 
 test('each executor verifies artifacts before one boot and retains first-failure diagnostics', () => {
@@ -195,6 +206,7 @@ test('production verifies actual tools before cache, Pods and its isolated app b
 test('full and focused execution retain one repository allocation window and separate build and test jobs', () => {
   assert.deepEqual(full().concurrency, {
     group: 'ios-ci-macos-${{ github.repository }}',
+    queue: 'max',
     'cancel-in-progress': false,
   });
   const focus = read('ios-focused.yml');

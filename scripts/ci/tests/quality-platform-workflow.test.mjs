@@ -176,8 +176,10 @@ test('uses singular workflow names and matching paths with direct checks and can
   }
   assert.match(
     e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
-    /pull_request:\n\s+types: \[opened, synchronize, reopened\]/,
+    /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
   );
+  assert.match(e2eWorkflow, /workflow_dispatch: \{\}/);
+  assert.doesNotMatch(e2eWorkflow, /push:\n\s+branches: \[main\]/);
   assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
   // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.
   assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
@@ -189,7 +191,7 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
-  assert.match(buildJob, /name: Validate \/ Build/);
+  assert.match(buildJob, /name: \$\{\{[^\n]*'Validate \/ Build'/);
   assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);

@@ -4,6 +4,7 @@ import {
   loadPolicies,
   markAllQuality,
   markQualityPath,
+  selectIosTestImpact,
   selectEverything,
 } from './changed-paths-core.mjs';
 import { selectE2EPath } from './changed-paths-e2e-rules.mjs';
@@ -41,11 +42,12 @@ const ROOT_QUALITY_CONFIG = new Set([
   '.swiftformat',
   'eslint.config.js',
 ]);
-function mobileRuntime(selection) {
+function mobileRuntime(selection, path) {
   selection.typecheck = true;
   selection.unit_tests = true;
   selection.ios_build = true;
   selection.ios_tests = true;
+  selectIosTestImpact(path, selection);
 }
 
 function normalizePath(value) {
@@ -92,6 +94,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       if (mobileAsset(path)) {
         selection.ios_build = true;
         selection.ios_tests = true;
+        selectIosTestImpact(path, selection);
       } else if (lower.startsWith('apps/mobile/e2e/')) {
         selectE2EPath(path, selection);
       }
@@ -167,14 +170,14 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       if (!markQualityPath(path, selection, policies)) {
         return { ...selectEverything('unknown-application-file'), paths: selection.paths };
       }
-      mobileRuntime(selection);
+      mobileRuntime(selection, path);
       continue;
     }
     if (lower.startsWith('apps/mobile/')) {
       if (!markQualityPath(path, selection, policies)) {
         return { ...selectEverything('unknown-mobile-file'), paths: selection.paths };
       }
-      mobileRuntime(selection);
+      mobileRuntime(selection, path);
       continue;
     }
     if (lower.startsWith('scripts/')) {
@@ -202,6 +205,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       if (file !== 'jest.config.js') {
         selection.ios_build = true;
         selection.ios_tests = true;
+        selectIosTestImpact(path, selection);
       }
       continue;
     }

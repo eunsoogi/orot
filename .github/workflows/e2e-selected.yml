@@ -24,9 +24,10 @@ permissions:
   contents: read
   pull-requests: read
 
-# Share the full workflow's allocation window without creating any of its protected checks.
+# Share the full workflow's queued allocation window without creating protected checks.
 concurrency:
   group: ios-ci-macos-${{ github.repository }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
