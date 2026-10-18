@@ -16,6 +16,15 @@ function requireFormat(request: LanguageModelRequest, name: string) {
     );
 }
 
+/** Mock SDK text follows the compiled guided schema; shipping normalization still unwraps mixed responses. */
+function structuredReply(request: LanguageModelRequest, value: unknown) {
+  return {
+    text: JSON.stringify(
+      request.tools?.length ? { kind: 'structured', value } : value,
+    ),
+  };
+}
+
 /** Reads the prompt allowlist because the native output schema omits citation enums that Apple expands. */
 function citationIds(request: LanguageModelRequest): string[] {
   requireFormat(request, 'task_response');
@@ -94,13 +103,11 @@ const visit: MockAppleStep = request => {
     priority: 'routine',
     evidenceIds: ids,
   }));
-  return {
-    text: JSON.stringify({
-      type: 'result',
-      value: { status: 'suggestions', questions },
-      citations: ids,
-    }),
-  };
+  return structuredReply(request, {
+    type: 'result',
+    value: { status: 'suggestions', questions },
+    citations: ids,
+  });
 };
 
 /** Fixed scripts model outcomes; they do not assess Apple model quality or decide application assertions. */
@@ -140,25 +147,26 @@ export function appleModelMockScript(
     return [
       request => {
         requireFormat(request, 'task_response');
+        const name = 'europe-pmc-publication-search';
+        if (
+          request.toolChoice !== 'required' ||
+          !request.tools?.some(tool => tool.name === name)
+        )
+          throw new Error(
+            'The empty-library fixture requires the supplied publication tool',
+          );
+        // This is a mock SDK response, not evidence that the real SDK invoked Tool.call.
         return {
           text: JSON.stringify({
-            type: 'request_evidence',
-            need: 'missing_coverage',
+            kind: 'tool_calls',
+            toolCalls: [
+              { name, arguments: { query: RAG_WORKFLOW_PUBLIC_QUERY } },
+            ],
           }),
         };
       },
-      request => {
-        requireFormat(request, 'evidence_research_plan');
-        return {
-          text: JSON.stringify({
-            toolId: 'europe-pmc-publication-search',
-            sourceKind: 'external_medical',
-            input: { query: RAG_WORKFLOW_PUBLIC_QUERY },
-          }),
-        };
-      },
-      request => ({
-        text: JSON.stringify({
+      request =>
+        structuredReply(request, {
           type: 'result',
           value: {
             answer:
@@ -166,7 +174,6 @@ export function appleModelMockScript(
           },
           citations: citationIds(request).slice(0, 1),
         }),
-      }),
     ];
   throw new Error('Unknown Foundation Models mock operation: ' + operation);
 }
