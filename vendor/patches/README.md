@@ -32,10 +32,12 @@ it before publishing a replacement Debug or Release framework. It checks the
 pinned version and expected declarations, supports repeated application, and
 replaces only sandbox headers while preserving read-only modes.
 
-The framework executables and signature files retain their original bytes. The
+The helper writes only header and module-map files; it does not write framework
+executables or signature files. Its synthetic regression checks that a fixture
+sentinel remains unchanged, which proves only the helper's write scope. It does
+not compare a downloaded archive with a freshly installed artifact. The
 published 0.87.1 artifact already fails strict resource-signature verification
-before these edits. Binary equality therefore proves preservation of the
-downloaded executable, while valid upstream resource signing remains unproved.
+before these edits, so this work does not claim upstream signature validity.
 
 ## Verification and remaining diagnostics
 
@@ -102,14 +104,13 @@ visible. This #201 candidate does not modify those #204-owned files; rerun the
 UI case after that integration. The UI invocation was interrupted and has no
 usable result bundle, so it is not a pass.
 
-The Debug React Native framework executables and available signature files
-match the pinned Debug archive byte-for-byte. The Release flavor switch also
-completed: all three installed Release framework executable slices and the
-installed signature match the pinned Release archive. The successful
-`OrotMobile` Release app build used the Release framework after that switch and
-preceded the new `p-queue` and Metro patches. The upstream React Native archive already
-fails strict resource-signature verification before these edits, so this work
-does not claim upstream signature validity.
+At branch head `41cc35d0`, the recorded checks do not contain the pinned archive
+and installed Debug/Release executable and signature hashes, or successful
+Debug/Release flavor-switch output, needed to establish real artifact
+integrity. The synthetic regression and the `f553e4af` Release app build do not
+provide those comparisons. This evidence remains pending. The published
+0.87.1 archive already fails strict resource-signature verification before
+these edits, so this work does not claim upstream signature validity.
 `scripts/tests/sqlcipher-counter-host.sh` checks that the configured private
 heap size reaches the wide wipe helper intact and exercises SQLCipher values
 above the 32-bit range; it needs a C compiler and OpenSSL available through
