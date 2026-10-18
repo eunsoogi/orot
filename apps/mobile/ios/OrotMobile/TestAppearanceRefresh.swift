@@ -13,6 +13,10 @@
         private var appliedCount = 0
         private var lastCommand = "none"
         private var changed: (([String: Any]) -> Void)?
+        private var animationSamples: [[String: Any]] = []
+        private var animationDiagnostics: Bool {
+            UserDefaults.standard.string(forKey: "OROT_TEST_ANIMATION_DIAGNOSTICS") == "YES"
+        }
 
         func observe(window: UIWindow, session: String, changed: @escaping ([String: Any]) -> Void) -> [String: Any] {
             if self.session != session {
@@ -21,6 +25,8 @@
                 originalOverride = window.overrideUserInterfaceStyle
                 appliedCount = 0
                 lastCommand = "none"
+                animationSamples = []
+                diagnoseAnimations(stage: "observe")
                 // Darwin notifications carry names only. A per-run UUID prevents another test lane from selecting this window's style.
                 for command in ["light", "dark", "restore"] {
                     let name = "com.orot.tests.appearance.\(session).\(command)" as CFString
@@ -57,15 +63,64 @@
             NotificationCenter.default.post(name: .RCTUserInterfaceStyleDidChange, object: window,
                                             userInfo: [RCTUserInterfaceStyleDidChangeNotificationTraitCollectionKey: window.traitCollection])
             changed?(snapshot())
+            diagnoseAnimations(stage: command)
+        }
+
+        /// Opt-in diagnostics retain only bounded class/key/timing summaries, never views, labels or user content.
+        /// Observe existing animations without cancelling them or changing XCTest synchronization.
+        /// The next appearance command publishes completed samples; sampling itself emits no RN update.
+        /// Consequently the final restore's samples are not collected, and an earlier failure can leave samples unpublished.
+        private func diagnoseAnimations(stage: String) {
+            guard animationDiagnostics else { return }
+            let commandIndex = appliedCount
+            let scheduledAt = Date().timeIntervalSince1970
+            for delay in [0.0, 5.0, 65.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self else { return }
+                    var groups: [String: Int] = [:]
+                    var visited = 0
+                    var truncated = false
+                    func visit(_ layer: CALayer, depth: Int) {
+                        guard visited < 4096, depth < 64 else { truncated = true; return }
+                        visited += 1
+                        for key in layer.animationKeys() ?? [] {
+                            guard let animation = layer.animation(forKey: key) else { continue }
+                            // UIKit can use infinite duration for Glass geometry tracking. Strings keep JSON finite.
+                            let description = "\(type(of: layer));key=\(key.prefix(80));duration=\(animation.duration);repeat=\(animation.repeatCount);speed=\(animation.speed);removed=\(animation.isRemovedOnCompletion)"
+                            if groups[description] != nil || groups.count < 16 {
+                                groups[description, default: 0] += 1
+                            } else {
+                                truncated = true
+                            }
+                        }
+                        for child in layer.sublayers ?? [] {
+                            visit(child, depth: depth + 1)
+                        }
+                    }
+                    for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+                        for window in scene.windows {
+                            visit(window.layer, depth: 0)
+                        }
+                    }
+                    animationSamples.append(["stage": stage, "commandIndex": commandIndex, "scheduledAtUnixSeconds": scheduledAt,
+                                             "scheduledDelaySeconds": delay, "sampledAtUnixSeconds": Date().timeIntervalSince1970, "visitedLayers": visited,
+                                             "truncated": truncated, "groups": groups])
+                    animationSamples = Array(animationSamples.suffix(8))
+                }
+            }
         }
 
         private func snapshot() -> [String: Any] {
             guard let window else { return ["session": session, "error": "Test window was released"] }
-            return ["session": session, "strategy": "test-window-override", "appliedCount": appliedCount, "command": lastCommand,
-                    "windowStyle": window.traitCollection.userInterfaceStyle.rawValue,
-                    "sceneStyle": window.windowScene?.traitCollection.userInterfaceStyle.rawValue as Any? ?? NSNull(),
-                    "screenStyle": window.screen.traitCollection.userInterfaceStyle.rawValue,
-                    "overrideStyle": window.overrideUserInterfaceStyle.rawValue, "originalOverrideStyle": originalOverride.rawValue]
+            var result: [String: Any] = ["session": session, "strategy": "test-window-override", "appliedCount": appliedCount, "command": lastCommand,
+                                         "windowStyle": window.traitCollection.userInterfaceStyle.rawValue,
+                                         "sceneStyle": window.windowScene?.traitCollection.userInterfaceStyle.rawValue as Any? ?? NSNull(),
+                                         "screenStyle": window.screen.traitCollection.userInterfaceStyle.rawValue,
+                                         "overrideStyle": window.overrideUserInterfaceStyle.rawValue, "originalOverrideStyle": originalOverride.rawValue]
+            if animationDiagnostics {
+                result["animationDiagnostics"] = animationSamples
+            }
+            return result
         }
     }
 #endif

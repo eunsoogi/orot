@@ -89,6 +89,13 @@ enum AppearanceUITestConditions {
             ) == true
         }, object: nil)
         let applicationResult = UITestConditions.wait(for: [applicationChanged])
+        if app.launchArguments.contains("-OROT_TEST_ANIMATION_DIAGNOSTICS") {
+            // Preserve the bounded native observations from the real receipt; the typed oracle remains unchanged.
+            let diagnostic = XCTAttachment(string: refreshMarker.label)
+            diagnostic.name = "animation-diagnostics-\(appearance.rawValue)-\(stage)"
+            diagnostic.lifetime = .keepAlways
+            testCase.add(diagnostic)
+        }
         let evidence: [String: Any] = try [
             "stage": stage, "previous": previous.rawValue, "requested": appearance.rawValue,
             "observed": XCUIDevice.shared.appearance.rawValue, "appState": app.state.rawValue,

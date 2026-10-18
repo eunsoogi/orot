@@ -11,7 +11,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
     func testCitedReviewSaveCancelAndReloadRetainTheSavedQuestionsAcrossAppearanceChanges() throws {
         try verifyAppearanceObservationContract()
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        app.launchArguments = ["-OROT_TEST_PROFILE", "next-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-OROT_TEST_ANIMATION_DIAGNOSTICS", "YES"] + AppearanceUITestConditions.observationArguments
         app.launch()
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {
