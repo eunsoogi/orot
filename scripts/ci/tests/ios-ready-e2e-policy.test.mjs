@@ -17,7 +17,7 @@ function evaluate(expression, context) {
   return Function(`"use strict"; return (${source});`)();
 }
 
-test('automatic full E2E starts on ready PR events and explicit manual release dispatch only', () => {
+test('E2E workflow has ready PR, main push, and manual release entry points', () => {
   const workflow = read('e2e-test.yml');
   assert.deepEqual(workflow.on.pull_request.types, [
     'opened',
@@ -27,7 +27,7 @@ test('automatic full E2E starts on ready PR events and explicit manual release d
     'converted_to_draft',
     'edited',
   ]);
-  assert.equal(workflow.on.push, undefined);
+  assert.deepEqual(workflow.on.push, { branches: ['main'] });
   assert.deepEqual(workflow.on.workflow_dispatch, {});
   assert.ok(workflow.jobs.plan.if.includes("needs.selection.outputs.run_ios == 'true'"));
   assert.doesNotMatch(workflow.jobs.plan.if, /event_name != 'workflow_dispatch'/);
