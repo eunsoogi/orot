@@ -41,7 +41,7 @@ test('draft, metadata and diagnostic runs cannot satisfy the full integration ga
     /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
   );
   assert.match(e2e, /workflow_dispatch: \{\}/);
-  assert.doesNotMatch(e2e, /\n\s+push:/);
+  assert.match(e2e, /^ {2}push: \{ branches: \[main\] \}$/m);
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
   assert.match(
     e2e,

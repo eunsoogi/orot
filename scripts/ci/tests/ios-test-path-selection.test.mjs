@@ -93,6 +93,27 @@ test('manual full verification selects all check families and all E2E cohorts', 
   assert.equal(selection.ios_oauth, true);
 });
 
+test('main pushes select affected cohorts from before and after SHAs and fail safe', () => {
+  let receivedArgs;
+  const selected = selectChecksForEvent('push', { before: sha('a'), after: sha('b') }, (args) => {
+    receivedArgs = args;
+    return 'M\0apps/mobile/e2e/next-visit-questions.e2e.js\0';
+  });
+  const docsOnly = selectChecksForEvent(
+    'push',
+    { before: sha('a'), after: sha('b') },
+    () => 'M\0docs/development.md\0',
+  );
+  const incomplete = selectChecksForEvent('push', { before: sha('a') });
+
+  assert.deepEqual(receivedArgs, [sha('a'), sha('b')]);
+  assert.deepEqual(selected.ios_test_cohorts, ['core-integration', 'questions', 'provider']);
+  assert.equal(selected.ios_tests, true);
+  assert.deepEqual(docsOnly.ios_test_cohorts, []);
+  assert.deepEqual(incomplete.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
+  assert.equal(incomplete.ios_oauth, true);
+});
+
 test('base-ref edits compare the updated merge base and preserve affected cohort mapping', () => {
   let receivedArgs;
   const selection = selectChecksForEvent(
