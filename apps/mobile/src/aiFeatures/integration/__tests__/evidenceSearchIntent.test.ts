@@ -203,7 +203,7 @@ test('preserves a compound medication name when adding a sleep concept alias', a
       2,
     );
 
-    // The medication name is one FTS token, so its first syllable cannot stand in for the whole word.
+    // The old normalization left only `제`, which cannot match the stored `수면제` token.
     expect(matches.map(match => match.chunkId)).toEqual(
       expect.arrayContaining([medication.id, sleepObservation.id]),
     );
