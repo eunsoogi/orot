@@ -1,3 +1,5 @@
+import type { ToolCall, ToolCallResult } from '@orot/model-runtime';
+
 export type AppleNativeSchema =
   | { readonly kind: 'string' | 'integer' | 'number' | 'boolean' }
   | {
@@ -38,4 +40,14 @@ export interface AppleNativeRequest {
   readonly toolNames: readonly string[];
   readonly maxOutputTokens?: number;
   readonly temperature?: number;
+  // Native SDK tools are registered independently of the legacy Simulator mock response.
+  readonly nativeTools: readonly {
+    readonly name: string;
+    readonly description: string;
+    readonly parameters: AppleNativeSchema;
+  }[];
+  readonly nativeResponseSchema?: AppleNativeSchema;
+  readonly nativeToolChoice: 'auto' | 'required';
+  readonly nativeToolCalls: readonly ToolCall[];
+  readonly nativeToolResults: readonly ToolCallResult[];
 }

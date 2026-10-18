@@ -72,6 +72,10 @@
 		A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */; };
 		A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */; };
 		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
+		A62F00000000000000000015 /* AppleNativeToolTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000015 /* AppleNativeToolTrace.swift */; };
+		A62F00000000000000000013 /* AppleNativeToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000013 /* AppleNativeToolRegistry.swift */; };
+		A62F00000000000000000012 /* AppleNativeToolSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000012 /* AppleNativeToolSession.swift */; };
+		A62F00000000000000000011 /* AppleNativeToolGeneration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000011 /* AppleNativeToolGeneration.swift */; };
 		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
 		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
 		A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63F00000000000000000001 /* OpenAIProviderModule.swift */; };
@@ -114,6 +118,7 @@
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
 		C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */; };
 		CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */; };
+		A62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */; };
 		CCD648FBFBC4B02A6E06E97B /* TestControl.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2F722F9A5281E9B9A73231 /* TestControl.m */; };
 		D3F6E2F9AEE7D2059B8FD74A /* HealthKitAuthorizationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */; };
 		D4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E159D73A594E0796941B26 /* BackupMigrationProbeSupport.swift */; };
@@ -186,6 +191,7 @@
 /* Begin PBXFileReference section */
 		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
 		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
+		B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleNativeToolLifecycleTests.swift; sourceTree = "<group>"; };
 		125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationLayoutIntegrationTests.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Orot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = OrotMobile/Images.xcassets; sourceTree = "<group>"; };
@@ -259,6 +265,10 @@
 		B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsRequestSlot.swift; path = OrotMobile/AppleFoundationModelsRequestSlot.swift; sourceTree = "<group>"; };
 		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
 		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
+		B62F00000000000000000015 /* AppleNativeToolTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolTrace.swift; path = OrotMobile/AppleNativeToolTrace.swift; sourceTree = "<group>"; };
+		B62F00000000000000000013 /* AppleNativeToolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolRegistry.swift; path = OrotMobile/AppleNativeToolRegistry.swift; sourceTree = "<group>"; };
+		B62F00000000000000000012 /* AppleNativeToolSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolSession.swift; path = OrotMobile/AppleNativeToolSession.swift; sourceTree = "<group>"; };
+		B62F00000000000000000011 /* AppleNativeToolGeneration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleNativeToolGeneration.swift; path = OrotMobile/AppleNativeToolGeneration.swift; sourceTree = "<group>"; };
 		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
 		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
 		B63F00000000000000000001 /* OpenAIProviderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModule.swift; path = OrotMobile/OpenAIProviderModule.swift; sourceTree = "<group>"; };
@@ -396,6 +406,10 @@
 				B62F00000000000000000008 /* AppleFoundationModelsMock.m */,
 				B62F00000000000000000007 /* AppleFoundationModelsMock.swift */,
 				B62F00000000000000000006 /* AppleFoundationModelsSession.swift */,
+				B62F00000000000000000015 /* AppleNativeToolTrace.swift */,
+				B62F00000000000000000013 /* AppleNativeToolRegistry.swift */,
+				B62F00000000000000000012 /* AppleNativeToolSession.swift */,
+				B62F00000000000000000011 /* AppleNativeToolGeneration.swift */,
 				B63F00000000000000000001 /* OpenAIProviderModule.swift */,
 				B63F00000000000000000002 /* OpenAIProviderModule.m */,
 				E12A00000000000000000011 /* OpenAIProviderAuthCoordinator.swift */,
@@ -535,6 +549,7 @@
 				2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */,
 				81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
+				B62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift */,
 				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
 				79E2A49F065F0A46D5EB30B2 /* RecordingMeteringBoundaryTests.swift */,
 				435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */,
@@ -902,6 +917,10 @@
 				A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */,
 				A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */,
 				A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */,
+				A62F00000000000000000015 /* AppleNativeToolTrace.swift in Sources */,
+				A62F00000000000000000013 /* AppleNativeToolRegistry.swift in Sources */,
+				A62F00000000000000000012 /* AppleNativeToolSession.swift in Sources */,
+				A62F00000000000000000011 /* AppleNativeToolGeneration.swift in Sources */,
 				A63F00000000000000000001 /* OpenAIProviderModule.swift in Sources */,
 				A63F00000000000000000002 /* OpenAIProviderModule.m in Sources */,
 				E12A00000000000000000001 /* OpenAIProviderAuthCoordinator.swift in Sources */,
@@ -1035,6 +1054,7 @@
 				AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */,
 				E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
+				A62F00000000000000000014 /* AppleNativeToolLifecycleTests.swift in Sources */,
 				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
 				FA9024BF972A5BBBC23867F9 /* RecordingMeteringBoundaryTests.swift in Sources */,
 				A2AF21CADE525FAC8DA0B1F5 /* LocalModelIntegrationTests.swift in Sources */,

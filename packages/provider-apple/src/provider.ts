@@ -23,6 +23,7 @@ import {
   unavailableFailure,
   validateRequest,
 } from './helpers';
+import { AppleToolLifetime } from './toolLifetime';
 
 export const APPLE_PROVIDER_ID = 'apple-foundation-models';
 
@@ -42,7 +43,10 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
   readonly id = APPLE_PROVIDER_ID;
   readonly displayName = 'Apple Foundation Models';
   readonly capabilities = APPLE_PROVIDER_CAPABILITIES;
-  constructor(private readonly native: AppleFoundationModelsNativeBridge) {}
+  private readonly toolLifetime: AppleToolLifetime;
+  constructor(private readonly native: AppleFoundationModelsNativeBridge) {
+    this.toolLifetime = new AppleToolLifetime((id) => native.cancel(id));
+  }
 
   getAvailability(): Promise<AppleModelAvailability> {
     return this.native.getAvailability();
@@ -105,7 +109,9 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
       this.native.cancel(requestId);
     };
     options.signal?.addEventListener('abort', cancel);
+    let finishTools: ReturnType<AppleToolLifetime['begin']> | undefined;
     try {
+      finishTools = this.toolLifetime.begin(request, options.signal);
       for await (const packet of this.native.stream(request, requestId)) {
         if (options.signal?.aborted) throw abortError();
         const result = this.streamPacket(packet);
@@ -121,7 +127,6 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
         }
         if (result.response) {
           if (options.signal?.aborted) throw abortError();
-          completed = true;
           if (result.response.text !== text) {
             const update = textUpdate(text, result.response.text);
             if (update) yield providerSuccess(update);
@@ -129,6 +134,9 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
           for (const toolCall of result.response.toolCalls) {
             yield providerSuccess({ type: 'tool_call', toolCall });
           }
+          // Transfer the pending callback only when the consumer reaches the terminal event.
+          completed = true;
+          finishTools(result.response, requestId);
           yield providerSuccess({ type: 'completed', response: result.response });
           return;
         }
@@ -144,6 +152,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
       if (options.signal?.aborted) throw abortError();
       yield providerFailure(nativeFailure(error));
     } finally {
+      finishTools?.();
       options.signal?.removeEventListener('abort', cancel);
       if (!completed) cancel();
     }
@@ -168,7 +177,9 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
       this.native.cancel(requestId);
       rejectAbort?.(abortError());
     };
+    let finishTools: ReturnType<AppleToolLifetime['begin']> | undefined;
     try {
+      finishTools = this.toolLifetime.begin(request, signal);
       signal?.addEventListener('abort', cancelListener);
       if (signal?.aborted) {
         cancelListener();
@@ -179,11 +190,13 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
         ? await Promise.race([result, aborted as Promise<never>])
         : await result;
       if (cancelled || signal?.aborted) throw abortError();
+      finishTools(response, requestId);
       return providerSuccess(response);
     } catch (error) {
       if (cancelled || signal?.aborted || isAbortError(error)) throw abortError();
       return providerFailure(nativeFailure(error));
     } finally {
+      finishTools?.();
       if (cancelListener) signal?.removeEventListener('abort', cancelListener);
     }
   }

@@ -2,7 +2,8 @@ import Foundation
 #if canImport(FoundationModels)
     import FoundationModels
 
-    /// The SDK call boundary is replaced only in Simulator test products. Bridge validation and request ownership stay shared.
+    /// Simulator test products use scripted guided responses; production tool requests
+    /// retain real SDK callbacks through AppleNativeToolRegistry. Mock tests do not prove that path.
     @available(iOS 26.0, *)
     enum AppleFoundationModelsSession {
         static func availability() -> [String: Any] {
@@ -26,6 +27,13 @@ import Foundation
             guard let request = payload as? [String: Any], let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt and instructions are required.", nil) }
+            #if !(OROT_TESTS && targetEnvironment(simulator))
+                if usesNativeTools(request) {
+                    return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in
+                        try await AppleNativeToolSession.respond(request, generation: generation, snapshot: nil)
+                    }
+                }
+            #endif
             let raw = request["schema"] as? [String: Any]
             if raw == nil, request["mode"] as? String != "text" {
                 throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided generation needs a schema.", nil)
@@ -59,6 +67,13 @@ import Foundation
                   let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt, mode and instructions are required.", nil) }
+            #if !(OROT_TESTS && targetEnvironment(simulator))
+                if usesNativeTools(request) {
+                    return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in
+                        try await AppleNativeToolSession.respond(request, generation: generation, snapshot: snapshot)
+                    }
+                }
+            #endif
             let raw = request["schema"] as? [String: Any]
             if raw == nil, mode != "text" {
                 throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided streaming needs a schema.", nil)
@@ -97,6 +112,11 @@ import Foundation
                 return try AppleFoundationModelsCodec.normalize(finalText, request, requestId: requestId)
             }
             return ["text": finalText, "toolCalls": [], "finishReason": "complete"]
+        }
+
+        private static func usesNativeTools(_ request: [String: Any]) -> Bool {
+            !(request["nativeTools"] as? [Any] ?? []).isEmpty ||
+                !(request["nativeToolResults"] as? [Any] ?? []).isEmpty
         }
     }
 #endif

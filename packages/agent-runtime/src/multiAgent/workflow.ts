@@ -54,6 +54,9 @@ function createWorkflowRunControl(
     dispose: () => {
       clearTimeout(timer);
       callerSignal?.removeEventListener('abort', abortFromCaller);
+      // A provider can retain a native tool callback between graph steps. Release it on
+      // every terminal outcome without changing the caller's cancellation state.
+      controller.abort();
     },
   };
 }

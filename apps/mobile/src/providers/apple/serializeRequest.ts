@@ -93,6 +93,31 @@ export function serializeAppleRequest(
     toolNames: tools.map(tool => tool.name),
     maxOutputTokens: request.maxOutputTokens,
     temperature: request.temperature,
+    // Keep real Tool parameters and callback identities outside generated answer JSON.
+    nativeTools: tools.map((tool, index) => ({
+      name: tool.name,
+      description:
+        tool.description?.trim() || 'Run the requested evidence operation.',
+      parameters: compileResponseSchema(
+        [],
+        tool.inputSchema,
+        'NativeTool' + index,
+      )!,
+    })),
+    nativeResponseSchema: compileResponseSchema(
+      [],
+      format?.schema,
+      format?.name,
+    ),
+    nativeToolChoice: request.toolChoice === 'required' ? 'required' : 'auto',
+    nativeToolCalls: request.messages.flatMap(message =>
+      message.role === 'assistant' ? (message.toolCalls ?? []) : [],
+    ),
+    nativeToolResults: request.messages.flatMap(message =>
+      message.role === 'tool'
+        ? [{ toolCallId: message.toolCallId, result: message.result }]
+        : [],
+    ),
   };
 }
 

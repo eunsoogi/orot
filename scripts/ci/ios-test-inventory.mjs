@@ -37,6 +37,13 @@ const coreTests = [
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
 ];
 const providerTests = [
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCancellationReleasesWaitingCallback',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testDrainFailureDoesNotStartFreshGeneration',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testSecondCallbackDuringDrainIsRejected',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCancellationDuringDrainReleasesTheNextRequest',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testWatchdogReleasesAnOrphanedCallback',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testParallelCallbackFailsWithoutPublishingAnotherTool',
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
   'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',

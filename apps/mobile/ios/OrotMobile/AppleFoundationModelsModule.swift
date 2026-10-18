@@ -92,6 +92,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
 
     @objc(cancel:)
     public func cancel(_ requestId: String) {
+        AppleNativeToolRegistry.shared.cancel(requestId)
         lock.lock()
         guard let slot = requests[requestId], !slot.finished else { lock.unlock(); return }
         slot.cancelled = true
@@ -102,6 +103,15 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         task?.cancel()
         slot.completion?(nil, appleFoundationModelsFailure("APPLE_MODEL_CANCELLED", "Apple model request was cancelled.", nil))
         slot.event?(["type": "cancelled"] as NSDictionary)
+    }
+
+    override public func invalidate() {
+        AppleNativeToolRegistry.shared.cancelAll()
+        lock.lock(); let activeIds = Array(requests.keys); lock.unlock()
+        for id in activeIds {
+            cancel(id)
+        }
+        super.invalidate()
     }
 
     private func availability() -> [String: Any] {
