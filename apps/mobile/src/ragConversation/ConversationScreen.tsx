@@ -56,11 +56,11 @@ export function ConversationScreen({
   const partialText = useRef('');
 
   // Incomplete text stays visible but is excluded from future model context.
-  function retainPartial(activity: string) {
+  function retainPartial(activity: string, retainEmpty = false) {
     const content = partialText.current;
     partialText.current = '';
     setPendingMessage(null);
-    if (!content) return;
+    if (!content && !retainEmpty) return;
     const message: DisplayMessage = {
       id: ++nextMessageId.current,
       role: 'assistant',
@@ -222,7 +222,7 @@ export function ConversationScreen({
           operationController.current?.abort();
           operationController.current = null;
           setBusy(false);
-          retainPartial(copy.progressCancelled);
+          retainPartial(copy.progressCancelled, true);
         }}
       />
     </KeyboardAvoidingView>

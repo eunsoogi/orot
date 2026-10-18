@@ -42,7 +42,7 @@ export function ConversationMessage({
         </View>
       )}
       <View style={!user && styles.assistantBody}>
-        {message.incomplete ? (
+        {message.incomplete && message.content ? (
           <>
             <Text style={styles.activity}>
               {t('aiActivity.draft.incompleteHeading')}

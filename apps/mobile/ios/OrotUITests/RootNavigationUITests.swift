@@ -6,6 +6,12 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         continueAfterFailure = false
     }
 
+    /// Keep the scheduled XCTest entry in its suite file; the Settings journey shares navigation helpers.
+    @MainActor
+    func testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes() throws {
+        try verifySettingsRoutes()
+    }
+
     @MainActor
     func testEveryRootTabAndRecordingNavigationRemainReachable() throws {
         let app = launch()

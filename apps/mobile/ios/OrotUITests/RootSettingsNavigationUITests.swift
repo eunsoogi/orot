@@ -3,7 +3,7 @@ import XCTest
 extension RootNavigationUITests {
     /// Keep integration and recovery routes reachable in Settings after removing redundant import flows.
     @MainActor
-    func testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes() throws {
+    func verifySettingsRoutes() throws {
         let app = launch()
         defer { app.terminate() }
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])

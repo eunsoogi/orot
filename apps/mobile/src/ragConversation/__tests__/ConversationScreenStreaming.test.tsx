@@ -145,3 +145,21 @@ test.each(['cancel', 'failure'] as const)(
     ]);
   },
 );
+
+test('shows cancellation even when no response text has arrived', async () => {
+  await render(
+    <ConversationScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onSend={() => new Promise(() => {})}
+    />,
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    '질문',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
+  expect(screen.getByText('답변 생성을 중지했어요.')).toBeTruthy();
+  expect(screen.queryByText('완료되지 않은 응답 초안')).toBeNull();
+});
