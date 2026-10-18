@@ -1,5 +1,8 @@
 import Foundation
-#if canImport(FoundationModels)
+
+// Exclude the SDK implementation itself from mock Simulator products, including
+// Debug builds where uncalled functions can retain real model-session symbols.
+#if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
     import FoundationModels
 
     /// Native tool registration is available on iOS 26. No guided-JSON tool choice is
