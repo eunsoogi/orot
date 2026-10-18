@@ -88,19 +88,33 @@ enum FormUITestConditions {
     private static func editMenuItem(_ app: XCUIApplication, _ label: String) -> XCUIElement {
         let menuItem = app.menuItems[label]
         let button = app.buttons[label]
-        // Accessibility XXXL pages commands and exposes wrapped commands as buttons. Both observations still invoke the actual native editor menu.
-        for _ in 0 ..< 6 {
-            let item = menuItem.exists ? menuItem : button
-            if item.exists, item.isHittable {
-                return item
+        let next = app.buttons["Next Page"]
+        // Large text pages menu commands, and UIKit exposes them as either role.
+        // Menu presentation can finish after the press returns. Reobserve all three
+        // choices until one is actionable instead of binding an absent role forever.
+        for page in 0 ... 6 {
+            var command: XCUIElement?
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                for candidate in [menuItem, button] where candidate.exists && candidate.isHittable {
+                    command = candidate
+                    return true
+                }
+                return next.exists && next.isHittable
+            }, object: nil)
+            guard UITestConditions.wait(for: [ready]) == .completed else {
+                XCTFail("Editor menu observation was interrupted")
+                return button
             }
-            let next = app.buttons["Next Page"]
-            guard next.exists, next.isHittable else { break }
+            if let command {
+                return command
+            }
+            guard page < 6 else {
+                XCTFail("Editor command \(label) was absent after six menu pages")
+                return button
+            }
             next.tap()
         }
-        let item = menuItem.exists ? menuItem : button
-        XCTAssertTrue(UITestConditions.exists(item), app.debugDescription)
-        return item
+        return button
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) {
