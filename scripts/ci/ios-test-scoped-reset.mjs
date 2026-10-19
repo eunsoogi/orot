@@ -164,8 +164,6 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
     const pid = Number(match?.[1]);
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid fixture launch PID');
     while (!existsSync(receiptPath)) {
-      if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
-        throw new Error('Fixture destination stopped before its receipt');
       try {
         process.kill(pid, 0);
       } catch (error) {
@@ -173,6 +171,10 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
       }
       await setTimeout(50);
     }
+    // Keep the wait loop on local state; a full inventory blocks receipt and PID checks.
+    // Fresh ownership remains required before consuming the receipt and every mutation.
+    if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
+      throw new Error('Fixture destination stopped before its receipt');
     const receipt = verifyIosFixtureReceipt(
       JSON.parse(readFileSync(receiptPath, 'utf8')),
       action,

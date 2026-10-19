@@ -48,10 +48,17 @@ enum UITestConditions {
     }
 
     static func text(_ element: XCUIElement) -> String {
-        if let value = element.value as? String, !value.isEmpty {
+        // One snapshot keeps the empty-value label fallback within a single Accessibility observation.
+        guard let snapshot = try? element.snapshot() else {
+            if let value = element.value as? String, !value.isEmpty {
+                return value
+            }
+            return element.label
+        }
+        if let value = snapshot.value as? String, !value.isEmpty {
             return value
         }
-        return element.label
+        return snapshot.label
     }
 
     static func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {

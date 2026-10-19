@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { hostConnectionTest } from './ios-test-preparation-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
 
@@ -10,11 +9,8 @@ const [profile, runFile, ownerFile, directory] = process.argv.slice(2);
 if (!directory || !runFile || process.env.GITHUB_ACTIONS !== 'true')
   throw new Error('Simulator UI preparation requires its hosted Actions execution');
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
-if (
-  !/^[a-f0-9-]{36}$/i.test(owner.udid) ||
-  verifyIosTestSimulator(owner, profile).state !== 'Booted'
-)
-  throw new Error('Simulator UI preparation requires its booted owned destination');
+if (!/^[a-f0-9-]{36}$/i.test(owner.udid))
+  throw new Error('Simulator UI preparation requires its owned destination');
 const evidence = resolve(directory);
 mkdirSync(evidence, { recursive: true });
 const metadata = resolve(evidence, 'ui-bootstrap.json');
@@ -27,6 +23,8 @@ if (!developer || !isAbsolute(developer))
 // Core's integration-first executions reached XCUI while cold standalone UI runners failed before their cases.
 // Exercise the same real app-host/JS boundary as a separate preparation result, without another boot or retry.
 const serviceResult = resolve(evidence, 'host-preparation.xcresult');
+// run-ios-tests.mjs performs a fresh ownership check before invoking Xcode.
+// This wrapper has no intervening Simulator command, so another inventory read here is redundant.
 execFileSync(
   'scripts/ci/run-command.sh',
   [

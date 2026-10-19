@@ -114,6 +114,13 @@ test('prepares the genuine host case once on the owned destination without anoth
         ['-only-testing:' + hostConnectionTest],
       );
       assert.ok(runs[0].args.includes('platform=iOS Simulator,id=' + value.owner.udid));
+      assert.equal(
+        value.calls.filter(
+          (call) => call.name === 'xcrun' && call.args[1] === 'list' && call.args[2] === '-j',
+        ).length,
+        1,
+        'the host runner owns the single fresh Simulator inventory check before Xcode',
+      );
       assert.ok(
         !value.calls.some((call) =>
           ['boot', 'shutdown', 'delete'].some((action) => call.args.includes(action)),

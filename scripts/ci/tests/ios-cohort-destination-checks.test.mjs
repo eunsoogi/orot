@@ -88,14 +88,14 @@ else console.log('synthetic bounded diagnostic');
   };
 }
 
-test('preparation and task execution each verify their owned destination before Xcode', () => {
+test('each Xcode execution verifies its owned destination once at the operation boundary', () => {
   const value = run('Booted');
   try {
     assert.notEqual(value.outcome.status, 0);
     const calls = value.calls();
     const inventories = calls.filter((call) => call.name === 'xcrun' && call.args[1] === 'list');
     const builds = calls.filter((call) => call.name === 'xcodebuild');
-    assert.equal(inventories.length, 3);
+    assert.equal(inventories.length, 2);
     assert.equal(
       builds.length,
       2,
@@ -106,9 +106,8 @@ test('preparation and task execution each verify their owned destination before 
       ['-only-testing:' + hostConnectionTest],
     );
     assert.ok(calls.indexOf(inventories[0]) < calls.indexOf(builds[0]));
-    assert.ok(calls.indexOf(inventories[1]) < calls.indexOf(builds[0]));
-    assert.ok(calls.indexOf(builds[0]) < calls.indexOf(inventories[2]));
-    assert.ok(calls.indexOf(inventories[2]) < calls.indexOf(builds[1]));
+    assert.ok(calls.indexOf(builds[0]) < calls.indexOf(inventories[1]));
+    assert.ok(calls.indexOf(inventories[1]) < calls.indexOf(builds[1]));
     assert.deepEqual(
       value.report().tasks.map((task) => task.status),
       ['failed', 'not-run', 'not-run', 'not-run'],
@@ -148,7 +147,7 @@ test('an unbooted live destination fails before either preparation or task Xcode
     assert.notEqual(value.outcome.status, 0);
     assert.match(
       readFileSync(join(value.root, 'ui-preparation.log'), 'utf8'),
-      /booted owned destination/,
+      /booted owned simulator/,
     );
     assert.ok(!value.calls().some((call) => call.name === 'xcodebuild'));
   } finally {

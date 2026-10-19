@@ -52,37 +52,58 @@ enum FormUITestConditions {
     }
 
     static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {
-        reveal(input, in: app, scrollID: scrollID)
-        input.tap()
-        let current = input.value as? String ?? ""
+        let replaceStartedAt = ProcessInfo.processInfo.systemUptime
+        defer { recordTiming("replace-total", since: replaceStartedAt) }
+        measure("reveal") { reveal(input, in: app, scrollID: scrollID) }
+        measure("field-tap") { input.tap() }
+        let current = measure("value-read") { input.value as? String ?? "" }
+        let shouldSelectAll = if current.isEmpty {
+            false
+        } else {
+            measure("placeholder-read") {
+                current != input.placeholderValue
+            }
+        }
         // Populate the synthetic clipboard before opening the menu so Paste is present even on an empty editor.
         // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
         defer {
             if !text.isEmpty {
-                UIPasteboard.general.string = nil
+                measure("clipboard-clear") { UIPasteboard.general.string = nil }
             }
         }
         if !text.isEmpty {
-            UIPasteboard.general.string = text
+            measure("clipboard-write") { UIPasteboard.general.string = text }
         }
-        if !current.isEmpty, current != input.placeholderValue {
-            input.press(forDuration: 1)
-            let selectAll = editMenuItem(app, "Select All")
-            selectAll.tap()
+        if shouldSelectAll {
+            measure("select-all-long-press") { input.press(forDuration: 1) }
+            let selectAll = measure("select-all-menu-wait") { editMenuItem(app, "Select All") }
+            measure("select-all-tap") { selectAll.tap() }
             if text.isEmpty {
-                input.typeText(XCUIKeyboardKey.delete.rawValue)
+                measure("delete") { input.typeText(XCUIKeyboardKey.delete.rawValue) }
             }
         } else if !text.isEmpty {
-            input.press(forDuration: 1)
+            measure("paste-long-press") { input.press(forDuration: 1) }
         }
         if !text.isEmpty {
             // One native paste event avoids controlled-input character loss and per-key XCTest idling on a cold hosted runner.
             // Select All keeps the native edit menu and selection. Paste replaces that selection directly,
             // avoiding a delete event and a second long press that add no editor boundary.
-            let paste = editMenuItem(app, "Paste")
-            paste.tap()
+            let paste = measure("paste-menu-wait") { editMenuItem(app, "Paste") }
+            measure("paste-tap") { paste.tap() }
         }
-        exactValue(input, equals: text)
+        measure("exact-value") { exactValue(input, equals: text) }
+    }
+
+    /// Keep form timing diagnostic-only and free of field text, identifiers, placeholders, or clipboard contents.
+    private static func measure<T>(_ step: String, _ operation: () -> T) -> T {
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        defer { recordTiming(step, since: startedAt) }
+        return operation()
+    }
+
+    private static func recordTiming(_ step: String, since startedAt: TimeInterval) {
+        let elapsedMs = Int(((ProcessInfo.processInfo.systemUptime - startedAt) * 1000).rounded())
+        print("OROT_FORM_UI_TIMING {\"step\":\"\(step)\",\"elapsedMs\":\(elapsedMs)}")
     }
 
     private static func editMenuItem(_ app: XCUIApplication, _ label: String) -> XCUIElement {
