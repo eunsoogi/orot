@@ -20,6 +20,7 @@ export interface CommonObservationsProbeModule extends HealthKitNativeModule {
   inspectReadAuthorizationPlan(feature: HealthKitFeature): Promise<{
     readonly availability: 'available' | 'unsupportedFeature';
     readonly readTypeIdentifiers: readonly string[];
+    readonly perObjectReadTypeIdentifiers: readonly string[];
     readonly writeTypeIdentifiers: readonly string[];
   }>;
   inspectBatchAuthorizationPlan(
@@ -29,6 +30,7 @@ export interface CommonObservationsProbeModule extends HealthKitNativeModule {
     readonly requestedFeatures: readonly HealthKitFeature[];
     readonly unsupportedFeatures: readonly HealthKitFeature[];
     readonly readTypeIdentifiers: readonly string[];
+    readonly perObjectReadTypeIdentifiers: readonly string[];
     readonly writeTypeIdentifiers: readonly string[];
   }>;
   inspectSampleType(
@@ -121,6 +123,14 @@ export async function verifyCommonObservationReadPlans(
   assertProbe(
     batch.writeTypeIdentifiers.length === 0,
     'The batch authorization plan requested HealthKit write access.',
+  );
+  const objects = requestedFeatures.flatMap(
+    feature => plans.get(feature)?.perObjectReadTypeIdentifiers ?? [],
+  );
+  assertProbe(
+    JSON.stringify([...batch.perObjectReadTypeIdentifiers].sort()) ===
+      JSON.stringify(objects.sort()),
+    'The batch authorization plan lost per-medication consent.',
   );
   assertProbe(
     !plans

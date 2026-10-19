@@ -49,6 +49,12 @@ enum ChatGPTResponsesRequestBuilder {
             "store": false,
             "stream": true,
         ]
+        // Preserve explicit first-search selection across the native HTTP boundary.
+        if let choice = input.toolChoice {
+            guard choice == "required", !input.tools.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
+            body["tool_choice"] = choice
+            body["parallel_tool_calls"] = false
+        }
         if !input.tools.isEmpty {
             body["tools"] = try input.tools.map { tool -> [String: Any] in
                 guard !tool.name.isEmpty,

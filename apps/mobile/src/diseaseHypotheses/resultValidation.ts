@@ -72,6 +72,13 @@ function withoutUncertaintyDisclaimers(text: string): string {
     );
 }
 
+/** Applies the final summary's diagnosis guard before any partial text reaches the screen. */
+export function canPreviewDiseaseHypothesisSummary(text: string): boolean {
+  if (!text.trim() || text.length > 1200) return false;
+  const candidate = withoutUncertaintyDisclaimers(text);
+  return !definitiveClaimPatterns.some(pattern => pattern.test(candidate));
+}
+
 function containsDefinitiveClinicalClaim(
   hypothesis: DiseaseHypothesisAnalysis['hypotheses'][number],
 ): boolean {

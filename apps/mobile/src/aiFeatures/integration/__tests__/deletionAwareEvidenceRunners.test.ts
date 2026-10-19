@@ -95,13 +95,13 @@ describe.each<RunnerKind>(['disease', 'rag'])(
         let currentObservation = observation;
         const buildSnapshot = (registry: LocalEvidenceReferenceRegistry) =>
           buildPersonalEvidence({
-            inventory: inventory([
+            records: inventory([
               entry('source_record', source),
               currentObservation,
               entry('source_record', transcriptSource),
               entry('transcript_segment', transcript),
               entry('visit_question', question),
-            ]),
+            ]).records,
             persistedChunks: currentChunks,
             loadCurrentPersistedChunks: async () => currentChunks,
             repository: createLocalHealthEvidenceRepository(database),

@@ -8,6 +8,7 @@ import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { AppointmentRepository } from '@orot/storage';
 import { name as appName } from '../app.json';
 import MedicalAppointmentClassificationScreen from '../src/medicalAppointments/MedicalAppointmentClassificationScreen';
+import type { CalendarAutoSyncState } from '../src/calendar/calendarAutoSync';
 import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
 import type { ProviderSelectionOption } from '../src/providers/selection/types';
 
@@ -40,6 +41,24 @@ function MedicalAppointmentClassificationProbeEntry() {
       }),
       findEvent: async () => ({ access: 'fullAccess', event: syntheticEvent }),
       addEventStoreListener: () => ({ remove: () => undefined }),
+    }),
+    [],
+  );
+  const calendarSync = useMemo<CalendarAutoSyncState>(
+    () => ({
+      access: 'fullAccess',
+      events: [syntheticEvent],
+      query: {
+        fromInclusive: '2035-01-01T00:00:00.000Z',
+        toExclusive: '2036-01-01T00:00:00.000Z',
+        horizonYears: 1,
+        resultLimit: null,
+        complete: true,
+        omittedEventCount: 0,
+      },
+      loading: false,
+      error: false,
+      updatedAt: '2035-01-01T00:00:00.000Z',
     }),
     [],
   );
@@ -108,6 +127,7 @@ function MedicalAppointmentClassificationProbeEntry() {
       ) : null}
       <MedicalAppointmentClassificationScreen
         bridge={bridge}
+        calendarSync={calendarSync}
         repository={repository}
         selectedProvider={selectedProvider}
         recipient="synthetic-recipient"

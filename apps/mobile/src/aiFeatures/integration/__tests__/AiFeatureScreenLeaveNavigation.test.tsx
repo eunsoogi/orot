@@ -81,7 +81,7 @@ test('aborts RAG generation after confirmed Back and ignores a late answer', asy
   );
   await fireEvent.press(view.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
-  expect(view.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
 
   await fireEvent.press(view.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
@@ -90,7 +90,7 @@ test('aborts RAG generation after confirmed Back and ignores a late answer', asy
   );
   await pressAlertButton(alert, 0);
   expect(runnerSignal?.aborted).toBe(false);
-  expect(view.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
 
   await fireEvent.press(view.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));

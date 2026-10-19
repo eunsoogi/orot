@@ -89,6 +89,31 @@ test('makes the non-diagnosis and no-medication-change boundary explicit', () =>
   );
 });
 
+test('projects only a cautious first summary and rejects definitive preview text', () => {
+  const input = { request: '가능성을 살펴봐 주세요', evidence };
+  const raw = JSON.stringify({
+    value: {
+      hypotheses: [{ summary: '일부 기록에서 검토할 점이 있어요.' }],
+      citations: ['private-evidence-id'],
+    },
+    hiddenReasoning: 'not user-facing',
+  });
+
+  expect(diseaseHypothesisTask.projectStreamedText?.(raw, input)).toBe(
+    '일부 기록에서 검토할 점이 있어요.',
+  );
+  expect(
+    diseaseHypothesisTask.projectStreamedText?.(
+      JSON.stringify({
+        value: {
+          hypotheses: [{ summary: '당뇨로 진단되었습니다.' }],
+        },
+      }),
+      input,
+    ),
+  ).toBeUndefined();
+});
+
 test('does not start the model workflow when the full local record inventory is unavailable', async () => {
   const outcome = await runDiseaseHypothesisAnalysis({} as never, {
     inventoryComplete: false,

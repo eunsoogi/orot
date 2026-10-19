@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { iosTestCohort } from '../ios-test-cohorts.mjs';
+import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
 // Exercise the real coordinator and first native driver; only external Apple commands are replaced.
 function run(state) {
@@ -16,7 +17,7 @@ function run(state) {
     runtime: definition.config.runtime,
     device: definition.config.device,
     name: 'OrotTests-cohort-debug-fixture',
-    udid: 'owned-destination',
+    udid: '11111111-2222-4333-8444-555555555555',
   };
   const calls = join(root, 'calls.jsonl');
   const snapshot = {
@@ -27,14 +28,34 @@ function run(state) {
       ],
     },
   };
+  const hostReport = {
+    testNodes: [
+      {
+        nodeType: 'Unit test bundle',
+        name: 'OrotIntegrationTests',
+        children: [
+          {
+            nodeType: 'Test Case',
+            nodeIdentifier: hostConnectionTest.split('/').slice(1).join('/') + '()',
+            result: 'Passed',
+          },
+        ],
+      },
+    ],
+  };
   const program = `#!${process.execPath}
 const fs=require('node:fs'),path=require('node:path');const args=process.argv.slice(2),name=path.basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({name,args})+'\\n');
-if(name==='xcodebuild')process.exit(65);
-if(name==='xcrun'&&args[1]==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
+if(name==='xcodebuild'){
+ if(args.includes('-only-testing:${hostConnectionTest}')){fs.mkdirSync(args[args.indexOf('-resultBundlePath')+1]);process.exit(0);}
+ process.exit(65);
+}
+if(name==='open')process.exit(0);
+if(name==='xcrun'&&args[0]==='xcresulttool'&&args.some(argument=>argument.includes('ui-preparation')))console.log(${JSON.stringify(JSON.stringify(hostReport))});
+else if(name==='xcrun'&&args[1]==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else console.log('synthetic bounded diagnostic');
 `;
-  for (const name of ['xcrun', 'xcodebuild', 'ps', 'vm_stat', 'sysctl'])
+  for (const name of ['xcrun', 'xcodebuild', 'open', 'ps', 'vm_stat', 'sysctl'])
     writeFileSync(join(root, name), program, { mode: 0o755 });
   const ownerFile = join(root, 'owner.json'),
     runFile = join(root, 'products.xctestrun');
@@ -46,10 +67,20 @@ else console.log('synthetic bounded diagnostic');
     [resolve('scripts/ci/run-ios-test-cohort.mjs'), 'debug', runFile, ownerFile, results],
     {
       encoding: 'utf8',
-      env: { ...process.env, PATH: root + ':' + process.env.PATH },
+      env: {
+        ...process.env,
+        GITHUB_ACTIONS: 'true',
+        PROFILE: definition.profiles[0],
+        DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+        GITHUB_RUN_ID: '12345',
+        GITHUB_RUN_ATTEMPT: '1',
+        GITHUB_JOB: 'debug-test',
+        PATH: root + ':' + process.env.PATH,
+      },
     },
   );
   return {
+    root,
     outcome,
     calls: () => readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse),
     report: () => JSON.parse(readFileSync(join(results, 'results.json'), 'utf8')),
@@ -57,17 +88,27 @@ else console.log('synthetic bounded diagnostic');
   };
 }
 
-test('the executing driver checks its destination once before Xcode without duplicate coordinator inventories', () => {
+test('preparation and task execution each verify their owned destination before Xcode', () => {
   const value = run('Booted');
   try {
     assert.notEqual(value.outcome.status, 0);
     const calls = value.calls();
-    assert.equal(calls.filter((call) => call.args[1] === 'list').length, 1);
-    assert.equal(calls.filter((call) => call.name === 'xcodebuild').length, 1);
-    assert.ok(
-      calls.findIndex((call) => call.args[1] === 'list') <
-        calls.findIndex((call) => call.name === 'xcodebuild'),
+    const inventories = calls.filter((call) => call.name === 'xcrun' && call.args[1] === 'list');
+    const builds = calls.filter((call) => call.name === 'xcodebuild');
+    assert.equal(inventories.length, 3);
+    assert.equal(
+      builds.length,
+      2,
+      `${value.outcome.stdout}\n${value.outcome.stderr}\n${JSON.stringify(calls)}`,
     );
+    assert.deepEqual(
+      builds[0].args.filter((argument) => argument.startsWith('-only-testing:')),
+      ['-only-testing:' + hostConnectionTest],
+    );
+    assert.ok(calls.indexOf(inventories[0]) < calls.indexOf(builds[0]));
+    assert.ok(calls.indexOf(inventories[1]) < calls.indexOf(builds[0]));
+    assert.ok(calls.indexOf(builds[0]) < calls.indexOf(inventories[2]));
+    assert.ok(calls.indexOf(inventories[2]) < calls.indexOf(builds[1]));
     assert.deepEqual(
       value.report().tasks.map((task) => task.status),
       ['failed', 'not-run', 'not-run', 'not-run'],
@@ -77,16 +118,15 @@ test('the executing driver checks its destination once before Xcode without dupl
   }
 });
 
-test('an unbooted live destination fails before Xcode and is retained as the first task failure', () => {
+test('an unbooted live destination fails before either preparation or task Xcode execution', () => {
   const value = run('Shutdown');
   try {
     assert.notEqual(value.outcome.status, 0);
-    assert.ok(!value.calls().some((call) => call.name === 'xcodebuild'));
-    assert.equal(value.report().passed, false);
-    assert.deepEqual(
-      value.report().tasks.map((task) => task.status),
-      ['failed', 'not-run', 'not-run', 'not-run'],
+    assert.match(
+      readFileSync(join(value.root, 'ui-preparation.log'), 'utf8'),
+      /booted owned destination/,
     );
+    assert.ok(!value.calls().some((call) => call.name === 'xcodebuild'));
   } finally {
     value.dispose();
   }

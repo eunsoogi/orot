@@ -5,6 +5,8 @@ import type {
   VisitQuestionQueryPort,
 } from '../evidenceRevalidation';
 import { searchVisitQuestionEvidence } from '../evidenceSearch';
+import { createVisitQuestionEvidenceSearchTools } from '../evidenceTools';
+import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
 
 function memoryHit(id: string): LocalMemoryHit {
   return {
@@ -44,6 +46,75 @@ async function searchMemoryHits(hits: readonly LocalMemoryHit[]) {
 }
 
 describe('bounded reviewed-memory evidence search', () => {
+  it.each([1, 2])(
+    'forwards the final %i slots through the model tool boundary',
+    async limit => {
+      const batch = { items: [], coverage: [], conflicts: [] };
+      const searchEvidence = jest.fn(async () => ({
+        batch,
+        metadataByCitation: new Map(),
+        memoryStatus: 'not_searched' as const,
+      }));
+      const tools = createVisitQuestionEvidenceSearchTools({
+        aliases: createVisitQuestionEvidenceAliases(batch),
+        searchEvidence,
+        initialEvidenceCount: 0,
+        maxEvidenceItems: 8,
+      });
+      const signal = new AbortController().signal;
+      await tools[0]!.search({
+        operationRunId: 'run',
+        operationKey: 'search',
+        input: { query: '합성 기록' },
+        allowedScope: { sourceKinds: ['personal_record'] },
+        resultLimit: limit,
+        maxPayloadBytes: 10000,
+        signal,
+      });
+      expect(searchEvidence).toHaveBeenCalledWith(
+        '합성 기록',
+        limit,
+        'personal_record',
+        signal,
+      );
+    },
+  );
+  it.each([1, 2])(
+    'searches personal evidence with only %i remaining slots',
+    async limit => {
+      const search = jest.fn(async () => []);
+      const result = await searchVisitQuestionEvidence({
+        query: '합성 진료',
+        maxEvidenceItems: limit,
+        sourceKind: 'personal_record',
+        queryService: {
+          searchMemory: jest.fn(),
+          queryNextConfirmedCalendarAppointment: jest.fn(),
+        },
+        repository: {} as VisitQuestionEvidenceRepository,
+        rag: { index: jest.fn(async () => {}), search },
+        buildChunks: async () => [],
+      });
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(search).toHaveBeenCalledWith(
+        '합성 진료',
+        [],
+        limit + 1,
+        expect.objectContaining({
+          filters: {
+            recordTypes: expect.arrayContaining([
+              'health_observation',
+              'transcript_segment',
+            ]),
+          },
+        }),
+      );
+      expect(result.batch.coverage[0]).toMatchObject({
+        resultLimit: limit,
+        returnedCount: 0,
+      });
+    },
+  );
   it('does not report truncation when the exact one-item result limit has one hit', async () => {
     const { result, searchMemory } = await searchMemoryHits([
       memoryHit('memory-1'),

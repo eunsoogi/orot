@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Appointment } from '@orot/domain';
+import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type {
   AppointmentViewState,
@@ -131,6 +132,7 @@ export function useNextVisitQuestionsRoute(
       currentAppointment: Appointment,
       selection: { providerId: string; modelId: string },
       signal: AbortSignal,
+      observer?: AiWorkflowObserver,
     ) => {
       const request = ++generationRequest.current;
       return boundedVisitGeneration(signal, async activeSignal => {
@@ -160,6 +162,7 @@ export function useNextVisitQuestionsRoute(
             selectedAi: resolved,
             confirmConsent,
             signal: activeSignal,
+            ...(observer ? { observer } : {}),
           });
           if (activeSignal.aborted || request !== generationRequest.current)
             return { status: 'cancelled' as const };

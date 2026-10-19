@@ -5,6 +5,7 @@ import type { LocalRecordQueryService } from '@orot/agent-runtime';
 import type { EvidenceChunk } from '@orot/rag';
 import type { PersistedEvidenceReader } from '@orot/rag';
 import type { RecordRepository } from '@orot/storage';
+import type { EvidenceRecordIdentity } from '../../healthEvidence/currentEvidenceChunks';
 import {
   localEvidenceFingerprint,
   mapMemoryHitToVisitQuestionEvidence,
@@ -25,6 +26,11 @@ export type VisitQuestionEvidenceRepository = Pick<RecordRepository, 'get'> &
 
 export type VisitQuestionChunkBuilder = (
   repository: PersistedEvidenceReader,
+  selection?: {
+    readonly query?: string;
+    readonly identities?: readonly EvidenceRecordIdentity[];
+    readonly signal?: AbortSignal;
+  },
 ) => Promise<EvidenceChunk[]>;
 
 /** Rechecks Calendar, RAG, transcript revisions, and reviewed memory before display or save. */
@@ -80,7 +86,20 @@ export function createVisitQuestionEvidenceRevalidator(input: {
         citation => citation.sourceKind === 'personal_record',
       );
       if (personalCitations.length > 0) {
-        const currentChunks = await input.buildChunks(input.repository);
+        const identities = personalCitations.map(citation => {
+          const metadata = input.metadataByCitation.get(
+            visitQuestionCitationKey(citation),
+          );
+          return metadata?.recordKind && metadata.evidenceRecordId
+            ? { kind: metadata.recordKind, id: metadata.evidenceRecordId }
+            : undefined;
+        });
+        if (identities.some(identity => !identity)) return false;
+        const currentChunks = await input.buildChunks(input.repository, {
+          identities: identities.filter(
+            (identity): identity is EvidenceRecordIdentity => Boolean(identity),
+          ),
+        });
         for (const citation of personalCitations) {
           const metadata = input.metadataByCitation.get(
             visitQuestionCitationKey(citation),

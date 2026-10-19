@@ -12,11 +12,13 @@
 
 ## Authorization model
 
-The public API accepts feature keys, not arbitrary HealthKit types. The native allowlist maps each key to only the types needed by that feature; a batch unions only the selected features' read sets and makes one `requestAuthorization` call. It passes an empty write set and never calls `authorizationStatus(for:)`, which reports sharing authorization rather than read authorization.
+The public API accepts feature keys, not arbitrary HealthKit types. The native allowlist maps each key to only the types needed by that feature. A batch unions the selected ordinary read types into one `requestAuthorization` call, then requests per-object medication access separately. A medication-only selection skips ordinary authorization. Requests have an empty write set and never call `authorizationStatus(for:)`, which reports sharing authorization rather than read authorization.
 
 The authorization request reports `completed` only when HealthKit reports success with no error. A failed request remains an error; it is not labeled as a user cancellation. Request completion still does not establish whether read access was granted, so read authorization is always reported as `notObservable`.
 
-The native allowlist requests the medication definition and dose-event types for medications; the systolic and diastolic component types for blood pressure; the sleep-analysis category for sleep; and one quantity type for heart rate, steps, or body mass. The authorization plan used by the request has an empty write set. The blood-pressure query still selects the correlation type, but its visibility is not established by the Simulator authorization test.
+Medication consent uses `requestPerObjectReadAuthorization` with the user-annotated medication type. Access to a selected medication includes its dose events; neither medication type is passed to ordinary sample authorization. That API mismatch caused the observed physical-device authorization exception. The per-object API presents a picker on every request, so only explicit Settings consent calls it; launch and foreground synchronization query previously selected features without prompting again. Request sequencing and native type selection have regression coverage, while repaired physical-device consent and repeated-launch behavior still require observation.
+
+Other features request the systolic and diastolic component types for blood pressure, the sleep-analysis category for sleep, and one quantity type for heart rate, steps, or body mass. The blood-pressure query still selects the correlation type, but its visibility is not established by the Simulator authorization test.
 
 The common-observation importer requests the selected heart-rate, step-count, and body-mass features together before starting any anchored query or local transaction. Unsupported selected features remain separate outcomes, while a native request failure stops the import before query or storage work. Concurrent identical imports for one repository share the in-flight operation; a completed or failed operation is removed so an explicit retry can run. Standalone feature flows retain the single-feature request method.
 
@@ -60,7 +62,9 @@ The earlier Detox attempt 20 on iOS 27 remains historical process-restart eviden
 
 ## Selected HealthKit and EventKit import
 
-From the welcome screen, **건강 기록 및 캘린더 가져오기** opens the production flow; its Back action returns to the existing entry points.
+Production integration controls now live in Settings. HealthKit selections persist for automatic synchronization, and imported records are available from the Records tab. The separate manual health and blood-pressure import routes are removed. Calendar synchronization runs independently of explicit AI classification; its permission and recovery controls also live in Settings.
+
+The retained combined-import coordinator and its diagnostic harness are described below. They are not a production manual-import screen.
 
 `HealthKitImportScreen` accepts selected HealthKit types and an optional EventKit provider selection in one explicit action. The coordinator requests the selected HealthKit types in one HealthKit batch and requests EventKit access through its separate consent API. It waits for every selected provider request to return before querying either provider. HealthKit and EventKit access states and outcomes remain independent; failure or empty results from one provider do not hide the other provider's results. HealthKit read access remains `notObservable`; the request callback is not a grant result, and an empty query remains an empty visible result.
 
@@ -81,6 +85,7 @@ These synthetic checks do not trigger or observe OS consent sheets. The retained
 - [Authorizing access to health data](https://developer.apple.com/documentation/HealthKit/authorizing-access-to-health-data)
 - [Protecting user privacy](https://developer.apple.com/documentation/HealthKit/protecting-user-privacy)
 - [HKHealthStore.requestAuthorization(toShare:read:completion:)](<https://developer.apple.com/documentation/healthkit/hkhealthstore/requestauthorization(toshare:read:completion:)>)
+- [Medication authorization and dose access](https://developer.apple.com/videos/play/wwdc2025/321/)
 - [HKSampleQuery](https://developer.apple.com/documentation/healthkit/hksamplequery)
 - [HKAnchoredObjectQuery](https://developer.apple.com/documentation/healthkit/hkanchoredobjectquery)
 - [HKDeletedObject](https://developer.apple.com/documentation/healthkit/hkdeletedobject)

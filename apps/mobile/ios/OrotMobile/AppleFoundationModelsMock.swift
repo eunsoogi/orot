@@ -63,15 +63,18 @@
             return text
         }
 
-        func stream(_ request: [String: Any], snapshot: (String) -> Bool) async throws {
+        func stream(_ request: [String: Any], snapshot: (String) -> Bool) async throws -> String? {
             let reply = try take(request, streaming: true)
             guard let snapshots = reply["snapshots"] as? [String], !snapshots.isEmpty else { throw failure("Mock streaming requires snapshots.") }
+            var finalText: String?
             for text in snapshots {
                 try await wait(reply)
                 if !snapshot(text) {
-                    return
+                    return nil
                 }
+                finalText = text
             }
+            return finalText
         }
 
         private func failure(_ message: String) -> NSError {

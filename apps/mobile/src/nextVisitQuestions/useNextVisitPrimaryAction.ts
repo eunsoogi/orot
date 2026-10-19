@@ -2,6 +2,7 @@ import { useNavigationPrimaryAction } from '../navigation/useNavigationPrimaryAc
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type { NextVisitQuestionsController } from './controllerTypes';
 import type { NextVisitEvidenceReference } from './types';
+import { t } from '../i18n';
 
 /** Maps the current question phase to the route shell without duplicating its primary control. */
 export function useNextVisitPrimaryAction<T extends NextVisitEvidenceReference>(
@@ -25,7 +26,7 @@ export function useNextVisitPrimaryAction<T extends NextVisitEvidenceReference>(
       ? copy.review.saving
       : copy.review.save
     : isGenerating
-      ? copy.generation.cancel
+      ? t('aiActivity.cancel')
       : editSaved
         ? copy.saved.edit
         : generateLabel;

@@ -1,5 +1,11 @@
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
-import { validateVisitQuestionTaskResult } from './taskValidation';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
+import { hasUnsupportedDateOrValue } from './questionFacts';
+import {
+  appointmentDateFromContext,
+  hasUnsafeClinicalAdvice,
+  validateVisitQuestionTaskResult,
+} from './taskValidation';
 import {
   visitQuestionResultSchema,
   visitQuestionSystemPrompt,
@@ -83,6 +89,26 @@ export function createVisitQuestionTaskResponder() {
     allowRankedLocalEvidence: true,
     systemPrompt: visitQuestionSystemPrompt,
     resultSchema: visitQuestionResultSchema,
+    /** Streams only evidence-supported, clinically safe copy without exposing the evidence envelope. */
+    projectStreamedText(rawOutput: string, input: VisitQuestionResponderInput) {
+      const questionText = extractPartialJsonStringAtPath(rawOutput, [
+        'value',
+        'questions',
+        0,
+        'questionText',
+      ]);
+      // The final validator narrows this provisional evidence set to the candidate's exact citations.
+      const isSafePreview =
+        input.evidence.items.length > 0 &&
+        input.evidence.conflicts.length === 0 &&
+        !hasUnsupportedDateOrValue(
+          questionText ?? '',
+          input.evidence.items,
+          appointmentDateFromContext(input.context),
+        ) &&
+        !hasUnsafeClinicalAdvice(questionText ?? '');
+      return questionText && isSafePreview ? questionText : undefined;
+    },
     createMessages(
       input: VisitQuestionResponderInput,
     ): readonly LanguageModelMessage[] {

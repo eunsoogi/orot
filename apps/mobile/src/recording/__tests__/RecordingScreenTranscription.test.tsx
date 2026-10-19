@@ -38,8 +38,8 @@ function transcriptService(
 async function startAndStopRecording() {
   await screen.findByTestId('recording-status');
   await fireEvent.press(screen.getByTestId('recording-consent'));
-  await fireEvent.press(screen.getByTestId('recording-start'));
-  await fireEvent.press(screen.getByTestId('recording-stop'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
 }
 
 test('exposes transcript review and keeps source export available', async () => {
@@ -88,9 +88,7 @@ test('starts transcription after saving audio and keeps progress visible', async
     );
   });
   expect(screen.getByTestId('recording-transcription-progress')).toBeTruthy();
-  expect(screen.getByTestId('recording-source-id')).toHaveTextContent(
-    new RegExp(completed.id),
-  );
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
   expect(screen.queryByTestId('transcript-create')).toBeNull();
 
   await act(async () => finishTranscription?.([]));
@@ -126,9 +124,7 @@ test('shows retry after on-device transcription fails and reuses the saved audio
     await screen.findByTestId('recording-transcription-failed'),
   ).toBeTruthy();
   expect(service.saveSource).toHaveBeenCalledWith(completed);
-  expect(screen.getByTestId('recording-source-id')).toHaveTextContent(
-    new RegExp(completed.id),
-  );
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('recording-transcription-retry'));
   expect(
@@ -159,9 +155,7 @@ test('does not start transcription until the recording source is linked', async 
   await startAndStopRecording();
   expect(service.saveSource).toHaveBeenCalledWith(completed);
   expect(transcripts.transcribe).not.toHaveBeenCalled();
-  expect(screen.getByTestId('recording-source-id')).toHaveTextContent(
-    new RegExp(completed.id),
-  );
+  expect(screen.queryByTestId('recording-source-id')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('recording-retry-save'));
   await waitFor(() => {

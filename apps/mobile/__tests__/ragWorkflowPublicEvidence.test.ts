@@ -53,12 +53,32 @@ async function runPublicFixture(forceMissingAbstract = false) {
       inputTypes: ['text'],
       streaming: false,
       structuredOutput: true,
-      toolCalling: false,
+      toolCalling: true,
     },
     async generate(request: LanguageModelRequest) {
       const reply = script[modelCalls++](request);
+      // Adapt raw mock SDK envelopes to the common provider contract. Native codec
+      // behavior is covered separately by the Simulator integration test.
+      const output = JSON.parse(reply.text!);
+      if (output.kind === 'tool_calls') {
+        return providerSuccess({
+          text: '',
+          toolCalls: output.toolCalls.map(
+            (
+              call: { name: string; arguments: { query: string } },
+              index: number,
+            ) => ({
+              ...call,
+              id: `public-fixture-${modelCalls}-${index}`,
+            }),
+          ),
+          finishReason: 'tool_calls',
+        });
+      }
       return providerSuccess({
-        text: reply.text!,
+        text: JSON.stringify(
+          output.kind === 'structured' ? output.value : output,
+        ),
         toolCalls: [],
         finishReason: 'complete',
       });
@@ -98,11 +118,11 @@ async function runPublicFixture(forceMissingAbstract = false) {
   return { result, modelCalls, batch, requestedQuery };
 }
 
-test('public success fixture reaches the third model call and cites retrieved evidence', async () => {
+test('public success fixture calls a tool then cites retrieved evidence', async () => {
   const { result, modelCalls, batch, requestedQuery } =
     await runPublicFixture();
   expect(result.status).toBe('result');
-  expect(modelCalls).toBe(3);
+  expect(modelCalls).toBe(2);
   expect(requestedQuery).toBe('(sleep duration adults) AND HAS_ABSTRACT:y');
   expect(batch?.items).toHaveLength(5);
   expect(batch?.coverage[0].gaps).toEqual([]);
@@ -112,8 +132,10 @@ test('public success fixture reaches the third model call and cites retrieved ev
   expect(result.value.answer).toContain('mock');
 });
 
-test('missing abstracts still stop before the final model call despite the success query', async () => {
+test('missing abstracts still reject the final answer despite the success query', async () => {
   const { result, modelCalls, batch } = await runPublicFixture(true);
+  // Native tool results are returned to the model even when incomplete; final
+  // coverage validation must reject its otherwise well-formed answer.
   expect(modelCalls).toBe(2);
   expect(batch?.items).toHaveLength(5);
   expect(batch?.coverage[0].gaps).toEqual([
@@ -121,6 +143,7 @@ test('missing abstracts still stop before the final model call despite the succe
   ]);
   expect(result).toMatchObject({
     status: 'needs_clarification',
-    reason: 'The available evidence has gaps, conflicts, or truncation.',
+    reason:
+      'The available evidence has gaps, conflicts, truncation, or no coverage.',
   });
 });

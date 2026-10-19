@@ -7,6 +7,7 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 import type { ProviderSelectionStore } from '../../providers/selection/types';
 import type { LocalHealthEvidenceInventory } from '../../healthEvidence/localEvidenceRepository';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
+import type { EvidenceSearchTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 
 export const apple = createAppleSelectionOption('available');
@@ -23,6 +24,40 @@ export const completeInventory: LocalHealthEvidenceInventory = {
   records: [],
   recordCount: 0,
 };
+
+export function candidatesForInventory(
+  inventory: LocalHealthEvidenceInventory,
+) {
+  const { records, recordCount, ...catalog } = inventory;
+  return {
+    catalog: { ...catalog, totalRecordCount: recordCount },
+    candidates: records,
+    dependencies: [],
+    hasMoreCandidates: false,
+  };
+}
+
+export const completeCandidates = candidatesForInventory(completeInventory);
+
+/** Integration runners explicitly request evidence, like the provider tool-call boundary. */
+export async function searchFixtureEvidence(
+  tools: readonly EvidenceSearchTool[],
+  sourceKind: 'reviewed_memory' | 'personal_record' = 'reviewed_memory',
+) {
+  const tool = tools.find(value => value.sourceKind === sourceKind);
+  if (!tool) throw new Error('Missing fixture evidence tool.');
+  const result = await tool.search({
+    operationRunId: 'integration-fixture',
+    operationKey: 'tool-1',
+    input: { query: '기록 내용' },
+    allowedScope: { sourceKinds: [sourceKind] },
+    resultLimit: 8,
+    maxPayloadBytes: 64 * 1024,
+    signal: new AbortController().signal,
+  });
+  if ('status' in result) throw new Error('Unexpected external consent.');
+  return result;
+}
 
 export function memoryRecord(index: number): PersistedMemoryRecord {
   return {
@@ -93,8 +128,9 @@ export function localData(records: readonly PersistedMemoryRecord[]): {
       repository: { readRecord: jest.fn(async () => null) } as never,
       rag: rag as never,
       memoryStorage,
-      loadInventory: jest.fn(async () => completeInventory),
-      loadPersistedChunks: jest.fn(async () => []),
+      readCandidates: jest.fn(async () => completeCandidates),
+      loadCurrentChunks: jest.fn(async () => []),
+      findIdentifiers: jest.fn(async () => []),
       loadStaleArtifacts: jest.fn(async () => []),
       loadMemoryRecords: jest.fn(async () => [...currentRecords]),
     },

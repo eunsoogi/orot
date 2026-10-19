@@ -3,6 +3,7 @@ import { HealthObservationSchema } from '@orot/domain';
 import type { RecordRepository, RecordKind } from '@orot/storage';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import { readVisitEvidenceSnapshots } from './evidenceSourceSnapshots';
 
 export interface VisitQuestionEvidenceMetadata {
   readonly sourceRecordIds: readonly string[];
@@ -127,7 +128,7 @@ export function visitQuestionCitationKey(
   ].join('\u0000');
 }
 
-/** Re-reads every linked source record; a missing source invalidates the RAG citation. */
+/** Re-reads local sources and retains imported HealthKit provenance in the persisted snapshot. */
 export async function mapRagHitToVisitQuestionEvidence(
   repository: Pick<RecordRepository, 'get'>,
   hit: HybridEvidenceSearchHit,
@@ -137,20 +138,16 @@ export async function mapRagHitToVisitQuestionEvidence(
 }> {
   const chunk = hit.chunk;
   const recordKind = VISIT_QUESTION_RECORD_KINDS[chunk.metadata.recordType];
-  const linkedSourceRecordIds = [...new Set(chunk.metadata.sourceRecordIds)];
-  const [sourceRecords, evidenceRecord] = await Promise.all([
-    Promise.all(
-      linkedSourceRecordIds.map(id => repository.get('source_record', id)),
-    ),
-    repository.get(recordKind, chunk.metadata.evidenceId),
-  ]);
-  if (!evidenceRecord || sourceRecords.some(record => !record)) {
-    throw new Error(
-      'RAG evidence or its source records changed while visit questions were being prepared.',
-    );
-  }
-
-  const sourceRecordRevisions = sourceRecords.map((record, index) => ({
+  const {
+    evidenceRecord,
+    sourceIds: linkedSourceRecordIds,
+    snapshots,
+  } = await readVisitEvidenceSnapshots(repository, recordKind, {
+    evidenceId: chunk.metadata.evidenceId,
+    sourceRecordIds: chunk.metadata.sourceRecordIds,
+    structured: chunk.metadata.evidenceLocator.kind === 'structured_record',
+  });
+  const sourceRecordRevisions = snapshots.map((record, index) => ({
     sourceId: linkedSourceRecordIds[index]!,
     revision: localEvidenceFingerprint(record),
   }));

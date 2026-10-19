@@ -1,31 +1,19 @@
 import { createLocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import { createLocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
-import { readCompleteEvidenceInventory } from '../../healthEvidence/completeEvidenceInventory';
-import type {
-  LocalHealthEvidenceInventory,
-  LocalHealthEvidenceRepository,
-} from '../../healthEvidence/localEvidenceRepository';
+import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
+import type { LocalEvidenceData } from '../../healthEvidence/localEvidenceData';
+import type { LocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
-import {
-  openLocalAgentMemoryDatabase,
-  openLocalStorage,
-} from '../../storage/secureDatabase';
-import { buildPersistedEvidenceChunks } from '@orot/rag';
-import type { EvidenceChunk } from '@orot/rag';
+import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
-import { readCurrentTranscriptInvalidations } from './transcriptInvalidations';
-import type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
-export interface AiFeatureLocalData {
+export interface AiFeatureLocalData extends LocalEvidenceData {
   readonly repository: LocalHealthEvidenceRepository;
   readonly rag: Pick<LocalE5RagService, 'index' | 'search'>;
   readonly memoryStorage: Pick<SqlCipherAgentMemoryStorage, 'listRecords'>;
-  loadInventory(signal?: AbortSignal): Promise<LocalHealthEvidenceInventory>;
-  loadPersistedChunks(): Promise<EvidenceChunk[]>;
-  loadStaleArtifacts(): Promise<readonly StaleEvidenceArtifact[]>;
   loadMemoryRecords(): Promise<readonly PersistedMemoryRecord[]>;
 }
 
@@ -43,10 +31,7 @@ export function openAiFeatureLocalData(): Promise<AiFeatureLocalData> {
 }
 
 async function openDefault(): Promise<AiFeatureLocalData> {
-  const [database, records] = await Promise.all([
-    openLocalAgentMemoryDatabase(),
-    openLocalStorage(),
-  ]);
+  const database = await openLocalAgentMemoryDatabase();
   const repository = createLocalHealthEvidenceRepository(database);
   const rag = createLocalE5RagService(database);
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
@@ -54,9 +39,7 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     repository,
     rag,
     memoryStorage,
-    loadInventory: signal => readCompleteEvidenceInventory(database, signal),
-    loadPersistedChunks: () => buildPersistedEvidenceChunks(records),
-    loadStaleArtifacts: () => readCurrentTranscriptInvalidations(records),
+    ...createLocalEvidenceData(database),
     loadMemoryRecords: () => memoryStorage.listRecords(),
   };
 }

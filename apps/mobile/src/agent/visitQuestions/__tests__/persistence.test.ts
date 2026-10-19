@@ -162,7 +162,7 @@ describe('saving reviewed visit questions', () => {
     });
 
     await expect(saveReviewedVisitQuestions(input(store))).rejects.toThrow(
-      /source record was deleted/i,
+      /source records changed/i,
     );
     expect(store.list('visit_question')).toEqual([
       oldQuestion('old-a', 'appointment-1'),

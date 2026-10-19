@@ -75,10 +75,14 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskVersion: string;
   readonly systemPrompt: string;
   readonly resultSchema: JsonObject;
+  /** Projects only approved display text from partial structured JSON; omitted tasks never expose raw tokens. */
+  projectStreamedText?(rawOutput: string, input: TaskResponderInput): string | undefined;
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
+  /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
+  readonly requireAllEvidenceCitations?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
@@ -173,4 +177,24 @@ export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
   readonly signal?: AbortSignal;
+  /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
+  readonly onProgress?: (event: MultiAgentProgressEvent) => void;
+  /** Receives task-projected display text only; structured output and citations stay private. */
+  readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
 }
+
+export type MultiAgentProgressEvent =
+  | {
+      readonly type: 'model_started';
+      readonly phase: 'task_response' | 'evidence_research' | 'revised_response';
+    }
+  | {
+      readonly type: 'evidence_search';
+      readonly status: 'started' | 'completed' | 'failed' | 'cancelled';
+      readonly sourceKind: import('./evidenceContracts').EvidenceSourceKind;
+    };
+
+export type MultiAgentResponderStreamEvent =
+  | { readonly type: 'started' }
+  | { readonly type: 'text_delta'; readonly text: string }
+  | { readonly type: 'text_snapshot'; readonly text: string };

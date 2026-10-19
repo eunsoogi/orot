@@ -98,6 +98,8 @@ export interface StructuredOutputFormat {
 export interface LanguageModelRequest {
   readonly messages: readonly LanguageModelMessage[];
   readonly tools?: readonly ToolDefinition[];
+  /** Require one provider-selected tool before answering; omitted keeps normal provider selection. */
+  readonly toolChoice?: 'required';
   readonly responseFormat?: StructuredOutputFormat;
   readonly maxOutputTokens?: number;
   readonly temperature?: number;
@@ -115,6 +117,8 @@ export interface LanguageModelResponse {
 
 export type LanguageModelStreamEvent =
   | { readonly type: 'text_delta'; readonly text: string }
+  /** Replaces the current partial response when a structured provider revises its snapshot. */
+  | { readonly type: 'text_snapshot'; readonly text: string }
   | { readonly type: 'tool_call'; readonly toolCall: ToolCall }
   | { readonly type: 'completed'; readonly response: LanguageModelResponse };
 

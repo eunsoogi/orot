@@ -87,6 +87,8 @@ function preparedContext(): Extract<
     query: '최근 수면 변화',
     evidence: collection,
     searchEvidence: async () => collection,
+    reloadPersonalEvidence: async reference =>
+      reference.evidenceId === evidence.evidenceId ? evidence : undefined,
     revalidateEvidence: async references =>
       references.every(
         reference =>

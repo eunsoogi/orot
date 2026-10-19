@@ -105,8 +105,15 @@ enum NavigationUITestConditions {
         }
         var previous = anchor.frame
         for _ in 0 ..< 20 {
-            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            // Capture each origin once. Resolving the moving scroll element at
+            // every synthesized touch adds AX round trips and can move the origin.
+            // Keep the same travel and independently observe the content afterward.
+            let applicationFrame = app.frame
+            let scrollFrame = scroll.frame
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let x = scrollFrame.midX - applicationFrame.minX
+            let start = origin.withOffset(CGVector(dx: x, dy: scrollFrame.minY + scrollFrame.height * 0.75 - applicationFrame.minY))
+            let end = origin.withOffset(CGVector(dx: x, dy: scrollFrame.minY + scrollFrame.height * 0.2 - applicationFrame.minY))
             start.press(forDuration: 0.05, thenDragTo: end)
             let current = anchor.element.frame
             if abs(current.minY - previous.minY) < 0.5 {

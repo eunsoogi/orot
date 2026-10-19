@@ -2,6 +2,7 @@ import type {
   LanguageModelProvider,
   LanguageModelRequest,
   LanguageModelResponse,
+  LanguageModelStreamEvent,
   ProviderErrorCode,
   TelemetryEvent,
   TelemetryOperation,
@@ -21,6 +22,10 @@ export type ModelCallOutcome =
   | { readonly status: 'unavailable'; readonly errorCode: ProviderErrorCode };
 
 type ProviderCallOutcome = Exclude<ModelCallOutcome, { readonly status: 'consent_required' }>;
+type LanguageModelTextEvent = Extract<
+  LanguageModelStreamEvent,
+  { readonly type: 'text_delta' | 'text_snapshot' }
+>;
 
 export type ObservedOperation<T> =
   | { readonly kind: 'value'; readonly value: T }
@@ -66,6 +71,7 @@ async function collectStream(
   provider: LanguageModelProvider,
   request: LanguageModelRequest,
   signal: AbortSignal,
+  onTextEvent?: (event: LanguageModelTextEvent) => void,
 ): Promise<ProviderCallOutcome> {
   const iterator = provider.stream!(request, { signal })[Symbol.asyncIterator]();
   const operation = (async () => {
@@ -75,7 +81,25 @@ async function collectStream(
       if (signal.aborted) return undefined;
       if (next.done) break;
       if (!next.value.ok) return { ok: false as const, errorCode: next.value.error.code };
-      if (next.value.value.type === 'completed') response = next.value.value.response;
+      if (next.value.value.type === 'text_delta' || next.value.value.type === 'text_snapshot') {
+        try {
+          onTextEvent?.(next.value.value);
+        } catch {
+          // A responder projection must not interrupt provider collection or validation.
+        }
+      }
+      if (next.value.value.type === 'completed') {
+        response = next.value.value.response;
+        try {
+          // The normalized result may correct the last provider snapshot.
+          onTextEvent?.({
+            type: 'text_snapshot',
+            text: next.value.value.response.text,
+          });
+        } catch {
+          // Display projection failures cannot interrupt response validation.
+        }
+      }
     }
     return response
       ? { ok: true as const, value: response }
@@ -139,6 +163,7 @@ export async function callModel(
   consent: ExecutionConsentPort,
   signal: AbortSignal,
   telemetry?: TelemetrySink,
+  onTextEvent?: (event: LanguageModelTextEvent) => void,
 ): Promise<ModelCallOutcome> {
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   const consentSnapshot = serializedRequest(request);
@@ -175,15 +200,14 @@ export async function callModel(
   }
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
-  if (
-    provider.capabilities.streaming &&
-    provider.stream &&
-    !(guided && provider.capabilities.structuredOutputStreaming === false)
-  ) {
+  const canStreamGuidedResponse =
+    provider.capabilities.structuredOutputStreaming !== false &&
+    (provider.capabilities.structuredOutputStreaming !== true || onTextEvent !== undefined);
+  if (provider.capabilities.streaming && provider.stream && (!guided || canStreamGuidedResponse)) {
     const startedAt = Date.now();
     let result: ProviderCallOutcome;
     try {
-      result = await collectStream(provider, request, signal);
+      result = await collectStream(provider, request, signal, onTextEvent);
     } catch {
       result = { status: 'unavailable', errorCode: 'internal_error' };
     }

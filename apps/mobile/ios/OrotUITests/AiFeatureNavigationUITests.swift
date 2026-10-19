@@ -16,7 +16,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-empty-recordings", navigationID: "navigation-tab-home")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "records-open-blood-pressure", navigationID: "navigation-tab-records")
+        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "records-open-health-library", navigationID: "navigation-tab-records")
         let recording = node(app, "records-new-recording")
         FormUITestConditions.reveal(recording, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         recording.tap()
@@ -75,7 +75,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         XCTAssertTrue(node(app, "schedule-open-appointments").exists)
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
-        XCTAssertEqual(node(app, "calendar-connect").label, "캘린더 일정 불러오기")
+        XCTAssertFalse(node(app, "calendar-connect").exists)
         RecordingFixtureUITestConditions.capture(app, "default-ai-route-recovery-and-calendar-linking", testCase: self)
     }
 

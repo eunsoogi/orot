@@ -7,6 +7,7 @@ import { backupKo } from './backupKo';
 import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
 import { healthRecordsKo } from './healthRecords';
+import { healthkitSettingsKo } from './healthkitSettings';
 import { probeKo } from './probeKo';
 
 export const ko = {
@@ -31,20 +32,25 @@ export const ko = {
   'navigation.tabs.settings': '설정',
   'navigation.tabs.settingsAccessibility': '설정 탭',
   'records.title': '기록',
-  'records.newRecording': '새 녹음',
+  'records.newRecording': '새 상담 녹음',
+  'records.subtitle': '상담 기록과 가져온 자료를 확인해요.',
   'records.import': '기록 가져오기',
   'records.recordings': '진료 녹음',
-  'records.healthRecords': '건강 기록',
+  'records.savedRecordingsSummary': '녹음과 전사 내용을 확인해요.',
+  'records.healthRecords': '가져온 건강 기록',
   'schedule.title': '일정',
-  'schedule.manageAppointments': '진료 일정 관리',
+  'schedule.subtitle': '일정을 확인하고 진료를 준비해요.',
+  'schedule.manageAppointments': '예약 관리',
+  'schedule.classifyAppointments': 'AI로 일정 분류',
+  'schedule.classifyAppointmentsHint': '필요할 때만 실행',
   'settings.title': '설정',
   'settings.aiAccounts': 'AI 및 계정',
   'settings.provider': 'AI 제공자와 모델',
   'settings.providerSummary': '선택한 AI 관리',
   'settings.accounts': '연결된 계정',
   'settings.accountsSummary': '계정 연결 상태 확인',
-  'settings.dataPrivacy': '데이터와 개인정보',
-  'settings.permissions': '권한과 개인정보',
+  'settings.dataPrivacy': '기타 설정',
+  'settings.permissions': '개인정보 및 권한',
   'settings.permissionGuidance':
     '마이크, 음성 인식, 캘린더, 건강 기록 접근은 기능을 사용할 때 필요한 범위에서 요청해요. 권한 변경은 iOS 설정에서 할 수 있어요.',
   'settings.calendarPrivacy': '캘린더',
@@ -143,6 +149,10 @@ export const ko = {
   'calendar.tryAgainAfterPermission':
     '권한을 확인할 수 없어요. 다시 시도해 주세요.',
   'calendar.nextVisit': '다음 외래 방문',
+  'calendar.today': '오늘',
+  'calendar.additionalEvents': '일정 {count}개 더 있음',
+  'calendar.previousMonth': '이전 달, {month}',
+  'calendar.nextMonth': '다음 달, {month}',
   'calendar.eventNoTitle': '제목 없는 일정',
   'calendar.allDay': '하루 종일',
   'calendar.eventChanged':
@@ -158,4 +168,5 @@ export const ko = {
   ...medicalAppointmentsKo,
   ...providerAccountsKo,
   ...healthRecordsKo,
+  ...healthkitSettingsKo,
 } as const;

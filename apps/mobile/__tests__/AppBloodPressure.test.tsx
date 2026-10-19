@@ -22,12 +22,11 @@ jest.mock('../src/healthkit/healthObservationLibrary', () => ({
   listLocalHealthObservations: jest.fn(async () => []),
 }));
 
-// The dedicated backup recovery test covers startup; route tests avoid loading SQLCipher.
+// Startup recovery is covered separately; these route tests use injected records.
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
 
-// XCUITest covers this route with a synthetic HealthKit fixture; no real account is read.
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -44,60 +43,60 @@ async function renderApp(props: ComponentProps<typeof App> = {}) {
   );
 }
 
-async function openBloodPressure() {
+async function openHealthRecords() {
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
-  await fireEvent.press(screen.getByTestId('records-open-blood-pressure'));
+  expect(screen.getByTestId('records-open-health-library')).toBeTruthy();
+  expect(screen.queryByTestId('records-health-import')).toBeNull();
+  expect(screen.queryByTestId('records-open-common-observations')).toBeNull();
+  expect(screen.queryByTestId('records-open-blood-pressure')).toBeNull();
+  await fireEvent.press(screen.getByTestId('records-open-health-library'));
 }
 
-// The saved-record list keeps the shared back action disabled while it loads.
+// The chart and its separate list keep the shared Back and Home actions available.
 async function waitForNavigationBackEnabled() {
   await waitFor(() =>
     expect(screen.getByTestId('navigation-back')).toBeEnabled(),
   );
 }
 
-test('shows an import summary and opens the saved health records library', async () => {
+test('opens the chart-first health library without a manual blood-pressure import', async () => {
   const observations = mapBloodPressureCorrelation(
     correlation('app-screen-correlation'),
     '2026-10-05T10:00:00.000Z',
   ).observations;
   const loadHealthObservations = jest.fn(async () => [...observations]);
-  jest.mocked(importLocalBloodPressure).mockResolvedValue({
-    status: 'completed',
-    readAuthorization: 'notObservable',
-    upserted: 0,
-    deleted: 0,
-    cursorAdvanced: false,
-  });
   await renderApp({ loadHealthObservations });
 
-  await openBloodPressure();
-  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
-  expect(screen.queryByText('수축기 120 mmHg')).toBeNull();
-  expect(loadHealthObservations).not.toHaveBeenCalled();
+  await openHealthRecords();
+  expect(await screen.findByRole('header', { name: '건강 기록' })).toBeTruthy();
+  expect(
+    await screen.findByTestId('health-record-chart-blood_pressure'),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('health-record-chart-blood_pressure').props
+      .accessibilityLabel,
+  ).toContain('120 mmHg');
+  expect(
+    screen.getByTestId('health-record-chart-blood_pressure').props
+      .accessibilityLabel,
+  ).toContain('80 mmHg');
+  expect(loadHealthObservations).toHaveBeenCalledTimes(1);
   expect(importLocalBloodPressure).not.toHaveBeenCalled();
 
-  await fireEvent.press(screen.getByTestId('blood-pressure-import'));
-  expect(importLocalBloodPressure).toHaveBeenCalledTimes(1);
+  await fireEvent.press(
+    screen.getByTestId('health-record-open-detail-blood_pressure'),
+  );
   expect(
-    await screen.findByTestId('blood-pressure-result-saved-count'),
-  ).toHaveTextContent('0개');
+    (await screen.findByTestId('health-record-row-0-systolic')).props
+      .accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
   expect(
-    screen.getByTestId('blood-pressure-result-deleted-count'),
-  ).toHaveTextContent('0개');
-
-  await fireEvent.press(screen.getByTestId('blood-pressure-open-library'));
-  expect(await screen.findByRole('header', { name: '건강 기록' })).toBeTruthy();
-  expect(await screen.findByText('수축기')).toBeTruthy();
-  expect(await screen.findByText('120 mmHg')).toBeTruthy();
-  expect(loadHealthObservations).toHaveBeenCalledTimes(1);
-
-  await waitForNavigationBackEnabled();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
+  ).toBe('이완기 80 mmHg');
 });
 
-test('keeps the blood-pressure probe loader compatible with the unified library', async () => {
+test('keeps the blood-pressure probe loader compatible with the chart library', async () => {
   const observations = mapBloodPressureCorrelation(
     correlation('legacy-app-loader'),
     '2026-10-05T10:00:00.000Z',
@@ -105,29 +104,24 @@ test('keeps the blood-pressure probe loader compatible with the unified library'
   const loadBloodPressureObservations = jest.fn(async () => [...observations]);
   await renderApp({ loadBloodPressureObservations });
 
-  await openBloodPressure();
-  await fireEvent.press(
-    await screen.findByTestId('blood-pressure-open-library'),
-  );
-
-  expect(await screen.findByText('120 mmHg')).toBeTruthy();
+  await openHealthRecords();
+  expect(
+    await screen.findByTestId('health-record-chart-blood_pressure'),
+  ).toBeTruthy();
   expect(loadBloodPressureObservations).toHaveBeenCalledTimes(1);
 });
 
-test('keeps the import action in its own shared safe-area scroller', async () => {
-  const loadHealthObservations = jest.fn(async () => []);
-  await renderApp({ loadHealthObservations });
+test('keeps the health library in its own scroller beside shared navigation', async () => {
+  await renderApp({ loadHealthObservations: async () => [] });
+  await openHealthRecords();
 
-  await openBloodPressure();
-
-  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
-  // Keep the screen-owned scroller beside the shared bottom navigation action.
+  expect(await screen.findByRole('header', { name: '건강 기록' })).toBeTruthy();
+  await waitForNavigationBackEnabled();
   const routeRoot = screen.getByTestId('navigation-keyboard-avoiding-root');
   const routeContents = within(routeRoot);
-  expect(routeRoot).toBeVisible();
+  expect(routeContents.getByTestId('health-records-scroll')).toBeVisible();
   expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();
-  expect(routeContents.getByTestId('blood-pressure-scroll')).toBeVisible();
-  expect(routeContents.getByTestId('blood-pressure-import')).toBeVisible();
   expect(screen.getByTestId('navigation-back')).toBeVisible();
-  expect(loadHealthObservations).not.toHaveBeenCalled();
+  expect(screen.getByTestId('navigation-home')).toBeVisible();
+  expect(screen.queryByTestId('blood-pressure-import')).toBeNull();
 });

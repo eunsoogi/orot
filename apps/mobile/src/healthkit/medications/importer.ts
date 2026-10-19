@@ -5,6 +5,7 @@ import {
   DOSE_EVENT_CHECKPOINT_KEY,
   MEDICATION_DEFINITION_LIMIT,
 } from './syncTypes';
+import { rememberHealthKitAutoSyncRequest } from '../autoSyncCheckpoint';
 
 export type { MedicationSyncOptions, MedicationSyncResult } from './syncTypes';
 
@@ -12,6 +13,13 @@ export type { MedicationSyncOptions, MedicationSyncResult } from './syncTypes';
 export async function syncHealthKitMedications(
   options: MedicationSyncOptions,
 ): Promise<MedicationSyncResult> {
+  if (options.rememberForAutoSync) {
+    await rememberHealthKitAutoSyncRequest(
+      options.repository,
+      'medications',
+      options.now,
+    );
+  }
   const checkpoint = await options.repository.getSyncCheckpoint(
     DOSE_EVENT_CHECKPOINT_KEY,
   );

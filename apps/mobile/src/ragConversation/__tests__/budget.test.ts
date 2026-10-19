@@ -4,8 +4,9 @@ import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evi
 import { createExternalConversationEvidence } from '../../aiFeatures/integration/externalConversationEvidence';
 import { createAppleSelectionOption } from '../../providers/selection/options';
 import { RAG_CONVERSATION_BUDGET } from '../budget';
+import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 
-test('shipping literature conversations opt into the shared 90-second profile while other routes keep 45 seconds', () => {
+test('shipping evidence workflows share the bounded 90-second profile', () => {
   const option = createAppleSelectionOption('available');
   const input = {
     selected: {
@@ -26,7 +27,7 @@ test('shipping literature conversations opt into the shared 90-second profile wh
     search: async () => ({ status: 'empty' }),
   });
   expect(executionOptions(input).execution.budget).toBe(
-    DEFAULT_MULTI_AGENT_BUDGET,
+    EVIDENCE_WORKFLOW_BUDGET,
   );
   expect(executionOptions({ ...input, external }).execution.budget).toBe(
     RAG_CONVERSATION_BUDGET,

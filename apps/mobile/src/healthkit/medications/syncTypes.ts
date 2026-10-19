@@ -40,4 +40,6 @@ export interface MedicationSyncOptions {
   readonly healthKit: MedicationHealthKitClient;
   readonly repository: MedicationRepository;
   readonly now: () => string;
+  /** Set only by the explicit Settings setup after the user selected medication records. */
+  readonly rememberForAutoSync?: boolean;
 }

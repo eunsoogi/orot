@@ -1,3 +1,4 @@
+import type { EvidenceCandidateScope } from '../../healthEvidence/evidenceCandidateScope';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { createLocalEvidenceSnapshot } from './evidenceSnapshot';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
@@ -6,29 +7,85 @@ import { fingerprint } from './evidenceUtils';
 
 const indexedChunkFingerprints = new WeakMap<object, Map<string, string>>();
 
-/** Rebuilds current local sources and transcript invalidation state for one operation. */
-export async function loadFeatureEvidenceSnapshot(
+/** A memory tool reads only reviewed memory; unrelated clinical records are never selected or embedded. */
+export async function loadFeatureMemorySnapshot(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
   signal: AbortSignal,
 ): Promise<LocalEvidenceSnapshot> {
   if (signal.aborted)
     throw new Error('The local evidence request was cancelled.');
-  const [inventory, persistedChunks, memoryRecords, staleArtifacts] =
-    await Promise.all([
-      data.loadInventory(signal),
-      data.loadPersistedChunks(),
-      data.loadMemoryRecords(),
-      data.loadStaleArtifacts(),
-    ]);
+  const memoryRecords = await data.loadMemoryRecords();
+  const identifiers = await data.findIdentifiers(
+    JSON.stringify(
+      memoryRecords.map(record => ({ text: record.text, meta: record.meta })),
+    ),
+    signal,
+  );
   if (signal.aborted)
     throw new Error('The local evidence request was cancelled.');
+  for (const identifier of identifiers)
+    registry.registerSensitiveIdentifier(identifier);
+  return createLocalEvidenceSnapshot({
+    // The personal corpus was not searched, so this snapshot makes no inventory claim about it.
+    inventory: {
+      inventoryComplete: false,
+      availableKinds: [],
+      queriedKinds: [],
+      unsupportedKinds: [],
+      truncatedKinds: [],
+    },
+    records: [],
+    persistedChunks: [],
+    loadCurrentPersistedChunks: async () => [],
+    staleArtifacts: [],
+    loadCurrentStaleArtifacts: async () => [],
+    repository: data.repository,
+    memoryRecords,
+    memoryStorage: data.memoryStorage,
+    registry,
+  });
+}
+
+/** Loads a ranked window plus exact dependencies; catalog coverage is separate from payload size. */
+export async function loadFeatureEvidenceSnapshot(
+  data: AiFeatureLocalData,
+  registry: LocalEvidenceReferenceRegistry,
+  signal: AbortSignal,
+  query = '',
+  scope?: EvidenceCandidateScope,
+): Promise<LocalEvidenceSnapshot> {
+  if (signal.aborted)
+    throw new Error('The local evidence request was cancelled.');
+  const selection = await data.readCandidates(query, signal, scope);
+  const identities = selection.candidates.map(entry => ({
+    kind: entry.kind,
+    id: entry.record.id,
+  }));
+  const persistedChunks = await data.loadCurrentChunks(identities, signal);
+  const staleArtifacts = await data.loadStaleArtifacts(identities, signal);
+  const memoryRecords = await data.loadMemoryRecords();
+  const records = [...selection.candidates, ...selection.dependencies];
+  const identifiers = await data.findIdentifiers(
+    JSON.stringify(records) +
+      JSON.stringify(
+        memoryRecords.map(record => ({ text: record.text, meta: record.meta })),
+      ),
+    signal,
+  );
+  if (signal.aborted)
+    throw new Error('The local evidence request was cancelled.');
+  for (const identifier of identifiers)
+    registry.registerSensitiveIdentifier(identifier);
   const snapshot = await createLocalEvidenceSnapshot({
-    inventory,
+    inventory: selection.catalog,
+    records,
+    candidateRecords: selection.candidates,
+    hasMoreCandidates: selection.hasMoreCandidates,
     persistedChunks,
-    loadCurrentPersistedChunks: () => data.loadPersistedChunks(),
+    loadCurrentPersistedChunks: () => data.loadCurrentChunks(identities),
     staleArtifacts,
-    loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(),
+    loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(identities),
     repository: data.repository,
     memoryRecords,
     memoryStorage: data.memoryStorage,

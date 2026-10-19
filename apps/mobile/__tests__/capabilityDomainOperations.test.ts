@@ -34,6 +34,7 @@ const unavailable = {
   generation: 'not-run',
   sourceIdPreserved: 'not-run',
   questionText: 'not-run',
+  streamedUpdates: 'not-run',
   cancellation: 'not-run',
   inferenceStop: 'unverified',
 };
@@ -42,6 +43,7 @@ const available = {
   generation: 'passed',
   sourceIdPreserved: 'passed',
   questionText: '선생님, 수면 변화에 관해 무엇을 확인하면 좋을까요?',
+  streamedUpdates: 2,
   cancellation: 'cancelled',
   inferenceStop: 'unverified',
 };

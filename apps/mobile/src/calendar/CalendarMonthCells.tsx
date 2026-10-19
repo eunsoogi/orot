@@ -11,6 +11,7 @@ import type { CalendarEvent } from './types';
 export function calendarDayAccessibilityLabel(
   dateKey: string,
   dayEvents: CalendarMonthDisplayEvent[],
+  today = false,
 ): string {
   const visit = dayEvents.some(item => item.isNextVisit)
     ? [t('calendar.nextVisit')]
@@ -21,7 +22,21 @@ export function calendarDayAccessibilityLabel(
       item =>
         item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle'),
     );
-  return [formatCalendarDate(dateKey), ...visit, ...titles].join(', ');
+  const additionalEvents =
+    dayEvents.length > titles.length
+      ? [
+          t('calendar.additionalEvents', {
+            count: dayEvents.length - titles.length,
+          }),
+        ]
+      : [];
+  return [
+    formatCalendarDate(dateKey),
+    ...(today ? [t('calendar.today')] : []),
+    ...visit,
+    ...titles,
+    ...additionalEvents,
+  ].join(', ');
 }
 
 interface CalendarDayCellProps {
@@ -29,6 +44,7 @@ interface CalendarDayCellProps {
   dayEvents: CalendarMonthDisplayEvent[];
   label: string;
   selected: boolean;
+  today: boolean;
   onPress: (dateKey: string) => void;
 }
 
@@ -37,41 +53,73 @@ export function CalendarDayCell({
   dayEvents,
   label,
   selected,
+  today,
   onPress,
 }: CalendarDayCellProps) {
   const hasNextVisit = dayEvents.some(item => item.isNextVisit);
-  // Keep the date as one screen-reader stop; its button label summarizes these visual marks.
+  // Keep each date to one screen-reader stop; its label explains the decorative dots and badge.
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      hitSlop={{ top: 2, bottom: 2, left: 1, right: 1 }}
       onPress={() => onPress(day.dateKey)}
       style={[
         styles.calendarDay,
         !day.belongsToMonth && styles.calendarOutsideDay,
-        selected && styles.calendarSelectedDay,
       ]}
       testID={`calendar-day-${day.dateKey}`}
     >
-      <Text style={styles.calendarDayNumber}>{day.dayNumber}</Text>
-      {dayEvents.length ? (
+      <View
+        style={[
+          styles.calendarDayFace,
+          selected && styles.calendarSelectedDay,
+          !selected && today && styles.calendarTodayDay,
+        ]}
+        testID={`calendar-day-face-${day.dateKey}`}
+      >
         <Text
-          accessibilityElementsHidden
-          style={styles.calendarEventCount}
-          testID={`calendar-day-event-count-${day.dateKey}`}
+          style={[
+            styles.calendarDayNumber,
+            selected && styles.calendarSelectedDayNumber,
+            !selected && today && styles.calendarTodayDayNumber,
+          ]}
         >
-          {dayEvents.length}
+          {day.dayNumber}
         </Text>
-      ) : null}
-      {hasNextVisit ? (
-        <Text
-          accessibilityElementsHidden
-          style={styles.calendarVisitMarker}
-          testID={`calendar-day-next-visit-${day.dateKey}`}
-        >
-          ★
-        </Text>
+        {dayEvents.length ? (
+          <View
+            accessibilityElementsHidden
+            style={styles.calendarEventMarkers}
+            testID={`calendar-day-event-markers-${day.dateKey}`}
+          >
+            {Array.from(
+              { length: Math.min(dayEvents.length, 3) },
+              (_, index) => (
+                <View
+                  key={`${day.dateKey}-event-${index}`}
+                  style={[
+                    styles.calendarEventMarker,
+                    selected && styles.calendarSelectedEventMarker,
+                  ]}
+                />
+              ),
+            )}
+          </View>
+        ) : null}
+        {hasNextVisit ? (
+          <Text
+            accessibilityElementsHidden
+            style={styles.calendarVisitMarker}
+            testID={`calendar-day-next-visit-${day.dateKey}`}
+          >
+            ★
+          </Text>
+        ) : null}
+      </View>
+      {today ? (
+        <Text style={styles.calendarTodayLabel}>{t('calendar.today')}</Text>
       ) : null}
     </Pressable>
   );

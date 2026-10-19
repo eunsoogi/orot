@@ -11,6 +11,7 @@ import type {
 import type { JsonObject } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
 import { guidedSchema } from './guidedSchema';
+import { taskCitationSchema } from './citationSchema';
 
 export type TaskRoleOutput<TResult> =
   | { readonly type: 'result'; readonly value: TResult; readonly citations: readonly unknown[] }
@@ -45,9 +46,10 @@ export function isEvidenceNeed(value: unknown): value is EvidenceNeed {
 export function taskResponseSchema<TResult>(
   contract: TaskResponderContract<TResult>,
   input?: TaskResponderInput,
+  nativeResearch = false,
 ): JsonObject {
   const ids = input?.evidence.items.map((item) => item.evidenceId) ?? [];
-  return {
+  const schema = {
     title: 'TaskResponse',
     description:
       'Choose a task result or a necessary evidence request using the task instructions and supplied evidence. ' +
@@ -80,20 +82,16 @@ export function taskResponseSchema<TResult>(
         properties: {
           type: { type: 'string', enum: ['result'] },
           value: guidedSchema(contract.resultSchema),
-          citations: {
-            type: 'array',
-            // Generated last: cite the result already written, not every available source.
-            description:
-              'Only evidenceId values actually used in this result. If the result contains nested evidence ID arrays, return their exact unique union. Never add unused IDs.',
-            // The native generator can expand an enum into every available ID.
-            // Prompt guidance selects IDs; citationReferences enforces the allowlist locally.
-            items: { type: 'string' },
-            ...(ids.length ? {} : { maxItems: 0 }),
-          },
+          citations: taskCitationSchema(ids, contract.requireAllEvidenceCitations),
         },
       },
     ],
   } as JsonObject;
+  // Native tools own research turns. Tasks with no available research also generate
+  // only a final result, avoiding an irrelevant union branch in guided generation.
+  return nativeResearch || input?.research?.canRequestEvidence === false
+    ? (schema.anyOf as JsonObject[])[1]!
+    : schema;
 }
 
 export function researcherSchema(tools: readonly EvidenceSearchTool[]): JsonObject {

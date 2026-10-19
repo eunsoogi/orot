@@ -95,8 +95,8 @@ test('actual Linux plan reports separate producers, independent suites and the c
     const value = JSON.parse(result.stdout);
     assert.equal(value.macJobs, 20);
     assert.equal(value.maximumConcurrentMacJobs, 17);
-    assert.equal(value.uniqueTestCases, 86);
-    assert.equal(value.scheduledTestObservations, 86);
+    assert.equal(value.uniqueTestCases, 95);
+    assert.equal(value.scheduledTestObservations, 95);
     assert.equal(value.focusedSelectionObservations, undefined);
     assert.equal(value.totalScheduledTestObservations, undefined);
     assert.equal(value.speechSamples, undefined);

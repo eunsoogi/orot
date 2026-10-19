@@ -2,24 +2,16 @@ import 'react-native-get-random-values';
 import { AppRegistry } from 'react-native';
 import { name as appName } from '../app.json';
 import App from '../App';
-import type { BloodPressureSyncResult } from '../src/healthkit/bloodPressure/types';
+import { designHealthObservations } from './designHealthFixtures';
 
-const illustrativeResult: BloodPressureSyncResult = {
-  status: 'completed',
-  readAuthorization: 'notObservable',
-  upserted: 3,
-  deleted: 1,
-  cursorAdvanced: true,
-};
+const records = designHealthObservations().sort((a, b) =>
+  b.effectiveAt.localeCompare(a.effectiveAt),
+);
+const loadHealthObservationPage = async () => ({ records, nextCursor: null });
 
-/** Renders the Release result layout with display-only counts; it never calls HealthKit or saves fixture records. */
-function BloodPressureVisualProbe() {
-  return (
-    <App
-      importBloodPressure={async () => illustrativeResult}
-      loadHealthObservations={async () => []}
-    />
-  );
+function DesignHealthProbe() {
+  return <App loadHealthObservationPage={loadHealthObservationPage} />;
 }
 
-AppRegistry.registerComponent(appName, () => BloodPressureVisualProbe);
+/** Renders production navigation and health screens with explicitly synthetic local observations. */
+AppRegistry.registerComponent(appName, () => DesignHealthProbe);

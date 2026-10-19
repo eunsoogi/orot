@@ -1,18 +1,18 @@
-import { Button, Text, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
+import { AppSymbol } from '../layout/AppSymbol';
+import { AppText as Text } from '../layout/AppText';
+import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { transcriptEvidenceStyles as styles } from './TranscriptEvidencePanel.styles';
 
 interface TranscriptEvidenceItemProps {
   segment: TranscriptEvidenceSegment;
   history: readonly TranscriptEvidenceSegment[];
-  editing: boolean;
+  collapsed: boolean;
   busy: boolean;
   playing: boolean;
-  draft: string;
-  onDraftChange: (text: string) => void;
-  onSave: () => Promise<void>;
-  onCancel: () => void;
+  onToggleCollapsed: () => void;
   onPlay: () => Promise<void>;
   onEdit: () => void;
 }
@@ -51,13 +51,10 @@ function originLabel(segment: TranscriptEvidenceSegment): string {
 export default function TranscriptEvidenceItem({
   segment,
   history,
-  editing,
+  collapsed,
   busy,
   playing,
-  draft,
-  onDraftChange,
-  onSave,
-  onCancel,
+  onToggleCollapsed,
   onPlay,
   onEdit,
 }: TranscriptEvidenceItemProps) {
@@ -66,99 +63,143 @@ export default function TranscriptEvidenceItem({
       style={styles.segment}
       testID={`transcript-segment-${segment.segmentOrdinal}`}
     >
-      {/* Keep review state beside each segment so machine output stays visibly provisional. */}
-      <Text
-        style={styles.metadata}
-        testID={`transcript-review-${segment.segmentOrdinal}`}
-      >
-        {reviewLabel(segment)}
-      </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-origin-${segment.segmentOrdinal}`}
-      >
-        {originLabel(segment)}
-      </Text>
-      {/* Stored engine and runtime provenance remains available without crowding user-facing review. */}
-      <Text
-        style={styles.metadata}
-        testID={`transcript-range-${segment.segmentOrdinal}`}
-      >
-        {t('recording.transcript.range', {
-          start: timeLabel(segment.audioRange.startMs),
-          end: timeLabel(segment.audioRange.endMs),
-        })}
-      </Text>
-      <Text
-        style={styles.metadata}
-        testID={`transcript-clinician-verification-${segment.segmentOrdinal}`}
-      >
-        {t('recording.transcript.verification.clinicianNotRecorded')}
-      </Text>
-      {editing ? (
-        <TextInput
-          accessibilityLabel={t('recording.transcript.input.label')}
-          multiline
-          onChangeText={onDraftChange}
-          style={styles.input}
-          testID={`transcript-input-${segment.segmentOrdinal}`}
-          value={draft}
-        />
-      ) : (
-        <Text
-          style={styles.text}
-          testID={`transcript-text-${segment.segmentOrdinal}`}
+      <View style={styles.segmentHeadingRow}>
+        <Pressable
+          accessibilityLabel={
+            collapsed
+              ? t('recording.transcript.expandSegment')
+              : t('recording.transcript.collapseSegment')
+          }
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !collapsed }}
+          onPress={onToggleCollapsed}
+          style={styles.segmentHeader}
+          testID={`transcript-segment-toggle-${segment.segmentOrdinal}`}
         >
-          {segment.text}
-        </Text>
-      )}
-      {editing ? (
-        // Keep actions after the editor so the parent can reveal them above the keyboard.
-        <View style={styles.actions}>
-          <Button
-            disabled={busy}
-            onPress={onSave}
-            testID={`transcript-save-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.save')}
+          <View style={styles.segmentHeaderLabels}>
+            <View style={styles.reviewBadge}>
+              <Text
+                style={styles.reviewBadgeText}
+                testID={`transcript-review-${segment.segmentOrdinal}`}
+              >
+                {reviewLabel(segment)}
+              </Text>
+            </View>
+            <Text
+              style={styles.origin}
+              testID={`transcript-origin-${segment.segmentOrdinal}`}
+            >
+              {originLabel(segment)}
+            </Text>
+          </View>
+          <AppSymbol
+            name={collapsed ? 'chevron.down' : 'chevron.up'}
+            size={18}
+            color={appColors.secondary}
           />
-          <Button
-            disabled={busy}
-            onPress={onCancel}
-            testID={`transcript-cancel-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.cancel')}
-          />
-        </View>
-      ) : null}
-      {history.map(revision => (
-        <Text
-          key={revision.id}
-          style={styles.history}
-          testID={`transcript-history-${segment.segmentOrdinal}-${revision.revision}`}
+        </Pressable>
+        <Pressable
+          accessibilityLabel={t('recording.transcript.edit')}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          onPress={onEdit}
+          style={styles.editButton}
+          testID={`transcript-edit-${segment.segmentOrdinal}`}
         >
-          {t('recording.transcript.history', {
-            revision: revision.revision,
-            text: revision.text,
-          })}
-        </Text>
-      ))}
-      {!editing ? (
-        <View style={styles.actions}>
-          <Button
-            disabled={playing}
-            onPress={onPlay}
-            testID={`transcript-play-${segment.segmentOrdinal}`}
-            title={
-              playing
-                ? t('recording.transcript.playing')
-                : t('recording.transcript.play')
-            }
+          <AppSymbol
+            name="square.and.pencil"
+            size={20}
+            color={appColors.primaryText}
           />
-          <Button
-            disabled={busy}
-            onPress={onEdit}
-            testID={`transcript-edit-${segment.segmentOrdinal}`}
-            title={t('recording.transcript.edit')}
-          />
+        </Pressable>
+      </View>
+      {!collapsed ? (
+        <View
+          style={styles.segmentBody}
+          testID={`transcript-segment-body-${segment.segmentOrdinal}`}
+        >
+          <View style={styles.audioCard}>
+            <View style={styles.audioTopRow}>
+              <Pressable
+                accessibilityHint={t('recording.transcript.range', {
+                  start: timeLabel(segment.audioRange.startMs),
+                  end: timeLabel(segment.audioRange.endMs),
+                })}
+                accessibilityLabel={
+                  playing
+                    ? t('recording.transcript.playing')
+                    : t('recording.transcript.play')
+                }
+                accessibilityRole="button"
+                accessibilityState={{ disabled: playing }}
+                disabled={playing}
+                onPress={onPlay}
+                style={styles.playButton}
+                testID={`transcript-play-${segment.segmentOrdinal}`}
+              >
+                <AppSymbol
+                  name={playing ? 'waveform' : 'play.fill'}
+                  size={22}
+                  color={appColors.onPrimary}
+                />
+              </Pressable>
+              <View style={styles.audioRangeCopy}>
+                <Text
+                  style={styles.range}
+                  testID={`transcript-range-${segment.segmentOrdinal}`}
+                >
+                  {t('recording.transcript.range', {
+                    start: timeLabel(segment.audioRange.startMs),
+                    end: timeLabel(segment.audioRange.endMs),
+                  })}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: playing }}
+                  disabled={playing}
+                  onPress={onPlay}
+                  style={styles.playRangeButton}
+                  testID={`transcript-play-range-${segment.segmentOrdinal}`}
+                >
+                  <AppSymbol
+                    name="play.fill"
+                    size={15}
+                    color={appColors.primaryText}
+                  />
+                  <Text style={styles.playRangeLabel}>
+                    {playing
+                      ? t('recording.transcript.playing')
+                      : t('recording.transcript.play')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+          <Text
+            style={styles.textBubble}
+            testID={`transcript-text-${segment.segmentOrdinal}`}
+          >
+            {segment.text}
+          </Text>
+          <Text
+            style={styles.verification}
+            testID={`transcript-clinician-verification-${segment.segmentOrdinal}`}
+          >
+            {t('recording.transcript.verification.clinicianNotRecorded')}
+          </Text>
+          {history.map(revision => (
+            <Text
+              key={revision.id}
+              style={styles.history}
+              testID={`transcript-history-${segment.segmentOrdinal}-${revision.revision}`}
+            >
+              {t('recording.transcript.history', {
+                revision: revision.revision,
+                text: revision.text,
+              })}
+            </Text>
+          ))}
         </View>
       ) : null}
     </View>

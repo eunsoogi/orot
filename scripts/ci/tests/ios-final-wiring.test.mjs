@@ -116,15 +116,33 @@ test('full and focused visible job names use one consistent role and target', ()
   );
 });
 
-test('full integration execution preserves all 86 scheduled observations and eight strict provider cases without a receipt substitution', () => {
+test('full integration execution preserves 95 observations, eight existing provider cases and seven native lifecycle cases', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(scheduled.length, 86);
+  assert.equal(scheduled.length, 95);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 86);
+  assert.equal(identifiers.size, 95);
   const provider = iosTestInventory('provider-data');
-  assert.equal(provider.length, 8);
+  const expectedProvider = [
+    'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
+    'AppleNativeToolLifecycleTests/testCancellationReleasesWaitingCallback',
+    'AppleNativeToolLifecycleTests/testDrainFailureDoesNotStartFreshGeneration',
+    'AppleNativeToolLifecycleTests/testSecondCallbackDuringDrainIsRejected',
+    'AppleNativeToolLifecycleTests/testCancellationDuringDrainReleasesTheNextRequest',
+    'AppleNativeToolLifecycleTests/testWatchdogReleasesAnOrphanedCallback',
+    'AppleNativeToolLifecycleTests/testParallelCallbackFailsWithoutPublishingAnotherTool',
+    'RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
+    'AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
+    'AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',
+    'AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
+    'ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
+    'ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
+    'HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
+    'HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
+  ].map((name) => `OrotIntegrationTests/${name}`);
+  // Exact identities preserve the existing eight cases; a count alone could hide a replacement.
+  assert.deepEqual([...provider].sort(), expectedProvider.sort());
   for (const identifier of provider) assert.ok(identifiers.has(identifier));
   const workflowSource = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
   assert.doesNotMatch(

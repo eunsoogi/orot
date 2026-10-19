@@ -1,19 +1,23 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode, ComponentRef } from 'react';
+import type { ReactNode } from 'react';
 import { ConversationComposer } from './ConversationComposer';
 import { styles } from './ConversationScreen.styles';
-import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
-import { ScrollView, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { ConversationHistory } from './ConversationHistory';
 import { navigationText } from '../i18n/navigation';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { getRagConversationCopy } from './copy';
 import type { RagConversationMessage } from './task';
 import type { RagConversationOutcome } from './service';
+import type { RagConversationObserver } from './service';
+import { progressCopy } from './conversationProgress';
+import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
+import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 
 interface ConversationScreenProps {
   readonly providerSelection?: ReactNode;
@@ -24,6 +28,7 @@ interface ConversationScreenProps {
     question: string,
     previousMessages: readonly RagConversationMessage[],
     signal?: AbortSignal,
+    observer?: RagConversationObserver,
   ) => Promise<RagConversationOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
@@ -40,12 +45,43 @@ export function ConversationScreen({
   const copy = getRagConversationCopy();
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<readonly DisplayMessage[]>([]);
+  const [pendingMessage, setPendingMessage] = useState<{
+    content: string;
+    activity: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const nextMessageId = useRef(0);
   const operationController = useRef<AbortController | null>(null);
   const inputRevision = useRef(0);
-  const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
+  const partialText = useRef('');
+  function cancel() {
+    operationController.current?.abort();
+    operationController.current = null;
+    setBusy(false);
+    retainPartial(copy.progressCancelled, true);
+  }
+  const hasSharedCancel = useAiCancellationAction(
+    busy,
+    cancel,
+    'rag-conversation-cancel',
+  );
+
+  // Incomplete text stays visible but is excluded from future model context.
+  function retainPartial(activity: string, retainEmpty = false) {
+    const content = partialText.current;
+    partialText.current = '';
+    setPendingMessage(null);
+    if (!content && !retainEmpty) return;
+    const message: DisplayMessage = {
+      id: ++nextMessageId.current,
+      role: 'assistant',
+      content,
+      activity,
+      incomplete: true,
+    };
+    setMessages(current => [...current, message]);
+  }
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -70,7 +106,9 @@ export function ConversationScreen({
   async function send() {
     const question = draft.trim();
     if (!question || busy) return;
-    const history = messages.map(({ role, content }) => ({ role, content }));
+    const history = messages
+      .filter(message => !message.incomplete)
+      .map(({ role, content }) => ({ role, content }));
     const userMessage = {
       id: ++nextMessageId.current,
       role: 'user' as const,
@@ -83,9 +121,41 @@ export function ConversationScreen({
     operationController.current = controller;
     setBusy(true);
     setError('');
+    partialText.current = '';
+    setPendingMessage({ content: '', activity: copy.loading });
+    const isCurrentRun = () =>
+      operationController.current === controller && !controller.signal.aborted;
     try {
-      const outcome = await onSend(question, history, controller.signal);
-      if (controller.signal.aborted) return;
+      const observer: RagConversationObserver = {
+        onProgress: event => {
+          if (!isCurrentRun()) return;
+          setPendingMessage(current =>
+            current
+              ? { ...current, activity: progressCopy(event, copy) }
+              : current,
+          );
+        },
+        onTaskStreamEvent: event => {
+          if (!isCurrentRun()) return;
+          partialText.current = applyWorkflowStreamEvent(
+            partialText.current,
+            event,
+          );
+          setPendingMessage({
+            content: partialText.current,
+            activity: copy.progressAnswer,
+          });
+        },
+      };
+      const outcome = await onSend(
+        question,
+        history,
+        controller.signal,
+        observer,
+      );
+      if (!isCurrentRun()) return;
+      if (outcome.status !== 'answer') retainPartial(copy.unavailable);
+      else setPendingMessage(null);
       const assistantContent =
         outcome.status === 'answer'
           ? outcome.answer
@@ -107,7 +177,10 @@ export function ConversationScreen({
         },
       ]);
     } catch {
-      if (!controller.signal.aborted) setError(copy.unavailable);
+      if (isCurrentRun()) {
+        retainPartial(copy.unavailable);
+        setError(copy.unavailable);
+      }
     } finally {
       if (operationController.current === controller) {
         operationController.current = null;
@@ -138,53 +211,19 @@ export function ConversationScreen({
           <View style={styles.provider}>{providerSelection}</View>
         ) : null}
       </View>
-      <ScrollView
-        ref={historyView}
-        style={styles.history}
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() =>
-          historyView.current?.scrollToEnd({ animated: true })
+      <ConversationHistory
+        messages={messages}
+        pendingMessage={pendingMessage}
+        error={error}
+        onOpenSource={onOpenSource}
+        onLinkError={() =>
+          setError('문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
         }
-        testID="rag-conversation-history"
-      >
-        {!messages.length && (
-          <View style={styles.empty}>
-            <Text style={styles.disclaimer}>
-              질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
-            </Text>
-            <Text style={styles.disclaimer}>
-              필요하면 동의를 받고 공개 의학 문헌도 찾아요.
-            </Text>
-          </View>
-        )}
-        {messages.map(message => (
-          <ConversationMessage
-            key={message.id}
-            message={message}
-            onOpenSource={onOpenSource}
-            onLinkError={() =>
-              setError('문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
-            }
-          />
-        ))}
-        {busy && (
-          <Text
-            accessibilityLiveRegion="polite"
-            testID="rag-conversation-loading"
-          >
-            {copy.loading}
-          </Text>
-        )}
-        {error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {error}
-          </Text>
-        ) : null}
-      </ScrollView>
+      />
       <ConversationComposer
         value={draft}
         busy={busy}
+        hasSharedCancel={hasSharedCancel}
         onChangeText={value => {
           inputRevision.current += 1;
           setDraft(value);
@@ -192,11 +231,7 @@ export function ConversationScreen({
         onSend={() => {
           send().catch(() => setError(copy.unavailable));
         }}
-        onCancel={() => {
-          operationController.current?.abort();
-          operationController.current = null;
-          setBusy(false);
-        }}
+        onCancel={cancel}
       />
     </KeyboardAvoidingView>
   );

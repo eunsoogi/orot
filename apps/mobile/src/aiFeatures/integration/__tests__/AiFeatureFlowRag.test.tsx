@@ -1,13 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { LocalHealthEvidenceInventory } from '../../../healthEvidence/localEvidenceRepository';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import type { AiFeatureLocalData } from '../localData';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import {
   apple,
   completeInventory,
+  candidatesForInventory,
   localData,
   selectionStore,
+  searchFixtureEvidence,
 } from '../featureServiceFixtures';
 
 jest.mock(
@@ -15,20 +16,31 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-/** Partial local coverage must stop the integrated RAG route before model inference. */
+/** Partial coverage returned by a requested tool is surfaced without an unsupported answer. */
 test('shows the insufficient-evidence response from the integrated RAG route', async () => {
   const source = localData([]);
   const partialData: AiFeatureLocalData = {
     ...source.data,
-    loadInventory: jest.fn(async (): Promise<LocalHealthEvidenceInventory> => ({
-      ...completeInventory,
-      inventoryComplete: false,
-      truncatedKinds: ['health_observation'],
-    })),
+    readCandidates: jest.fn(async () =>
+      candidatesForInventory({
+        ...completeInventory,
+        inventoryComplete: false,
+        truncatedKinds: ['health_observation'],
+      }),
+    ),
   };
-  const ragRunner = jest.fn(async () => ({
-    status: 'no_evidence' as const,
-  })) as unknown as typeof runRagConversationTurn;
+  const ragRunner = jest.fn(
+    async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      const batch = await searchFixtureEvidence(
+        options.workflow.tools,
+        'personal_record',
+      );
+      expect(
+        batch.coverage.some(value => value.gaps.length > 0 || value.truncated),
+      ).toBe(true);
+      return { status: 'insufficient' as const };
+    },
+  ) as unknown as typeof runRagConversationTurn;
 
   await render(
     <AiFeatureRoute
@@ -60,5 +72,6 @@ test('shows the insufficient-evidence response from the integrated RAG route', a
       '근거가 부족하거나 서로 맞지 않아 답을 만들지 않았어요.',
     ),
   ).toBeTruthy();
-  expect(ragRunner).not.toHaveBeenCalled();
+  expect(ragRunner).toHaveBeenCalledTimes(1);
+  expect(partialData.readCandidates).toHaveBeenCalledTimes(1);
 });

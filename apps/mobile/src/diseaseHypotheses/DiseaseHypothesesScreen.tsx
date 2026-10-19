@@ -1,19 +1,17 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
 import { appColors } from '../layout/appColors';
-import type { ProviderErrorCode } from '@orot/model-runtime';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { getDiseaseHypothesisCopy } from './copy';
-import type {
-  DiseaseHypothesisAnalysis,
-  DiseaseHypothesisRunOutcome,
-} from './task';
+import type { DiseaseHypothesisRunOutcome } from './task';
+import type { AiWorkflowObserver } from '../agent/workflowActivity';
+import { useDiseaseHypothesisGeneration } from './useDiseaseHypothesisGeneration';
+import { useAiCancellationAction } from '../agent/useAiCancellationAction';
 
 interface DiseaseHypothesesScreenProps {
   readonly navigationRouteKey?: string;
@@ -22,18 +20,10 @@ interface DiseaseHypothesesScreenProps {
   readonly onOpenProviderSelection?: () => void;
   readonly onGenerate: (
     signal?: AbortSignal,
+    observer?: AiWorkflowObserver,
   ) => Promise<DiseaseHypothesisRunOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }
-
-type ScreenState =
-  | { readonly status: 'idle' | 'loading' }
-  | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
-  | { readonly status: 'insufficient' }
-  | {
-      readonly status: 'error';
-      readonly providerErrorCode?: ProviderErrorCode;
-    };
 
 function EvidenceLinks({
   title,
@@ -71,8 +61,13 @@ export function DiseaseHypothesesScreen({
 }: DiseaseHypothesesScreenProps) {
   const navigationInset = useNavigationContentInset();
   const copy = getDiseaseHypothesisCopy();
-  const [state, setState] = useState<ScreenState>({ status: 'idle' });
-  const operationController = useRef<AbortController | null>(null);
+  const { state, activity, preview, generate, cancel } =
+    useDiseaseHypothesisGeneration(onGenerate);
+  const hasSharedCancel = useAiCancellationAction(
+    state.status === 'loading',
+    cancel,
+    'disease-hypotheses-cancel',
+  );
 
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
@@ -85,45 +80,6 @@ export function DiseaseHypothesesScreen({
     0,
     onNavigationStateChange,
   );
-
-  useEffect(
-    () => () => {
-      operationController.current?.abort();
-      operationController.current = null;
-    },
-    [],
-  );
-
-  async function generate() {
-    if (state.status === 'loading') return;
-    const controller = new AbortController();
-    operationController.current = controller;
-    setState({ status: 'loading' });
-    try {
-      const outcome = await onGenerate(controller.signal);
-      if (controller.signal.aborted) return;
-      if (outcome.status === 'incomplete_inventory')
-        setState({ status: 'insufficient' });
-      else if (outcome.result.status === 'result')
-        setState({ status: 'result', value: outcome.result.value });
-      else if (outcome.result.status === 'needs_clarification')
-        setState({ status: 'insufficient' });
-      else
-        setState({
-          status: 'error',
-          providerErrorCode:
-            outcome.result.status === 'unavailable'
-              ? outcome.result.providerErrorCode
-              : undefined,
-        });
-    } catch {
-      if (!controller.signal.aborted) setState({ status: 'error' });
-    } finally {
-      if (operationController.current === controller) {
-        operationController.current = null;
-      }
-    }
-  }
 
   return (
     <ScrollView
@@ -145,13 +101,43 @@ export function DiseaseHypothesesScreen({
         disabled={state.status === 'loading'}
         accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
-          generate().catch(() => setState({ status: 'error' }));
+          void generate();
         }}
         testID="disease-hypotheses-generate"
         title={state.status === 'error' ? copy.retry : copy.generate}
       />
       {state.status === 'loading' ? (
-        <Text testID="disease-hypotheses-loading">{copy.loading}</Text>
+        <>
+          <Text
+            accessibilityLiveRegion="polite"
+            testID="disease-hypotheses-activity"
+          >
+            {activity ?? copy.loading}
+          </Text>
+          {!hasSharedCancel ? (
+            <Button
+              onPress={cancel}
+              testID="disease-hypotheses-cancel"
+              title={copy.cancel}
+            />
+          ) : null}
+        </>
+      ) : null}
+      {preview ? (
+        <View style={styles.draft} testID="disease-hypotheses-draft">
+          <Text style={styles.label}>
+            {state.status === 'loading'
+              ? copy.draftHeading
+              : copy.incompleteHeading}
+          </Text>
+          <Text>
+            {state.status === 'loading' ? copy.draftNote : copy.incompleteNote}
+          </Text>
+          <Text>{preview}</Text>
+        </View>
+      ) : null}
+      {state.status === 'cancelled' ? (
+        <Text testID="disease-hypotheses-cancelled">{copy.cancelled}</Text>
       ) : null}
       {state.status === 'insufficient' ? (
         <Text testID="disease-hypotheses-insufficient">
@@ -231,6 +217,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
     padding: 16,
+  },
+  draft: {
+    borderColor: appColors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
   },
   title: { fontSize: 17, fontWeight: '700' },
   label: { fontWeight: '700', marginTop: 4 },

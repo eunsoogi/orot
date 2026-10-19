@@ -16,6 +16,7 @@ export function compileResponseSchema(
   tools: readonly ToolDefinition[],
   responseSchema?: JsonObject,
   responseName = 'StructuredOutput',
+  requireTool = false,
 ): AppleNativeSchema | undefined {
   if (!tools.length) {
     return responseSchema
@@ -23,7 +24,7 @@ export function compileResponseSchema(
       : undefined;
   }
   const choices: AppleNativeSchema[] = [];
-  if (responseSchema) {
+  if (responseSchema && !requireTool) {
     choices.push(
       objectSchema('StructuredChoice', [
         { name: 'kind', schema: enumSchema('StructuredKind', ['structured']) },
@@ -60,11 +61,14 @@ export function compileResponseSchema(
             choices: toolVariants,
           },
           minimumElements: 1,
-          maximumElements: 8,
+          maximumElements: requireTool ? 1 : 8,
         },
       },
     ]),
   );
+  // A required search has no answer/text branch, so guided generation cannot
+  // fabricate a grounded answer before any current evidence has been read.
+  if (requireTool) return choices[0];
   choices.push(
     objectSchema('TextChoice', [
       { name: 'kind', schema: enumSchema('TextKind', ['text']) },

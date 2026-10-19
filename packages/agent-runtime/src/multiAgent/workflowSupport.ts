@@ -219,7 +219,7 @@ export function makeGraph<TResult>(
     .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
     .addConditionalEdges('executeSearch', route, routeMap)
     .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
-    .addEdge('invokeRevision', END)
+    .addConditionalEdges('invokeRevision', route, routeMap)
     .compile({ checkpointer });
 }
 

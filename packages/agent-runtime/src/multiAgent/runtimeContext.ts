@@ -2,6 +2,8 @@ import type { JsonObject, ProviderErrorCode } from '@orot/model-runtime';
 import type {
   EvidenceBatch,
   EvidenceReference,
+  MultiAgentProgressEvent,
+  MultiAgentResponderStreamEvent,
   MultiAgentWorkflowOptions,
   ProviderStopObservation,
 } from './contracts';
@@ -36,11 +38,39 @@ export interface RuntimeContext<TResult> {
   readonly options: MultiAgentWorkflowOptions<TResult>;
   readonly signal: AbortSignal;
   readonly timedOut: () => boolean;
+  readonly onProgress?: (event: MultiAgentProgressEvent) => void;
+  readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   currentEvidence: EvidenceBatch;
   researchInput?: JsonObject;
+  nativeToolMessages?: import('./nativeTools').NativeToolMessages;
+  pendingNativeToolCallId?: string;
   outcome?: PrivateOutcome<TResult>;
   /** Ephemeral task correction guidance; it is never written to graph checkpoints. */
   responseCorrectionInstruction?: string;
+}
+
+/** Progress observers are optional UI affordances and cannot alter workflow success or failure. */
+export function reportProgress<TResult>(
+  context: RuntimeContext<TResult>,
+  event: MultiAgentProgressEvent,
+): void {
+  try {
+    context.onProgress?.(event);
+  } catch {
+    // A screen observer cannot interrupt provider, consent, or evidence work.
+  }
+}
+
+/** Only task-approved display text leaves the structured responder boundary. */
+export function reportTaskStreamEvent<TResult>(
+  context: RuntimeContext<TResult>,
+  event: MultiAgentResponderStreamEvent,
+): void {
+  try {
+    context.onTaskStreamEvent?.(event);
+  } catch {
+    // A display projection cannot turn a valid model response into a workflow failure.
+  }
 }
 
 export function stop<TResult>(

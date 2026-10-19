@@ -47,10 +47,11 @@ runs:
         COHORT: ${{ inputs.cohort }}
       run: scripts/ci/run-command.sh ios-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
     - name: Execute every planned first attempt without compilation or retry
-      # The original Hermes host case remains in Core's inventory. Repeating it as a GUI preflight adds no unique coverage.
+      # The runner derives UI preparation from the task plan and stores its evidence outside planned results.
       shell: bash
       env:
         COHORT: ${{ inputs.cohort }}
+        PROFILE: ${{ inputs.profile }}
         TEST_RUN: ${{ steps.verify.outputs.test_run }}
       run: scripts/ci/run-command.sh ios-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
     - name: Remove only the owned destination
@@ -72,6 +73,7 @@ runs:
           artifacts/ios-cohort/*.json
           artifacts/ios-cohort/*.jsonl
           artifacts/ios-cohort/results
+          artifacts/ios-cohort/ui-preparation
           artifacts/ios-cohort/artifact-rejections/results.json
           ${{ inputs.product_directory }}/manifest.json
         if-no-files-found: warn

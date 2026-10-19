@@ -1,5 +1,4 @@
-import Button from './RecordingSessionAction';
-import { View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import RecordingWaveform from './RecordingWaveform';
@@ -28,7 +27,7 @@ interface RecordingSessionPanelProps {
   onStop: () => Promise<void>;
 }
 
-// Consent and session actions stay together; saved-recording actions remain in RecordingControls.
+// Consent and live session actions stay together; saved-recording actions remain in RecordingControls.
 export default function RecordingSessionPanel({
   status,
   durationMs,
@@ -42,16 +41,19 @@ export default function RecordingSessionPanel({
   onResume,
   onStop,
 }: RecordingSessionPanelProps) {
+  const compact = useWindowDimensions().width < 375;
   return (
     <>
       <Text
         accessibilityRole="header"
-        style={recordingControlStyles.title}
+        style={[recordingControlStyles.title, styles.heading]}
         testID="recording-title"
       >
         {t('recording.title')}
       </Text>
-      <Text style={recordingControlStyles.copy}>{t('recording.subtitle')}</Text>
+      <Text style={[recordingControlStyles.copy, styles.heading]}>
+        {t('recording.subtitle')}
+      </Text>
       <RecordingConsentControl
         checked={consentAcknowledged}
         onPress={onToggleConsent}
@@ -62,20 +64,22 @@ export default function RecordingSessionPanel({
           status === 'interrupted'
         }
       />
-      <Text style={recordingControlStyles.copy}>
-        {t('recording.localOnly')}
-      </Text>
       <View style={styles.session}>
-        <View style={styles.microphone}>
-          <AppSymbol name="mic.fill" size={52} color={appColors.primary} />
+        <View style={recordingControlStyles.recordingStatus}>
+          {status === 'recording' ? (
+            <View style={recordingControlStyles.liveDot} />
+          ) : null}
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[
+              styles.status,
+              status === 'recording' ? recordingControlStyles.liveStatus : null,
+            ]}
+            testID="recording-status"
+          >
+            {recordingStatusLabel(status)}
+          </Text>
         </View>
-        <Text
-          accessibilityLiveRegion="polite"
-          style={styles.status}
-          testID="recording-status"
-        >
-          {recordingStatusLabel(status)}
-        </Text>
         <Text
           accessibilityLabel={t('recording.duration', {
             duration: formatRecordingDuration(durationMs),
@@ -98,59 +102,96 @@ export default function RecordingSessionPanel({
               : t('recording.readyHint')}
         </Text>
       </View>
+      {/* One large microphone starts or finishes a take; the small icon changes only pause/resume state. */}
       <View style={styles.actions}>
-        {status === 'idle' || status === 'completed' ? (
-          <View style={styles.action}>
-            <Button
-              disabled={
-                !consentAcknowledged || controlsBusy || sourceRetryPending
-              }
-              icon="mic.fill"
-              onPress={onStart}
-              testID="recording-start"
-              title={t('recording.start')}
-            />
+        <Pressable
+          accessibilityLabel={
+            status === 'idle' || status === 'completed'
+              ? t('recording.start')
+              : t('recording.stop')
+          }
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled:
+              controlsBusy ||
+              sourceRetryPending ||
+              ((status === 'idle' || status === 'completed') &&
+                !consentAcknowledged),
+          }}
+          disabled={
+            controlsBusy ||
+            sourceRetryPending ||
+            ((status === 'idle' || status === 'completed') &&
+              !consentAcknowledged)
+          }
+          onPress={
+            status === 'idle' || status === 'completed' ? onStart : onStop
+          }
+          style={[styles.microphone, compact && styles.compactMicrophone]}
+          testID="recording-microphone-control"
+        >
+          <View
+            style={[
+              styles.microphoneInner,
+              compact && styles.compactMicrophoneInner,
+            ]}
+          >
+            <AppSymbol name="mic.fill" size={52} color={appColors.onPrimary} />
           </View>
-        ) : null}
+        </Pressable>
         {status === 'recording' ? (
-          <View style={styles.action}>
-            <Button
-              disabled={controlsBusy}
-              secondary
-              icon="pause.fill"
-              onPress={onPause}
-              testID="recording-pause"
-              title={t('recording.pause')}
+          <Pressable
+            accessibilityLabel={t('recording.pauseAccessibility')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: controlsBusy }}
+            disabled={controlsBusy}
+            onPress={onPause}
+            style={[
+              styles.secondaryAction,
+              compact && styles.compactSecondaryAction,
+            ]}
+            testID="recording-pause"
+          >
+            <AppSymbol
+              name="pause.fill"
+              size={27}
+              color={appColors.primaryText}
             />
-          </View>
-        ) : null}
-        {status === 'paused' || status === 'interrupted' ? (
-          <View style={styles.action}>
-            <Button
-              disabled={controlsBusy}
-              secondary
-              icon="play.fill"
-              onPress={onResume}
-              testID="recording-resume"
-              title={t('recording.resume')}
+          </Pressable>
+        ) : status === 'paused' || status === 'interrupted' ? (
+          <Pressable
+            accessibilityLabel={t('recording.resume')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: controlsBusy }}
+            disabled={controlsBusy}
+            onPress={onResume}
+            style={[
+              styles.secondaryAction,
+              compact && styles.compactSecondaryAction,
+            ]}
+            testID="recording-resume"
+          >
+            <AppSymbol
+              name="play.fill"
+              size={27}
+              color={appColors.primaryText}
             />
-          </View>
-        ) : null}
-        {status === 'recording' ||
-        status === 'paused' ||
-        status === 'interrupted' ? (
-          <View style={styles.action}>
-            <Button
-              disabled={controlsBusy}
-              icon="stop.fill"
-              onPress={onStop}
-              testID="recording-stop"
-              title={t('recording.saveAction')}
-            />
-          </View>
+          </Pressable>
         ) : null}
       </View>
-      <Text style={styles.hint}>{t('recording.afterSave')}</Text>
+      <Text style={styles.hint}>
+        {status === 'recording'
+          ? t('recording.microphone.stopHint')
+          : status === 'paused' || status === 'interrupted'
+            ? t('recording.microphone.pausedHint')
+            : t('recording.afterSave')}
+      </Text>
+      <View style={recordingControlStyles.localNotice}>
+        <AppSymbol name="lock.fill" size={20} color={appColors.secondary} />
+        <Text style={recordingControlStyles.localNoticeText}>
+          {t('recording.localOnly')}
+        </Text>
+      </View>
     </>
   );
 }

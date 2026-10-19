@@ -143,9 +143,14 @@ function ragFixture(availability = 'available') {
   let signal, forwardedBudget, question;
   // Evaluate real fixture exports through the same closed dependency boundary as the probe.
   const fixture = environment(source('e2e/appleModelMockFixtures.ts')).exports;
-  // Keep the shipping budget object intact; only the extra test-probe deadline is under test.
+  // Resolve the real budget chain; only the extra test-probe deadline is under test.
+  const contracts = '../../packages/agent-runtime/src/multiAgent/evidenceContracts.ts';
+  const runtime = environment(source(contracts)).exports;
+  const shared = environment(source('src/agent/evidenceWorkflowBudget.ts'), {
+    '@orot/agent-runtime': runtime,
+  }).exports;
   const budget = environment(source('src/ragConversation/budget.ts'), {
-    '@orot/agent-runtime': { DEFAULT_MULTI_AGENT_BUDGET: { maxModelCalls: 3 } },
+    '../agent/evidenceWorkflowBudget': shared,
   }).exports.RAG_CONVERSATION_BUDGET;
   const clock = environment(source('e2e/ragWorkflowProbe.ts'), {
     './appleModelMockFixtures': fixture,

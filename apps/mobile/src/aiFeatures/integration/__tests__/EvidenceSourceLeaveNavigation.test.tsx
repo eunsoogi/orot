@@ -9,6 +9,7 @@ import {
   localData,
   memoryRecord,
   selectionStore,
+  searchFixtureEvidence,
 } from '../featureServiceFixtures';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import type { AiFeatureServiceDependencies } from '../featureServices';
@@ -33,7 +34,7 @@ test('confirms before leaving a source citation during its local reread', async 
     listRecords as typeof source.data.memoryStorage.listRecords;
   const diseaseRunner = jest.fn(
     async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
-      const reference = options.initialEvidence.items[0];
+      const reference = (await searchFixtureEvidence(options.tools)).items[0];
       if (!reference) throw new Error('Expected the local memory citation.');
       return {
         status: 'workflow' as const,

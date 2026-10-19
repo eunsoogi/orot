@@ -9,6 +9,7 @@ import { recordingPersistenceTests } from './recording-persistence-test-phases.m
 import { statePersistenceTests } from './state-persistence-test-phases.mjs';
 
 const coreTests = [
+  'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
@@ -27,6 +28,7 @@ const coreTests = [
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
   'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',
+  'OrotIntegrationTests/NavigationLayoutIntegrationTests/testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testUtf8TranscriptCopyIsExcludedFromBackupAndRemovedAfterExport',
   'OrotIntegrationTests/RecordingExportIntegrationTests/testAudioCopyPreservesSourceBytesAndSyntheticAuthorizationGuardrails',
   'OrotUITests/TestHostConnectionTests/testHostLaunches',
@@ -37,6 +39,13 @@ const coreTests = [
   'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
 ];
 const providerTests = [
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCancellationReleasesWaitingCallback',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testDrainFailureDoesNotStartFreshGeneration',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testSecondCallbackDuringDrainIsRejected',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testCancellationDuringDrainReleasesTheNextRequest',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testWatchdogReleasesAnOrphanedCallback',
+  'OrotIntegrationTests/AppleNativeToolLifecycleTests/testParallelCallbackFailsWithoutPublishingAnotherTool',
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
   'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',

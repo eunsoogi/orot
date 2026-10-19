@@ -156,6 +156,7 @@ describe('RAG embedding index and retrieval', () => {
       },
     ]);
 
+    const readVectors = jest.spyOn(store, 'listForModel');
     const results = await searchEvidenceChunks(
       '혈압 기록 시각은?',
       [relevant, distractor],
@@ -164,6 +165,7 @@ describe('RAG embedding index and retrieval', () => {
       1,
     );
 
+    expect(readVectors.mock.calls[0]?.[1]).toEqual([relevant.id, distractor.id]);
     expect(provider.embedQueries).toHaveBeenCalledWith({ input: ['혈압 기록 시각은?'] });
     expect(provider.embedDocuments).not.toHaveBeenCalled();
     expect(results.map((hit) => hit.chunk.id)).toEqual(['a']);

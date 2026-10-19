@@ -1,5 +1,5 @@
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
-import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
 import type {
   EvidenceReference,
@@ -11,11 +11,17 @@ import { createLocalEvidenceSearchTool } from './evidenceSearchTool';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { requireSelectedAi } from './provider';
+import {
+  indexChangedFeatureEvidence,
+  loadFeatureEvidenceSnapshot,
+  loadFeatureMemorySnapshot,
+} from './featureEvidenceSnapshot';
 
 /** Keeps tool scope and provider payloads identical across the owned AI routes. */
 export function toolsFor(
-  snapshot: LocalEvidenceSnapshot,
+  snapshot: LocalEvidenceSnapshot | undefined,
   data: AiFeatureLocalData,
+  registry: LocalEvidenceReferenceRegistry,
 ) {
   return [
     createLocalEvidenceSearchTool({
@@ -23,12 +29,38 @@ export function toolsFor(
       sourceKind: 'personal_record',
       snapshot,
       rag: data.rag,
+      async loadSnapshot(query, request) {
+        const scope = request.allowedScope;
+        const next = await loadFeatureEvidenceSnapshot(
+          data,
+          registry,
+          request.signal,
+          query,
+          {
+            ...(scope.sourceIds
+              ? { sourceIds: registry.localSourceIds(scope.sourceIds) }
+              : {}),
+            ...(scope.timeRange ? { timeRange: scope.timeRange } : {}),
+          },
+        );
+        await indexChangedFeatureEvidence(data, next, request.signal);
+        return next;
+      },
     }),
     createLocalEvidenceSearchTool({
       id: 'local-reviewed-memory',
       sourceKind: 'reviewed_memory',
       snapshot,
       rag: data.rag,
+      async loadSnapshot(_query, request) {
+        const next = await loadFeatureMemorySnapshot(
+          data,
+          registry,
+          request.signal,
+        );
+        await indexChangedFeatureEvidence(data, next, request.signal);
+        return next;
+      },
     }),
   ] as const;
 }
@@ -57,10 +89,10 @@ export function executionOptions(input: {
             ] as const)
           : (['personal_record', 'reviewed_memory'] as const),
       },
-      // Only the literature-enabled conversation opts into the longer finite deadline.
+      // Both local and literature tools need time for retrieval plus a cited answer.
       budget: input.external
         ? RAG_CONVERSATION_BUDGET
-        : DEFAULT_MULTI_AGENT_BUDGET,
+        : EVIDENCE_WORKFLOW_BUDGET,
     },
     provider: input.selected.provider,
     tools: input.tools,

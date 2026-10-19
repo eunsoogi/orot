@@ -99,7 +99,7 @@ export function createVisitQuestionEvidenceSearchTools(input: {
       const { query, limit } = searchInput(request, input.maxEvidenceItems);
       const remaining = input.maxEvidenceItems - input.initialEvidenceCount;
       const maxEvidenceItems = Math.min(limit, remaining);
-      if (maxEvidenceItems < 3) {
+      if (maxEvidenceItems < 1) {
         throw new Error(
           'The visit-question workflow has no reserved research budget.',
         );

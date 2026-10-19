@@ -11,15 +11,19 @@ interface SettingsRouteProps {
   readonly onOpenAccounts: () => void;
   readonly onOpenPrivacy: () => void;
   readonly onOpenBackup: () => void;
+  readonly onOpenHealthData: () => void;
+  readonly onOpenSyncStatus: () => void;
 }
 
-/** Collects existing provider, account, permission, and backup settings in one root. */
+/** Separates automatic integrations from provider, privacy, and backup settings. */
 export function SettingsRoute({
   selectedProvider,
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
   onOpenBackup,
+  onOpenHealthData,
+  onOpenSyncStatus,
 }: SettingsRouteProps) {
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -43,10 +47,33 @@ export function SettingsRoute({
       </Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.aiAccounts')}</Text>
+        <Text style={styles.sectionTitle}>{t('settings.integrations')}</Text>
         <View style={styles.group}>
           <SettingRow
-            symbol="brain"
+            symbol="heart.fill"
+            tone="pink"
+            onPress={onOpenHealthData}
+            summary={t('settings.healthDataSummary')}
+            testID="settings-open-health-data"
+            title={t('settings.healthData')}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            symbol="arrow.triangle.2.circlepath"
+            onPress={onOpenSyncStatus}
+            summary={t('settings.syncStatusSummary')}
+            testID="settings-open-sync-status"
+            title={t('settings.syncStatus')}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('settings.otherSettings')}</Text>
+        <View style={styles.group}>
+          <SettingRow
+            symbol="sparkles"
+            tone="purple"
             onPress={onOpenProviderSettings}
             summary={selectedProvider || t('settings.providerSummary')}
             testID="settings-open-provider"
@@ -55,23 +82,25 @@ export function SettingsRoute({
           <View style={styles.divider} />
           <SettingRow
             symbol="person"
+            tone="neutral"
             onPress={onOpenAccounts}
             testID="settings-open-accounts"
             title={t('settings.accounts')}
+          />
+          <View style={styles.divider} />
+          <SettingRow
+            symbol="checkmark.shield"
+            tone="green"
+            onPress={onOpenPrivacy}
+            testID="settings-open-privacy"
+            title={t('settings.permissions')}
           />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('settings.dataPrivacy')}</Text>
+        <Text style={styles.sectionTitle}>{t('settings.dataManagement')}</Text>
         <View style={styles.group}>
-          <SettingRow
-            symbol="lock"
-            onPress={onOpenPrivacy}
-            testID="settings-open-privacy"
-            title={t('settings.permissions')}
-          />
-          <View style={styles.divider} />
           <SettingRow
             symbol="externaldrive"
             onPress={onOpenBackup}
@@ -101,12 +130,14 @@ function SettingRow({
   testID,
   title,
   symbol,
+  tone = 'blue',
 }: {
   readonly onPress: () => void;
   readonly summary?: string;
   readonly testID: string;
   readonly title: string;
   readonly symbol: string;
+  readonly tone?: 'blue' | 'green' | 'pink' | 'purple' | 'neutral';
 }) {
   return (
     <Pressable
@@ -115,7 +146,9 @@ function SettingRow({
       style={styles.row}
       testID={testID}
     >
-      <AppSymbol name={symbol} size={24} color={appColors.text} />
+      <View style={[styles.icon, { backgroundColor: tones[tone].background }]}>
+        <AppSymbol name={symbol} size={24} color={tones[tone].foreground} />
+      </View>
       <View style={styles.rowCopy}>
         <Text style={styles.rowTitle}>{title}</Text>
         {summary ? <Text style={styles.summary}>{summary}</Text> : null}
@@ -125,12 +158,34 @@ function SettingRow({
   );
 }
 
+// Semantic icon colors follow system appearance, including the tinted backgrounds.
+const tones = {
+  blue: {
+    foreground: appColors.primaryText,
+    background: appColors.primarySoft,
+  },
+  green: { foreground: appColors.green, background: appColors.greenSoft },
+  pink: { foreground: appColors.pink, background: appColors.pinkSoft },
+  purple: { foreground: appColors.purple, background: appColors.purpleSoft },
+  neutral: {
+    foreground: appColors.secondary,
+    background: appColors.background,
+  },
+};
+
 const styles = StyleSheet.create({
+  icon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    gap: 32,
-    paddingHorizontal: 24,
+    gap: 24,
+    paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 28,
   },

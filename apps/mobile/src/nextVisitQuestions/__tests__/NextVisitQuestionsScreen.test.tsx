@@ -86,6 +86,10 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
     appointment,
     { providerId: 'synthetic-provider', modelId: 'fixture-model' },
     expect.any(AbortSignal),
+    expect.objectContaining({
+      onProgress: expect.any(Function),
+      onTaskStreamEvent: expect.any(Function),
+    }),
   );
   expect(await screen.findByTestId('next-visit-review-list')).toBeTruthy();
   expect(screen.getByTestId('next-visit-review-actions')).toBeTruthy();

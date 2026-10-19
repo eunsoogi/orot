@@ -1,29 +1,28 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
 import { CalendarMonthView } from './CalendarMonthView';
 import { formatCalendarEventRange } from './dateTime';
-import { calendarQueryWindow } from './calendarMonth';
+import { calendarQueryWindowFromCoverage } from './calendarMonth';
 import type { CalendarQueryWindow } from './calendarMonth';
 import { CalendarQuickActions } from './CalendarQuickActions';
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarBridge } from './types';
-import { calendarAccessMessage as accessMessage } from './calendarAccessMessage';
+import { emptyCalendarAutoSyncState } from './calendarAutoSync';
+import type { CalendarAutoSyncState } from './calendarAutoSync';
 import { useCalendarLinking } from './useCalendarLinking';
 import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
 import { navigationText } from '../i18n/navigation';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
-// EventKit's current query returns at most 100 upcoming events.
-const CALENDAR_QUERY_RESULT_LIMIT = 100;
-
 interface CalendarLinkingScreenProps {
   repository: AppointmentRepository;
   bridge: CalendarBridge;
+  calendarSync?: CalendarAutoSyncState;
   heading?: string;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -36,6 +35,7 @@ interface CalendarLinkingScreenProps {
 export default function CalendarLinkingScreen({
   repository,
   bridge,
+  calendarSync = emptyCalendarAutoSyncState,
   heading = t('calendar.title'),
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -45,10 +45,10 @@ export default function CalendarLinkingScreen({
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const calendar = useCalendarLinking(repository, bridge);
-  const [queryWindow, setQueryWindow] = useState<CalendarQueryWindow | null>(
-    null,
-  );
+  const calendar = useCalendarLinking(repository, bridge, calendarSync);
+  const queryWindow: CalendarQueryWindow | null = calendarSync.query
+    ? calendarQueryWindowFromCoverage(calendarSync.query)
+    : null;
   const selectedEventIdentifier =
     calendar.selectedEvent?.calendarEventIdentifier ?? null;
   const lastNotice = useRef('');
@@ -69,36 +69,30 @@ export default function CalendarLinkingScreen({
     lastNotice.current = calendar.notice;
   }, [calendar.notice, onAppointmentsChanged]);
 
-  async function loadUpcomingEvents() {
-    // Empty-day copy is only valid inside the native bridge's one-year query window.
-    setQueryWindow(calendarQueryWindow(new Date()));
-    await calendar.loadUpcomingEvents();
-  }
-
   return (
     <View style={styles.screen}>
       <ScrollView
         contentContainerStyle={[styles.container, navigationInset]}
         testID="calendar-screen"
       >
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="calendar-title"
-        >
-          {heading}
-        </Text>
+        {/* Calendar access and recovery details live in Settings, outside this passive schedule view. */}
+        <View style={styles.heading}>
+          <Text
+            accessibilityRole="header"
+            style={styles.title}
+            testID="calendar-title"
+          >
+            {heading}
+          </Text>
+          <Text style={styles.subtitle} testID="schedule-subtitle">
+            {t('schedule.subtitle')}
+          </Text>
+        </View>
         <CalendarQuickActions
           disabled={calendar.saving || hasUnsavedSelection}
           onOpenAppointments={onOpenAppointments}
           onOpenMedicalAppointments={onOpenMedicalAppointments}
         />
-        <View style={styles.calendarPrivacyInfo}>
-          <Text style={styles.message}>{t('calendar.description')}</Text>
-          <Text style={styles.message}>
-            {t('calendar.permissionExplanation')}
-          </Text>
-        </View>
         {calendar.loadingAppointments ? (
           <Text testID="calendar-storage-loading">
             {t('appointments.opening')}
@@ -124,15 +118,6 @@ export default function CalendarLinkingScreen({
           <View style={styles.card} testID="calendar-missing-warning">
             <Text style={styles.warning}>{t('calendar.eventMissing')}</Text>
           </View>
-        ) : null}
-        {calendar.access && calendar.access !== 'fullAccess' ? (
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="calendar-access-state"
-          >
-            {accessMessage(calendar.access)}
-          </Text>
         ) : null}
         {calendar.error ? (
           <Text
@@ -181,26 +166,6 @@ export default function CalendarLinkingScreen({
           </View>
         ) : null}
 
-        {!calendar.selectedEvent ? (
-          <Button
-            disabled={calendar.loadingEvents || calendar.loadingAppointments}
-            onPress={loadUpcomingEvents}
-            testID="calendar-connect"
-            title={
-              calendar.loadingEvents
-                ? t('calendar.loading')
-                : t(
-                    calendar.linkedAppointment
-                      ? 'calendar.chooseAnother'
-                      : 'calendar.connect',
-                  )
-            }
-          />
-        ) : null}
-
-        {calendar.loadingEvents ? (
-          <Text testID="calendar-loading-events">{t('calendar.loading')}</Text>
-        ) : null}
         <CalendarMonthView
           appointmentsLoading={calendar.loadingAppointments}
           candidatesLoaded={calendar.hasLoadedCandidates}
@@ -208,9 +173,7 @@ export default function CalendarLinkingScreen({
           linkedAppointment={calendar.nextVisitAppointment}
           onSelectEvent={calendar.selectEvent}
           queryWindow={queryWindow}
-          resultsMayBeIncomplete={
-            calendar.events.length >= CALENDAR_QUERY_RESULT_LIMIT
-          }
+          resultsMayBeIncomplete={calendarSync.query?.complete === false}
         />
       </ScrollView>
       {/* Keep route controls outside the calendar scroller and inside its safe area. */}

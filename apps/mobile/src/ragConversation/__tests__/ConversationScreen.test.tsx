@@ -71,6 +71,36 @@ test('cancel releases the composer and discards a late answer', async () => {
   await waitFor(() => expect(screen.queryByText('늦은 답변')).toBeNull());
 });
 
+test('keeps the composer editable while a response is pending', async () => {
+  let finish!: (value: RagConversationOutcome) => void;
+  await render(
+    <ConversationScreen
+      onBack={jest.fn()}
+      onOpenSource={jest.fn()}
+      onSend={() =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+      }
+    />,
+  );
+  const input = screen.getByTestId('rag-conversation-input');
+  await fireEvent.changeText(input, '첫 질문');
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+
+  expect(screen.getByTestId('rag-conversation-input').props.editable).toBe(
+    true,
+  );
+  await fireEvent.changeText(input, '다음 질문');
+  expect(input.props.value).toBe('다음 질문');
+
+  finish({ status: 'answer', answer: '첫 답변', citations: [reference] });
+  expect(await screen.findByText('첫 답변')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+    '다음 질문',
+  );
+});
+
 test('renders a grounded answer with a source action and reports absent evidence', async () => {
   const outcomes: RagConversationOutcome[] = [
     {
@@ -141,6 +171,10 @@ test('renders a grounded answer with a source action and reports absent evidence
       { role: 'assistant', content: '저장된 기록을 찾았어요.' },
     ],
     expect.any(AbortSignal),
+    expect.objectContaining({
+      onProgress: expect.any(Function),
+      onTaskStreamEvent: expect.any(Function),
+    }),
   );
 });
 
@@ -164,7 +198,9 @@ test('shows loading and a recoverable response failure', async () => {
     '질문',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-  expect(screen.getByTestId('rag-conversation-loading')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-progress').props.children).toBe(
+    getRagConversationCopy().loading,
+  );
   expect(
     screen.getByTestId('rag-conversation-cancel').props.accessibilityState,
   ).toMatchObject({ busy: true, disabled: false });

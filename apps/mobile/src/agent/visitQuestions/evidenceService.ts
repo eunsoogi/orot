@@ -1,6 +1,5 @@
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
-import { buildPersistedEvidenceChunks } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceRevalidator,
@@ -12,6 +11,9 @@ import { localEvidenceFingerprint } from './evidence';
 import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { EvidenceReference } from '@orot/agent-runtime';
+import { reloadPersonalVisitEvidence } from './reloadPersonalEvidence';
+import { visitQuestionCitationKey } from './evidence';
 import {
   searchVisitQuestionEvidence,
   type VisitQuestionSearchSource,
@@ -45,6 +47,9 @@ export type VisitQuestionContextResult =
       readonly revalidateEvidence: (
         citations: readonly VisitQuestionEvidenceItem[],
       ) => Promise<boolean>;
+      readonly reloadPersonalEvidence: (
+        reference: EvidenceReference,
+      ) => Promise<VisitQuestionEvidenceItem | undefined>;
     };
 
 function buildVisitContext(appointment: Appointment) {
@@ -71,14 +76,14 @@ function buildVisitContext(appointment: Appointment) {
   return { context, query };
 }
 
-/** Loads appointment evidence and returns cancellation before exposing context. */
+/** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
   readonly maxEvidenceItems: number;
   readonly queryService: VisitQuestionQueryPort;
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
-  readonly buildChunks?: VisitQuestionChunkBuilder;
+  readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionContextResult> {
@@ -120,23 +125,12 @@ export async function prepareVisitQuestionContext(input: {
   }
 
   const { context, query } = buildVisitContext(appointment);
-  const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
-  let initialEvidence: VisitQuestionEvidenceCollection;
-  try {
-    initialEvidence = await searchVisitQuestionEvidence({
-      query,
-      maxEvidenceItems: input.maxEvidenceItems,
-      queryService: input.queryService,
-      repository: input.repository,
-      rag: input.rag,
-      buildChunks,
-      signal: input.signal,
-    });
-  } catch (error) {
-    // RAG adapters may reject when their caller-owned signal aborts an operation.
-    if (input.signal?.aborted) return { status: 'cancelled' };
-    throw error;
-  }
+  const buildChunks = input.buildChunks;
+  const initialEvidence: VisitQuestionEvidenceCollection = {
+    batch: { items: [], coverage: [], conflicts: [] },
+    metadataByCitation: new Map(),
+    memoryStatus: 'not_searched',
+  };
   if (input.signal?.aborted) return { status: 'cancelled' };
   // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
@@ -198,6 +192,19 @@ export async function prepareVisitQuestionContext(input: {
     query,
     evidence,
     searchEvidence,
+    async reloadPersonalEvidence(reference) {
+      const mapped = await reloadPersonalVisitEvidence(
+        input.repository,
+        buildChunks,
+        reference,
+      );
+      if (!mapped) return undefined;
+      metadataByCitation.set(
+        visitQuestionCitationKey(mapped.item),
+        mapped.metadata,
+      );
+      return mapped.item;
+    },
     revalidateEvidence,
   };
 }

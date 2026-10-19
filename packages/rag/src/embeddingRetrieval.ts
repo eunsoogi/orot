@@ -1,3 +1,4 @@
+import { cosineSimilarity } from './embeddingSimilarity';
 import type { EvidenceChunk } from './chunking';
 import type { SqlExecutor } from '@orot/storage';
 import type {
@@ -44,7 +45,11 @@ export interface LocalEmbeddingVectorStore {
     entries: readonly LocalEmbeddingWrite[],
     signal?: AbortSignal,
   ): Promise<void>;
-  listForModel(model: LocalEmbeddingModelIdentity): Promise<readonly PersistedLocalEmbedding[]>;
+  /** Restricts retrieval to candidate IDs when supplied; an empty page returns no vectors. */
+  listForModel(
+    model: LocalEmbeddingModelIdentity,
+    chunkIds?: readonly string[],
+  ): Promise<readonly PersistedLocalEmbedding[]>;
 }
 
 export interface EmbeddingIndexProgress {
@@ -186,23 +191,6 @@ export interface LocalEmbeddingSearchHit {
   readonly score: number;
 }
 
-function cosineSimilarity(left: readonly number[], right: readonly number[]): number {
-  if (left.length !== right.length || left.length === 0) return Number.NEGATIVE_INFINITY;
-  let dot = 0;
-  let leftNorm = 0;
-  let rightNorm = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    const a = left[index];
-    const b = right[index];
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return Number.NEGATIVE_INFINITY;
-    dot += a * b;
-    leftNorm += a * a;
-    rightNorm += b * b;
-  }
-  if (leftNorm === 0 || rightNorm === 0) return Number.NEGATIVE_INFINITY;
-  return dot / Math.sqrt(leftNorm * rightNorm);
-}
-
 // Query vectors are transient; only document vectors are written to the encrypted vector store.
 export async function searchEvidenceChunks(
   query: string,
@@ -226,7 +214,10 @@ export async function searchEvidenceChunks(
       'The query embedding has the wrong dimension.',
     );
   }
-  const vectors = await store.listForModel(provider.modelIdentity);
+  const vectors = await store.listForModel(
+    provider.modelIdentity,
+    chunks.map((chunk) => chunk.id),
+  );
   const vectorByChunkId = new Map(vectors.map((entry) => [entry.chunkId, entry.vector]));
   return chunks
     .flatMap((chunk) => {

@@ -1,4 +1,5 @@
 import { compareTimestamps } from '@orot/domain';
+import { readVisitEvidenceSnapshots } from './evidenceSourceSnapshots';
 import type { Appointment, TranscriptEvidenceSegment } from '@orot/domain';
 import type { RecordWriter } from '@orot/storage';
 import { localEvidenceFingerprint, visitQuestionCitationKey } from './evidence';
@@ -139,23 +140,26 @@ export async function assertCurrentVisitQuestionRecord(
 
   if (item.sourceKind !== 'personal_record') return;
 
-  const currentSourceRevisions: {
-    readonly sourceId: string;
-    readonly revision: string;
-  }[] = [];
-  // Missing source rows invalidate the citation; an ID-only fallback could hide deletion.
-  for (const source of metadata.sourceRecordRevisions) {
-    const currentSource = await writer.get('source_record', source.sourceId);
-    if (!currentSource) {
-      throw new Error(
-        'A source record was deleted while the question list was under review.',
-      );
-    }
-    currentSourceRevisions.push({
-      sourceId: source.sourceId,
-      revision: localEvidenceFingerprint(currentSource),
-    });
-  }
+  // Use the same typed provenance resolver as search, within the save transaction.
+  const { sourceIds, snapshots } = await readVisitEvidenceSnapshots(
+    writer,
+    metadata.recordKind!,
+    {
+      evidenceId: metadata.evidenceRecordId!,
+      sourceRecordIds: metadata.sourceRecordRevisions.map(
+        source => source.sourceId,
+      ),
+      structured:
+        item.locator !== null &&
+        typeof item.locator === 'object' &&
+        'kind' in item.locator &&
+        item.locator.kind === 'structured_record',
+    },
+  );
+  const currentSourceRevisions = snapshots.map((snapshot, index) => ({
+    sourceId: sourceIds[index]!,
+    revision: localEvidenceFingerprint(snapshot),
+  }));
   if (
     localEvidenceFingerprint(currentSourceRevisions) !== item.sourceRevision
   ) {

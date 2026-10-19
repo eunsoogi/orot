@@ -145,6 +145,51 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
     }
 
     @MainActor
+    func testContextualPrimaryActionPreservesButtonIdentityAcrossSaveStateUpdates() throws {
+        let surface = NavigationGlassSurfaceView(frame: CGRect(x: 0, y: 0, width: 386, height: 48))
+        let stack = try XCTUnwrap(surface.subviews.compactMap { $0 as? UIStackView }.first)
+        let action: (String, String, Bool) -> [String: Any] = { label, testID, disabled in
+            ["id": "primary", "label": label, "accessibilityLabel": label, "testID": testID,
+             "primary": true, "disabled": disabled]
+        }
+        var firstDispatchedID: String?
+        var latestDispatchedID: String?
+        surface.onAction = { firstDispatchedID = $0?["id"] as? String }
+        surface.actions = [action("질문 저장", "next-visit-review-save", false)] as NSArray
+        surface.layoutIfNeeded()
+        let button = try XCTUnwrap(stack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+        let attachedLayer = button.layer
+
+        // One route action stays mounted while its save label and accessibility identity change.
+        for (label, testID, disabled) in [
+            ("저장 중", "next-visit-review-save", true),
+            ("검토한 질문을 다시 수정합니다", "next-visit-saved-edit", false),
+        ] {
+            surface.actions = [action(label, testID, disabled)] as NSArray
+            surface.layoutIfNeeded()
+            let current = try XCTUnwrap(stack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+            XCTAssertTrue(button === current)
+            XCTAssertTrue(attachedLayer === current.layer)
+            XCTAssertEqual(current.configuration?.title, label)
+            XCTAssertEqual(current.accessibilityIdentifier, testID)
+            XCTAssertEqual(current.accessibilityLabel, label)
+            XCTAssertEqual(current.isEnabled, !disabled)
+        }
+
+        let minimumWidth = max(88, ("검토한 질문을 다시 수정합니다" as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width + 24)
+        let widthConstraint = try XCTUnwrap(button.constraints.first {
+            $0.firstAttribute == .width && $0.relation == .greaterThanOrEqual && abs($0.constant - minimumWidth) < 0.5
+        })
+        XCTAssertTrue(widthConstraint.isActive)
+        surface.onAction = { latestDispatchedID = $0?["id"] as? String }
+        button.sendActions(for: .touchUpInside)
+        XCTAssertNil(firstDispatchedID)
+        XCTAssertEqual(latestDispatchedID, "primary")
+        surface.actions = [] as NSArray
+        XCTAssertTrue(stack.arrangedSubviews.compactMap { $0 as? UIButton }.isEmpty)
+    }
+
+    @MainActor
     private func verifyRootTab(_ button: UIButton, identifier: String) {
         // Inspect the actual UIKit children; accessibility snapshots omit these decorative views.
         let children = descendants(button)

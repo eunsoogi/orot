@@ -35,6 +35,8 @@ export function buildTaskRequest<TResult>(
   correctionInstruction?: string,
 ): TaskRequestBuild {
   try {
+    const nativeResearch =
+      provider.capabilities.toolCalling && Boolean(input.research?.candidateTools.length);
     // Corrections are final responses in the graph, so they cannot advertise another research handoff.
     const effectiveInput =
       correctionInstruction && input.research
@@ -73,13 +75,17 @@ export function buildTaskRequest<TResult>(
           content: [
             contract.systemPrompt,
             'When the supplied evidence supports the task, return type=result with value matching the task schema and citations containing the used evidenceId strings.',
-            'Use type=request_evidence only if the task permits more research and a specific missing fact prevents a supported result.',
+            nativeResearch
+              ? 'Call an available tool when a specific missing fact prevents a supported result.'
+              : 'Use type=request_evidence only if the task permits more research and a specific missing fact prevents a supported result.',
             'Preserve task-defined uncertainty and clarification outcomes. Do not request evidence merely because a result is uncertain.',
             ...(effectiveInput.research
               ? [
                   `Research planning capacity for this response: ${JSON.stringify(effectiveInput.research)}`,
                   'Candidate tools remain subject to their adapter scope checks. Planning capacity does not establish exact-query approval; each external search obtains separate consent after planning.',
-                  'Empty initial evidence does not mean a search returned no results. When the task permits research and supporting facts are missing, use type=request_evidence if canRequestEvidence is true instead of claiming a search failed or returning an unsupported answer.',
+                  nativeResearch
+                    ? 'Empty initial evidence is not a completed search. Obtain missing facts through the supplied tools before answering.'
+                    : 'Empty initial evidence does not mean a search returned no results. When the task permits research and supporting facts are missing, use type=request_evidence if canRequestEvidence is true instead of claiming a search failed or returning an unsupported answer.',
                   'When canRequestEvidence is false, do not request another search. Preserve any task-defined uncertainty or clarification; never invent supporting evidence.',
                 ]
               : []),
@@ -94,7 +100,7 @@ export function buildTaskRequest<TResult>(
           ...request,
           responseFormat: {
             name: 'task_response',
-            schema: taskResponseSchema(contract, effectiveInput),
+            schema: taskResponseSchema(contract, effectiveInput, nativeResearch),
           },
         }
       : request;
@@ -104,12 +110,13 @@ export function buildTaskRequest<TResult>(
   }
 }
 
-/** Reserve a planner and a revised responder; candidate scope never substitutes for adapter consent. */
+/** Native tools need one remaining answer; legacy research also reserves a planner. */
 export function responderResearchAvailability(
   execution: MultiAgentExecutionIdentity,
   tools: readonly EvidenceSearchTool[],
   state: WorkflowState,
   revised = false,
+  nativeTools = false,
 ): NonNullable<TaskResponderInput['research']> {
   const allowedScope = execution.allowedScope;
   const candidateTools = tools
@@ -128,15 +135,16 @@ export function responderResearchAvailability(
     }));
   const remainingModelCalls = Math.max(0, state.budget.maxModelCalls - state.modelCalls);
   const remainingToolCalls = Math.max(0, state.budget.maxToolCalls - state.toolCalls);
-  const remainingResearchCycles = revised
-    ? 0
-    : Math.max(0, state.budget.maxResearchCycles - state.researchCycles);
+  const remainingResearchCycles =
+    revised && !nativeTools
+      ? 0
+      : Math.max(0, state.budget.maxResearchCycles - state.researchCycles);
   return {
     canRequestEvidence:
       candidateTools.length > 0 &&
-      remainingModelCalls >= 2 &&
+      remainingModelCalls >= (nativeTools ? 1 : 2) &&
       remainingToolCalls > 0 &&
-      remainingResearchCycles > 0 &&
+      (nativeTools || remainingResearchCycles > 0) &&
       state.evidenceReferences.length < state.budget.maxEvidenceItems,
     allowedScope,
     candidateTools,

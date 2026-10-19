@@ -32,7 +32,7 @@ describe('personal evidence freshness', () => {
     const records = [source, observation];
     const registry = new LocalEvidenceReferenceRegistry();
     const input = {
-      inventory: inventory(records),
+      records: inventory(records).records,
       persistedChunks: [staleChunk],
       repository: repository(records),
       registry,
@@ -96,7 +96,7 @@ describe('personal evidence freshness', () => {
     const records = [recording, original];
     const registry = new LocalEvidenceReferenceRegistry();
     const input = {
-      inventory: inventory(records),
+      records: inventory(records).records,
       persistedChunks: [oldChunk],
       repository: repository(records),
       registry,

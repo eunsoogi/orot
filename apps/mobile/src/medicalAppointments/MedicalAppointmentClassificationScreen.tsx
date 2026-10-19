@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { AppointmentRepository } from '@orot/storage';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import type { ProviderSelectionOption } from '../providers/selection/types';
-import { readUpcomingCalendarCandidates } from './calendarEvidence';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { classifyCalendarEvents } from './classificationWorkflow';
+import { classificationFailureMessage } from './classificationFailure';
 import type { CandidateReview } from './classificationWorkflow';
 import type { CalendarBridge } from '../calendar/types';
+import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { MedicalAppointmentReviewView } from './MedicalAppointmentReviewView';
 import {
   isConfidentMedical,
@@ -15,22 +16,27 @@ import {
 
 interface MedicalAppointmentClassificationScreenProps {
   readonly bridge: CalendarBridge;
+  /** Classification consumes the app-owned sync snapshot without requesting Calendar access. */
+  readonly calendarSync: CalendarAutoSyncState;
   readonly repository: AppointmentRepository;
   readonly selectedProvider: ProviderSelectionOption | null;
   readonly recipient: string | null;
   /** A failed saved-provider lookup differs from a user who has not selected one yet. */
   readonly selectedProviderUnavailable?: boolean;
   readonly onOpenManual: () => void;
+  readonly onOpenCalendarSettings?: () => void;
 }
 
 /** One import scans every returned event and saves only confidently medical occurrences. */
 export default function MedicalAppointmentClassificationScreen({
   bridge,
+  calendarSync,
   repository,
   selectedProvider,
   recipient,
   selectedProviderUnavailable = false,
   onOpenManual,
+  onOpenCalendarSettings,
 }: MedicalAppointmentClassificationScreenProps) {
   // Every remote request retains its own disclosure and authorization boundary.
   const { consent, disclosureSheet } = useInferenceConsent();
@@ -59,6 +65,11 @@ export default function MedicalAppointmentClassificationScreen({
   const providerReady =
     selectedProvider?.availability.status === 'available' &&
     Boolean(recipient?.trim());
+  const calendarUnavailableMessage = calendarSync.error
+    ? copy.calendarSyncError
+    : !calendarSync.loading && calendarSync.access !== 'fullAccess'
+      ? copy.permissionUnavailable
+      : '';
 
   async function importAppointments() {
     // Synchronous ownership prevents double taps before React renders busy state.
@@ -79,7 +90,19 @@ export default function MedicalAppointmentClassificationScreen({
     setQueryComplete(true);
     setMessage('');
     try {
-      const source = await readUpcomingCalendarCandidates(bridge);
+      if (calendarSync.loading) {
+        setMessage(copy.calendarSyncing);
+        return;
+      }
+      if (calendarSync.error) {
+        setMessage(copy.calendarSyncError);
+        return;
+      }
+      const source = {
+        access: calendarSync.access ?? 'notDetermined',
+        events: calendarSync.events,
+        complete: calendarSync.query?.complete === true,
+      };
       if (!isCurrent()) return;
       setLoading(false);
       setQueryComplete(source.complete);
@@ -146,7 +169,10 @@ export default function MedicalAppointmentClassificationScreen({
         : copy.noMedical;
       const incomplete =
         result.status !== 'complete' && result.status !== 'empty';
-      setMessage(saveFailure || (incomplete ? copy.manualReview : summary));
+      setMessage(
+        saveFailure ||
+          (incomplete ? classificationFailureMessage(result.failure) : summary),
+      );
     } catch {
       if (isCurrent()) setMessage(copy.manualReview);
     } finally {
@@ -169,13 +195,19 @@ export default function MedicalAppointmentClassificationScreen({
         classifying={classifying}
         accessAvailable={accessAvailable}
         queryComplete={queryComplete}
-        message={message}
+        message={message || calendarUnavailableMessage}
         eventCount={eventCount}
         candidates={candidates}
         savingId={savingId}
         savedIds={savedIds}
         onImport={importAppointments}
         onOpenManual={onOpenManual}
+        calendarLoading={calendarSync.loading}
+        calendarUnavailable={
+          !calendarSync.loading &&
+          (calendarSync.error || calendarSync.access !== 'fullAccess')
+        }
+        onOpenCalendarSettings={onOpenCalendarSettings}
       />
       {disclosureSheet}
     </>

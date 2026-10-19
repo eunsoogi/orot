@@ -44,6 +44,15 @@ export const medicalAppointmentCopy = {
   get permissionUnavailable() {
     return t('medicalAppointments.status.permissionUnavailable');
   },
+  get calendarSyncing() {
+    return t('medicalAppointments.status.calendarSyncing');
+  },
+  get calendarSyncError() {
+    return t('medicalAppointments.status.calendarSyncError');
+  },
+  get calendarSettings() {
+    return t('medicalAppointments.actions.calendarSettings');
+  },
   get providerUnavailable() {
     return t('medicalAppointments.status.providerUnavailable');
   },

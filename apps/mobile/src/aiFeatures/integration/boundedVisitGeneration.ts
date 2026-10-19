@@ -1,11 +1,11 @@
-import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
 
 /** One deadline includes provider lookup, local preparation and inference; late work loses ownership. */
 export async function boundedVisitGeneration<T>(
   caller: AbortSignal,
   work: (signal: AbortSignal) => Promise<T>,
-  timeoutMs = DEFAULT_MULTI_AGENT_BUDGET.timeoutMs,
+  timeoutMs: number = EVIDENCE_WORKFLOW_BUDGET.timeoutMs,
 ): Promise<
   T | { status: 'cancelled' } | { status: 'unavailable'; message: string }
 > {

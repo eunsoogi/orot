@@ -75,6 +75,10 @@ public enum ChatGPTResponsesRequestDecoder {
                 strict: strict,
             )
         }
-        return ChatGPTResponsesRequest(model: model, messages: messages, tools: tools)
+        let toolChoice = value["toolChoice"] as? String
+        if value["toolChoice"] != nil, toolChoice != "required" || tools.isEmpty {
+            throw ChatGPTResponsesError.invalidRequest
+        }
+        return ChatGPTResponsesRequest(model: model, messages: messages, tools: tools, toolChoice: toolChoice)
     }
 }

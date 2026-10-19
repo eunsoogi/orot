@@ -81,7 +81,7 @@ function ports() {
 }
 
 describe('visit-question evidence cancellation', () => {
-  it('forwards the same signal to local indexing and both retrieval passes', async () => {
+  it('forwards the same signal to local indexing and combined retrieval', async () => {
     const dependencies = ports();
     const controller = new AbortController();
     const result = await prepareVisitQuestionContext({
@@ -93,14 +93,19 @@ describe('visit-question evidence cancellation', () => {
     });
 
     expect(result.status).toBe('ready');
+    if (result.status !== 'ready')
+      throw new Error('Expected a ready appointment.');
+    await result.searchEvidence(
+      '검사 기록',
+      8,
+      'personal_record',
+      controller.signal,
+    );
     expect(dependencies.rag.index).toHaveBeenCalledWith([chunk], {
       signal: controller.signal,
     });
-    expect(dependencies.rag.search).toHaveBeenCalledTimes(2);
+    expect(dependencies.rag.search).toHaveBeenCalledTimes(1);
     expect(dependencies.rag.search.mock.calls[0]?.[3]?.signal).toBe(
-      controller.signal,
-    );
-    expect(dependencies.rag.search.mock.calls[1]?.[3]?.signal).toBe(
       controller.signal,
     );
   });
@@ -167,7 +172,17 @@ describe('visit-question evidence cancellation', () => {
       signal: controller.signal,
     });
 
-    expect(result).toEqual({ status: 'cancelled' });
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready')
+      throw new Error('Expected a ready appointment.');
+    await expect(
+      result.searchEvidence(
+        '검사 기록',
+        8,
+        'personal_record',
+        controller.signal,
+      ),
+    ).rejects.toThrow('cancelled');
     expect(dependencies.rag.search).not.toHaveBeenCalled();
     expect(dependencies.queryService.searchMemory).not.toHaveBeenCalled();
   });

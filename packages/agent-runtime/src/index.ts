@@ -10,6 +10,7 @@ export {
 export { createLocalRecordQueryTools } from './localRecordQueryTools';
 export { SqliteCheckpointSaver } from './sqliteCheckpointSaver';
 export { runMultiAgentWorkflow } from './multiAgent/workflow';
+export { extractPartialJsonStringAtPath } from './multiAgent/streamProjection';
 export {
   createLocalObservationEvidenceTool,
   createLocalTranscriptEvidenceTool,
@@ -41,6 +42,8 @@ export type {
   MultiAgentExecutionIdentity,
   MultiAgentInvocation,
   MultiAgentPhase,
+  MultiAgentProgressEvent,
+  MultiAgentResponderStreamEvent,
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
   OutboundProcessingRequest,

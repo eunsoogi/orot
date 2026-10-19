@@ -97,12 +97,23 @@ export async function saveVisitQuestionRoute(
         cache.get(key) ??
         freshCitation(context.evidence.batch.items, citation, resolved);
       if (!current) {
-        const searched = await context.searchEvidence(
-          citation.content,
-          DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems,
-          citation.sourceKind,
-        );
-        current = freshCitation(searched.batch.items, citation, resolved);
+        if (citation.sourceKind === 'personal_record') {
+          const reloaded = await context.reloadPersonalEvidence(
+            resolved ?? citation,
+          );
+          current = freshCitation(
+            reloaded ? [reloaded] : [],
+            citation,
+            resolved,
+          );
+        } else {
+          const searched = await context.searchEvidence(
+            citation.content,
+            DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems,
+            citation.sourceKind,
+          );
+          current = freshCitation(searched.batch.items, citation, resolved);
+        }
       }
       if (!current)
         throw new Error('A cited source changed or is no longer available.');

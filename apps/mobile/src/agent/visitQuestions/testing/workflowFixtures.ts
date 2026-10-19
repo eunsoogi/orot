@@ -1,4 +1,5 @@
 import type { Appointment } from '@orot/domain';
+import { modelResponseFixture } from './modelResponseFixture';
 import {
   providerSuccess,
   type LanguageModelProvider,
@@ -103,6 +104,7 @@ export function preparedContext(): ReadyContext & {
     supplementalEvidence,
     searchEvidence: jest.fn(async () => collection(supplementalEvidence)),
     revalidateEvidence: jest.fn(async () => true),
+    reloadPersonalEvidence: jest.fn(async () => initialEvidence),
   };
 }
 
@@ -124,10 +126,46 @@ export function makeProvider(
     async generate(request) {
       const callIndex = requests.push(request) - 1;
       onGenerate?.(request, callIndex);
-      return providerSuccess({
-        text: outputs[callIndex] ?? '',
-        toolCalls: [],
-        finishReason: 'complete',
+      return providerSuccess(modelResponseFixture(outputs[callIndex] ?? ''));
+    },
+  };
+  return { provider, requests };
+}
+
+export function makeStreamingProvider(outputs: readonly string[]) {
+  const requests: LanguageModelRequest[] = [];
+  const provider: LanguageModelProvider = {
+    kind: 'language-model',
+    id: 'streaming-selected-provider',
+    displayName: 'Selected synthetic streaming provider',
+    capabilities: {
+      inputTypes: ['text'],
+      streaming: true,
+      structuredOutput: false,
+      structuredOutputStreaming: true,
+      toolCalling: true,
+    },
+    async generate(request) {
+      const callIndex = requests.push(request) - 1;
+      return providerSuccess(modelResponseFixture(outputs[callIndex] ?? ''));
+    },
+    async *stream(request) {
+      const callIndex = requests.push(request) - 1;
+      const text = outputs[callIndex] ?? '';
+      const response = modelResponseFixture(text);
+      for (
+        let index = 0;
+        !response.toolCalls.length && index < text.length;
+        index += 24
+      ) {
+        yield providerSuccess({
+          type: 'text_delta',
+          text: text.slice(index, index + 24),
+        });
+      }
+      yield providerSuccess({
+        type: 'completed',
+        response,
       });
     },
   };
@@ -186,11 +224,16 @@ export function successfulOutputs(
     evidenceIds: [citation.evidenceId],
   }));
   return [
-    JSON.stringify({ type: 'request_evidence', need: 'missing_coverage' }),
     JSON.stringify({
-      toolId: 'visit-question-personal-record-search',
-      sourceKind: 'personal_record',
-      input: { query: '최근 검사 결과' },
+      text: '',
+      toolCalls: [
+        {
+          id: 'model-search-1',
+          name: 'visit-question-personal-record-search',
+          arguments: { query: '최근 검사 결과' },
+        },
+      ],
+      finishReason: 'tool_calls',
     }),
     JSON.stringify({
       type: 'result',

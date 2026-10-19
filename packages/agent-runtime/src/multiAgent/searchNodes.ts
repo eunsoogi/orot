@@ -2,7 +2,7 @@ import { hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
 import { referencesFromBatch, sameReference, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { canceled, completeState, operationKey, stop } from './runtimeContext';
+import { canceled, completeState, operationKey, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -19,7 +19,8 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     if (
       !state.selectedToolId ||
       !context.researchInput ||
-      state.toolCalls >= state.budget.maxToolCalls
+      state.toolCalls >= state.budget.maxToolCalls ||
+      state.evidenceReferences.length >= state.budget.maxEvidenceItems
     ) {
       stop(context, 'The read-only evidence search could not be started.', 'budget_exceeded');
       return completeState();
@@ -48,6 +49,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
+    reportProgress(context, {
+      type: 'evidence_search',
+      status: 'started',
+      sourceKind: tool.sourceKind,
+    });
     let batch: EvidenceBatch;
     try {
       const searched = await observeUntilAbort(
@@ -56,7 +62,9 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
           operationKey: state.pendingOperation.operationKey,
           input: context.researchInput,
           allowedScope: options.execution.allowedScope,
-          resultLimit: state.budget.maxEvidenceItems,
+          // Successive tool results share one evidence budget; do not ask an
+          // adapter for rows that the workflow cannot retain.
+          resultLimit: state.budget.maxEvidenceItems - state.evidenceReferences.length,
           maxPayloadBytes: state.budget.maxPayloadBytes,
           signal: context.signal,
         }),
@@ -84,6 +92,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       else stop(context, 'The allowlisted evidence search failed.', 'unavailable');
       return completeState();
     }
+    reportProgress(context, {
+      type: 'evidence_search',
+      status: 'completed',
+      sourceKind: tool.sourceKind,
+    });
     if (context.signal.aborted) {
       canceled(context);
       return completeState();
@@ -112,6 +125,33 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     if (prior.length + next.length > state.budget.maxEvidenceItems) {
       stop(context, 'The evidence item budget was exceeded.', 'budget_exceeded');
       return completeState();
+    }
+    // Even an empty or incomplete search is a tool result. Let the model see it;
+    // final coverage and citation validation still prevent unsupported answers.
+    if (context.pendingNativeToolCallId) {
+      const combined = {
+        items: [...context.currentEvidence.items, ...batch.items],
+        coverage: [...context.currentEvidence.coverage, ...batch.coverage],
+        conflicts: [...context.currentEvidence.conflicts, ...batch.conflicts],
+      };
+      if (next.some((reference) => prior.some((existing) => sameReference(existing, reference)))) {
+        stop(context, 'The tool returned duplicate evidence.', 'invalid_output');
+        return completeState();
+      }
+      if (combined.items.length && !(await evidenceIsFresh(context, combined)))
+        return completeState();
+      context.currentEvidence = combined;
+      context.nativeToolMessages?.push({
+        role: 'tool',
+        toolCallId: context.pendingNativeToolCallId,
+        result: JSON.parse(canonicalJson(batch)),
+      });
+      context.pendingNativeToolCallId = undefined;
+      return {
+        phase: 'revised_response' as const,
+        evidenceReferences: referencesFromBatch(combined),
+        pendingOperation: undefined,
+      };
     }
     if (
       next.length === 0 ||

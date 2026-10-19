@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+import { AppProgress } from '../layout/AppProgress';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import type { RecordingSourceRecord } from './recordingTypes';
@@ -55,7 +56,7 @@ export default function RecordingDeletionConfirmation({
       style={styles.deleteProgress}
       testID="recording-delete-progress"
     >
-      <ActivityIndicator color={appColors.primaryText} size="small" />
+      <AppProgress color={appColors.primaryText} size="small" />
       <Text style={styles.copy}>{t('recording.library.deleting')}</Text>
     </View>
   );

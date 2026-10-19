@@ -1,87 +1,37 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
 import RecordingExportPanel from '../RecordingExportPanel';
-import type { RecordingExportService } from '../recordingExportService';
-import type {
-  TranscriptEvidenceService,
-  TranscriptRecordingView,
-} from '../../transcription/transcriptEvidenceService';
+import {
+  correction,
+  createServices,
+  original,
+  source,
+} from '../recordingExportTestFixtures';
 
-const source: SourceRecord = {
-  id: 'recording-1',
-  sourceKind: 'audio_recording',
-  effectiveAt: '2026-10-05T10:00:00.000Z',
-  recordedAt: '2026-10-05T10:00:05.000Z',
-  ingestedAt: '2026-10-05T10:00:06.000Z',
-  provenance: { origin: 'user_reported', sourceRecordIds: [] },
-  reviewState: { status: 'unreviewed' },
-  title: '상담 녹음',
-};
+test('separates the two share options and explains their destination', async () => {
+  const { transcriptService, exportService } = createServices([original]);
+  await render(
+    <RecordingExportPanel
+      recordingSourceId={source.id}
+      transcriptService={transcriptService}
+      exportService={exportService}
+    />,
+  );
 
-const original: TranscriptEvidenceSegment = {
-  id: 'recording-1:segment:0:r1',
-  transcriptId: 'recording-1:segment:0',
-  recordingSourceId: source.id,
-  segmentOrdinal: 0,
-  revision: 1,
-  text: '원문 전사',
-  language: 'ko-KR',
-  recordingDurationMs: 5000,
-  audioRange: { startMs: 250, endMs: 1801 },
-  effectiveAt: '2026-10-05T10:00:00.250Z',
-  recordedAt: '2026-10-05T10:00:06.000Z',
-  ingestedAt: '2026-10-05T10:00:06.000Z',
-  provenance: {
-    origin: 'derived',
-    sourceRecordIds: [source.id],
-    source: {
-      system: 'Apple Speech',
-      sourceIdentifier: 'fixture',
-      sourceVersion: 'fixture-v1',
-    },
-  },
-  reviewState: { status: 'unreviewed' },
-};
-
-const correction: TranscriptEvidenceSegment = {
-  ...original,
-  id: 'recording-1:segment:0:r2',
-  revision: 2,
-  supersedesId: original.id,
-  text: '최신 사용자 수정',
-  provenance: {
-    ...original.provenance,
-    origin: 'user_reported',
-    sourceRecordIds: [source.id, original.id],
-  },
-  reviewState: {
-    status: 'needs_review',
-    reason: 'Transcript text was corrected by the user.',
-  },
-};
-
-function createServices(segments: TranscriptEvidenceSegment[]) {
-  const view: TranscriptRecordingView = {
-    source,
-    segments,
-    staleArtifacts: [],
-  };
-  const transcriptService: TranscriptEvidenceService = {
-    load: jest.fn(async () => view),
-    transcribe: jest.fn(async () => segments),
-    correct: jest.fn(async () => segments[0]!),
-    play: jest.fn(async segment => ({
-      startMs: segment.audioRange.startMs,
-      endMs: segment.audioRange.endMs,
-      actualStartMs: segment.audioRange.startMs,
-    })),
-  };
-  const exportService: RecordingExportService = {
-    shareAudio: jest.fn(async () => 'completed'),
-    shareTranscript: jest.fn(async () => 'completed'),
-  };
-  return { transcriptService, exportService };
-}
+  const audio = screen.getByTestId('recording-export-audio');
+  const transcript = await screen.findByTestId('recording-export-transcript');
+  expect(audio.props.accessibilityRole).toBe('button');
+  expect(audio.props.accessibilityHint).toBe(
+    '원본 음성 파일을 공유할 앱을 선택해요.',
+  );
+  expect(transcript.props.accessibilityHint).toBe(
+    '최신 전사 내용을 공유할 앱을 선택해요.',
+  );
+  expect(screen.getByTestId('recording-export-privacy-note')).toHaveTextContent(
+    '오디오 파일과 최신 전사 내용은 선택한 앱으로 공유돼요.',
+  );
+  expect(exportService.shareAudio).not.toHaveBeenCalled();
+  expect(exportService.shareTranscript).not.toHaveBeenCalled();
+});
 
 test('exports the current transcript revision only after an explicit press', async () => {
   const { transcriptService, exportService } = createServices([

@@ -2,13 +2,18 @@ import { AppState } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
-import { calendarEventMatchesAppointment } from './calendarSnapshot';
+import {
+  calendarEventMatchesAppointment,
+  calendarEventsEqual,
+} from './calendarSnapshot';
 import { appointmentStartTime } from './appointmentTime';
 import type {
   CalendarAccessState,
   CalendarBridge,
   CalendarEvent,
 } from './types';
+import { emptyCalendarAutoSyncState } from './calendarAutoSync';
+import type { CalendarAutoSyncState } from './calendarAutoSync';
 
 const MAX_TIME_REFRESH_DELAY_MS = 24 * 60 * 60 * 1000;
 
@@ -40,16 +45,14 @@ function selectLinkedAppointment(
 export function useCalendarLinking(
   repository: AppointmentRepository,
   bridge: CalendarBridge,
+  calendarSync: CalendarAutoSyncState = emptyCalendarAutoSyncState,
 ) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [loadingAppointments, setLoadingAppointments] = useState(true);
-  const [loadingEvents, setLoadingEvents] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [access, setAccess] = useState<CalendarAccessState | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  // Linked-event verification can grant full access without loading candidates.
-  const [hasLoadedCandidates, setHasLoadedCandidates] = useState(false);
+  const [verifiedAccess, setVerifiedAccess] =
+    useState<CalendarAccessState | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
@@ -58,6 +61,10 @@ export function useCalendarLinking(
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const linkedAppointment = selectLinkedAppointment(appointments);
+  const access = calendarSync.access ?? verifiedAccess;
+  const events = calendarSync.events;
+  const hasLoadedCandidates =
+    calendarSync.access === 'fullAccess' && calendarSync.updatedAt !== null;
   const nextVisitAppointment =
     linkedAppointment && appointmentStartTime(linkedAppointment) > now
       ? linkedAppointment
@@ -94,7 +101,7 @@ export function useCalendarLinking(
           appointment.calendarEventSnapshot.occurrenceDate,
           appointment.calendarEventSnapshot.floatingOccurrenceAt ?? null,
         );
-        setAccess(result.access);
+        setVerifiedAccess(result.access);
         if (result.access !== 'fullAccess') {
           setPendingChange(null);
           return;
@@ -150,41 +157,42 @@ export function useCalendarLinking(
     };
   }, [bridge, linkedAppointment, verifyLinkedEvent]);
 
-  async function loadUpcomingEvents() {
-    setLoadingEvents(true);
-    setHasLoadedCandidates(false);
-    setError('');
-    setNotice('');
-    setSelectedEvent(null);
-    try {
-      const result = await bridge.requestAccessAndListUpcomingEvents();
-      setAccess(result.access);
-      setEvents(result.access === 'fullAccess' ? result.events : []);
-      setHasLoadedCandidates(result.access === 'fullAccess');
-    } catch {
-      setError(t('calendar.loadError'));
-    } finally {
-      setLoadingEvents(false);
-    }
-  }
-
   async function confirmSelectedEvent() {
     if (!selectedEvent) return;
     setSaving(true);
     setError('');
     try {
+      // The user may leave a candidate selected while EventKit changes in the background.
+      const latest = await bridge.findEvent(
+        selectedEvent.calendarEventIdentifier,
+        selectedEvent.calendarEventSnapshot.occurrenceDate,
+        selectedEvent.calendarEventSnapshot.floatingOccurrenceAt ?? null,
+      );
+      setVerifiedAccess(latest.access);
+      if (latest.access !== 'fullAccess') {
+        setError(t('calendar.verifyError'));
+        return;
+      }
+      if (!latest.event) {
+        setPendingChange({ kind: 'missing' });
+        setSelectedEvent(null);
+        return;
+      }
+      if (!calendarEventsEqual(latest.event, selectedEvent)) {
+        setPendingChange({ kind: 'changed', event: latest.event });
+        setSelectedEvent(null);
+        return;
+      }
       if (linkedAppointment) {
         await repository.reconfirmCalendarEvent(
           linkedAppointment.id,
-          selectedEvent,
+          latest.event,
         );
       } else {
-        await repository.confirmCalendarEvent(selectedEvent);
+        await repository.confirmCalendarEvent(latest.event);
       }
       await reloadAppointments();
       setSelectedEvent(null);
-      setEvents([]);
-      setHasLoadedCandidates(false);
       setPendingChange(null);
       setNotice(t('calendar.confirmed'));
     } catch {
@@ -202,9 +210,8 @@ export function useCalendarLinking(
     hasLoadedCandidates,
     linkedAppointment,
     nextVisitAppointment,
-    loadUpcomingEvents,
     loadingAppointments,
-    loadingEvents,
+    loadingEvents: calendarSync.loading,
     notice,
     pendingChange,
     reloadAppointments,

@@ -18,12 +18,17 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         let library = UITestConditions.element(app, "records-open-health-library")
         XCTAssertTrue(library.waitForAppearance())
         library.tap()
-        let list = UITestConditions.element(app, "health-records-scroll")
+        let overview = UITestConditions.element(app, "health-records-scroll")
+        XCTAssertTrue(overview.waitForAppearance())
+        let detail = UITestConditions.element(app, "health-record-open-detail-heart_rate")
+        XCTAssertTrue(detail.waitForAppearance())
+        detail.tap()
+        let list = UITestConditions.element(app, "health-records-detail-scroll")
         XCTAssertTrue(list.waitForAppearance())
         XCTAssertTrue(UITestConditions.element(app, "health-record-row-0").waitForAppearance())
         let row = UITestConditions.element(app, "health-record-row-5")
-        // Row 5 is unavailable until FlatList requests the next four-record page. Native integration retains row 55's value.
-        FormUITestConditions.reveal(row, in: app, scrollID: "health-records-scroll", maximumScrollFraction: 0.7)
+        // The selected month spans multiple storage pages; the detail list must retain the later-page value.
+        FormUITestConditions.reveal(row, in: app, scrollID: "health-records-detail-scroll", maximumScrollFraction: 0.7)
         UITestConditions.value(UITestConditions.element(app, "health-record-row-5-value"), equals: "65 count/min")
         let requestText = UITestConditions.text(UITestConditions.element(app, "health-pagination-requests"))
         let requests = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(requestText.utf8)) as? [String: Any])
@@ -39,8 +44,9 @@ final class PagedHealthRecordsUITests: OrotFailFastTestCase {
         capture(app, "health-short-edge-swipe-preserves-route")
         captureNavigationObservation(app, "health-after-short-edge-back")
         backSwipe(list, in: app, fraction: 0.9)
+        // The detail list is pushed above the chart overview, so one completed back gesture pops only that screen.
         let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            library.exists && library.isHittable && !list.exists
+            overview.exists && overview.isHittable && !list.exists && !library.isHittable
         }, object: nil)
         let returnResult = UITestConditions.wait(for: [returned])
         // Preserve the native gesture and route outcome before a failing assertion stops the case.
