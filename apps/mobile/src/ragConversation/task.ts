@@ -8,6 +8,7 @@ import type {
   TaskResponderContract,
   TaskResponderInput,
 } from '@orot/agent-runtime';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -84,6 +85,9 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     },
     additionalProperties: false,
   } as JsonObject,
+  projectStreamedText(rawOutput) {
+    return extractPartialJsonStringAtPath(rawOutput, ['value', 'answer']);
+  },
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
     return [
       {

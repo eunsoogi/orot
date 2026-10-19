@@ -15,6 +15,8 @@ interface Props {
   readonly providerUnavailable: boolean;
   readonly providerReady: boolean;
   readonly loading: boolean;
+  readonly calendarLoading: boolean;
+  readonly calendarUnavailable: boolean;
   readonly classifying: boolean;
   readonly accessAvailable: boolean;
   readonly queryComplete: boolean;
@@ -25,12 +27,17 @@ interface Props {
   readonly savedIds: ReadonlySet<string>;
   readonly onImport: () => Promise<void>;
   readonly onOpenManual: () => void;
+  readonly onOpenCalendarSettings?: () => void;
 }
 
 /** One import action shows full scan progress and only confidently medical results. */
 export function MedicalAppointmentReviewView(props: Props) {
   const inset = useNavigationContentInset();
-  const busy = props.loading || props.classifying || props.savingId !== null;
+  const busy =
+    props.loading ||
+    props.calendarLoading ||
+    props.classifying ||
+    props.savingId !== null;
   const classified = props.candidates.filter(
     item => item.status === 'classified',
   ).length;
@@ -84,21 +91,31 @@ export function MedicalAppointmentReviewView(props: Props) {
       <View style={styles.actions}>
         <AppButton
           testID="medical-appointment-import"
-          disabled={!props.providerReady || busy}
+          disabled={!props.providerReady || busy || props.calendarUnavailable}
           onPress={() => {
             void props.onImport();
           }}
           accessibilityLabel={copy.loadCalendar}
           accessibilityState={{ busy }}
           title={
-            props.loading
-              ? copy.loading
-              : props.classifying
-                ? copy.classifying
-                : copy.loadCalendar
+            props.calendarLoading
+              ? copy.calendarSyncing
+              : props.loading
+                ? copy.loading
+                : props.classifying
+                  ? copy.classifying
+                  : copy.loadCalendar
           }
         />
       </View>
+      {props.calendarUnavailable && props.onOpenCalendarSettings ? (
+        <AppButton
+          onPress={props.onOpenCalendarSettings}
+          testID="medical-appointment-calendar-settings"
+          title={copy.calendarSettings}
+          variant="secondary"
+        />
+      ) : null}
       {props.eventCount > 0 ? (
         <View style={styles.results}>
           <Text style={styles.coverage} accessibilityLiveRegion="polite">

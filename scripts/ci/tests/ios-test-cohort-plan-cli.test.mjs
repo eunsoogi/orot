@@ -64,7 +64,7 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
   assert.equal(outputs.oauth_required, 'false');
 });
 
-test('a full plan still schedules the exact 87 observations and OAuth when selected', (t) => {
+test('a full plan schedules all 96 observations and OAuth when selected', (t) => {
   const cohorts = [
     'core-integration',
     'core-ui',
@@ -86,8 +86,8 @@ test('a full plan still schedules the exact 87 observations and OAuth when selec
 
   assert.equal(plan.selectedCohorts.length, 15);
   assert.equal(plan.notSelectedCohorts.length, 0);
-  assert.equal(plan.uniqueTestCases, 87);
-  assert.equal(plan.scheduledTestObservations, 87);
+  assert.equal(plan.uniqueTestCases, 96);
+  assert.equal(plan.scheduledTestObservations, 96);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 4);

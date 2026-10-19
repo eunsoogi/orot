@@ -1,5 +1,4 @@
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -8,18 +7,28 @@ import {
 import type { AppointmentRepository } from '@orot/storage';
 import type { ComponentProps } from 'react';
 import App from '../App';
+import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
+import { correlation } from '../src/healthkit/bloodPressure/testSupport';
 import type { CalendarBridge } from '../src/calendar/types';
-import type { CommonObservationsImportResult } from '../src/healthkit/commonObservations/CommonObservationsImportScreen';
-import type { CommonObservationFeature } from '../src/healthkit/commonObservations/types';
-import { importLocalCommonObservations } from '../src/healthkit/commonObservations/importLocal';
+import {
+  configureLocalHealthKitAutoSync,
+  syncLocalPreviouslyRequestedHealthKit,
+} from '../src/healthkit/autoSyncLocal';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
-jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
-  importLocalCommonObservations: jest.fn(),
-}));
-jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
-  importLocalBloodPressure: jest.fn(),
-  listLocalBloodPressureObservations: jest.fn(),
+jest.mock('../src/healthkit/autoSyncLocal', () => ({
+  configureLocalHealthKitAutoSync: jest.fn(
+    async (features: readonly string[]) => ({
+      status: 'complete',
+      attemptedFeatures: features,
+    }),
+  ),
+  loadLocalHealthKitAutoSyncSelection: jest.fn(async () => []),
+  loadLocalHealthKitAutoSyncStatus: jest.fn(async () => null),
+  syncLocalPreviouslyRequestedHealthKit: jest.fn(async () => ({
+    status: 'skipped',
+    attemptedFeatures: [],
+  })),
 }));
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
@@ -31,6 +40,10 @@ jest.mock(
 
 function createCalendarBridge(): CalendarBridge {
   return {
+    listUpcomingEvents: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      events: [],
+    })),
     requestAccessAndListUpcomingEvents: jest.fn(async () => ({
       access: 'fullAccess' as const,
       events: [],
@@ -82,10 +95,11 @@ test('keeps Home compact and groups calendar and appointment management under Sc
 
   await selectTab('schedule');
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
-  expect(screen.getByTestId('calendar-connect')).toHaveTextContent(
-    '캘린더 일정 불러오기',
-  );
+  expect(screen.queryByTestId('calendar-connect')).toBeNull();
   expect(screen.getByTestId('schedule-open-appointments')).toBeTruthy();
+  expect(screen.getByTestId('open-medical-appointments')).toHaveTextContent(
+    /AI로 일정 분류/,
+  );
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('schedule-open-appointments'));
@@ -93,6 +107,16 @@ test('keeps Home compact and groups calendar and appointment management under Sc
   expect(screen.queryByTestId('navigation-tab-schedule')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
+});
+
+test('refreshes authorized Calendar events at app startup without requesting access', async () => {
+  const bridge = createCalendarBridge();
+  await renderApp({ calendarBridge: bridge });
+
+  await waitFor(() =>
+    expect(bridge.listUpcomingEvents).toHaveBeenCalledTimes(1),
+  );
+  expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 });
 
 test('opens provider settings from Settings and returns there on Back', async () => {
@@ -123,7 +147,7 @@ test('keeps consent-gated recording reachable from Records', async () => {
   expect(screen.getByTestId('navigation-back')).toBeVisible();
   expect(screen.queryByTestId('recording-back')).toBeNull();
   expect(screen.getByRole('checkbox')).toBeVisible();
-  expect(screen.getByTestId('recording-start')).toBeDisabled();
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
@@ -140,109 +164,68 @@ test('recovers the Schedule root after appointment storage needs a retry', async
   await selectTab('schedule');
   expect(await screen.findByTestId('schedule-retry')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('schedule-retry'));
-  expect(await screen.findByTestId('calendar-connect')).toBeTruthy();
+  expect(await screen.findByTestId('calendar-month-view')).toBeTruthy();
+  expect(screen.queryByTestId('calendar-connect')).toBeNull();
   expect(loadAppointments).toHaveBeenCalledTimes(2);
 });
 
-test('requires selection and an explicit import before reading common HealthKit types', async () => {
-  const importHealthObservations = jest.fn().mockResolvedValue({
-    status: 'complete',
-    importedCount: 1,
-    deletedCount: 0,
-    unsupportedCount: 0,
-  });
-  await renderApp({ importHealthObservations });
-
-  await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
-  expect(
-    screen.getByRole('header', { name: '건강 기록 가져오기' }),
-  ).toBeTruthy();
-  expect(screen.getByTestId('navigation-route-scroll')).toBeVisible();
-  expect(screen.getByTestId('common-observations-import')).toBeDisabled();
-  expect(importHealthObservations).not.toHaveBeenCalled();
-
-  await fireEvent.press(screen.getByTestId('common-observations-toggle-steps'));
-  expect(importHealthObservations).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('common-observations-import'));
-
-  expect(importHealthObservations).toHaveBeenCalledWith(['steps']);
-  expect(
-    await screen.findByText(
-      '선택한 기록의 변경을 가져왔어요. 1개 저장, 0개 삭제, 0개 미지원',
-    ),
-  ).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
-});
-
-test('calls the production importer only after explicit selection', async () => {
-  jest.mocked(importLocalCommonObservations).mockResolvedValue({
-    status: 'complete',
-    readAuthorization: 'notObservable',
-    importedCount: 1,
-    deletedCount: 0,
-    unsupportedCount: 0,
-    cursorAdvanced: true,
-  });
+test('keeps health sync setup in Settings and removes manual imports from Records', async () => {
   await renderApp();
+  await waitFor(() =>
+    expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledTimes(1),
+  );
 
   await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
-  await fireEvent.press(
-    screen.getByTestId('common-observations-toggle-bodyMass'),
-  );
-  expect(importLocalCommonObservations).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByTestId('common-observations-import'));
+  expect(screen.getByTestId('records-new-recording')).toBeTruthy();
+  expect(screen.getByTestId('records-open-health-library')).toBeTruthy();
+  expect(screen.queryByTestId('records-health-import')).toBeNull();
+  expect(screen.queryByTestId('records-open-common-observations')).toBeNull();
+  expect(screen.queryByTestId('records-open-blood-pressure')).toBeNull();
 
-  expect(await screen.findByText(/1개 저장/u)).toBeTruthy();
-  expect(importLocalCommonObservations).toHaveBeenCalledWith(['bodyMass']);
+  await selectTab('settings');
+  await fireEvent.press(screen.getByTestId('settings-open-health-data'));
+  expect(await screen.findByTestId('health-data-title')).toBeTruthy();
+  expect(configureLocalHealthKitAutoSync).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('health-data-feature-medications'));
+  await fireEvent.press(
+    screen.getByTestId('health-data-feature-bloodPressure'),
+  );
+  await fireEvent.press(screen.getByTestId('health-data-save'));
+
+  await waitFor(() =>
+    expect(configureLocalHealthKitAutoSync).toHaveBeenCalledWith([
+      'medications',
+      'bloodPressure',
+    ]),
+  );
+  expect(await screen.findByTestId('health-data-status')).toHaveTextContent(
+    '자동 동기화 설정을 저장했어요.',
+  );
 });
 
-test('allows Back and reopening while the first import is still pending', async () => {
-  let finishFirst!: (result: CommonObservationsImportResult) => void;
-  let finishSecond!: (result: CommonObservationsImportResult) => void;
-  const firstImport = new Promise<CommonObservationsImportResult>(resolve => {
-    finishFirst = resolve;
-  });
-  const secondImport = new Promise<CommonObservationsImportResult>(resolve => {
-    finishSecond = resolve;
-  });
-  const importHealthObservations = jest
-    .fn<
-      Promise<CommonObservationsImportResult>,
-      [readonly CommonObservationFeature[]]
-    >()
-    .mockReturnValueOnce(firstImport)
-    .mockReturnValueOnce(secondImport);
-  await renderApp({ importHealthObservations });
+test('opens the chart overview and navigates to its period-filtered pressure rows', async () => {
+  const observations = mapBloodPressureCorrelation(
+    correlation('app-health-records'),
+    '2026-10-05T10:00:00.000Z',
+  ).observations;
+  await renderApp({ loadHealthObservations: async () => observations });
 
   await selectTab('records');
-  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
+  await fireEvent.press(screen.getByTestId('records-open-health-library'));
+  expect(
+    await screen.findByTestId('health-record-chart-blood_pressure'),
+  ).toBeTruthy();
   await fireEvent.press(
-    screen.getByTestId('common-observations-toggle-heartRate'),
+    screen.getByTestId('health-record-open-detail-blood_pressure'),
   );
-  await fireEvent.press(screen.getByTestId('common-observations-import'));
-  expect(importHealthObservations).toHaveBeenCalledTimes(1);
-
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
-  await fireEvent.press(
-    screen.getByTestId('common-observations-toggle-heartRate'),
-  );
-  await fireEvent.press(screen.getByTestId('common-observations-import'));
-  expect(importHealthObservations).toHaveBeenCalledTimes(2);
-
-  const result: CommonObservationsImportResult = {
-    status: 'complete',
-    importedCount: 1,
-    deletedCount: 1,
-    unsupportedCount: 0,
-  };
-  await act(async () => {
-    finishFirst(result);
-    finishSecond(result);
-    await Promise.resolve();
-  });
-  expect(await screen.findByText(/1개 저장, 1개 삭제/u)).toBeTruthy();
+  expect(
+    await screen.findByTestId('health-records-detail-title'),
+  ).toHaveTextContent('혈압 기록 상세');
+  expect(
+    screen.getByTestId('health-record-row-0-systolic').props.accessibilityLabel,
+  ).toBe('수축기 120 mmHg');
+  expect(
+    screen.getByTestId('health-record-row-0-diastolic').props
+      .accessibilityLabel,
+  ).toBe('이완기 80 mmHg');
 });

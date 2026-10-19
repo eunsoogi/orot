@@ -1,7 +1,6 @@
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
 import type { LocalMemoryHit } from '@orot/agent-runtime';
 import type { HybridSearchOptions } from '@orot/rag';
-import { buildPersistedEvidenceChunks } from '@orot/rag';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceCollection,
@@ -61,7 +60,7 @@ export async function searchVisitQuestionEvidence(input: {
   readonly queryService: VisitQuestionQueryPort;
   readonly repository: VisitQuestionEvidenceRepository;
   readonly rag: VisitQuestionRagPort;
-  readonly buildChunks?: VisitQuestionChunkBuilder;
+  readonly buildChunks: VisitQuestionChunkBuilder;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionEvidenceCollection> {
   if (input.signal?.aborted) throw new Error('Evidence search was cancelled.');
@@ -76,8 +75,14 @@ export async function searchVisitQuestionEvidence(input: {
             LOCAL_MEMORY_MAX_RESULTS,
           ),
         }
-      : visitQuestionEvidenceLimits(input.maxEvidenceItems);
-  const buildChunks = input.buildChunks ?? buildPersistedEvidenceChunks;
+      : sourceKind === 'personal_record'
+        ? {
+            recordResultLimit: input.maxEvidenceItems,
+            transcriptResultLimit: 0,
+            memoryResultLimit: 1,
+          }
+        : visitQuestionEvidenceLimits(input.maxEvidenceItems);
+  const buildChunks = input.buildChunks;
   let recordHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let transcriptHits = [] as Awaited<ReturnType<LocalE5RagService['search']>>;
   let recordSearchTruncated = false;
@@ -113,7 +118,10 @@ export async function searchVisitQuestionEvidence(input: {
   let memoryPromise: ReturnType<typeof readReviewedMemory> | undefined;
 
   if (sourceKind !== 'reviewed_memory') {
-    const chunks = await buildChunks(input.repository);
+    const chunks = await buildChunks(input.repository, {
+      query: input.query,
+      signal: input.signal,
+    });
     if (input.signal?.aborted)
       throw new Error('Evidence search was cancelled.');
     if (input.signal) {
@@ -128,7 +136,13 @@ export async function searchVisitQuestionEvidence(input: {
       memoryPromise = readReviewedMemory();
     }
     const recordFilters: HybridSearchOptions = {
-      filters: { recordTypes: PERSONAL_RECORD_TYPES },
+      // One shared ranked page lets the last slot contain either clinical or transcript evidence.
+      filters: {
+        recordTypes:
+          sourceKind === 'personal_record'
+            ? [...PERSONAL_RECORD_TYPES, 'transcript_segment']
+            : PERSONAL_RECORD_TYPES,
+      },
       ...(input.signal ? { signal: input.signal } : {}),
     };
     const transcriptFilters: HybridSearchOptions = {
@@ -142,12 +156,14 @@ export async function searchVisitQuestionEvidence(input: {
         limits.recordResultLimit + 1,
         recordFilters,
       ),
-      input.rag.search(
-        input.query,
-        chunks,
-        limits.transcriptResultLimit + 1,
-        transcriptFilters,
-      ),
+      limits.transcriptResultLimit === 0
+        ? Promise.resolve([])
+        : input.rag.search(
+            input.query,
+            chunks,
+            limits.transcriptResultLimit + 1,
+            transcriptFilters,
+          ),
     ]);
     recordSearchTruncated = recordProbe.length > limits.recordResultLimit;
     transcriptSearchTruncated =

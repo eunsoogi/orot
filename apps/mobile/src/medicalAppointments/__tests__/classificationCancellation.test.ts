@@ -49,9 +49,7 @@ function responseFor(request: LanguageModelRequest) {
         classifications: candidates.map(
           (candidate: { candidateId: string }) => ({
             candidateId: candidate.candidateId,
-            classification: 'medical',
-            reason: '진료 목적이 제목에 있습니다.',
-            uncertainty: 'low',
+            decision: 'medical_low',
           }),
         ),
       },

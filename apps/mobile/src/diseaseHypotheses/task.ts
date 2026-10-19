@@ -6,12 +6,14 @@ import type {
   TaskResponderContract,
   TaskResponderInput,
 } from '@orot/agent-runtime';
+import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { assessHealthEvidenceCoverage } from '../healthEvidence/coverage';
 import type { HealthEvidenceInventory } from '../healthEvidence/coverage';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import {
   containsEvidenceReference,
+  canPreviewDiseaseHypothesisSummary,
   diseaseHypothesisSchema,
   validateDiseaseHypothesisResult,
 } from './resultValidation';
@@ -50,6 +52,17 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
       },
       additionalProperties: false,
     } satisfies JsonObject,
+    projectStreamedText(rawOutput) {
+      const summary = extractPartialJsonStringAtPath(rawOutput, [
+        'value',
+        'hypotheses',
+        0,
+        'summary',
+      ]);
+      return summary && canPreviewDiseaseHypothesisSummary(summary)
+        ? summary
+        : undefined;
+    },
     createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
       return [
         {
@@ -76,15 +89,17 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
     },
   };
 
-/** Requires a truthful all-record inventory before asking #117 to analyze local evidence. */
+/** Preloaded callers must attest coverage; tool-first callers establish coverage through tool results. */
 export async function runDiseaseHypothesisAnalysis(
   options: Omit<MultiAgentWorkflowOptions<DiseaseHypothesisAnalysis>, 'task'>,
-  inventory: HealthEvidenceInventory,
+  inventory: HealthEvidenceInventory | undefined,
   invocation?: MultiAgentInvocation,
   resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver,
 ): Promise<DiseaseHypothesisRunOutcome> {
-  const assessment = assessHealthEvidenceCoverage(inventory);
-  if (assessment.status !== 'complete') {
+  const assessment = inventory
+    ? assessHealthEvidenceCoverage(inventory)
+    : undefined;
+  if (assessment && assessment.status !== 'complete') {
     return { status: 'incomplete_inventory', reason: assessment.status };
   }
   const result = await runMultiAgentWorkflow(

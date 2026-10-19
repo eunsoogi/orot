@@ -102,17 +102,11 @@ export function createPreparedContext(): ReadyContext {
     evidence: collection(initial),
     searchEvidence: async () => collection(supplemental),
     revalidateEvidence: async () => true,
+    reloadPersonalEvidence: async reference =>
+      [initial, supplemental].find(
+        item => item.evidenceId === reference.evidenceId,
+      ),
   };
-}
-
-function requestText(request: LanguageModelRequest): string {
-  return request.messages
-    .map(message =>
-      message.role !== 'tool' && typeof message.content === 'string'
-        ? message.content
-        : '',
-    )
-    .join('\n');
 }
 
 function citationReferences(
@@ -154,26 +148,17 @@ export function createSyntheticProvider(
       metrics.calls += 1;
       metrics.privateIdentifierExposed ||=
         JSON.stringify(request).includes('probe-private-');
-      const text = requestText(request);
-      if (text.includes('Role: EvidenceResearcher')) {
-        return providerSuccess({
-          text: JSON.stringify({
-            toolId: 'visit-question-personal-record-search',
-            sourceKind: 'personal_record',
-            input: { query: '합성 검사 결과' },
-          }),
-          toolCalls: [],
-          finishReason: 'complete',
-        });
-      }
       if (metrics.taskResponses++ === 0) {
         return providerSuccess({
-          text: JSON.stringify({
-            type: 'request_evidence',
-            need: 'missing_coverage',
-          }),
-          toolCalls: [],
-          finishReason: 'complete',
+          text: '',
+          toolCalls: [
+            {
+              id: 'probe-evidence-call',
+              name: 'visit-question-personal-record-search',
+              arguments: { query: '합성 검사 결과' },
+            },
+          ],
+          finishReason: 'tool_calls',
         });
       }
 

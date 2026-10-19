@@ -42,6 +42,7 @@ export const styles = StyleSheet.create({
   role: { fontSize: 16, fontWeight: '700' },
   assistantBody: { paddingLeft: 44, gap: 12 },
   messageText: { fontSize: 17, lineHeight: 26 },
+  activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   userText: { color: appColors.onPrimary },
   source: {
     flexDirection: 'row',

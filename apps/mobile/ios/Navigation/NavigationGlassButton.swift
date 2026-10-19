@@ -2,8 +2,74 @@ import UIKit
 
 /// Builds native controls while keeping persistent selection exclusive to root tabs.
 enum NavigationGlassButton {
+    /// Creates a UIKit control once for a stable navigation action ID.
     static func make(for action: NavigationActionDescriptor, onAction: @escaping (String) -> Void) -> UIButton {
         let button = UIButton(type: .system)
+        configure(button, for: action)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        let height: CGFloat = action.rootTab ? 52 : 48
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            button.heightAnchor.constraint(equalToConstant: height),
+        ])
+        if action.id == "back" || action.id == "home" {
+            button.widthAnchor.constraint(equalToConstant: action.id == "home" ? 64 : 48).isActive = true
+        }
+        if action.id == "back" {
+            NavigationBackContent.attach(to: button, testID: action.testID)
+        }
+        if action.rootTab || action.id == "home", let name = action.systemImageName {
+            let content = NavigationRootTabContent.make(
+                label: action.label,
+                symbolName: name,
+                testID: action.testID,
+                foregroundColor: action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label,
+                titleSize: action.rootTab ? 12 : 11,
+            )
+            button.addSubview(content)
+            NSLayoutConstraint.activate([
+                content.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+                content.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            ])
+        }
+        button.addAction(UIAction(title: action.label) { _ in
+            // Dispatch follows the immutable action ID captured when the control is created.
+            onAction(action.id)
+        }, for: .touchUpInside)
+
+        return button
+    }
+
+    /// Updates a mounted control in place so UIKit keeps its active touch and Glass view identity.
+    static func update(_ button: UIButton, for action: NavigationActionDescriptor) {
+        configure(button, for: action)
+        if action.id == "back" {
+            button.subviews.compactMap { $0 as? UIImageView }.forEach {
+                $0.accessibilityIdentifier = "\(action.testID)-UIImageView"
+            }
+        }
+        if action.rootTab || action.id == "home" {
+            for content in button.subviews.compactMap({ $0 as? UIStackView }) {
+                for child in content.arrangedSubviews {
+                    if let icon = child as? UIImageView, let name = action.systemImageName {
+                        icon.image = UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(
+                            pointSize: 22, weight: .medium,
+                        ))
+                        icon.tintColor = action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label
+                        icon.accessibilityIdentifier = "\(action.testID)-UIImageView"
+                    }
+                    if let label = child as? UILabel {
+                        label.text = action.label
+                        label.textColor = action.rootTab && action.selected ? NavigationGlassPalette.selectedRootTabForeground : .label
+                        label.accessibilityIdentifier = "\(action.testID)-UILabel"
+                    }
+                }
+            }
+        }
+    }
+
+    /// Reapplies descriptor-driven configuration without replacing the mounted UIButton.
+    private static func configure(_ button: UIButton, for action: NavigationActionDescriptor) {
         let selectedRootTab = action.rootTab && action.selected
         var configuration: UIButton.Configuration = if action.rootTab {
             .plain()
@@ -62,23 +128,6 @@ enum NavigationGlassButton {
         if action.rootTab {
             button.automaticallyUpdatesConfiguration = false
         }
-        if action.id == "back" {
-            NavigationBackContent.attach(to: button, testID: action.testID)
-        }
-        if action.rootTab || action.id == "home", let name = action.systemImageName {
-            let content = NavigationRootTabContent.make(
-                label: action.label,
-                symbolName: name,
-                testID: action.testID,
-                foregroundColor: selectedRootTab ? NavigationGlassPalette.selectedRootTabForeground : .label,
-                titleSize: action.rootTab ? 12 : 11,
-            )
-            button.addSubview(content)
-            NSLayoutConstraint.activate([
-                content.centerXAnchor.constraint(equalTo: button.centerXAnchor),
-                content.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            ])
-        }
         button.accessibilityLabel = action.accessibilityLabel
         button.accessibilityIdentifier = action.testID
         button.isEnabled = !action.disabled
@@ -98,21 +147,5 @@ enum NavigationGlassButton {
             accessibilityTraits.insert(.notEnabled)
         }
         button.accessibilityTraits = accessibilityTraits
-        button.translatesAutoresizingMaskIntoConstraints = false
-        // Root tabs grow while contextual primary actions keep their separate target size.
-        let height: CGFloat = action.rootTab ? 52 : 48
-        NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            button.heightAnchor.constraint(equalToConstant: height),
-        ])
-        if action.id == "back" || action.id == "home" {
-            button.widthAnchor.constraint(equalToConstant: action.id == "home" ? 64 : 48).isActive = true
-        }
-        button.addAction(UIAction(title: action.label) { _ in
-            // Stable IDs keep UIKit input connected to the existing JS navigation handlers.
-            onAction(action.id)
-        }, for: .touchUpInside)
-
-        return button
     }
 }

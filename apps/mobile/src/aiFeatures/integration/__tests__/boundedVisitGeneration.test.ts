@@ -1,5 +1,22 @@
 import { boundedVisitGeneration } from '../boundedVisitGeneration';
 
+test('keeps the route alive for a valid 60-second tool workflow', async () => {
+  jest.useFakeTimers();
+  try {
+    const result = boundedVisitGeneration(
+      new AbortController().signal,
+      async () => {
+        await new Promise(resolve => setTimeout(resolve, 60_000));
+        return { status: 'ready' as const };
+      },
+    );
+    await jest.advanceTimersByTimeAsync(60_000);
+    await expect(result).resolves.toEqual({ status: 'ready' });
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test('cancels provider preparation promptly and rejects its late result', async () => {
   const controller = new AbortController();
   let release!: () => void;

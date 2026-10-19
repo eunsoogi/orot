@@ -1,3 +1,4 @@
+import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
@@ -9,13 +10,9 @@ import type {
 import type { HealthObservation } from '@orot/domain';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
 import type { CalendarBridge } from './src/calendar/types';
+import { useCalendarAutoSync } from './src/calendar/useCalendarAutoSync';
 import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
 import type { RecordingSourceRecord } from './src/recording/recordingTypes';
-import { importLocalCommonObservations } from './src/healthkit/commonObservations/importLocal';
-import type { CommonObservationsImportResult } from './src/healthkit/commonObservations/CommonObservationsImportScreen';
-import type { CommonObservationFeature } from './src/healthkit/commonObservations/types';
-import { importLocalBloodPressure } from './src/healthkit/bloodPressure/importLocal';
-import type { BloodPressureSyncResult } from './src/healthkit/bloodPressure/types';
 import { AiFeatureSharedNavigationStateProvider } from './src/aiFeatures/integration/AiFeatureSharedNavigationState';
 import {
   AppAiFeatureScene,
@@ -38,6 +35,9 @@ import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
 import { listLocalHealthObservationPage } from './src/healthkit/healthObservationLibrary';
+import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
+import type { HealthRecordsMedicationData } from './src/healthkit/healthRecordsMedicationLibrary';
+import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 
 declare const require: (path: string) => {
   openLocalAppointmentRepository: () => Promise<AppointmentRepository>;
@@ -47,16 +47,13 @@ interface AppProps {
   loadAppointments?: () => Promise<AppointmentRepository>;
   loadRecordings?: () => Promise<readonly RecordingSourceRecord[]>;
   calendarBridge?: CalendarBridge;
-  importHealthObservations?: (
-    features: readonly CommonObservationFeature[],
-  ) => Promise<CommonObservationsImportResult>;
-  importBloodPressure?: () => Promise<BloodPressureSyncResult>;
   /** Keeps older blood-pressure fixtures working while the library uses one shared reader. */
   loadBloodPressureObservations?: () => Promise<readonly HealthObservation[]>;
   loadHealthObservations?: () => Promise<readonly HealthObservation[]>;
   loadHealthObservationPage?: (
     cursor: HealthObservationCursor | null,
   ) => Promise<HealthObservationPage>;
+  loadHealthRecordMedications?: () => Promise<HealthRecordsMedicationData>;
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
   /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
   renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
@@ -74,11 +71,10 @@ export default function App({
   loadAppointments = defaultAppointmentLoader,
   loadRecordings = defaultRecordingLoader,
   calendarBridge = eventKitCalendarBridge,
-  importHealthObservations = importLocalCommonObservations,
-  importBloodPressure = importLocalBloodPressure,
   loadBloodPressureObservations,
   loadHealthObservations,
   loadHealthObservationPage,
+  loadHealthRecordMedications,
   aiFeatureServiceDependencies,
   renderVisitQuestions,
 }: AppProps) {
@@ -97,9 +93,20 @@ export default function App({
     loadHealthObservations,
     loadBloodPressureObservations,
   ]);
+  const readHealthRecordMedications = resolveHealthRecordsMedicationLoader(
+    loadHealthRecordMedications,
+    Boolean(
+      loadHealthObservationPage ||
+      loadHealthObservations ||
+      loadBloodPressureObservations,
+    ),
+  );
   const ai = useAppAiServices(aiFeatureServiceDependencies);
+  const calendarSync = useCalendarAutoSync(calendarBridge);
   const [activeTab, setActiveTab] = useState<AppRootTab>('home');
   const [selectedProvider, setSelectedProvider] = useState('');
+  const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
+    useState<HealthRecordsDetailSelection | null>(null);
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('home'),
   );
@@ -134,89 +141,101 @@ export default function App({
 
   return (
     <View style={styles.appShell}>
-      <AiFeatureSharedNavigationStateProvider>
-        <NavigationRouteAdapter
-          controller={appNavigation}
-          scrollable={route =>
-            route.name === 'common-observations' ||
-            (route.name === 'home' &&
-              ['home', 'records', 'settings'].includes(activeTab))
-          }
-          showHome
-          homeAction={async () => {
-            if (await appNavigation.requestHome()) setActiveTab('home');
-          }}
-          rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
-        >
-          {/* Settings and AI use the same account services and persisted selection. */}
-          {actions =>
-            isAppAiRoute(actions.route.name) ? (
-              <AppAiFeatureScene
-                actions={actions}
-                consent={ai.consent}
-                services={ai.services}
-                renderVisitQuestions={
-                  renderVisitQuestions ?? renderVisitQuestionsRoute
-                }
-                serviceDependencies={aiFeatureServiceDependencies}
-                onProviderSelectionCommitted={(_, provider) =>
-                  setSelectedProvider(provider.displayName)
-                }
-              />
-            ) : actions.route.name === 'medical' ||
-              actions.route.name === 'medical-manual' ? (
-              <MedicalAppointmentRoute
-                bridge={calendarBridge}
-                manual={actions.route.name === 'medical-manual'}
-                onOpenManual={() => actions.push('medical-manual')}
-                loadAppointments={loadAppointments}
-                selectedAiResolverOptions={
-                  aiFeatureServiceDependencies?.selectedAi
-                }
-              />
-            ) : (
-              <AppRouteContent
-                actions={actions}
-                activeTab={activeTab}
-                selectTab={setActiveTab}
-                appointmentRepository={homeData.appointmentRepository}
-                backupPreparationState={backupPreparation.state}
-                retryBackupPreparation={backupPreparation.retry}
-                appointmentState={homeData.appointmentState}
-                nextAppointment={homeData.nextAppointment}
-                recordings={homeData.recordings}
-                recordingState={homeData.recordingState}
-                refreshAppointments={homeData.refreshAppointments}
-                refreshRecordings={homeData.refreshRecordings}
-                calendarBridge={calendarBridge}
-                selectedProvider={selectedProvider}
-                serviceDependencies={aiFeatureServiceDependencies}
-                onProviderSelectionCommitted={(_, provider) =>
-                  setSelectedProvider(provider.displayName)
-                }
-                openProviderSettings={() =>
-                  appNavigation.push('settings-provider')
-                }
-                openVisitQuestions={() => appNavigation.push('visit-questions')}
-                openDiseaseHypotheses={() =>
-                  appNavigation.push('disease-hypotheses')
-                }
-                openRagConversation={() =>
-                  appNavigation.push('rag-conversation')
-                }
-                openExternalEvidence={() =>
-                  appNavigation.push('external-evidence')
-                }
-                openRecording={openRecording}
-                importHealthObservations={importHealthObservations}
-                importBloodPressure={importBloodPressure}
-                loadHealthObservations={readHealthPage}
-              />
-            )
-          }
-        </NavigationRouteAdapter>
-        {ai.disclosureSheet}
-      </AiFeatureSharedNavigationStateProvider>
+      <RecordingSelectionProvider>
+        <AiFeatureSharedNavigationStateProvider>
+          <NavigationRouteAdapter
+            controller={appNavigation}
+            // Root tabs share one scroll host; guarded detail routes own their scrollers.
+            scrollable={route =>
+              route.name === 'home' &&
+              ['home', 'records', 'settings'].includes(activeTab)
+            }
+            showHome
+            homeAction={async () => {
+              if (await appNavigation.requestHome()) setActiveTab('home');
+            }}
+            rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+          >
+            {/* Settings and AI use the same account services and persisted selection. */}
+            {actions =>
+              isAppAiRoute(actions.route.name) ? (
+                <AppAiFeatureScene
+                  actions={actions}
+                  consent={ai.consent}
+                  services={ai.services}
+                  renderVisitQuestions={
+                    renderVisitQuestions ?? renderVisitQuestionsRoute
+                  }
+                  serviceDependencies={aiFeatureServiceDependencies}
+                  onProviderSelectionCommitted={(_, provider) =>
+                    setSelectedProvider(provider.displayName)
+                  }
+                />
+              ) : actions.route.name === 'medical' ||
+                actions.route.name === 'medical-manual' ? (
+                <MedicalAppointmentRoute
+                  bridge={calendarBridge}
+                  calendarSync={calendarSync}
+                  manual={actions.route.name === 'medical-manual'}
+                  onOpenCalendarSettings={() =>
+                    appNavigation.push('settings-sync-status')
+                  }
+                  onOpenManual={() => actions.push('medical-manual')}
+                  loadAppointments={loadAppointments}
+                  selectedAiResolverOptions={
+                    aiFeatureServiceDependencies?.selectedAi
+                  }
+                />
+              ) : (
+                <AppRouteContent
+                  actions={actions}
+                  activeTab={activeTab}
+                  selectTab={setActiveTab}
+                  appointmentRepository={homeData.appointmentRepository}
+                  backupPreparationState={backupPreparation.state}
+                  retryBackupPreparation={backupPreparation.retry}
+                  appointmentState={homeData.appointmentState}
+                  nextAppointment={homeData.nextAppointment}
+                  recordings={homeData.recordings}
+                  recordingState={homeData.recordingState}
+                  refreshAppointments={homeData.refreshAppointments}
+                  refreshRecordings={homeData.refreshRecordings}
+                  calendarBridge={calendarBridge}
+                  calendarSync={calendarSync}
+                  selectedProvider={selectedProvider}
+                  serviceDependencies={aiFeatureServiceDependencies}
+                  onProviderSelectionCommitted={(_, provider) =>
+                    setSelectedProvider(provider.displayName)
+                  }
+                  openProviderSettings={() =>
+                    appNavigation.push('settings-provider')
+                  }
+                  openVisitQuestions={() =>
+                    appNavigation.push('visit-questions')
+                  }
+                  openDiseaseHypotheses={() =>
+                    appNavigation.push('disease-hypotheses')
+                  }
+                  openRagConversation={() =>
+                    appNavigation.push('rag-conversation')
+                  }
+                  openExternalEvidence={() =>
+                    appNavigation.push('external-evidence')
+                  }
+                  openRecording={openRecording}
+                  loadHealthObservations={readHealthPage}
+                  loadHealthRecordMedications={readHealthRecordMedications}
+                  healthRecordDetailSelection={healthRecordDetailSelection}
+                  onHealthRecordDetailSelectionChange={
+                    setHealthRecordDetailSelection
+                  }
+                />
+              )
+            }
+          </NavigationRouteAdapter>
+          {ai.disclosureSheet}
+        </AiFeatureSharedNavigationStateProvider>
+      </RecordingSelectionProvider>
     </View>
   );
 }

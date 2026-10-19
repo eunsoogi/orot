@@ -3,10 +3,7 @@ import { name as appName } from '../app.json';
 import App from '../App';
 import { mapBloodPressureCorrelation } from '../src/healthkit/bloodPressure/mapper';
 import { correlation } from '../src/healthkit/bloodPressure/testSupport';
-import type {
-  BloodPressureObservation,
-  BloodPressureSyncResult,
-} from '../src/healthkit/bloodPressure/types';
+import type { BloodPressureObservation } from '../src/healthkit/bloodPressure/types';
 
 const ingestedAt = '2026-10-07T00:00:00.000Z';
 const sourceName = 'Synthetic Safe Area fixture';
@@ -33,30 +30,13 @@ const observations: readonly BloodPressureObservation[] = Array.from(
   },
 ).flat();
 
-const emptySyncResult: BloodPressureSyncResult = {
-  status: 'completed',
-  readAuthorization: 'notObservable',
-  upserted: 0,
-  deleted: 0,
-  cursorAdvanced: false,
-};
-
 async function loadSyntheticObservations() {
   return observations;
 }
 
-async function completeEmptySyntheticImport() {
-  return emptySyncResult;
-}
-
 function SafeAreaBloodPressureProbeEntry() {
   // Injected callbacks keep the geometry probe independent of HealthKit and app storage.
-  return (
-    <App
-      importBloodPressure={completeEmptySyntheticImport}
-      loadBloodPressureObservations={loadSyntheticObservations}
-    />
-  );
+  return <App loadBloodPressureObservations={loadSyntheticObservations} />;
 }
 
 AppRegistry.registerComponent(appName, () => SafeAreaBloodPressureProbeEntry);

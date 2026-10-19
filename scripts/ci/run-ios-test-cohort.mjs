@@ -6,6 +6,7 @@ import {
   iosTestCohortTasks,
   verifyIosSimulatorOwnerContract,
 } from './ios-test-cohorts.mjs';
+import { createIosTestUiPreparationGate } from './ios-test-ui-preparation-runner.mjs';
 import { executeIosTestCohortTasks } from './ios-test-cohort-execution.mjs';
 
 const [cohort, runFile, ownerFile, output] = process.argv.slice(2);
@@ -14,12 +15,14 @@ if (!output || !existsSync(runFile) || existsSync(output))
     'Cohort execution requires verified products, explicit ownership and a new evidence directory',
   );
 const definition = iosTestCohort(cohort);
+const profile = process.env.PROFILE;
+if (profile !== definition.profiles[0])
+  throw new Error('Cohort execution requires the verified representative product profile');
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
 if (owner.cohort !== cohort) throw new Error('Cohort execution requires its explicit owner');
 verifyIosSimulatorOwnerContract(owner, definition.profiles[0]);
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
-const started = Date.now();
 const tasks = iosTestCohortTasks(cohort);
 
 function command(stage, log, script, args, suite) {
@@ -28,6 +31,31 @@ function command(stage, log, script, args, suite) {
     env: { ...process.env, OROT_IOS_TEST_SUITE: suite },
   });
 }
+
+const prepareUi = createIosTestUiPreparationGate({
+  tasks,
+  profile,
+  runFile,
+  ownerFile,
+  resultsDirectory: directory,
+  runPreparation: ({
+    profile: preparationProfile,
+    suite: preparationSuite,
+    runFile: preparationRunFile,
+    ownerFile: preparationOwnerFile,
+    directory: preparationDirectory,
+    log,
+  }) =>
+    command(
+      'ios-ui-preparation',
+      log,
+      'scripts/ci/prepare-ios-test-ui.mjs',
+      [preparationProfile, preparationRunFile, preparationOwnerFile, preparationDirectory],
+      preparationSuite,
+    ),
+});
+for (const task of tasks) prepareUi(task);
+const started = Date.now();
 
 const report = await executeIosTestCohortTasks(tasks, async (task) => {
   // Each execution/reset driver reads live ownership immediately before its Apple operation. The coordinator performs no Simulator mutation and must not repeat that inventory.

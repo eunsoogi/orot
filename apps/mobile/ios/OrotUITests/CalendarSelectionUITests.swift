@@ -26,8 +26,13 @@ final class CalendarSelectionUITests: OrotFailFastTestCase {
         }
         capture(app, "calendar-top-safe-area")
         XCTAssertFalse(UITestConditions.element(app, "appointment-add").exists)
-        tap(app, "calendar-connect")
+        XCTAssertFalse(UITestConditions.element(app, "calendar-connect").exists)
         let month = UITestConditions.element(app, "calendar-month-title")
+        let loadedFixtureMonth = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "2035년 6월"),
+            object: month,
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [loadedFixtureMonth], timeout: 5), .completed, app.debugDescription)
         UITestConditions.value(month, equals: "2035년 6월")
         FormUITestConditions.reveal(month, in: app, scrollID: "calendar-screen")
         let day = UITestConditions.element(app, "calendar-day-2035-06-02")
@@ -45,7 +50,19 @@ final class CalendarSelectionUITests: OrotFailFastTestCase {
         let title = UITestConditions.element(app, "calendar-next-visit-title")
         UITestConditions.value(title, equals: "합성 외래 방문")
         FormUITestConditions.reveal(title, in: app, scrollID: "calendar-screen")
-        UITestConditions.value(UITestConditions.element(app, "calendar-next-visit-time"), equals: "2035년 6월 2일 09:00–10:00 · Asia/Seoul")
+        let time = UITestConditions.element(app, "calendar-next-visit-time")
+        UITestConditions.value(time, equals: "2035년 6월 2일 09:00–10:00 · Asia/Seoul")
+        let navigationBar = UITestConditions.element(app, "navigation-action-bar-overlay")
+        let scrollView = UITestConditions.element(app, "calendar-screen")
+        // The floating toolbar overlays the scroll view, so verify its trailing inset exposes the final appointment detail.
+        for _ in 0 ..< 6 {
+            if time.frame.maxY <= navigationBar.frame.minY {
+                break
+            }
+            scrollView.swipeUp()
+        }
+        XCTAssertLessThanOrEqual(time.frame.maxY, navigationBar.frame.minY, app.debugDescription)
+        XCTAssertTrue(time.isHittable, app.debugDescription)
         capture(app, "calendar-selected-appointment")
     }
 

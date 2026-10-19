@@ -3,22 +3,36 @@ import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import {
   apple,
-  completeInventory,
   consent,
   localData,
   memoryRecord,
   selectionStore,
 } from '../featureServiceFixtures';
 
+const toolRequest = {
+  operationRunId: 'lazy-test',
+  operationKey: 'tool-1',
+  input: { query: '기억 내용' },
+  allowedScope: { sourceKinds: ['reviewed_memory' as const] },
+  resultLimit: 8,
+  maxPayloadBytes: 64 * 1024,
+  signal: new AbortController().signal,
+};
+
 describe('createAiFeatureServices local evidence integration', () => {
   it('indexes only new or changed chunks before searching each local snapshot', async () => {
     const first = memoryRecord(1);
     const second = memoryRecord(2);
     const source = localData([first, second]);
-    const diseaseRunner = jest.fn(async () => ({
-      status: 'incomplete_inventory' as const,
-      reason: 'unavailable' as const,
-    }));
+    const diseaseRunner = jest.fn(
+      async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
+        await options.tools[1]!.search(toolRequest);
+        return {
+          status: 'incomplete_inventory' as const,
+          reason: 'unavailable' as const,
+        };
+      },
+    );
     const services = createAiFeatureServices(consent, {
       selectedAi: {
         selectionStore: selectionStore({
@@ -34,7 +48,9 @@ describe('createAiFeatureServices local evidence integration', () => {
 
     await services.generateDiseaseHypotheses();
     expect(source.eventOrder.slice(0, 2)).toEqual(['index', 'search']);
-    expect(source.data.loadStaleArtifacts).toHaveBeenCalled();
+    expect(source.data.readCandidates).not.toHaveBeenCalled();
+    expect(source.data.loadCurrentChunks).not.toHaveBeenCalled();
+    expect(source.data.loadStaleArtifacts).not.toHaveBeenCalled();
     expect(source.indexedChunks[0]).toHaveLength(2);
 
     await services.generateDiseaseHypotheses();
@@ -52,36 +68,7 @@ describe('createAiFeatureServices local evidence integration', () => {
     );
   });
 
-  it('does not index RAG data when the snapshot already requires an insufficient-data response', async () => {
-    const source = localData([memoryRecord(1)]);
-    const data = {
-      ...source.data,
-      loadInventory: jest.fn(async () => ({
-        ...completeInventory,
-        inventoryComplete: false,
-      })),
-    };
-    const services = createAiFeatureServices(consent, {
-      selectedAi: {
-        selectionStore: selectionStore({
-          providerId: apple.provider.id,
-          modelId: apple.modelId,
-        }),
-        loadAppleOption: async () => apple,
-      },
-      loadLocalData: async () => data,
-    });
-
-    await expect(
-      services.sendRagMessage('기억 내용 확인', []),
-    ).resolves.toEqual({
-      status: 'insufficient',
-    });
-    expect(source.indexedChunks).toHaveLength(0);
-    expect(source.eventOrder).toHaveLength(0);
-  });
-
-  it('passes all persisted reviewed memories and exact local citations to the feature workflows', async () => {
+  it('returns reviewed memories and exact citations only when the workflows invoke a tool', async () => {
     const records = [memoryRecord(1), memoryRecord(2), memoryRecord(3)];
     const source = localData(records);
     let diseaseOptions:
@@ -89,6 +76,9 @@ describe('createAiFeatureServices local evidence integration', () => {
     let diseaseIdentityResolver:
       Parameters<typeof runDiseaseHypothesisAnalysis>[3] | undefined;
     let ragOptions: Parameters<typeof runRagConversationTurn>[0] | undefined;
+    let ragInvocation: Parameters<typeof runRagConversationTurn>[1] | undefined;
+    let diseaseBatch: import('@orot/agent-runtime').EvidenceBatch | undefined;
+    let ragBatch: import('@orot/agent-runtime').EvidenceBatch | undefined;
     const diseaseRunner = jest.fn(
       async (
         options: Parameters<typeof runDiseaseHypothesisAnalysis>[0],
@@ -98,7 +88,10 @@ describe('createAiFeatureServices local evidence integration', () => {
       ) => {
         diseaseOptions = options;
         diseaseIdentityResolver = resolveIdentity;
-        expect(inventory).toBe(completeInventory);
+        expect(inventory).toBeUndefined();
+        expect(options.initialEvidence.items).toEqual([]);
+        const result = await options.tools[1]!.search(toolRequest);
+        if ('items' in result) diseaseBatch = result;
         return {
           status: 'incomplete_inventory',
           reason: 'unavailable',
@@ -106,16 +99,14 @@ describe('createAiFeatureServices local evidence integration', () => {
       },
     ) as unknown as typeof runDiseaseHypothesisAnalysis;
     const ragRunner = jest.fn(
-      async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+      async (
+        options: Parameters<typeof runRagConversationTurn>[0],
+        invocation: Parameters<typeof runRagConversationTurn>[1],
+      ) => {
         ragOptions = options;
-        const signal = new AbortController().signal;
-        const current = await options.loadCurrentEvidence(
-          options.question,
-          signal,
-        );
-        await options.rag.search(options.question, current.chunks, 5, {
-          signal,
-        });
+        ragInvocation = invocation;
+        const result = await options.workflow.tools[1]!.search(toolRequest);
+        if ('items' in result) ragBatch = result;
         return { status: 'no_evidence' } as const;
       },
     ) as unknown as typeof runRagConversationTurn;
@@ -144,8 +135,9 @@ describe('createAiFeatureServices local evidence integration', () => {
       operationRunId: 'test-run-1',
     });
     expect(diseaseOptions?.consent).toBe(consent);
-    expect(diseaseOptions?.initialEvidence.items).toHaveLength(records.length);
-    const firstItem = diseaseOptions?.initialEvidence.items[0];
+    expect(diseaseOptions?.initialEvidence.items).toHaveLength(0);
+    expect(diseaseBatch?.items).toHaveLength(records.length);
+    const firstItem = diseaseBatch?.items[0];
     if (!firstItem) throw new Error('Expected an aliased local evidence item.');
     const reference = {
       sourceKind: firstItem.sourceKind,
@@ -176,24 +168,30 @@ describe('createAiFeatureServices local evidence integration', () => {
       },
     });
 
-    await services.sendRagMessage('기억 내용 확인', []);
+    const onProgress = jest.fn();
+    const onTaskStreamEvent = jest.fn();
+    await services.sendRagMessage('기억 내용 확인', [], undefined, {
+      onProgress,
+      onTaskStreamEvent,
+    });
     expect(source.searchedChunks[1]).toHaveLength(records.length);
     expect(ragOptions?.workflow.provider).toBe(apple.provider);
     expect(ragOptions?.workflow.consent).toBe(consent);
+    expect(ragInvocation?.onProgress).toBe(onProgress);
+    expect(ragInvocation?.onTaskStreamEvent).toBe(onTaskStreamEvent);
     const current = await ragOptions?.loadCurrentEvidence(
       '기억 내용 확인',
       new AbortController().signal,
     );
-    expect(current?.batch.items).toHaveLength(records.length);
-    expect(current?.chunks).toHaveLength(records.length);
-    const ragItem = current?.batch.items[0];
+    expect(current?.batch.items).toHaveLength(0);
+    expect(current?.chunks).toHaveLength(0);
+    expect(ragBatch?.items).toHaveLength(records.length);
+    const ragItem = ragBatch?.items[0];
     if (!ragItem) throw new Error('Expected an aliased RAG evidence item.');
     expect(ragOptions?.resolveLocalEvidenceIdentity?.(ragItem)).toEqual(
       services.resolveSource(ragItem),
     );
-    expect(current?.batch.coverage.map(item => item.resultLimit)).toEqual([
-      5, 5,
-    ]);
+    expect(current?.batch.coverage).toEqual([]);
 
     const memoryTool = diseaseOptions?.tools.find(
       tool => tool.sourceKind === 'reviewed_memory',

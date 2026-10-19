@@ -9,6 +9,7 @@ import {
 } from '../testing/workflowFixtures';
 import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
 import { runVisitQuestionWorkflow } from '../workflow';
+import type { AiWorkflowObserver } from '../../workflowActivity';
 
 describe('visit-question shared workflow', () => {
   it('hands off bounded research, restores exact citations, and refreshes remote consent', async () => {
@@ -27,6 +28,9 @@ describe('visit-question shared workflow', () => {
         return true;
       },
     );
+    const onProgress = jest.fn();
+    const onTaskStreamEvent = jest.fn();
+    const observer: AiWorkflowObserver = { onProgress, onTaskStreamEvent };
 
     const result = await runVisitQuestionWorkflow({
       prepared,
@@ -34,6 +38,7 @@ describe('visit-question shared workflow', () => {
       providerOptions: [option],
       recipient: 'ChatGPT account selected for this run',
       confirmConsent,
+      observer,
     });
 
     expect(result.status).toBe('ready');
@@ -54,12 +59,14 @@ describe('visit-question shared workflow', () => {
         prepared.supplementalEvidence,
       ]),
     );
-    expect(requests).toHaveLength(3);
-    expect(confirmConsent).toHaveBeenCalledTimes(3);
+    expect(requests).toHaveLength(2);
+    expect(onProgress).toHaveBeenCalled();
+    expect(onTaskStreamEvent).toHaveBeenCalledWith({ type: 'started' });
+    expect(confirmConsent).toHaveBeenCalledTimes(2);
     expect(
       new Set(consentRequests.map(request => JSON.stringify(request.payload)))
         .size,
-    ).toBe(3);
+    ).toBe(2);
     expect(JSON.stringify(requests)).not.toContain('private-source-');
     expect(JSON.stringify(requests)).not.toContain('private-span-');
   });

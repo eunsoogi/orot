@@ -40,18 +40,10 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
         XCTAssertFalse(app.buttons["Continue"].exists)
         // Before scrolling, the primary action must genuinely be outside the visible content above the keyboard.
         XCTAssertFalse(visibleAboveKeyboard(action, app: app, viewport: viewport))
-        for attempt in 0 ... 16 {
-            if visibleAboveKeyboard(action, app: app, viewport: viewport) {
-                break
-            }
-            if attempt == 16 {
-                XCTFail("Primary action never reached the measured keyboard viewport")
-                return
-            }
-            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
-            start.press(forDuration: 0.05, thenDragTo: end)
-        }
+        // Use the observed keyboard viewport and app-relative coordinates. Short
+        // scroller-relative drags repeatedly resolve the same AX hierarchy during
+        // event synthesis; the shared helper retains the original 16-gesture limit.
+        FormUITestConditions.reveal(action, in: app, scroll: scroll)
         try keyboardOccludesViewport(app, viewport: viewport)
         action.tap()
         let completed = node(app, "safe-area-keyboard-action-done")

@@ -17,7 +17,10 @@ export interface VisitQuestionEvidenceCollection {
     VisitQuestionEvidenceMetadata
   >;
   readonly memoryStatus:
-    'available' | 'no_matching_current_memory' | 'local_memory_unavailable';
+    | 'available'
+    | 'no_matching_current_memory'
+    | 'local_memory_unavailable'
+    | 'not_searched';
 }
 
 export function hasConflictingHealthObservations(
@@ -73,7 +76,7 @@ export async function createVisitQuestionEvidenceCollection(input: {
     !Number.isInteger(input.recordResultLimit) ||
     input.recordResultLimit < 1 ||
     !Number.isInteger(input.transcriptResultLimit) ||
-    input.transcriptResultLimit < 1 ||
+    input.transcriptResultLimit < 0 ||
     !Number.isInteger(input.memoryResultLimit) ||
     input.memoryResultLimit < 1
   ) {

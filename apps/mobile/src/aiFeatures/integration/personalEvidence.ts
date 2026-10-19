@@ -4,7 +4,7 @@ import type { RecordKind } from '@orot/storage';
 import { STRUCTURED_RECORD_KINDS } from '@orot/rag';
 import type { EvidenceChunk } from '@orot/rag';
 import type {
-  LocalHealthEvidenceInventory,
+  LocalHealthEvidenceRecord,
   LocalHealthEvidenceRepository,
 } from '../../healthEvidence/localEvidenceRepository';
 import type { EvidenceValidationContext } from './evidenceRegistry';
@@ -51,7 +51,8 @@ function evidenceReviewState(
 }
 
 export function buildPersonalEvidence(input: {
-  readonly inventory: LocalHealthEvidenceInventory;
+  readonly records: readonly LocalHealthEvidenceRecord[];
+  readonly candidateRecords?: readonly LocalHealthEvidenceRecord[];
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
   readonly staleArtifacts: readonly StaleEvidenceArtifact[];
@@ -65,11 +66,8 @@ export function buildPersonalEvidence(input: {
   readonly chunks: readonly EvidenceChunk[];
 } {
   // Provenance IDs can name transcript segments or other records, so retain each ID's kind.
-  const recordsById = new Map<
-    string,
-    LocalHealthEvidenceInventory['records'][number][]
-  >();
-  for (const entry of input.inventory.records) {
+  const recordsById = new Map<string, LocalHealthEvidenceRecord[]>();
+  for (const entry of input.records) {
     const matches = recordsById.get(entry.record.id) ?? [];
     matches.push(entry);
     recordsById.set(entry.record.id, matches);
@@ -83,7 +81,7 @@ export function buildPersonalEvidence(input: {
   const staleArtifactKeys = new Set(
     input.staleArtifacts.map(artifact => key(artifact.kind, artifact.id)),
   );
-  for (const entry of input.inventory.records) {
+  for (const entry of input.records) {
     input.registry.registerSensitiveIdentifier(entry.record.id);
     for (const sourceId of entry.record.provenance.sourceRecordIds) {
       input.registry.registerSensitiveIdentifier(sourceId);
@@ -92,7 +90,7 @@ export function buildPersonalEvidence(input: {
 
   const items: EvidenceItem[] = [];
   const chunks: EvidenceChunk[] = [];
-  for (const entry of input.inventory.records) {
+  for (const entry of input.candidateRecords ?? input.records) {
     if (entry.kind === 'source_record') continue;
     const record = entry.record as RecordShape;
     if (staleArtifactKeys.has(key(entry.kind, record.id))) continue;

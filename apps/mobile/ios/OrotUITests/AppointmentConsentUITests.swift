@@ -22,12 +22,12 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(request.contains("SENTINEL_HEALTH_VALUE"), request)
         XCTAssertFalse(request.contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"), request)
         tap(app, "inference-disclosure-cancel")
-        failureNotice(app)
+        failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
         UITestConditions.value(node(app, "issue40-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
         tap(app, "medical-appointment-import")
         XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
         tap(app, "inference-disclosure-allow")
-        failureNotice(app)
+        failureNotice(app, reason: "선택한 AI의 응답을 받지 못했어요.")
         UITestConditions.value(node(app, "issue40-synthetic-provider-calls"), equals: "syntheticProviderCalls=1")
         XCTAssertFalse(node(app, "issue40-synthetic-calendar-save").exists)
         XCTAssertFalse(node(app, "medical-appointment-save-calendar-candidate-1").exists)
@@ -62,8 +62,12 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func failureNotice(_ app: XCUIApplication) {
-        XCTAssertTrue(app.staticTexts["일부 일정을 분류하지 못했어요. 다시 시도하거나 직접 입력해 주세요."].waitForAppearance())
+    private func failureNotice(_ app: XCUIApplication, reason: String) {
+        // The batch summary includes measured duration; assert its stable failure category, not the retired generic fallback.
+        let notice = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
+                                                          "1번째 묶음 처리 중 ", reason)).firstMatch
+        XCTAssertTrue(notice.waitForAppearance())
+        XCTAssertTrue(notice.label.hasSuffix("완료한 분류는 유지했어요."))
     }
 
     @MainActor

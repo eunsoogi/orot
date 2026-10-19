@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { nextVisitQuestionsCopy as copy } from './copy';
+import { useCallback, useEffect, useState } from 'react';
 import { copyQuestions, isValidReview } from './questionReview';
 import { useQuestionDraftControls } from './questionDraftControls';
 import { useQuestionPersistence } from './useQuestionPersistence';
 import { useCommittedContextKeys } from './useCommittedContextKeys';
+import { useQuestionGeneration } from './useQuestionGeneration';
 import type {
   NextVisitQuestionsController,
   NextVisitQuestionsControllerInputs,
@@ -33,13 +33,9 @@ export function useNextVisitQuestionsController<
   const [caveats, setCaveats] = useState<readonly EvidenceCaveat[]>([]);
   // Generated candidates are unpersisted; saved-list reviews stay clean until an actual edit.
   const [hasUnpersistedReview, setHasUnpersistedReview] = useState(false);
-  const [generationMessage, setGenerationMessage] = useState<string | null>(
-    null,
-  );
   const [sourceReference, setSourceReference] = useState<TReference | null>(
     null,
   );
-  const activeGeneration = useRef<AbortController | null>(null);
   const appointmentKey =
     appointment.status === 'ready'
       ? appointment.appointment.id
@@ -72,7 +68,26 @@ export function useNextVisitQuestionsController<
     setDraftQuestions,
     setSavedOverride,
   });
-  const previousProviderKey = useRef(providerKey);
+  const {
+    activity: generationActivity,
+    preview: generationPreview,
+    message: generationMessage,
+    reset: resetGeneration,
+    generate,
+    cancelGeneration,
+  } = useQuestionGeneration({
+    appointment,
+    appointmentKey,
+    provider,
+    providerKey,
+    currentContextKeys,
+    onGenerate,
+    setPhase,
+    setDraftQuestions,
+    setHasUnpersistedReview,
+    setCaveats,
+    clearSaveMessage,
+  });
 
   useEffect(() => {
     setPhase('idle');
@@ -80,108 +95,10 @@ export function useNextVisitQuestionsController<
     setSavedOverride(null);
     setCaveats([]);
     setHasUnpersistedReview(false);
-    setGenerationMessage(null);
+    resetGeneration();
     clearSaveMessage();
     setSourceReference(null);
-    activeGeneration.current?.abort();
-    activeGeneration.current = null;
-    return () => {
-      activeGeneration.current?.abort();
-      activeGeneration.current = null;
-    };
-  }, [appointmentKey, clearSaveMessage]);
-
-  useEffect(() => {
-    if (previousProviderKey.current === providerKey) return;
-    previousProviderKey.current = providerKey;
-    const request = activeGeneration.current;
-    if (!request) return;
-    request.abort();
-    activeGeneration.current = null;
-    setPhase('idle');
-    setGenerationMessage(copy.generation.providerChanged);
-  }, [providerKey]);
-
-  const generate = useCallback(async () => {
-    if (appointment.status !== 'ready' || provider.status !== 'available') {
-      return;
-    }
-    const requestAppointmentKey = appointmentKey;
-    const requestProviderKey = providerKey;
-    activeGeneration.current?.abort();
-    const request = new AbortController();
-    activeGeneration.current = request;
-    setPhase('generating');
-    setHasUnpersistedReview(false);
-    setGenerationMessage(null);
-    clearSaveMessage();
-    setCaveats([]);
-    try {
-      const outcome = await onGenerate(
-        appointment.appointment,
-        provider.selection,
-        request.signal,
-      );
-      if (request.signal.aborted || activeGeneration.current !== request)
-        return;
-      if (currentContextKeys.current.appointment !== requestAppointmentKey)
-        return;
-      if (currentContextKeys.current.provider !== requestProviderKey) {
-        setPhase('idle');
-        setGenerationMessage(copy.generation.providerChanged);
-        return;
-      }
-      setCaveats(outcome.status === 'cancelled' ? [] : (outcome.caveats ?? []));
-      if (outcome.status === 'ready') {
-        if (outcome.questions.length < 3 || outcome.questions.length > 5) {
-          setPhase('error');
-          setGenerationMessage(copy.generation.invalidResult);
-          return;
-        }
-        setDraftQuestions(copyQuestions(outcome.questions));
-        setHasUnpersistedReview(true);
-        setPhase('reviewing');
-        return;
-      }
-      if (outcome.status === 'cancelled') {
-        setPhase('idle');
-        setGenerationMessage(copy.generation.cancelled);
-        return;
-      }
-      setPhase('error');
-      setGenerationMessage(outcome.message);
-    } catch {
-      if (request.signal.aborted || activeGeneration.current !== request)
-        return;
-      if (currentContextKeys.current.appointment !== requestAppointmentKey)
-        return;
-      if (currentContextKeys.current.provider !== requestProviderKey) {
-        setPhase('idle');
-        setGenerationMessage(copy.generation.providerChanged);
-        return;
-      }
-      setPhase('error');
-      setGenerationMessage(copy.generation.genericError);
-    } finally {
-      if (activeGeneration.current === request) activeGeneration.current = null;
-    }
-  }, [
-    appointment,
-    appointmentKey,
-    clearSaveMessage,
-    currentContextKeys,
-    onGenerate,
-    provider,
-    providerKey,
-  ]);
-
-  const cancelGeneration = useCallback(() => {
-    activeGeneration.current?.abort();
-    activeGeneration.current = null;
-    setPhase('idle');
-    setHasUnpersistedReview(false);
-    setGenerationMessage(copy.generation.cancelled);
-  }, []);
+  }, [appointmentKey, clearSaveMessage, resetGeneration]);
 
   const startReview = useCallback(
     (
@@ -189,17 +106,15 @@ export function useNextVisitQuestionsController<
       reviewCaveats: readonly EvidenceCaveat[] = [],
     ) => {
       // Opening a saved list supersedes pending generation and save replies.
-      activeGeneration.current?.abort();
-      activeGeneration.current = null;
+      resetGeneration();
       invalidateSave();
       setDraftQuestions(copyQuestions(questions));
       setHasUnpersistedReview(false);
       setCaveats([...reviewCaveats]);
       setPhase('reviewing');
-      setGenerationMessage(null);
       clearSaveMessage();
     },
-    [clearSaveMessage, invalidateSave],
+    [clearSaveMessage, invalidateSave, resetGeneration],
   );
 
   const cancelReview = useCallback(() => {
@@ -227,6 +142,8 @@ export function useNextVisitQuestionsController<
     savedOverride,
     caveats,
     generationMessage,
+    generationActivity,
+    generationPreview,
     saveMessage,
     sourceReference,
     isReviewValid,

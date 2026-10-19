@@ -54,11 +54,11 @@ function clarification(
 }
 
 /** Suppresses explicit diagnosis claims and medication or treatment instructions in provider-authored copy. */
-function hasUnsafeClinicalAdvice(message: string): boolean {
+export function hasUnsafeClinicalAdvice(message: string): boolean {
   return MEDICATION_INSTRUCTION.test(message) || DIAGNOSTIC_CLAIM.test(message);
 }
 
-function appointmentDateFromContext(
+export function appointmentDateFromContext(
   context: JsonValue | undefined,
 ): string | undefined {
   const value = asObject(context);

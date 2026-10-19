@@ -26,6 +26,7 @@ describe('AppleFoundationModelsProvider', () => {
       streaming: true,
       structuredOutput: true,
       toolCalling: true,
+      structuredOutputStreaming: true,
     });
   });
 
@@ -159,26 +160,42 @@ describe('AppleFoundationModelsProvider', () => {
     ]);
   });
 
-  it('fails explicitly if a stream snapshot rewrites prior text', async () => {
+  it('forwards rewritten snapshots and preserves the normalized structured response', async () => {
     const native = new FakeNativeBridge();
+    const guidedRequest: LanguageModelRequest = {
+      messages: [{ role: 'user', content: 'Return a structured answer.' }],
+      responseFormat: {
+        name: 'answer',
+        schema: {
+          type: 'object',
+          properties: { answer: { type: 'string' } },
+          required: ['answer'],
+          additionalProperties: false,
+        },
+      },
+    };
+    const finalResponse: LanguageModelResponse = {
+      text: '{"answer":"final"}',
+      structuredOutput: { answer: 'final' },
+      toolCalls: [],
+      finishReason: 'complete',
+    };
     native.packets = [
-      { type: 'snapshot', text: '안녕하세요' },
-      { type: 'snapshot', text: '안녕' },
+      { type: 'snapshot', text: '{"answer":"draft"}' },
+      { type: 'snapshot', text: '{"answer":"final"}' },
+      { type: 'completed', response: finalResponse },
     ];
     const provider = new AppleFoundationModelsProvider(native);
     const events = [];
 
-    for await (const event of provider.stream({
-      messages: [{ role: 'user', content: '인사해 주세요.' }],
-    })) {
-      events.push(event);
-    }
+    for await (const event of provider.stream(guidedRequest)) events.push(event);
 
-    expect(events.at(-1)).toMatchObject({
-      ok: false,
-      error: { code: 'internal_error', message: expect.stringContaining('rewrote') },
-    });
-    expect(native.cancelled).toHaveLength(1);
+    expect(events).toMatchObject([
+      { ok: true, value: { type: 'text_delta', text: '{"answer":"draft"}' } },
+      { ok: true, value: { type: 'text_snapshot', text: '{"answer":"final"}' } },
+      { ok: true, value: { type: 'completed', response: finalResponse } },
+    ]);
+    expect(native.cancelled).toHaveLength(0);
   });
 
   it('cancels the native stream when the consumer closes its iterator', async () => {

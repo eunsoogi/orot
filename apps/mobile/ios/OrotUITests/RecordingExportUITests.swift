@@ -27,7 +27,7 @@ final class RecordingExportUITests: OrotFailFastTestCase {
         // Own both sources so the regression does not depend on another suite's saved recordings.
         let backgroundSource = try prepare(app)
         app.terminate()
-        launch(app)
+        launch(app, backgroundSource: backgroundSource)
         addTeardownBlock { @MainActor in
             // XCTest may bypass defer on failure; collect before the earlier registered source cleanup.
             guard app.state != .notRunning else { return }
@@ -140,8 +140,11 @@ final class RecordingExportUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication) {
+    private func launch(_ app: XCUIApplication, backgroundSource: String? = nil) {
         app.launchArguments = ["-OROT_TEST_PROFILE", "speech", "-OROT_TRANSCRIPTION_PROBE_MODE", "recording-export", "-OROT_TEST_EXPORT_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        if let backgroundSource {
+            app.launchArguments += ["-OROT_TEST_EXPORT_BACKGROUND_SOURCE_ID", backgroundSource]
+        }
         app.launch()
         XCTAssertTrue(element(app, "transcript-evidence-setup-status").waitForAppearance())
     }

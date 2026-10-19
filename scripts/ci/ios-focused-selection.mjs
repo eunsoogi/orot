@@ -1,4 +1,5 @@
 import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
+import { iosTestTaskNeedsUiPreparation } from './ios-test-cohorts.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
@@ -23,7 +24,11 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
       fixtureSuite: 'all',
       identifiers: statePersistenceTests.slice(),
       identifier: '',
-      prepareUi: false,
+      prepareUi: iosTestTaskNeedsUiPreparation({
+        mode: 'state-persistence',
+        suite: 'state-persistence',
+        identifiers: statePersistenceTests,
+      }),
       expectedCount: statePersistenceTests.length,
     };
   }
@@ -40,7 +45,11 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
       fixtureSuite: 'all',
       identifiers: recordingPersistenceTests.slice(),
       identifier: '',
-      prepareUi: false,
+      prepareUi: iosTestTaskNeedsUiPreparation({
+        mode: 'recording-persistence',
+        suite: 'recording-persistence',
+        identifiers: recordingPersistenceTests,
+      }),
       expectedCount: recordingPersistenceTests.length,
     };
   }
@@ -59,7 +68,11 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
       fixtureSuite: 'all',
       identifiers: fixtureIsolationTests.slice(),
       identifier: '',
-      prepareUi: false,
+      prepareUi: iosTestTaskNeedsUiPreparation({
+        mode: 'fixture-isolation',
+        suite: 'isolation',
+        identifiers: fixtureIsolationTests,
+      }),
       expectedCount: fixtureIsolationTests.length,
     };
   }
@@ -76,7 +89,11 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
       fixtureSuite: 'all',
       identifiers: speechJourneyTests.slice(),
       identifier: '',
-      prepareUi: true,
+      prepareUi: iosTestTaskNeedsUiPreparation({
+        mode: 'speech-journey',
+        suite: 'journey',
+        identifiers: speechJourneyTests,
+      }),
       expectedCount: speechJourneyTests.length,
     };
   }
@@ -120,7 +137,7 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
     fixtureSuite,
     identifiers,
     identifier: grouped ? '' : identifiers[0],
-    prepareUi: mode === 'fixture' || mode === 'backup' || suite === 'ui',
+    prepareUi: iosTestTaskNeedsUiPreparation({ mode, suite, identifiers }),
     expectedCount: identifiers.length,
   };
 }

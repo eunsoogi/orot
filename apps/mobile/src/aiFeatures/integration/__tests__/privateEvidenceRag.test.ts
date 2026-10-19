@@ -33,7 +33,7 @@ test('real SQLite deletion guards accept local identities while returned hits re
     );
     const registry = new LocalEvidenceReferenceRegistry();
     const evidence = buildPersonalEvidence({
-      inventory: inventory([source, row]),
+      records: inventory([source, row]).records,
       persistedChunks: [persisted],
       registry,
       repository: createLocalHealthEvidenceRepository(database),

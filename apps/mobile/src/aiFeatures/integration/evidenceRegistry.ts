@@ -1,3 +1,4 @@
+import { LocalEvidenceIdentifiers } from './evidenceIdentifiers';
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { ReviewState } from '@orot/domain';
@@ -79,15 +80,15 @@ export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
   private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
-  private readonly sensitiveIds = new Map<string, string>();
+  private readonly identifiers = new LocalEvidenceIdentifiers();
+
+  /** Resolves a provider scope locally before any database candidates are selected. */
+  localSourceIds(aliases: readonly string[]): readonly string[] {
+    return this.identifiers.localSources(aliases);
+  }
 
   registerSensitiveIdentifier(value: string): string {
-    if (!value) return '';
-    const existing = this.sensitiveIds.get(value);
-    if (existing) return existing;
-    const alias = `local-id-${this.sensitiveIds.size + 1}`;
-    this.sensitiveIds.set(value, alias);
-    return alias;
+    return this.identifiers.register(value);
   }
 
   add(input: {
@@ -100,9 +101,14 @@ export class LocalEvidenceReferenceRegistry {
     this.registerSensitiveIdentifier(input.reference.evidenceId);
     const alias = ++this.nextAlias;
     const token = `e${alias}`;
+    // A supplemental search retains source scope even when it registers another row from that source.
+    const sourceAlias = this.identifiers.sourceAlias(
+      input.reference.sourceId,
+      `s${alias}`,
+    );
     const reference: EvidenceReference = {
       ...input.reference,
-      sourceId: `s${alias}`,
+      sourceId: sourceAlias,
       sourceRevision: `sr${alias}`,
       evidenceId: token,
       evidenceRevision: `er${alias}`,
@@ -117,12 +123,7 @@ export class LocalEvidenceReferenceRegistry {
   }
 
   redactText(value: string): string {
-    return [...this.sensitiveIds.entries()]
-      .sort(([left], [right]) => right.length - left.length)
-      .reduce(
-        (text, [identifier, alias]) => text.split(identifier).join(alias),
-        value,
-      );
+    return this.identifiers.redact(value);
   }
 
   toSearchChunk(

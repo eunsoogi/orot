@@ -7,6 +7,7 @@ import type {
 export interface AuthorizationPlan {
   readonly availability: 'available' | 'unsupportedFeature';
   readonly readTypeIdentifiers: readonly string[];
+  readonly perObjectReadTypeIdentifiers: readonly string[];
   readonly writeTypeIdentifiers: readonly string[];
 }
 
@@ -86,16 +87,23 @@ export function assertAuthorizationPlan(
 
   const actual = [...plan.readTypeIdentifiers].sort();
   const expected =
-    feature === 'medications'
-      ? [
-          // The runtime ID omits "Identifier" from its SDK constant's symbol name.
-          'HKDataTypeUserAnnotatedMedicationConcept',
-          'HKMedicationDoseEventTypeIdentifierMedicationDoseEvent',
-        ]
-      : [...expectedReadTypes[feature]];
+    feature === 'medications' ? [] : [...expectedReadTypes[feature]];
   if (JSON.stringify(actual) !== JSON.stringify(expected.sort())) {
     throw new Error(
       `${feature} requested unexpected HealthKit types: ${JSON.stringify(actual)}`,
+    );
+  }
+  // Medication dose access follows the per-medication choice; sample authorization must not contain either type.
+  const objects =
+    feature === 'medications'
+      ? ['HKDataTypeUserAnnotatedMedicationConcept']
+      : [];
+  if (
+    JSON.stringify([...plan.perObjectReadTypeIdentifiers].sort()) !==
+    JSON.stringify(objects)
+  ) {
+    throw new Error(
+      `${feature} has an unexpected per-object authorization scope.`,
     );
   }
 }

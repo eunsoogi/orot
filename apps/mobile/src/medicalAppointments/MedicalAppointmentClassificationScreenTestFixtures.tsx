@@ -1,6 +1,7 @@
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { providerFailure } from '@orot/model-runtime';
 import type { AppointmentRepository } from '@orot/storage';
+import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import type { CalendarBridge, CalendarEvent } from '../calendar/types';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type {
@@ -91,10 +92,35 @@ export function result(
   };
 }
 
+export function calendarSyncState(
+  events: readonly CalendarEvent[],
+  access: CalendarAutoSyncState['access'] = 'fullAccess',
+): CalendarAutoSyncState {
+  return {
+    access,
+    events,
+    query:
+      access === 'fullAccess'
+        ? {
+            fromInclusive: '2035-01-01T00:00:00.000Z',
+            toExclusive: '2036-01-01T00:00:00.000Z',
+            horizonYears: 1,
+            resultLimit: null,
+            complete: true,
+            omittedEventCount: 0,
+          }
+        : null,
+    loading: false,
+    error: false,
+    updatedAt: '2035-01-01T00:00:00.000Z',
+  };
+}
+
 export async function renderScreen(
   queries: readonly (readonly CalendarEvent[])[],
   appointments: AppointmentRepository,
   provider: ProviderSelectionOption | null = selectedProvider(),
+  calendarSync = calendarSyncState(queries[0] ?? []),
 ) {
   const allEvents = queries.flat();
   let index = 0;
@@ -123,14 +149,35 @@ export async function renderScreen(
     addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
   };
   const onOpenManual = jest.fn();
+  const onOpenCalendarSettings = jest.fn();
+  const screenProps = {
+    bridge,
+    repository: appointments,
+    selectedProvider: provider,
+    recipient: provider ? 'selected-account' : null,
+    onOpenManual,
+    onOpenCalendarSettings,
+  };
   const view = await render(
     <MedicalAppointmentClassificationScreen
-      bridge={bridge}
-      repository={appointments}
-      selectedProvider={provider}
-      recipient={provider ? 'selected-account' : null}
-      onOpenManual={onOpenManual}
+      {...screenProps}
+      calendarSync={calendarSync}
     />,
   );
-  return { bridge, onOpenManual, view };
+  return {
+    bridge,
+    onOpenManual,
+    onOpenCalendarSettings,
+    updateCalendarSync: async (next: CalendarAutoSyncState) => {
+      await act(async () => {
+        view.rerender(
+          <MedicalAppointmentClassificationScreen
+            {...screenProps}
+            calendarSync={next}
+          />,
+        );
+      });
+    },
+    view,
+  };
 }

@@ -19,57 +19,86 @@ describe('Test entry routing', () => {
     ).toBe('medical-appointment-app-navigation');
   });
 
-  it('loads the stream polyfill before importing App for the #108 probe', () => {
-    const readableStreamDescriptor = Object.getOwnPropertyDescriptor(
-      globalThis,
-      'ReadableStream',
-    );
-    let readableStreamAtAppImport = false;
-    Object.defineProperty(globalThis, 'ReadableStream', {
-      configurable: true,
-      value: undefined,
-      writable: true,
-    });
-
-    try {
-      jest.isolateModules(() => {
-        jest.doMock('../App', () => {
-          readableStreamAtAppImport =
-            typeof globalThis.ReadableStream === 'function';
-          return { __esModule: true, default: () => null };
-        });
-        jest.doMock('../app.json', () => ({ name: 'Orot' }));
-        jest.doMock('../src/providers/selection/options', () => ({
-          createAppleSelectionOption: () => ({
-            provider: { id: 'apple-intelligence' },
-            modelId: 'on-device-model',
-          }),
-        }));
-        jest.doMock('react-native', () => ({
-          AppRegistry: { registerComponent: jest.fn() },
-        }));
-        jest.doMock('react-native-get-random-values', () => ({}));
-        require('../e2e/medicalAppointmentNavigationProbeEntry');
+  it.each(['navigation', 'performance'])(
+    'loads the stream polyfill before importing App for the %s probe',
+    entry => {
+      const readableStreamDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'ReadableStream',
+      );
+      let readableStreamAtAppImport = false;
+      Object.defineProperty(globalThis, 'ReadableStream', {
+        configurable: true,
+        value: undefined,
+        writable: true,
       });
 
-      expect(readableStreamAtAppImport).toBe(true);
-    } finally {
-      jest.dontMock('../App');
-      jest.dontMock('../app.json');
-      jest.dontMock('../src/providers/selection/options');
-      jest.dontMock('react-native');
-      jest.dontMock('react-native-get-random-values');
-      if (readableStreamDescriptor) {
-        Object.defineProperty(
-          globalThis,
-          'ReadableStream',
-          readableStreamDescriptor,
-        );
-      } else {
-        Reflect.deleteProperty(globalThis, 'ReadableStream');
+      try {
+        jest.isolateModules(() => {
+          jest.doMock('../App', () => {
+            readableStreamAtAppImport =
+              typeof globalThis.ReadableStream === 'function';
+            return { __esModule: true, default: () => null };
+          });
+          jest.doMock('../app.json', () => ({ name: 'Orot' }));
+          jest.doMock('../src/providers/selection/options', () => ({
+            createAppleSelectionOption: () => ({
+              provider: { id: 'apple-intelligence' },
+              modelId: 'on-device-model',
+            }),
+          }));
+          jest.doMock('react-native', () => ({
+            AppRegistry: { registerComponent: jest.fn() },
+          }));
+          // Keep this assertion about polyfill ordering, not diagnostic service initialization.
+          jest.doMock('../src/agent/execution/useInferenceConsent', () => ({
+            useInferenceConsent: jest.fn(),
+          }));
+          jest.doMock('../src/aiFeatures/integration/featureServices', () => ({
+            createAiFeatureServices: jest.fn(),
+          }));
+          jest.doMock('../src/aiFeatures/integration/provider', () => ({
+            resolveSelectedAiProvider: jest.fn(),
+          }));
+          jest.doMock('react-native-get-random-values', () => ({}));
+          jest.doMock('../e2e/performanceDataSeed', () => ({}));
+          jest.doMock('../e2e/performanceEvidenceProbe', () => ({}));
+          jest.doMock('../e2e/performanceWorkflowDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceRagDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceVisitDiagnostics', () => ({}));
+          jest.doMock('../e2e/performanceVisitEvidenceProbe', () => ({}));
+          if (entry === 'performance') require('../e2e/performanceDataEntry');
+          else require('../e2e/medicalAppointmentNavigationProbeEntry');
+        });
+
+        expect(readableStreamAtAppImport).toBe(true);
+      } finally {
+        jest.dontMock('../App');
+        jest.dontMock('../app.json');
+        jest.dontMock('../src/providers/selection/options');
+        jest.dontMock('react-native');
+        jest.dontMock('../src/agent/execution/useInferenceConsent');
+        jest.dontMock('../src/aiFeatures/integration/featureServices');
+        jest.dontMock('../src/aiFeatures/integration/provider');
+        jest.dontMock('react-native-get-random-values');
+        jest.dontMock('../e2e/performanceDataSeed');
+        jest.dontMock('../e2e/performanceEvidenceProbe');
+        jest.dontMock('../e2e/performanceWorkflowDiagnostics');
+        jest.dontMock('../e2e/performanceRagDiagnostics');
+        jest.dontMock('../e2e/performanceVisitDiagnostics');
+        jest.dontMock('../e2e/performanceVisitEvidenceProbe');
+        if (readableStreamDescriptor) {
+          Object.defineProperty(
+            globalThis,
+            'ReadableStream',
+            readableStreamDescriptor,
+          );
+        } else {
+          Reflect.deleteProperty(globalThis, 'ReadableStream');
+        }
       }
-    }
-  });
+    },
+  );
 
   it('opens the safe-area keyboard fixture through its test-only selector', () => {
     expect(selectEntryRoute({ OROT_E2E_PROBE: 'safe-area' })).toBe('safe-area');

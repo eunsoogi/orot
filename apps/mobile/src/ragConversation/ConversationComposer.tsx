@@ -11,12 +11,14 @@ import { getRagConversationCopy } from './copy';
 export function ConversationComposer({
   value,
   busy,
+  hasSharedCancel = false,
   onChangeText,
   onSend,
   onCancel,
 }: {
   readonly value: string;
   readonly busy: boolean;
+  readonly hasSharedCancel?: boolean;
   readonly onChangeText: (value: string) => void;
   readonly onSend: () => void;
   readonly onCancel: () => void;
@@ -39,7 +41,8 @@ export function ConversationComposer({
       >
         <TextInput
           accessibilityLabel={copy.placeholder}
-          editable={!busy}
+          // Keep the keyboard available so users can draft while a response runs.
+          editable
           maxLength={1000}
           multiline
           scrollEnabled
@@ -60,27 +63,29 @@ export function ConversationComposer({
           testID="rag-conversation-input"
           value={value}
         />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={busy ? '답변 중단' : copy.send}
-          accessibilityState={{ busy, disabled: !busy && !value.trim() }}
-          disabled={!busy && !value.trim()}
-          style={[styles.send, !busy && !value.trim() && styles.disabled]}
-          testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
-          onPress={() => {
-            if (busy) {
-              onCancel();
-              return;
-            }
-            onSend();
-          }}
-        >
-          <AppSymbol
-            name={busy ? 'stop.fill' : 'arrow.up'}
-            size={24}
-            color={appColors.onPrimary}
-          />
-        </Pressable>
+        {busy && hasSharedCancel ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={busy ? '답변 중단' : copy.send}
+            accessibilityState={{ busy, disabled: !busy && !value.trim() }}
+            disabled={!busy && !value.trim()}
+            style={[styles.send, !busy && !value.trim() && styles.disabled]}
+            testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
+            onPress={() => {
+              if (busy) {
+                onCancel();
+                return;
+              }
+              onSend();
+            }}
+          >
+            <AppSymbol
+              name={busy ? 'stop.fill' : 'arrow.up'}
+              size={24}
+              color={appColors.onPrimary}
+            />
+          </Pressable>
+        )}
       </View>
       <Text style={styles.disclaimer}>AI 답변은 진료를 대신하지 않아요.</Text>
     </View>

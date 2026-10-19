@@ -119,7 +119,7 @@ describe('visit-question conflicts across evidence searches', () => {
             readonly filters?: { readonly recordTypes?: readonly string[] };
           },
         ) {
-          if (options?.filters?.recordTypes?.includes('transcript_segment'))
+          if (!options?.filters?.recordTypes?.includes('health_observation'))
             return [];
           recordSearchCount += 1;
           return [recordSearchCount === 1 ? initialHit : supplementalHit];
@@ -145,6 +145,7 @@ describe('visit-question conflicts across evidence searches', () => {
 
       expect(prepared.status).toBe('ready');
       if (prepared.status !== 'ready') return;
+      await prepared.searchEvidence('첫 번째 혈압 기록', 3, 'personal_record');
       const added = await prepared.searchEvidence(
         '최근 혈압 기록',
         3,

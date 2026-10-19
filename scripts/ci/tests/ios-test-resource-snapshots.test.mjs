@@ -5,13 +5,14 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { iosTestResourceSnapshot } from '../ios-test-resources.mjs';
 
-test('host snapshots preserve raw PID/RSS, memory and swap evidence without substituting unavailable data', () => {
+test('host snapshots preserve raw PID/RSS, memory and swap evidence without substituting unavailable data', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-resource-snapshot-'));
   const path = join(directory, 'samples.jsonl');
   const processes = 'PID PPID %CPU RSS COMM\n41 1 2.5 2048 modelmanagerd\n';
   const calls = [];
   try {
-    iosTestResourceSnapshot(path, 'before-host-diagnosis', 0, (program, args, options) => {
+    // Wait for the asynchronous diagnostic children and sidecar write before reading the snapshot.
+    await iosTestResourceSnapshot(path, 'before-host-diagnosis', 0, (program, args, options) => {
       calls.push({ program, args, options });
       if (program === 'sysctl') throw new Error('swap observation unavailable');
       return program === 'ps' ? processes : 'Pages free: 321.\n';

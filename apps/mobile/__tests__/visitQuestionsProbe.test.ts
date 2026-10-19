@@ -19,7 +19,7 @@ test('the original synthetic probe follows the current role and citation protoco
   });
   expect(result.status).toBe('ready');
   expect(metrics).toMatchObject({
-    calls: 3,
+    calls: 2,
     allowedReferenceCount: 2,
     privateIdentifierExposed: false,
   });

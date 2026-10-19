@@ -1,14 +1,14 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { medicalAppointmentCopy as copy } from '../copy.ko';
 import {
+  calendarSyncState,
   event,
   renderScreen,
   repository,
   selectedProvider,
 } from '../MedicalAppointmentClassificationScreenTestFixtures';
 
-const importAction = () =>
-  screen.getByRole('button', { name: '캘린더에서 진료 일정 가져오기' });
+const importAction = () => screen.getByTestId('medical-appointment-import');
 
 test.each(['allow', 'cancel'] as const)(
   'requires actual-request approval and keeps manual entry after %s',
@@ -19,7 +19,7 @@ test.each(['allow', 'cancel'] as const)(
       privacyBoundary: 'selected-context-remote' as const,
     };
     const appointments = repository();
-    const { onOpenManual } = await renderScreen(
+    const { bridge, onOpenManual } = await renderScreen(
       [[event('private-calendar-id', '치과 진료', '2035-06-02')]],
       appointments,
       remote,
@@ -31,12 +31,19 @@ test.each(['allow', 'cancel'] as const)(
     expect(screen.getByText(/"title":"치과 진료"/)).toBeTruthy();
     expect(screen.queryByText(/private-calendar-id/)).toBeNull();
     expect(selected.provider.generate).not.toHaveBeenCalled();
+    expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     await fireEvent.press(
       screen.getByTestId(`inference-disclosure-${decision}`),
     );
     await waitFor(() => expect(importAction()).not.toBeDisabled());
-    expect(screen.getByText(copy.manualReview)).toBeTruthy();
+    expect(
+      screen.getByText(
+        decision === 'allow'
+          ? /선택한 AI의 응답을 받지 못했어요/
+          : /이 요청의 AI 처리 승인이 필요해요/,
+      ),
+    ).toBeTruthy();
     expect(selected.provider.generate).toHaveBeenCalledTimes(
       decision === 'allow' ? 1 : 0,
     );
@@ -55,18 +62,21 @@ test.each(['allow', 'cancel'] as const)(
 test('keeps manual entry when Calendar permission is denied without invoking AI or saving', async () => {
   const appointments = repository();
   const selected = selectedProvider();
-  const { bridge, onOpenManual } = await renderScreen(
+  const { bridge, onOpenManual, onOpenCalendarSettings } = await renderScreen(
     [[]],
     appointments,
     selected,
+    calendarSyncState([], 'denied'),
   );
-  jest
-    .mocked(bridge.requestAccessAndListUpcomingEvents)
-    .mockResolvedValue({ access: 'denied', events: [] });
   await fireEvent.press(importAction());
   expect(await screen.findByText(copy.permissionUnavailable)).toBeTruthy();
+  await fireEvent.press(
+    screen.getByTestId('medical-appointment-calendar-settings'),
+  );
   await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
   expect(onOpenManual).toHaveBeenCalledTimes(1);
+  expect(onOpenCalendarSettings).toHaveBeenCalledTimes(1);
+  expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   expect(selected.provider.generate).not.toHaveBeenCalled();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   expect(appointments.create).not.toHaveBeenCalled();

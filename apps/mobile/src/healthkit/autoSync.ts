@@ -4,9 +4,12 @@ import { syncCommonObservationChanges } from './commonObservations/sync';
 import {
   healthKitAutoSyncCheckpointKey,
   healthKitAutoSyncFeatures,
+  saveHealthKitAutoSyncStatus,
   type HealthKitAutoSyncFeature,
 } from './autoSyncCheckpoint';
 import { syncHealthKitBloodPressure } from './bloodPressure/sync';
+import { syncHealthKitMedications } from './medications/importer';
+import { syncHealthKitSleep } from './sleep/importer';
 
 export type HealthKitAutoSyncStatus = 'skipped' | 'complete' | 'retryable';
 
@@ -17,7 +20,8 @@ export interface HealthKitAutoSyncResult {
 
 interface RunHealthKitAutoSyncOptions {
   readonly repository: CommonObservationRepository;
-  readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'>;
+  readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'> &
+    Partial<Pick<HealthKitNativeModule, 'queryMedicationDefinitions'>>;
   readonly now: () => string;
 }
 
@@ -39,6 +43,18 @@ export function runHealthKitAutoSync(
   };
   void run.then(clear, clear);
   return run;
+}
+
+/** Settings changes need a fresh traversal after any launch run that used the old selection. */
+export async function refreshHealthKitAutoSyncSelection(
+  options: RunHealthKitAutoSyncOptions,
+): Promise<HealthKitAutoSyncResult> {
+  const pending = pendingRuns.get(options.repository);
+  if (pending) {
+    // A failed prior run must not prevent retrying the newly saved selection.
+    await pending.catch(() => undefined);
+  }
+  return runHealthKitAutoSync(options);
 }
 
 async function runRequestedFeatures(
@@ -63,6 +79,32 @@ async function runRequestedFeatures(
           now: options.now,
         });
         retryable ||= result.status !== 'completed';
+      } else if (feature === 'sleep') {
+        const result = await syncHealthKitSleep({
+          healthKit: options.healthKit,
+          repository: options.repository,
+          now: options.now,
+        });
+        retryable ||= result.status !== 'completed';
+      } else if (feature === 'medications') {
+        const queryMedicationDefinitions =
+          options.healthKit.queryMedicationDefinitions;
+        if (!queryMedicationDefinitions) {
+          retryable = true;
+          continue;
+        }
+        // A persisted user request permits a query-only refresh without asking again.
+        const result = await syncHealthKitMedications({
+          healthKit: {
+            queryMedicationDefinitions,
+            querySampleChanges: options.healthKit.querySampleChanges,
+          },
+          repository: options.repository,
+          now: options.now,
+        });
+        retryable ||=
+          result.definitions.status !== 'completed' ||
+          result.doseEvents.status !== 'completed';
       } else {
         const result = await syncCommonObservationChanges({
           feature,
@@ -79,8 +121,15 @@ async function runRequestedFeatures(
     }
   }
 
-  if (attemptedFeatures.length === 0) {
+  if (attemptedFeatures.length === 0 && !retryable) {
     return { status: 'skipped', attemptedFeatures };
   }
-  return { status: retryable ? 'retryable' : 'complete', attemptedFeatures };
+  const status = retryable ? 'retryable' : 'complete';
+  try {
+    // Settings can recover from the most recent status without exposing health rows or grant state.
+    await saveHealthKitAutoSyncStatus(options.repository, status, options.now);
+  } catch {
+    return { status: 'retryable', attemptedFeatures };
+  }
+  return { status, attemptedFeatures };
 }

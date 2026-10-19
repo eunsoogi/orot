@@ -51,6 +51,24 @@ enum FormScrollGeometryRegression {
         XCTAssertEqual(translated.start.dx, 187.5)
         XCTAssertEqual(translated.start.dy, 512.5)
         try verifyPagedListTraversal()
+        try verifyContainedOccludedTargetDirection()
+    }
+
+    private static func verifyContainedOccludedTargetDirection() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let geometry = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: nil))
+        // The transcript error was geometrically contained at y=11.33 but not
+        // hittable. Keep revealing toward the top instead of oscillating across y=0.
+        let target = CGRect(x: 24, y: 11.333333333333258, width: 354, height: 17)
+        XCTAssertTrue(geometry.contains(target))
+        let upward = try XCTUnwrap(geometry.gesture(target: target, towardTop: true, horizontalPosition: 0.5))
+        XCTAssertGreaterThan(upward.end.dy, upward.start.dy)
+        let downward = try XCTUnwrap(geometry.gesture(target: target, towardTop: false, horizontalPosition: 0.5))
+        XCTAssertLessThan(downward.end.dy, downward.start.dy)
+        // Actual clipping still takes precedence over the caller's search direction.
+        let below = CGRect(x: 24, y: 880, width: 354, height: 17)
+        let clipped = try XCTUnwrap(geometry.gesture(target: below, towardTop: true, horizontalPosition: 0.5))
+        XCTAssertLessThan(clipped.end.dy, clipped.start.dy)
     }
 
     private static func verifyPagedListTraversal() throws {

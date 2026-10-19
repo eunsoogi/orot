@@ -1,33 +1,21 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import RecordingLibraryPanel from '../recording/RecordingLibraryPanel';
-import { recordingLibraryService } from '../recording/recordingLibraryService';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 
 interface RecordsRouteProps {
-  readonly refreshKey: string;
-  readonly recordingState: 'loading' | 'ready' | 'failed';
-  readonly onRetry: () => void;
+  readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
-  readonly onOpenUnifiedImport: () => void;
-  readonly onOpenHealthImport: () => void;
   readonly onOpenHealthLibrary: () => void;
-  readonly onOpenBloodPressure: () => void;
 }
 
-/** Groups the existing recording and HealthKit entry points under Records. */
+/** Keeps recording and local records discoverable without manual HealthKit entry points. */
 export function RecordsRoute({
-  refreshKey,
-  recordingState,
-  onRetry,
+  onOpenSavedRecordings,
   onOpenRecording,
-  onOpenUnifiedImport,
-  onOpenHealthImport,
   onOpenHealthLibrary,
-  onOpenBloodPressure,
 }: RecordsRouteProps) {
   useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -47,76 +35,66 @@ export function RecordsRoute({
       >
         {t('records.title')}
       </Text>
-      <View style={styles.actions}>
-        <AppButton
-          onPress={onOpenRecording}
-          testID="records-new-recording"
-          title={t('records.newRecording')}
-        />
-        <AppButton
-          onPress={onOpenUnifiedImport}
-          testID="records-health-import"
-          title={t('records.import')}
-          variant="secondary"
-        />
-      </View>
+      <Text style={styles.subtitle}>{t('records.subtitle')}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenRecording}
+        style={styles.recordingAction}
+        testID="records-new-recording"
+      >
+        <View style={styles.recordingIcon}>
+          <AppSymbol
+            name="mic.fill"
+            size={30}
+            color={appColors.primaryAction}
+          />
+        </View>
+        <Text style={styles.recordingActionTitle}>
+          {t('records.newRecording')}
+        </Text>
+      </Pressable>
 
-      <RecordingLibraryPanel
-        refreshKey={refreshKey}
-        service={recordingLibraryService}
-      />
-      {recordingState === 'failed' ? (
-        <AppButton
-          onPress={onRetry}
-          testID="records-retry"
-          title={t('appointments.retry')}
-          variant="secondary"
-        />
-      ) : null}
+      {/* A separate library keeps health records reachable regardless of saved-recording count. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenSavedRecordings}
+        style={styles.healthCard}
+        testID="records-open-saved-recordings"
+      >
+        <View style={styles.healthIcon}>
+          <AppSymbol name="doc.text" size={28} color={appColors.primaryText} />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{t('recording.library.title')}</Text>
+          <Text style={styles.cardSummary}>
+            {t('records.savedRecordingsSummary')}
+          </Text>
+        </View>
+        <AppSymbol name="chevron.right" size={16} color={appColors.secondary} />
+      </Pressable>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('records.healthRecords')}</Text>
-        <SettingsRow
-          onPress={onOpenHealthLibrary}
-          testID="records-open-health-library"
-          title={t('records.openHealthLibrary')}
-        />
-        <SettingsRow
-          onPress={onOpenHealthImport}
-          testID="records-open-common-observations"
-          title={t('healthkit.commonObservations.open')}
-        />
-        <SettingsRow
-          onPress={onOpenBloodPressure}
-          testID="records-open-blood-pressure"
-          title={t('healthkit.bloodPressure.open')}
-        />
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenHealthLibrary}
+        style={styles.healthCard}
+        testID="records-open-health-library"
+      >
+        <View
+          style={[styles.healthIcon, { backgroundColor: appColors.greenSoft }]}
+        >
+          <AppSymbol name="folder" size={28} color={appColors.green} />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{t('records.healthRecords')}</Text>
+          <Text style={styles.cardSummary}>
+            {t('healthRecords.description')}
+          </Text>
+        </View>
+        <Text style={styles.chevron} accessibilityElementsHidden>
+          ›
+        </Text>
+      </Pressable>
     </View>
-  );
-}
-
-function SettingsRow({
-  onPress,
-  testID,
-  title,
-}: {
-  readonly onPress: () => void;
-  readonly testID: string;
-  readonly title: string;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={styles.row}
-      testID={testID}
-    >
-      <Text style={styles.rowTitle}>{title}</Text>
-      <Text style={styles.chevron} accessibilityElementsHidden>
-        ›
-      </Text>
-    </Pressable>
   );
 }
 
@@ -124,24 +102,56 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    gap: 26,
-    paddingHorizontal: 24,
+    gap: 16,
+    paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 24,
   },
   title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
-  actions: { gap: 10 },
-  section: { gap: 10 },
-  sectionTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
-  row: {
+  subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
+  recordingAction: {
+    alignItems: 'center',
+    backgroundColor: appColors.primaryAction,
+    borderRadius: 22,
+    justifyContent: 'center',
+    gap: 12,
+    minHeight: 116,
+    marginTop: 4,
+  },
+  recordingIcon: {
     alignItems: 'center',
     backgroundColor: appColors.surface,
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 64,
-    paddingHorizontal: 16,
+    borderRadius: 28,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
   },
-  rowTitle: { color: appColors.text, fontSize: 15, fontWeight: '600' },
+  recordingActionTitle: {
+    color: appColors.onPrimary,
+    fontSize: 21,
+    fontWeight: '700',
+  },
+  healthCard: {
+    alignItems: 'center',
+    backgroundColor: appColors.surface,
+    borderColor: appColors.border,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 16,
+    minHeight: 94,
+    paddingHorizontal: 18,
+  },
+  healthIcon: {
+    alignItems: 'center',
+    backgroundColor: appColors.primarySoft,
+    borderRadius: 14,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  cardCopy: { flex: 1, gap: 4 },
+  cardTitle: { color: appColors.text, fontSize: 17, fontWeight: '700' },
+  cardSummary: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   chevron: { color: appColors.secondary, fontSize: 24 },
 });

@@ -12,7 +12,7 @@ const spec = iosTestBuildSpec(profile);
 if (process.env.GITHUB_ACTIONS === 'true') productContext(process.cwd(), profile);
 // Generic build products have no simulator dependency. Consumers boot only after verification.
 mkdirSync(dirname(resolve(directory)), { recursive: true });
-const stopSampling = iosTestResourceSampler(resolve(directory) + '.resources.jsonl');
+const stopSampling = await iosTestResourceSampler(resolve(directory) + '.resources.jsonl');
 const started = Date.now();
 const result = spawn(
   'xcodebuild',
@@ -52,5 +52,5 @@ try {
   console.log(`IOS_BUILD_STAGE elapsed_ms=${Date.now() - started} exit=${status}`);
   process.exitCode = status;
 } finally {
-  stopSampling();
+  await stopSampling();
 }

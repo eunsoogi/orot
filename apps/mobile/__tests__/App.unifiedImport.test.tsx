@@ -3,14 +3,26 @@ import {
   createRecordRepository,
   runMigrations,
 } from '@orot/storage';
-import { fireEvent, render } from '@testing-library/react-native';
-import { openSqliteTestDatabase } from '../../../packages/storage/__tests__/sqliteTestDatabase';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import App from '../App';
+import { createAppleSelectionOption } from '../src/providers/selection/options';
+import * as classificationWorkflow from '../src/medicalAppointments/classificationWorkflow';
+import { medicalAppointmentCopy } from '../src/medicalAppointments/copy.ko';
 import type {
   CalendarEvent,
   EventKitCalendarBridge,
 } from '../src/calendar/types';
+import { openSqliteTestDatabase } from '../../../packages/storage/__tests__/sqliteTestDatabase';
 
-// Other route adapters stay mocked while this test exercises unified import services.
+jest.mock('../src/healthkit/autoSyncLocal', () => ({
+  configureLocalHealthKitAutoSync: jest.fn(),
+  loadLocalHealthKitAutoSyncSelection: jest.fn(async () => []),
+  loadLocalHealthKitAutoSyncStatus: jest.fn(async () => null),
+  syncLocalPreviouslyRequestedHealthKit: jest.fn(async () => ({
+    status: 'skipped',
+    attemptedFeatures: [],
+  })),
+}));
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
 }));
@@ -21,7 +33,6 @@ jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
 jest.mock('../src/recording/recordingLibraryService', () => ({
   recordingLibraryService: { list: jest.fn(async () => []) },
 }));
-// The startup recovery flow is covered separately without loading native backup modules.
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
 }));
@@ -30,27 +41,19 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-test('reconfirms a selected EventKit event after reopening the production route', async () => {
-  // Synthetic provider data and an in-memory database exercise production storage without device data.
+const appleOption = createAppleSelectionOption('available');
+
+test('keeps imported records in Records and reclassifies a saved appointment only after an explicit action', async () => {
   const opened = openSqliteTestDatabase(':memory:');
 
   try {
     await runMigrations(opened.database);
     const records = createRecordRepository(opened.database);
-    let appointmentId = 0;
     const appointments = createAppointmentRepository(records, opened.database, {
       clock: () => '2035-06-01T00:00:00.000Z',
-      createId: () => `appointment-${++appointmentId}`,
+      createId: () => 'appointment-1',
     });
-    const confirmCalendarEvent = jest.spyOn(
-      appointments,
-      'confirmCalendarEvent',
-    );
-    const reconfirmCalendarEvent = jest.spyOn(
-      appointments,
-      'reconfirmCalendarEvent',
-    );
-    const calendarEvent: CalendarEvent = {
+    const event: CalendarEvent = {
       calendarEventIdentifier: 'synthetic-calendar-event',
       effectiveAt: '2035-06-02T00:00:00.000Z',
       endsAt: '2035-06-02T01:00:00.000Z',
@@ -63,107 +66,111 @@ test('reconfirms a selected EventKit event after reopening the production route'
         recurrenceRules: [],
       },
     };
-    const eventKitBridge = {
-      requestEventAccess: jest.fn(async () => 'fullAccess' as const),
-      listUpcomingEvents: jest.fn(async () => ({
-        access: 'fullAccess' as const,
-        events: [calendarEvent],
-      })),
-      requestAccessAndListUpcomingEvents: jest.fn(async () => ({
-        access: 'fullAccess' as const,
-        events: [calendarEvent],
-      })),
+    await appointments.confirmCalendarEvent(event);
+    const originalAppointment = (await appointments.list())[0];
+    if (!originalAppointment)
+      throw new Error('Expected the saved appointment.');
+
+    const confirmCalendarEvent = jest.spyOn(
+      appointments,
+      'confirmCalendarEvent',
+    );
+    const reconfirmCalendarEvent = jest.spyOn(
+      appointments,
+      'reconfirmCalendarEvent',
+    );
+    const listUpcomingEvents = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      events: [event],
+    }));
+    const requestEventAccess = jest.fn(async () => 'fullAccess' as const);
+    const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      events: [event],
+    }));
+    const calendar = {
+      requestEventAccess,
+      listUpcomingEvents,
+      requestAccessAndListUpcomingEvents,
       findEvent: jest.fn(async () => ({
         access: 'fullAccess' as const,
-        event: calendarEvent,
+        event,
       })),
       addEventStoreListener: jest.fn(() => ({ remove: jest.fn() })),
     } as unknown as EventKitCalendarBridge;
-    const healthKit = {
-      requestReadAuthorizations: jest.fn(),
-      querySampleChanges: jest.fn(),
-      queryMedicationDefinitions: jest.fn(),
-    };
-    const openLocalStorage = jest.fn(async () => records);
-    const openLocalAppointmentRepository = jest.fn(async () => appointments);
-
-    // The lazy production module resolves these adapters only when this route is opened.
-    jest.doMock('../src/healthkit', () => ({ healthKit }));
-    jest.doMock('../src/calendar/calendarBridge', () => ({
-      eventKitCalendarBridge: eventKitBridge,
-    }));
-    jest.doMock('../src/storage/secureDatabase', () => ({
-      openLocalStorage,
-      openLocalAppointmentRepository,
-    }));
-    const App = require('../App').default as typeof import('../App').default;
+    const classify = jest
+      .spyOn(classificationWorkflow, 'classifyCalendarEvents')
+      .mockResolvedValue({
+        status: 'complete',
+        candidates: [
+          {
+            candidateId: 'calendar-candidate-1',
+            event,
+            status: 'classified',
+            classification: 'medical',
+            reason: 'Synthetic classification result.',
+            uncertainty: 'low',
+          },
+        ],
+        completedBatches: 1,
+        totalBatches: 1,
+      });
     const view = await render(
       <App
+        calendarBridge={calendar}
         loadAppointments={async () => appointments}
         loadRecordings={async () => []}
+        aiFeatureServiceDependencies={{
+          selectedAi: {
+            selectionStore: {
+              load: async () => ({
+                providerId: appleOption.provider.id,
+                modelId: appleOption.modelId,
+              }),
+              save: jest.fn(),
+              clear: jest.fn(),
+            },
+            loadAppleOption: async () => appleOption,
+          },
+        }}
       />,
     );
+
+    await waitFor(() => expect(listUpcomingEvents).toHaveBeenCalledTimes(1));
+    expect(classify).not.toHaveBeenCalled();
+    expect(requestEventAccess).not.toHaveBeenCalled();
+    expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
+
     await fireEvent.press(view.getByTestId('navigation-tab-records'));
+    expect(view.getByTestId('records-open-health-library')).toBeTruthy();
+    expect(view.queryByTestId('records-health-import')).toBeNull();
+    expect(view.queryByTestId('records-open-common-observations')).toBeNull();
+    expect(view.queryByTestId('records-open-blood-pressure')).toBeNull();
+    expect(view.queryByTestId('unified-import-start')).toBeNull();
 
-    await fireEvent.press(view.getByTestId('records-health-import'));
+    await fireEvent.press(view.getByTestId('navigation-tab-schedule'));
+    await fireEvent.press(view.getByTestId('open-medical-appointments'));
     expect(
-      view.getByRole('header', { name: '건강 기록 가져오기' }),
+      await view.findByText(medicalAppointmentCopy.localNotice),
     ).toBeTruthy();
-    expect(view.getByTestId('unified-import-scroll')).toBeVisible();
-    expect(view.queryByTestId('safe-area-scroll')).toBeNull();
-    expect(view.getByTestId('unified-import-toggle-eventKit')).toBeTruthy();
+    expect(classify).not.toHaveBeenCalled();
 
-    await fireEvent.press(view.getByTestId('unified-import-toggle-eventKit'));
-    await fireEvent.press(view.getByTestId('unified-import-start'));
-    expect(
-      await view.findByTestId('unified-import-eventkit-candidate-0'),
-    ).toBeTruthy();
-    expect(openLocalAppointmentRepository).not.toHaveBeenCalled();
-
-    await fireEvent.press(view.getByTestId('unified-import-eventkit-select-0'));
-    await fireEvent.press(view.getByTestId('unified-import-eventkit-confirm'));
-    expect(
-      await view.findByTestId('unified-import-eventkit-confirmed'),
-    ).toBeTruthy();
-    expect(openLocalAppointmentRepository).toHaveBeenCalledTimes(1);
-    expect(confirmCalendarEvent).toHaveBeenCalledTimes(1);
-    const firstSave = await appointments.list();
-    expect(firstSave).toHaveLength(1);
-
-    await fireEvent.press(view.getByTestId('navigation-back'));
-    expect(view.getByTestId('records-title')).toBeTruthy();
-    await fireEvent.press(view.getByTestId('records-health-import'));
-    expect(view.getByTestId('unified-import-start')).toBeDisabled();
-    expect(
-      view.queryByTestId('unified-import-eventkit-candidate-0'),
-    ).toBeNull();
-    // Provider API counts do not infer OS prompts; reopening alone must not query either provider.
-    expect(eventKitBridge.requestEventAccess).toHaveBeenCalledTimes(1);
-    expect(eventKitBridge.listUpcomingEvents).toHaveBeenCalledTimes(1);
-
-    await fireEvent.press(view.getByTestId('unified-import-toggle-eventKit'));
-    await fireEvent.press(view.getByTestId('unified-import-start'));
-    expect(
-      await view.findByTestId('unified-import-eventkit-candidate-0'),
-    ).toBeTruthy();
-    await fireEvent.press(view.getByTestId('unified-import-eventkit-select-0'));
-    await fireEvent.press(view.getByTestId('unified-import-eventkit-confirm'));
-    expect(
-      await view.findByTestId('unified-import-eventkit-confirmed'),
-    ).toBeTruthy();
+    await fireEvent.press(view.getByText(medicalAppointmentCopy.loadCalendar));
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(reconfirmCalendarEvent).toHaveBeenCalledWith(
+        originalAppointment.id,
+        event,
+      ),
+    );
 
     const finalAppointments = await appointments.list();
     expect(finalAppointments).toHaveLength(1);
-    expect(finalAppointments[0]?.id).toBe(firstSave[0]?.id);
-    expect(confirmCalendarEvent).toHaveBeenCalledTimes(1);
-    expect(reconfirmCalendarEvent).toHaveBeenCalledTimes(1);
-    expect(openLocalAppointmentRepository).toHaveBeenCalledTimes(2);
-    expect(openLocalStorage).not.toHaveBeenCalled();
-    expect(healthKit.requestReadAuthorizations).not.toHaveBeenCalled();
-    expect(healthKit.querySampleChanges).not.toHaveBeenCalled();
-    expect(healthKit.queryMedicationDefinitions).not.toHaveBeenCalled();
-    expect(eventKitBridge.requestEventAccess).toHaveBeenCalledTimes(2);
-    expect(eventKitBridge.listUpcomingEvents).toHaveBeenCalledTimes(2);
+    expect(finalAppointments[0]?.id).toBe(originalAppointment.id);
+    expect(confirmCalendarEvent).not.toHaveBeenCalled();
+    expect(listUpcomingEvents).toHaveBeenCalledTimes(1);
+    expect(requestEventAccess).not.toHaveBeenCalled();
+    expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   } finally {
     opened.close();
   }

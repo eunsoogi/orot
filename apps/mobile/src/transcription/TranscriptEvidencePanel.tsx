@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
+import { AppText as Text } from '../layout/AppText';
+import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import TranscriptEvidenceItem from './TranscriptEvidenceItem';
+import TranscriptReviewHeader from './TranscriptReviewHeader';
+import TranscriptCorrectionEditor from './TranscriptCorrectionEditor';
+import {
+  latestRevisions,
+  errorLabel,
+  type TranscriptError,
+} from './transcriptReviewPresentation';
+import TranscriptReviewSummary from './TranscriptReviewSummary';
 import type {
   TranscriptEvidenceService,
   TranscriptRecordingView,
@@ -16,36 +26,7 @@ interface TranscriptEvidencePanelProps {
   deletionBusy?: boolean;
   automaticTranscriptionStatus?: 'running' | 'failed' | 'complete';
   onRequestDelete?: (sourceId: string) => void;
-}
-
-function latestRevisions(
-  segments: readonly TranscriptEvidenceSegment[],
-): TranscriptEvidenceSegment[] {
-  // Show each current segment once while keeping earlier revisions available as evidence history.
-  const latest = new Map<string, TranscriptEvidenceSegment>();
-  for (const segment of segments) {
-    const current = latest.get(segment.transcriptId);
-    if (!current || segment.revision > current.revision)
-      latest.set(segment.transcriptId, segment);
-  }
-  return [...latest.values()].sort(
-    (left, right) => left.segmentOrdinal - right.segmentOrdinal,
-  );
-}
-
-type TranscriptError = 'load' | 'create' | 'correct' | 'play';
-
-function errorLabel(error: TranscriptError): string {
-  switch (error) {
-    case 'load':
-      return t('recording.transcript.error.load');
-    case 'create':
-      return t('recording.transcript.error.create');
-    case 'correct':
-      return t('recording.transcript.error.correct');
-    case 'play':
-      return t('recording.transcript.error.play');
-  }
+  onInteractionChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }
 
 export default function TranscriptEvidencePanel({
@@ -54,6 +35,7 @@ export default function TranscriptEvidencePanel({
   deletionBusy = false,
   automaticTranscriptionStatus,
   onRequestDelete,
+  onInteractionChange,
 }: TranscriptEvidencePanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +44,18 @@ export default function TranscriptEvidencePanel({
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
+  const [collapsedSegmentIds, setCollapsedSegmentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  // The containing route owns leave confirmation; an unsaved correction must survive ordinary screen updates.
+  const originalText = view?.segments.find(
+    segment => segment.id === editingSegmentId,
+  )?.text;
+  const dirty = editingSegmentId !== null && draft !== originalText;
+  useEffect(() => {
+    onInteractionChange?.({ busy, dirty });
+  }, [busy, dirty, onInteractionChange]);
 
   async function reload(): Promise<void> {
     const next = await service.load(recordingSourceId);
@@ -136,19 +130,19 @@ export default function TranscriptEvidencePanel({
 
   if (!loading && !view && !error) return null;
   const latest = latestRevisions(view?.segments ?? []);
+  const editingSegment = latest.find(
+    segment => segment.id === editingSegmentId,
+  );
   return (
     <View style={styles.container} testID="transcript-panel">
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('recording.transcript.title')}
-      </Text>
-      <Text style={styles.copy}>{t('recording.transcript.localOnly')}</Text>
-      <Text style={styles.copy}>{t('recording.transcript.description')}</Text>
+      <TranscriptReviewHeader />
       {view && onRequestDelete ? (
-        <Button
+        <AppButton
           disabled={busy || deletionBusy}
           onPress={() => onRequestDelete(view.source.id)}
           testID="recording-transcript-delete"
           title={t('recording.library.delete')}
+          variant="secondary"
         />
       ) : null}
       {loading ? (
@@ -172,7 +166,7 @@ export default function TranscriptEvidencePanel({
       automaticTranscriptionStatus !== 'running' ? (
         <>
           <Text style={styles.copy}>{t('recording.transcript.empty')}</Text>
-          <Button
+          <AppButton
             disabled={busy}
             onPress={createTranscript}
             testID="transcript-create"
@@ -185,10 +179,8 @@ export default function TranscriptEvidencePanel({
         </>
       ) : null}
       {view && latest.length > 0 ? (
-        <>
-          <Text style={styles.copy}>
-            {t('recording.transcript.correctionNotice')}
-          </Text>
+        <View style={styles.reviewCard}>
+          <TranscriptReviewSummary source={view.source} segments={latest} />
           {view.staleArtifacts.length > 0 ? (
             <Text style={styles.error} testID="transcript-stale-artifacts">
               {t('recording.transcript.staleArtifacts', {
@@ -209,13 +201,20 @@ export default function TranscriptEvidencePanel({
                   key={segment.transcriptId}
                   segment={segment}
                   history={history}
-                  editing={editingSegmentId === segment.id}
+                  collapsed={
+                    editingSegmentId !== segment.id &&
+                    collapsedSegmentIds.has(segment.id)
+                  }
                   busy={busy}
                   playing={playingSegmentId === segment.id}
-                  draft={draft}
-                  onDraftChange={setDraft}
-                  onSave={saveCorrection}
-                  onCancel={() => setEditingSegmentId(null)}
+                  onToggleCollapsed={() => {
+                    setCollapsedSegmentIds(previous => {
+                      const next = new Set(previous);
+                      if (next.has(segment.id)) next.delete(segment.id);
+                      else next.add(segment.id);
+                      return next;
+                    });
+                  }}
                   onPlay={() => play(segment)}
                   onEdit={() => {
                     setDraft(segment.text);
@@ -225,7 +224,17 @@ export default function TranscriptEvidencePanel({
               );
             })}
           </View>
-        </>
+          {editingSegment ? (
+            <TranscriptCorrectionEditor
+              ordinal={editingSegment.segmentOrdinal}
+              busy={busy}
+              draft={draft}
+              onChange={setDraft}
+              onSave={saveCorrection}
+              onCancel={() => setEditingSegmentId(null)}
+            />
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

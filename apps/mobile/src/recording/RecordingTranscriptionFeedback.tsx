@@ -1,4 +1,5 @@
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import { AppProgress } from '../layout/AppProgress';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -41,7 +42,7 @@ export default function RecordingTranscriptionFeedback({
     >
       {snapshot.status === 'running' ? (
         <>
-          <ActivityIndicator color={appColors.primary} />
+          <AppProgress color={appColors.primary} />
           <AppText>{t('recording.transcript.autoProgress')}</AppText>
         </>
       ) : (

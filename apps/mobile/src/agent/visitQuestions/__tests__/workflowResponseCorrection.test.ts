@@ -94,12 +94,12 @@ describe('visit-question response correction', () => {
       prepared.initialEvidence,
       prepared.supplementalEvidence,
     );
-    const finalResponse = JSON.parse(outputs[2]!) as {
+    const finalResponse = JSON.parse(outputs[1]!) as {
       value: { questions: { questionText: string }[] };
     };
     finalResponse.value.questions[0]!.questionText =
       '수면 패턴의 변화를 더 구체적으로 확인해야 합니다.';
-    outputs[2] = JSON.stringify(finalResponse);
+    outputs[1] = JSON.stringify(finalResponse);
     const { provider, requests } = makeProvider(outputs);
     const { selection, option } = selectedOption(provider, 'on-device');
 

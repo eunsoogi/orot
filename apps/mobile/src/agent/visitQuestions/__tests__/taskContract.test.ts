@@ -96,7 +96,7 @@ describe('visit question task responder', () => {
     expect(content).not.toContain('appointmentId');
     expect(messages).toHaveLength(1);
     expect(responder.systemPrompt).toContain('type=result');
-    expect(responder.systemPrompt).toContain('type=request_evidence');
+    expect(responder.systemPrompt).not.toContain('type=request_evidence');
   });
 
   it('replaces local identifiers and locators in shared-runtime citations, then restores them locally', () => {

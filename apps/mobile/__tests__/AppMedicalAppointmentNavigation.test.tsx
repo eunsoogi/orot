@@ -72,6 +72,10 @@ function calendarEvent(): CalendarEvent {
 
 function calendarBridge(event: CalendarEvent): CalendarBridge {
   return {
+    listUpcomingEvents: jest.fn(async () => ({
+      access: 'fullAccess' as const,
+      events: [event],
+    })),
     requestAccessAndListUpcomingEvents: jest.fn(async () => ({
       access: 'fullAccess' as const,
       events: [event],
@@ -111,10 +115,11 @@ it('opens classification with the saved AI and reaches the separate manual page'
       completedBatches: 1,
       totalBatches: 1,
     });
+  const calendar = calendarBridge(event);
   await render(
     <App
       loadAppointments={async () => appointments}
-      calendarBridge={calendarBridge(event)}
+      calendarBridge={calendar}
       aiFeatureServiceDependencies={{
         selectedAi: {
           selectionStore: store,
@@ -123,12 +128,19 @@ it('opens classification with the saved AI and reaches the separate manual page'
       }}
     />,
   );
+  await waitFor(() =>
+    expect(calendar.listUpcomingEvents).toHaveBeenCalledTimes(1),
+  );
+  expect(classify).not.toHaveBeenCalled();
+  expect(calendar.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   expect(
     await screen.findByText(medicalAppointmentCopy.localNotice),
   ).toBeTruthy();
+  expect(classify).not.toHaveBeenCalled();
+  expect(calendar.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText(medicalAppointmentCopy.loadCalendar));
   expect(await screen.findByText('치과 검진')).toBeTruthy();
   await waitFor(() =>

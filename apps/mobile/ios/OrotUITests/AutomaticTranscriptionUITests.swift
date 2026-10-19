@@ -25,8 +25,20 @@ final class AutomaticTranscriptionUITests: OrotFailFastTestCase {
         let fixtureID = try XCTUnwrap(refusal["fixtureId"] as? String)
         XCTAssertNotNil(UUID(uuidString: fixtureID))
         tap(app, "recording-consent")
-        tap(app, "recording-start")
-        tap(app, "recording-stop")
+        tap(app, "recording-microphone-control")
+        let pause = UITestConditions.element(app, "recording-pause")
+        XCTAssertTrue(pause.waitForAppearance(), app.debugDescription)
+        XCTAssertFalse(pause.label.isEmpty, pause.debugDescription)
+        // Capture the production session while its icon pause control is available.
+        let sessionScreenshot = XCTAttachment(screenshot: app.screenshot())
+        sessionScreenshot.name = "recording-session-active"
+        sessionScreenshot.lifetime = .keepAlways
+        add(sessionScreenshot)
+        tap(app, "recording-microphone-control")
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "녹음 ID")).firstMatch.exists,
+            app.debugDescription,
+        )
         // This observes the completed screen-owned job; it never starts or retries recognition from the harness.
         value(app, "automatic-transcription-phase", "complete")
         let result = try report(app, id: "automatic-transcription-result", name: "automatic-saved-result")

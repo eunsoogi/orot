@@ -5,6 +5,11 @@ import type {
   TaskResultValidation,
 } from '@orot/agent-runtime';
 
+import {
+  classificationDecisions,
+  expandClassificationDecisions,
+} from './classificationDecision';
+
 export type MedicalRelevance = 'medical' | 'non_medical' | 'uncertain';
 export type ClassificationUncertainty = 'low' | 'medium' | 'high';
 
@@ -29,35 +34,72 @@ const taskSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['candidateId', 'classification', 'reason', 'uncertainty'],
+        required: ['candidateId', 'decision'],
         properties: {
           candidateId: { type: 'string' },
-          classification: { enum: ['medical', 'non_medical', 'uncertain'] },
-          reason: { type: 'string', maxLength: 500 },
-          uncertainty: { enum: ['low', 'medium', 'high'] },
+          decision: { type: 'string', enum: classificationDecisions },
         },
       },
     },
   },
-} as JsonObject;
+} satisfies JsonObject;
 
 const taskInstructions = [
   'Classify each supplied upcoming Calendar event only for whether it appears to be a medical appointment.',
   'Use only the supplied event title and time. Do not infer a diagnosis, give health advice, or invent missing details.',
   'Return exactly one item for every candidateId and no others. Use uncertain when the event is ambiguous.',
-  'Give a short Korean reason and a low, medium, or high uncertainty rating for each candidate.',
+  'Return one decision per candidate: combine medical, non_medical, or uncertain with low, medium, or high uncertainty using an underscore (for example medical_low or non_medical_high). The app supplies the fixed Korean explanation; do not generate extra fields.',
   // Confidence concerns appointment relevance, never the person's condition or diagnosis.
   'Uncertainty measures only whether this is a medical appointment. Use low when the title explicitly names a clinic, hospital visit, examination, treatment, or consultation appointment; medium or high when that purpose is unclear. Do not increase uncertainty merely because clinical details are absent.',
   'Do not request more evidence; return uncertain when the supplied event text is insufficient.',
 ].join(' ');
 
 /** Builds a bounded responder contract; local validation prevents missing or duplicated candidates. */
-export function createAppointmentClassificationTask(): TaskResponderContract<AppointmentClassificationResult> {
+export function createAppointmentClassificationTask(
+  candidateIds: readonly string[] = [],
+  onInvalid?: (reason: string) => void,
+): TaskResponderContract<AppointmentClassificationResult> {
   return {
     taskType: 'medical-appointment-classification',
-    taskVersion: '1',
+    taskVersion: '4',
     systemPrompt: taskInstructions,
-    resultSchema: taskSchema,
+    requireAllEvidenceCitations: true,
+    // Generation must enumerate this batch, including non-medical events. A prose
+    // instruction alone does not constrain the generated item count or IDs.
+    resultSchema: candidateIds.length
+      ? {
+          ...taskSchema,
+          properties: {
+            classifications: {
+              ...taskSchema.properties.classifications,
+              minItems: candidateIds.length,
+              maxItems: candidateIds.length,
+              items: {
+                ...taskSchema.properties.classifications.items,
+                properties: {
+                  ...taskSchema.properties.classifications.items.properties,
+                  candidateId: { type: 'string', enum: [...candidateIds] },
+                },
+              },
+            },
+          },
+        }
+      : taskSchema,
+    correctionInstructionForInvalidResult(reason) {
+      // One bounded retry repairs structure; it cannot relax the classification or consent rules.
+      if (
+        ![
+          'A complete classification array is required.',
+          'Every supplied candidate must be classified once.',
+          'A candidate result did not pass local validation.',
+          'A candidate identity was repeated or unknown.',
+          'A supplied candidate was omitted.',
+          'Every supplied evidence item must be cited.',
+        ].includes(reason)
+      )
+        return undefined;
+      return 'Every supplied candidate must appear exactly once, including non_medical and uncertain events. Use only the supplied candidateId values. Include only candidateId and a decision from the supplied enum for each item. The top-level citations must contain every supplied candidateId exactly once. Do not omit events or repeat an ID. Return the corrected complete result.';
+    },
     createMessages(input) {
       return [
         {
@@ -73,7 +115,12 @@ export function createAppointmentClassificationTask(): TaskResponderContract<App
       ];
     },
     validateResult(value, input) {
-      return validateAppointmentClassification(value, input);
+      const result = validateAppointmentClassification(
+        expandClassificationDecisions(value),
+        input,
+      );
+      if (result.status === 'invalid') onInvalid?.(result.reason);
+      return result;
     },
   };
 }
@@ -98,6 +145,16 @@ export function validateAppointmentClassification(
   const seen = new Set<string>();
   const classifications: AppointmentClassification[] = [];
   for (const item of value.classifications) {
+    if (
+      isRecord(item) &&
+      typeof item.candidateId === 'string' &&
+      (!expected.has(item.candidateId) || seen.has(item.candidateId))
+    ) {
+      return {
+        status: 'invalid',
+        reason: 'A candidate identity was repeated or unknown.',
+      };
+    }
     if (
       !isRecord(item) ||
       Object.keys(item).length !== 4 ||

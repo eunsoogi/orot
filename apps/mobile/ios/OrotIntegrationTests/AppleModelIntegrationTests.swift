@@ -16,12 +16,13 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
         if availability == "available" {
             XCTAssertEqual(result["generation"] as? String, "passed")
             XCTAssertEqual(result["sourceIdPreserved"] as? String, "passed")
+            XCTAssertGreaterThan(result["streamedUpdates"] as? Int ?? 0, 0)
             let question = try XCTUnwrap(result["questionText"] as? String)
             XCTAssertFalse(question.isEmpty)
             XCTAssertNotEqual(question, "not-run")
             XCTAssertTrue(try ["cancelled", "completed-before-cancel"].contains(XCTUnwrap(result["cancellation"] as? String)))
         } else {
-            for field in ["generation", "sourceIdPreserved", "questionText", "cancellation"] {
+            for field in ["generation", "sourceIdPreserved", "questionText", "streamedUpdates", "cancellation"] {
                 XCTAssertEqual(result[field] as? String, "not-run", field)
             }
         }
@@ -32,7 +33,19 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(bridge["modelExecution"] as? String, "mock")
         XCTAssertEqual((bridge["streamed"] as? [Any])?.count, 3)
         XCTAssertEqual((bridge["cancelled"] as? [Any])?.count, 2)
-        XCTAssertEqual((bridge["rewritten"] as? [Any])?.count, 2)
+        XCTAssertEqual((bridge["rewritten"] as? [Any])?.count, 3)
+        let guided = try XCTUnwrap(bridge["guided"] as? [String: Any])
+        let guidedPackets = try XCTUnwrap(guided["packets"] as? [[String: Any]])
+        XCTAssertEqual(guidedPackets.count, 3)
+        let guidedCompletion = try XCTUnwrap(guidedPackets.last?["response"] as? [String: Any])
+        let structuredOutput = try XCTUnwrap(guidedCompletion["structuredOutput"] as? [String: Any])
+        XCTAssertEqual(structuredOutput["sourceId"] as? String, "synthetic-source-42")
+        let guidedRequests = try XCTUnwrap(guided["requests"] as? [[String: Any]])
+        let guidedRequest = try XCTUnwrap(guidedRequests.first)
+        XCTAssertEqual(guidedRequest["streaming"] as? Bool, true)
+        let nativeRequest = try XCTUnwrap(guidedRequest["request"] as? [String: Any])
+        XCTAssertEqual(nativeRequest["mode"] as? String, "structured")
+        XCTAssertNotNil(nativeRequest["schema"])
         XCTAssertEqual(bridge["failed"] as? String, "GENERATION_FAILED")
         XCTAssertEqual(bridge["invalid"] as? String, "GENERATION_FAILED")
         XCTAssertEqual(bridge["unavailable"] as? [String], ["disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage"])

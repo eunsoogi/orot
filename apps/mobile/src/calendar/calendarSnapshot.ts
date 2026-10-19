@@ -58,6 +58,32 @@ export function calendarEventMatchesAppointment(
   );
 }
 
+/** Prevents a selected, but since-edited candidate from being confirmed as stale. */
+export function calendarEventsEqual(
+  left: CalendarEvent,
+  right: CalendarEvent,
+): boolean {
+  const hasFloatingCivilTimes =
+    left.calendarEventSnapshot.timeZoneIdentifier === null &&
+    right.calendarEventSnapshot.timeZoneIdentifier === null &&
+    typeof left.calendarEventSnapshot.floatingStartAt === 'string' &&
+    typeof left.calendarEventSnapshot.floatingEndAt === 'string' &&
+    left.calendarEventSnapshot.floatingStartAt ===
+      right.calendarEventSnapshot.floatingStartAt &&
+    left.calendarEventSnapshot.floatingEndAt ===
+      right.calendarEventSnapshot.floatingEndAt;
+  return (
+    left.calendarEventIdentifier === right.calendarEventIdentifier &&
+    (hasFloatingCivilTimes ||
+      (left.effectiveAt === right.effectiveAt &&
+        left.endsAt === right.endsAt)) &&
+    calendarSnapshotsEqual(
+      left.calendarEventSnapshot,
+      right.calendarEventSnapshot,
+    )
+  );
+}
+
 function comparableSnapshot(
   snapshot: CalendarEvent['calendarEventSnapshot'],
 ): CalendarEvent['calendarEventSnapshot'] {

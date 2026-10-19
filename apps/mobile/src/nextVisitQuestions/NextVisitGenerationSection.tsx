@@ -1,4 +1,6 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppProgress } from '../layout/AppProgress';
+import { t } from '../i18n';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { ActionButton } from './NextVisitComponents';
 import { EvidenceCaveats } from './EvidenceCaveats';
@@ -36,6 +38,7 @@ export function NextVisitGenerationSection<
     !isGenerating &&
     hasSharedAction &&
     !controller.generationMessage &&
+    !controller.generationPreview &&
     (!controller.saveMessage || controller.phase === 'saved') &&
     (controller.caveats.length === 0 || controller.phase === 'saved')
   )
@@ -44,13 +47,18 @@ export function NextVisitGenerationSection<
     <View style={styles.section}>
       {isGenerating ? (
         <>
-          <ActivityIndicator
+          <AppProgress
             accessibilityLabel={copy.generation.loading}
             testID="next-visit-generation-loading"
           />
-          <Text accessibilityLiveRegion="polite" style={styles.body}>
-            {copy.generation.loading}
+          <Text
+            accessibilityLiveRegion="polite"
+            style={styles.body}
+            testID="next-visit-generation-progress"
+          >
+            {controller.generationActivity ?? copy.generation.loading}
           </Text>
+
           {!hasSharedAction ? (
             <ActionButton
               label={copy.generation.cancel}
@@ -69,6 +77,27 @@ export function NextVisitGenerationSection<
           theme={theme}
           testID="next-visit-generate"
         />
+      ) : null}
+      {controller.generationPreview ? (
+        <View testID="next-visit-generation-preview">
+          <Text style={styles.muted}>
+            {t(
+              isGenerating
+                ? 'aiActivity.draft.heading'
+                : 'aiActivity.draft.incompleteHeading',
+            )}
+          </Text>
+          <Text accessibilityLiveRegion="polite" style={styles.body}>
+            {controller.generationPreview}
+          </Text>
+          <Text style={styles.muted}>
+            {t(
+              isGenerating
+                ? 'aiActivity.draft.note'
+                : 'aiActivity.draft.incompleteNote',
+            )}
+          </Text>
+        </View>
       ) : null}
       {controller.generationMessage ? (
         <Text

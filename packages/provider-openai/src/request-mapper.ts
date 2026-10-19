@@ -31,6 +31,8 @@ export function prepareRequest(
 
   const tools = mapTools(request.tools);
   if (!tools.ok) return tools;
+  if (request.toolChoice === 'required' && !tools.value.length)
+    return invalidRequest('Required tool selection needs tools.');
 
   const messages: ChatGPTPlanInputMessage[] = [];
   const consumedCallIDs: string[] = [];
@@ -84,6 +86,7 @@ export function prepareRequest(
     model,
     messages,
     ...(tools.value.length ? { tools: tools.value } : {}),
+    ...(request.toolChoice ? { toolChoice: request.toolChoice } : {}),
   };
   return { ok: true, value, consumedCallIDs };
 }

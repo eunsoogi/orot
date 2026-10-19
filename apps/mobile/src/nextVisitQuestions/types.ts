@@ -1,6 +1,7 @@
 import type { Appointment } from '@orot/domain';
 import type { TextStyle } from 'react-native';
 import type { ProviderSelection } from '../providers/selection/types';
+import type { AiWorkflowObserver } from '../agent/workflowActivity';
 
 /** A UI projection of an evidence link; the opaque citation remains intact for save and open callbacks. */
 export interface NextVisitEvidenceReference {
@@ -189,6 +190,7 @@ export interface NextVisitQuestionsScreenProps<
     appointment: Appointment,
     selection: ProviderSelection,
     signal: AbortSignal,
+    observer?: AiWorkflowObserver,
   ) => Promise<GenerationOutcome<TReference>>;
   /** The adapter must retain these warnings beside questions because question records do not store them. */
   readonly onSaveReviewedQuestions: (

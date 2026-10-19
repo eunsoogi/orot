@@ -6,7 +6,7 @@ import { hostConnectionTest } from './ios-test-preparation-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
 
 const [profile, runFile, ownerFile, directory] = process.argv.slice(2);
-if (!directory || process.env.GITHUB_ACTIONS !== 'true')
+if (!directory || !runFile || process.env.GITHUB_ACTIONS !== 'true')
   throw new Error('Simulator UI preparation requires its hosted Actions execution');
 const owner = JSON.parse(readFileSync(ownerFile, 'utf8'));
 if (

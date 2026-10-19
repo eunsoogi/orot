@@ -27,7 +27,10 @@ struct FormScrollGeometry {
         guard horizontalPosition.isFinite, (0 ... 1).contains(horizontalPosition),
               maximumScrollFraction.isFinite, maximumScrollFraction > 0, maximumScrollFraction <= 0.7 else { return nil }
         let measuredTarget = target.flatMap { Self.valid($0) ? $0 : nil }
-        let above = measuredTarget.map { $0.minY < viewport.minY } ?? towardTop
+        // Containment does not imply hittability under system chrome. If reveal
+        // still needs a gesture, retain its search direction instead of oscillating
+        // across the edge; measured clipping always takes precedence.
+        let above = measuredTarget.map { contains($0) ? towardTop : $0.minY < viewport.minY } ?? towardTop
         let travelLimit = viewport.height * maximumScrollFraction
         let overflow = measuredTarget.map { above ? viewport.minY - $0.minY : $0.maxY - viewport.maxY } ?? travelLimit
         // Virtualized lists can opt into longer travel while an offscreen row is being located.

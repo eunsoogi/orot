@@ -20,7 +20,7 @@ async function revalidate(input: {
 }) {
   const registry = new LocalEvidenceReferenceRegistry();
   const result = buildPersonalEvidence({
-    inventory: inventory(input.records),
+    records: inventory(input.records).records,
     persistedChunks: input.chunks,
     repository: repository(input.currentRecords ?? input.records),
     registry,
@@ -166,7 +166,7 @@ describe('personal evidence provenance', () => {
     const registry = new LocalEvidenceReferenceRegistry();
     const records = [recording, original, corrected];
     const result = buildPersonalEvidence({
-      inventory: inventory(records),
+      records: inventory(records).records,
       persistedChunks: [chunk],
       repository: repository(records),
       registry,

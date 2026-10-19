@@ -1,5 +1,6 @@
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
@@ -48,6 +49,7 @@ export interface VisitQuestionRouteGenerationInput {
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
   readonly signal: AbortSignal;
+  readonly observer?: AiWorkflowObserver;
 }
 
 export interface VisitQuestionRouteOperations {
@@ -172,6 +174,7 @@ async function generate(
     // Selection does not imply consent; #30 authorizes this exact outbound request before inference.
     confirmConsent: input.confirmConsent,
     signal: input.signal,
+    ...(input.observer ? { observer: input.observer } : {}),
   });
   const caveats = currentEvidenceCaveats(collections);
   if (input.signal.aborted) return { status: 'cancelled' };

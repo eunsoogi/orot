@@ -4,6 +4,40 @@ import { appleModelMockScript } from '../e2e/appleModelMockFixtures';
 const allowedCitationReferencesPrefix =
   'Allowed citation references (return citations as their evidenceId strings; do not invent IDs):\n';
 
+const tools = [
+  {
+    name: 'europe-pmc-publication-search',
+    inputSchema: {
+      type: 'object' as const,
+      properties: { query: { type: 'string' } },
+    },
+  },
+];
+
+test('tool-enabled visit replies use the native mixed-response envelope', () => {
+  const input = { ...request(['evidence-alias-7']), tools };
+  const output = JSON.parse(
+    appleModelMockScript('apple-workflow')[1](input).text!,
+  );
+  expect(output.kind).toBe('structured');
+  expect(output.value.citations).toEqual(['evidence-alias-7']);
+});
+
+test('empty-library literature probe requests a real tool protocol call before answering', () => {
+  const script = appleModelMockScript('rag-workflow');
+  const input = { ...request([]), tools, toolChoice: 'required' as const };
+  expect(JSON.parse(script[0](input).text!)).toEqual({
+    kind: 'tool_calls',
+    toolCalls: [
+      {
+        name: tools[0].name,
+        arguments: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
+      },
+    ],
+  });
+  expect(script).toHaveLength(2);
+});
+
 function request(ids: string[]): LanguageModelRequest {
   return {
     messages: [
@@ -41,9 +75,9 @@ test('three Calendar examples remain distinct across both imports', () => {
     ]);
     expect(
       output.value.classifications.map(
-        (value: { classification: string }) => value.classification,
+        (value: { decision: string }) => value.decision,
       ),
-    ).toEqual(['medical', 'non_medical', 'uncertain']);
+    ).toEqual(['medical_low', 'non_medical_low', 'uncertain_high']);
   }
   expect(() => script[0](request(['missing-candidate']))).toThrow(
     'every original candidate',
@@ -65,19 +99,7 @@ test('visit fixture keeps supplied aliases and a delayed cancellation request', 
 
 test('literature fixture reads citation IDs from the prompt allowlist without a schema enum', () => {
   const script = appleModelMockScript('rag-workflow');
-  expect(JSON.parse(script[0](request([])).text!)).toEqual({
-    type: 'request_evidence',
-    need: 'missing_coverage',
-  });
-  const planner = {
-    ...request([]),
-    responseFormat: { name: 'evidence_research_plan', schema: {} },
-  };
-  expect(JSON.parse(script[1](planner).text!)).toEqual({
-    toolId: 'europe-pmc-publication-search',
-    sourceKind: 'external_medical',
-    input: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
-  });
+  expect(() => script[0](request([]))).toThrow('supplied publication tool');
   const taskRequest = request([
     'returned-publication-1',
     'returned-publication-2',
@@ -88,10 +110,10 @@ test('literature fixture reads citation IDs from the prompt allowlist without a 
   expect(taskSchema.anyOf[1].properties?.citations?.items).toEqual({
     type: 'string',
   });
-  const output = JSON.parse(script[2](taskRequest).text!);
+  const output = JSON.parse(script[1](taskRequest).text!);
   expect(output.citations).toEqual(['returned-publication-1']);
   expect(output.value.answer).toContain('mock');
-  expect(() => script[2](request([]))).toThrow('supplied citation IDs');
+  expect(() => script[1](request([]))).toThrow('supplied citation IDs');
 });
 
 test('unknown operations and unexpected format fail instead of returning a generic successful response', () => {

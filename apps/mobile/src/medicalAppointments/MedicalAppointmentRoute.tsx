@@ -11,6 +11,7 @@ import type {
   SelectedAiResolverOptions,
 } from '../aiFeatures/integration/provider';
 import type { CalendarBridge } from '../calendar/types';
+import type { CalendarAutoSyncState } from '../calendar/calendarAutoSync';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
@@ -20,8 +21,10 @@ import { medicalAppointmentCopy as copy } from './copy.ko';
 
 interface MedicalAppointmentRouteProps {
   readonly bridge: CalendarBridge;
+  readonly calendarSync: CalendarAutoSyncState;
   readonly manual: boolean;
   readonly onOpenManual: () => void;
+  readonly onOpenCalendarSettings: () => void;
   readonly loadAppointments: () => Promise<AppointmentRepository>;
   readonly selectedAiResolverOptions?: SelectedAiResolverOptions;
 }
@@ -42,8 +45,10 @@ const styles = StyleSheet.create({
 /** Boots local appointments and selected AI independently so provider failure cannot hide manual entry. */
 export default function MedicalAppointmentRoute({
   bridge,
+  calendarSync,
   manual,
   onOpenManual,
+  onOpenCalendarSettings,
   loadAppointments,
   selectedAiResolverOptions,
 }: MedicalAppointmentRouteProps) {
@@ -158,10 +163,12 @@ export default function MedicalAppointmentRoute({
       <ClassificationLeaveState />
       <MedicalAppointmentClassificationScreen
         bridge={bridge}
+        calendarSync={calendarSync}
         repository={repository}
         selectedProvider={resolvedAi?.option ?? null}
         recipient={resolvedAi?.recipient ?? null}
         selectedProviderUnavailable={selectedAi.status === 'unavailable'}
+        onOpenCalendarSettings={onOpenCalendarSettings}
         onOpenManual={onOpenManual}
       />
     </>

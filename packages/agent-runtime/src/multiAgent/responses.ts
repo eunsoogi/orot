@@ -57,6 +57,14 @@ export function consumeResponderResponse<TResult>(
     return completeState();
   }
   if (decoded.type === 'request_evidence') {
+    if (context.options.provider.capabilities.toolCalling && context.options.tools.length > 0) {
+      stop(
+        context,
+        'The model must request evidence through a provider tool call.',
+        'invalid_output',
+      );
+      return completeState();
+    }
     if (revised || state.researchCycles >= state.budget.maxResearchCycles) {
       stop(context, 'The task still needs evidence after the bounded research cycle.');
       return completeState();
@@ -101,7 +109,12 @@ export function consumeResponderResponse<TResult>(
   }
   let validation;
   try {
-    validation = context.options.task.validateResult(decoded.value as JsonValue, input);
+    // Exhaustive batch tasks cannot silently accept an otherwise valid result with missing sources.
+    validation =
+      context.options.task.requireAllEvidenceCitations &&
+      citations.length !== input.evidence.items.length
+        ? { status: 'invalid' as const, reason: 'Every supplied evidence item must be cited.' }
+        : context.options.task.validateResult(decoded.value as JsonValue, input);
   } catch {
     validation = { status: 'invalid' as const, reason: 'Task validation failed.' };
   }

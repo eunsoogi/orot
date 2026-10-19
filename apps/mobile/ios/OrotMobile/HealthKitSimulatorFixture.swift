@@ -4,6 +4,11 @@
 
     /// Supplies in-memory records without writing samples into the HealthKit store.
     enum HealthKitSimulatorFixture {
+        /// A new process can expose changed source data to prove launch sync actually queried again.
+        static var updatedOnRelaunch: Bool {
+            ProcessInfo.processInfo.arguments.contains("-OROT_HEALTH_FIXTURE_UPDATED")
+        }
+
         static let medications: [[String: Any]] = [[
             "conceptIdentifier": "c3ludGhldGljLW1lZGljYXRpb24=",
             "displayText": "Synthetic medication",
@@ -15,7 +20,8 @@
 
         static func sampleChanges(for request: HealthKitSampleChangesRequest) -> NSDictionary {
             let key = "\(request.feature):\(request.sampleKind)"
-            let anchor = "\(key):anchor-v1"
+            let version = updatedOnRelaunch && ["bloodPressure", "medications"].contains(request.feature) ? 2 : 1
+            let anchor = "\(key):anchor-v\(version)"
             if request.cursor == "\(key):deletion", request.feature == "medications" {
                 return HealthKitBoundary.sampleChangesResult(
                     availability: "available",
@@ -74,7 +80,7 @@
 
             if query.feature == "bloodPressure" {
                 let systolic = sample("synthetic-systolic", "HKQuantityTypeIdentifierBloodPressureSystolic", start, end,
-                                      value: 120, unit: "mmHg")
+                                      value: updatedOnRelaunch ? 124 : 120, unit: "mmHg")
                 let diastolic = sample("synthetic-diastolic", "HKQuantityTypeIdentifierBloodPressureDiastolic", start, end,
                                        value: 80, unit: "mmHg")
                 var correlation = sample("synthetic-blood-pressure", "HKCorrelationTypeIdentifierBloodPressure", start, end)
@@ -85,7 +91,7 @@
             switch query.feature {
             case "medications":
                 return [sample("synthetic-dose-event", "HKMedicationDoseEventTypeIdentifierMedicationDoseEvent", start, end,
-                               medicationConceptIdentifier: "c3ludGhldGljLW1lZGljYXRpb24=", doseQuantity: 1, doseUnit: "tablet")]
+                               medicationConceptIdentifier: "c3ludGhldGljLW1lZGljYXRpb24=", doseQuantity: updatedOnRelaunch ? 2 : 1, doseUnit: "tablet")]
             case "heartRate":
                 return [sample("synthetic-heart-rate", "HKQuantityTypeIdentifierHeartRate", start, end,
                                value: 72, unit: "count/min")]
@@ -188,12 +194,13 @@
                   let plan = HealthKitBoundary.authorizationPlan(for: feature)
             else {
                 resolve(["availability": "unsupportedFeature", "readTypeIdentifiers": [],
-                         "writeTypeIdentifiers": []] as NSDictionary)
+                         "writeTypeIdentifiers": [], "perObjectReadTypeIdentifiers": []] as NSDictionary)
                 return
             }
             resolve([
                 "availability": "available",
                 "readTypeIdentifiers": plan.readTypes.map(\.identifier).sorted(),
+                "perObjectReadTypeIdentifiers": plan.perObjectReadTypes.map(\.identifier).sorted(),
                 "writeTypeIdentifiers": plan.shareTypes.map(\.identifier).sorted(),
             ] as NSDictionary)
         }
@@ -212,6 +219,7 @@
                 "requestedFeatures": plan.requestedFeatures,
                 "unsupportedFeatures": plan.unsupportedFeatures,
                 "readTypeIdentifiers": plan.readTypes.map(\.identifier).sorted(),
+                "perObjectReadTypeIdentifiers": plan.perObjectReadTypes.map(\.identifier).sorted(),
                 "writeTypeIdentifiers": plan.shareTypes.map(\.identifier).sorted(),
             ] as NSDictionary)
         }

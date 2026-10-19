@@ -12,12 +12,17 @@ import App from '../App';
 import { navigationText } from '../src/i18n/navigation';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
-jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
-  importLocalCommonObservations: jest.fn(),
-}));
-jest.mock('../src/healthkit/bloodPressure/importLocal', () => ({
-  importLocalBloodPressure: jest.fn(),
-  listLocalBloodPressureObservations: jest.fn(),
+jest.mock('../src/healthkit/autoSyncLocal', () => ({
+  configureLocalHealthKitAutoSync: jest.fn(async () => ({
+    status: 'complete',
+    attemptedFeatures: [],
+  })),
+  loadLocalHealthKitAutoSyncSelection: jest.fn(async () => []),
+  loadLocalHealthKitAutoSyncStatus: jest.fn(async () => null),
+  syncLocalPreviouslyRequestedHealthKit: jest.fn(async () => ({
+    status: 'skipped',
+    attemptedFeatures: [],
+  })),
 }));
 jest.mock('../src/backup/backupSupport', () => ({
   prepareBackupSupport: jest.fn(async () => 'ready'),
@@ -45,7 +50,14 @@ async function openRecords() {
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 }
 
-// Recording and import routes publish leave permission after their state is ready.
+async function openSettings() {
+  await fireEvent.press(screen.getByTestId('navigation-tab-settings'));
+  await waitFor(() =>
+    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+  );
+}
+
+// Recording and Settings routes publish leave permission after their state is ready.
 async function waitForNavigationBackEnabled() {
   await waitFor(() =>
     expect(screen.getByTestId('navigation-back')).toBeEnabled(),
@@ -68,44 +80,43 @@ test('routes recording from Records through the shared back button', async () =>
 // Native-stack gesture removal is covered by NavigationRouteAdapterBackInputs.
 test('uses shared unsaved-selection confirmation for the back button', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-  await renderApp({ importHealthObservations: jest.fn() });
+  await renderApp();
 
-  await openRecords();
-  await fireEvent.press(screen.getByTestId('records-open-common-observations'));
-  expect(
-    await screen.findByRole('header', { name: '건강 기록 가져오기' }),
-  ).toBeTruthy();
+  await openSettings();
+  await fireEvent.press(screen.getByTestId('settings-open-health-data'));
+  expect(await screen.findByTestId('health-data-title')).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
-  expect(screen.queryByTestId('common-observations-back')).toBeNull();
+  expect(screen.queryByTestId('health-data-back')).toBeNull();
   await waitForNavigationBackEnabled();
-  await fireEvent.press(screen.getByTestId('common-observations-toggle-steps'));
+  const steps = await screen.findByTestId('health-data-feature-steps');
+  await waitFor(() => expect(steps).toBeEnabled());
+  await fireEvent.press(steps);
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
   expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
   expect(alert.mock.calls[0]?.[1]).toBe(navigationText.leaveUnsaved.message);
   await pressAlertButton(alert, 0);
-  expect(
-    screen.getByTestId('common-observations-toggle-steps').props
-      .accessibilityState.checked,
-  ).toBe(true);
+  expect(steps.props.accessibilityState.checked).toBe(true);
 
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
   expect(alert.mock.calls[1]?.[0]).toBe(navigationText.leaveUnsaved.title);
   expect(alert.mock.calls[1]?.[1]).toBe(navigationText.leaveUnsaved.message);
   await pressAlertButton(alert, 1);
-  await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByTestId('settings-title')).toBeTruthy(),
+  );
 });
 
-test('routes blood pressure through the shared back action', async () => {
+test('routes imported health records through the shared back action', async () => {
   await renderApp();
 
   await openRecords();
-  await fireEvent.press(screen.getByTestId('records-open-blood-pressure'));
-  expect(await screen.findByRole('header', { name: '혈압 기록' })).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('records-open-health-library'));
+  expect(await screen.findByTestId('health-records-title')).toBeTruthy();
   expect(screen.getByTestId('navigation-back')).toBeTruthy();
-  expect(screen.queryByTestId('blood-pressure-back')).toBeNull();
+  expect(screen.queryByTestId('health-records-back')).toBeNull();
   await waitForNavigationBackEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());

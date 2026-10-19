@@ -2,7 +2,8 @@ import Foundation
 #if canImport(FoundationModels)
     import FoundationModels
 
-    /// The SDK call boundary is replaced only in Simulator test products. Bridge validation and request ownership stay shared.
+    /// Simulator test products use scripted guided responses; production tool requests
+    /// retain real SDK callbacks through AppleNativeToolRegistry. Mock tests do not prove that path.
     @available(iOS 26.0, *)
     enum AppleFoundationModelsSession {
         static func availability() -> [String: Any] {
@@ -26,6 +27,13 @@ import Foundation
             guard let request = payload as? [String: Any], let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt and instructions are required.", nil) }
+            #if !(OROT_TESTS && targetEnvironment(simulator))
+                if usesNativeTools(request) {
+                    return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in
+                        try await AppleNativeToolSession.respond(request, generation: generation, snapshot: nil)
+                    }
+                }
+            #endif
             let raw = request["schema"] as? [String: Any]
             if raw == nil, request["mode"] as? String != "text" {
                 throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided generation needs a schema.", nil)
@@ -50,22 +58,65 @@ import Foundation
             return ["text": text, "toolCalls": [], "finishReason": "complete"]
         }
 
-        static func stream(_ payload: NSDictionary, snapshot: @escaping (String) -> Bool) async throws {
-            guard let request = payload as? [String: Any], request["mode"] as? String == "text",
-                  request["schema"] == nil, let prompt = request["prompt"] as? String,
+        /** Structured streams may revise partial JSON; normalize only the final snapshot before returning to callers. */
+        static func stream(_ payload: NSDictionary, requestId: String,
+                           snapshot: @escaping (String) -> Bool) async throws -> [String: Any]?
+        {
+            guard let request = payload as? [String: Any],
+                  let mode = request["mode"] as? String,
+                  let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
-            else { throw appleFoundationModelsFailure("UNSUPPORTED_CAPABILITY", "Streaming supports text requests only.", nil) }
-            #if OROT_TESTS && targetEnvironment(simulator)
-                try await AppleFoundationModelsMock.shared.stream(request, snapshot: snapshot)
-            #else
-                let session = LanguageModelSession(instructions: instructions)
-                let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
-                for try await value in session.streamResponse(to: prompt, options: options) {
-                    if Task.isCancelled || !snapshot(String(describing: value.content)) {
-                        return
+            else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt, mode and instructions are required.", nil) }
+            #if !(OROT_TESTS && targetEnvironment(simulator))
+                if usesNativeTools(request) {
+                    return try await AppleNativeToolRegistry.shared.run(request, requestId: requestId) { generation in
+                        try await AppleNativeToolSession.respond(request, generation: generation, snapshot: snapshot)
                     }
                 }
             #endif
+            let raw = request["schema"] as? [String: Any]
+            if raw == nil, mode != "text" {
+                throw appleFoundationModelsFailure("INVALID_REQUEST", "Guided streaming needs a schema.", nil)
+            }
+            let schema = try raw.map { try GenerationSchema(root: AppleFoundationModelsCodec.schema($0), dependencies: []) }
+            let finalText: String?
+            #if OROT_TESTS && targetEnvironment(simulator)
+                finalText = try await AppleFoundationModelsMock.shared.stream(request, snapshot: snapshot)
+            #else
+                let session = LanguageModelSession(instructions: instructions)
+                let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
+                var latest: String?
+                if let schema {
+                    for try await value in session.streamResponse(to: prompt, schema: schema, options: options) {
+                        let current = value.rawContent.jsonString
+                        latest = current
+                        if Task.isCancelled || !snapshot(current) {
+                            return nil
+                        }
+                    }
+                } else {
+                    for try await value in session.streamResponse(to: prompt, options: options) {
+                        let current = value.content
+                        latest = current
+                        if Task.isCancelled || !snapshot(current) {
+                            return nil
+                        }
+                    }
+                }
+                finalText = latest
+            #endif
+            guard let finalText else {
+                throw appleFoundationModelsFailure("GENERATION_FAILED", "Apple Foundation Models ended its stream without a final response.", nil)
+            }
+            if schema != nil {
+                return try AppleFoundationModelsCodec.normalize(finalText, request, requestId: requestId)
+            }
+            return ["text": finalText, "toolCalls": [], "finishReason": "complete"]
+        }
+
+        private static func usesNativeTools(_ request: [String: Any]) -> Bool {
+            !(request["nativeTools"] as? [Any] ?? []).isEmpty ||
+                !(request["nativeToolResults"] as? [Any] ?? []).isEmpty
         }
     }
 #endif

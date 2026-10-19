@@ -16,6 +16,15 @@ function requireFormat(request: LanguageModelRequest, name: string) {
     );
 }
 
+/** Mock SDK text follows the compiled guided schema; shipping normalization still unwraps mixed responses. */
+function structuredReply(request: LanguageModelRequest, value: unknown) {
+  return {
+    text: JSON.stringify(
+      request.tools?.length ? { kind: 'structured', value } : value,
+    ),
+  };
+}
+
 /** Reads the prompt allowlist because the native output schema omits citation enums that Apple expands. */
 function citationIds(request: LanguageModelRequest): string[] {
   requireFormat(request, 'task_response');
@@ -64,13 +73,12 @@ const calendar =
       );
     const classifications = ids.map((candidateId, index) => ({
       candidateId,
-      classification:
-        index === 0 ? 'medical' : index === 1 ? 'non_medical' : 'uncertain',
-      reason:
+      decision:
         index === 0
-          ? '합성 일정에 진료가 명시되어 있어요.'
-          : '합성 일정의 제목에 따른 테스트 분류예요.',
-      uncertainty: index === 2 ? 'high' : 'low',
+          ? 'medical_low'
+          : index === 1
+            ? 'non_medical_low'
+            : 'uncertain_high',
     }));
     return {
       text: JSON.stringify({
@@ -95,13 +103,11 @@ const visit: MockAppleStep = request => {
     priority: 'routine',
     evidenceIds: ids,
   }));
-  return {
-    text: JSON.stringify({
-      type: 'result',
-      value: { status: 'suggestions', questions },
-      citations: ids,
-    }),
-  };
+  return structuredReply(request, {
+    type: 'result',
+    value: { status: 'suggestions', questions },
+    citations: ids,
+  });
 };
 
 /** Fixed scripts model outcomes; they do not assess Apple model quality or decide application assertions. */
@@ -113,12 +119,15 @@ export function appleModelMockScript(
       request => {
         requireFormat(request, 'visit_question');
         return {
-          text: JSON.stringify({
-            question: {
-              text: '선생님, 최근 수면 변화와 관련해 무엇을 확인하면 좋을까요?',
-            },
-            source: { id: 'synthetic-source-42' },
-          }),
+          snapshots: [
+            '{"question":{"text":"선생님, "}}',
+            JSON.stringify({
+              question: {
+                text: '선생님, 최근 수면 변화와 관련해 무엇을 확인하면 좋을까요?',
+              },
+              source: { id: 'synthetic-source-42' },
+            }),
+          ],
         };
       },
       () => ({
@@ -138,25 +147,26 @@ export function appleModelMockScript(
     return [
       request => {
         requireFormat(request, 'task_response');
+        const name = 'europe-pmc-publication-search';
+        if (
+          request.toolChoice !== 'required' ||
+          !request.tools?.some(tool => tool.name === name)
+        )
+          throw new Error(
+            'The empty-library fixture requires the supplied publication tool',
+          );
+        // This is a mock SDK response, not evidence that the real SDK invoked Tool.call.
         return {
           text: JSON.stringify({
-            type: 'request_evidence',
-            need: 'missing_coverage',
+            kind: 'tool_calls',
+            toolCalls: [
+              { name, arguments: { query: RAG_WORKFLOW_PUBLIC_QUERY } },
+            ],
           }),
         };
       },
-      request => {
-        requireFormat(request, 'evidence_research_plan');
-        return {
-          text: JSON.stringify({
-            toolId: 'europe-pmc-publication-search',
-            sourceKind: 'external_medical',
-            input: { query: RAG_WORKFLOW_PUBLIC_QUERY },
-          }),
-        };
-      },
-      request => ({
-        text: JSON.stringify({
+      request =>
+        structuredReply(request, {
           type: 'result',
           value: {
             answer:
@@ -164,7 +174,6 @@ export function appleModelMockScript(
           },
           citations: citationIds(request).slice(0, 1),
         }),
-      }),
     ];
   throw new Error('Unknown Foundation Models mock operation: ' + operation);
 }
