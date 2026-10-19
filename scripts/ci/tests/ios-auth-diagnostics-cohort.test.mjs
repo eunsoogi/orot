@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { iosTestCohort, iosTestCohortTasks } from '../ios-test-cohorts.mjs';
+import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
 
 test(
@@ -20,7 +21,7 @@ test(
       runtime: definition.config.runtime,
       device: definition.config.device,
       name: 'OrotTests-cohort-selection-fixture',
-      udid: 'owned-destination',
+      udid: '11111111-2222-4333-8444-555555555555',
     };
     const snapshot = {
       runtimes: [{ identifier: owner.runtime, isAvailable: true }],
@@ -52,12 +53,35 @@ test(
     const installed = join(value.root, 'installed');
     const ownerPath = join(value.root, 'owner.json');
     const output = join(value.root, 'results');
+    const runFile = join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun');
+    Object.assign(value.env, {
+      PROFILE: definition.profiles[0],
+      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      GITHUB_JOB: 'selection-test',
+    });
+    const hostReport = {
+      testNodes: [
+        {
+          nodeType: 'Unit test bundle',
+          name: 'OrotIntegrationTests',
+          children: [
+            {
+              nodeType: 'Test Case',
+              nodeIdentifier: hostConnectionTest.split('/').slice(1).join('/') + '()',
+              result: 'Passed',
+            },
+          ],
+        },
+      ],
+    };
     // Only external Apple/resource commands are synthetic. The real three-level driver chain and collector execute unchanged.
     const program = `#!${process.execPath}
 const fs=require('node:fs'), path=require('node:path'), args=process.argv.slice(2), name=path.basename(process.argv[1]);
 fs.appendFileSync(${JSON.stringify(callsPath)},JSON.stringify({name,args})+'\\n');
 if(name==='xcodebuild') {
- const bundle=args[args.indexOf('-resultBundlePath')+1], started=Date.now();
+ const bundle=args[args.indexOf('-resultBundlePath')+1];
+ if(args.includes('-only-testing:${hostConnectionTest}')){fs.mkdirSync(bundle);process.exit(0);}
+ const started=Date.now();
  const identifier=${JSON.stringify(task.identifiers[0])}, session=process.env.TEST_RUNNER_OROT_IOS_FIXTURE_SESSION;
  const request=(stage,passed,done)=>{const token=require('node:crypto').randomUUID();const [target,cls,method]=identifier.split('/');let input='';const socket=require('node:net').connect(Number(process.env.TEST_RUNNER_OROT_IOS_FIXTURE_PORT),'127.0.0.1',()=>socket.write(JSON.stringify({session,token,name:'-['+target+'.'+cls+' '+method+']',stage,passed})+'\\n'));socket.on('data',x=>input+=x);socket.on('error',error=>{throw error;});socket.on('end',()=>{if(!JSON.parse(input).ok)throw new Error('Fixture boundary failed');done();});};
  const failAfterCapture=()=>{
@@ -67,7 +91,9 @@ if(name==='xcodebuild') {
   if(Date.now()-started>10000)throw new Error('Collector did not retain its record');
   setTimeout(failAfterCapture,10);
  };request('prepare',undefined,failAfterCapture);
-} else if(name!=='xcrun') console.log('synthetic resource sample');
+} else if(name==='open') process.exit(0);
+else if(name!=='xcrun') console.log('synthetic resource sample');
+else if(args[0]==='xcresulttool'&&args.some(argument=>argument.includes('ui-preparation'))) console.log(${JSON.stringify(JSON.stringify(hostReport))});
 else if(args.includes('stream')) {
  process.stdout.write(${JSON.stringify('OROT_AUTH_DIAGNOSTIC ' + JSON.stringify(record) + '\n')});setInterval(()=>{},1000);
 } else if(args[1]==='list') console.log(${JSON.stringify(JSON.stringify(snapshot))});
@@ -84,14 +110,14 @@ else console.log('synthetic owned fixture operation');
         JSON.stringify({ CFBundleIdentifier: 'com.orot.mobile.OrotUITests.xctrunner' }),
       );
       writeFileSync(ownerPath, JSON.stringify(owner));
-      for (const name of ['xcrun', 'xcodebuild', 'ps', 'vm_stat', 'sysctl'])
+      for (const name of ['xcrun', 'xcodebuild', 'open', 'ps', 'vm_stat', 'sysctl'])
         writeFileSync(join(value.root, 'bin', name), program, { mode: 0o755 });
       const outcome = spawnSync(
         process.execPath,
         [
           resolve(repository, 'scripts/ci/run-ios-test-cohort.mjs'),
           'selection',
-          join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
+          runFile,
           ownerPath,
           output,
         ],
@@ -100,6 +126,10 @@ else console.log('synthetic owned fixture operation');
       assert.equal(outcome.status, 1, outcome.stderr);
       const directory = join(output, task.profile + '-' + task.suite, 'phases');
       const bundle = join(directory, 'session.xcresult');
+      assert.ok(
+        existsSync(join(bundle, 'synthetic-result')),
+        `${outcome.stdout}\n${outcome.stderr}\n${readFileSync(callsPath, 'utf8')}`,
+      );
       assert.equal(
         readFileSync(join(bundle, 'synthetic-result'), 'utf8'),
         'first failed execution',
@@ -119,7 +149,7 @@ else console.log('synthetic owned fixture operation');
       assert.equal(result.failures[0].identifier, task.identifiers[0]);
       assert.deepEqual(result.notRun, task.identifiers.slice(1));
       const calls = readFileSync(callsPath, 'utf8').trim().split('\n').map(JSON.parse);
-      assert.equal(calls.filter((call) => call.name === 'xcodebuild').length, 1);
+      assert.equal(calls.filter((call) => call.name === 'xcodebuild').length, 2);
       assert.equal(calls.filter((call) => call.args.includes('stream')).length, 1);
       assert.equal(existsSync(installed), false);
     } finally {

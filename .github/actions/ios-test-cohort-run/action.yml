@@ -46,19 +46,12 @@ runs:
       env:
         COHORT: ${{ inputs.cohort }}
       run: scripts/ci/run-command.sh ios-cohort-boot artifacts/ios-cohort/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare-cohort "$COHORT" artifacts/ios-cohort/simulator-owner.json
-    - name: Verify Questions UI host preparation before fixture execution
-      # Keep the focused UI path's host preflight as separate evidence, outside the planned cohort observations.
-      if: inputs.cohort == 'questions'
-      shell: bash
-      env:
-        PROFILE: ${{ inputs.profile }}
-        TEST_RUN: ${{ steps.verify.outputs.test_run }}
-      run: scripts/ci/run-command.sh ios-questions-ui-preparation artifacts/ios-cohort/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/ui-preparation
     - name: Execute every planned first attempt without compilation or retry
-      # The Questions-only host preflight is retained independently from this cohort's planned XCTest results.
+      # The runner derives UI preparation from the task plan and stores its evidence outside planned results.
       shell: bash
       env:
         COHORT: ${{ inputs.cohort }}
+        PROFILE: ${{ inputs.profile }}
         TEST_RUN: ${{ steps.verify.outputs.test_run }}
       run: scripts/ci/run-command.sh ios-cohort-tests artifacts/ios-cohort/tests.log -- node scripts/ci/run-ios-test-cohort.mjs "$COHORT" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/results
     - name: Remove only the owned destination

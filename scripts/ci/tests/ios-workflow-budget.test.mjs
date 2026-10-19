@@ -155,29 +155,19 @@ test('each executor verifies artifacts before one boot and retains first-failure
   assert.match(source, /if: always\(\)[\s\S]*ios-test-simulator\.mjs cleanup/);
   assert.doesNotMatch(source, /continue-on-error|build-ios-tests\.mjs|test-iterations/);
   const action = workflow('.github/actions/ios-test-cohort-run/action.yml');
-  const uiPreparation = action.runs.steps.find(
-    (step) => step.name === 'Verify Questions UI host preparation before fixture execution',
-  );
-  assert.ok(uiPreparation, 'Questions cohort must run the separate UI host preparation');
-  assert.equal((source.match(/prepare-ios-test-ui\.mjs/g) ?? []).length, 1);
-  assert.equal(uiPreparation.if, "inputs.cohort == 'questions'");
-  assert.deepEqual(uiPreparation.env, {
-    PROFILE: '${{ inputs.profile }}',
-    TEST_RUN: '${{ steps.verify.outputs.test_run }}',
-  });
-  assert.equal(
-    uiPreparation.run,
-    'scripts/ci/run-command.sh ios-questions-ui-preparation artifacts/ios-cohort/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/ui-preparation',
-  );
+  assert.equal((source.match(/prepare-ios-test-ui\.mjs/g) ?? []).length, 0);
+  assert.doesNotMatch(source, /inputs\.cohort == 'questions'/);
   const bootIndex = action.runs.steps.findIndex((step) =>
     step.run?.includes('ios-test-simulator.mjs prepare-cohort'),
   );
-  const preparationIndex = action.runs.steps.indexOf(uiPreparation);
   const testIndex = action.runs.steps.findIndex((step) =>
     step.run?.includes('run-ios-test-cohort.mjs'),
   );
-  assert.ok(bootIndex < preparationIndex && preparationIndex < testIndex);
-  // Keep preflight xcresult and screenshot evidence outside the planned cohort results.
+  assert.ok(bootIndex < testIndex);
+  const testExecution = action.runs.steps[testIndex];
+  assert.equal(testExecution.env.PROFILE, '${{ inputs.profile }}');
+  assert.equal(testExecution.env.TEST_RUN, '${{ steps.verify.outputs.test_run }}');
+  // Keep any plan-derived host evidence separate from the planned cohort results.
   const rejection = action.runs.steps.find((step) =>
     step.run?.includes('probe-ios-test-products.mjs'),
   );
@@ -189,6 +179,20 @@ test('each executor verifies artifacts before one boot and retains first-failure
   assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/results'));
   assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/ui-preparation'));
   assert.ok(iosTestInventory('core').includes(hostConnectionTest));
+});
+
+test('the runner receives the verified product profile and owns plan-derived UI preparation', () => {
+  const runner = readFileSync('scripts/ci/run-ios-test-cohort.mjs', 'utf8');
+  assert.match(
+    runner,
+    /createIosTestUiPreparationGate\(\{[\s\S]*?tasks,[\s\S]*?profile,[\s\S]*?runFile,/,
+  );
+  assert.match(runner, /for \(const task of tasks\) prepareUi\(task\)/);
+  assert.match(runner, /const started = Date\.now\(\)/);
+  assert.ok(
+    runner.indexOf('for (const task of tasks) prepareUi(task)') <
+      runner.indexOf('const started = Date.now()'),
+  );
 });
 
 test('production verifies actual tools before cache, Pods and its isolated app build', () => {

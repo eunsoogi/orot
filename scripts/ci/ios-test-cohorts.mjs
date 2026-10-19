@@ -37,6 +37,17 @@ const cohorts = {
   selection: { profiles: ['provider-selection'], minutes: 45 },
 };
 
+/** UI host preparation follows the selected XCTest task, independent of cohort naming. */
+export function iosTestTaskNeedsUiPreparation(task) {
+  if (!task || !Array.isArray(task.identifiers))
+    throw new Error('iOS UI preparation requires a planned task inventory');
+  return (
+    ['fixture', 'backup', 'speech-journey'].includes(task.mode) ||
+    task.suite === 'ui' ||
+    task.identifiers.some((identifier) => identifier.split('/')[0] === 'OrotUITests')
+  );
+}
+
 /** A cohort owns one destination only when configuration, compiler flags, runtime and device all agree. Speech retains its separate pinned runtime. */
 export function iosTestCohort(name) {
   if (!Object.hasOwn(cohorts, name)) throw new Error('Unknown integration test cohort');
