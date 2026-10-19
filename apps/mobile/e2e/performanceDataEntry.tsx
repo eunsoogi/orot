@@ -1,7 +1,7 @@
 // Match the shipping entry before loading LangGraph or encrypted storage.
 import '../src/agent/polyfills';
 import React, { useEffect, useMemo, useState } from 'react';
-import { AppRegistry, Button, Text, View } from 'react-native';
+import { AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
 import App from '../App';
 import { name as appName } from '../app.json';
 import { useInferenceConsent } from '../src/agent/execution/useInferenceConsent';
@@ -29,6 +29,26 @@ interface PerformanceAppHarnessProps {
   readonly workflowReport: string;
   readonly setWorkflowReport: (value: string) => void;
 }
+
+const styles = StyleSheet.create({
+  harness: { flex: 1 },
+  workflowReport: {
+    position: 'absolute',
+    top: 50,
+    left: 10,
+    right: 10,
+    color: '#000',
+    backgroundColor: '#fff',
+    fontSize: 10,
+  },
+  preparation: {
+    flex: 1,
+    padding: 30,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  preparationText: { color: '#111', fontSize: 18 },
+});
 
 /** Uses the real selected Apple provider and the screen's service path for a fixed synthetic query. */
 function PerformanceAppHarness({
@@ -79,7 +99,7 @@ function PerformanceAppHarness({
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.harness}>
       <App
         aiFeatureServiceDependencies={diagnostics}
         renderVisitQuestions={visitDiagnostics}
@@ -87,28 +107,19 @@ function PerformanceAppHarness({
       <Button
         title={runningRag ? '합성 RAG 질문 실행 중' : '합성 RAG 질문 진단'}
         disabled={runningRag}
-        onPress={() => void runRagDiagnostic()}
+        onPress={() => {
+          runRagDiagnostic();
+        }}
       />
       <Button
         title="합성 진료 근거 검사"
         onPress={() => {
           setWorkflowReport('Searching synthetic visit evidence…');
-          void probePerformanceVisitEvidence().then(setWorkflowReport);
+          probePerformanceVisitEvidence().then(setWorkflowReport);
         }}
       />
       {workflowReport ? (
-        <Text
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 50,
-            left: 10,
-            right: 10,
-            color: '#000',
-            backgroundColor: '#fff',
-            fontSize: 10,
-          }}
-        >
+        <Text pointerEvents="none" style={styles.workflowReport}>
           {workflowReport}
         </Text>
       ) : null}
@@ -158,15 +169,8 @@ function PerformanceDataEntry() {
       />
     );
   return (
-    <View
-      style={{
-        flex: 1,
-        padding: 30,
-        justifyContent: 'center',
-        backgroundColor: '#fff',
-      }}
-    >
-      <Text style={{ color: '#111', fontSize: 18 }}>
+    <View style={styles.preparation}>
+      <Text style={styles.preparationText}>
         {failure ??
           report ??
           `합성 성능 데이터 준비: ${count.toLocaleString()} / ${PERFORMANCE_RECORD_COUNT.toLocaleString()}`}

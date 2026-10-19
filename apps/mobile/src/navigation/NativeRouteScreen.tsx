@@ -42,7 +42,7 @@ export default function NativeRouteScreen({
         latest.routes.some(item => item.key === routeKey) &&
         !latest.isTransitioning
       ) {
-        void latest.requestBack();
+        latest.requestBack();
       }
     },
   );

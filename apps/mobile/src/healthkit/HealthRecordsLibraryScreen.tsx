@@ -112,7 +112,7 @@ export function HealthRecordsLibraryScreen({
     pending.current = false;
     setObservations([]);
     setCursor(null);
-    void reload();
+    reload();
     return () => {
       // A late read from an unmounted route must not replace the next route's records.
       generation.current += 1;
@@ -136,7 +136,9 @@ export function HealthRecordsLibraryScreen({
         cursor ? (
           loadState === 'failed' ? (
             <AppButton
-              onPress={() => void reload(cursor)}
+              onPress={() => {
+                reload(cursor);
+              }}
               testID="health-records-retry"
               title={t('healthRecords.retry')}
               variant="secondary"
@@ -147,7 +149,9 @@ export function HealthRecordsLibraryScreen({
             </Text>
           ) : (
             <AppButton
-              onPress={() => void reload(cursor)}
+              onPress={() => {
+                reload(cursor);
+              }}
               testID="health-records-load-older"
               title={t('healthRecords.loadOlder')}
               variant="secondary"
@@ -162,13 +166,15 @@ export function HealthRecordsLibraryScreen({
           observationCount={observations.length}
           hasMore={cursor !== null}
           onBack={onBack}
-          onRetry={() => void reload(null)}
+          onRetry={() => {
+            reload(null);
+          }}
           onSelectCategory={setSelectedCategory}
           selectedCategory={selectedCategory}
         />
       }
       onEndReached={() => {
-        if (cursor && loadState === 'ready') void reload(cursor);
+        if (cursor && loadState === 'ready') reload(cursor);
       }}
       onEndReachedThreshold={0.5}
       renderItem={({ item: category }) =>

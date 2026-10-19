@@ -39,7 +39,6 @@
             }
 
             let start = "2026-10-01T08:00:00.000Z"
-            let end = "2026-10-01T08:00:00.000Z"
             let referenceDate = Date()
             // Sleep imports require a positive interval, unlike point-like fixture samples.
             let sampleStartDate = request.feature == "sleep"

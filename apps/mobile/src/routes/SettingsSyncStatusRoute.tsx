@@ -88,7 +88,7 @@ export function SettingsSyncStatusRoute({
 
   function openSystemSettings() {
     setOpenSettingsError(false);
-    void Linking.openSettings().catch(() => setOpenSettingsError(true));
+    Linking.openSettings().catch(() => setOpenSettingsError(true));
   }
 
   const message =
@@ -169,7 +169,9 @@ export function SettingsSyncStatusRoute({
       <AppButton
         accessibilityState={{ busy: retrying }}
         disabled={!loaded || selected.length === 0 || retrying}
-        onPress={() => void retry()}
+        onPress={() => {
+          retry();
+        }}
         testID="settings-sync-retry"
         title={
           retrying

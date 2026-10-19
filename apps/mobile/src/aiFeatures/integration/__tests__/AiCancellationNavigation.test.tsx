@@ -27,7 +27,7 @@ function Shell({ children }: { readonly children: ReactNode }) {
             title={action.label}
             testID={action.testID}
             onPress={() => {
-              void action.onPress();
+              action.onPress();
             }}
           />
         ) : null}

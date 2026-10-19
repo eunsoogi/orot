@@ -56,7 +56,7 @@ export class CalendarAutoSyncController {
     this.started = true;
     this.previousAppState = AppState.currentState;
     this.eventSubscription = this.bridge.addEventStoreListener(() => {
-      void this.refresh();
+      this.refresh();
     });
     this.appStateSubscription = AppState.addEventListener('change', state => {
       const returnedToForeground =
@@ -64,7 +64,7 @@ export class CalendarAutoSyncController {
           this.previousAppState === 'inactive') &&
         state === 'active';
       this.previousAppState = state;
-      if (returnedToForeground) void this.refresh();
+      if (returnedToForeground) this.refresh();
     });
     return this.refresh();
   };
@@ -128,7 +128,7 @@ export class CalendarAutoSyncController {
       // A trigger can arrive after the loop condition but before this promise settles.
       if (this.refreshAgain && this.started) {
         this.refreshAgain = false;
-        void this.refresh();
+        this.refresh();
       }
     });
     this.inFlight = currentPromise;

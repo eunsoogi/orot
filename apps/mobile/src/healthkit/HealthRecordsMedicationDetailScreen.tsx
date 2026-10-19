@@ -73,7 +73,7 @@ export function HealthRecordsMedicationDetailScreen({
   }, [loadMedicationData]);
 
   useEffect(() => {
-    void reload();
+    reload();
     return () => {
       // A result for an old route or period must not replace the active record list.
       generation.current += 1;
@@ -154,7 +154,9 @@ export function HealthRecordsMedicationDetailScreen({
                 {t('healthRecords.error')}
               </Text>
               <AppButton
-                onPress={() => void reload()}
+                onPress={() => {
+                  reload();
+                }}
                 testID="health-records-detail-retry"
                 title={t('healthRecords.retry')}
                 variant="secondary"

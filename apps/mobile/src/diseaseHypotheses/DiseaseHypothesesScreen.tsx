@@ -101,7 +101,7 @@ export function DiseaseHypothesesScreen({
         disabled={state.status === 'loading'}
         accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
-          void generate();
+          generate();
         }}
         testID="disease-hypotheses-generate"
         title={state.status === 'error' ? copy.retry : copy.generate}

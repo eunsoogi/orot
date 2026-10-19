@@ -29,11 +29,13 @@ jobs:
         with: { node-version-file: .nvmrc }
       - name: Verify the actual OAuth build toolchain
         run: node --input-type=module -e 'import { oauthTestContext } from "./scripts/ci/oauth-test-context.mjs"; oauthTestContext();'
-      - name: Compile the package tests without executing them
-        run: scripts/ci/run-command.sh oauth-test-build artifacts/ios-oauth/build.log -- swift build --package-path packages/provider-openai --scratch-path "$RUNNER_TEMP/orot-oauth-tests" --build-tests
-      - name: Build the OAuth Simulator harness
+      # Keep SwiftPM diagnostics raw and fail successful builds that emit warnings.
+      - name: Compile the package tests without executing them or emitting warnings
+        run: scripts/ci/run-command.sh oauth-test-build artifacts/ios-oauth/build.log -- node scripts/ci/fail-on-warning.mjs -- swift build --package-path packages/provider-openai --scratch-path "$RUNNER_TEMP/orot-oauth-tests" --build-tests
+      # Apply the same warning gate to the separately built OAuth harness.
+      - name: Build the OAuth Simulator harness without warnings
         run: |
-          scripts/ci/run-command.sh ios-oauth-build artifacts/ios-oauth/simulator-build.log -- xcodebuild \
+          scripts/ci/run-command.sh ios-oauth-build artifacts/ios-oauth/simulator-build.log -- node scripts/ci/fail-on-warning.mjs -- xcodebuild \
             -project packages/provider-openai/ios-spike/ChatGPTOAuthSpike.xcodeproj \
             -scheme ChatGPTOAuthSpike -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \

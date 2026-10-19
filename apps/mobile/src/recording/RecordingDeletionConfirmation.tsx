@@ -40,7 +40,7 @@ export default function RecordingDeletionConfirmation({
         {
           text: t('recording.library.confirmDelete'),
           onPress: () => {
-            void callbacks.current.onConfirm();
+            callbacks.current.onConfirm();
           },
           style: 'destructive',
         },

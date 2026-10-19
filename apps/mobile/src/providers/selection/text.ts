@@ -24,6 +24,7 @@ export const providerSelectionText = {
   appleStatusError: t('provider.selection.appleStatusError'),
   appleDisabled: t('provider.selection.appleDisabled'),
   appleModelNotReady: t('provider.selection.appleModelNotReady'),
+  appleUnavailable: t('provider.selection.appleUnavailable'),
   appleUnsupportedDevice: t('provider.selection.appleUnsupportedDevice'),
   appleUnsupportedLanguage: t('provider.selection.appleUnsupportedLanguage'),
   chatGPTAccountRequired: t('provider.selection.chatGPTAccountRequired'),

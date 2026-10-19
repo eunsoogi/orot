@@ -74,6 +74,7 @@ function isAvailabilityStatus(value: unknown): value is AppleAvailabilityStatus 
     value === 'available' ||
     value === 'disabled' ||
     value === 'modelNotReady' ||
+    value === 'unavailable' ||
     value === 'unsupportedDevice' ||
     value === 'unsupportedLanguage'
   );

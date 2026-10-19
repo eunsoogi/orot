@@ -31,7 +31,7 @@ export function AiProviderSelectorRow({
     let current = true;
     setStatus('loading');
     // Show only the exact saved model; lookup failure never picks another provider.
-    void resolveSelectedAi().then(
+    resolveSelectedAi().then(
       result => {
         if (!current) return;
         setStatus(result.status);

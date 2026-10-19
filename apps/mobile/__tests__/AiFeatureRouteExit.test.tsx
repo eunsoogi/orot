@@ -63,7 +63,9 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
             onBack: controller.requestBack,
           } as never)}
           <Pressable
-            onPress={() => void controller.requestBack()}
+            onPress={() => {
+              controller.requestBack();
+            }}
             testID="request-native-back"
           >
             <Text>Back</Text>

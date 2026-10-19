@@ -116,3 +116,76 @@ index 3f20bfe..367a91a 100644
      ss.project_header_files = "common/cpp/**/*.h", "cpp/**/*.h" # Don't expose C++ headers publicly to allow importing framework into Swift files
      ss.header_dir           = "rnscreens"
      ss.pod_target_xcconfig  = { "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"" }
+
+diff --git a/ios/utils/NSString+RNSUtility.mm b/ios/utils/NSString+RNSUtility.mm
+--- a/ios/utils/NSString+RNSUtility.mm
++++ b/ios/utils/NSString+RNSUtility.mm
+@@ -37,1 +37,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_NSStringRNSUtility(void) {}
+diff --git a/ios/tabs/RCTConvert+RNSTabs.mm b/ios/tabs/RCTConvert+RNSTabs.mm
+--- a/ios/tabs/RCTConvert+RNSTabs.mm
++++ b/ios/tabs/RCTConvert+RNSTabs.mm
+@@ -11,1 +11,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTConvertRNSTabs(void) {}
+diff --git a/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm b/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
+--- a/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
++++ b/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
+@@ -12,1 +12,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTSurfaceTouchHandlerRNSUtility(void) {}
+diff --git a/ios/utils/UINavigationBar+RNSUtility.mm b/ios/utils/UINavigationBar+RNSUtility.mm
+--- a/ios/utils/UINavigationBar+RNSUtility.mm
++++ b/ios/utils/UINavigationBar+RNSUtility.mm
+@@ -86,1 +86,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UINavigationBarRNSUtility(void) {}
+diff --git a/ios/UIScrollView+RNScreens.mm b/ios/UIScrollView+RNScreens.mm
+--- a/ios/UIScrollView+RNScreens.mm
++++ b/ios/UIScrollView+RNScreens.mm
+@@ -15,1 +15,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIScrollViewRNScreens(void) {}
+diff --git a/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm b/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
+--- a/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
++++ b/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
+@@ -10,1 +10,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTImageComponentViewRNSScreenStackHeaderConfig(void) {}
+diff --git a/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm b/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
+--- a/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
++++ b/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
+@@ -19,1 +19,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RNSTabsHostComponentViewRNSImageLoader(void) {}
+diff --git a/ios/utils/UIView+RNSUtility.mm b/ios/utils/UIView+RNSUtility.mm
+--- a/ios/utils/UIView+RNSUtility.mm
++++ b/ios/utils/UIView+RNSUtility.mm
+@@ -41,1 +41,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIViewRNSUtility(void) {}
+diff --git a/ios/UIWindow+RNScreens.mm b/ios/UIWindow+RNScreens.mm
+--- a/ios/UIWindow+RNScreens.mm
++++ b/ios/UIWindow+RNScreens.mm
+@@ -17,1 +17,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIWindowRNScreens(void) {}

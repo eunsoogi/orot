@@ -68,6 +68,10 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
+CI의 CocoaPods 의존성 준비, `OrotTests` 제품, Production 앱, OAuth 패키지 및 Simulator 빌드는 `scripts/ci/fail-on-warning.mjs`를 거칩니다. 이 도구는 `warning:`, `WARN`, CocoaPods `[!]`, `DVTAssertions: Warning` 기록이 있으면 자식 명령이 0으로 끝나도 실패를 반환하고, 원문 표준 출력과 오류 출력을 그대로 보존합니다. 자식 명령의 실패 코드는 유지하며, 취소 신호를 자식에게 전달한 뒤 종료를 기다립니다.
+
+`pnpm lint`는 모바일 앱과 패키지 및 저장소 루트의 ESLint 실행에 모두 `--max-warnings 0`을 지정해 경고를 로컬 품질 검사와 CI에서 실패로 처리합니다.
+
 GitHub가 제공하는 임시 macOS 러너에서는 checkout 직후, 도구 설치·의존성 복원·빌드·Simulator 준비 전에 독립 단계 `Disable and verify Spotlight`의 공통 bootstrap이 한 번 실행되어 Data 볼륨의 Spotlight 색인을 해제하고 실제 상태를 확인합니다. 명령은 실제 종료와 별도 상태 확인을 기다리고 결과를 `spotlight.log`에 남깁니다. 취소는 권한 경계 안의 supervisor가 소유한 하위 프로세스 그룹만 종료하고 회수합니다. 해제를 확인하지 못하면 해당 작업은 실패합니다. 모든 workflow·재사용 workflow·로컬 composite·matrix 경로는 정책 검사로 확인합니다. 개발용 Mac과 자체 호스팅 러너에서는 이 명령을 실행하지 않으며, Simulator 내부 서비스나 색인 파일을 삭제하지 않습니다.
 
 로컬 Core 검증은 저장소 루트에서 다음 순서로 실행합니다. 기존 제품이나 소유권 파일과 겹치지 않는 경로를 사용하세요.

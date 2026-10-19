@@ -116,14 +116,14 @@ export default function App({
   useEffect(() => {
     let previousState = AppState.currentState;
     // Launch and foreground refreshes query only categories with a prior explicit import request.
-    void syncLocalPreviouslyRequestedHealthKit();
+    syncLocalPreviouslyRequestedHealthKit();
     const subscription = AppState.addEventListener('change', nextState => {
       const returnedToForeground =
         (previousState === 'background' || previousState === 'inactive') &&
         nextState === 'active';
       previousState = nextState;
       if (returnedToForeground) {
-        void syncLocalPreviouslyRequestedHealthKit();
+        syncLocalPreviouslyRequestedHealthKit();
       }
     });
     return () => subscription.remove();

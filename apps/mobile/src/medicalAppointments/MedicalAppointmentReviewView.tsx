@@ -93,7 +93,7 @@ export function MedicalAppointmentReviewView(props: Props) {
           testID="medical-appointment-import"
           disabled={!props.providerReady || busy || props.calendarUnavailable}
           onPress={() => {
-            void props.onImport();
+            props.onImport();
           }}
           accessibilityLabel={copy.loadCalendar}
           accessibilityState={{ busy }}

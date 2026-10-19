@@ -52,8 +52,8 @@ export function ConversationComposer({
               Math.max(44, Math.min(96, event.nativeEvent.contentSize.height)),
             );
           }}
-          onChangeText={value => {
-            onChangeText(value);
+          onChangeText={nextValue => {
+            onChangeText(nextValue);
           }}
           placeholder={copy.placeholder}
           placeholderTextColor={appColors.secondary}

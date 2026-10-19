@@ -12,7 +12,8 @@ final class AppleModelIntegrationTests: OrotFailFastTestCase {
         let availability = try XCTUnwrap(result["availability"] as? String)
         // The scripted available case must execute all original app-side generation and cancellation assertions.
         XCTAssertEqual(availability, "available", "The configured mock must reach the native bridge")
-        XCTAssertTrue(["available", "disabled", "modelNotReady", "unsupportedDevice", "unsupportedLanguage"].contains(availability))
+        // Keep the fixture aligned with the native bridge's generic unknown-reason fallback.
+        XCTAssertTrue(["available", "disabled", "modelNotReady", "unavailable", "unsupportedDevice", "unsupportedLanguage"].contains(availability))
         if availability == "available" {
             XCTAssertEqual(result["generation"] as? String, "passed")
             XCTAssertEqual(result["sourceIdPreserved"] as? String, "passed")
