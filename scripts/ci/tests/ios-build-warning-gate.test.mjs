@@ -27,7 +27,7 @@ test('passes a clean command and forwards stdout and stderr', () => {
   assert.match(result.stderr, /note: retained/);
   assert.match(
     result.stderr,
-    /IOS_WARNING_GATE occurrences=0 child_status=0 signal=none result=passed/,
+    /IOS_WARNING_GATE occurrences=0 accepted=0 blocking=0 child_status=0 signal=none result=passed/,
   );
 });
 
@@ -45,7 +45,7 @@ test('fails on compiler, linker, build-system, runtime, and dependency warnings'
   assert.match(result.stderr, /WARNING: uppercase diagnostic/);
   assert.match(
     result.stderr,
-    /IOS_WARNING_GATE occurrences=7 child_status=0 signal=none result=failed/,
+    /IOS_WARNING_GATE occurrences=7 accepted=0 blocking=7 child_status=0 signal=none result=failed/,
   );
 });
 
@@ -56,8 +56,41 @@ test('fails on the React Native CLI logger warning prefix', () => {
   assert.match(result.stderr, /warn Package configuration warning probe/);
   assert.match(
     result.stderr,
-    /IOS_WARNING_GATE occurrences=1 child_status=0 signal=none result=failed/,
+    /IOS_WARNING_GATE occurrences=1 accepted=0 blocking=1 child_status=0 signal=none result=failed/,
   );
+});
+
+test('accepts and preserves the documented App Intents metadata notice', () => {
+  const notice =
+    '2026-10-19 20:08:20.758 appintentsmetadataprocessor[32062:91196447] warning: Metadata extraction skipped, no AppIntents.framework dependency found\n';
+  const splitAt = notice.indexOf('AppIntents.framework');
+  const result = runGate(
+    `process.stdout.write(${JSON.stringify(notice.slice(0, splitAt))}); setTimeout(() => process.stdout.write(${JSON.stringify(notice.slice(splitAt))}), 10);`,
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.stdout.includes(notice));
+  assert.match(
+    result.stderr,
+    /IOS_WARNING_GATE occurrences=1 accepted=1 blocking=0 child_status=0 signal=none result=passed/,
+  );
+});
+
+test('keeps copied and changed App Intents warnings blocking', () => {
+  const lines = [
+    'warning: Metadata extraction skipped, no AppIntents.framework dependency found',
+    '2026-10-19 20:08:20.758 appintentsmetadataprocessor[32062:91196447] warning: Metadata extraction failed',
+  ];
+
+  for (const line of lines) {
+    const result = runGate(`console.error(${JSON.stringify(line)});`);
+
+    assert.equal(result.status, 1);
+    assert.match(
+      result.stderr,
+      /IOS_WARNING_GATE occurrences=1 accepted=0 blocking=1 child_status=0 signal=none result=failed/,
+    );
+  }
 });
 
 test('scans ANSI-colored warnings without changing forwarded bytes', () => {
@@ -68,7 +101,7 @@ test('scans ANSI-colored warnings without changing forwarded bytes', () => {
   assert.ok(result.stdout.startsWith(warning));
   assert.match(
     result.stderr,
-    /IOS_WARNING_GATE occurrences=1 child_status=0 signal=none result=failed/,
+    /IOS_WARNING_GATE occurrences=1 accepted=0 blocking=1 child_status=0 signal=none result=failed/,
   );
 });
 

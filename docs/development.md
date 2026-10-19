@@ -68,7 +68,7 @@ pnpm ios:build
 
 Release 제품은 `core`, `speech`, `backup`, `fixtures`, `local-model`에서 공유합니다. Debug 제품은 `provider-data`, `health-import`, `microphone`, `provider-selection`에서 공유합니다. Speech 실행은 iOS 26.2 build 23C54와 iPhone SE 3세대를 사용하고, 나머지 프로필은 iOS 27과 iPhone 18 Pro를 사용합니다. 실행 runtime이 다르더라도 producer의 설정·flags·architecture·toolchain·entry와 제품 무결성이 같아야 공유할 수 있습니다.
 
-CI의 CocoaPods 의존성 준비, `OrotTests` 제품, Production 앱, OAuth 패키지 및 Simulator 빌드는 `scripts/ci/fail-on-warning.mjs`를 거칩니다. 이 도구는 `warning:`, `WARN`, CocoaPods `[!]`, `DVTAssertions: Warning` 기록이 있으면 자식 명령이 0으로 끝나도 실패를 반환하고, 원문 표준 출력과 오류 출력을 그대로 보존합니다. 자식 명령의 실패 코드는 유지하며, 취소 신호를 자식에게 전달한 뒤 종료를 기다립니다.
+CI의 CocoaPods 의존성 준비, `OrotTests` 제품, Production 앱, OAuth 패키지 및 Simulator 빌드는 `scripts/ci/fail-on-warning.mjs`를 거칩니다. 이 도구는 `warning:`, `WARN`, CocoaPods `[!]`, `DVTAssertions: Warning` 기록을 원문 그대로 전달하고, 자식 명령이 0으로 끝나도 발견된 경고로 실패합니다. 현재 저장소는 `AppIntent`와 `AppShortcut`을 선언하지 않습니다. Xcode 27의 `appintentsmetadataprocessor`가 내는 정확한 `Metadata extraction skipped, no AppIntents.framework dependency found` 문구만 문서화된 도구 알림으로 분류해 허용합니다. 이 문구도 로그에 그대로 남으며, 게이트 결과는 전체·허용·차단 경고 수를 따로 기록합니다. 그 밖의 경고 문구는 계속 차단합니다. 자식 명령의 실패 코드는 유지하며, 취소 신호를 자식에게 전달한 뒤 종료를 기다립니다. 근거와 원시 로그는 [경고 처리 기록](../vendor/patches/warning-dispositions.md)에 있습니다.
 
 `pnpm lint`는 모바일 앱과 패키지 및 저장소 루트의 ESLint 실행에 모두 `--max-warnings 0`을 지정해 경고를 로컬 품질 검사와 CI에서 실패로 처리합니다.
 

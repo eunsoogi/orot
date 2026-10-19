@@ -7,6 +7,9 @@ const warningMarker = new RegExp(
 );
 const ansiEscape = String.fromCharCode(0x1b);
 const ansiControlSequence = new RegExp(`${ansiEscape}\\[[0-?]*[ -/]*[@-~]`, 'g');
+// Xcode 27 emits this exact notice when no AppIntents.framework is linked; keep it visible but non-blocking.
+const documentedAppIntentsNotice =
+  /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} appintentsmetadataprocessor\[\d+:\d+\] warning: Metadata extraction skipped, no AppIntents\.framework dependency found$/;
 
 /**
  * Count complete-line markers after joining chunks so split diagnostics match
@@ -15,12 +18,22 @@ const ansiControlSequence = new RegExp(`${ansiEscape}\\[[0-?]*[ -/]*[@-~]`, 'g')
 export function createWarningMarkerScanner() {
   const pending = { stdout: '', stderr: '' };
   let occurrences = 0;
+  let acceptedOccurrences = 0;
+  let blockingOccurrences = 0;
 
   function countLine(line) {
     warningMarker.lastIndex = 0;
     // Normalize only the scanner input; the gate forwards the original bytes.
     const normalizedLine = line.replace(ansiControlSequence, '');
-    while (warningMarker.exec(normalizedLine)) occurrences += 1;
+    if (documentedAppIntentsNotice.test(normalizedLine)) {
+      occurrences += 1;
+      acceptedOccurrences += 1;
+      return;
+    }
+    let lineOccurrences = 0;
+    while (warningMarker.exec(normalizedLine)) lineOccurrences += 1;
+    occurrences += lineOccurrences;
+    blockingOccurrences += lineOccurrences;
   }
 
   return {
@@ -37,6 +50,12 @@ export function createWarningMarkerScanner() {
     },
     get occurrences() {
       return occurrences;
+    },
+    get acceptedOccurrences() {
+      return acceptedOccurrences;
+    },
+    get blockingOccurrences() {
+      return blockingOccurrences;
     },
   };
 }

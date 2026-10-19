@@ -119,7 +119,7 @@ test('forwards termination to descendants after the pnpm leader exits', async ()
     assert.equal(existsSync(marker), true);
     assert.match(
       stderr,
-      /IOS_WARNING_GATE occurrences=0 child_status=143 signal=SIGTERM result=failed/,
+      /IOS_WARNING_GATE occurrences=0 accepted=0 blocking=0 child_status=143 signal=SIGTERM result=failed/,
     );
   } finally {
     if (!existsSync(marker)) {

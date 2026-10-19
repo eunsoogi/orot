@@ -10,7 +10,7 @@ let interruptedSignal;
 let spawnFailed = false;
 const scanner = createWarningMarkerScanner();
 
-/** Forward raw build output unchanged and make a successful command fail on any warning marker. */
+/** Forward raw output unchanged and fail on warning markers without a documented non-defect disposition. */
 function forwardAndScan(stream, destination, channel) {
   stream.on('data', (chunk) => {
     destination.write(chunk);
@@ -65,9 +65,9 @@ child.once('close', (code, signal) => {
     : exitSignal
       ? 128 + (osConstants.signals[exitSignal] ?? 1)
       : (code ?? 1);
-  const passed = childStatus === 0 && scanner.occurrences === 0 && !interruptedSignal;
+  const passed = childStatus === 0 && scanner.blockingOccurrences === 0 && !interruptedSignal;
   process.stderr.write(
-    `IOS_WARNING_GATE occurrences=${scanner.occurrences} child_status=${childStatus} signal=${exitSignal ?? 'none'} result=${passed ? 'passed' : 'failed'}\n`,
+    `IOS_WARNING_GATE occurrences=${scanner.occurrences} accepted=${scanner.acceptedOccurrences} blocking=${scanner.blockingOccurrences} child_status=${childStatus} signal=${exitSignal ?? 'none'} result=${passed ? 'passed' : 'failed'}\n`,
   );
   process.exitCode = passed ? 0 : childStatus === 0 ? 1 : childStatus;
 });
