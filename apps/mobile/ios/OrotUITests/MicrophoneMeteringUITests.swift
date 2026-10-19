@@ -11,7 +11,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     func testMeteringEventsPauseResumeAndExplicitCleanup() async throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        start(app, observePermission: true)
+        start(app, observePermissionBeforeTap: true)
         // These are the original measured capture windows, not sleeps used to infer readiness.
         try await Task.sleep(for: .seconds(3))
         let initial = report(app, name: "microphone-initial")
@@ -59,7 +59,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func start(_ app: XCUIApplication, observePermission: Bool = false) {
+    private func start(_ app: XCUIApplication, observePermissionBeforeTap: Bool = false) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "metering"]
         app.launch()
         status(app, "idle")
@@ -84,14 +84,12 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
             permission.name = "observed-microphone-system-permission"
             permission.lifetime = .keepAlways
             add(permission)
-            if observePermission {
+            if observePermissionBeforeTap {
                 attachPermissionObservation("before", app: app, springboard: springboard, alert: alert, allow: allow)
             }
             allow.tap()
-            if observePermission {
-                attachPermissionObservation("after", app: app, springboard: springboard, alert: alert, allow: allow)
-            }
         }
+        // The recording state confirms permission succeeded without dumping both AX trees during capture.
         status(app, "recording")
     }
 
@@ -142,7 +140,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
+        // tap() resolves its target. Avoid another synchronous AX poll inside the capture deadline.
         target.tap()
     }
 

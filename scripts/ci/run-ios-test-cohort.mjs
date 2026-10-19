@@ -24,6 +24,7 @@ verifyIosSimulatorOwnerContract(owner, definition.profiles[0]);
 const directory = resolve(output);
 mkdirSync(directory, { recursive: true });
 const tasks = iosTestCohortTasks(cohort);
+const uiPreparationTiming = { gateElapsedMs: null, bootstrapElapsedMs: null };
 
 function command(stage, log, script, args, suite) {
   execFileSync('scripts/ci/run-command.sh', [stage, log, '--', process.execPath, script, ...args], {
@@ -38,6 +39,7 @@ const prepareUi = createIosTestUiPreparationGate({
   runFile,
   ownerFile,
   resultsDirectory: directory,
+  onTiming: (timing) => Object.assign(uiPreparationTiming, timing),
   runPreparation: ({
     profile: preparationProfile,
     suite: preparationSuite,
@@ -144,6 +146,12 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
   if (executionError) throw executionError;
   return observations;
 });
+const elapsedMs = Date.now() - started;
+const uiPreparationLogValue = uiPreparationTiming.gateElapsedMs ?? 'not_required';
+const uiBootstrapLogValue =
+  uiPreparationTiming.gateElapsedMs === null
+    ? 'not_required'
+    : (uiPreparationTiming.bootstrapElapsedMs ?? 'not_measured');
 writeFileSync(
   join(directory, 'results.json'),
   JSON.stringify(
@@ -155,13 +163,16 @@ writeFileSync(
       runId: process.env.GITHUB_RUN_ID ?? null,
       attempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
       ...report,
-      elapsedMs: Date.now() - started,
+      // Keep elapsedMs scoped to planned task execution; preparation is reported as its own monotonic interval.
+      elapsedMs,
+      uiPreparationElapsedMs: uiPreparationTiming.gateElapsedMs,
+      uiBootstrapElapsedMs: uiPreparationTiming.bootstrapElapsedMs,
     },
     null,
     2,
   ) + '\n',
 );
 console.log(
-  `IOS_COHORT_RESULTS cohort=${cohort} passed=${report.passed} elapsed_ms=${Date.now() - started}`,
+  `IOS_COHORT_RESULTS cohort=${cohort} passed=${report.passed} elapsed_ms=${elapsedMs} ui_preparation_ms=${uiPreparationLogValue} ui_bootstrap_ms=${uiBootstrapLogValue}`,
 );
 process.exitCode = report.passed ? 0 : 1;

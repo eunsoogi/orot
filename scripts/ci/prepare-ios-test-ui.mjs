@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { hostConnectionTest } from './ios-test-preparation-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
@@ -19,6 +20,7 @@ mkdirSync(evidence, { recursive: true });
 const metadata = resolve(evidence, 'ui-bootstrap.json');
 if (existsSync(metadata)) throw new Error('Existing Simulator UI preparation evidence');
 const started = Date.now();
+const monotonicStarted = performance.now();
 const developer = process.env.DEVELOPER_DIR;
 if (!developer || !isAbsolute(developer))
   throw new Error('Simulator UI preparation requires the explicit selected Xcode directory');
@@ -103,6 +105,8 @@ writeFileSync(
       selectedXcodeDeveloperDirectory: developer,
       screenshot,
       elapsedMs: Date.now() - started,
+      // Keep elapsedMs stable for existing readers; this sibling uses a monotonic clock for comparison.
+      elapsedMonotonicMs: Math.round((performance.now() - monotonicStarted) * 1000) / 1000,
     },
     null,
     2,

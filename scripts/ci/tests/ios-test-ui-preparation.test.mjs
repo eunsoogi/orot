@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
+import { readIosHostPreparationObservations } from '../ios-test-ui-preparation-runner.mjs';
 
 // All executables and result nodes below are synthetic CLI fixtures, not integration or hosted acceptance evidence.
 function fixture({
@@ -82,6 +83,25 @@ else console.log('synthetic fixture diagnostic');
   };
 }
 
+function hostResultReport(result = 'Passed') {
+  return {
+    testNodes: [
+      {
+        nodeType: 'Unit test bundle',
+        name: 'OrotIntegrationTests',
+        children: [
+          {
+            nodeType: 'Test Case',
+            nodeIdentifier: hostConnectionTest.split('/').slice(1).join('/') + '()',
+            result,
+            durationInSeconds: 1,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 test('prepares the genuine host case once on the owned destination without another boot, retry or unsupported GUI command', () => {
   for (const profile of ['speech', 'backup', 'fixtures']) {
     const value = fixture({ profile });
@@ -109,6 +129,8 @@ test('prepares the genuine host case once on the owned destination without anoth
       assert.equal(report.targetedGuiLaunch, 'unsupported');
       assert.equal(report.guiLaunch, 'opened');
       assert.equal(report.screenshot, 'captured');
+      assert.ok(Number.isFinite(report.elapsedMonotonicMs));
+      assert.ok(report.elapsedMonotonicMs >= 0);
       assert.ok(!('accessibilityReady' in report));
     } finally {
       rmSync(value.root, { recursive: true, force: true });
@@ -176,5 +198,36 @@ test('refuses absent or relative selected Xcode directories before executing int
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
+  }
+});
+
+test('raw xcresult verification requires the exact host case to pass', () => {
+  const root = mkdtempSync(join(tmpdir(), 'orot-ui-preparation-result-'));
+  const resultBundle = join(root, 'host-preparation.xcresult');
+  mkdirSync(resultBundle);
+  const calls = [];
+  try {
+    const observations = readIosHostPreparationObservations(resultBundle, (command, args) => {
+      calls.push({ command, args });
+      return JSON.stringify(hostResultReport());
+    });
+    assert.deepEqual(observations, [
+      { identifier: hostConnectionTest, result: 'Passed', duration: 1 },
+    ]);
+    assert.deepEqual(calls, [
+      {
+        command: 'xcrun',
+        args: ['xcresulttool', 'get', 'test-results', 'tests', '--path', resultBundle, '--compact'],
+      },
+    ]);
+    assert.throws(
+      () =>
+        readIosHostPreparationObservations(resultBundle, () =>
+          JSON.stringify(hostResultReport('Failed')),
+        ),
+      /did not pass on its first execution/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
