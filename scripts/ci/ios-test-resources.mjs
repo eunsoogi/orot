@@ -1,20 +1,90 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-/** Observations measure host pressure; they do not attribute a failure to a particular process. */
-export function iosTestResourceSnapshot(path, stage, index = 0, execute = execFileSync) {
+const sampleTimeoutMs = 10000;
+
+/** Resolve after execFile and child close; abort kills the sampler child and waits for cleanup. */
+export function executeResourceCommand(program, args, { signal } = {}, run = execFile) {
+  if (signal?.aborted) return Promise.resolve({ unavailable: 'sampling stopped' });
+
+  return new Promise((resolveResult) => {
+    let callbackResult;
+    let callbackFinished = false;
+    let childClosed = false;
+    let abortRequested = false;
+    let child;
+
+    const settle = () => {
+      if (!callbackFinished || !childClosed) return;
+      signal?.removeEventListener('abort', abortChild);
+      resolveResult(
+        callbackResult.error
+          ? { unavailable: String(callbackResult.error) }
+          : callbackResult.stdout,
+      );
+    };
+    const abortChild = () => {
+      if (abortRequested) return;
+      abortRequested = true;
+      child.kill('SIGKILL');
+    };
+
+    try {
+      child = run(
+        program,
+        args,
+        {
+          encoding: 'utf8',
+          timeout: sampleTimeoutMs,
+          killSignal: 'SIGKILL',
+          maxBuffer: 1024 * 1024,
+        },
+        (error, stdout) => {
+          callbackResult = { error, stdout };
+          callbackFinished = true;
+          settle();
+        },
+      );
+      child.once('close', () => {
+        childClosed = true;
+        settle();
+      });
+      signal?.addEventListener('abort', abortChild, { once: true });
+      if (signal?.aborted) abortChild();
+    } catch (error) {
+      signal?.removeEventListener('abort', abortChild);
+      resolveResult({ unavailable: String(error) });
+    }
+  });
+}
+
+/** Host observations stay nonblocking and do not attribute pressure to a particular process. */
+export async function iosTestResourceSnapshot(
+  path,
+  stage,
+  index = 0,
+  execute = executeResourceCommand,
+  signal,
+) {
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
   for (const [name, program, args] of [
     ['memory', 'vm_stat', []],
     ['swap', 'sysctl', ['vm.swapusage']],
     ['processes', 'ps', ['-axo', 'pid,ppid,%cpu,rss,comm']],
   ]) {
+    if (signal?.aborted) {
+      entry.observations[name] = { unavailable: 'sampling stopped' };
+      continue;
+    }
     try {
-      entry.observations[name] = execute(program, args, {
+      entry.observations[name] = await execute(program, args, {
         encoding: 'utf8',
-        timeout: 10000,
+        timeout: sampleTimeoutMs,
+        killSignal: 'SIGKILL',
+        maxBuffer: 1024 * 1024,
+        signal,
       });
     } catch (error) {
       entry.observations[name] = { unavailable: String(error) };
@@ -23,15 +93,58 @@ export function iosTestResourceSnapshot(path, stage, index = 0, execute = execFi
   appendFileSync(path, JSON.stringify(entry) + '\n');
 }
 
-/** Sampling spans the owned compiler/test command; executable names avoid collecting command-line arguments or their possible secrets. */
-export function iosTestResourceSampler(path) {
+/**
+ * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
+ * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
+ */
+export async function iosTestResourceSampler(
+  path,
+  { intervalMs = 20000, execute = executeResourceCommand } = {},
+) {
   let index = 0;
-  const sample = (stage) => iosTestResourceSnapshot(path, stage, index++);
-  sample('before');
-  const timer = setInterval(() => sample('during'), 20000);
+  let stopped = false;
+  let timer;
+  let activeController;
+  let activeSample;
+  let failure;
+  let stopPromise;
+
+  const sample = (stage) => {
+    const controller = new AbortController();
+    activeController = controller;
+    const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal);
+    activeSample = pending;
+    return pending.finally(() => {
+      if (activeSample === pending) activeSample = undefined;
+      if (activeController === controller) activeController = undefined;
+    });
+  };
+
+  const scheduleNext = () => {
+    if (stopped || failure) return;
+    timer = setTimeout(() => {
+      timer = undefined;
+      sample('during').then(scheduleNext, (error) => {
+        failure = error;
+        stopped = true;
+      });
+    }, intervalMs);
+  };
+
+  await sample('before');
+  scheduleNext();
+
   return () => {
-    clearInterval(timer);
-    sample('after');
+    if (stopPromise) return stopPromise;
+    stopped = true;
+    clearTimeout(timer);
+    activeController?.abort();
+    stopPromise = (async () => {
+      if (activeSample) await activeSample;
+      if (failure) throw failure;
+      await sample('after');
+    })();
+    return stopPromise;
   };
 }
 
@@ -39,5 +152,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const [path, stage] = process.argv.slice(2);
   if (!path || !stage) throw new Error('Resource snapshots require an evidence path and stage');
   mkdirSync(dirname(resolve(path)), { recursive: true });
-  iosTestResourceSnapshot(path, stage);
+  await iosTestResourceSnapshot(path, stage);
 }

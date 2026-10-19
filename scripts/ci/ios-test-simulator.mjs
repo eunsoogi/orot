@@ -42,7 +42,7 @@ function simctl(...args) {
 
 /** Keep Apple's migration/readiness progress visible while sampling the wait. No boot retry or service mutation is performed. */
 async function bootOwnedSimulator(owner, ownerPath) {
-  const stopSampling = iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
+  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
   let stage = 'boot';
   let failure;
   try {
@@ -82,7 +82,7 @@ async function bootOwnedSimulator(owner, ownerPath) {
     );
   } finally {
     try {
-      stopSampling();
+      await stopSampling();
     } catch (error) {
       // A resource sidecar failure must not replace the original boot failure or signal.
       failure ??= error;
@@ -161,13 +161,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       // Apple documents this public command as the readiness barrier for runtime caches.
       // Complete the selected cache before boot so its compiler cannot compete with the new Simulator.
       // Never force regeneration, touch another runtime, or change a local/self-hosted machine.
-      const stopSampling = iosTestResourceSampler(ownerPath + '.runtime.resources.jsonl');
+      const stopSampling = await iosTestResourceSampler(ownerPath + '.runtime.resources.jsonl');
       try {
         runIosSimulatorCommand(['runtime', 'dyld_shared_cache', 'update', config.runtime], {
           stdio: 'inherit',
         });
       } finally {
-        stopSampling();
+        await stopSampling();
       }
     }
     owner.udid = simctl('create', name, config.device, config.runtime);

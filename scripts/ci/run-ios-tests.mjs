@@ -144,7 +144,7 @@ if (
 if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
   throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
-const stopSampling = iosTestResourceSampler(resolve(results) + '.resources.jsonl');
+const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl');
 const stopDiagnostics =
   profile === 'speech' && tests.some((test) => test.includes('/SpeechAssetPreparationTests/'))
     ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')
@@ -224,5 +224,5 @@ try {
 } finally {
   await stopDiagnostics();
   await stopAuthDiagnostics();
-  stopSampling();
+  await stopSampling();
 }
