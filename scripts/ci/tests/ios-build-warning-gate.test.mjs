@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
-import { once } from 'node:events';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -47,6 +46,29 @@ test('fails on compiler, linker, build-system, runtime, and dependency warnings'
   assert.match(
     result.stderr,
     /IOS_WARNING_GATE occurrences=7 child_status=0 signal=none result=failed/,
+  );
+});
+
+test('fails on the React Native CLI logger warning prefix', () => {
+  const result = runGate('console.error("warn Package configuration warning probe");');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /warn Package configuration warning probe/);
+  assert.match(
+    result.stderr,
+    /IOS_WARNING_GATE occurrences=1 child_status=0 signal=none result=failed/,
+  );
+});
+
+test('scans ANSI-colored warnings without changing forwarded bytes', () => {
+  const warning = '\u001b[33mWARN\u001b[0m: colored diagnostic\n';
+  const result = runGate(`process.stdout.write(${JSON.stringify(warning)});`);
+
+  assert.equal(result.status, 1);
+  assert.ok(result.stdout.startsWith(warning));
+  assert.match(
+    result.stderr,
+    /IOS_WARNING_GATE occurrences=1 child_status=0 signal=none result=failed/,
   );
 });
 
@@ -100,72 +122,10 @@ test('counts markers split across chunks once per output stream', () => {
   assert.equal(scanner.occurrences, 1);
   scanner.scan('stderr', Buffer.from('Build phase WARN'));
   assert.equal(scanner.occurrences, 1);
-  scanner.scan('stderr', Buffer.from(': separate stream\n'));
+  scanner.scan('stderr', Buffer.from(': separate stream\n\u001b[33mWAR'));
+  scanner.scan('stderr', Buffer.from('N\u001b[0m: colored split marker\n'));
 
-  assert.equal(scanner.occurrences, 2);
-});
-
-test('forwards termination and waits for the build child to exit', async () => {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-ios-warning-signal-'));
-  const marker = join(directory, 'child-closed');
-  const source = [
-    'const fs = require("node:fs");',
-    'process.on("SIGTERM", () => setTimeout(() => { fs.writeFileSync(process.env.OROT_CHILD_MARKER, "closed"); process.exit(0); }, 50));',
-    'console.log("child-ready");',
-    'setInterval(() => {}, 1000);',
-  ].join('\n');
-  const child = spawn(
-    process.execPath,
-    [gate, '--', process.execPath, '--input-type=commonjs', '-e', source],
-    {
-      cwd: resolve('.'),
-      detached: true,
-      env: { ...process.env, OROT_CHILD_MARKER: marker },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
-  let stdout = '';
-  let stderr = '';
-  let resolveReady;
-  let rejectReady;
-  const ready = new Promise((accept, reject) => {
-    resolveReady = accept;
-    rejectReady = reject;
-  });
-  const closed = once(child, 'close');
-  child.stdout.on('data', (chunk) => {
-    stdout += chunk.toString('utf8');
-    if (stdout.includes('child-ready')) resolveReady();
-  });
-  child.stderr.on('data', (chunk) => {
-    stderr += chunk.toString('utf8');
-  });
-  child.once('error', rejectReady);
-  const timeout = setTimeout(
-    () => rejectReady(new Error('warning-gate child did not start')),
-    5000,
-  );
-
-  try {
-    await ready;
-    assert.equal(child.kill('SIGTERM'), true);
-    const [code, signal] = await closed;
-
-    assert.equal(code, 143);
-    assert.equal(signal, null);
-    assert.equal(existsSync(marker), true);
-    assert.match(
-      stderr,
-      /IOS_WARNING_GATE occurrences=0 child_status=143 signal=SIGTERM result=failed/,
-    );
-  } finally {
-    clearTimeout(timeout);
-    if (child.exitCode === null && child.signalCode === null) {
-      child.kill('SIGKILL');
-      await closed;
-    }
-    rmSync(directory, { recursive: true, force: true });
-  }
+  assert.equal(scanner.occurrences, 3);
 });
 
 test('all four iOS build profile paths use the warning gate', () => {

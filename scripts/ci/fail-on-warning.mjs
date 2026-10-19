@@ -19,7 +19,9 @@ function forwardAndScan(stream, destination, channel) {
   stream.once('end', () => scanner.flush(channel));
 }
 
+const usesProcessGroup = process.platform !== 'win32';
 const child = spawn(command[1], command.slice(2), {
+  detached: usesProcessGroup,
   stdio: ['inherit', 'pipe', 'pipe'],
 });
 forwardAndScan(child.stdout, process.stdout, 'stdout');
@@ -28,11 +30,32 @@ child.once('error', (error) => {
   spawnFailed = true;
   process.stderr.write(`Failed to start ${command[1]}: ${error.message}\n`);
 });
-// Keep the wrapper alive until its build child closes so cancellation cannot orphan the build process.
+// Build tools can start descendants; signal their POSIX group so cancellation reaches the owned command tree.
+function forwardSignal(signal) {
+  if (child.pid === undefined) {
+    child.once('spawn', () => forwardSignal(signal));
+    return;
+  }
+  if (usesProcessGroup) {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch (error) {
+      if (error.code !== 'ESRCH') {
+        process.stderr.write(
+          `Could not signal build process group ${child.pid}; signaling its direct child: ${error.message}\n`,
+        );
+      }
+    }
+  }
+  child.kill(signal);
+}
+
+// A group may outlive its leader while descendants hold output pipes, so signal it on every cancellation.
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => {
     interruptedSignal ??= signal;
-    if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+    forwardSignal(signal);
   });
 }
 child.once('close', (code, signal) => {

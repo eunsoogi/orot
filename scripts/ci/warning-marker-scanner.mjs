@@ -1,10 +1,12 @@
 const caseInsensitiveWarning = '[Ww][Aa][Rr][Nn][Ii][Nn][Gg]';
-// Match `warning:` case-insensitively; keep standalone WARN case-sensitive so
-// ordinary source text such as console.warn is not a build diagnostic.
+// Match line-leading React Native CLI `warn` output while keeping embedded
+// standalone WARN case-sensitive so ordinary source text is not a diagnostic.
 const warningMarker = new RegExp(
-  `DVTAssertions: [Ww]arning|${caseInsensitiveWarning}:|(?:^|[^A-Za-z0-9_])WARN(?=$|[^A-Za-z0-9_])|\\[!\\]`,
+  `DVTAssertions: [Ww]arning|${caseInsensitiveWarning}:|^[ \t]*[Ww][Aa][Rr][Nn]\\b|(?:^|[^A-Za-z0-9_])WARN(?=$|[^A-Za-z0-9_])|\\[!\\]`,
   'g',
 );
+const ansiEscape = String.fromCharCode(0x1b);
+const ansiControlSequence = new RegExp(`${ansiEscape}\\[[0-?]*[ -/]*[@-~]`, 'g');
 
 /**
  * Count complete-line markers after joining chunks so split diagnostics match
@@ -16,7 +18,9 @@ export function createWarningMarkerScanner() {
 
   function countLine(line) {
     warningMarker.lastIndex = 0;
-    while (warningMarker.exec(line)) occurrences += 1;
+    // Normalize only the scanner input; the gate forwards the original bytes.
+    const normalizedLine = line.replace(ansiControlSequence, '');
+    while (warningMarker.exec(normalizedLine)) occurrences += 1;
   }
 
   return {
