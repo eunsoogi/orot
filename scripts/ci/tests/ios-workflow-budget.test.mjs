@@ -153,11 +153,31 @@ test('each executor verifies artifacts before one boot and retains first-failure
       source.indexOf('prepare-cohort'),
   );
   assert.match(source, /if: always\(\)[\s\S]*ios-test-simulator\.mjs cleanup/);
-  assert.doesNotMatch(
-    source,
-    /continue-on-error|build-ios-tests\.mjs|test-iterations|prepare-ios-test-ui|DeviceHub/,
-  );
+  assert.doesNotMatch(source, /continue-on-error|build-ios-tests\.mjs|test-iterations/);
   const action = workflow('.github/actions/ios-test-cohort-run/action.yml');
+  const uiPreparation = action.runs.steps.find(
+    (step) => step.name === 'Verify Questions UI host preparation before fixture execution',
+  );
+  assert.ok(uiPreparation, 'Questions cohort must run the separate UI host preparation');
+  assert.equal((source.match(/prepare-ios-test-ui\.mjs/g) ?? []).length, 1);
+  assert.equal(uiPreparation.if, "inputs.cohort == 'questions'");
+  assert.deepEqual(uiPreparation.env, {
+    PROFILE: '${{ inputs.profile }}',
+    TEST_RUN: '${{ steps.verify.outputs.test_run }}',
+  });
+  assert.equal(
+    uiPreparation.run,
+    'scripts/ci/run-command.sh ios-questions-ui-preparation artifacts/ios-cohort/ui-preparation.log -- node scripts/ci/prepare-ios-test-ui.mjs "$PROFILE" "$TEST_RUN" artifacts/ios-cohort/simulator-owner.json artifacts/ios-cohort/ui-preparation',
+  );
+  const bootIndex = action.runs.steps.findIndex((step) =>
+    step.run?.includes('ios-test-simulator.mjs prepare-cohort'),
+  );
+  const preparationIndex = action.runs.steps.indexOf(uiPreparation);
+  const testIndex = action.runs.steps.findIndex((step) =>
+    step.run?.includes('run-ios-test-cohort.mjs'),
+  );
+  assert.ok(bootIndex < preparationIndex && preparationIndex < testIndex);
+  // Keep preflight xcresult and screenshot evidence outside the planned cohort results.
   const rejection = action.runs.steps.find((step) =>
     step.run?.includes('probe-ios-test-products.mjs'),
   );
@@ -167,6 +187,7 @@ test('each executor verifies artifacts before one boot and retains first-failure
   );
   assert.equal(upload.if, 'always()');
   assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/results'));
+  assert.ok(upload.with.path.split('\n').includes('artifacts/ios-cohort/ui-preparation'));
   assert.ok(iosTestInventory('core').includes(hostConnectionTest));
 });
 
