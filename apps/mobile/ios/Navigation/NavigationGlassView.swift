@@ -14,7 +14,10 @@ final class NavigationGlassSurfaceView: UIView {
     @objc var onAction: RCTBubblingEventBlock?
     private let rootBar = NavigationRootGlassBar()
     private let innerActions = UIStackView()
+    private let innerActionsSpacer = UIView()
     private var renderedActions: [NavigationActionDescriptor] = []
+    private var contextualButtons: [String: UIButton] = [:]
+    private var contextualButtonWidthConstraints: [String: NSLayoutConstraint] = [:]
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -34,6 +37,8 @@ final class NavigationGlassSurfaceView: UIView {
         innerActions.axis = .horizontal
         innerActions.alignment = .center
         innerActions.spacing = 12
+        innerActionsSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        innerActions.addArrangedSubview(innerActionsSpacer)
         // Match the native UI tests' shared toolbar identifier for contextual navigation actions.
         innerActions.accessibilityIdentifier = "navigation-toolbar"
         for view in [rootBar, innerActions] {
@@ -71,26 +76,61 @@ final class NavigationGlassSurfaceView: UIView {
         }
     }
 
+    /// Reconciles by stable action ID so state-only updates do not detach an active control.
     private func renderInnerActions(_ descriptors: [NavigationActionDescriptor], onAction: @escaping (String) -> Void) {
-        for arrangedSubview in innerActions.arrangedSubviews {
-            innerActions.removeArrangedSubview(arrangedSubview)
-            arrangedSubview.removeFromSuperview()
+        let back = descriptors.first { $0.id == "back" }
+        let actions = descriptors.filter { $0.id != "back" }
+        let desiredIDs = Set(descriptors.map(\.id))
+        let removedIDs = contextualButtons.keys.filter { !desiredIDs.contains($0) }
+        for id in removedIDs {
+            guard let button = contextualButtons.removeValue(forKey: id) else { continue }
+            innerActions.removeArrangedSubview(button)
+            button.removeFromSuperview()
+            contextualButtonWidthConstraints.removeValue(forKey: id)?.isActive = false
         }
-        if let back = descriptors.first(where: { $0.id == "back" }) {
-            innerActions.addArrangedSubview(NavigationGlassButton.make(for: back, onAction: onAction))
-        }
-        let spacer = UIView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        innerActions.addArrangedSubview(spacer)
-        for action in descriptors where action.id != "back" {
-            let button = NavigationGlassButton.make(for: action, onAction: onAction)
-            if action.id != "home" {
-                // Preserve localized Generate/Cancel width and the 48pt primary target.
-                // Measure the displayed 14pt title so localized primary labels are not clipped.
-                let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
-                button.widthAnchor.constraint(greaterThanOrEqualToConstant: max(88, titleWidth + 24)).isActive = true
+
+        for action in descriptors {
+            let button: UIButton
+            if let existing = contextualButtons[action.id] {
+                button = existing
+                NavigationGlassButton.update(button, for: action)
+            } else {
+                button = NavigationGlassButton.make(for: action, onAction: onAction)
+                contextualButtons[action.id] = button
             }
-            innerActions.addArrangedSubview(button)
+            updateMinimumWidth(for: action, button: button)
+        }
+
+        var orderedViews: [UIView] = []
+        if let back, let button = contextualButtons[back.id] {
+            orderedViews.append(button)
+        }
+        orderedViews.append(innerActionsSpacer)
+        orderedViews.append(contentsOf: actions.compactMap { contextualButtons[$0.id] })
+        for (index, view) in orderedViews.enumerated() {
+            if innerActions.arrangedSubviews.indices.contains(index),
+               innerActions.arrangedSubviews[index] === view
+            {
+                continue
+            }
+            if innerActions.arrangedSubviews.contains(where: { $0 === view }) {
+                innerActions.removeArrangedSubview(view)
+            }
+            innerActions.insertArrangedSubview(view, at: index)
+        }
+    }
+
+    /// Tracks localized primary titles while keeping one width constraint per stable action.
+    private func updateMinimumWidth(for action: NavigationActionDescriptor, button: UIButton) {
+        guard action.id != "home", action.id != "back" else { return }
+        let titleWidth = (action.label as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 14)]).width
+        let minimumWidth = max(88, titleWidth + 24)
+        if let constraint = contextualButtonWidthConstraints[action.id] {
+            constraint.constant = minimumWidth
+        } else {
+            let constraint = button.widthAnchor.constraint(greaterThanOrEqualToConstant: minimumWidth)
+            constraint.isActive = true
+            contextualButtonWidthConstraints[action.id] = constraint
         }
     }
 

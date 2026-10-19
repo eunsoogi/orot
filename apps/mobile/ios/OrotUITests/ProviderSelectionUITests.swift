@@ -31,7 +31,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         tap(app, "provider-selection-auth-success")
         tap(app, "chatgpt-account-action")
         try ProviderAuthUITestDiagnostics.continueLocalConsent(app, stage: .secondNativeReturn, testCase: self)
-        try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.")
+        try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.", role: .staticText)
         try message(app, "선택한 계정의 모델 목록 불러오기")
         back(app)
         cleared(app)
@@ -202,17 +202,23 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func message(_ app: XCUIApplication, _ text: String) throws {
+    private func message(_ app: XCUIApplication, _ text: String, role: XCUIElement.ElementType? = nil) throws {
         DebugUITestConditions.dismissWarningToast(app)
-        // React Native groups action titles into their native Button. Match the exact accessible label before checking visibility for its actual role.
-        let target = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", text)).firstMatch
+        // Use the observed native role for slow post-consent status text; unspecified messages retain the broad role fallback.
+        let target = app.descendants(matching: role ?? .any)
+            .matching(NSPredicate(format: "label == %@", text)).firstMatch
         XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
+        if let role {
+            XCTAssertEqual(target.elementType, role)
+        }
         let footer = node(app, "provider-selection-footer")
-        let inFooter = footer.descendants(matching: .any).matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
+        let inFooter = footer.descendants(matching: role ?? .any)
+            .matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
         // Native ScrollViews retain content ownership even when React Native flattens tagged containers. Offscreen main content can overlap the footer's frame, so ancestry takes priority over geometry.
         let scrolls = app.scrollViews.allElementsBoundByIndex
         let owner = scrolls.filter {
-            $0.descendants(matching: .any).matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
+            $0.descendants(matching: role ?? .any)
+                .matching(NSPredicate(format: "label == %@", text)).firstMatch.exists
         }.min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
         let containing = scrolls.filter {
             !target.frame.isEmpty && $0.frame.contains(target.frame)
