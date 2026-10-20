@@ -91,3 +91,75 @@ test('approval after cancellation cannot authorize the displayed query', async (
   await expect(pending).resolves.toBe('denied');
   alert.mockRestore();
 });
+
+test('uses available abstracts before applying the bounded medical-context result limit', async () => {
+  const withoutAbstract = {
+    ...publication,
+    recordId: '124',
+    originalUrl: 'https://europepmc.org/article/MED/124',
+    abstract: null,
+  };
+  const later = {
+    ...publication,
+    recordId: '125',
+    originalUrl: 'https://europepmc.org/article/MED/125',
+  };
+  const search = jest.fn(async () => ({
+    status: 'available' as const,
+    publications: [publication, withoutAbstract, later],
+  }));
+  const consent = { authorize: jest.fn(async () => 'authorized' as const) };
+  const run = createExternalConversationEvidence({ search }, consent, {
+    requireAbstract: true,
+  });
+  const result = await run.tool.search({ ...request, resultLimit: 2 });
+  if ('status' in result) throw new Error('Expected approved medical context');
+  expect(result.items.map(item => item.evidenceId)).toEqual([
+    'MED:123',
+    'MED:125',
+  ]);
+  expect(result.coverage).toEqual([
+    expect.objectContaining({
+      returnedCount: 2,
+      resultLimit: 2,
+      gaps: [],
+      truncated: true,
+    }),
+  ]);
+  expect(search).toHaveBeenCalledTimes(1);
+  expect(consent.authorize).toHaveBeenCalledWith(
+    expect.objectContaining({ query: 'sleep duration' }),
+  );
+  const original = await createExternalConversationEvidence(
+    { search },
+    consent,
+  ).tool.search({ ...request, resultLimit: 2 });
+  if ('status' in original)
+    throw new Error('Expected default publication search');
+  expect(original.items.map(item => item.evidenceId)).toEqual([
+    'MED:123',
+    'MED:124',
+  ]);
+  expect(original.coverage[0]?.gaps).toHaveLength(1);
+});
+
+test('does not fabricate medical context when none of the publications has an abstract', async () => {
+  const run = createExternalConversationEvidence(
+    {
+      search: async () => ({
+        status: 'available',
+        publications: [{ ...publication, abstract: null }],
+      }),
+    },
+    { authorize: async () => 'authorized' },
+    { requireAbstract: true },
+  );
+  const result = await run.tool.search(request);
+  if ('status' in result) throw new Error('Expected approved bounded search');
+  expect(result.items).toEqual([]);
+  expect(result.coverage[0]).toMatchObject({
+    returnedCount: 0,
+    gaps: [],
+    truncated: true,
+  });
+});

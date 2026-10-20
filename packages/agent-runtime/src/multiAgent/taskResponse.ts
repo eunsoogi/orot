@@ -90,6 +90,7 @@ export async function consumeTaskModelResponse<TResult>(
     input,
     state.budget,
     correctionInstruction,
+    outcome.response,
   );
   if (correctionRequest.status === 'unsupported_input') {
     context.outcome = {

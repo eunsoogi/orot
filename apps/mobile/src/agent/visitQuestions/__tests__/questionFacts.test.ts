@@ -5,6 +5,10 @@ import type {
 } from '../taskContract';
 import { DoseEventSchema } from '@orot/domain';
 import { chunkStructuredRecord } from '@orot/rag';
+import {
+  unsupportedDateOrValueKind,
+  hasUnsupportedDateOrValue,
+} from '../questionFacts';
 
 const responder = createVisitQuestionTaskResponder();
 const source: VisitQuestionEvidenceItem = {
@@ -61,6 +65,30 @@ function expectClarification(questionText: string, evidenceText: string) {
 }
 
 describe('visit-question numeric fact validation', () => {
+  it.each([
+    ['120/80 mmHg', '120 mmHg와 80 mmHg', 'quantity_ratio'],
+    ['5 g', '5 mg', 'quantity_unit'],
+    ['5.000000000000001 mg', '5 mg', 'quantity_precision'],
+    ['6 mg', '5 mg', 'quantity_value'],
+  ])(
+    'classifies %s without authorizing an unsupported claim',
+    (text, content, kind) => {
+      const evidence = [{ ...source, content }];
+      expect(unsupportedDateOrValueKind(text, evidence)).toBe(kind);
+      expect(hasUnsupportedDateOrValue(text, evidence)).toBe(true);
+    },
+  );
+  it('recognizes a Korean month and day as a date supported by the cited timestamp', () => {
+    expect(
+      validation(
+        '9월 1일 기록의 의미를 진료에서 확인할까요?',
+        '합성 건강 기록',
+      ),
+    ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
+    expectClarification('9월 2일 기록의 의미를 확인할까요?', '합성 건강 기록');
+    expectClarification('복용 기간을 1일로 정할까요?', '합성 건강 기록');
+    expectClarification('측정값 9를 확인할까요?', '합성 건강 기록');
+  });
   it('compares heart-rate quantities with their complete denominator', () => {
     const evidence =
       'health_observation: {"value":{"amount":72,"unit":"count/min"}}';

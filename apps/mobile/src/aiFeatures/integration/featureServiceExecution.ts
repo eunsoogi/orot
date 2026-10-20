@@ -1,6 +1,7 @@
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
+import { providerDiagnostic } from '../../providers/diagnostics';
 import type {
   EvidenceReference,
   EvidenceSearchTool,
@@ -22,12 +23,18 @@ export function toolsFor(
   snapshot: LocalEvidenceSnapshot | undefined,
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
+  localResultLimit?: number,
+  healthOverview = false,
+  feature: 'disease' | 'rag' = 'disease',
 ) {
   return [
     createLocalEvidenceSearchTool({
       id: 'local-personal-records',
       sourceKind: 'personal_record',
+      maxResults: localResultLimit,
       snapshot,
+      registry,
+      allowHealthOverview: healthOverview,
       rag: data.rag,
       async loadSnapshot(query, request) {
         const scope = request.allowedScope;
@@ -37,19 +44,27 @@ export function toolsFor(
           request.signal,
           query,
           {
+            ...(request.input.view === 'health_overview'
+              ? { selection: 'health_overview' as const }
+              : {}),
             ...(scope.sourceIds
               ? { sourceIds: registry.localSourceIds(scope.sourceIds) }
               : {}),
             ...(scope.timeRange ? { timeRange: scope.timeRange } : {}),
           },
         );
-        await indexChangedFeatureEvidence(data, next, request.signal);
+        // Overview selection is SQL-ordered by topic and does not use embedding ranking.
+        if (request.input.view === 'health_overview')
+          providerDiagnostic(feature, 'data', 'overview_selected');
+        if (request.input.view !== 'health_overview')
+          await indexChangedFeatureEvidence(data, next, request.signal);
         return next;
       },
     }),
     createLocalEvidenceSearchTool({
       id: 'local-reviewed-memory',
       sourceKind: 'reviewed_memory',
+      maxResults: localResultLimit,
       snapshot,
       rag: data.rag,
       async loadSnapshot(_query, request) {
@@ -72,6 +87,7 @@ export function executionOptions(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly tools: readonly EvidenceSearchTool[];
   readonly external?: ReturnType<typeof createExternalConversationEvidence>;
+  readonly medicalExplanation?: boolean;
 }) {
   return {
     execution: {
@@ -90,9 +106,15 @@ export function executionOptions(input: {
           : (['personal_record', 'reviewed_memory'] as const),
       },
       // Both local and literature tools need time for retrieval plus a cited answer.
-      budget: input.external
-        ? RAG_CONVERSATION_BUDGET
-        : EVIDENCE_WORKFLOW_BUDGET,
+      budget: input.medicalExplanation
+        ? {
+            ...EVIDENCE_WORKFLOW_BUDGET,
+            maxModelCalls: 4,
+            maxOutputTokens: 1024,
+          }
+        : input.external
+          ? RAG_CONVERSATION_BUDGET
+          : EVIDENCE_WORKFLOW_BUDGET,
     },
     provider: input.selected.provider,
     tools: input.tools,

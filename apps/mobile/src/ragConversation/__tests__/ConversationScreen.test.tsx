@@ -128,7 +128,7 @@ test('renders a grounded answer with a source action and reports absent evidence
     appColors.secondary,
   );
   expect(StyleSheet.flatten(conversationInput.props.style)).toMatchObject({
-    backgroundColor: appColors.surface,
+    backgroundColor: 'transparent',
     color: appColors.text,
   });
 

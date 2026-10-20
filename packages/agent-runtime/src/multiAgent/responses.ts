@@ -12,13 +12,14 @@ import {
   citationReferences,
   parseJsonOutput,
   parseResearchPlan,
-  parseTaskOutput,
   utf8ByteLength,
 } from './protocol';
 import type { ResearchPlan } from './protocol';
 import { completeState, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
+import { decodeTaskResponse } from './taskResponseDecoding';
+import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
 
 export function consumeResponderResponse<TResult>(
   context: RuntimeContext<TResult>,
@@ -46,14 +47,9 @@ export function consumeResponderResponse<TResult>(
     stop(context, 'The task responder output exceeded the payload limit.', 'budget_exceeded');
     return completeState();
   }
-  let decoded;
-  try {
-    decoded = parseTaskOutput<TResult>(parseJsonOutput(response));
-  } catch {
-    decoded = undefined;
-  }
+  const { output: decoded, reason } = decodeTaskResponse<TResult>(response);
   if (!decoded) {
-    stop(context, 'The task responder returned malformed structured output.', 'invalid_output');
+    stop(context, reason!, 'invalid_output');
     return completeState();
   }
   if (decoded.type === 'request_evidence') {
@@ -74,6 +70,14 @@ export function consumeResponderResponse<TResult>(
       evidenceNeed: decoded.need,
       pendingOperation: undefined,
     };
+  }
+  if (missingNativeEvidenceKind(context)) {
+    stop(
+      context,
+      'The task requires a source-kind lookup before its final answer.',
+      'invalid_output',
+    );
+    return completeState();
   }
   if (
     hasBlockingCoverage(

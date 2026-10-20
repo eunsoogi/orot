@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
-import { AppSymbol } from '../layout/AppSymbol';
+import { SelectedModelControl } from '../layout/SelectedModelControl';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
@@ -54,31 +54,17 @@ export function MedicalAppointmentReviewView(props: Props) {
         <Text accessibilityRole="header" style={styles.title}>
           {copy.title}
         </Text>
-        <Text style={styles.description}>{copy.description}</Text>
       </View>
-      <View style={styles.provider}>
-        <View style={styles.symbol}>
-          <AppSymbol
-            name={
-              props.provider?.privacyBoundary === 'on-device'
-                ? 'apple.logo'
-                : 'sparkles'
-            }
-            size={30}
-            color={appColors.text}
-          />
-        </View>
-        <View style={styles.providerCopy}>
-          <Text style={styles.providerName}>
-            {props.provider?.displayName ?? copy.noProvider}
-          </Text>
-          <Text style={styles.secondary}>
-            {props.provider?.privacyBoundary === 'on-device'
-              ? copy.localNotice
-              : copy.remoteNotice}
-          </Text>
-        </View>
-      </View>
+      <SelectedModelControl
+        name={props.provider?.displayName ?? copy.noProvider}
+        local={props.provider?.privacyBoundary === 'on-device'}
+      />
+      <Text style={styles.secondary}>
+        {props.provider?.privacyBoundary === 'on-device'
+          ? copy.localNotice
+          : copy.remoteNotice}
+      </Text>
+      <Text style={styles.description}>{copy.description}</Text>
       {unavailable ? (
         <Text accessibilityRole="alert">{copy.providerUnavailable}</Text>
       ) : null}

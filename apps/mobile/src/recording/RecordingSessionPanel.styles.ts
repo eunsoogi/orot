@@ -44,7 +44,7 @@ export const recordingSessionStyles = StyleSheet.create({
     textAlign: 'center',
   },
   duration: {
-    fontSize: 56,
+    fontSize: 52,
     lineHeight: 68,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],

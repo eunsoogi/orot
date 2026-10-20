@@ -81,7 +81,11 @@ export function taskResponseSchema<TResult>(
         required: ['type', 'value', 'citations'],
         properties: {
           type: { type: 'string', enum: ['result'] },
-          value: guidedSchema(contract.resultSchema),
+          value: guidedSchema(
+            input && contract.createResultSchema
+              ? contract.createResultSchema(input)
+              : contract.resultSchema,
+          ),
           citations: taskCitationSchema(ids, contract.requireAllEvidenceCitations),
         },
       },

@@ -154,7 +154,7 @@ test('renders the visit route with selected AI, generation, source, and save act
     expect.any(Function),
   );
   expect(onOpenSource).toHaveBeenCalledWith(registeredSource);
-  await fireEvent.press(screen.getByTestId('next-visit-source-close'));
+  expect(screen.queryByTestId('next-visit-source-sheet')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('next-visit-review-save'));
   await waitFor(() =>

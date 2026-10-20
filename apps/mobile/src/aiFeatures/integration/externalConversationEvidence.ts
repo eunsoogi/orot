@@ -57,14 +57,47 @@ export const externalConversationConsent: ExternalMedicalQueryConsentPort = {
 export function createExternalConversationEvidence(
   service: EuropePmcMedicalEvidenceService,
   consent = externalConversationConsent,
+  options: { readonly requireAbstract?: boolean } = {},
 ) {
   const references = new Set<string>();
-  const adapter = createEuropePmcEvidenceSearchTool({ service, consent });
+  // A metadata-only hit cannot support a medical explanation. Filter the bounded service page
+  // before the adapter's result limit so another available abstract can occupy that citation slot.
+  const contextService: EuropePmcMedicalEvidenceService =
+    options.requireAbstract
+      ? {
+          async search(query, searchOptions) {
+            const result = await service.search(query, searchOptions);
+            if (result.status !== 'available') return result;
+            const publications = result.publications.filter(
+              item => typeof item.abstract === 'string' && item.abstract.trim(),
+            );
+            return publications.length
+              ? { status: 'available', publications }
+              : { status: 'empty' };
+          },
+        }
+      : service;
+  const adapter = createEuropePmcEvidenceSearchTool({
+    service: contextService,
+    consent,
+  });
   return {
     tool: {
       ...adapter,
       async search(request: Parameters<typeof adapter.search>[0]) {
-        const result = await adapter.search(request);
+        const batch = await adapter.search(request);
+        // This filtered literature sample is never a complete review. Preserve actual adapter
+        // gaps and conflicts; an omitted metadata-only hit is not missing personal health data.
+        const result =
+          options.requireAbstract && !('status' in batch)
+            ? {
+                ...batch,
+                coverage: batch.coverage.map(item => ({
+                  ...item,
+                  truncated: true,
+                })),
+              }
+            : batch;
         if (!request.signal.aborted && !('status' in result)) {
           for (const item of result.items)
             references.add(canonical(referenceOnly(item)));

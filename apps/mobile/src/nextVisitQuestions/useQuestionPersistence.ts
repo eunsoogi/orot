@@ -80,7 +80,8 @@ export function useQuestionPersistence<
       );
       if (!isCurrentSave()) return;
       setSavedOverride({
-        appointmentId: saveAppointmentKey,
+        // Context keys include visit edits; persisted/displayed ownership still uses the stable ID.
+        appointmentId: appointment.appointment.id,
         questions: copyQuestions(result.questions),
         caveats: [...result.caveats],
       });

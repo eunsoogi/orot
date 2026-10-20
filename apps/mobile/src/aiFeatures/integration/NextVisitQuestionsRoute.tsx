@@ -7,17 +7,51 @@ import { visitQuestionsRouteStyles as styles } from './NextVisitQuestionsRoute.s
 import type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
 import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
 import { useNextVisitQuestionsRoute } from './useNextVisitQuestionsRoute';
+import { NextVisitQuestionsScreenView } from '../../nextVisitQuestions/NextVisitQuestionsScreenView';
+import { useNextVisitQuestionsSession } from './NextVisitQuestionsSession';
+import type { NextVisitSessionSnapshot } from './NextVisitQuestionsSession';
 
 export type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
 
-/** Connects #32 content to #109 data; the enclosing adapter owns guarded Back. */
+/** The visible route subscribes to retained work and supplies current navigation callbacks. */
 export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
+  const session = useNextVisitQuestionsSession(props);
+  if (!session) return <StandaloneRoute {...props} />;
+  return session.snapshot ? (
+    <RouteView {...props} session={session.snapshot} />
+  ) : null;
+}
+
+function StandaloneRoute(props: NextVisitQuestionsRouteProps) {
   const route = useNextVisitQuestionsRoute(props);
+  return <RouteView {...props} session={{ route }} />;
+}
+
+function RouteView(
+  props: NextVisitQuestionsRouteProps & {
+    readonly session: Pick<NextVisitSessionSnapshot, 'route'> &
+      Partial<Pick<NextVisitSessionSnapshot, 'controller'>>;
+  },
+) {
+  const { route, controller } = props.session;
   const colorScheme = useColorScheme();
   const theme = useMemo(
     () => createNextVisitQuestionsTheme(colorScheme === 'dark'),
     [colorScheme],
   );
+  const screenProps = {
+    appointment: route.appointment,
+    onGenerate: route.onGenerate,
+    onOpenProviderSelection: route.openProviderSelection,
+    onOpenSource: route.onOpenSource,
+    onRefreshAppointment: route.refreshAppointment,
+    onRetrySavedQuestions: route.onRetrySavedQuestions,
+    onRouteStateChange: props.onRouteStateChange,
+    onSaveReviewedQuestions: route.onSaveReviewedQuestions,
+    provider: route.provider,
+    savedQuestions: route.savedQuestions,
+    theme,
+  };
 
   return (
     <View style={styles.container} testID="next-visit-questions-route">
@@ -29,19 +63,14 @@ export function NextVisitQuestionsRoute(props: NextVisitQuestionsRouteProps) {
           {route.saveNotice}
         </Text>
       ) : null}
-      <NextVisitQuestionsScreen
-        appointment={route.appointment}
-        onGenerate={route.onGenerate}
-        onOpenProviderSelection={route.openProviderSelection}
-        onOpenSource={route.onOpenSource}
-        onRefreshAppointment={route.refreshAppointment}
-        onRetrySavedQuestions={route.onRetrySavedQuestions}
-        onRouteStateChange={props.onRouteStateChange}
-        onSaveReviewedQuestions={route.onSaveReviewedQuestions}
-        provider={route.provider}
-        savedQuestions={route.savedQuestions}
-        theme={theme}
-      />
+      {controller ? (
+        <NextVisitQuestionsScreenView
+          {...screenProps}
+          controller={controller}
+        />
+      ) : (
+        <NextVisitQuestionsScreen {...screenProps} />
+      )}
     </View>
   );
 }

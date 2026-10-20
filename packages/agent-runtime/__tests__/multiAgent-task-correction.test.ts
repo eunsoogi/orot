@@ -82,26 +82,45 @@ function fixture(generate: LanguageModelProvider['generate']): MultiAgentWorkflo
   };
 }
 
-test('counts the one correction and keeps ephemeral guidance out of a completed graph checkpoint', async () => {
-  const generate = jest
-    .fn()
-    .mockResolvedValueOnce(response('invalid'))
-    .mockResolvedValueOnce(response('valid'));
-  const saver = new MemorySaver();
-  const options = { ...fixture(generate), checkpointer: saver };
-  const config = { configurable: { thread_id: 'completed-correction' } };
-  const result = await runMultiAgentWorkflow(options, { config });
-  expect(result.status).toBe('result');
-  expect(result.checkpoint.modelCalls).toBe(2);
-  expect(result.checkpoint.terminal).toBe(true);
-  expect(generate).toHaveBeenCalledTimes(2);
-  const tuple = await saver.getTuple(config);
-  expect(JSON.stringify(tuple)).not.toContain('Synthetic correction instruction');
-  expect(JSON.stringify(tuple)).not.toContain('Synthetic current context');
-  const resumed = await runMultiAgentWorkflow(options, { config });
-  expect(resumed.status).toBe('stale_evidence');
-  expect(generate).toHaveBeenCalledTimes(2);
-});
+test.each(['text', 'structured'] as const)(
+  'corrects the rejected %s response once without persisting it in a checkpoint',
+  async (format) => {
+    const rejected = JSON.stringify({ type: 'result', value: 'invalid', citations: [reference] });
+    const initial = providerSuccess({
+      text: format === 'text' ? rejected : 'Non-authoritative display text',
+      ...(format === 'structured' ? { structuredOutput: JSON.parse(rejected) } : {}),
+      toolCalls: [],
+      finishReason: 'complete',
+    });
+    const generate = jest
+      .fn()
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(response('valid'));
+    const saver = new MemorySaver();
+    const options = { ...fixture(generate), checkpointer: saver };
+    const config = { configurable: { thread_id: 'completed-correction' } };
+    const result = await runMultiAgentWorkflow(options, { config });
+    expect(result.status).toBe('result');
+    expect(result.checkpoint.modelCalls).toBe(2);
+    expect(result.checkpoint.terminal).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(2);
+    // Repair the actual rejected answer, including its valid citations, rather than regenerating blindly.
+    const correction = generate.mock.calls[1][0];
+    expect(correction.messages.slice(-2)).toEqual([
+      { role: 'assistant', content: expect.any(String) },
+      { role: 'user', content: 'Synthetic correction instruction' },
+    ]);
+    expect(JSON.parse(correction.messages.at(-2).content)).toEqual(JSON.parse(rejected));
+    expect(correction.tools).toBeUndefined();
+    const tuple = await saver.getTuple(config);
+    expect(JSON.stringify(tuple)).not.toContain('Synthetic correction instruction');
+    expect(JSON.stringify(tuple)).not.toContain('Synthetic current context');
+    expect(JSON.stringify(tuple)).not.toContain(rejected);
+    const resumed = await runMultiAgentWorkflow(options, { config });
+    expect(resumed.status).toBe('stale_evidence');
+    expect(generate).toHaveBeenCalledTimes(2);
+  },
+);
 
 test.each(['deadline', 'caller'] as const)(
   'stops an outstanding correction on %s and refuses replay or a late result',

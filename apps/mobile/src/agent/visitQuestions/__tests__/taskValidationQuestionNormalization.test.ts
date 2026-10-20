@@ -81,7 +81,7 @@ describe('visit-question response repair contract', () => {
       'A visit question must end with a question mark.',
     );
 
-    expect(instruction).toContain('의문문');
+    expect(instruction).toContain('Korean interrogative');
     expect(
       responder.correctionInstructionForInvalidResult?.(
         'The clarification contains unsafe clinical advice.',

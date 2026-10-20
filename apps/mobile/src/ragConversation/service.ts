@@ -1,4 +1,8 @@
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import {
+  providerDiagnostic,
+  reportWorkflowOutcome,
+} from '../providers/diagnostics';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -121,6 +125,7 @@ export async function runRagConversationTurn(
       )
     )
       return { status: 'no_evidence' };
+    providerDiagnostic('rag', 'workflow', 'started');
     const result = await runMultiAgentWorkflow(
       {
         ...options.workflow,
@@ -139,6 +144,12 @@ export async function runRagConversationTurn(
           ),
       },
       invocation,
+    );
+    reportWorkflowOutcome(
+      'rag',
+      result.status,
+      'providerErrorCode' in result ? result.providerErrorCode : undefined,
+      'reason' in result ? result.reason : undefined,
     );
     if (result.status === 'result') {
       if (!result.citations.length) return { status: 'insufficient' };
@@ -163,6 +174,7 @@ export async function runRagConversationTurn(
       ? { status: 'insufficient' }
       : { status: 'unavailable' };
   } catch {
+    providerDiagnostic('rag', 'workflow', 'failed');
     return { status: 'unavailable' };
   }
 }

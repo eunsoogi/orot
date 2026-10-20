@@ -1,4 +1,8 @@
-import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
+import type {
+  LanguageModelProvider,
+  LanguageModelRequest,
+  LanguageModelResponse,
+} from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
 import {
   EUROPE_PMC_QUERY_GUIDANCE,
@@ -17,6 +21,8 @@ import type {
 import type { WorkflowState } from './state';
 import {
   buildTaskMessages,
+  canonicalJson,
+  parseJsonOutput,
   researcherPrompt,
   researcherSchema,
   taskResponseSchema,
@@ -33,6 +39,7 @@ export function buildTaskRequest<TResult>(
   input: TaskResponderInput,
   budget: MultiAgentBudget,
   correctionInstruction?: string,
+  correctionResponse?: LanguageModelResponse,
 ): TaskRequestBuild {
   try {
     const nativeResearch =
@@ -55,10 +62,42 @@ export function buildTaskRequest<TResult>(
       effectiveInput,
       provider.capabilities.structuredOutput,
     );
-    const messages =
-      taskMessages && correctionInstruction
-        ? [...taskMessages, { role: 'user' as const, content: correctionInstruction }]
+    // Providers without a schema channel still need the same envelope and task fields.
+    // Local parsing, citation binding and task validation remain authoritative.
+    const formattedMessages =
+      taskMessages && !provider.capabilities.structuredOutput
+        ? [
+            ...taskMessages,
+            {
+              role: 'user' as const,
+              content: JSON.stringify({
+                outputRequirements:
+                  'For a final task response, return only a JSON object matching responseSchema. Do not add Markdown fences or prose outside the object. ' +
+                  (nativeResearch
+                    ? 'Use native tools for permitted evidence requests.'
+                    : 'Use request_evidence only when the response schema and research scope permit it.'),
+                responseSchema: taskResponseSchema(contract, effectiveInput, nativeResearch),
+              }),
+            },
+          ]
         : taskMessages;
+    const messages =
+      formattedMessages && correctionInstruction
+        ? [
+            ...formattedMessages,
+            // Keep the rejected answer as untrusted assistant context, not instructions or persisted state.
+            // The caller already bounded and parsed it; dispatch still checks the entire request and consent.
+            ...(correctionResponse
+              ? [
+                  {
+                    role: 'assistant' as const,
+                    content: canonicalJson(parseJsonOutput(correctionResponse)),
+                  },
+                ]
+              : []),
+            { role: 'user' as const, content: correctionInstruction },
+          ]
+        : formattedMessages;
     if (!messages || !messages.some((message) => message.role === 'user'))
       return { status: 'invalid' };
     const supportsMessages = messages.every((message) => {

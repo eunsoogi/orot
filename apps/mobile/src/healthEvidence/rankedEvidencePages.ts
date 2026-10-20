@@ -14,6 +14,7 @@ import {
   MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
+import { HEALTH_OVERVIEW_PRIORITY_SQL } from './healthOverviewScope';
 
 export interface RankedEvidenceCursor {
   readonly score: number;
@@ -59,19 +60,26 @@ export async function readRankedEvidencePage(
   }
   // Literal query values are bound, including app-owned translations of stored concept names.
   const terms = evidenceQueryTerms(query);
-  const score = terms.length
-    ? terms
-        .map(
-          () =>
-            'CASE WHEN instr(lower(r.payload_json), ?) > 0 THEN 1 ELSE 0 END',
-        )
-        .join(' + ')
-    : '0';
+  const score =
+    options.scope?.selection === 'health_overview' &&
+    kind === 'health_observation'
+      ? HEALTH_OVERVIEW_PRIORITY_SQL
+      : terms.length
+        ? terms
+            .map(
+              () =>
+                'CASE WHEN instr(lower(r.payload_json), ?) > 0 THEN 1 ELSE 0 END',
+            )
+            .join(' + ')
+        : '0';
   const cursor = options.cursor;
   const scope = candidateScopeCondition(kind, options.scope);
   const parameters: SqlValue[] = [
     MAX_HEALTH_EVIDENCE_RECORD_BYTES,
-    ...terms,
+    ...(options.scope?.selection === 'health_overview' &&
+    kind === 'health_observation'
+      ? []
+      : terms),
     ...scope.parameters,
   ];
   if (cursor) {

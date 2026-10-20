@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from '@orot/model-runtime';
+import type { JsonValue } from '@orot/model-runtime';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -8,32 +8,11 @@ import type {
 } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
 
-// The model emits opaque IDs; the app restores exact, current references after validation.
-const referenceSchema: JsonObject = { type: 'string', minLength: 1 };
+export { diseaseHypothesisSchema } from './diseaseResultSchema';
 
-export const diseaseHypothesisSchema: JsonObject = {
-  type: 'object',
-  required: [
-    'title',
-    'summary',
-    'supportingEvidence',
-    'contraryEvidence',
-    'uncertainty',
-    'missingData',
-  ],
-  properties: {
-    title: { type: 'string', minLength: 1, maxLength: 120 },
-    summary: { type: 'string', minLength: 1, maxLength: 1200 },
-    supportingEvidence: { type: 'array', minItems: 1, items: referenceSchema },
-    contraryEvidence: { type: 'array', items: referenceSchema },
-    uncertainty: { type: 'string', minLength: 1, maxLength: 500 },
-    missingData: {
-      type: 'array',
-      items: { type: 'string', minLength: 1, maxLength: 160 },
-    },
-  },
-  additionalProperties: false,
-};
+/** Closed categories identify validation boundaries without exposing model or record content. */
+export type DiseaseValidationCode =
+  'fields' | 'citations' | 'certainty' | 'section_count';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -152,8 +131,13 @@ function referencesFor(
 function readHypothesis(
   value: unknown,
   evidence: EvidenceBatch,
+  allowEmptyUncertainty = false,
+  onInvalid?: (code: DiseaseValidationCode) => void,
 ): DiseaseHypothesisAnalysis['hypotheses'][number] | undefined {
-  if (!isObject(value)) return undefined;
+  if (!isObject(value)) {
+    onInvalid?.('fields');
+    return undefined;
+  }
   const keys = [
     'title',
     'summary',
@@ -162,7 +146,10 @@ function readHypothesis(
     'uncertainty',
     'missingData',
   ];
-  if (Object.keys(value).some(key => !keys.includes(key))) return undefined;
+  if (Object.keys(value).some(key => !keys.includes(key))) {
+    onInvalid?.('fields');
+    return undefined;
+  }
   if (
     typeof value.title !== 'string' ||
     value.title.trim().length === 0 ||
@@ -171,17 +158,22 @@ function readHypothesis(
     value.summary.trim().length === 0 ||
     value.summary.length > 1200 ||
     typeof value.uncertainty !== 'string' ||
-    value.uncertainty.trim().length === 0 ||
+    (!allowEmptyUncertainty && value.uncertainty.trim().length === 0) ||
     value.uncertainty.length > 500 ||
     !Array.isArray(value.missingData) ||
     value.missingData.some(
       item => typeof item !== 'string' || !item.trim() || item.length > 160,
     )
-  )
+  ) {
+    onInvalid?.('fields');
     return undefined;
+  }
   const supportingEvidence = referencesFor(value.supportingEvidence, evidence);
   const contraryEvidence = referencesFor(value.contraryEvidence, evidence);
-  if (!supportingEvidence?.length || !contraryEvidence) return undefined;
+  if (!supportingEvidence?.length || !contraryEvidence) {
+    onInvalid?.('citations');
+    return undefined;
+  }
   const hypothesis = {
     title: value.title,
     summary: value.summary,
@@ -190,12 +182,22 @@ function readHypothesis(
     uncertainty: value.uncertainty,
     missingData: value.missingData,
   };
-  return containsDefinitiveClinicalClaim(hypothesis) ? undefined : hypothesis;
+  if (containsDefinitiveClinicalClaim(hypothesis)) {
+    onInvalid?.('certainty');
+    return undefined;
+  }
+  return hypothesis;
 }
 
 export function validateDiseaseHypothesisResult(
   value: JsonValue,
   input: TaskResponderInput,
+  options: {
+    readonly allowEmptyUncertainty?: boolean;
+    // Factual topic summaries may use eight sections; disease assessment keeps the default of three.
+    readonly maxSections?: 3 | 8;
+    readonly onInvalid?: (code: DiseaseValidationCode) => void;
+  } = {},
 ): TaskResultValidation<DiseaseHypothesisAnalysis> {
   if (
     !isObject(value) ||
@@ -207,11 +209,22 @@ export function validateDiseaseHypothesisResult(
   if (
     !Array.isArray(hypotheses) ||
     hypotheses.length < 1 ||
-    hypotheses.length > 3
+    hypotheses.length > (options.maxSections ?? 3)
   ) {
-    return { status: 'invalid', reason: 'Expected one to three hypotheses.' };
+    options.onInvalid?.('section_count');
+    return {
+      status: 'invalid',
+      reason: 'Expected a bounded non-empty sections array.',
+    };
   }
-  const parsed = hypotheses.map(item => readHypothesis(item, input.evidence));
+  const parsed = hypotheses.map(item =>
+    readHypothesis(
+      item,
+      input.evidence,
+      options.allowEmptyUncertainty,
+      options.onInvalid,
+    ),
+  );
   if (parsed.some(item => !item)) {
     return {
       status: 'invalid',

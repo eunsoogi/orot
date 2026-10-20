@@ -11,6 +11,7 @@ import {
   MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
+import { HEALTH_OVERVIEW_KINDS } from './healthOverviewScope';
 
 export interface LocalEvidenceCandidates {
   /** Catalog describes the whole stored corpus; candidate payloads below are not an enumeration. */
@@ -99,17 +100,28 @@ export async function readEvidenceCandidates(
       totalRecordCount += total;
       if (total) availableKinds.push(kind);
       // Source documents support selected clinical evidence; they are not themselves a clinical claim.
-      if (!total || kind === 'source_record') continue;
-      const page = await readRankedEvidencePage(transaction, kind, query, {
-        limit:
-          kind === 'health_observation'
-            ? 16
-            : kind === 'transcript_segment'
-              ? 8
-              : 4,
-        signal,
-        scope,
-      });
+      if (
+        !total ||
+        kind === 'source_record' ||
+        (scope?.selection === 'health_overview' &&
+          !HEALTH_OVERVIEW_KINDS.has(kind))
+      )
+        continue;
+      const page = await readRankedEvidencePage(
+        transaction,
+        kind,
+        scope?.selection === 'health_overview' ? '' : query,
+        {
+          limit:
+            kind === 'health_observation'
+              ? 16
+              : kind === 'transcript_segment'
+                ? 8
+                : 4,
+          signal,
+          scope,
+        },
+      );
       candidates.push(...page.records);
       hasMoreCandidates ||= page.nextCursor !== null;
       if (page.incomplete) truncatedKinds.push(kind);

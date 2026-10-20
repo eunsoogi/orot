@@ -1,6 +1,6 @@
 import type { JsonValue } from '@orot/model-runtime';
 import { t } from '../../i18n';
-import { hasUnsupportedDateOrValue } from './questionFacts';
+import { hasUnsupportedQuestionFacts } from './questionFactValidation';
 import type {
   VisitQuestionEvidenceItem,
   VisitQuestionResponderInput,
@@ -109,7 +109,7 @@ export function validateVisitQuestionTaskResult(
       };
     }
     if (
-      hasUnsupportedDateOrValue(
+      hasUnsupportedQuestionFacts(
         message,
         input.evidence.items,
         supportedClarificationContext(input),
@@ -218,7 +218,7 @@ export function validateVisitQuestionTaskResult(
     }
     const exactCitations = citations as VisitQuestionEvidenceItem[];
     if (
-      hasUnsupportedDateOrValue(
+      hasUnsupportedQuestionFacts(
         `${questionText} ${rationale}`,
         exactCitations,
         appointmentDateFromContext(input.context),

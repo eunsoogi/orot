@@ -12,6 +12,7 @@ struct ResponsesEventNormalizer {
     private(set) var completed = false
     private var functionCallsByItemID = [String: FunctionCallState]()
     private var emittedFunctionCalls = [String: ChatGPTResponsesFunctionCall]()
+    private var completedOutput = ResponsesCompletedOutput()
 
     /// Creates a normalizer while preserving the request identifier for diagnostics.
     ///
@@ -29,26 +30,30 @@ struct ResponsesEventNormalizer {
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = object["type"] as? String ?? frame.event
         else {
-            throw ChatGPTResponsesError.malformedEvent
+            throw Self.malformed("frame_json")
         }
         if let frameEvent = frame.event, frameEvent != type {
-            throw ChatGPTResponsesError.malformedEvent
+            throw Self.malformed(frameEvent == "message" ? "event_message" : "event_mismatch")
         }
 
         switch type {
         case "response.output_text.delta", "response.refusal.delta":
-            guard let delta = object["delta"] as? String else { throw ChatGPTResponsesError.malformedEvent }
+            guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
             accumulatedText.append(delta)
             return delta.isEmpty ? nil : .textDelta(delta)
         case "response.output_item.added":
+            completedOutput.recordAdded(object)
             try recordFunctionCallItem(object["item"] as? [String: Any])
+            return nil
+        case "response.output_item.done":
+            completedOutput.recordDone(object)
             return nil
         case "response.function_call_arguments.delta":
             guard let itemID = object["item_id"] as? String,
                   let delta = object["delta"] as? String,
                   var call = functionCallsByItemID[itemID]
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("call_delta")
             }
             call.arguments.append(delta)
             functionCallsByItemID[itemID] = call
@@ -60,28 +65,29 @@ struct ResponsesEventNormalizer {
                   call.arguments.isEmpty || call.arguments == arguments,
                   Self.isJSONObject(arguments)
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("call_done")
             }
             call.arguments = arguments
             functionCallsByItemID[itemID] = call
             let normalized = ChatGPTResponsesFunctionCall(id: call.callID, name: call.name, argumentsJSON: arguments)
-            guard emittedFunctionCalls[call.callID] == nil else { throw ChatGPTResponsesError.malformedEvent }
+            guard emittedFunctionCalls[call.callID] == nil else { throw Self.malformed("call_duplicate") }
             emittedFunctionCalls[call.callID] = normalized
             return .toolCall(normalized)
         case "response.completed":
-            guard let response = object["response"] as? [String: Any],
+            guard var response = object["response"] as? [String: Any],
                   response["status"] as? String == "completed"
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("completion_state")
             }
+            let output = try completedOutput.resolve(Self.responseOutput(response))
+            response["output"] = output
             let finalText = try Self.responseText(response, fallback: accumulatedText)
-            guard finalText == accumulatedText else { throw ChatGPTResponsesError.malformedEvent }
-            let output = try Self.responseOutput(response)
+            guard finalText == accumulatedText else { throw Self.malformed("completion_text") }
             let functionCalls = try Self.functionCalls(in: output)
             guard Self.emittedCallsMatch(emittedFunctionCalls, final: functionCalls),
                   Self.functionCallItemsMatch(functionCallsByItemID, final: functionCalls)
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("completion_calls")
             }
             // Keep opaque provider context that cannot be reconstructed from normalized calls.
             let continuationItems = try output.map(Self.serialize)
@@ -116,7 +122,7 @@ struct ResponsesEventNormalizer {
     }
 
     private mutating func recordFunctionCallItem(_ item: [String: Any]?) throws {
-        guard let item, let type = item["type"] as? String else { throw ChatGPTResponsesError.malformedEvent }
+        guard let item, let type = item["type"] as? String else { throw Self.malformed("item_type") }
         switch type {
         case "message", "reasoning":
             return
@@ -128,7 +134,7 @@ struct ResponsesEventNormalizer {
                   functionCallsByItemID[itemID] == nil,
                   !functionCallsByItemID.values.contains(where: { $0.callID == callID })
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("item_fields")
             }
             functionCallsByItemID[itemID] = FunctionCallState(callID: callID, name: name, arguments: arguments)
         default:
@@ -138,9 +144,9 @@ struct ResponsesEventNormalizer {
 
     private static func responseOutput(_ response: [String: Any]) throws -> [[String: Any]] {
         guard let rawOutput = response["output"] else { return [] }
-        guard let output = rawOutput as? [[String: Any]] else { throw ChatGPTResponsesError.malformedEvent }
+        guard let output = rawOutput as? [[String: Any]] else { throw Self.malformed("output_array") }
         for item in output {
-            guard let type = item["type"] as? String else { throw ChatGPTResponsesError.malformedEvent }
+            guard let type = item["type"] as? String else { throw Self.malformed("output_type") }
             guard ["function_call", "message", "reasoning"].contains(type) else {
                 throw ChatGPTResponsesError.unsupportedCapability("hosted tools")
             }
@@ -158,7 +164,7 @@ struct ResponsesEventNormalizer {
                   let arguments = item["arguments"] as? String,
                   isJSONObject(arguments), seen.insert(callID).inserted
             else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw Self.malformed("output_call")
             }
             calls.append(ChatGPTResponsesFunctionCall(id: callID, name: name, argumentsJSON: arguments))
         }
@@ -214,8 +220,16 @@ struct ResponsesEventNormalizer {
         guard let data = try? JSONSerialization.data(withJSONObject: item, options: [.sortedKeys]),
               let value = String(data: data, encoding: .utf8)
         else {
-            throw ChatGPTResponsesError.malformedEvent
+            throw malformed("continuation_encoding")
         }
         return value
+    }
+
+    /// Call sites supply fixed structural categories, never stream data or provider messages.
+    private static func malformed(_ category: String) -> ChatGPTResponsesError {
+        if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+            NSLog("OROT_PROVIDER_DIAGNOSTIC provider=openai stage=event_validation category=%@", category)
+        }
+        return .malformedEvent
     }
 }

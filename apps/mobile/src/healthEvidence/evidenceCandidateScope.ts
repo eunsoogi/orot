@@ -5,6 +5,8 @@ import {
 import type { RecordKind, SqlValue } from '@orot/storage';
 
 export interface EvidenceCandidateScope {
+  /** A model-selected overview changes bounded selection, never source/time authorization. */
+  readonly selection?: 'health_overview';
   /** Internal local source IDs; provider-facing aliases must be resolved before this boundary. */
   readonly sourceIds?: readonly string[];
   readonly timeRange?: {
@@ -59,11 +61,12 @@ export function candidateScopeCondition(
   return { sql: clauses.join(' AND '), parameters };
 }
 
-/** Mirrors imported concept names so Korean queries can rank their persisted measurements. */
+/** Maps Korean record topics to stored keys without adding facts or initiating a search. */
 const EVIDENCE_QUERY_CONCEPTS = [
   [['혈압', '수축기', '이완기'], 'blood pressure'],
   [['심박수', '심박', '맥박'], 'heart_rate'],
-  [['걸음 수', '걸음'], 'step_count'],
+  [['걸음 수', '걸음', '걷기', '걷는', '보행'], 'step_count'],
+  [['복약', '복용', '투약', '약물', '먹는 약'], 'medication'],
   [['체중', '몸무게'], 'body_mass'],
   [['수면'], 'hkcategorytypeidentifiersleepanalysis'],
 ] as const;

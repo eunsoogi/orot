@@ -8,7 +8,7 @@ import type {
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
 } from './contracts';
-import { MAX_MULTI_AGENT_BUDGET } from './contracts';
+export { validBudget } from './budgetValidation';
 import {
   isSourceAllowed,
   isEvidenceReference,
@@ -35,18 +35,6 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
     /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(tool.id) &&
     executionMatchesSource &&
     isSourceAllowed(scope, tool.sourceKind)
-  );
-}
-
-export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
-  // Require every limit so a malformed runtime config cannot disable one guardrail by omission.
-  const keys = Object.keys(MAX_MULTI_AGENT_BUDGET) as (keyof typeof MAX_MULTI_AGENT_BUDGET)[];
-  return (
-    Object.keys(options.execution.budget).length === keys.length &&
-    keys.every((key) => {
-      const value = options.execution.budget[key];
-      return Number.isSafeInteger(value) && value > 0 && value <= MAX_MULTI_AGENT_BUDGET[key];
-    })
   );
 }
 

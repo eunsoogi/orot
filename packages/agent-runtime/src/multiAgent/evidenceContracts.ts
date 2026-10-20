@@ -57,11 +57,12 @@ export interface MultiAgentBudget {
   readonly maxResearchCycles: number;
   readonly maxPayloadBytes: number;
   readonly maxOutputTokens: number;
-  readonly timeoutMs: number;
+  /** null explicitly disables elapsed time cancellation; source, call and size budgets still apply. */
+  readonly timeoutMs: number | null;
   readonly maxEvidenceItems: number;
 }
 
-export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
+export const DEFAULT_MULTI_AGENT_BUDGET = {
   maxModelCalls: 3,
   // A second bounded search can refine an empty result without preloading other sources.
   maxToolCalls: 2,
@@ -70,18 +71,18 @@ export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
   maxOutputTokens: 768,
   timeoutMs: 45_000,
   maxEvidenceItems: 8,
-};
+} satisfies MultiAgentBudget;
 
-export const MAX_MULTI_AGENT_BUDGET: MultiAgentBudget = {
+export const MAX_MULTI_AGENT_BUDGET = {
   maxModelCalls: 4,
   maxToolCalls: 2,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,
-  // Explicit tool-and-answer workflows can opt into this ceiling; the default stays 45 seconds.
+  // This ceiling applies to finite deadlines; interactive callers may explicitly choose null.
   timeoutMs: 90_000,
   maxEvidenceItems: 8,
-};
+} satisfies MultiAgentBudget;
 
 export interface MultiAgentExecutionIdentity {
   readonly operationRunId: string;

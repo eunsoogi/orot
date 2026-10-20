@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
+import type { DiseaseHypothesisAnalysis } from './types';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
-import { appColors } from '../layout/appColors';
+import { styles } from './DiseaseHypothesesScreen.styles';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureNavigationStateChange } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
@@ -12,8 +14,18 @@ import type { DiseaseHypothesisRunOutcome } from './task';
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { useDiseaseHypothesisGeneration } from './useDiseaseHypothesisGeneration';
 import { useAiCancellationAction } from '../agent/useAiCancellationAction';
+import { EvidenceLinks } from './DiseaseEvidenceLinks';
+import { SavedSummaryHistory } from './SavedSummaryHistory';
+import type { SymptomSummaryHistory } from './savedSummaries';
+import { SummaryHeader } from './SummaryHeader';
+import { readableHypothesis } from './readableHypothesis';
+import { DiseaseGenerationError } from './DiseaseGenerationError';
 
 interface DiseaseHypothesesScreenProps {
+  readonly onOpenHistory?: () => void;
+  readonly restoredSummary?: DiseaseHypothesisAnalysis;
+  readonly summaryHistory?: SymptomSummaryHistory;
+  readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
@@ -23,35 +35,16 @@ interface DiseaseHypothesesScreenProps {
     observer?: AiWorkflowObserver,
   ) => Promise<DiseaseHypothesisRunOutcome>;
   readonly onOpenSource: (reference: EvidenceReference) => void;
+  readonly onSummarize?: DiseaseHypothesesScreenProps['onGenerate'];
 }
 
-function EvidenceLinks({
-  title,
-  references,
-  sourceTitle,
-  onOpenSource,
-}: {
-  readonly title: string;
-  readonly references: readonly EvidenceReference[];
-  readonly sourceTitle: (sourceId: string) => string;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.label}>{title}</Text>
-      {references.map(reference => (
-        <Button
-          key={`${reference.sourceId}:${reference.evidenceId}:${reference.evidenceRevision}`}
-          onPress={() => onOpenSource(reference)}
-          title={sourceTitle(reference.sourceId)}
-        />
-      ))}
-    </View>
-  );
-}
-
-/** Presents hypotheses only after #117 validates coverage, freshness, and exact citations. */
+/** Presents the explicitly selected summary or assessment only after current-citation validation. */
 export function DiseaseHypothesesScreen({
+  onOpenHistory,
+  restoredSummary,
+  summaryHistory,
+  providerSelection,
+  onSummarize,
   navigationRouteKey,
   onNavigationStateChange,
   onBack,
@@ -61,8 +54,8 @@ export function DiseaseHypothesesScreen({
 }: DiseaseHypothesesScreenProps) {
   const navigationInset = useNavigationContentInset();
   const copy = getDiseaseHypothesisCopy();
-  const { state, activity, preview, generate, cancel } =
-    useDiseaseHypothesisGeneration(onGenerate);
+  const { state, activity, preview, generate, cancel, restore, lastOperation } =
+    useDiseaseHypothesisGeneration(onGenerate, restoredSummary);
   const hasSharedCancel = useAiCancellationAction(
     state.status === 'loading',
     cancel,
@@ -72,7 +65,9 @@ export function DiseaseHypothesesScreen({
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
     {
-      hasUnsavedChanges: state.status === 'result',
+      hasUnsavedChanges:
+        state.status === 'result' &&
+        state.value.savedSummary?.status !== 'saved',
       isRecording: false,
       // The request receives this signal and is aborted when a confirmed leave unmounts.
       hasOngoingOperation: state.status === 'loading',
@@ -93,18 +88,53 @@ export function DiseaseHypothesesScreen({
           title={navigationText.back.label}
         />
       )}
-      <Text accessibilityRole="header" style={styles.heading}>
-        {copy.title}
-      </Text>
-      <Text>{copy.explanation}</Text>
+      <SummaryHeader
+        title={onSummarize ? copy.summaryTitle : copy.title}
+        disabled={state.status === 'loading'}
+        onOpenHistory={summaryHistory ? onOpenHistory : undefined}
+      />
+      {providerSelection}
+      {summaryHistory ? (
+        <SavedSummaryHistory
+          history={summaryHistory}
+          current={
+            state.status === 'result' ? state.value.savedSummary : undefined
+          }
+          disabled={state.status === 'loading'}
+          expanded={false}
+          onRestore={restore}
+        />
+      ) : null}
+      <Text>{onSummarize ? copy.summaryExplanation : copy.explanation}</Text>
+      {onSummarize ? (
+        <Button
+          variant="neutral"
+          disabled={state.status === 'loading'}
+          accessibilityState={{ busy: state.status === 'loading' }}
+          onPress={() => {
+            void generate(onSummarize, 'summary');
+          }}
+          testID="symptom-summary-generate"
+          title={
+            state.status === 'error' && lastOperation === 'summary'
+              ? copy.summaryRetry
+              : copy.summaryGenerate
+          }
+        />
+      ) : null}
       <Button
+        variant={onSummarize ? 'neutral' : 'primary'}
         disabled={state.status === 'loading'}
         accessibilityState={{ busy: state.status === 'loading' }}
         onPress={() => {
           void generate();
         }}
         testID="disease-hypotheses-generate"
-        title={state.status === 'error' ? copy.retry : copy.generate}
+        title={
+          state.status === 'error' && lastOperation === 'assessment'
+            ? copy.retry
+            : copy.generate
+        }
       />
       {state.status === 'loading' ? (
         <>
@@ -141,92 +171,75 @@ export function DiseaseHypothesesScreen({
       ) : null}
       {state.status === 'insufficient' ? (
         <Text testID="disease-hypotheses-insufficient">
-          {copy.insufficient}
+          {lastOperation === 'summary'
+            ? copy.summaryInsufficient
+            : copy.insufficient}
         </Text>
       ) : null}
       {state.status === 'error' ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {state.providerErrorCode === 'safety_refusal'
-            ? copy.safetyRefusal
-            : state.providerErrorCode === 'unsupported_input'
-              ? copy.unsupportedInput
-              : copy.error}
-        </Text>
-      ) : null}
-      {state.status === 'error' &&
-      state.providerErrorCode === 'safety_refusal' &&
-      onOpenProviderSelection ? (
-        <Button
-          testID="disease-hypotheses-select-provider"
-          onPress={onOpenProviderSelection}
-          title={copy.selectProvider}
+        <DiseaseGenerationError
+          code={state.providerErrorCode}
+          summary={lastOperation === 'summary'}
+          onOpenProviderSelection={onOpenProviderSelection}
         />
       ) : null}
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
           <Text testID="disease-hypotheses-search-scope">
-            관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한
-            진단은 아니에요.
+            {state.value.presentation === 'symptom_summary'
+              ? copy.summaryScope
+              : '관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한 진단은 아니에요.'}
           </Text>
-          {state.value.hypotheses.map((hypothesis, index) => (
-            <View key={`${hypothesis.title}-${index}`} style={styles.card}>
-              <Text accessibilityRole="header" style={styles.title}>
-                {hypothesis.title}
-              </Text>
-              <Text>{hypothesis.summary}</Text>
-              <Text style={styles.label}>{copy.uncertainty}</Text>
-              <Text>{hypothesis.uncertainty}</Text>
-              <EvidenceLinks
-                title={copy.supporting}
-                references={hypothesis.supportingEvidence}
-                sourceTitle={copy.source}
-                onOpenSource={onOpenSource}
-              />
-              {hypothesis.contraryEvidence.length > 0 ? (
+          {state.value.hypotheses
+            .map(readableHypothesis)
+            .map((hypothesis, index) => (
+              <View key={`${hypothesis.title}-${index}`} style={styles.card}>
+                {hypothesis.supportingEvidence.every(
+                  ref => ref.sourceKind === 'external_medical',
+                ) ? (
+                  <Text style={styles.label}>
+                    의학 자료 참고 · 내 기록의 진단 결과가 아니에요.
+                  </Text>
+                ) : null}
+                <Text accessibilityRole="header" style={styles.title}>
+                  {hypothesis.title}
+                </Text>
+                <Text>{hypothesis.summary}</Text>
+                {hypothesis.uncertainty ? (
+                  <>
+                    <Text style={styles.label}>{copy.uncertainty}</Text>
+                    <Text>{hypothesis.uncertainty}</Text>
+                  </>
+                ) : null}
                 <EvidenceLinks
-                  title={copy.contrary}
-                  references={hypothesis.contraryEvidence}
-                  sourceTitle={copy.source}
+                  title={copy.supporting}
+                  references={hypothesis.supportingEvidence}
                   onOpenSource={onOpenSource}
                 />
-              ) : (
-                <Text>{copy.noContrary}</Text>
-              )}
-              <Text style={styles.label}>{copy.missingData}</Text>
-              {hypothesis.missingData.length === 0 ? (
-                <Text>{copy.noAdditionalInfo}</Text>
-              ) : null}
-              {hypothesis.missingData.map(item => (
-                <Text key={item}>• {item}</Text>
-              ))}
-            </View>
-          ))}
+                {hypothesis.contraryEvidence.length > 0 ? (
+                  <EvidenceLinks
+                    title={copy.contrary}
+                    references={hypothesis.contraryEvidence}
+                    onOpenSource={onOpenSource}
+                  />
+                ) : state.value.presentation !== 'symptom_summary' ? (
+                  <Text>{copy.noContrary}</Text>
+                ) : null}
+                {hypothesis.missingData.length > 0 ||
+                state.value.presentation !== 'symptom_summary' ? (
+                  <Text style={styles.label}>{copy.missingData}</Text>
+                ) : null}
+                {hypothesis.missingData.length === 0 &&
+                state.value.presentation !== 'symptom_summary' ? (
+                  <Text>{copy.noAdditionalInfo}</Text>
+                ) : null}
+                {hypothesis.missingData.map(item => (
+                  <Text key={item}>• {item}</Text>
+                ))}
+              </View>
+            ))}
         </View>
       ) : null}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  results: { gap: 12 },
-  card: {
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  draft: {
-    borderColor: appColors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-    padding: 14,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
-  label: { fontWeight: '700', marginTop: 4 },
-  error: { color: appColors.danger },
-  section: { gap: 4 },
-});

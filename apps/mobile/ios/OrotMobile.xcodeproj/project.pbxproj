@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A21200000000000000000001 /* ConversationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21200000000000000000001 /* ConversationHistoryView.swift */; };
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
@@ -191,6 +192,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B21200000000000000000001 /* ConversationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHistoryView.swift; sourceTree = "<group>"; };
 		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
 		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
 		125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationLayoutIntegrationTests.swift; sourceTree = "<group>"; };
@@ -586,6 +588,7 @@
 			isa = PBXGroup;
 			children = (
 				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
+				B21200000000000000000001 /* ConversationHistoryView.swift */,
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
 				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
@@ -910,6 +913,7 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
+				A21200000000000000000001 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,

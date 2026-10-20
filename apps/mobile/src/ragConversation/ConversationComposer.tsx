@@ -4,6 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
@@ -11,14 +12,12 @@ import { getRagConversationCopy } from './copy';
 export function ConversationComposer({
   value,
   busy,
-  hasSharedCancel = false,
   onChangeText,
   onSend,
   onCancel,
 }: {
   readonly value: string;
   readonly busy: boolean;
-  readonly hasSharedCancel?: boolean;
   readonly onChangeText: (value: string) => void;
   readonly onSend: () => void;
   readonly onCancel: () => void;
@@ -39,6 +38,7 @@ export function ConversationComposer({
         style={[styles.composer, inputFocused && styles.inputFocused]}
         testID="rag-conversation-composer-field"
       >
+        <ComposerGlassBackground />
         <TextInput
           accessibilityLabel={copy.placeholder}
           // Keep the keyboard available so users can draft while a response runs.
@@ -63,31 +63,30 @@ export function ConversationComposer({
           testID="rag-conversation-input"
           value={value}
         />
-        {busy && hasSharedCancel ? null : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={busy ? '답변 중단' : copy.send}
-            accessibilityState={{ busy, disabled: !busy && !value.trim() }}
-            disabled={!busy && !value.trim()}
-            style={[styles.send, !busy && !value.trim() && styles.disabled]}
-            testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
-            onPress={() => {
-              if (busy) {
-                onCancel();
-                return;
-              }
-              onSend();
-            }}
-          >
-            <AppSymbol
-              name={busy ? 'stop.fill' : 'arrow.up'}
-              size={24}
-              color={appColors.onPrimary}
-            />
-          </Pressable>
-        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={busy ? copy.cancel : copy.send}
+          accessibilityState={{ busy, disabled: !busy && !value.trim() }}
+          disabled={!busy && !value.trim()}
+          style={[styles.send, !busy && !value.trim() && styles.disabled]}
+          testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
+          onPress={() => {
+            if (busy) {
+              onCancel();
+              return;
+            }
+            onSend();
+          }}
+        >
+          <AppSymbol
+            name={busy ? 'stop.fill' : 'arrow.up'}
+            size={24}
+            color={appColors.onPrimary}
+          />
+        </Pressable>
       </View>
-      <Text style={styles.disclaimer}>AI 답변은 진료를 대신하지 않아요.</Text>
+      <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
     </View>
   );
 }

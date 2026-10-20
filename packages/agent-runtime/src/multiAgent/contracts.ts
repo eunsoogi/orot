@@ -13,6 +13,7 @@ import type {
   EvidenceCoverage,
   EvidenceNeed,
   EvidenceReference,
+  EvidenceSourceKind,
   ExecutionConsentPort,
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
@@ -75,6 +76,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskVersion: string;
   readonly systemPrompt: string;
   readonly resultSchema: JsonObject;
+  /** Generation guidance may bind opaque IDs to the current bounded batch; local validation remains authoritative. */
+  readonly createResultSchema?: (input: TaskResponderInput) => JsonObject;
   /** Projects only approved display text from partial structured JSON; omitted tasks never expose raw tokens. */
   projectStreamedText?(rawOutput: string, input: TaskResponderInput): string | undefined;
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
@@ -83,6 +86,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowRankedLocalEvidence?: boolean;
   /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
   readonly requireAllEvidenceCitations?: boolean;
+  /** Native-tool tasks may require one lookup per eligible source kind. Completed empty searches count as attempts. */
+  readonly requiredToolEvidenceKinds?: readonly EvidenceSourceKind[];
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

@@ -53,9 +53,10 @@ enum ChatGPTResponsesRequestBuilder {
         if let choice = input.toolChoice {
             guard choice == "required", !input.tools.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
             body["tool_choice"] = choice
-            body["parallel_tool_calls"] = false
         }
         if !input.tools.isEmpty {
+            // The runtime accepts one tool call per turn, including continuations without a required choice.
+            body["parallel_tool_calls"] = false
             body["tools"] = try input.tools.map { tool -> [String: Any] in
                 guard !tool.name.isEmpty,
                       let parameters = Self.jsonObject(tool.parametersJSON),

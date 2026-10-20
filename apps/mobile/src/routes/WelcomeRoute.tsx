@@ -162,14 +162,14 @@ export default function WelcomeRoute({
 const styles = StyleSheet.create({
   container: {
     // Let the shared ScrollView measure long Dynamic Type content past its viewport.
-    gap: 32,
+    gap: 28,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 28,
     backgroundColor: appColors.background,
   },
   header: { gap: 8 },
-  title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   recentHeading: { color: appColors.secondary, fontSize: 14 },
   recordingCopy: { flex: 1, gap: 4 },
   recordingTitle: { color: appColors.text, fontSize: 16, fontWeight: '500' },
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderRadius: 16,
     gap: 10,
-    padding: 20,
+    padding: 18,
   },
   appointmentTime: { color: appColors.text, fontSize: 20, fontWeight: '700' },
   appointmentClinic: { color: appColors.secondary, fontSize: 14 },

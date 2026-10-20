@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -22,6 +23,7 @@ import type {
 } from './europePmc';
 
 interface ExternalMedicalEvidenceScreenProps {
+  readonly providerSelection?: ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
   readonly onBack: () => void;
@@ -39,6 +41,7 @@ type SearchState =
 
 /** Requires separate query-only opt-in before calling the public literature service. */
 export function ExternalMedicalEvidenceScreen({
+  providerSelection,
   navigationRouteKey,
   onNavigationStateChange,
   onBack,
@@ -119,6 +122,7 @@ export function ExternalMedicalEvidenceScreen({
       <Text accessibilityRole="header" style={styles.heading}>
         {copy.title}
       </Text>
+      {providerSelection}
       <Text>{copy.description}</Text>
       <TextInput
         accessibilityLabel={copy.placeholder}

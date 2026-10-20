@@ -84,7 +84,12 @@ export function useAiFeatureStatelessRouteLeaveState(
 ) {
   const route = navigation.route;
   useLayoutEffect(() => {
-    if (route.name !== 'entry') return;
+    if (
+      route.name !== 'entry' &&
+      route.name !== 'conversation-history' &&
+      route.name !== 'summary-history'
+    )
+      return;
     return navigation.registerLeaveState({
       readState: () => ({
         hasUnsavedChanges: false,

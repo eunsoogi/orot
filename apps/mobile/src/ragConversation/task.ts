@@ -55,13 +55,15 @@ function priorMessages(
 /** Makes every turn cite fresh evidence; chat history is never treated as a source. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '2',
+  taskVersion: '3',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   systemPrompt:
     'Answer the current question using only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
+    'For a broad question across health topics, choose the local tool with view=health_overview when available. It retrieves bounded recent medication, measurement, activity, sleep and symptom facts together. If requested topics are missing from a partial search and research is still permitted, request the missing topics before concluding that the records cannot answer. The model chooses each tool and query. ' +
+    'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
     // An empty personal library does not establish that public literature is unavailable.
     'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +
     'If research is denied, exhausted, or returned no supporting results, acknowledge insufficient evidence; do not invent an answer or repeatedly request the same search. ' +
@@ -80,7 +82,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         minLength: 1,
         maxLength: 4000,
         description:
-          '질문에 직접 답하는 짧은 한국어 한 문장. 관련 없는 계획이나 일정, 내부 ID, 영어 필드명은 덧붙이지 마세요.',
+          'A direct Korean answer using the requested record topics and their limits. A simple fact may need one sentence; a question across topics may need short paragraphs. Omit unrelated plans, internal IDs and field names.',
       },
     },
     additionalProperties: false,
@@ -94,10 +96,11 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         role: 'user',
         content: JSON.stringify({
           question: input.request,
+          displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           answerRequirements:
-            '질문에 직접 답하는 한국어 한 문장만 쓰세요. 약을 물으면 기록에 남은 약과 복용 사실만 답하고, 진료나 상담 계획을 덧붙이지 마세요. 현재 상태를 단정하지 말고 기록 당시의 내용으로 표현하세요.',
+            'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
           temporalRequirements:
-            'scheduled/rescheduled는 예정, completed는 완료, cancelled는 취소입니다. 일정 제목이나 상담 의향만으로 상담 중이거나 진료를 받았다고 쓰지 마세요. 원문의 어제·최근은 그 기록 시점의 표현이므로 오늘 기준으로 바꾸지 말고, 기록에 남은 사실로 표현하세요.',
+            'scheduled/rescheduled means planned, completed means finished, and cancelled means cancelled. An event title or consultation intention does not establish ongoing or completed care. Resolve relative times against the source record time, not today.',
           previousConversation: priorMessages(input.context),
           // The runtime restores full references locally; generation needs content and citation IDs only.
           evidence: input.evidence.items.map(item => ({

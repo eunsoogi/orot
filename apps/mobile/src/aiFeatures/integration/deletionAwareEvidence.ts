@@ -1,5 +1,6 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { withLocalDeletionAwareRevalidation } from '../../memory/deletionAwareEvidenceRevalidation';
+import { compoundEvidenceReferences } from './compoundEvidenceReferences';
 
 type EvidenceRevalidator = (
   references: readonly EvidenceReference[],
@@ -49,9 +50,13 @@ export function revalidateWithLocalDeletionGuard(
         : reference,
   );
   if (identities.some(reference => !reference)) return Promise.resolve(false);
-  const guardIdentities = (identities as EvidenceReference[]).map(
-    deletionGuardIdentity,
+  const expanded = (identities as EvidenceReference[]).map(
+    compoundEvidenceReferences,
   );
+  if (expanded.some(value => !value)) return Promise.resolve(false);
+  const guardIdentities = expanded
+    .flatMap(value => value ?? [])
+    .map(deletionGuardIdentity);
   if (guardIdentities.some(reference => !reference))
     return Promise.resolve(false);
 

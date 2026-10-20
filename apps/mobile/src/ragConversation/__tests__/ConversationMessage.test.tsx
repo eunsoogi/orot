@@ -26,6 +26,23 @@ const reference: EvidenceReference = {
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
+test.each([
+  { content: '저장된 기록을 바탕으로 한 답변이에요.' },
+  { content: '', activity: '기록에서 근거를 찾고 있어요.', streaming: true },
+])(
+  'does not reserve an empty citation row below an uncited message',
+  async message => {
+    await render(
+      <ConversationMessage
+        message={{ id: 1, role: 'assistant', ...message }}
+        onOpenSource={jest.fn()}
+        onLinkError={jest.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('rag-conversation-sources')).toBeNull();
+  },
+);
+
 test('shows publication provenance and opens only its validated canonical article link', async () => {
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
   const onOpenSource = jest.fn();
@@ -41,12 +58,10 @@ test('shows publication provenance and opens only its validated canonical articl
       onLinkError={jest.fn()}
     />,
   );
-  expect(
-    screen.getByText(/Europe PMC · 공개 의학 문헌 · 조회 2026-10-11/),
-  ).toBeTruthy();
+  expect(screen.getByText('Europe PMC · 조회 2026-10-11')).toBeTruthy();
   await fireEvent.press(
     screen.getByLabelText(
-      '원문 근거 열기 · Synthetic literature title · 2026-01-01',
+      /원문 근거 열기 · Synthetic literature title · Europe PMC · 공개 의학 문헌/u,
     ),
   );
   expect(open).toHaveBeenCalledWith('https://europepmc.org/article/MED/123');

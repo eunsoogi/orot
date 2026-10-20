@@ -1,4 +1,8 @@
 import type { JsonObject, LanguageModelMessage } from '@orot/model-runtime';
+import {
+  providerDiagnostic,
+  reportWorkflowOutcome,
+} from '../providers/diagnostics';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import type {
   MultiAgentInvocation,
@@ -34,10 +38,14 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
     taskType: 'disease_hypothesis_review',
     taskVersion: '1',
     allowRankedLocalEvidence: true,
+    allowBoundedExternalEvidence: true,
     systemPrompt:
       'Review possible disease hypotheses from the supplied app evidence. This is not a diagnosis. ' +
       'Never recommend starting, stopping, or changing medication. Use only supplied evidence, ' +
       'cite exact references for supporting and contrary evidence, state uncertainty, and list missing data. ' +
+      'Medication and dose records, walking/activity and blood-pressure or other measurements are usable evidence; transcripts and photos are not prerequisites. ' +
+      'Distinguish observed changes from reported symptoms and possible explanations. Do not infer an experienced symptom or causation from a measurement or medication alone. ' +
+      'After inspecting local records, use the public medical literature tool when an explanation needs medical context. Search generic concepts, never names, identifiers or verbatim private records. Cite the retrieved publications and distinguish population-level findings from this person’s records. ' +
       'The ranked evidence is not an exhaustive history. Do not treat omitted records as absent findings. Write user-facing text in Korean.',
     resultSchema: {
       type: 'object',
@@ -95,6 +103,7 @@ export async function runDiseaseHypothesisAnalysis(
   inventory: HealthEvidenceInventory | undefined,
   invocation?: MultiAgentInvocation,
   resolveLocalEvidenceIdentity?: LocalEvidenceIdentityResolver,
+  task: TaskResponderContract<DiseaseHypothesisAnalysis> = diseaseHypothesisTask,
 ): Promise<DiseaseHypothesisRunOutcome> {
   const assessment = inventory
     ? assessHealthEvidenceCoverage(inventory)
@@ -102,6 +111,7 @@ export async function runDiseaseHypothesisAnalysis(
   if (assessment && assessment.status !== 'complete') {
     return { status: 'incomplete_inventory', reason: assessment.status };
   }
+  providerDiagnostic('disease', 'workflow', 'started');
   const result = await runMultiAgentWorkflow(
     {
       ...options,
@@ -112,9 +122,15 @@ export async function runDiseaseHypothesisAnalysis(
           options.revalidateEvidence,
           resolveLocalEvidenceIdentity,
         ),
-      task: diseaseHypothesisTask,
+      task,
     },
     invocation,
+  );
+  reportWorkflowOutcome(
+    'disease',
+    result.status,
+    'providerErrorCode' in result ? result.providerErrorCode : undefined,
+    'reason' in result ? result.reason : undefined,
   );
   if (
     result.status === 'result' &&

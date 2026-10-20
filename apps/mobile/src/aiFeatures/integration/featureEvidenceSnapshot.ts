@@ -64,7 +64,11 @@ export async function loadFeatureEvidenceSnapshot(
   }));
   const persistedChunks = await data.loadCurrentChunks(identities, signal);
   const staleArtifacts = await data.loadStaleArtifacts(identities, signal);
-  const memoryRecords = await data.loadMemoryRecords();
+  // A personal health overview neither queries nor embeds unrelated reviewed memory.
+  const memoryRecords =
+    scope?.selection === 'health_overview'
+      ? []
+      : await data.loadMemoryRecords();
   const records = [...selection.candidates, ...selection.dependencies];
   const identifiers = await data.findIdentifiers(
     JSON.stringify(records) +

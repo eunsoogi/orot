@@ -84,13 +84,14 @@ describe('EvidenceSourceDetailScreen', () => {
       />,
     );
 
-    expect(
-      await screen.findByText('종류: 수량 · 수치: 70.5 · 단위: kg'),
-    ).toBeTruthy();
-    expect(
-      screen.getAllByText('2026-01-02T08:00:00.000Z').length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText('출처 시스템: HealthKit')).toBeTruthy();
+    expect(await screen.findByText('70.5 kg')).toBeTruthy();
+    expect(screen.getAllByText(/2026년 1월 2일/u).length).toBeGreaterThan(0);
+    expect(screen.getByText('HealthKit')).toBeTruthy();
+    expect(screen.queryByText('원문에 기록된 측정값')).toBeNull();
+    await fireEvent.press(screen.getByRole('tab', { name: '원문 발췌 2' }));
+    expect(screen.getByText('원문에 기록된 측정값')).toBeTruthy();
+    expect(screen.queryByText('70.5 kg')).toBeNull();
+    await fireEvent.press(screen.getByRole('tab', { name: '저장된 출처 3' }));
     expect(screen.getByText('HealthKit import')).toBeTruthy();
     expect(screen.queryByText('private-observation')).toBeNull();
     expect(screen.queryByText('opaque-source-id')).toBeNull();
@@ -114,9 +115,7 @@ describe('EvidenceSourceDetailScreen', () => {
       );
 
       expect(await screen.findByTestId(testId)).toBeTruthy();
-      expect(
-        screen.queryByText('종류: 수량 · 수치: 70.5 · 단위: kg'),
-      ).toBeNull();
+      expect(screen.queryByText('70.5 kg')).toBeNull();
     },
   );
 });

@@ -68,16 +68,14 @@ final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
         let generation = AppleNativeToolGeneration(requestId: "extra", onTermination: {})
         let response = try await generation.start {
             _ = try await generation.invoke(name: "search", arguments: [:])
-            _ = try await generation.invoke(name: "search", arguments: [:])
+            let rejected = try await generation.invoke(name: "search", arguments: [:])
+            XCTAssertTrue(rejected.contains("not_executed"))
             return [:]
         }
         let call = try XCTUnwrap((response["toolCalls"] as? [[String: Any]])?.first)
-        do {
-            try await generation.consume(call: call, result: [:])
-            XCTFail("Extra SDK callbacks cannot trigger another JS search")
-        } catch {
-            XCTAssertTrue(error.localizedDescription.contains("Only one tool callback"))
-        }
+        // Refusing an extra SDK proposal must not cancel the accepted call or prevent draining.
+        try await generation.consume(call: call, result: [:])
+        XCTAssertEqual((response["toolCalls"] as? [[String: Any]])?.count, 1)
     }
 
     func testCancellationDuringDrainReleasesTheNextRequest() async throws {
@@ -110,6 +108,16 @@ final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
         XCTAssertFalse(generation.permitsSnapshot())
         await fulfillment(of: [ended], timeout: 1)
         generation.cancel()
+
+        // Interactive requests have no elapsed cutoff while a user reviews consent or a tool result.
+        let interactive = AppleNativeToolGeneration(requestId: "interactive", onTermination: {})
+        defer { interactive.cancel() }
+        _ = try await interactive.start {
+            _ = try await interactive.invoke(name: "search", arguments: [:])
+            return [:]
+        }
+        try await Task.sleep(nanoseconds: 91_000_000_000)
+        XCTAssertTrue(interactive.hasInvokedTool(), "A default generation must remain owned until caller cancellation")
     }
 
     func testParallelCallbackFailsWithoutPublishingAnotherTool() async throws {
@@ -118,12 +126,11 @@ final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
             _ = try await generation.invoke(name: "search", arguments: [:])
             return [:]
         }
-        do {
-            _ = try await generation.invoke(name: "second", arguments: [:])
-            XCTFail("A second callback cannot be published")
-        } catch {
-            XCTAssertTrue(error.localizedDescription.contains("Only one tool callback"))
-        }
+        let rejected = try await generation.invoke(name: "second", arguments: [:])
+        XCTAssertTrue(rejected.contains("not_executed"))
         XCTAssertEqual((response["toolCalls"] as? [[String: Any]])?.count, 1)
+        let call = try XCTUnwrap((response["toolCalls"] as? [[String: Any]])?.first)
+        XCTAssertTrue(generation.hasInvokedTool(), "The accepted callback must remain owned")
+        try await generation.consume(call: call, result: ["sourceIds": ["source-1"]])
     }
 }

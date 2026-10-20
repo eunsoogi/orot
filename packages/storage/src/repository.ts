@@ -162,11 +162,15 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         await transaction.execute('DELETE FROM healthkit_sync_checkpoints');
         await transaction.execute('DELETE FROM transcript_artifact_staleness');
         const checkpoints = await transaction.execute(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)",
-          ['langgraph_checkpoint_writes', 'langgraph_checkpoints'],
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?)",
+          ['langgraph_checkpoint_writes', 'langgraph_checkpoints', 'symptom_summary_runs'],
         );
         for (const row of checkpoints.rows) {
-          if (row.name === 'langgraph_checkpoint_writes' || row.name === 'langgraph_checkpoints') {
+          if (
+            row.name === 'langgraph_checkpoint_writes' ||
+            row.name === 'langgraph_checkpoints' ||
+            row.name === 'symptom_summary_runs'
+          ) {
             await transaction.execute('DELETE FROM ' + row.name);
           }
         }

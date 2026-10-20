@@ -1,6 +1,17 @@
 #import <React/RCTViewManager.h>
 #import <React/RCTComponent.h>
 
+// Native trailing swipe actions emit only the selected session identity.
+@interface RCT_EXTERN_MODULE (ConversationHistoryViewManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(rows, NSArray)
+RCT_EXPORT_VIEW_PROPERTY(onSelectSession, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onDeleteSession, RCTDirectEventBlock)
+@end
+
+// The composer owns input and actions in React; this view supplies only native material.
+@interface RCT_EXTERN_MODULE (ComposerGlassViewManager, RCTViewManager)
+@end
+
 // Register the Swift view manager with React Native's UIKit view registry.
 @interface RCT_EXTERN_MODULE (NavigationGlassViewManager, RCTViewManager)
 // Bridge serializable actions and tap events without replacing their JS semantics.

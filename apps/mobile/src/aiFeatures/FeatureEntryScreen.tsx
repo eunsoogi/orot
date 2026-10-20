@@ -114,15 +114,15 @@ export function FeatureEntryScreen({
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    gap: 20,
+    gap: 18,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 32,
     backgroundColor: appColors.background,
   },
-  embedded: { alignSelf: 'stretch', gap: 20 },
+  embedded: { alignSelf: 'stretch', gap: 18 },
   headingGroup: { gap: 8 },
-  heading: { color: appColors.text, fontSize: 40, fontWeight: '700' },
+  heading: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
   list: {
     gap: 12,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: 'row',
     gap: 14,
-    minHeight: 86,
+    minHeight: 80,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },

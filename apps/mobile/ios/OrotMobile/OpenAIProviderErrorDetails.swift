@@ -41,6 +41,26 @@ enum OpenAIProviderErrorDetails {
         if result["code"] == nil {
             result["code"] = result["kind"]
         }
+        // Opt-in device diagnosis deliberately excludes messages, IDs, prompts and response bodies.
+        if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+            // Preserve the precise closed transport/decoder category without exposing SDK text.
+            let category = switch error as? ChatGPTResponsesError {
+            case .invalidHTTPResponse: "invalid_http_response"
+            case .invalidContentType: "invalid_content_type"
+            case .malformedEvent: "malformed_event"
+            case .responseFailure: "response_failure"
+            case .httpFailure: "http_failure"
+            case .incomplete: "incomplete"
+            case .interrupted: "interrupted"
+            case .transportUnavailable: "transport_unavailable"
+            default: "other"
+            }
+            let allowedParameters = ["model", "temperature", "max_output_tokens", "tools", "tool_choice", "parallel_tool_calls", "input", "store", "text.format"]
+            let parameter = result["parameter"] as? String ?? ""
+            NSLog("OROT_PROVIDER_DIAGNOSTIC provider=openai kind=%@ category=%@ status=%d parameter=%@",
+                  result["kind"] as? String ?? "provider", category, status ?? 0,
+                  allowedParameters.contains(parameter) ? parameter : "other")
+        }
         return result
     }
 

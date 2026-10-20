@@ -4,30 +4,36 @@ import Foundation
 actor StubChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
     private let statusCode: Int
     private let chunks: [Data]
-    private let contentType: String
+    private let contentType: String?
     private let requestID: String?
+    private let responseURL: URL?
     private var request: URLRequest?
 
     init(
         statusCode: Int = 200,
         chunks: [Data],
-        contentType: String = "text/event-stream",
+        contentType: String? = "text/event-stream",
         requestID: String? = "req_fixture",
+        responseURL: URL? = nil,
     ) {
         self.statusCode = statusCode
         self.chunks = chunks
         self.contentType = contentType
         self.requestID = requestID
+        self.responseURL = responseURL
     }
 
     func stream(for request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
         self.request = request
-        var headers = ["Content-Type": contentType]
+        var headers = [String: String]()
+        if let contentType {
+            headers["Content-Type"] = contentType
+        }
         if let requestID {
             headers["x-request-id"] = requestID
         }
         let response = HTTPURLResponse(
-            url: request.url!,
+            url: responseURL ?? request.url!,
             statusCode: statusCode,
             httpVersion: "HTTP/1.1",
             headerFields: headers,

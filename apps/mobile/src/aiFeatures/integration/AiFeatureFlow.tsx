@@ -22,6 +22,7 @@ import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
+import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 
 export interface AiFeatureFlowProps {
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -51,6 +52,8 @@ export function AiFeatureFlow({
   serviceDependencies,
   services,
 }: AiFeatureFlowProps) {
+  const { state: shared, setState: setShared } =
+    useAiFeatureSharedNavigationState();
   const {
     articleOpenError,
     handleOpenArticle,
@@ -85,8 +88,7 @@ export function AiFeatureFlow({
     <View style={styles.container} testID="ai-feature-flow">
       {!providerSelectionOpen &&
       !sourceDetailOpen &&
-      screenRoute !== 'visit-questions' &&
-      screenRoute !== 'rag-conversation' ? (
+      screenRoute === 'entry' ? (
         <AiProviderSelectorRow
           onPress={openProviderSelection}
           resolveSelectedAi={resolveSelectedAiForRoute}
@@ -124,6 +126,34 @@ export function AiFeatureFlow({
               pushFeatureRoute('disease-hypotheses')
             }
             onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
+            onOpenConversationHistory={() =>
+              pushFeatureRoute('conversation-history')
+            }
+            onOpenSummaryHistory={() => {
+              setShared(current => ({
+                ...current,
+                summaryReturnRouteKey: screenRouteKey,
+              }));
+              pushFeatureRoute('summary-history');
+            }}
+            restoredSummary={
+              shared.summarySelection?.routeKey === screenRouteKey
+                ? shared.summarySelection.value
+                : undefined
+            }
+            onRestoreSummary={value => {
+              // Target the retained originating scene; selecting history never invokes generation.
+              const routeKey = shared.summaryReturnRouteKey;
+              if (!routeKey) return;
+              setShared(current => ({
+                ...current,
+                summarySelection: {
+                  routeKey,
+                  value,
+                },
+              }));
+              requestBack();
+            }}
             onOpenExternalEvidence={() => pushFeatureRoute('external-evidence')}
             onOpenProviderSelection={openProviderSelection}
             onOpenSource={openSource}
