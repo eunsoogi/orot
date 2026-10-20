@@ -94,6 +94,18 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
     },
     validateResult(value, input) {
       return validateDiseaseHypothesisResult(value, input, {
+        onClinicalClaim: issue => {
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_claim_field_${issue.field}`,
+          );
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_claim_rule_${issue.rule}`,
+          );
+        },
         // Keep actual-provider rejection diagnosis separate from private model output.
         onInvalid: code =>
           providerDiagnostic(

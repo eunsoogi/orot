@@ -7,7 +7,10 @@ import type {
   TaskResultValidation,
 } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
-import { containsDefinitiveClinicalClaim } from './clinicalClaimGuard';
+import {
+  clinicalClaimIssue,
+  type ClinicalClaimIssue,
+} from './clinicalClaimGuard';
 export { canPreviewDiseaseHypothesisSummary } from './clinicalClaimGuard';
 
 export { diseaseHypothesisSchema } from './diseaseResultSchema';
@@ -93,6 +96,7 @@ function readHypothesis(
   evidence: EvidenceBatch,
   allowEmptyUncertainty = false,
   onInvalid?: (code: DiseaseValidationCode) => void,
+  onClinicalClaim?: (issue: ClinicalClaimIssue) => void,
 ): DiseaseHypothesisAnalysis['hypotheses'][number] | undefined {
   if (!isObject(value)) {
     onInvalid?.('fields');
@@ -142,8 +146,10 @@ function readHypothesis(
     uncertainty: value.uncertainty,
     missingData: value.missingData,
   };
-  if (containsDefinitiveClinicalClaim(hypothesis)) {
+  const claimIssue = clinicalClaimIssue(hypothesis);
+  if (claimIssue) {
     onInvalid?.('certainty');
+    onClinicalClaim?.(claimIssue);
     return undefined;
   }
   return hypothesis;
@@ -157,6 +163,7 @@ export function validateDiseaseHypothesisResult(
     // Factual topic summaries may use eight sections; disease assessment keeps the default of three.
     readonly maxSections?: 3 | 8;
     readonly onInvalid?: (code: DiseaseValidationCode) => void;
+    readonly onClinicalClaim?: (issue: ClinicalClaimIssue) => void;
   } = {},
 ): TaskResultValidation<DiseaseHypothesisAnalysis> {
   if (
@@ -184,6 +191,7 @@ export function validateDiseaseHypothesisResult(
       input.evidence,
       options.allowEmptyUncertainty,
       options.onInvalid,
+      options.onClinicalClaim,
     ),
   );
   if (parsed.some(item => !item)) {

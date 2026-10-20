@@ -2,13 +2,34 @@ import type { DiseaseHypothesisAnalysis } from './types';
 
 // Prompt wording is advisory, so reject common certainty claims before displaying model text.
 const definitiveClaimPatterns = [
-  /\b(?:confirmed|definitive(?:ly)?|definitely|certainly|unquestionably)\b/iu,
-  /\b(?:you|the patient)\s+(?:(?:definitely|certainly)\s+)?(?:have|has)\b/iu,
-  /\bdiagnosed with\b/iu,
-  /\b(?:there is|there's)\s+no (?:clinical )?uncertainty\b/iu,
-  /(?:확진|확실히|분명히|명백히|틀림없이|진단(?:받았|받으셨|되었|된|이다|입니다|이에요|이야))/u,
-  /(?:불확실(?:성|한 점)(?:이)?|모호함)(?:은|는|이)?\s*(?:없|전혀 없)/u,
-];
+  [
+    'certainty_adverb',
+    /\b(?:confirmed|definitive(?:ly)?|definitely|certainly|unquestionably)\b/iu,
+  ],
+  [
+    'personal_diagnosis',
+    /\b(?:you|the patient)\s+(?:(?:definitely|certainly)\s+)?(?:have|has)\b/iu,
+  ],
+  ['diagnosed', /\bdiagnosed with\b/iu],
+  [
+    'no_uncertainty',
+    /\b(?:there is|there's)\s+no (?:clinical )?uncertainty\b/iu,
+  ],
+  [
+    'korean_diagnosis',
+    /(?:확진|진단(?:받았|받으셨|되었|된|이다|입니다|이에요|이야))/u,
+  ],
+  ['korean_certainty_adverb', /(?:확실히|분명히|명백히|틀림없이)/u],
+  [
+    'korean_no_uncertainty',
+    /(?:불확실(?:성|한 점)(?:이)?|모호함)(?:은|는|이)?\s*(?:없|전혀 없)/u,
+  ],
+] as const;
+
+export interface ClinicalClaimIssue {
+  readonly field: 'title' | 'summary' | 'uncertainty' | 'missing_data';
+  readonly rule: (typeof definitiveClaimPatterns)[number][0];
+}
 
 // Remove only the diagnostic token in an explicit limitation or requested workup.
 // Keep every surrounding clause: a disclaimer must not hide a second assertion.
@@ -41,20 +62,29 @@ function withoutUncertaintyDisclaimers(text: string): string {
 export function canPreviewDiseaseHypothesisSummary(text: string): boolean {
   if (!text.trim() || text.length > 1200) return false;
   const candidate = withoutUncertaintyDisclaimers(text);
-  return !definitiveClaimPatterns.some(pattern => pattern.test(candidate));
+  return !definitiveClaimPatterns.some(([, pattern]) =>
+    pattern.test(candidate),
+  );
 }
 
-export function containsDefinitiveClinicalClaim(
+/** Return closed labels only; never include the matched substring or generated prose. */
+export function clinicalClaimIssue(
   hypothesis: DiseaseHypothesisAnalysis['hypotheses'][number],
-): boolean {
-  return [
-    hypothesis.title,
-    hypothesis.summary,
-    hypothesis.uncertainty,
-    ...hypothesis.missingData,
-  ].some(text =>
-    definitiveClaimPatterns.some(pattern =>
-      pattern.test(withoutUncertaintyDisclaimers(text)),
-    ),
-  );
+): ClinicalClaimIssue | undefined {
+  const fields = [
+    ['title', [hypothesis.title]],
+    ['summary', [hypothesis.summary]],
+    ['uncertainty', [hypothesis.uncertainty]],
+    ['missing_data', hypothesis.missingData],
+  ] as const;
+  for (const [field, texts] of fields) {
+    for (const text of texts) {
+      const candidate = withoutUncertaintyDisclaimers(text);
+      const match = definitiveClaimPatterns.find(([, pattern]) =>
+        pattern.test(candidate),
+      );
+      if (match) return { field, rule: match[0] };
+    }
+  }
+  return undefined;
 }
