@@ -18,7 +18,13 @@ export const diseaseHypothesisSchema: JsonObject = {
     summary: { type: 'string', minLength: 1, maxLength: 1200 },
     supportingEvidence: { type: 'array', minItems: 1, items: referenceSchema },
     contraryEvidence: { type: 'array', items: referenceSchema },
-    uncertainty: { type: 'string', minLength: 1, maxLength: 500 },
+    uncertainty: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 500,
+      description:
+        'Concrete limits of the supplied records, such as unknown measurement conditions, timing or incomplete coverage. Explain what is not established without generic statements about diagnosis confirmation.',
+    },
     missingData: {
       type: 'array',
       items: { type: 'string', minLength: 1, maxLength: 160 },

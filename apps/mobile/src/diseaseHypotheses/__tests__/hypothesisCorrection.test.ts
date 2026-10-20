@@ -4,7 +4,12 @@ import {
   type LanguageModelRequest,
 } from '@orot/model-runtime';
 import { diseaseHypothesisTask } from '../task';
-import { hypothesis, reference, workflowOptionsFor } from '../taskTestSupport';
+import {
+  evidence,
+  hypothesis,
+  reference,
+  workflowOptionsFor,
+} from '../taskTestSupport';
 
 test.each([true, false])(
   'makes one bounded correction, corrected=%s',
@@ -43,3 +48,30 @@ test.each([true, false])(
     }
   },
 );
+
+test('sends the rejected field to correction without adding private validation text', () => {
+  const value = {
+    hypotheses: [hypothesis({ uncertainty: '진단되었습니다.' })],
+  };
+  const validation = diseaseHypothesisTask.validateResult(value, {
+    request: '합성 가능성 검토',
+    evidence,
+  });
+  expect(validation.status).toBe('invalid');
+  if (validation.status !== 'invalid') throw new Error('Expected rejection');
+  expect(validation.reason).toBe(
+    'A hypothesis contained a definitive clinical claim in uncertainty.',
+  );
+  const instruction =
+    diseaseHypothesisTask.correctionInstructionForInvalidResult?.(
+      validation.reason,
+    );
+  expect(instruction).toContain('The rejected field is uncertainty.');
+  expect(instruction).toContain('measurement conditions');
+  expect(instruction).not.toContain('진단되었습니다.');
+  expect(
+    diseaseHypothesisTask.correctionInstructionForInvalidResult?.(
+      'unknown private output',
+    ),
+  ).toBeUndefined();
+});

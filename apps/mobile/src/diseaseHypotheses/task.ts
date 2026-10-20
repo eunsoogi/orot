@@ -25,6 +25,7 @@ import type {
   DiseaseHypothesisAnalysis,
   DiseaseHypothesisRunOutcome,
 } from './types';
+import type { ClinicalClaimIssue } from './clinicalClaimGuard';
 
 export type {
   DiseaseHypothesis,
@@ -93,8 +94,10 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
       ];
     },
     validateResult(value, input) {
-      return validateDiseaseHypothesisResult(value, input, {
+      let claimIssue: ClinicalClaimIssue | undefined;
+      const validation = validateDiseaseHypothesisResult(value, input, {
         onClinicalClaim: issue => {
+          claimIssue ??= issue;
           providerDiagnostic(
             'disease',
             'validation',
@@ -114,15 +117,34 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
             `task_hypothesis_${code}`,
           ),
       });
+      // Correction receives a closed field label, not matched or private prose.
+      return validation.status === 'invalid' && claimIssue
+        ? {
+            status: 'invalid',
+            reason: `A hypothesis contained a definitive clinical claim in ${claimIssue.field}.`,
+          }
+        : validation;
     },
     correctionInstructionForInvalidResult(reason) {
-      if (reason !== 'A hypothesis had unsupported or incomplete citations.')
+      const field = ['title', 'summary', 'uncertainty', 'missing_data'].find(
+        candidate =>
+          reason ===
+          `A hypothesis contained a definitive clinical claim in ${candidate}.`,
+      );
+      if (
+        !field &&
+        reason !== 'A hypothesis had unsupported or incomplete citations.'
+      )
         return undefined;
       // Use the runtime's single correction allowance; the next result is fully
       // revalidated and still shares the original call, consent and time budget.
       return (
         'Return a corrected result in the same schema. Keep valid observations and exact citation IDs unchanged. ' +
+        (field
+          ? `The rejected field is ${field}. Revise that field and inspect the other fields for the same issue. `
+          : '') +
         'State only tentative possibilities supported by the supplied evidence, never a confirmed diagnosis or a claim that this person definitely has a disease. ' +
+        'The uncertainty field must describe concrete evidence limits such as missing timing, unknown measurement conditions or incomplete history. Avoid generic diagnosis-confirmation statements, even negated ones; describe what the records do not establish instead. ' +
         'Use uncertainty to describe limitations and missingData for genuinely missing facts. Do not invent symptoms, records or sources. Write user-facing text in Korean.'
       );
     },
