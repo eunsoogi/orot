@@ -1,10 +1,17 @@
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { isReusablePublicWebQuery } from './publicWebQuery';
 
 /** A feature explicitly declares its reusable permission boundary; model-generated content cannot widen it. */
 export function consentPermissionKey(
   request: OutboundProcessingRequest,
 ): string | undefined {
   const scope = request.consentScope;
+  // An arbitrary model query cannot classify its own bytes as a reusable public scope.
+  if (
+    scope?.purpose === 'public_web_search' &&
+    !isReusablePublicWebQuery(request)
+  )
+    return undefined;
   if (
     !scope ||
     !scope.purpose.trim() ||

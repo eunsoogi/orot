@@ -9,6 +9,7 @@ import InferenceDisclosureSheet from './InferenceDisclosureSheet';
 import { createRememberedInferenceConfirmation } from './rememberedInferenceConsent';
 import { fingerprintConsentSnapshot } from './consentFingerprint';
 import { inferenceConsentReceipts } from '../../storage/inferenceConsentStorage';
+import { consentPermissionKey } from './consentPermissionKey';
 
 interface PendingConfirmation {
   readonly request: OutboundProcessingRequest;
@@ -94,7 +95,10 @@ export function useInferenceConsent(): InferenceConsentController {
     <InferenceDisclosureSheet
       request={pendingRequest}
       onDecision={finish}
-      canRemember={canRemember && Boolean(pendingRequest?.consentScope)}
+      canRemember={
+        canRemember &&
+        Boolean(pendingRequest && consentPermissionKey(pendingRequest))
+      }
     />
   );
 

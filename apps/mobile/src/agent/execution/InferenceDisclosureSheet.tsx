@@ -64,7 +64,15 @@ export default function InferenceDisclosureSheet({
 }: InferenceDisclosureSheetProps) {
   const [expanded, setExpanded] = useState(false);
   const insets = useContext(SafeAreaInsetsContext);
-  useEffect(() => setExpanded(false), [request]);
+  // Unclassified web queries need an immediate exact review; they never inherit
+  // the app-controlled topic permission or create a reusable approval receipt.
+  useEffect(
+    () =>
+      setExpanded(
+        request?.consentScope?.purpose === 'public_web_search' && !canRemember,
+      ),
+    [request, canRemember],
+  );
   if (!request) return null;
   const complete = request.payload.messages.every(
     message => previewMessage(message).complete,

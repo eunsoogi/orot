@@ -82,7 +82,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.inferenceDisclosure.changes':
     '계정·AI·기능·정보 종류나 허용 범위가 바뀌면 다시 확인해요.',
   'medicalAppointments.inferenceDisclosure.unavailable':
-    '동의 이력을 저장할 수 없어 다음 전송 때 다시 확인해요.',
+    '이번에 확인한 전송 내용에만 적용돼요. 다음 전송은 다시 확인해요.',
   'medicalAppointments.inferenceDisclosure.settingsHint':
     '동의 내역은 설정에서 지울 수 있어요.',
   'medicalAppointments.inferenceDisclosure.clear': '외부 전송 동의 내역 지우기',

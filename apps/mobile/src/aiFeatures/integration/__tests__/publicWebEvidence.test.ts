@@ -22,7 +22,7 @@ test('requests separate query-only consent and invokes exactly the selected prov
       consentScope: {
         purpose: 'public_web_search',
         dataCategories: ['public_web_search_terms'],
-        policyVersion: 'isolated-public-query-v1',
+        policyVersion: 'controlled-public-topics-v2',
       },
       allowedScope: {
         sourceKinds: ['external_medical'],
@@ -88,6 +88,11 @@ test.each<JsonObject>([
   { query: 'Public concept', messages: [] },
   { query: 'line\nprivate detail' },
   { query: 'a'.repeat(241) },
+  { topics: ['blood_pressure'], query: 'private detail' },
+  { topics: ['김테스트 170/100'] },
+  { topics: ['blood_pressure', 'blood_pressure'] },
+  { topics: [] },
+  { topics: ['sleep', 'walking', 'nutrition', 'hydration', 'pain'] },
 ])(
   'rejects non-query tool channels before consent and networking',
   async input => {

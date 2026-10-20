@@ -4,7 +4,6 @@ import type {
   EvidenceSearchTool,
   ExecutionConsentPort,
 } from '@orot/agent-runtime';
-import type { JsonObject } from '@orot/model-runtime';
 import type { requireSelectedAi } from './provider';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { jsonByteLength, stableJson } from './evidenceUtils';
@@ -14,39 +13,13 @@ import {
 } from '../../externalMedicalEvidence/publicWebSources';
 import { publicWebSearchConsentScope } from '../../agent/execution/inferenceConsentScopes';
 
-const guidance =
-  'Use a short general public-search topic. Exclude personal identifiers, exact private measurements, dates, record text, and conversation history. Search output is a cited model-generated explanation, not fetched original passages.';
-const schema: JsonObject = {
-  type: 'object',
-  required: ['query'],
-  additionalProperties: false,
-  properties: {
-    query: {
-      type: 'string',
-      minLength: 1,
-      maxLength: 240,
-      description: guidance,
-    },
-  },
-};
+import {
+  parsePublicWebQuery,
+  publicWebQuerySchema,
+} from '../../agent/execution/publicWebQuery';
 
-function parseQuery(value: unknown): JsonObject | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    return undefined;
-  const input = value as Record<string, unknown>;
-  if (Object.keys(input).length !== 1 || typeof input.query !== 'string')
-    return undefined;
-  const query = input.query.trim();
-  return query &&
-    [...query].length <= 240 &&
-    !/[\u0000-\u001f\u007f-\u009f]/u.test(query)
-    ? { query }
-    : undefined;
-}
-
-/** The selected model receives only the approved public query in this separate request.
- * Shape checks do not prove arbitrary text non-identifying: the explicit purpose excludes
- * private details and the disclosure reviews the generated query within that permission. */
+/** Keep the selected public-search request isolated from private model history.
+ * Topic queries are app-owned; unclassified free text needs one-time review. */
 export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
   readonly consent: ExecutionConsentPort;
@@ -62,11 +35,12 @@ export function createPublicWebEvidence(input: {
     sourceKind: 'external_medical',
     execution: 'external_read_only',
     additionalModelCalls: 1,
-    description: `Search the general public web beyond Europe PMC using the selected account and model after separate public-query permission. ${guidance}`,
-    inputSchema: schema,
-    parseInput: parseQuery,
+    description:
+      'Search the general public web beyond Europe PMC with the selected account/model. Prefer app-owned topics to reuse public-search permission; use query only when those topics are insufficient and request explicit review. Output is a cited model explanation, not original source passages.',
+    inputSchema: publicWebQuerySchema,
+    parseInput: parsePublicWebQuery,
     async search(request) {
-      const parsed = parseQuery(request.input);
+      const parsed = parsePublicWebQuery(request.input);
       const scoped = () =>
         request.allowedScope.sourceKinds.includes('external_medical') &&
         request.allowedScope.timeRange === undefined &&

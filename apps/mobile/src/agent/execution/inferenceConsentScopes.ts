@@ -20,5 +20,5 @@ export const publicMedicalSearchConsentScope = {
 export const publicWebSearchConsentScope = {
   purpose: 'public_web_search',
   dataCategories: ['public_web_search_terms'],
-  policyVersion: 'isolated-public-query-v1',
+  policyVersion: 'controlled-public-topics-v2',
 } as const;

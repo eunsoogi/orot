@@ -24,6 +24,27 @@ function request(
 }
 
 describe('InferenceDisclosureSheet', () => {
+  it('immediately previews unclassified web text and makes no reusable-consent promise', async () => {
+    await render(
+      <InferenceDisclosureSheet
+        request={{
+          ...request('Synthetic unclassified exact query'),
+          consentScope: {
+            purpose: 'public_web_search',
+            dataCategories: ['public_web_search_terms'],
+            policyVersion: 'controlled-public-topics-v2',
+          },
+        }}
+        canRemember={false}
+        onDecision={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Synthetic unclassified exact query')).toBeTruthy();
+    expect(
+      screen.getByTestId('inference-disclosure-expand').props.accessibilityState
+        .expanded,
+    ).toBe(true);
+  });
   it('discloses the selected model and exact public-web query without claiming to send record originals', async () => {
     await render(
       <InferenceDisclosureSheet
