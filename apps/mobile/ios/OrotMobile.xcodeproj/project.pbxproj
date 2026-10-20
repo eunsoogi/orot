@@ -72,6 +72,7 @@
 		A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */; };
 		A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62440000000000000000002 /* TranscriptEvidenceUITests.swift */; };
 		A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62450000000000000000002 /* HealthIntegrationTests.swift */; };
+		E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000014 /* MedicationDoseCursorTests.swift */; };
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
@@ -148,6 +149,7 @@
 		E16A00000000000000000004 /* HealthKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000013 /* HealthKitModule.m */; };
 		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
+		E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000013 /* MedicationDoseCursor.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
 		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
@@ -252,6 +254,7 @@
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A62440000000000000000002 /* TranscriptEvidenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptEvidenceUITests.swift; sourceTree = "<group>"; };
 		A62450000000000000000002 /* HealthIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIntegrationTests.swift; sourceTree = "<group>"; };
+		E17A00000000000000000014 /* MedicationDoseCursorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationDoseCursorTests.swift; sourceTree = "<group>"; };
 		A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VisitQuestionConsentUITests.swift; sourceTree = "<group>"; };
 		A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportUITests.swift; sourceTree = "<group>"; };
 		A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootSettingsNavigationUITests.swift; sourceTree = "<group>"; };
@@ -344,6 +347,7 @@
 		E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSimulatorFixture.swift; path = OrotMobile/HealthKitSimulatorFixture.swift; sourceTree = "<group>"; };
 		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
+		E17A00000000000000000013 /* MedicationDoseCursor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicationDoseCursor.swift; path = OrotMobile/MedicationDoseCursor.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
 		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
 		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
@@ -439,6 +443,7 @@
 				E16A00000000000000000013 /* HealthKitModule.m */,
 				E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */,
 				E17A00000000000000000011 /* HealthKitMedicationQueries.swift */,
+				E17A00000000000000000013 /* MedicationDoseCursor.swift */,
 				E17A00000000000000000012 /* HealthKitSampleChanges.swift */,
 				B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */,
 				B64F00000000000000000001 /* RecordingModule.swift */,
@@ -561,6 +566,7 @@
 				71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */,
 				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
+				E17A00000000000000000014 /* MedicationDoseCursorTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */,
@@ -961,6 +967,7 @@
 				E16A00000000000000000004 /* HealthKitModule.m in Sources */,
 				E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */,
 				E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */,
+				E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */,
 				E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */,
 				A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */,
 				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
@@ -1079,6 +1086,7 @@
 				C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */,
 				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
+				E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */,

@@ -23,6 +23,17 @@ export async function syncHealthKitMedications(
   const checkpoint = await options.repository.getSyncCheckpoint(
     DOSE_EVENT_CHECKPOINT_KEY,
   );
+  // Seed old checkpoints before reconciliation removes a no-longer-visible
+  // definition. This reads catalog metadata, never the entire dose history.
+  const retainedConcepts = await options.repository.transaction(async writer =>
+    (await writer.list('medication_definition'))
+      .filter(
+        record =>
+          record.provenance.origin === 'imported' &&
+          record.provenance.source?.system === 'healthkit',
+      )
+      .map(record => record.medicationConceptIdentifier),
+  );
   const definitionResult = await options.healthKit.queryMedicationDefinitions(
     MEDICATION_DEFINITION_LIMIT,
   );
@@ -34,10 +45,12 @@ export async function syncHealthKitMedications(
   const doseEvents = await syncDoseEventChanges(
     options.healthKit,
     options.repository,
-    // An explicit recovery must also discover older samples omitted by an earlier
-    // empty/partially authorized query. Advance anchors only with committed pages.
-    options.refreshDoseHistory ? null : checkpoint,
+    // Keep the query's historical medication scope, including removed concepts.
+    // Native replay resets only the anchor; committed pages replace it atomically.
+    checkpoint,
     options.now,
+    options.refreshDoseHistory,
+    retainedConcepts,
   );
   return { definitions, doseEvents };
 }

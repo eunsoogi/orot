@@ -69,39 +69,66 @@ public extension HealthKitModule {
     }
 }
 
+struct HealthKitDoseScope {
+    let predicate: NSPredicate?
+    let cursor: MedicationDoseCursor?
+}
+
 extension HealthKitModule {
-    /// Dose access is per medication: an unscoped query can return no rows even
-    /// when Health contains doses. Resolve only the currently visible catalog;
-    /// keep sample limits, time predicates and anchored pagination on the dose query.
+    /// Dose access is per medication. Keep historical concepts alongside the anchor
+    /// so a shrinking visible catalog cannot filter out previously imported deletions.
     func withMedicationDoseScope(feature: String, predicate: NSPredicate?,
-                                 completion: @escaping (Result<NSPredicate?, Error>) -> Void)
+                                 cursor: String? = nil, replay: Bool = false,
+                                 retainedConcepts: Set<String> = [],
+                                 completion: @escaping (Result<HealthKitDoseScope, Error>) -> Void)
     {
         guard feature == "medications" else {
-            completion(.success(predicate))
+            completion(.success(HealthKitDoseScope(predicate: predicate, cursor: nil)))
             return
         }
         guard #available(iOS 26.0, *) else {
-            completion(.success(NSPredicate(value: false)))
+            completion(.success(HealthKitDoseScope(predicate: NSPredicate(value: false), cursor: nil)))
             return
         }
-        var identifiers = Set<HKHealthConceptIdentifier>()
+        let previous: MedicationDoseCursor
+        do {
+            if let cursor, !cursor.hasPrefix(MedicationDoseCursor.prefix) {
+                _ = try HealthKitBoundary.decodeAnchor(cursor)
+            }
+            previous = try MedicationDoseCursor.decode(cursor).merging(.success(retainedConcepts), replay: false)
+        } catch {
+            completion(.failure(error))
+            return
+        }
+        var visible = Set<String>()
         var finished = false
         let query = HKUserAnnotatedMedicationQuery(predicate: nil, limit: HKObjectQueryNoLimit) { _, medication, done, error in
             guard !finished else { return }
-            if let error {
+            do {
+                if let error {
+                    throw error
+                }
+                if let medication {
+                    try visible.insert(HealthKitBoundary.encodedIdentifier(medication.medication.identifier))
+                }
+                guard done else { return }
+                finished = true
+                let state = try previous.merging(.success(visible), replay: replay)
+                let identifiers = try Set(state.concepts.map { encoded in
+                    guard let data = Data(base64Encoded: encoded),
+                          let identifier = try NSKeyedUnarchiver.unarchivedObject(ofClass: HKHealthConceptIdentifier.self, from: data)
+                    else { throw MedicationDoseCursor.CursorError.invalid }
+                    return identifier
+                })
+                // Empty never becomes an unrestricted query or a claim about permission.
+                let scope = identifiers.isEmpty ? NSPredicate(value: false) :
+                    HKQuery.predicateForMedicationDoseEvent(medicationConceptIdentifiers: identifiers)
+                let combined = predicate.map { NSCompoundPredicate(andPredicateWithSubpredicates: [$0, scope]) } ?? scope
+                completion(.success(HealthKitDoseScope(predicate: combined, cursor: state)))
+            } catch {
                 finished = true
                 completion(.failure(error))
-                return
             }
-            if let medication {
-                identifiers.insert(medication.medication.identifier)
-            }
-            guard done else { return }
-            finished = true
-            // Never turn an empty authorized catalog into an unrestricted dose query.
-            let scope = identifiers.isEmpty ? NSPredicate(value: false) :
-                HKQuery.predicateForMedicationDoseEvent(medicationConceptIdentifiers: identifiers)
-            completion(.success(predicate.map { NSCompoundPredicate(andPredicateWithSubpredicates: [$0, scope]) } ?? scope))
         }
         store.execute(query)
     }

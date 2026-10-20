@@ -79,8 +79,14 @@ test('explicit dose-history refresh replays bounded pages while automatic sync r
       endDate: '2026-10-02T09:15:00.000Z',
     };
     const querySampleChanges = jest.fn(
-      async ({ cursor }: { cursor: string | null }) =>
-        cursor === null
+      async ({
+        cursor,
+        resetAnchor,
+      }: {
+        cursor: string | null;
+        resetAnchor?: boolean;
+      }) =>
+        resetAnchor || cursor === null
           ? page([first], 'page-one', [], true)
           : cursor === 'page-one'
             ? page([second], 'reconciled')
@@ -112,7 +118,9 @@ test('explicit dose-history refresh replays bounded pages while automatic sync r
     });
     expect(
       querySampleChanges.mock.calls.slice(1).map(([query]) => query.cursor),
-    ).toEqual([null, 'page-one']);
+    ).toEqual(['previously-empty', 'page-one']);
+    expect(querySampleChanges.mock.calls[1][0].resetAnchor).toBe(true);
+    expect(querySampleChanges.mock.calls[2][0].resetAnchor).toBeUndefined();
     expect(
       await repository.get('dose_event', 'healthkit-dose-event:new-event-id'),
     ).toMatchObject({
@@ -146,7 +154,7 @@ test('explicit dose-history refresh replays bounded pages while automatic sync r
     });
     expect(
       querySampleChanges.mock.calls.slice(-2).map(([query]) => query.cursor),
-    ).toEqual([null, 'page-one']);
+    ).toEqual(['reconciled', 'page-one']);
     await syncHealthKitMedications(options);
     expect(querySampleChanges.mock.calls.at(-1)?.[0].cursor).toBe('reconciled');
     expect(
@@ -170,7 +178,7 @@ test('explicit dose-history refresh replays bounded pages while automatic sync r
     );
     expect(
       querySampleChanges.mock.calls.slice(-2).map(([query]) => query.cursor),
-    ).toEqual([null, 'page-one']);
+    ).toEqual(['reconciled', 'page-one']);
     expect(await repository.list('dose_event')).toHaveLength(2);
   } finally {
     await close();

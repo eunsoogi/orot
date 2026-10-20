@@ -82,6 +82,8 @@ describe('HealthKit sample change client', () => {
       sampleKind: 'medicationDoseEvents' as const,
       limit: 120,
       cursor: 'opaque-current-anchor',
+      resetAnchor: true,
+      medicationConceptIdentifiers: ['synthetic-archived-concept'],
     };
     native.querySampleChanges.mockResolvedValueOnce({
       availability: 'available',
@@ -121,6 +123,24 @@ describe('HealthKit sample change client', () => {
     await expect(
       healthKit.querySampleChanges({ ...query, cursor: 'x'.repeat(1_000_001) }),
     ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    await expect(
+      healthKit.querySampleChanges({ ...query, resetAnchor: true }),
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    await expect(
+      healthKit.querySampleChanges({
+        ...query,
+        medicationConceptIdentifiers: ['synthetic'],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    await expect(
+      healthKit.querySampleChanges({
+        feature: 'medications',
+        sampleKind: 'medicationDoseEvents',
+        limit: 20,
+        cursor: null,
+        resetAnchor: 'yes' as unknown as boolean,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
     expect(native.querySampleChanges).not.toHaveBeenCalled();
   });
 

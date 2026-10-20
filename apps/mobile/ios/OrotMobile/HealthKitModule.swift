@@ -150,13 +150,13 @@ public final class HealthKitModule: NSObject {
 
         let predicate = HKQuery.predicateForSamples(withStart: query.startDate, end: query.endDate, options: [])
         withMedicationDoseScope(feature: query.feature, predicate: predicate) { scoped in
-            guard case let .success(predicate) = scoped else {
+            guard case let .success(scope) = scoped else {
                 if case let .failure(error) = scoped {
                     reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
                 }
                 return
             }
-            let descriptor = HKQueryDescriptor(sampleType: sampleType, predicate: predicate)
+            let descriptor = HKQueryDescriptor(sampleType: sampleType, predicate: scope.predicate)
             let nativeQuery = HKSampleQuery(
                 queryDescriptors: [descriptor],
                 limit: query.limit,

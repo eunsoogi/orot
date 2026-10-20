@@ -21,6 +21,8 @@ export async function syncDoseEventChanges(
   repository: MedicationRepository,
   checkpoint: SyncCheckpoint | null,
   now: () => string,
+  replay = false,
+  retainedConcepts: readonly string[] = [],
 ): Promise<MedicationSyncResult['doseEvents']> {
   let cursor = checkpoint?.value ?? null;
   let upserted = 0;
@@ -32,6 +34,10 @@ export async function syncDoseEventChanges(
     const result = await healthKit.querySampleChanges({
       ...pageRequest,
       cursor,
+      ...(replay && pageCount === 0 ? { resetAnchor: true } : {}),
+      ...(pageCount === 0 && retainedConcepts.length > 0
+        ? { medicationConceptIdentifiers: retainedConcepts }
+        : {}),
     });
     if (result.status !== 'completed' || result.availability !== 'available') {
       return {

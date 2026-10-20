@@ -10,6 +10,8 @@ struct HealthKitSampleChangesRequest {
     let sampleKind: String
     let limit: Int
     let cursor: String?
+    let resetAnchor: Bool
+    let medicationConceptIdentifiers: Set<String>
 }
 
 extension HealthKitBoundary {
@@ -27,7 +29,16 @@ extension HealthKitBoundary {
         guard value["cursor"] == nil || value["cursor"] is NSNull ||
             (cursor.map { !$0.isEmpty && $0.count <= maximumHealthKitCursorLength } ?? false)
         else { return nil }
-        return HealthKitSampleChangesRequest(feature: feature, sampleKind: sampleKind, limit: limit, cursor: cursor)
+        guard value["resetAnchor"] == nil ||
+            (feature == "medications" && value["resetAnchor"] is Bool) else { return nil }
+        let concepts = value["medicationConceptIdentifiers"] as? [String] ?? []
+        guard value["medicationConceptIdentifiers"] == nil ||
+            (feature == "medications" && value["medicationConceptIdentifiers"] is [String] &&
+                concepts.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } &&
+                concepts.reduce(0) { $0 + $1.count } <= maximumHealthKitCursorLength) else { return nil }
+        return HealthKitSampleChangesRequest(feature: feature, sampleKind: sampleKind, limit: limit, cursor: cursor,
+                                             resetAnchor: value["resetAnchor"] as? Bool ?? false,
+                                             medicationConceptIdentifiers: Set(concepts))
     }
 
     static func decodeAnchor(_ cursor: String?) throws -> HKQueryAnchor? {
@@ -74,23 +85,27 @@ public extension HealthKitModule {
             reject("UNSUPPORTED_SAMPLE_KIND", "HealthKit sample kind is unsupported.", nil)
             return
         }
-        let anchor: HKQueryAnchor?
-        do {
-            anchor = try HealthKitBoundary.decodeAnchor(request.cursor)
-        } catch {
-            reject("INVALID_CURSOR", "HealthKit query cursor is invalid.", error as NSError)
-            return
-        }
-        withMedicationDoseScope(feature: request.feature, predicate: nil) { scoped in
-            guard case let .success(predicate) = scoped else {
+        withMedicationDoseScope(feature: request.feature, predicate: nil,
+                                cursor: request.cursor, replay: request.resetAnchor,
+                                retainedConcepts: request.medicationConceptIdentifiers)
+        { scoped in
+            guard case let .success(scope) = scoped else {
                 if case let .failure(error) = scoped {
                     reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
                 }
                 return
             }
+            let anchor: HKQueryAnchor?
+            do {
+                anchor = try HealthKitBoundary.decodeAnchor(scope.cursor?.anchor ??
+                    (request.feature == "medications" ? nil : request.cursor))
+            } catch {
+                reject("INVALID_CURSOR", "HealthKit query cursor is invalid.", error as NSError)
+                return
+            }
             let query = HKAnchoredObjectQuery(
                 type: sampleType,
-                predicate: predicate,
+                predicate: scope.predicate,
                 anchor: anchor,
                 limit: request.limit,
             ) { _, samples, deletedObjects, newAnchor, error in
@@ -104,8 +119,10 @@ public extension HealthKitModule {
                 }
                 do {
                     let snapshots = try samples.map(HealthKitBoundary.snapshot)
-                    let cursor = try newAnchor.map(HealthKitBoundary.encodeAnchor) ?? request.cursor
-                    guard cursor != nil || (snapshots.isEmpty && deletedObjects.isEmpty) else {
+                    let rawAnchor = try newAnchor.map(HealthKitBoundary.encodeAnchor)
+                    let cursor = try scope.cursor.map { try $0.encoded(anchor: rawAnchor ?? $0.anchor) } ??
+                        rawAnchor ?? request.cursor
+                    guard rawAnchor != nil || anchor != nil || (snapshots.isEmpty && deletedObjects.isEmpty) else {
                         reject("HEALTHKIT_SERIALIZATION_FAILED", "HealthKit returned changes without an anchor.", nil)
                         return
                     }
