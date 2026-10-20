@@ -104,6 +104,32 @@ test.each([
   ).toBeDefined();
 });
 
+test.each([
+  ['증상 강도는 7/10이에요.', false],
+  ['증상 강도는 10/10이에요.', true],
+  ['증상 강도는 10으로 기록했어요.', true],
+])(
+  'treats a score denominator as a scale, not a supplied rating: %s',
+  (summary, valid) => {
+    expect(
+      issue(summary, 'symptoms', {
+        ...report,
+        symptoms: {
+          entryCount: 1,
+          recordedDays: 1,
+          latest: [
+            {
+              effectiveAt: window.fromInclusive,
+              description: '합성 두통',
+              severity: 10,
+            },
+          ],
+        },
+      }) === undefined,
+    ).toBe(valid);
+  },
+);
+
 test('period activity keeps the same step unit guard as original samples', () => {
   const activity = {
     ...report,

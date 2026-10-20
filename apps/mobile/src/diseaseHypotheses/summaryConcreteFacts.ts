@@ -2,7 +2,13 @@ import type { DiseaseHypothesisAnalysis } from './types';
 import { matchesPeriodSleepMean } from './summaryPeriodDuration';
 
 type Fact = Record<string, unknown>;
-type Anchors = { texts: string[]; numbers: number[]; durations: number[] };
+type Anchors = {
+  texts: string[];
+  numbers: number[];
+  durations: number[];
+  scores: number[];
+  counts: number[];
+};
 type Source = { evidenceId: string; facts: readonly Fact[] };
 type MissingTopic =
   | 'facts_medications'
@@ -45,6 +51,13 @@ const numbers = (text: string) =>
 const matches = (anchor: Anchors, text: string) =>
   anchor.texts.some(value => normalize(text).includes(normalize(value))) ||
   anchor.numbers.some(value => numbers(text).includes(value)) ||
+  // A rating's denominator describes the scale, not the reported severity or record count.
+  anchor.scores.some(value =>
+    numbers(text.replace(/(?<=\d)\s*\/\s*10\b/gu, '')).includes(value),
+  ) ||
+  anchor.counts.some(value =>
+    numbers(text.replace(/\d+(?:\.\d+)?\s*\/\s*10\b/gu, '')).includes(value),
+  ) ||
   matchesPeriodSleepMean(text, anchor.durations);
 
 function anchorsFor(facts: readonly Fact[]) {
@@ -54,6 +67,8 @@ function anchorsFor(facts: readonly Fact[]) {
       texts: [],
       numbers: [],
       durations: [],
+      scores: [],
+      counts: [],
     };
     if (text) anchors.texts.push(text);
     if (number !== undefined) anchors.numbers.push(number);
@@ -81,7 +96,8 @@ function anchorsFor(facts: readonly Fact[]) {
       fact.kind === 'health_context_symptoms' &&
       typeof fact.entryCount === 'number'
     ) {
-      add('symptoms', undefined, fact.entryCount);
+      add('symptoms');
+      topics.get('symptoms')!.counts.push(fact.entryCount);
       // Coverage is one usable fact, not a required substitute for the supplied symptom or reported score.
       for (const description of Array.isArray(fact.descriptions)
         ? fact.descriptions
@@ -90,7 +106,8 @@ function anchorsFor(facts: readonly Fact[]) {
       for (const severity of Array.isArray(fact.severities)
         ? fact.severities
         : [])
-        if (typeof severity === 'number') add('symptoms', undefined, severity);
+        if (typeof severity === 'number')
+          topics.get('symptoms')!.scores.push(severity);
     }
     if (typeof fact.displayText === 'string')
       add('medications', fact.displayText);
