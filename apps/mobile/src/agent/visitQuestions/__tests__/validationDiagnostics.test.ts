@@ -16,6 +16,19 @@ test('reports fixed question-validation categories without retaining rejected co
     'validation',
     'task_question_count',
   );
+  for (const [reason, code] of [
+    [
+      'A visit question contains an unsupported date or numeric value.',
+      'task_schema',
+    ],
+    [
+      'A visit question contains unsafe clinical advice.',
+      'task_question_safety',
+    ],
+  ]) {
+    reportVisitQuestionValidation({ status: 'invalid', reason });
+    expect(report).toHaveBeenLastCalledWith('visit', 'validation', code);
+  }
   reportVisitQuestionValidation({
     status: 'invalid',
     reason: 'Synthetic private provider output',

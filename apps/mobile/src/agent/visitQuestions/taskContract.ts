@@ -135,7 +135,20 @@ export function createVisitQuestionTaskResponder() {
       ];
     },
     correctionInstructionForInvalidResult(reason: string): string | undefined {
-      // Only retry question form; citation, safety and other validation failures remain terminal.
+      // Both corrections share the runtime's single retry and original budget, consent and freshness checks.
+      // Missing evidence, conflicts, unsafe copy and invalid citation bindings remain terminal.
+      if (
+        reason ===
+        'A visit question contains an unsupported date or numeric value.'
+      )
+        return [
+          'The previous questions failed exact date, value or unit validation against their cited evidence.',
+          'Rewrite the entire structured response using only the same current evidence and task constraints.',
+          'Copy a date or measured value only when that exact value and unit occur in the evidenceIds for that question.',
+          'Do not round, convert units, calculate new quantities or invent normal ranges or thresholds.',
+          'If a number is not necessary, describe the specific observed item or supported change without adding a number; retain the clinical discussion purpose and actual evidence limits.',
+          'Keep each questionText a concise Korean interrogative, preserve uncertainty and all citation and safety constraints, and return only the requested JSON.',
+        ].join('\n');
       if (reason !== 'A visit question must end with a question mark.')
         return undefined;
       return [

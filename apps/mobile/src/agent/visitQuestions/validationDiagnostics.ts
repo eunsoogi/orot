@@ -12,6 +12,7 @@ const knownReasons = {
   'The response status is not supported.': 'task_question_shape',
   'A visit question must end with a question mark.': 'task_question_form',
   'The clarification contains unsafe clinical advice.': 'task_question_safety',
+  'A visit question contains unsafe clinical advice.': 'task_question_safety',
 } as const;
 
 /** Only local fixed reasons become codes; rejected output and unknown text never leave this function. */
