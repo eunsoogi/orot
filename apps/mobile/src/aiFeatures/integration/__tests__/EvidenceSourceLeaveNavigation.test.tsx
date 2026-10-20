@@ -27,7 +27,12 @@ test('leaves a read-only citation without confirmation and ignores its late rere
   const pendingRead = new Promise<PersistedMemoryRecord[]>(resolve => {
     finishRead = resolve;
   });
-  const listRecords = jest.fn(() => pendingRead);
+  let blockViewerRead = false;
+  // Saving now reads the cited source too; defer only the viewer's later read
+  // so this test still observes leaving an in-flight read-only detail screen.
+  const listRecords = jest.fn(async () =>
+    blockViewerRead ? pendingRead : [record],
+  );
   source.data.memoryStorage.listRecords =
     listRecords as typeof source.data.memoryStorage.listRecords;
   const diseaseRunner = jest.fn(
@@ -69,8 +74,13 @@ test('leaves a read-only citation without confirmation and ignores its late rere
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
   await fireEvent.press(route.getByTestId('disease-hypotheses-generate'));
-  await fireEvent.press(await route.findByLabelText(/원문 근거 열기/));
-  await waitFor(() => expect(listRecords).toHaveBeenCalled());
+  const openSource = await route.findByLabelText(/원문 근거 열기/);
+  const earlierReads = listRecords.mock.calls.length;
+  blockViewerRead = true;
+  await fireEvent.press(openSource);
+  await waitFor(() =>
+    expect(listRecords.mock.calls.length).toBeGreaterThan(earlierReads),
+  );
   expect(route.getByTestId('ai-feature-source-loading')).toBeTruthy();
 
   await fireEvent.press(route.getByTestId('navigation-back'));

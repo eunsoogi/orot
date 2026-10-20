@@ -8,6 +8,10 @@ import type { AiFeatureLocalData } from './localData';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { fingerprint } from './evidenceUtils';
+import {
+  summaryReferences as references,
+  remapSavedAnalysis as mapAnalysis,
+} from './savedAnalysis';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { summaryFactIssue } from '../../diseaseHypotheses/summaryFactValidation';
 import { healthOverviewFacts } from './healthOverviewFacts';
@@ -21,28 +25,6 @@ import {
   registerHealthContextEvidence,
 } from './healthContextEvidence';
 
-function references(analysis: DiseaseHypothesisAnalysis) {
-  return [
-    ...new Map(
-      analysis.hypotheses
-        .flatMap(item => [...item.supportingEvidence, ...item.contraryEvidence])
-        .map(ref => [JSON.stringify(ref), ref]),
-    ).values(),
-  ];
-}
-function mapAnalysis(
-  analysis: DiseaseHypothesisAnalysis,
-  map: (ref: EvidenceReference) => EvidenceReference,
-): DiseaseHypothesisAnalysis {
-  return {
-    presentation: 'symptom_summary',
-    hypotheses: analysis.hypotheses.map(item => ({
-      ...item,
-      supportingEvidence: item.supportingEvidence.map(map),
-      contraryEvidence: item.contraryEvidence.map(map),
-    })),
-  };
-}
 /** Persist storage identities, never turn-local e1/s1 aliases that can refer to different rows after restart. */
 export async function captureSymptomSummarySources(
   analysis: DiseaseHypothesisAnalysis,

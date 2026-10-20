@@ -44,6 +44,12 @@ export function decodeSavedSymptomSummary(
       value.sources.length > 24
     )
       return null;
+    if (
+      value.analysis.presentation !== undefined &&
+      value.analysis.presentation !== 'symptom_summary'
+    )
+      return null;
+    const factualSummary = value.analysis.presentation === 'symptom_summary';
     for (const source of value.sources) {
       if (object(source) && source.kind === 'health_context_period') {
         const scope = parseHealthContextScope(source.scope);
@@ -95,8 +101,10 @@ export function decodeSavedSymptomSummary(
         },
       },
       {
-        allowEmptyUncertainty: true,
-        maxSections: MAX_SYMPTOM_SUMMARY_SECTIONS,
+        // Restoring a possibility must not inherit the factual summary's more
+        // permissive section count or omit its required uncertainty disclosure.
+        allowEmptyUncertainty: factualSummary,
+        maxSections: factualSummary ? MAX_SYMPTOM_SUMMARY_SECTIONS : 3,
       },
     );
     if (validated.status !== 'valid') return null;

@@ -164,9 +164,9 @@ export function createAiFeatureServices(
           symptomSummaryTaskForProvider(selected.provider.id),
         )
       : diseaseRunner(workflow, undefined, invocation, resolver));
-    return summary
-      ? summaryPersistence.save(outcome, selected, runId, operationSignal)
-      : outcome;
+    // Both actions produce durable results; presentation remains part of the
+    // saved analysis so reopening possibilities cannot turn them into factual summaries.
+    return summaryPersistence.save(outcome, selected, runId, operationSignal);
   }
 
   return {

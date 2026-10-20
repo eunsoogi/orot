@@ -210,3 +210,34 @@ test('rolls back a failed citation write and clears external-only results with a
     connection.close();
   }
 });
+
+test('restores hypothesis presentation with its original stricter shape limits', () => {
+  const value = saved();
+  const section = {
+    ...value.analysis.hypotheses[0]!,
+    uncertainty: '측정 상황이 기록되지 않았어요.',
+  };
+  const candidate = {
+    ...value,
+    analysis: { hypotheses: [section] },
+  };
+  expect(
+    decodeSavedSymptomSummary(JSON.stringify(candidate))?.analysis,
+  ).toEqual(candidate.analysis);
+  expect(
+    decodeSavedSymptomSummary(
+      JSON.stringify({
+        ...candidate,
+        analysis: { hypotheses: Array.from({ length: 4 }, () => section) },
+      }),
+    ),
+  ).toBeNull();
+  expect(
+    decodeSavedSymptomSummary(
+      JSON.stringify({
+        ...candidate,
+        analysis: { hypotheses: [{ ...section, uncertainty: '' }] },
+      }),
+    ),
+  ).toBeNull();
+});
