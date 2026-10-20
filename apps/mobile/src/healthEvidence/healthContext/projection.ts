@@ -1,4 +1,5 @@
 import type { HealthContextReport, HealthQuantityDay } from './types';
+import { projectHealthMedication } from './medicationProjection';
 
 export type HealthContextDetail = 'summary' | 'weekly' | 'daily';
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -104,9 +105,7 @@ export function projectHealthContext(
           : {}),
       };
     }),
-    medications: report.medications.map(
-      ({ identity: _identity, ...medication }) => medication,
-    ),
+    medications: report.medications.map(projectHealthMedication),
     sleep: {
       semantics:
         'observed_asleep_interval_union_by_calendar_day_not_complete_nights',

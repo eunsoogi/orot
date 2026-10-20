@@ -2,6 +2,14 @@
 
 final result: blocked
 
+## Medication evidence clarity
+
+The outbound period projection now distinguishes a known absent Health schedule from an unavailable flag and labels user-confirmed use, observed dose events, catalog-only registration and prescription-only evidence. Raw dose counts, occurrence times and archived state are retained; storage identities remain excluded. English visit guidance acknowledges documented use without inferring future adherence, missed doses or a prescription. These labels do not establish the unread target medication's actual dose count or prove that Luna will produce a useful question.
+
+The focused medication, source, alias, payload-budget and consent suites passed 7 suites /42 tests (`/tmp/orot-medication-and-consent-focused.log`). One initial SQLite fixture failed because its ingestion time preceded the second dose; the fixture now uses a valid later ingestion time. The full mobile execution passed 484 suites /1,713 tests (`/tmp/orot-medication-context-mobile.log`,131.473s). A subsequent local test type correction, helper parameter destructuring and formatting did not alter production semantics; the final dedicated medication suite passed10 tests (`/tmp/orot-medication-context-final-focused.log`). Root types, lint, format and inventory passed; lint retains85 existing warnings. Canonical touched-LOC passed584 paths. Individual LSP diagnostics were empty for the helper and evidence module. Actual-provider replay and current-head strict review remain pending.
+
+The unchanged external-transfer sheet uses native `pageSheet` and `allowSwipeDismissal`. The rerun consent tests confirm the close callback denies the pending request and does not remember approval. Actual downward-gesture delivery remains unverified; a callback test is not a native gesture trace.
+
 ## Visual sources
 
 - History: `apps/mobile/ios/build/issue212-design/history-reference.png`, also attached to issue comment 6269534689.

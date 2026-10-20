@@ -47,16 +47,23 @@ export function healthContextContent(
               sensorSeries:
                 'Separate measurement sources; do not add overlapping sources into a daily total.',
             }
-          : scope.topic === 'sleep'
+          : scope.topic === 'medications'
             ? {
-                meanRecordedDailyMinutes:
-                  'Mean of calendar-day unions of asleep intervals over recorded dates, not a complete-night total.',
-                stageMinutes:
-                  'Stage totals over the whole period, not daily means.',
-                completeNightCoverage:
-                  'Calendar-day aggregation establishes neither presence nor absence of complete-night records.',
+                scheduleStatus:
+                  'registered and not_registered are known Health schedule states; not_available means this source supplies no schedule flag. No registered schedule does not negate recorded medication use or prove no prescription.',
+                useEvidence:
+                  'Acknowledge user_confirmed_current_use or recorded_doses_in_period as known evidence. The latter confirms observed doses only in this period, not future adherence. catalog_only and prescription_only describe this source, not the absence of use elsewhere. Missing dates remain unknown, not missed doses.',
               }
-            : undefined,
+            : scope.topic === 'sleep'
+              ? {
+                  meanRecordedDailyMinutes:
+                    'Mean of calendar-day unions of asleep intervals over recorded dates, not a complete-night total.',
+                  stageMinutes:
+                    'Stage totals over the whole period, not daily means.',
+                  completeNightCoverage:
+                    'Calendar-day aggregation establishes neither presence nor absence of complete-night records.',
+                }
+              : undefined,
       limitations,
     })
   );
