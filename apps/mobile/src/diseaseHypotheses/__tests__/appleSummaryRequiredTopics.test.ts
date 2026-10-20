@@ -78,6 +78,32 @@ test('cannot accept a medication-only result when usable activity, measurements 
   ).toBe('invalid');
 });
 
+test('requests compact complete topic summaries while retaining every original record', () => {
+  const messages = partitionedSymptomSummaryTask
+    .createMessages(input)
+    .flatMap(message =>
+      message.role === 'user' ? [JSON.parse(message.content as string)] : [],
+    );
+  const records = messages[0].records;
+  expect(records.map((record: { content: string }) => record.content)).toEqual(
+    input.evidence.items.map(item => item.content),
+  );
+  const guidance = messages[1];
+  expect(guidance.outputPlan).toEqual({
+    format: 'compact_labeled_facts',
+    period:
+      'State the common period once using readable dates, not repeated ISO timestamps.',
+    medications:
+      'Include all supplied medication names, recorded-use status and completed-dose counts when present. Do not enumerate first/last timestamps for every medication.',
+    quantities:
+      'Include every supplied concept and sensor series with its recorded-day mean and unit, or latest amount when no mean exists. Preserve coverage and sensor-series limitations.',
+    sleep:
+      'Include the recorded-calendar-day mean and its coverage/complete-night limitation. Do not enumerate all interval endpoints or repeat every stage total when a mean is available.',
+    complete:
+      'Finish every required topic and the top-level citations array. Do not repeat unrelated medication limitations in activity, measurements or sleep.',
+  });
+});
+
 test('requires one bounded summary per meaningful source and binds its citation locally', () => {
   const schema = partitionedSymptomSummaryTask.createResultSchema!(input);
   expect(schema).toMatchObject({

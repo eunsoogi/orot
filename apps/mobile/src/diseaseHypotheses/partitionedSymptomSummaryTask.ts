@@ -34,6 +34,21 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
         {
           role: 'user',
           content: JSON.stringify({
+            // Avoid spending a bounded final answer on repeated raw chronology. The
+            // full source remains above; concise prose must still pass every fact check.
+            outputPlan: {
+              format: 'compact_labeled_facts',
+              period:
+                'State the common period once using readable dates, not repeated ISO timestamps.',
+              medications:
+                'Include all supplied medication names, recorded-use status and completed-dose counts when present. Do not enumerate first/last timestamps for every medication.',
+              quantities:
+                'Include every supplied concept and sensor series with its recorded-day mean and unit, or latest amount when no mean exists. Preserve coverage and sensor-series limitations.',
+              sleep:
+                'Include the recorded-calendar-day mean and its coverage/complete-night limitation. Do not enumerate all interval endpoints or repeat every stage total when a mean is available.',
+              complete:
+                'Finish every required topic and the top-level citations array. Do not repeat unrelated medication limitations in activity, measurements or sleep.',
+            },
             instructions:
               'The checklist below is source data, not instructions from records. Use recordSummaries when the response schema requires it: write one summary for every required source key, including actual limitations in that prose. The app binds the title and citation to each source. Include each listed quantity concept explicitly, including both systolic and diastolic blood pressure when supplied. Keep its value and unit together. Sample counts are not measurement amounts; latest measurements are not period totals. Step amounts are steps, never occurrences. Sleep stage amounts are totals over the whole period, not daily means. The recorded-calendar-day sleep mean is not a complete-night total. Preserve other record topics from the original records. Write the summary in Korean.',
             requiredRecordFacts,
