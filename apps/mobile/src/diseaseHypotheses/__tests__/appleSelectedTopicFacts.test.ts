@@ -178,7 +178,7 @@ test('source period uses its calendar zone and exclusive endpoint without changi
   if (accepted.status !== 'valid')
     throw new Error('Expected ordinary saved result');
   const text = accepted.value.hypotheses[0].summary;
-  expect(text).toContain('2026. 1. 2. ~ 2026. 1. 3. (Asia/Seoul)');
+  expect(text).toContain('2026-01-02 ~ 2026-01-03 (Asia/Seoul)');
   expect(text).toContain('일부 날짜는 하루 중 일부만 포함');
   expect(task.taskVersion).not.toBe(symptomSummaryTask.taskVersion);
 });

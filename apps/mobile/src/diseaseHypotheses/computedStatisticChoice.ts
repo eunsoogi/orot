@@ -1,4 +1,5 @@
 import type { JsonObject } from '@orot/model-runtime';
+import { healthContextDays } from '../healthEvidence/healthContext/window';
 
 export type ComputedFact = Record<string, unknown>;
 export const factObject = (value: unknown): value is ComputedFact =>
@@ -80,15 +81,17 @@ export function statisticSourcePeriod(
     typeof period.timeZone !== 'string'
   )
     return;
-  const from = Date.parse(period.fromInclusive),
-    to = Date.parse(period.toExclusive);
-  if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) return;
   try {
-    const date = (time: number) =>
-      new Date(time).toLocaleDateString('ko-KR', {
-        timeZone: period.timeZone as string,
-      });
-    return `집계 기간 ${date(from)} ~ ${date(to - 1)} (${period.timeZone})${Array.isArray(source.partialDates) && source.partialDates.length ? ' · 일부 날짜는 하루 중 일부만 포함' : ''}.`;
+    const days = healthContextDays({
+      fromInclusive: period.fromInclusive,
+      toExclusive: period.toExclusive,
+      timeZone: period.timeZone,
+    });
+    if (!days.length) return;
+    const partial =
+      days.some(day => day.partial) ||
+      (Array.isArray(source.partialDates) && source.partialDates.length > 0);
+    return `집계 기간 ${days[0]!.date} ~ ${days.at(-1)!.date} (${period.timeZone})${partial ? ' · 일부 날짜는 하루 중 일부만 포함' : ''}.`;
   } catch {
     return;
   }

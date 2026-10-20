@@ -3,6 +3,7 @@ import type { TaskResponderInput } from '@orot/agent-runtime';
 import { structuredSummaryFacts } from './summaryFactValidation';
 import { canPreviewDiseaseHypothesisSummary } from './resultValidation';
 import { computedTopicChoices } from './computedTopicChoices';
+import { computedSummaryLimitations } from './computedSummaryLimitations';
 import {
   renderStatisticChoices,
   statisticChoiceSchema,
@@ -57,6 +58,7 @@ export function appleRecordTopics(input: TaskResponderInput) {
     title: string;
     choices: StatisticChoice[];
     period?: string;
+    limitations: string[];
   }[] = [];
   for (const item of input.evidence.items) {
     if (
@@ -85,6 +87,7 @@ export function appleRecordTopics(input: TaskResponderInput) {
           title: titles[value.topic]!,
           choices,
           period: statisticSourcePeriod(value),
+          limitations: computedSummaryLimitations(value),
         });
       }
     } catch {
@@ -154,7 +157,7 @@ export function normalizeAppleRecordSummary(
       summary: text,
       supportingEvidence: [topic.id],
       contraryEvidence: [],
-      uncertaintyNotes: [],
+      uncertaintyNotes: topic.limitations,
       missingData: [],
     });
   }
@@ -172,8 +175,6 @@ export function projectAppleRecordSummaries(
   raw: string,
   input: TaskResponderInput,
 ): string | undefined {
-  const topics = appleRecordTopics(input);
-  if (!topics) return;
   try {
     const envelope: unknown = JSON.parse(raw);
     if (
@@ -182,10 +183,16 @@ export function projectAppleRecordSummaries(
       !object(envelope.value.recordSummaries)
     )
       return;
+    // Incomplete selector JSON has nothing readable yet; do not rebuild calendar
+    // scopes and rendered facts for every streamed prefix.
+    const topics = appleRecordTopics(input);
+    if (!topics) return;
     const summaries = envelope.value.recordSummaries;
     const texts = topics.map(topic => {
       const text = renderStatisticChoices(summaries[topic.id], topic.choices);
-      return text ? [topic.period, text].filter(Boolean).join('\n') : undefined;
+      return text
+        ? [topic.period, text, ...topic.limitations].filter(Boolean).join('\n')
+        : undefined;
     });
     if (
       texts.some(
