@@ -128,19 +128,22 @@ export function HealthRecordsLineChart({
             }),
           )}
           {series.flatMap(item =>
-            item.points.map(point => (
-              <View
-                key={point.id}
-                style={[
-                  styles.point,
-                  {
-                    backgroundColor: point.color,
-                    left: xFor(point.effectiveAt) - 6,
-                    top: yFor(point.amount) - 6,
-                  },
-                ]}
-              />
-            )),
+            // A singleton has no line segment; denser series use lines only.
+            item.points
+              .filter(() => item.points.length === 1)
+              .map(point => (
+                <View
+                  key={point.id}
+                  style={[
+                    styles.point,
+                    {
+                      backgroundColor: point.color,
+                      left: xFor(point.effectiveAt) - 6,
+                      top: yFor(point.amount) - 6,
+                    },
+                  ]}
+                />
+              )),
           )}
           {series.flatMap(item =>
             item.points
