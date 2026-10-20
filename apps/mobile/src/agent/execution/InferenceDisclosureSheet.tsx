@@ -78,9 +78,13 @@ export default function InferenceDisclosureSheet({
   const copy = inferenceConsentCopy(request);
   return (
     <Modal
+      testID="inference-disclosure-modal"
       animationType="slide"
+      // UIKit owns the pull-down gesture; dismissal is the same denied decision
+      // as Cancel, never implicit approval or a reusable permission receipt.
+      presentationStyle="pageSheet"
+      allowSwipeDismissal
       onRequestClose={() => onDecision(false)}
-      transparent
       visible
     >
       <View style={styles.backdrop}>

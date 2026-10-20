@@ -24,6 +24,19 @@ function request(
 }
 
 describe('InferenceDisclosureSheet', () => {
+  it('uses a native downward-dismissible sheet and treats dismissal as cancellation', async () => {
+    const onDecision = jest.fn();
+    await render(
+      <InferenceDisclosureSheet request={request()} onDecision={onDecision} />,
+    );
+    const modal = screen.getByTestId('inference-disclosure-modal');
+    expect(modal.props.presentationStyle).toBe('pageSheet');
+    expect(modal.props.allowSwipeDismissal).toBe(true);
+    expect(modal.props.transparent).not.toBe(true);
+    await fireEvent(modal, 'requestClose');
+    expect(onDecision).toHaveBeenCalledTimes(1);
+    expect(onDecision).toHaveBeenCalledWith(false);
+  });
   it('describes a reusable public-search permission without presenting Europe PMC as an AI model', async () => {
     await render(
       <InferenceDisclosureSheet

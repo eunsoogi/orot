@@ -58,6 +58,28 @@ function ConsentHarness({
 }
 
 describe('useInferenceConsent', () => {
+  it('denies a pull-down dismissal and asks again rather than remembering approval', async () => {
+    const onResult = jest.fn();
+    const view = await render(
+      <ConsentHarness
+        outboundRequest={request('Synthetic dismissed transfer.')}
+        onResult={onResult}
+      />,
+    );
+    await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent(
+      await view.findByTestId('inference-disclosure-modal'),
+      'requestClose',
+    );
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith('renewal'));
+    expect(view.queryByTestId('inference-disclosure-modal')).toBeNull();
+    await fireEvent.press(view.getByTestId('authorize-request'));
+    expect(await view.findByTestId('inference-disclosure-modal')).toBeTruthy();
+    expect(onResult).toHaveBeenCalledTimes(1);
+    await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
+    await waitFor(() => expect(onResult).toHaveBeenCalledTimes(2));
+    expect(onResult).not.toHaveBeenCalledWith('authorized');
+  });
   it('requires a fresh approval when the request payload changes', async () => {
     const original = request('Synthetic selected note A.');
     const onResult = jest.fn();

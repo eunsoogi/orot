@@ -5,14 +5,12 @@ import { appColors } from '../../layout/appColors';
 export const disclosureStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: appColors.background,
   },
   panel: {
-    height: '85%',
+    // The system sheet supplies its own presentation height and rounded edge.
+    flex: 1,
     backgroundColor: appColors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
     overflow: 'hidden',
   },
   content: {
