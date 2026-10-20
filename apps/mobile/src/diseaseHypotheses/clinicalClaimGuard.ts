@@ -15,8 +15,13 @@ const definitiveClaimPatterns = [
 function withoutUncertaintyDisclaimers(text: string): string {
   return text
     .replace(/현재 자료만으로는 확진할 수 없어요\.?/gu, ' ')
+    .replace(/확진(?=\s*할\s*수(?:는|도)?\s*없)/gu, ' ')
     .replace(
-      /확진(?=\s*(?:할\s*수(?:는|도)?\s*없|여부|을?\s*위(?:한|해)|에\s*필요))/gu,
+      /확진(?=\s*여부(?:는|를)\s*(?:추가\s*)?(?:검사|진료)(?:에서|로)\s*확인해야\s*(?:해요|합니다)(?:[.!?\n]|$))/gu,
+      ' ',
+    )
+    .replace(
+      /확진(?=을\s*위해\s*(?:추가\s*)?(?:검사|진료)(?:와\s*(?:검사|진료))?가\s*필요(?:해요|합니다)(?:[.!?\n]|$))/gu,
       ' ',
     )
     .replace(
