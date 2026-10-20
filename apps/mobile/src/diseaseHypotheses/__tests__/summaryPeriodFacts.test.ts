@@ -27,6 +27,25 @@ const report: HealthContextReport = {
   mutationGeneration: 1,
   deletionGeneration: 0,
 };
+
+test('carries statistic identity and the limit of sleep aggregation in tool evidence', () => {
+  const source = (topic: HealthContextTopic) =>
+    JSON.parse(
+      healthContextContent(
+        { kind: 'health_context_period', version: 1, topic, window },
+        report,
+      ).slice('health_context: '.length),
+    );
+  expect(source('activity').statisticSemantics.sampleCount).toContain(
+    'observation samples',
+  );
+  expect(source('activity').statisticSemantics.latest).toContain(
+    'never a sample count',
+  );
+  expect(source('sleep').statisticSemantics.completeNightCoverage).toContain(
+    'neither presence nor absence',
+  );
+});
 function issue(
   summary: string,
   topic: HealthContextTopic,

@@ -42,6 +42,9 @@ export function summaryPeriodFacts(value: Fact): readonly Fact[] {
       kind: 'health_context_quantity',
       concept: series.concept,
       unit: series.unit,
+      // Observation counts stay outside measured-amount anchors and retain their own role.
+      sampleCount: series.sampleCount,
+      recordedDays: series.recordedDays,
       amounts: amounts.filter(
         amount => typeof amount === 'number' && Number.isFinite(amount),
       ),
@@ -55,6 +58,7 @@ export function summaryPeriodFacts(value: Fact): readonly Fact[] {
       kind: 'health_context_sleep',
       minutes: value.sleep.meanRecordedDailyMinutes,
       recordedDays: value.sleep.recordedDays,
+      aggregationScope: 'calendar_day_union_not_complete_night',
     });
   }
   if (object(value.symptoms)) {

@@ -3,6 +3,7 @@ import type { DiseaseHypothesisAnalysis } from './types';
 import { summaryConcreteIssue } from './summaryConcreteFacts';
 import { summarySleepDurationMismatch } from './summarySleepDuration';
 import { summaryPeriodFacts } from './summaryPeriodFacts';
+import { summaryStatisticRoleIssue } from './summaryStatisticRoles';
 
 type Fact = Record<string, unknown>;
 function object(value: unknown): value is Fact {
@@ -63,11 +64,19 @@ export const SUMMARY_FACT_REASONS = {
   sleep_duration:
     'The sleep duration does not match the cited individual interval.',
   step_unit: 'Step counts are measured in steps, not occurrences.',
+  statistic_roles:
+    'Keep observation sample counts separate from measured amounts.',
+  sleep_coverage:
+    'A calendar-day sleep aggregate does not establish absent complete-night records.',
   missing:
     'A factual registration summary does not require missing dose completion or schedule details.',
 } as const;
 
 export function summaryFactCorrection(reason: string): string | undefined {
+  if (reason === SUMMARY_FACT_REASONS.statistic_roles)
+    return 'Use only sampleCount for the number of observation samples. A latest amount, minimum, maximum or mean is a measured quantity, never a sample count. Preserve each sensor series and exact citations.';
+  if (reason === SUMMARY_FACT_REASONS.sleep_coverage)
+    return 'State that calendar-day sleep union is not a complete-night total. It establishes neither presence nor absence of complete-night records. Do not claim those records are missing. Keep supplied sleep amounts, coverage and citations.';
   if (reason === SUMMARY_FACT_REASONS.sleep_duration)
     return 'Use the supplied intervalDurationDisplay for each cited sleep stage. Preserve its original individual interval and do not recalculate or invent a nightly total. Keep other facts and exact citations unchanged.';
   if (reason === SUMMARY_FACT_REASONS.step_unit)
@@ -114,6 +123,16 @@ export function summaryFactIssue(
     );
     const facts = cited.flatMap(item => structuredSummaryFacts(item.content));
     if (!facts.length) continue;
+    const roleIssue = summaryStatisticRoleIssue(
+      [
+        section.title,
+        section.summary,
+        section.uncertainty,
+        ...section.missingData,
+      ].join('\n'),
+      facts,
+    );
+    if (roleIssue) return roleIssue;
     if (summarySleepDurationMismatch(section.summary, facts))
       return 'sleep_duration' as const;
     const medicationDefinitions = facts.filter(

@@ -34,6 +34,29 @@ export function healthContextContent(
       calendarDays,
       partialDates,
       ...facts,
+      // App-authored meanings accompany the tool result; no extra samples or availability claims are inferred.
+      statisticSemantics:
+        scope.topic === 'measurements' || scope.topic === 'activity'
+          ? {
+              sampleCount:
+                'Number of observation samples, never a measured amount.',
+              latest:
+                'One latest measured amount with its occurrence time, never a sample count or period total.',
+              recordedDays:
+                'Calendar days with observations, not the number of samples.',
+              sensorSeries:
+                'Separate measurement sources; do not add overlapping sources into a daily total.',
+            }
+          : scope.topic === 'sleep'
+            ? {
+                meanRecordedDailyMinutes:
+                  'Mean of calendar-day unions of asleep intervals over recorded dates, not a complete-night total.',
+                stageMinutes:
+                  'Stage totals over the whole period, not daily means.',
+                completeNightCoverage:
+                  'Calendar-day aggregation establishes neither presence nor absence of complete-night records.',
+              }
+            : undefined,
       limitations,
     })
   );

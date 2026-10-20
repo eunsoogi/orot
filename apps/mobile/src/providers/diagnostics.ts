@@ -72,6 +72,8 @@ type Outcome =
   | 'task_summary_sleep_count'
   | 'task_summary_sleep_duration'
   | 'task_summary_step_unit'
+  | 'task_summary_statistic_roles'
+  | 'task_summary_sleep_coverage'
   | 'task_summary_citation'
   | 'task_summary_contrary'
   | 'task_summary_uncertainty_notes'
