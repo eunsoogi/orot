@@ -57,10 +57,25 @@ export function summaryPeriodFacts(value: Fact): readonly Fact[] {
       recordedDays: value.sleep.recordedDays,
     });
   }
-  if (object(value.symptoms))
+  if (object(value.symptoms)) {
+    const latest = Array.isArray(value.symptoms.latest)
+      ? value.symptoms.latest.filter(object)
+      : [];
     facts.push({
       kind: 'health_context_symptoms',
       entryCount: value.symptoms.entryCount,
+      descriptions: latest.flatMap(entry =>
+        typeof entry.description === 'string' ? [entry.description] : [],
+      ),
+      severities: latest.flatMap(entry =>
+        typeof entry.severity === 'number' &&
+        Number.isInteger(entry.severity) &&
+        entry.severity >= 0 &&
+        entry.severity <= 10
+          ? [entry.severity]
+          : [],
+      ),
     });
+  }
   return facts;
 }

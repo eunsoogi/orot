@@ -55,6 +55,55 @@ function issue(
   );
 }
 
+test.each([
+  '합성 두통이 있었어요.',
+  '기록한 증상 강도는 3/10이에요.',
+  '기간 내 증상 기록은 1건이에요.',
+])(
+  'accepts a supplied symptom fact without requiring its coverage count: %s',
+  summary => {
+    expect(
+      issue(summary, 'symptoms', {
+        ...report,
+        symptoms: {
+          entryCount: 1,
+          recordedDays: 1,
+          latest: [
+            {
+              effectiveAt: window.fromInclusive,
+              description: '합성 두통',
+              severity: 3,
+            },
+          ],
+        },
+      }),
+    ).toBeUndefined();
+  },
+);
+
+test.each([
+  '증상 내용을 살펴봐요.',
+  '증상 강도는 7/10이에요.',
+  '합성 요통이 있었어요.',
+])('rejects a placeholder or an unsupported symptom anchor: %s', summary => {
+  expect(
+    issue(summary, 'symptoms', {
+      ...report,
+      symptoms: {
+        entryCount: 1,
+        recordedDays: 1,
+        latest: [
+          {
+            effectiveAt: window.fromInclusive,
+            description: '합성 두통',
+            severity: 3,
+          },
+        ],
+      },
+    }),
+  ).toBeDefined();
+});
+
 test('period activity keeps the same step unit guard as original samples', () => {
   const activity = {
     ...report,

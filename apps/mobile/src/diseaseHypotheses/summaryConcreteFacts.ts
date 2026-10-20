@@ -80,8 +80,18 @@ function anchorsFor(facts: readonly Fact[]) {
     if (
       fact.kind === 'health_context_symptoms' &&
       typeof fact.entryCount === 'number'
-    )
+    ) {
       add('symptoms', undefined, fact.entryCount);
+      // Coverage is one usable fact, not a required substitute for the supplied symptom or reported score.
+      for (const description of Array.isArray(fact.descriptions)
+        ? fact.descriptions
+        : [])
+        if (typeof description === 'string') add('symptoms', description);
+      for (const severity of Array.isArray(fact.severities)
+        ? fact.severities
+        : [])
+        if (typeof severity === 'number') add('symptoms', undefined, severity);
+    }
     if (typeof fact.displayText === 'string')
       add('medications', fact.displayText);
     if (typeof fact.medicationName === 'string')
