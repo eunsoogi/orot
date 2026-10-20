@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { AppButton } from '../layout/AppButton';
+import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
@@ -110,12 +110,15 @@ export default function RecordingLibrarySummaryRow({
           accessibilityRole="button"
           accessibilityLabel={t('recording.library.playAudio')}
           accessibilityHint={t('recording.library.playAudioHint')}
-          accessibilityState={{ disabled }}
+          accessibilityState={{
+            disabled,
+          }}
           disabled={disabled}
           onPress={onPlay}
           style={styles.listPlaybackButton}
           testID={`recording-playback-list-button-${source.id}`}
         >
+          <ComposerGlassBackground />
           <AppSymbol name="play.fill" size={16} color={appColors.primaryText} />
         </Pressable>
       </View>
@@ -124,17 +127,16 @@ export default function RecordingLibrarySummaryRow({
         <View style={reviewStyle(summary)}>
           <Text style={reviewTextStyle(summary)}>{review}</Text>
         </View>
-      </View>
-      <View style={styles.itemActions}>
-        <View style={styles.actions}>
-          <AppButton
-            disabled={disabled}
-            onPress={onDelete}
-            testID={`recording-delete-${source.id}`}
-            title={t('recording.library.delete')}
-            variant="secondary"
-          />
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('recording.library.delete')}
+          disabled={disabled}
+          onPress={onDelete}
+          style={styles.deleteIcon}
+          testID={`recording-delete-${source.id}`}
+        >
+          <AppSymbol name="trash" size={18} color={appColors.secondary} />
+        </Pressable>
       </View>
     </View>
   );

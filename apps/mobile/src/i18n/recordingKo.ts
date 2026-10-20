@@ -2,7 +2,7 @@
 export const recordingKo = {
   'recording.title': '상담 녹음',
   'recording.export.description': '파일을 내보낼 방법을 선택해요.',
-  'recording.subtitle': '중요한 이야기를 놓치지 않도록',
+  'recording.subtitle': '진료 내용을 녹음하고 기기에 안전하게 보관해요.',
   'recording.listening': '목소리를 듣고 있어요.',
   'recording.readyHint': '동의를 확인한 뒤 녹음을 시작해 주세요.',
   'recording.microphone.stopHint': '마이크를 눌러 녹음을 마쳐요.',
@@ -21,6 +21,9 @@ export const recordingKo = {
   'recording.consent.description':
     '녹음 전에 상담 참여자 모두에게 녹음 사실을 알리고 동의를 받아 주세요.',
   'recording.consent.acknowledgement': '참여자에게 알리고 동의를 받았어요',
+  'recording.consent.checked': '동의 확인됨',
+  'recording.consent.unchecked': '동의 확인이 필요해요',
+  'recording.library.description': '녹음을 듣고 전사를 확인해요.',
   'recording.localOnly': '녹음 파일은 이 기기에 보관돼요.',
   'recording.status.idle': '녹음하지 않음',
   'recording.status.recording': '녹음 중',

@@ -3,20 +3,34 @@ import { appColors } from '../layout/appColors';
 
 export const recordingLibraryStyles = StyleSheet.create({
   container: {
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: appColors.border,
-    paddingTop: 12,
+    gap: 16,
+  },
+  libraryHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pageTitle: { fontSize: 30, lineHeight: 39 },
+  deleteIcon: {
+    marginLeft: 'auto',
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: { color: appColors.text, fontSize: 18, fontWeight: '700' },
   copy: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  list: { gap: 8 },
+  list: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: appColors.surface,
+  },
   item: {
     gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: appColors.border,
-    borderRadius: 14,
-    padding: 12,
+    padding: 16,
     backgroundColor: appColors.surface,
   },
   summaryActionRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
@@ -33,9 +47,7 @@ export const recordingLibraryStyles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
-    backgroundColor: appColors.surface,
+    overflow: 'hidden',
   },
   summaryIcon: {
     alignItems: 'center',

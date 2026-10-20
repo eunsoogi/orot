@@ -24,6 +24,7 @@ import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTran
 
 interface RecordingControlsProps {
   onBack: () => void;
+  onOpenSavedRecordings?: () => void;
   stateReady: boolean;
   status: RecordingStatus;
   durationMs: number;
@@ -57,6 +58,7 @@ interface RecordingControlsProps {
 
 export default function RecordingControls({
   onBack,
+  onOpenSavedRecordings,
   stateReady,
   status,
   durationMs,
@@ -132,6 +134,8 @@ export default function RecordingControls({
         </View>
       ) : null}
       <RecordingSessionPanel
+        onOpenSavedRecordings={onOpenSavedRecordings}
+        historyDisabled={controlsBusy || sourceRetryPending || !stateReady}
         status={status}
         durationMs={durationMs}
         amplitude={amplitude}
@@ -177,7 +181,7 @@ export default function RecordingControls({
         snapshot={automaticTranscription}
         onRetry={onRetryTranscription}
       />
-      {showRecordingLibrary ? (
+      {showRecordingLibrary && !onOpenSavedRecordings ? (
         <RecordingLibraryPanel
           actionsDisabled={busy}
           fallbackExportSourceId={

@@ -34,6 +34,7 @@ export function SavedRecordingsRoute({
     <NavigationRouteScrollView>
       <View style={styles.container}>
         <RecordingLibraryPanel
+          onNewRecording={() => actions.push('recording')}
           automaticTranscription={transcription.state}
           onSourceDeleted={transcription.cancel}
           service={recordingLibraryService}

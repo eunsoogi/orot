@@ -7,6 +7,7 @@ import {
 } from './transcriptEvidenceProbeSupport';
 import {
   playSyntheticTranscriptionRange,
+  readSyntheticRecordingDuration,
   removeSyntheticTranscriptionRecording,
   simulateSyntheticPlaybackRouteLoss,
 } from '../../src/recording/nativeRecordingBridge';
@@ -73,6 +74,7 @@ export function RecordingLibraryVisualProbe() {
         {
           ...recordingService,
           playRange: playSyntheticTranscriptionRange,
+          readDuration: readSyntheticRecordingDuration,
         },
         setPlaybackObservation,
       ),

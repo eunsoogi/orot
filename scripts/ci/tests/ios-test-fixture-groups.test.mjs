@@ -6,15 +6,15 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('all four hosted fixture groups partition the 21 UI cases after storage moves to native persistence', () => {
+test('all four hosted fixture groups partition the 23 UI cases including recording consent and pause states', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [6, 5, 4, 6],
+    [6, 7, 4, 6],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 21);
+  assert.equal(original.length, 23);
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);
 });

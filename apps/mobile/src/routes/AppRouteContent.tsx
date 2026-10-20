@@ -177,6 +177,7 @@ export function AppRouteContent({
       // Automatic and manual transcription share the same job registry inside the recording flow.
       return (
         <RecordingScreen
+          onOpenSavedRecordings={() => actions.push('saved-recordings')}
           onBack={actions.onBack}
           transcriptService={transcriptEvidenceService}
         />

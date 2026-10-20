@@ -33,14 +33,12 @@ export const recordingSessionStyles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 36,
-    borderColor: appColors.border,
-    borderWidth: StyleSheet.hairlineWidth,
-    backgroundColor: appColors.surface,
+    overflow: 'hidden',
   },
   status: {
     fontSize: 18,
     fontWeight: '600',
-    color: appColors.primaryText,
+    color: appColors.secondary,
     textAlign: 'center',
   },
   duration: {
