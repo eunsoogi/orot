@@ -118,13 +118,8 @@ export async function runRagConversationTurn(
         })
       : [];
     const initialEvidence = selectEvidence(snapshot.batch, hits);
-    if (
-      !initialEvidence.items.length &&
-      !options.workflow.tools?.some(
-        tool => tool.sourceKind === 'external_medical',
-      )
-    )
-      return { status: 'no_evidence' };
+    // The model may answer a social or clarifying turn even when retrieval has no hits.
+    // The task/runtime still require a lookup and citations for substantive factual claims.
     providerDiagnostic('rag', 'workflow', 'started');
     const result = await runMultiAgentWorkflow(
       {
@@ -152,6 +147,11 @@ export async function runRagConversationTurn(
       'reason' in result ? result.reason : undefined,
     );
     if (result.status === 'result') {
+      if (result.value.answerKind === 'conversation') {
+        return result.citations.length
+          ? { status: 'insufficient' }
+          : { status: 'answer', answer: result.value.answer, citations: [] };
+      }
       if (!result.citations.length) return { status: 'insufficient' };
       return {
         status: 'answer',

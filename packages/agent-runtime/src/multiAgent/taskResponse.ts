@@ -14,7 +14,8 @@ import {
 } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
-import { consumeNativeToolCall, withNativeTools } from './nativeTools';
+import { consumeNativeToolCall } from './nativeTools';
+import { callConversationalResponder } from './conversationalResponder';
 import { createTaskTextObserver } from './taskTextObserver';
 import { callPartitionedTaskResponse, finalResultInputs } from './partitionedTaskResponse';
 
@@ -44,11 +45,29 @@ export async function consumeTaskModelResponse<TResult>(
   if (onTaskText) {
     reportTaskStreamEvent(context, { type: 'started' });
   }
-  const outcome = await callModelWithEvidenceFreshness(
+  const response = await callConversationalResponder(context, state, request, input, onTaskText);
+  // Count the bounded mandatory-search retry in the same checkpoint as ordinary calls.
+  const result = await consumeInitialOutcome(
     context,
-    withNativeTools(context, state, request),
-    onTaskText,
+    response.state,
+    response.outcome,
+    input,
+    revised,
   );
+  return {
+    ...result,
+    modelCalls: Math.max(response.state.modelCalls, result.modelCalls ?? 0),
+  };
+}
+
+/** Common final validation and one-shot task correction, after any mandatory lookup handoff. */
+async function consumeInitialOutcome<TResult>(
+  context: RuntimeContext<TResult>,
+  state: WorkflowState,
+  outcome: ModelCallOutcome | undefined,
+  input: TaskResponderInput,
+  revised: boolean,
+): Promise<Partial<WorkflowState>> {
   if (!outcome) return completeState();
   if (outcome.status !== 'response') return finishModelFailure(context, outcome);
   const toolCall = consumeNativeToolCall(context, state, outcome.response);

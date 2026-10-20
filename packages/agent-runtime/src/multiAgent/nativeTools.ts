@@ -16,6 +16,7 @@ export function withNativeTools<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   request: LanguageModelRequest,
+  requireEvidence = false,
 ): LanguageModelRequest {
   if (!context.options.provider.capabilities.toolCalling || context.options.tools.length === 0)
     return request;
@@ -49,9 +50,13 @@ export function withNativeTools<TResult>(
     ],
     ...(available
       ? {
-          // A first evidence-free answer cannot be grounded. The model still chooses
-          // the tool and query; completed empty/denied searches may end truthfully.
-          ...(requiredKind || (state.toolCalls === 0 && state.evidenceReferences.length === 0)
+          // Conversation-capable tasks first let the model identify a non-factual reply.
+          // A dependent empty-evidence result is retried with a mandatory model-selected tool.
+          ...(requiredKind ||
+          requireEvidence ||
+          (!context.options.task.isEvidenceIndependentResult &&
+            state.toolCalls === 0 &&
+            state.evidenceReferences.length === 0)
             ? { toolChoice: 'required' as const }
             : {}),
           tools: offeredTools.map((tool) => ({

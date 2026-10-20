@@ -20,6 +20,7 @@ import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { decodeTaskResponse } from './taskResponseDecoding';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
+import { isEvidenceIndependentResult } from './evidenceIndependentResult';
 
 export function consumeResponderResponse<TResult>(
   context: RuntimeContext<TResult>,
@@ -91,7 +92,21 @@ export function consumeResponderResponse<TResult>(
     );
     return completeState();
   }
+  const independent = isEvidenceIndependentResult(
+    context.options.task,
+    decoded.value as JsonValue,
+    input,
+  );
+  if (independent && decoded.citations.length) {
+    stop(
+      context,
+      'An evidence-independent response must not claim source citations.',
+      'invalid_output',
+    );
+    return completeState();
+  }
   if (
+    !independent &&
     hasBlockingCoverage(
       input.evidence,
       context.options.task.allowBoundedExternalEvidence,

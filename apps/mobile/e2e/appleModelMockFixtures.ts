@@ -148,10 +148,9 @@ export function appleModelMockScript(
       request => {
         requireFormat(request, 'task_response');
         const name = 'europe-pmc-publication-search';
-        if (
-          request.toolChoice !== 'required' ||
-          !request.tools?.some(tool => tool.name === name)
-        )
+        // Conversation-capable tasks offer tools without forcing a social turn to search.
+        // This fixture represents the model choosing literature research for a factual question.
+        if (!request.tools?.some(tool => tool.name === name))
           throw new Error(
             'The empty-library fixture requires the supplied publication tool',
           );
@@ -169,6 +168,7 @@ export function appleModelMockScript(
         structuredReply(request, {
           type: 'result',
           value: {
+            answerKind: 'grounded',
             answer:
               '검색된 공개 문헌에서 성인의 수면 시간에 관한 자료를 확인했어요. 이 응답은 앱 흐름 검증을 위한 고정 mock 문구이며, 검색 결과 일부에 한정되고 개인의 진료를 대신하지 않아요.',
           },

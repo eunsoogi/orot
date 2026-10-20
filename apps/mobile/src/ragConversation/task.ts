@@ -17,6 +17,8 @@ export interface RagConversationMessage {
 
 export interface GroundedRagAnswer {
   readonly answer: string;
+  /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
+  readonly answerKind?: 'grounded' | 'conversation';
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -52,14 +54,19 @@ function priorMessages(
   });
 }
 
-/** Makes every turn cite fresh evidence; chat history is never treated as a source. */
+/** Distinguishes non-factual dialogue from claims needing current sources; history is context only. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '4',
+  taskVersion: '5',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
+  isEvidenceIndependentResult(value) {
+    return isObject(value) && value.answerKind === 'conversation';
+  },
   systemPrompt:
-    'Answer the current question using only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
+    'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
+    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
@@ -75,8 +82,14 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Write the user-facing answer in Korean. Keep publication titles in their original form.',
   resultSchema: {
     type: 'object',
-    required: ['answer'],
+    required: ['answerKind', 'answer'],
     properties: {
+      answerKind: {
+        type: 'string',
+        enum: ['conversation', 'grounded'],
+        description:
+          'Conversation contains no factual record or medical claims; grounded answers require current supporting evidence and citations.',
+      },
       answer: {
         type: 'string',
         minLength: 1,
@@ -87,7 +100,14 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     },
     additionalProperties: false,
   } as JsonObject,
-  projectStreamedText(rawOutput) {
+  projectStreamedText(rawOutput, input) {
+    // An unsupported evidence-free factual draft must not appear before its required lookup.
+    if (
+      !input.evidence.items.length &&
+      extractPartialJsonStringAtPath(rawOutput, ['value', 'answerKind']) !==
+        'conversation'
+    )
+      return undefined;
     return extractPartialJsonStringAtPath(rawOutput, ['value', 'answer']);
   },
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[] {
@@ -120,15 +140,14 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     ];
   },
   validateResult(value: JsonValue, input: TaskResponderInput) {
-    if (!input.evidence.items.length) {
-      return {
-        status: 'needs_clarification',
-        message: 'No current evidence is available.',
-      } as const;
-    }
     if (
       !isObject(value) ||
-      Object.keys(value).some(key => key !== 'answer') ||
+      Object.keys(value).some(
+        key => key !== 'answer' && key !== 'answerKind',
+      ) ||
+      ('answerKind' in value &&
+        value.answerKind !== 'grounded' &&
+        value.answerKind !== 'conversation') ||
       typeof value.answer !== 'string' ||
       value.answer.trim().length === 0 ||
       value.answer.length > 4000
@@ -138,7 +157,22 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         reason: 'The answer was empty or outside the supported size.',
       } as const;
     }
-    return { status: 'valid', value: { answer: value.answer } } as const;
+    if (value.answerKind !== 'conversation' && !input.evidence.items.length) {
+      return {
+        status: 'needs_clarification',
+        message: 'No current evidence is available.',
+      } as const;
+    }
+    return {
+      status: 'valid',
+      value: {
+        answer: value.answer,
+        ...(value.answerKind === 'conversation' ||
+        value.answerKind === 'grounded'
+          ? { answerKind: value.answerKind }
+          : {}),
+      },
+    } as const;
   },
 };
 

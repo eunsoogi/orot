@@ -118,6 +118,11 @@ export function buildTaskRequest<TResult>(
               ? 'Call an available tool when a specific missing fact prevents a supported result.'
               : 'Use type=request_evidence only if the task permits more research and a specific missing fact prevents a supported result.',
             'Preserve task-defined uncertainty and clarification outcomes. Do not request evidence merely because a result is uncertain.',
+            ...(contract.isEvidenceIndependentResult
+              ? [
+                  'A task-defined non-factual conversation response needs no evidence or tool call. Substantive factual claims still require supporting evidence.',
+                ]
+              : []),
             ...(effectiveInput.research
               ? [
                   `Research planning capacity for this response: ${JSON.stringify(effectiveInput.research)}`,
