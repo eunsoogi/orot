@@ -2,10 +2,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
-import {
-  healthContextContent,
-  registerHealthContextEvidence,
-} from '../../aiFeatures/integration/healthContextEvidence';
+import { registerHealthContextEvidence } from '../../aiFeatures/integration/healthContextEvidence';
+import { completeVisitHealthContextFacts } from './healthContextFacts';
 import {
   healthContextRevision,
   parseHealthContextScope,
@@ -114,8 +112,9 @@ export function createVisitHealthContext(
           visitQuestionCitationKey({ ...reference, content: '' })
       )
         return undefined;
-      return (await capture(original, healthContextContent(scope, report)))
-        ?.item;
+      return (
+        await capture(original, completeVisitHealthContextFacts(scope, report))
+      )?.item;
     },
     async validate(sourceValue: VisitQuestionHealthContextSource) {
       const report = await read(sourceValue.scope.window, [

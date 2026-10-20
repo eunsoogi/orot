@@ -8,6 +8,7 @@ import {
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { registerHealthContextEvidence } from './healthContextEvidence';
 import { SavedVisitQuestionsReadError } from './savedVisitQuestionCitation';
+import { completeVisitHealthContextFacts } from '../../agent/visitQuestions/healthContextFacts';
 
 /** Restore a computed source from its fixed scope and revision, never from the saved AI question text. */
 export async function restoreVisitQuestionHealthContext(
@@ -23,11 +24,17 @@ export async function restoreVisitQuestionHealthContext(
   if (healthContextRevision(scope, report) !== source.revision)
     throw new SavedVisitQuestionsReadError('changed_health_context');
   // Unrelated deletions may advance the global generation; exact historical facts must still match.
-  return registerHealthContextEvidence({
+  const item = registerHealthContextEvidence({
     registry,
     read,
     scope,
     report,
     expectedRevision: source.revision,
   });
+  return {
+    ...item,
+    content: registry.redactText(
+      completeVisitHealthContextFacts(scope, report),
+    ),
+  };
 }
