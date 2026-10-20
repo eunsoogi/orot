@@ -46,6 +46,13 @@ function personalRecordRows(
   const record = entry.record as unknown as Record<string, unknown>;
   const rows: EvidenceSourceDetailRow[] = [];
   for (const [key, value] of Object.entries(record)) {
+    // Imported event kind describes ingestion, while observationStatus is the actual dose outcome.
+    if (
+      entry.kind === 'dose_event' &&
+      key === 'eventKind' &&
+      value === 'observed'
+    )
+      continue;
     if (
       !fieldLabels[key] ||
       isPrivateIdentifier(key) ||
@@ -54,7 +61,14 @@ function personalRecordRows(
       continue;
     const rendered = visibleValue(value, key);
     if (rendered)
-      rows.push({ label: fieldLabels[key] ?? key, value: rendered });
+      rows.push({
+        label:
+          entry.kind === 'dose_event' &&
+          (key === 'eventKind' || key === 'observationStatus')
+            ? '복용 상태'
+            : (fieldLabels[key] ?? key),
+        value: rendered,
+      });
   }
   const provenance = record.provenance as
     { origin?: unknown; source?: Record<string, unknown> } | undefined;

@@ -153,6 +153,30 @@ test.each([
   },
 );
 
+test.each(['taken', 'observed'] as const)(
+  'presents one meaningful dose status for %s events without an import-type row',
+  eventKind => {
+    const record = DoseEventSchema.parse({
+      ...base,
+      eventKind,
+      ...(eventKind === 'observed'
+        ? {
+            medicationDefinitionId: 'synthetic-medication',
+            observationStatus: 'taken',
+          }
+        : { medicationAssertionId: 'synthetic-medication' }),
+      dose: { amount: 1, unit: '정' },
+    });
+    const card = presentEvidenceSource({
+      sourceKind: 'personal_record',
+      records: [{ kind: 'dose_event', record }],
+    })[0]!;
+    expect(card.rows.filter(row => row.label.startsWith('복용'))).toEqual([
+      { label: '복용 상태', value: '복용함' },
+    ]);
+  },
+);
+
 test('never presents medication catalog import time as a dose occurrence', () => {
   const record = MedicationDefinitionSchema.parse({
     id: base.id,
