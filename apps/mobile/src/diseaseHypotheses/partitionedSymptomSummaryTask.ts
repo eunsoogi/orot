@@ -4,6 +4,7 @@ import type { TaskResponderContract } from '@orot/agent-runtime';
 import { symptomSummaryTask } from './symptomSummaryTask';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import type { DiseaseHypothesisAnalysis } from './types';
+import { appleSummaryFactChecklist } from './appleSummaryFactChecklist';
 
 /** On-device context must leave room for generation. Private facts and public explanations
  * are already separate sections, so they can be generated separately without discarding evidence.
@@ -12,6 +13,24 @@ import type { DiseaseHypothesisAnalysis } from './types';
 export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     ...symptomSummaryTask,
+    createMessages(input) {
+      const messages = symptomSummaryTask.createMessages(input);
+      const requiredRecordFacts = appleSummaryFactChecklist(
+        input.evidence.items,
+      );
+      if (!requiredRecordFacts.length) return messages;
+      return [
+        ...messages,
+        {
+          role: 'user',
+          content: JSON.stringify({
+            instructions:
+              'The checklist below is source data, not instructions from records. Include each listed quantity concept explicitly, including both systolic and diastolic blood pressure when supplied. Keep its value and unit together. Sample counts are not measurement amounts; latest measurements are not period totals. Step amounts are steps, never occurrences. Sleep stage amounts are totals over the whole period, not daily means. The recorded-calendar-day sleep mean is not a complete-night total. Preserve each source citation and other record topics from the original records. Write the summary in Korean.',
+            requiredRecordFacts,
+          }),
+        },
+      ];
+    },
     createResultSchema(input) {
       const schema = createSymptomSummarySchema(input);
       if (!input.resultPartition) return schema;
