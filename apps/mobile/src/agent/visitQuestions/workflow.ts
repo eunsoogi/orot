@@ -30,7 +30,7 @@ type ReadyContext = Extract<VisitQuestionContextResult, { status: 'ready' }>;
 
 let nextOperationId = 0;
 
-/** Runs #30 through the shared role handoff; app-owned fallback copy is localized and consent stays fresh. */
+/** Runs visit preparation through the shared handoff; consent precedes each remote payload. */
 export async function runVisitQuestionWorkflow(input: {
   readonly prepared: ReadyContext;
   readonly selection: ProviderSelection | null;
@@ -106,6 +106,7 @@ export async function runVisitQuestionWorkflow(input: {
       ),
     initialEvidenceCount: aliases.batch.items.length,
     maxEvidenceItems: budget.maxEvidenceItems,
+    healthContextTool: input.prepared.healthContextTool,
   });
   nextOperationId += 1;
   const operationRunId = `visit-question-${nextOperationId}`;

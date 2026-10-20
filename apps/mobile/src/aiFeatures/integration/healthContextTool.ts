@@ -45,7 +45,7 @@ function parseInput(value: unknown): JsonObject | undefined {
 export function createHealthContextTool(
   read: HealthContextReader,
   registry: LocalEvidenceReferenceRegistry,
-  feature: 'disease' | 'rag' = 'disease',
+  feature: 'disease' | 'rag' | 'visit' = 'disease',
 ): EvidenceSearchTool {
   return {
     id: 'local-health-context',

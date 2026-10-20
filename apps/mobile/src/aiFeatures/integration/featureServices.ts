@@ -183,6 +183,7 @@ export function createAiFeatureServices(
         records: await openLocalStorage(),
         sourceReader: data.repository,
         registry,
+        readHealthContext: data.readHealthContext,
       });
     },
     generateDiseaseHypotheses: (signal, observer) =>

@@ -1,12 +1,9 @@
-import {
-  localQueryTimestampKey,
-  localQueryTimestampKeyExpression,
-  type SqlExecutor,
-} from '@orot/storage';
+import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { readHealthContextReport } from '../healthEvidence/healthContext/reader';
 import { healthContextRevision } from '../healthEvidence/healthContext/scope';
+import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
 
 /** Period dependencies are bounded scopes, not thousands of raw IDs or retained deleted health values. */
 export async function setupSummaryPeriods(tx: SqlExecutor) {
@@ -17,22 +14,7 @@ export async function setupSummaryPeriods(tx: SqlExecutor) {
   // Native SQLCipher connections may leave foreign_keys off. Purge dependencies in the same delete regardless.
   await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_period_run_deleted AFTER DELETE ON symptom_summary_runs BEGIN
     DELETE FROM symptom_summary_periods WHERE summary_id = OLD.id; END`);
-  const time = localQueryTimestampKeyExpression('OLD.effective_at');
-  const symptom = localQueryTimestampKeyExpression(
-    "coalesce(json_extract(OLD.payload_json, '$.startedAt'), OLD.effective_at)",
-  );
-  const end = localQueryTimestampKeyExpression(
-    "json_extract(OLD.payload_json, '$.endedAt')",
-  );
-  const point = (at: string) => `${at} >= p.from_key AND ${at} < p.to_key`;
-  const concept = "json_extract(OLD.payload_json, '$.concept')";
-  const guards: Readonly<Record<string, string>> = {
-    health_observations: `(p.topic = 'measurements' AND ${concept} IN ('blood pressure systolic', 'blood_pressure_systolic', 'blood pressure diastolic', 'blood_pressure_diastolic', 'heart_rate', 'body_mass', 'weight') AND ${point(time)}) OR (p.topic = 'activity' AND ${concept} = 'step_count' AND ${point(time)}) OR (p.topic = 'sleep' AND ${concept} IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep') AND ${time} < p.to_key AND ${end} > p.from_key)`,
-    medication_definitions: "p.topic = 'medications'",
-    medication_assertions: "p.topic = 'medications'",
-    dose_events: `p.topic = 'medications' AND ${point(time)}`,
-    symptom_entries: `p.topic = 'symptoms' AND ${point(symptom)}`,
-  };
+  const guards = healthPeriodDeletionGuards();
   for (const [table, guard] of Object.entries(guards)) {
     // Direct repository deletes and provenance cascades both traverse these same triggers.
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_period_deleted_${table} AFTER DELETE ON ${table} BEGIN

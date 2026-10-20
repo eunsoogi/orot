@@ -74,10 +74,31 @@ export function createVisitQuestionEvidenceSearchTools(input: {
   ) => Promise<VisitQuestionEvidenceCollection>;
   readonly initialEvidenceCount: number;
   readonly maxEvidenceItems: number;
+  readonly healthContextTool?: EvidenceSearchTool;
 }): readonly EvidenceSearchTool[] {
   const knownReferences = new Set(
     input.aliases.batch.items.map(visitQuestionEvidenceIdentityKey),
   );
+  // All model-selected tools share the same alias identity and deduplication boundary.
+  const aliasBatch = (value: EvidenceBatch): EvidenceBatch => {
+    const aliased = input.aliases.aliasBatch(value);
+    const items = aliased.items.filter(item => {
+      const key = visitQuestionEvidenceIdentityKey(item);
+      if (knownReferences.has(key)) return false;
+      knownReferences.add(key);
+      return true;
+    });
+    return {
+      ...aliased,
+      items,
+      coverage: aliased.coverage.map(coverage => ({
+        ...coverage,
+        returnedCount: items.filter(
+          item => item.sourceKind === coverage.sourceKind,
+        ).length,
+      })),
+    };
+  };
   const search = (
     sourceKind: VisitQuestionSearchSource,
   ): EvidenceSearchTool => ({
@@ -116,26 +137,24 @@ export function createVisitQuestionEvidenceSearchTools(input: {
       if (request.signal.aborted)
         throw new Error('The visit-question evidence search was cancelled.');
 
-      const aliased = input.aliases.aliasBatch(searched.batch);
-      const items = aliased.items.filter(item => {
-        const key = visitQuestionEvidenceIdentityKey(item);
-        if (knownReferences.has(key)) return false;
-        knownReferences.add(key);
-        return true;
-      });
-      const batch: EvidenceBatch = {
-        items,
-        coverage: aliased.coverage.map(coverage => ({
-          ...coverage,
-          returnedCount: items.filter(
-            item => item.sourceKind === coverage.sourceKind,
-          ).length,
-        })),
-        conflicts: aliased.conflicts,
-      };
-      return batch;
+      return aliasBatch(searched.batch);
     },
   });
 
-  return [search('personal_record'), search('reviewed_memory')];
+  const period = input.healthContextTool;
+  return [
+    ...(period
+      ? [
+          {
+            ...period,
+            search: async (request: EvidenceSearchRequest) => {
+              const value = await period.search(request);
+              return 'status' in value ? value : aliasBatch(value);
+            },
+          },
+        ]
+      : []),
+    search('personal_record'),
+    search('reviewed_memory'),
+  ];
 }

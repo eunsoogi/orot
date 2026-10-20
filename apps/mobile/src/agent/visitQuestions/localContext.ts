@@ -48,11 +48,16 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   }
   if (input.signal?.aborted) return { status: 'cancelled' as const };
   const queryService = await openLocalRecordQueryService(memory);
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
+  const localDatabase = await secureDatabase.openLocalAgentMemoryDatabase();
+  if (input.signal?.aborted) return { status: 'cancelled' as const };
+  const localData = createLocalEvidenceData(localDatabase);
   const prepared = await prepareVisitQuestionContext({
     ...input,
     queryService,
     repository,
     rag,
+    readHealthContext: localData.readHealthContext,
     buildChunks: createBoundedVisitQuestionChunkBuilder(async () =>
       createLocalEvidenceData(
         await secureDatabase.openLocalAgentMemoryDatabase(),
@@ -90,7 +95,7 @@ export async function generateUpcomingVisitQuestionRecommendations(input: {
   readonly signal?: AbortSignal;
 }) {
   if (input.signal?.aborted) return { status: 'cancelled' as const };
-  // Leave room for one bounded shared-runtime search after the initial RAG read.
+  // Reserve capacity for model-selected research; preparation itself loads only the appointment.
   const initialEvidenceLimit = Math.min(
     input.maxEvidenceItems,
     DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems - 3,

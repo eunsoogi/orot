@@ -1,4 +1,5 @@
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import { periodQuestionQuantityFacts } from './periodQuestionFacts';
 
 interface DateFact {
   readonly year?: number;
@@ -86,7 +87,14 @@ function structuredQuantityFacts(text: string): string[] {
       }
       Object.values(object).forEach(visit);
     };
-    visit(JSON.parse(json));
+    const parsed: unknown = JSON.parse(json);
+    visit(parsed);
+    if (text.startsWith('health_context: ')) {
+      for (const { amount, unit } of periodQuestionQuantityFacts(parsed))
+        facts.push(
+          `${normalizeNumericValue(String(amount))}\u0000${normalizeUnit(unit)}`,
+        );
+    }
     return facts;
   } catch {
     return [];

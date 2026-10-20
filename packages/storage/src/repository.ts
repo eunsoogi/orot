@@ -48,7 +48,8 @@ export interface RecordRepository extends RecordWriter {
   transcripts: TranscriptEvidenceRepository;
   get<K extends RecordKind>(kind: K, id: string): Promise<RecordMap[K] | null>;
   getSyncCheckpoint(key: string): Promise<SyncCheckpoint | null>;
-  transaction<T>(operation: (writer: RecordWriter) => Promise<T>): Promise<T>;
+  /** SQL preconditions share the typed writer's transaction; callers must not open a nested transaction. */
+  transaction<T>(operation: (writer: RecordWriter, sql?: SqlExecutor) => Promise<T>): Promise<T>;
   deleteAllLocalData(
     withinDeletionTransaction?: (
       transaction: SqlExecutor,
@@ -137,10 +138,12 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         await createWriter(transaction).putSyncCheckpoint(checkpoint);
       });
     },
-    async transaction<T>(operation: (transactionWriter: RecordWriter) => Promise<T>) {
+    async transaction<T>(
+      operation: (transactionWriter: RecordWriter, sql?: SqlExecutor) => Promise<T>,
+    ) {
       let value!: T;
       await database.transaction(async (transaction) => {
-        value = await operation(createWriter(transaction));
+        value = await operation(createWriter(transaction), transaction);
       });
       return value;
     },
