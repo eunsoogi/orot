@@ -50,7 +50,7 @@ describe('HealthKit medication dose-event synchronization', () => {
             'begin',
             'put:dose_event:healthkit-dose-event:new-event-id',
             'delete:dose_event:healthkit-dose-event:removed-event-id',
-            'checkpoint:healthkit:medications:medicationDoseEvents:anchor-1',
+            'checkpoint:healthkit:medications:medicationDoseEvents:medication-scope:anchor-1',
             'commit',
           ]);
           return page([doseSample('taken', 'Updated source')], 'anchor-2');

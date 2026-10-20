@@ -6,7 +6,8 @@ import { syncHealthKitMedications } from '../importer';
 import type { MedicationSyncOptions } from '../importer';
 import { doseSample, now, page } from '../testSupport';
 
-const checkpointKey = 'healthkit:medications:medicationDoseEvents';
+const checkpointKey =
+  'healthkit:medications:medicationDoseEvents:medication-scope';
 
 function healthKitForDosePage() {
   let response = page(

@@ -69,6 +69,44 @@ public extension HealthKitModule {
     }
 }
 
+extension HealthKitModule {
+    /// Dose access is per medication: an unscoped query can return no rows even
+    /// when Health contains doses. Resolve only the currently visible catalog;
+    /// keep sample limits, time predicates and anchored pagination on the dose query.
+    func withMedicationDoseScope(feature: String, predicate: NSPredicate?,
+                                 completion: @escaping (Result<NSPredicate?, Error>) -> Void)
+    {
+        guard feature == "medications" else {
+            completion(.success(predicate))
+            return
+        }
+        guard #available(iOS 26.0, *) else {
+            completion(.success(NSPredicate(value: false)))
+            return
+        }
+        var identifiers = Set<HKHealthConceptIdentifier>()
+        var finished = false
+        let query = HKUserAnnotatedMedicationQuery(predicate: nil, limit: HKObjectQueryNoLimit) { _, medication, done, error in
+            guard !finished else { return }
+            if let error {
+                finished = true
+                completion(.failure(error))
+                return
+            }
+            if let medication {
+                identifiers.insert(medication.medication.identifier)
+            }
+            guard done else { return }
+            finished = true
+            // Never turn an empty authorized catalog into an unrestricted dose query.
+            let scope = identifiers.isEmpty ? NSPredicate(value: false) :
+                HKQuery.predicateForMedicationDoseEvent(medicationConceptIdentifiers: identifiers)
+            completion(.success(predicate.map { NSCompoundPredicate(andPredicateWithSubpredicates: [$0, scope]) } ?? scope))
+        }
+        store.execute(query)
+    }
+}
+
 extension HealthKitBoundary {
     @available(iOS 26.0, *)
     static func medicationSnapshot(_ medication: HKUserAnnotatedMedication) throws -> [String: Any] {

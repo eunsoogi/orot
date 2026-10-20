@@ -34,7 +34,9 @@ export async function syncHealthKitMedications(
   const doseEvents = await syncDoseEventChanges(
     options.healthKit,
     options.repository,
-    checkpoint,
+    // An explicit recovery must also discover older samples omitted by an earlier
+    // empty/partially authorized query. Advance anchors only with committed pages.
+    options.refreshDoseHistory ? null : checkpoint,
     options.now,
   );
   return { definitions, doseEvents };
