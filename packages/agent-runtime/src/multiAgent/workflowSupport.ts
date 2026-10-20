@@ -25,6 +25,7 @@ import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
 import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
+import { validToolModelCost } from './evidenceToolModelBudget';
 
 function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope): boolean {
   // Network access is reserved for external medical sources; local health and memory tools stay local.
@@ -34,6 +35,7 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
   return (
     /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(tool.id) &&
     executionMatchesSource &&
+    validToolModelCost(tool) &&
     isSourceAllowed(scope, tool.sourceKind)
   );
 }

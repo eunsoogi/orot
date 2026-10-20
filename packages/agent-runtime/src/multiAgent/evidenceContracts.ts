@@ -151,6 +151,9 @@ export interface EvidenceSearchTool {
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
   readonly execution: 'local_read_only' | 'external_read_only';
+  /** Trusted external adapters may perform exactly one delegated provider request.
+   * Reserve that slot in the parent workflow before dispatch; never hide another model budget. */
+  readonly additionalModelCalls?: 1;
   readonly description: string;
   readonly inputSchema: JsonObject;
   parseInput(value: unknown): JsonObject | undefined;

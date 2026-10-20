@@ -10,6 +10,7 @@ import { completeState, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
+import { canReserveToolModelCall } from './evidenceToolModelBudget';
 
 /** Tool definitions describe capabilities only. No record is read until a model requests it. */
 export function withNativeTools<TResult>(
@@ -21,10 +22,12 @@ export function withNativeTools<TResult>(
   if (!context.options.provider.capabilities.toolCalling || context.options.tools.length === 0)
     return request;
   const requiredKind = missingNativeEvidenceKind(context);
-  const offeredTools = requiredKind
-    ? context.options.tools.filter((tool) => tool.sourceKind === requiredKind)
-    : context.options.tools;
+  const offeredTools = context.options.tools.filter(
+    (tool) =>
+      (!requiredKind || tool.sourceKind === requiredKind) && canReserveToolModelCall(tool, state),
+  );
   const available =
+    offeredTools.length > 0 &&
     state.toolCalls < state.budget.maxToolCalls &&
     state.modelCalls < state.budget.maxModelCalls &&
     state.evidenceReferences.length < state.budget.maxEvidenceItems;
@@ -101,6 +104,7 @@ export function consumeNativeToolCall<TResult>(
   if (
     state.toolCalls >= state.budget.maxToolCalls ||
     state.modelCalls >= state.budget.maxModelCalls ||
+    !canReserveToolModelCall(tool, state) ||
     state.evidenceReferences.length >= state.budget.maxEvidenceItems ||
     utf8ByteLength(canonicalJson(response)) > state.budget.maxPayloadBytes
   ) {

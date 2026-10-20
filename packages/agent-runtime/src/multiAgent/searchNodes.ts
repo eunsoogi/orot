@@ -2,38 +2,16 @@ import { hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceSearchOutcome } from './contracts';
 import { referencesFromBatch, sameReference, validateEvidenceBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { canceled, completeState, operationKey, reportProgress, stop } from './runtimeContext';
+import { canceled, completeState, reportProgress, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
+import { prepareEvidenceSearch } from './prepareEvidenceSearch';
+import { toolProviderStop } from './evidenceToolModelBudget';
 
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const { options } = context;
-
-  const prepareSearch = async (state: WorkflowState) => {
-    if (context.signal.aborted) {
-      canceled(context);
-      return completeState();
-    }
-    if (
-      !state.selectedToolId ||
-      !context.researchInput ||
-      state.toolCalls >= state.budget.maxToolCalls ||
-      state.evidenceReferences.length >= state.budget.maxEvidenceItems
-    ) {
-      stop(context, 'The read-only evidence search could not be started.', 'budget_exceeded');
-      return completeState();
-    }
-    return {
-      phase: 'evidence_search' as const,
-      toolCalls: state.toolCalls + 1,
-      pendingOperation: {
-        kind: 'tool' as const,
-        operationKey: operationKey('tool', state.toolCalls + 1),
-      },
-    };
-  };
 
   const executeSearch = async (state: WorkflowState) => {
     if (context.signal.aborted) {
@@ -71,7 +49,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         context.signal,
       );
       if (searched.kind === 'cancelled') {
-        canceled(context);
+        canceled(context, toolProviderStop(tool));
         return completeState();
       }
       if (searched.kind === 'error') {
@@ -88,7 +66,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       batch = searched.value;
     } catch {
-      if (context.signal.aborted) canceled(context);
+      if (context.signal.aborted) canceled(context, toolProviderStop(tool));
       else stop(context, 'The allowlisted evidence search failed.', 'unavailable');
       return completeState();
     }
@@ -98,7 +76,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       sourceKind: tool.sourceKind,
     });
     if (context.signal.aborted) {
-      canceled(context);
+      canceled(context, toolProviderStop(tool));
       return completeState();
     }
     context.researchInput = undefined;
@@ -205,7 +183,10 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
   };
 
-  return { prepareSearch, executeSearch };
+  return {
+    prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
+    executeSearch,
+  };
 }
 
 function requiresExternalConsent(

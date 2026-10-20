@@ -58,7 +58,7 @@ export interface TaskResponderInput {
     readonly allowedScope: AllowedEvidenceScope;
     readonly candidateTools: readonly Pick<
       import('./evidenceContracts').EvidenceSearchTool,
-      'id' | 'sourceKind' | 'execution'
+      'id' | 'sourceKind' | 'execution' | 'additionalModelCalls'
     >[];
     readonly remainingModelCalls: number;
     readonly remainingToolCalls: number;
