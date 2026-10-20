@@ -25,6 +25,8 @@ test.each([
   '확진에 필요한 기준을 모두 충족하므로 당뇨병입니다.',
   '확진 여부는 이미 판단되었고 당뇨병입니다.',
   '확진을 위한 기준을 모두 충족하므로 당뇨병입니다.',
+  '확진할 수 없다는 말은 틀렸으며 당뇨병입니다.',
+  'The claim it cannot be confirmed is false: diabetes is present.',
 ])('rejects a diagnosis claim beside a limitation: %s', summary => {
   expect(canPreviewDiseaseHypothesisSummary(summary)).toBe(false);
   expect(
