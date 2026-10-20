@@ -101,23 +101,41 @@ export async function callPartitionedTaskResponse<TResult>(
     if (!outcome || outcome.status !== 'response') return { modelCalls, failure: outcome };
     const response = outcome.response;
     try {
-      const decoded = decodeTaskResponse(response).output;
+      const decodedResponse = decodeTaskResponse(response);
+      const decoded = decodedResponse.output;
+      // Reuse the normal response's closed categories. Never expose a provider's
+      // text, generated keys or a task's free-form validation reason in telemetry.
+      if (!decoded) {
+        stop(context, decodedResponse.reason!, 'invalid_output');
+        return { modelCalls };
+      }
       if (
         response.finishReason !== 'complete' ||
         response.toolCalls.length ||
         utf8ByteLength(response.text) > state.budget.maxPayloadBytes ||
         utf8ByteLength(canonicalJson(parseJsonOutput(response))) > state.budget.maxPayloadBytes ||
-        !decoded ||
         decoded.type !== 'result'
-      )
-        throw new Error('Invalid group envelope');
+      ) {
+        stop(
+          context,
+          'The selected model returned an incomplete or unsupported response.',
+          'invalid_output',
+        );
+        return { modelCalls };
+      }
       const citations = citationReferences(decoded.citations, group.evidence);
       if (
         !citations ||
         (context.options.task.requireAllEvidenceCitations &&
           citations.length !== group.evidence.items.length)
-      )
-        throw new Error('Invalid group citations');
+      ) {
+        stop(
+          context,
+          'The result cited evidence outside the current validated evidence set.',
+          'invalid_output',
+        );
+        return { modelCalls };
+      }
       const value = decoded.value as JsonValue;
       const validated = context.options.task.validateResult(value, activeInput);
       if (validated.status !== 'valid') {
@@ -127,7 +145,7 @@ export async function callPartitionedTaskResponse<TResult>(
             reason: 'A result group requires clarification.',
             message: validated.message,
           };
-        else stop(context, 'A result group did not pass local validation.', 'invalid_output');
+        else stop(context, 'The task result did not pass local validation.', 'invalid_output');
         return { modelCalls };
       }
       values.push(value);
@@ -135,7 +153,7 @@ export async function callPartitionedTaskResponse<TResult>(
       const text = projectedTaskText(context, group, response.text);
       if (text) prefix = [prefix, text].filter(Boolean).join('\n\n');
     } catch {
-      stop(context, 'A result group did not pass local validation.', 'invalid_output');
+      stop(context, 'The task result did not pass local validation.', 'invalid_output');
       return { modelCalls };
     }
   }

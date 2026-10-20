@@ -85,8 +85,50 @@ test('rejects another partition citation before merging or dispatching the next 
     provider: { ...f.options.provider, generate },
   });
   expect(result.status).toBe('invalid_output');
+  expect(result.reason).toBe(
+    'The result cited evidence outside the current validated evidence set.',
+  );
   expect(generate).toHaveBeenCalledTimes(1);
   expect(f.mergeValues).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['not json', 'The task responder returned an invalid envelope: json.'],
+  [
+    JSON.stringify({ type: 'result', value: {} }),
+    'The task responder returned an invalid envelope: citations.',
+  ],
+])(
+  'preserves the closed partition envelope failure without exposing content',
+  async (text, reason) => {
+    const f = partitionFixture();
+    const result = await runMultiAgentWorkflow({
+      ...f.options,
+      provider: {
+        ...f.options.provider,
+        generate: async () => providerSuccess({ text, toolCalls: [], finishReason: 'complete' }),
+      },
+    });
+    expect(result).toMatchObject({ status: 'invalid_output', reason });
+    expect(f.mergeValues).not.toHaveBeenCalled();
+  },
+);
+
+test('reports partition task rejection without exposing its private reason', async () => {
+  const f = partitionFixture();
+  const result = await runMultiAgentWorkflow({
+    ...f.options,
+    task: {
+      ...f.options.task,
+      validateResult: () => ({ status: 'invalid', reason: 'Synthetic private reason' }),
+    },
+  });
+  expect(result).toMatchObject({
+    status: 'invalid_output',
+    reason: 'The task result did not pass local validation.',
+  });
+  expect(f.mergeValues).not.toHaveBeenCalled();
+  expect(JSON.stringify(result)).not.toContain('Synthetic private reason');
 });
 
 test('revalidates the complete evidence before each partition and never publishes a partial result', async () => {

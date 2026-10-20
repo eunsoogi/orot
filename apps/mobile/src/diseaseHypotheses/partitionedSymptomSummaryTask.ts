@@ -5,6 +5,7 @@ import { symptomSummaryTask } from './symptomSummaryTask';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import type { DiseaseHypothesisAnalysis } from './types';
 import { appleSummaryFactChecklist } from './appleSummaryFactChecklist';
+import { providerDiagnostic } from '../providers/diagnostics';
 import {
   appleRecordTopics,
   appleRecordSummarySchema,
@@ -61,13 +62,16 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
     },
     validateResult(value, input) {
       const normalized = normalizeAppleRecordSummary(value, input);
-      return normalized === undefined
-        ? {
-            status: 'invalid',
-            reason:
-              'Return every required record summary with its exact source key.',
-          }
-        : symptomSummaryTask.validateResult(normalized, input);
+      if (normalized === undefined) {
+        // Field rejection is distinct from fact validation; never log source keys or text.
+        providerDiagnostic('disease', 'validation', 'task_summary_fields');
+        return {
+          status: 'invalid',
+          reason:
+            'Return every required record summary with its exact source key.',
+        };
+      }
+      return symptomSummaryTask.validateResult(normalized, input);
     },
     projectStreamedText(raw, input) {
       return appleRecordTopics(input)
