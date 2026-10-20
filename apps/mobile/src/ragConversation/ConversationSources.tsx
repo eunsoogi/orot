@@ -25,6 +25,8 @@ export function ConversationSources({
     <ScrollView
       testID="rag-conversation-sources"
       horizontal
+      // This nested scroller must pass the first tap to a citation while the composer is focused.
+      keyboardShouldPersistTaps="handled"
       showsHorizontalScrollIndicator={false}
       style={styles.sourcesViewport}
       contentContainerStyle={styles.sources}

@@ -59,6 +59,10 @@ test('shows publication provenance and opens only its validated canonical articl
     />,
   );
   expect(screen.getByText('Europe PMC · 조회 2026-10-11')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-sources').props
+      .keyboardShouldPersistTaps,
+  ).toBe('handled');
   await fireEvent.press(
     screen.getByLabelText(
       /원문 근거 열기 · Synthetic literature title · Europe PMC · 공개 의학 문헌/u,
