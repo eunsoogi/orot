@@ -53,7 +53,7 @@ export function ConversationHistory({
             질문을 보내면 관련 기록과 원문 근거를 함께 찾아요.
           </Text>
           <Text style={styles.disclaimer}>
-            필요하면 동의를 받고 공개 의학 문헌도 찾아요.
+            필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.
           </Text>
         </View>
       )}

@@ -12,7 +12,7 @@ export const ragConversationKo = {
   'ragConversation.progressRevisedAnswer': '답변을 다듬고 있어요.',
   'ragConversation.progressResearch': '추가 근거를 살펴보고 있어요.',
   'ragConversation.progressLocalSearch': '기록에서 근거를 찾고 있어요.',
-  'ragConversation.progressExternalSearch': '공개 의학 문헌을 찾아보고 있어요.',
+  'ragConversation.progressExternalSearch': '공개 자료를 찾아보고 있어요.',
   'ragConversation.progressEvidenceComplete':
     '근거를 확인했어요. 답변을 정리하고 있어요.',
   'ragConversation.progressEvidenceFailed': '근거를 확인하지 못했어요.',
