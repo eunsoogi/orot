@@ -6,7 +6,7 @@ import { iosTestInventory } from '../ios-test-inventory.mjs';
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 19, 6],
+    ['core', 20, 6],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);

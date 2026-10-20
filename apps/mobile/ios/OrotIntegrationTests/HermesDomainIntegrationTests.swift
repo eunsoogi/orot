@@ -33,6 +33,38 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
                        "healthQueries=5; healthRecords=6; bloodPressure=2; sleep=asleepDeep; dose=not_logged; medication=timeBasis:local_ingest; appointment=confirmed; transcript=source-linked; cipher=available; wrongKey=rejected; cleanup=true")
     }
 
+    /// Uses real SQLCipher period queries and Hermes calendar handling; no HealthKit or model request occurs.
+    func testLongitudinalHealthContextPreservesCoverageAndInvalidatesDeletion() async throws {
+        let result = try await operation("health-context", parameters: ["fixtureIdentifier": "test-health-context-\(UUID().uuidString)"])
+        XCTAssertEqual(result["encrypted"] as? Bool, true)
+        XCTAssertEqual(result["synthetic"] as? Bool, true)
+        XCTAssertEqual(result["calendarDays"] as? Int, 4)
+        XCTAssertEqual(result["firstDate"] as? String, "2026-10-01")
+        XCTAssertEqual(result["pressureDays"] as? Int, 3)
+        XCTAssertEqual(result["pressureSamples"] as? Int, 6)
+        XCTAssertEqual(result["pressureDailyMeans"] as? [Int], [131, 133, 134])
+        XCTAssertEqual(result["bodyMass"] as? Double, 70.5)
+        XCTAssertEqual(result["stepSums"] as? [Int], [800, 1600])
+        let medication = try XCTUnwrap(result["medication"] as? [String: Any])
+        XCTAssertEqual(medication["scheduleRegistered"] as? Bool, true)
+        XCTAssertEqual(medication["taken"] as? Int, 1)
+        XCTAssertEqual(medication["skipped"] as? Int, 0)
+        XCTAssertEqual(medication["otherDoseRecords"] as? Int, 1)
+        XCTAssertEqual(medication["daysWithDoseRecords"] as? Int, 2)
+        let sleep = try XCTUnwrap(result["sleep"] as? [String: Any])
+        XCTAssertEqual(sleep["asleepSeconds"] as? Int, 5400)
+        XCTAssertEqual(sleep["overlappingStageSeconds"] as? Int, 1800)
+        let symptoms = try XCTUnwrap(result["symptoms"] as? [String: Any])
+        XCTAssertEqual(symptoms["entryCount"] as? Int, 1)
+        XCTAssertEqual((symptoms["latest"] as? [[String: Any]])?.first?["severity"] as? Int, 3)
+        XCTAssertEqual(result["cacheReused"] as? Bool, true)
+        XCTAssertEqual(result["deletionInvalidated"] as? Bool, true)
+        XCTAssertEqual(result["tempStore"] as? Int, 2)
+        XCTAssertLessThan(try XCTUnwrap(result["projectedBytes"] as? Int), 12000)
+        XCTAssertEqual(result["longWindowDays"] as? Int, 90)
+        XCTAssertLessThan(try XCTUnwrap(result["longProjectedBytes"] as? Int), 12000)
+    }
+
     func testEncryptedSourceEvidenceAndRagRelationships() async throws {
         let parameters = ["storageIdentifier": "test-storage-\(UUID().uuidString)"]
         let created = try await operation("storage-create", parameters: parameters)

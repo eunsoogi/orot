@@ -18,6 +18,7 @@ const coreTests = [
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeHealthLibraryUsesDefaultPagesAndStableCursors',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures',
+  'OrotIntegrationTests/HermesDomainIntegrationTests/testLongitudinalHealthContextPreservesCoverageAndInvalidatesDeletion',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testEncryptedSourceEvidenceAndRagRelationships',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence',
   'OrotIntegrationTests/TestOperationBrokerTests/testCommandCompletesExactlyOnce',
