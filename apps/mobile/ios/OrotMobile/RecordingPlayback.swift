@@ -4,6 +4,36 @@ import React
 
 /// Keeps saved and transcript-range playback on the protected-file boundary and recording queue.
 public extension RecordingModule {
+    /// Reads only the selected protected file; legacy sources need not contain a persisted duration.
+    @objc(getRecordingDuration:syntheticFixture:resolver:rejecter:)
+    func getRecordingDuration(
+        _ recordingID: String,
+        syntheticFixture: Bool,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        workQueue.async {
+            do {
+                #if OROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST && targetEnvironment(simulator)
+                    let allowUnverifiedProtection = syntheticFixture
+                #else
+                    let allowUnverifiedProtection = false
+                #endif
+                let url = try RecordingFileSecurity.existingFileURL(id: recordingID, allowUnverifiedProtectionForSimulator: allowUnverifiedProtection)
+                let audio = try AVAudioFile(forReading: url)
+                let milliseconds = Double(audio.length) / audio.processingFormat.sampleRate * 1000
+                guard milliseconds.isFinite, milliseconds >= 1 else {
+                    throw RecordingFileSecurityError.invalidAudioFile
+                }
+                // Floor keeps the requested full range inside the actual file's fractional duration.
+                resolve(Int(milliseconds.rounded(.down)))
+            } catch {
+                let failure = Self.fileFailure(for: error)
+                reject(failure.code, failure.message, nil)
+            }
+        }
+    }
+
     @objc(playRecordingRange:startMs:endMs:syntheticFixture:resolver:rejecter:)
     func playRecordingRange(
         _ recordingID: String,

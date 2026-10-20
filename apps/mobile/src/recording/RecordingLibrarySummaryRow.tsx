@@ -110,15 +110,8 @@ export default function RecordingLibrarySummaryRow({
           accessibilityRole="button"
           accessibilityLabel={t('recording.library.playAudio')}
           accessibilityHint={t('recording.library.playAudioHint')}
-          accessibilityState={{
-            disabled:
-              disabled ||
-              summary.durationMs === null ||
-              summary.durationMs <= 0,
-          }}
-          disabled={
-            disabled || summary.durationMs === null || summary.durationMs <= 0
-          }
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           onPress={onPlay}
           style={styles.listPlaybackButton}
           testID={`recording-playback-list-button-${source.id}`}

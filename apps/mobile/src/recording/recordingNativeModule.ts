@@ -26,6 +26,10 @@ export interface NativeRecordingModule {
   resumeRecording(): Promise<RecordingSnapshot>;
   stopRecording(): Promise<CompletedRecording>;
   stopRecordingPlayback?(): Promise<void>;
+  getRecordingDuration?(
+    recordingId: string,
+    syntheticFixture: boolean,
+  ): Promise<number>;
   simulatePlaybackRouteLoss?(): Promise<void>;
   playRecordingRange?(
     recordingId: string,

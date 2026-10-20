@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -13,6 +14,7 @@ import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
 
 /** Saved-source details retain review, playback and export as sections of one recording flow. */
 export function RecordingReviewRoute() {
+  const focused = useIsFocused();
   const { selection } = useRecordingSelection();
   const [interaction, setInteraction] = useState({ busy: false, dirty: false });
   const [exportBusy, setExportBusy] = useState(false);
@@ -38,6 +40,7 @@ export function RecordingReviewRoute() {
               onInteractionChange={setInteraction}
             />
             <RecordingPlaybackControls
+              active={focused}
               recordingId={source.id}
               durationMs={selection.summary.durationMs}
               playbackService={recordingService}
