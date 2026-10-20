@@ -10,6 +10,14 @@ import {
 
 const importAction = () => screen.getByTestId('medical-appointment-import');
 
+test('opens model selection from the displayed classification model', async () => {
+  const { onOpenProviderSelection } = await renderScreen([[]], repository());
+  await fireEvent.press(
+    screen.getByTestId('medical-appointment-select-provider'),
+  );
+  expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
+});
+
 test.each(['allow', 'cancel'] as const)(
   'requires actual-request approval and keeps manual entry after %s',
   async decision => {

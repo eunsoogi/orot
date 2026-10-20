@@ -28,6 +28,7 @@ interface Props {
   readonly onImport: () => Promise<void>;
   readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings?: () => void;
+  readonly onOpenProviderSelection?: () => void;
 }
 
 /** One import action shows full scan progress and only confidently medical results. */
@@ -58,6 +59,9 @@ export function MedicalAppointmentReviewView(props: Props) {
       <SelectedModelControl
         name={props.provider?.displayName ?? copy.noProvider}
         local={props.provider?.privacyBoundary === 'on-device'}
+        onPress={props.onOpenProviderSelection}
+        label="진료 일정 분류에 사용할 AI 선택"
+        testID="medical-appointment-select-provider"
       />
       <Text style={styles.secondary}>
         {props.provider?.privacyBoundary === 'on-device'
