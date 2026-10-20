@@ -142,6 +142,8 @@ final class OrotProviderDiagnostics: NSObject {
                "invalid_request", "rate_limited", "safety_refusal", "unsupported_capability", "unsupported_input",
                "task_json", "task_citations", "task_schema", "task_incomplete", "task_date", "task_quantity",
                "task_required_source",
+               "task_question_count", "task_question_text", "task_question_rationale", "task_question_evidence",
+               "task_question_shape", "task_question_form", "task_question_safety",
                "task_envelope_json", "task_envelope_object", "task_envelope_type", "task_envelope_citations",
                "task_envelope_value", "task_envelope_fields", "task_envelope_need",
                "task_summary_fields", "task_summary_citations", "task_summary_certainty",

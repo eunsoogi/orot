@@ -92,6 +92,9 @@ import Foundation
             } else {
                 try raw.map { try GenerationSchema(root: AppleFoundationModelsCodec.schema($0), dependencies: []) }
             }
+            if #available(iOS 26.4, macOS 26.4, *) {
+                await AppleNativeToolTrace.context(prompt: prompt, instructions: instructions, tools: tools, schema: schema)
+            }
             var finalText: String?
             if let snapshot {
                 if let schema {

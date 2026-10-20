@@ -1,6 +1,7 @@
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
+import { reportVisitQuestionValidation } from './validationDiagnostics';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -145,7 +146,9 @@ export function createVisitQuestionTaskResponder() {
       ].join('\n');
     },
     validateResult(value: JsonValue, input: VisitQuestionResponderInput) {
-      return validateVisitQuestionTaskResult(value, input);
+      const result = validateVisitQuestionTaskResult(value, input);
+      reportVisitQuestionValidation(result);
+      return result;
     },
   };
 }
