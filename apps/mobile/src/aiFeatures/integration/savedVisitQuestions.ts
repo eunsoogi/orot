@@ -42,7 +42,7 @@ export type SavedVisitQuestionsLoadState =
       readonly message: string;
     };
 
-/** Restores one appointment's persisted questions and registers current, revalidated source links. */
+/** Restores reviewed questions with source links that are current or explicitly marked changed. */
 export async function restoreSavedVisitQuestions(input: {
   readonly appointmentId: string;
   readonly records: RecordRepository;
