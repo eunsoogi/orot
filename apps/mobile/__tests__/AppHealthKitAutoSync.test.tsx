@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react-native';
+import { act, render, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import App from '../App';
@@ -44,12 +44,13 @@ test('starts a saved HealthKit refresh when the app opens', async () => {
 });
 
 test('refreshes only when a backgrounded app returns to the foreground', async () => {
-  let changeListener: ((state: AppStateStatus) => void) | undefined;
+  const listeners = new Set<(state: AppStateStatus) => void>();
   jest
     .spyOn(AppState, 'addEventListener')
     .mockImplementation((_event, listener) => {
-      changeListener = listener;
-      return { remove: jest.fn() };
+      // AppState broadcasts to HealthKit refresh and the appointment boundary clock independently.
+      listeners.add(listener);
+      return { remove: () => listeners.delete(listener) };
     });
   const store = createAppointmentStore([]);
   await render(
@@ -61,13 +62,17 @@ test('refreshes only when a backgrounded app returns to the foreground', async (
   await waitFor(() =>
     expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledTimes(1),
   );
-  expect(changeListener).toBeDefined();
+  expect(listeners.size).toBeGreaterThan(0);
 
-  changeListener?.('background');
-  changeListener?.('active');
+  await act(async () => {
+    listeners.forEach(listener => listener('background'));
+    listeners.forEach(listener => listener('active'));
+  });
   await waitFor(() =>
     expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledTimes(2),
   );
-  changeListener?.('active');
+  await act(async () => {
+    listeners.forEach(listener => listener('active'));
+  });
   expect(syncLocalPreviouslyRequestedHealthKit).toHaveBeenCalledTimes(2);
 });
