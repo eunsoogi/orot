@@ -12,6 +12,15 @@ RCT_EXPORT_VIEW_PROPERTY(onDeleteSession, RCTDirectEventBlock)
 @interface RCT_EXTERN_MODULE (ComposerGlassViewManager, RCTViewManager)
 @end
 
+// UIKit owns the interactive Glass control; React owns the current Send/Stop action.
+@interface RCT_EXTERN_MODULE (ComposerGlassActionViewManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(busy, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(disabled, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(actionLabel, NSString)
+RCT_EXPORT_VIEW_PROPERTY(actionTestID, NSString)
+RCT_EXPORT_VIEW_PROPERTY(onPress, RCTDirectEventBlock)
+@end
+
 // Register the Swift view manager with React Native's UIKit view registry.
 @interface RCT_EXTERN_MODULE (NavigationGlassViewManager, RCTViewManager)
 // Bridge serializable actions and tap events without replacing their JS semantics.

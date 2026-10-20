@@ -61,6 +61,7 @@
 		A11600000000000000000002 /* BackupMigrationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11600000000000000000002 /* BackupMigrationModule.m */; };
 		A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1810000B1810000B1810001 /* NavigationGlassComponents.swift */; };
 		A19500000000000000000001 /* NavigationGlassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000001 /* NavigationGlassButton.swift */; };
+		A21200000000000000000002 /* ComposerGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21200000000000000000002 /* ComposerGlassView.swift */; };
 		A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000002 /* NavigationRootGlassBar.swift */; };
 		A20400000000000000000001 /* AppProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000001 /* AppProgressView.swift */; };
 		A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */; };
@@ -261,6 +262,7 @@
 		B11600000000000000000002 /* BackupMigrationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupMigrationModule.m; path = OrotMobile/BackupMigrationModule.m; sourceTree = "<group>"; };
 		B1810000B1810000B1810001 /* NavigationGlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassComponents.swift; sourceTree = "<group>"; };
 		B19500000000000000000001 /* NavigationGlassButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassButton.swift; sourceTree = "<group>"; };
+		B21200000000000000000002 /* ComposerGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerGlassView.swift; sourceTree = "<group>"; };
 		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
 		B20400000000000000000001 /* AppProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppProgressView.swift; sourceTree = "<group>"; };
 		B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressIndicatorIntegrationTests.swift; sourceTree = "<group>"; };
@@ -592,6 +594,7 @@
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
 				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
+				B21200000000000000000002 /* ComposerGlassView.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B20400000000000000000001 /* AppProgressView.swift */,
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
@@ -917,6 +920,7 @@
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
+				A21200000000000000000002 /* ComposerGlassView.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A20400000000000000000001 /* AppProgressView.swift in Sources */,
 				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,

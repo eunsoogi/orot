@@ -14,12 +14,14 @@ export function ConversationHistory({
   error,
   onOpenSource,
   onLinkError,
+  bottomInset = 0,
 }: {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: { content: string; activity: string } | null;
   readonly error: string;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
+  readonly bottomInset?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -27,7 +29,10 @@ export function ConversationHistory({
     <ScrollView
       ref={historyView}
       style={styles.history}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: bottomInset + 20 },
+      ]}
       keyboardShouldPersistTaps="handled"
       onContentSizeChange={() =>
         historyView.current?.scrollToEnd({ animated: true })

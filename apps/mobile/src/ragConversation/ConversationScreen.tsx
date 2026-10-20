@@ -1,7 +1,7 @@
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import type { ReactNode } from 'react';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -51,6 +51,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
+  const [composerHeight, setComposerHeight] = useState(0);
   const cancel = () => store.cancel(id);
   // App-owned sessions keep drafts and requests alive when this route is removed.
   useAiFeatureScreenNavigationState(
@@ -118,24 +119,28 @@ export function ConversationScreen({
           <Text style={styles.description}>{copy.description}</Text>
         ) : null}
       </View>
-      <ConversationHistory
-        messages={messages}
-        pendingMessage={pendingMessage}
-        error={error}
-        onOpenSource={onOpenSource}
-        onLinkError={() =>
-          store.setError(id, '문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
-        }
-      />
-      <ConversationComposer
-        value={draft}
-        busy={busy}
-        onChangeText={value => store.setDraft(id, value)}
-        onSend={() => {
-          void store.send(id, onSend);
-        }}
-        onCancel={cancel}
-      />
+      <View style={styles.history}>
+        <ConversationHistory
+          messages={messages}
+          pendingMessage={pendingMessage}
+          error={error}
+          bottomInset={composerHeight}
+          onOpenSource={onOpenSource}
+          onLinkError={() =>
+            store.setError(id, '문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
+          }
+        />
+        <ConversationComposer
+          onLayout={event => setComposerHeight(event.nativeEvent.layout.height)}
+          value={draft}
+          busy={busy}
+          onChangeText={value => store.setDraft(id, value)}
+          onSend={() => {
+            void store.send(id, onSend);
+          }}
+          onCancel={cancel}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
