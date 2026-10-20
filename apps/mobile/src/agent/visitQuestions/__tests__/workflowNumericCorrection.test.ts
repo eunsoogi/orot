@@ -4,9 +4,9 @@ import {
   makeProvider,
   preparedContext,
   selectedOption,
-  successfulOutputs,
 } from '../testing/workflowFixtures';
 import { hasUnsupportedDateOrValue } from '../questionFacts';
+import { t } from '../../../i18n';
 
 const supported =
   '기간 평균 심박수 72회/분을 바탕으로 다음 진료 전 어떤 변화를 기록하면 좋을까요?';
@@ -204,20 +204,39 @@ test('requires fresh consent before the correction payload and stops when it is 
 
 test('does not add a numeric correction after the shared model-call budget is exhausted', async () => {
   const prepared = preparedContext();
-  const responses = successfulOutputs(
-    prepared.initialEvidence,
-    prepared.supplementalEvidence,
-  );
-  const final = JSON.parse(responses[1]!);
-  final.value.questions[0].questionText = unsupported;
-  responses[1] = JSON.stringify(final);
-  const { provider, requests } = makeProvider(responses);
+  const lookup = (id: string) =>
+    JSON.stringify({
+      text: '',
+      finishReason: 'tool_calls',
+      toolCalls: [
+        {
+          id,
+          name: 'visit-question-personal-record-search',
+          arguments: { query: '합성 심박수 기록' },
+        },
+      ],
+    });
+  // Two model-selected local lookups consume the first two model calls; the
+  // third result is invalid, so no correction call can fit the original ceiling.
+  const { provider, requests } = makeProvider([
+    lookup('first-lookup'),
+    lookup('second-lookup'),
+    output(unsupported),
+    output(supported),
+  ]);
   const { selection, option } = selectedOption(provider, 'on-device');
   const result = await runVisitQuestionWorkflow({
     prepared,
     selection,
     providerOptions: [option],
   });
-  expect(result.status).toBe('unavailable');
+  expect(result).toMatchObject({
+    status: 'unavailable',
+    message: t('visitQuestions.workflowResults.failure.budgetExceeded'),
+  });
   expect(requests).toHaveLength(3);
+  expect(prepared.searchEvidence).toHaveBeenCalledTimes(2);
+  expect(JSON.stringify(requests)).not.toContain(
+    'The previous questions failed exact',
+  );
 });
