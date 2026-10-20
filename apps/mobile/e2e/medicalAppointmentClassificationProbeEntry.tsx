@@ -112,16 +112,16 @@ function MedicalAppointmentClassificationProbeEntry() {
 
   return (
     <View style={styles.root}>
-      <Text testID="issue40-synthetic-provider-calls">
+      <Text testID="calendar-classification-synthetic-provider-calls">
         syntheticProviderCalls={providerCalls}
       </Text>
       {saved ? (
-        <Text testID="issue40-synthetic-calendar-save">
+        <Text testID="calendar-classification-synthetic-calendar-save">
           syntheticCalendarSave=confirmed
         </Text>
       ) : null}
       {manualRequested ? (
-        <Text testID="issue40-synthetic-manual-entry">
+        <Text testID="calendar-classification-synthetic-manual-entry">
           manualEntry=requested
         </Text>
       ) : null}

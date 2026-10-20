@@ -21,7 +21,7 @@ switch (selectEntryRoute(launchSettings)) {
     require('./appointmentsProbeEntry');
     break;
   case 'medical-appointment-classification':
-    // Keep the issue-40 consent exercise on synthetic Calendar and provider data.
+    // Keep calendar classification consent checks on synthetic Calendar and provider data.
     require('./medicalAppointmentClassificationProbeEntry');
     break;
   case 'medical-appointment-app-navigation':
