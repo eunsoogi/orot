@@ -32,7 +32,7 @@ export type {
   DiseaseHypothesisRunOutcome,
 } from './types';
 
-/** Keeps generated hypotheses within #117's consent, freshness, and citation workflow. */
+/** Keeps generated hypotheses within the consent, freshness, and citation workflow. */
 export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     taskType: 'disease_hypothesis_review',
@@ -93,7 +93,15 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
       ];
     },
     validateResult(value, input) {
-      return validateDiseaseHypothesisResult(value, input);
+      return validateDiseaseHypothesisResult(value, input, {
+        // Keep actual-provider rejection diagnosis separate from private model output.
+        onInvalid: code =>
+          providerDiagnostic(
+            'disease',
+            'validation',
+            `task_hypothesis_${code}`,
+          ),
+      });
     },
   };
 

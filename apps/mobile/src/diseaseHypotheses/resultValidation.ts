@@ -203,6 +203,7 @@ export function validateDiseaseHypothesisResult(
     !isObject(value) ||
     Object.keys(value).some(key => key !== 'hypotheses')
   ) {
+    options.onInvalid?.('fields');
     return { status: 'invalid', reason: 'Expected a hypotheses array.' };
   }
   const hypotheses = value.hypotheses;
