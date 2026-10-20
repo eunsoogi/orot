@@ -17,13 +17,21 @@ export function ConversationHistory({
   bottomInset = 0,
 }: {
   readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: { content: string; activity: string } | null;
+  readonly pendingMessage: {
+    id: number;
+    content: string;
+    activity: string;
+  } | null;
   readonly error: string;
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
   readonly bottomInset?: number;
 }) {
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
+  // A single keyed list preserves the mounted answer across draft validation and cancellation.
+  const visibleMessages: readonly DisplayMessage[] = pendingMessage
+    ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]
+    : messages;
 
   return (
     <ScrollView
@@ -49,7 +57,7 @@ export function ConversationHistory({
           </Text>
         </View>
       )}
-      {messages.map(message => (
+      {visibleMessages.map(message => (
         <ConversationMessage
           key={message.id}
           message={message}
@@ -57,18 +65,6 @@ export function ConversationHistory({
           onLinkError={onLinkError}
         />
       ))}
-      {pendingMessage ? (
-        <ConversationMessage
-          message={{
-            id: -1,
-            role: 'assistant',
-            ...pendingMessage,
-            streaming: true,
-          }}
-          onOpenSource={onOpenSource}
-          onLinkError={onLinkError}
-        />
-      ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}

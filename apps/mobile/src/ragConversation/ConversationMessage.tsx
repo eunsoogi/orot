@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
+import { AiResponseText } from '../layout/AiResponseText';
 import { ConversationSources } from './ConversationSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
@@ -25,6 +26,7 @@ export function ConversationMessage({
   readonly onLinkError: () => void;
 }) {
   const user = message.role === 'user';
+  const MessageText = user ? Text : AiResponseText;
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
       <View style={!user && styles.assistantBody}>
@@ -39,13 +41,13 @@ export function ConversationMessage({
           </>
         ) : null}
         {message.content ? (
-          <Text
+          <MessageText
             selectable
             style={[styles.messageText, user && styles.userText]}
             testID={message.streaming ? 'rag-conversation-stream' : undefined}
           >
             {message.content}
-          </Text>
+          </MessageText>
         ) : null}
         {message.activity ? (
           <Text

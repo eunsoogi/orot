@@ -20,7 +20,11 @@ export interface ConversationSession {
   readonly createdAt: string;
   readonly draft: string;
   readonly messages: readonly DisplayMessage[];
-  readonly pendingMessage: { content: string; activity: string } | null;
+  readonly pendingMessage: {
+    id: number;
+    content: string;
+    activity: string;
+  } | null;
   readonly busy: boolean;
   readonly error: string;
 }
@@ -68,7 +72,7 @@ export function createConversationSessions() {
           ? [
               ...session.messages,
               {
-                id: ++messageId,
+                id: session.pendingMessage?.id ?? ++messageId,
                 role: 'assistant',
                 content,
                 activity,
@@ -149,16 +153,18 @@ export function createConversationSessions() {
         .map(({ role, content }) => ({ role, content }));
       const controller = new AbortController();
       controllers.set(id, controller);
+      const userMessageId = ++messageId;
+      const responseId = ++messageId;
       update(id, {
         draft: '',
         title: session.messages.length ? session.title : question.slice(0, 36),
         messages: [
           ...session.messages,
-          { id: ++messageId, role: 'user', content: question },
+          { id: userMessageId, role: 'user', content: question },
         ],
         busy: true,
         error: '',
-        pendingMessage: { content: '', activity: copy.loading },
+        pendingMessage: { id: responseId, content: '', activity: copy.loading },
       });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
@@ -168,6 +174,7 @@ export function createConversationSessions() {
             if (current())
               update(id, {
                 pendingMessage: {
+                  id: responseId,
                   content: find(id).pendingMessage?.content ?? '',
                   activity: progressCopy(event, copy),
                 },
@@ -177,6 +184,7 @@ export function createConversationSessions() {
             if (current())
               update(id, {
                 pendingMessage: {
+                  id: responseId,
                   content: applyWorkflowStreamEvent(
                     find(id).pendingMessage?.content ?? '',
                     event,
@@ -201,7 +209,8 @@ export function createConversationSessions() {
           messages: [
             ...find(id).messages,
             {
-              id: ++messageId,
+              // Reuse the streamed bubble so validation does not replay its entire fade.
+              id: outcome.status === 'answer' ? responseId : ++messageId,
               role: 'assistant',
               content,
               ...(outcome.status === 'answer'

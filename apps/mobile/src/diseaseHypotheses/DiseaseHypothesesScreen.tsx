@@ -3,6 +3,7 @@ import type { DiseaseHypothesisAnalysis } from './types';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
+import { AiResponseText } from '../layout/AiResponseText';
 import { ScrollView, View } from 'react-native';
 import { navigationText } from '../i18n/navigation';
 import { styles } from './DiseaseHypothesesScreen.styles';
@@ -163,7 +164,7 @@ export function DiseaseHypothesesScreen({
           <Text>
             {state.status === 'loading' ? copy.draftNote : copy.incompleteNote}
           </Text>
-          <Text>{preview}</Text>
+          <AiResponseText>{preview}</AiResponseText>
         </View>
       ) : null}
       {state.status === 'cancelled' ? (
@@ -204,7 +205,7 @@ export function DiseaseHypothesesScreen({
                 <Text accessibilityRole="header" style={styles.title}>
                   {hypothesis.title}
                 </Text>
-                <Text>{hypothesis.summary}</Text>
+                <AiResponseText>{hypothesis.summary}</AiResponseText>
                 {hypothesis.uncertainty ? (
                   <>
                     <Text style={styles.label}>{copy.uncertainty}</Text>

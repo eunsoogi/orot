@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { AppProgress } from '../layout/AppProgress';
+import { AiResponseText } from '../layout/AiResponseText';
 import { t } from '../i18n';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import { ActionButton } from './NextVisitComponents';
@@ -87,9 +88,9 @@ export function NextVisitGenerationSection<
                 : 'aiActivity.draft.incompleteHeading',
             )}
           </Text>
-          <Text accessibilityLiveRegion="polite" style={styles.body}>
+          <AiResponseText accessibilityLiveRegion="polite" style={styles.body}>
             {controller.generationPreview}
-          </Text>
+          </AiResponseText>
           <Text style={styles.muted}>
             {t(
               isGenerating
