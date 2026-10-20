@@ -20,6 +20,8 @@ import {
 export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     ...symptomSummaryTask,
+    // Old checkpoints contain free record prose, not source-bound statistic selections.
+    taskVersion: '6',
     createMessages(input) {
       const messages = symptomSummaryTask.createMessages(input);
       // Research turns need a tool decision, not duplicated facts for final prose generation.
@@ -33,6 +35,18 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
             // Keep genuine limitations; never drop or accept untranslated notes to pass validation.
             content:
               'Translate the relevant publication context into Korean using your own concise wording. Do not copy English abstract prose. Write Korean titles, summaries and actual limitations. This group contains public sources only: explain only general concepts relevant to the request, never personal observations or conclusions. Keep each section to a short paragraph with its exact publication citation. Use uncertaintyNotes as Korean strings or an empty array when no limitation applies; never insert English placeholders. Keep all supplied sources available and choose only relevant ones; if their relevance is inadequate, explain that limitation in Korean rather than inventing useful evidence.',
+          },
+        ];
+      if (appleRecordTopics(input))
+        return [
+          ...messages,
+          {
+            role: 'user',
+            content: JSON.stringify({
+              outputPlan: { format: 'source_bound_statistic_selections' },
+              instructions:
+                'For this final personal-record group, recordSummaries contains only the required source-relative selection objects, never prose. Select the most useful available statistic for every required quantity/sensor and topic using the schema enums. Mean, latest, range and comparison refer to different original source fields. The app binds original values, Korean labels, units, recorded-day coverage and source limitations. Do not copy or calculate amounts or infer any clinical conclusion. Public medical explanations are generated separately. Keep all required fields and the exact top-level citations array. Optional coverageNotes keep their existing verified meaning.',
+            }),
           },
         ];
       const requiredRecordFacts = appleSummaryFactChecklist(

@@ -1,8 +1,14 @@
 import type { JsonObject, JsonValue } from '@orot/model-runtime';
 import type { TaskResponderInput } from '@orot/agent-runtime';
-import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { structuredSummaryFacts } from './summaryFactValidation';
 import { canPreviewDiseaseHypothesisSummary } from './resultValidation';
+import { computedTopicChoices } from './computedTopicChoices';
+import {
+  renderStatisticChoices,
+  statisticChoiceSchema,
+  statisticSourcePeriod,
+  type StatisticChoice,
+} from './computedStatisticChoice';
 
 const titles: Record<string, string> = {
   medications: '복용약',
@@ -46,7 +52,12 @@ export function appleRecordTopics(input: TaskResponderInput) {
     !input.evidence.items.length
   )
     return;
-  const topics: { id: string; title: string }[] = [];
+  const topics: {
+    id: string;
+    title: string;
+    choices: StatisticChoice[];
+    period?: string;
+  }[] = [];
   for (const item of input.evidence.items) {
     if (
       item.sourceKind !== 'personal_record' ||
@@ -66,8 +77,16 @@ export function appleRecordTopics(input: TaskResponderInput) {
       const meaningful = structuredSummaryFacts(item.content).some(
         meaningfulFact,
       );
-      if (meaningful)
-        topics.push({ id: item.evidenceId, title: titles[value.topic]! });
+      if (meaningful) {
+        const choices = computedTopicChoices(value);
+        if (!choices.length) return;
+        topics.push({
+          id: item.evidenceId,
+          title: titles[value.topic]!,
+          choices,
+          period: statisticSourcePeriod(value),
+        });
+      }
     } catch {
       return;
     }
@@ -75,8 +94,8 @@ export function appleRecordTopics(input: TaskResponderInput) {
   return topics.length ? topics : undefined;
 }
 
-/** A short string per required source avoids repeating a full section schema or letting
- * optional array entries silently omit an available topic. All facts still pass normal validation. */
+/** Every source and meaningful series has a required selector. The model chooses
+ * the statistic; the app binds original values, role labels and citations before normal validation. */
 export function appleRecordSummarySchema(
   input: TaskResponderInput,
   base: JsonObject,
@@ -93,15 +112,7 @@ export function appleRecordSummarySchema(
         required: topics.map(topic => topic.id),
         additionalProperties: false,
         properties: Object.fromEntries(
-          topics.map(topic => [
-            topic.id,
-            {
-              type: 'string',
-              minLength: 1,
-              maxLength: 1200,
-              description: `Korean factual summary for ${topic.title}. Include supplied concrete facts and actual limitations from this source only. For measurements include every supplied quantity concept; preserve amounts, units and coverage.`,
-            },
-          ]),
+          topics.map(topic => [topic.id, statisticChoiceSchema(topic.choices)]),
         ),
       },
       coverageNotes: (base.properties as JsonObject).coverageNotes!,
@@ -109,8 +120,8 @@ export function appleRecordSummarySchema(
   };
 }
 
-/** Source keys select citations locally; model text cannot redirect a topic to another record.
- * Interpretive limitations remain in each summary's prose; optional verified coverage notes survive. */
+/** This is the declared generated-selection contract, not a fallback for rejected prose.
+ * Unknown/missing selections fail before any source-bound summary is persisted. */
 export function normalizeAppleRecordSummary(
   value: JsonValue,
   input: TaskResponderInput,
@@ -134,8 +145,10 @@ export function normalizeAppleRecordSummary(
     return;
   const sections = [];
   for (const topic of topics) {
-    const text = summaries[topic.id];
-    if (typeof text !== 'string' || !text.trim() || text.length > 1200) return;
+    const rendered = renderStatisticChoices(summaries[topic.id], topic.choices);
+    if (!rendered) return;
+    const text = [topic.period, rendered].filter(Boolean).join('\n');
+    if (text.length > 1200) return;
     sections.push({
       title: topic.title,
       summary: text,
@@ -153,24 +166,38 @@ export function normalizeAppleRecordSummary(
   };
 }
 
-/** Project only readable tentative prose, never the required JSON field names or source IDs. */
+/** Selector prefixes cannot be interpreted as prose. Only complete selections can
+ * project source-bound facts; ordinary final validation still gates acceptance. */
 export function projectAppleRecordSummaries(
   raw: string,
   input: TaskResponderInput,
 ): string | undefined {
   const topics = appleRecordTopics(input);
   if (!topics) return;
-  const texts = topics
-    .map(topic =>
-      extractPartialJsonStringAtPath(raw, [
-        'value',
-        'recordSummaries',
-        topic.id,
-      ]),
+  try {
+    const envelope: unknown = JSON.parse(raw);
+    if (
+      !object(envelope) ||
+      !object(envelope.value) ||
+      !object(envelope.value.recordSummaries)
     )
-    .filter(
-      (text): text is string =>
-        typeof text === 'string' && canPreviewDiseaseHypothesisSummary(text),
-    );
-  return texts.length ? texts.join('\n\n') : undefined;
+      return;
+    const summaries = envelope.value.recordSummaries;
+    const texts = topics.map(topic => {
+      const text = renderStatisticChoices(summaries[topic.id], topic.choices);
+      return text ? [topic.period, text].filter(Boolean).join('\n') : undefined;
+    });
+    if (
+      texts.some(
+        text =>
+          !text ||
+          text.length > 1200 ||
+          !canPreviewDiseaseHypothesisSummary(text),
+      )
+    )
+      return;
+    return texts.join('\n\n');
+  } catch {
+    return;
+  }
 }

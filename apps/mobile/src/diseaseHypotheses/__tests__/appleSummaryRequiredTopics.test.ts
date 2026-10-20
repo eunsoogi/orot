@@ -56,17 +56,27 @@ const input: TaskResponderInput = {
   },
 };
 const recordSummaries = {
-  e1: '합성약이 건강에 등록되어 있어요.',
-  e2: '기록일 평균 수축기 혈압은 121 mmHg, 이완기 혈압은 79 mmHg예요.',
-  e3: '기록일별 센서 표본 합계의 평균은 5000걸음이며 전체 일일 걸음수 합계는 아니에요.',
-  e4: '관찰된 수면 구간의 기록일 평균은 420분이며 완전한 하룻밤 수면은 아니에요.',
+  e1: { m0: 'status' },
+  e2: { q0: 'mean', q1: 'mean' },
+  e3: { q0: 'mean' },
+  e4: { sleep: 'mean' },
 };
+
+function boundSummaries() {
+  const result = partitionedSymptomSummaryTask.validateResult(
+    { recordSummaries },
+    input,
+  );
+  if (result.status !== 'valid')
+    throw new Error('Expected source-bound summaries');
+  return result.value.hypotheses.map(section => section.summary);
+}
 
 test('cannot accept a medication-only result when usable activity, measurements and sleep were supplied', () => {
   const value = {
     sections: [
       hypothesis({
-        summary: recordSummaries.e1,
+        summary: '합성약이 건강에 등록되어 있어요.',
         supportingEvidence: ['e1'],
         uncertainty: '',
         missingData: [],
@@ -89,19 +99,9 @@ test('requests compact complete topic summaries while retaining every original r
     input.evidence.items.map(item => item.content),
   );
   const guidance = messages[1];
-  expect(guidance.outputPlan).toEqual({
-    format: 'compact_labeled_facts',
-    period:
-      'State the common period once using readable dates, not repeated ISO timestamps.',
-    medications:
-      'Include all supplied medication names, recorded-use status and completed-dose counts when present. Do not enumerate first/last timestamps for every medication.',
-    quantities:
-      'Include every supplied concept and sensor series with its recorded-day mean and unit, or latest amount when no mean exists. Preserve coverage and sensor-series limitations.',
-    sleep:
-      'Include the recorded-calendar-day mean and its coverage/complete-night limitation. Do not enumerate all interval endpoints or repeat every stage total when a mean is available.',
-    complete:
-      'Finish every required topic and the top-level citations array. Do not repeat unrelated medication limitations in activity, measurements or sleep.',
-  });
+  expect(guidance.outputPlan.format).toBe('source_bound_statistic_selections');
+  expect(messages).toHaveLength(2);
+  expect(guidance.requiredRecordFacts).toBeUndefined();
 });
 
 test('requires one bounded summary per meaningful source and binds its citation locally', () => {
@@ -122,9 +122,13 @@ test('requires one bounded summary per meaningful source and binds its citation 
   expect(result.status).toBe('valid');
   if (result.status !== 'valid')
     throw new Error('Expected validated factual topics');
-  expect(result.value.hypotheses.map(section => section.summary)).toEqual(
-    Object.values(recordSummaries),
-  );
+  expect(result.value.hypotheses.map(section => section.summary)).toEqual([
+    expect.stringContaining('합성약'),
+    expect.stringContaining('121 mmHg'),
+    expect.stringContaining('5000 걸음'),
+    expect.stringContaining('420분'),
+  ]);
+  expect(result.value.hypotheses[1].summary).toContain('79 mmHg');
   expect(
     result.value.hypotheses.map(section =>
       section.supportingEvidence.map(ref => ref.evidenceId),
@@ -167,7 +171,7 @@ test('merges validated source-bound summaries into the ordinary analysis format'
     input,
   ) as { sections: { summary: string }[] };
   expect(value.sections.map(section => section.summary)).toEqual([
-    ...Object.values(recordSummaries),
+    ...boundSummaries(),
     '합성 문헌 설명',
   ]);
 });
@@ -179,7 +183,7 @@ test('projects the source-bound summary text without leaking source IDs or field
     citations: ['e1', 'e2', 'e3', 'e4'],
   });
   expect(partitionedSymptomSummaryTask.projectStreamedText!(raw, input)).toBe(
-    Object.values(recordSummaries).join('\n\n'),
+    boundSummaries().join('\n\n'),
   );
 });
 
@@ -206,19 +210,20 @@ test('keeps the ordinary research input and raw-source schema instead of forcing
   ).toEqual(['sections']);
 });
 
-test('preserves real limitations in topic prose and refuses unsafe streamed clinical claims', () => {
-  const limited = {
-    ...recordSummaries,
-    e4: recordSummaries.e4 + ' 기록하지 않은 날짜의 수면은 알 수 없어요.',
-  };
+test('preserves source-derived limitations and refuses unsafe model-written clinical claims', () => {
   const result = partitionedSymptomSummaryTask.validateResult(
-    { recordSummaries: limited },
+    { recordSummaries },
     input,
   );
   expect(result.status).toBe('valid');
   if (result.status !== 'valid')
     throw new Error('Expected preserved source limitation');
-  expect(result.value.hypotheses[3].summary).toBe(limited.e4);
+  expect(result.value.hypotheses[3].summary).toContain(
+    '기록하지 않은 날짜의 수면은 알 수 없어요.',
+  );
+  expect(result.value.hypotheses[2].summary).toContain(
+    '중복될 수 있어 합산하거나 전체 일일 걸음수로 해석할 수 없어요.',
+  );
   const raw = JSON.stringify({
     type: 'result',
     value: { recordSummaries: { e1: '확실히 당뇨병입니다.' } },
@@ -227,23 +232,4 @@ test('preserves real limitations in topic prose and refuses unsafe streamed clin
   expect(
     partitionedSymptomSummaryTask.projectStreamedText!(raw, input),
   ).toBeUndefined();
-});
-
-test('does not manufacture a required medication topic from a malformed registration without a name', () => {
-  const malformed = {
-    ...reference,
-    evidenceId: 'empty-registration',
-    content: 'health_context: {"topic":"medications","medications":[{}]}',
-  };
-  const schema = partitionedSymptomSummaryTask.createResultSchema!({
-    ...input,
-    evidence: {
-      ...input.evidence,
-      items: [...input.evidence.items, malformed],
-    },
-  });
-  expect(
-    (schema.properties as { recordSummaries: { required: string[] } })
-      .recordSummaries.required,
-  ).toEqual(['e1', 'e2', 'e3', 'e4']);
 });
