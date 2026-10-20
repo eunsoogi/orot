@@ -1,5 +1,4 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
-import type { LanguageModelStreamEvent } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import type { ModelCallOutcome } from './modelCall';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
@@ -16,38 +15,8 @@ import {
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { consumeNativeToolCall, withNativeTools } from './nativeTools';
-
-type ResponderTextEvent = Extract<
-  LanguageModelStreamEvent,
-  { readonly type: 'text_delta' | 'text_snapshot' }
->;
-
-/** Keeps raw structured tokens inside the runtime and emits only the task's current display projection. */
-function createTaskTextObserver<TResult>(
-  context: RuntimeContext<TResult>,
-  input: TaskResponderInput,
-): ((event: ResponderTextEvent) => void) | undefined {
-  const project = context.options.task.projectStreamedText;
-  if (!context.onTaskStreamEvent || !project) return undefined;
-  let rawOutput = '';
-  let displayed = '';
-  return (event) => {
-    rawOutput = event.type === 'text_delta' ? rawOutput + event.text : event.text;
-    let projected: string | undefined;
-    try {
-      projected = project(rawOutput, input);
-    } catch {
-      projected = undefined;
-    }
-    const next = projected ?? '';
-    if (next === displayed) return;
-    const update = next.startsWith(displayed)
-      ? { type: 'text_delta' as const, text: next.slice(displayed.length) }
-      : { type: 'text_snapshot' as const, text: next };
-    displayed = next;
-    reportTaskStreamEvent(context, update);
-  };
-}
+import { createTaskTextObserver } from './taskTextObserver';
+import { callPartitionedTaskResponse, finalResultInputs } from './partitionedTaskResponse';
 
 /** Applies task validation and, when explicitly requested, one bounded correction call. */
 export async function consumeTaskModelResponse<TResult>(
@@ -58,6 +27,19 @@ export async function consumeTaskModelResponse<TResult>(
   revised: boolean,
 ): Promise<Partial<WorkflowState>> {
   context.responseCorrectionInstruction = undefined;
+  const groups = finalResultInputs(context, input);
+  if (groups) {
+    const result = await callPartitionedTaskResponse(context, state, input, groups);
+    const finalState = { ...state, modelCalls: result.modelCalls };
+    return {
+      ...(result.response
+        ? consumeResponderResponse(context, finalState, result.response, input, revised, true)
+        : result.failure
+          ? finishModelFailure(context, result.failure)
+          : completeState()),
+      modelCalls: result.modelCalls,
+    };
+  }
   const onTaskText = createTaskTextObserver(context, input);
   if (onTaskText) {
     reportTaskStreamEvent(context, { type: 'started' });

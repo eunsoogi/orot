@@ -33,6 +33,9 @@ test('selects a factual-summary contract only for the explicit summary action an
   expect(diseaseRunner.mock.calls[0]?.[4]?.taskType).toBe(
     'symptom_record_summary',
   );
+  expect(diseaseRunner.mock.calls[0]?.[4]?.finalResultPartition?.by).toBe(
+    'source_kind',
+  );
   expect(diseaseRunner.mock.calls[0]?.[0].initialEvidence?.items).toEqual([]);
   expect(source.data.readCandidates).not.toHaveBeenCalled();
   expect(source.data.loadCurrentChunks).not.toHaveBeenCalled();

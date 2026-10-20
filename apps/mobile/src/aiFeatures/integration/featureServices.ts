@@ -14,7 +14,7 @@ import { runRagConversationTurn as defaultRagRunner } from '../../ragConversatio
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
-import { symptomSummaryTask } from '../../diseaseHypotheses/symptomSummaryTask';
+import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
 import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/task';
 import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
@@ -161,7 +161,7 @@ export function createAiFeatureServices(
           undefined,
           invocation,
           resolver,
-          symptomSummaryTask,
+          symptomSummaryTaskForProvider(selected.provider.id),
         )
       : diseaseRunner(workflow, undefined, invocation, resolver));
     return summary

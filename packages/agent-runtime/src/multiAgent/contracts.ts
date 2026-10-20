@@ -46,6 +46,12 @@ export interface TaskResponderInput {
   readonly request: string;
   readonly context?: JsonValue;
   readonly evidence: EvidenceBatch;
+  /** Final source groups are separate generation units, not missing evidence or independent saved results. */
+  readonly resultPartition?: {
+    readonly sourceKind: EvidenceSourceKind;
+    readonly index: number;
+    readonly total: number;
+  };
   /** Capacity to ask the bounded planner; candidates do not guarantee adapter scope support, results, or query consent. */
   readonly research?: {
     readonly canRequestEvidence: boolean;
@@ -93,6 +99,12 @@ export interface TaskResponderContract<TResult = JsonValue> {
   /** Opt in only when createMessages includes every current item's full content and identity.
    * Tool receipts then retain IDs, coverage and conflicts without duplicating that content. */
   readonly nativeToolResultMode?: 'evidence_references';
+  /** Opt in only for results whose source groups can be merged without another model synthesis.
+   * Every group and the merged value pass normal citation/task validation; partial values stay ephemeral. */
+  readonly finalResultPartition?: {
+    readonly by: 'source_kind';
+    mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
+  };
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
