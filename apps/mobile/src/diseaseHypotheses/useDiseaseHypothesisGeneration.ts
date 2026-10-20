@@ -12,8 +12,11 @@ import {
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { t } from '../i18n';
 
-type ScreenState =
-  | { readonly status: 'idle' | 'loading' | 'cancelled' | 'insufficient' }
+export type DiseaseGenerationState =
+  | {
+      readonly status:
+        'idle' | 'loading' | 'cancelled' | 'insufficient' | 'consent_required';
+    }
   | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
   | {
       readonly status: 'error';
@@ -30,7 +33,9 @@ export function useDiseaseHypothesisGeneration(
   onGenerate: DiseaseHypothesisGenerator,
   restoredSummary?: DiseaseHypothesisAnalysis,
 ) {
-  const [state, setState] = useState<ScreenState>({ status: 'idle' });
+  const [state, setState] = useState<DiseaseGenerationState>({
+    status: 'idle',
+  });
   const [activity, setActivity] = useState<string>();
   const [preview, setPreview] = useState('');
   const [lastOperation, setLastOperation] = useState<'summary' | 'assessment'>(
@@ -103,6 +108,10 @@ export function useDiseaseHypothesisGeneration(
         setState({ status: 'insufficient' });
       } else if (outcome.result.status === 'cancelled') {
         setState({ status: 'cancelled' });
+      } else if (outcome.result.status === 'consent_required') {
+        // A closed or denied disclosure stops dispatch; it is not a model failure.
+        // Retain any earlier safe draft without presenting it as a finished answer.
+        setState({ status: 'consent_required' });
       } else {
         setState({
           status: 'error',

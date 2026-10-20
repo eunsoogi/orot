@@ -20,7 +20,7 @@ import { SavedSummaryHistory } from './SavedSummaryHistory';
 import type { SymptomSummaryHistory } from './savedSummaries';
 import { SummaryHeader } from './SummaryHeader';
 import { readableHypothesis } from './readableHypothesis';
-import { DiseaseGenerationError } from './DiseaseGenerationError';
+import { DiseaseGenerationFeedback } from './DiseaseGenerationFeedback';
 
 interface DiseaseHypothesesScreenProps {
   readonly onOpenHistory?: () => void;
@@ -57,6 +57,8 @@ export function DiseaseHypothesesScreen({
   const copy = getDiseaseHypothesisCopy();
   const { state, activity, preview, generate, cancel, restore, lastOperation } =
     useDiseaseHypothesisGeneration(onGenerate, restoredSummary);
+  const canRetry =
+    state.status === 'error' || state.status === 'consent_required';
   const hasSharedCancel = useAiCancellationAction(
     state.status === 'loading',
     cancel,
@@ -117,7 +119,7 @@ export function DiseaseHypothesesScreen({
           }}
           testID="symptom-summary-generate"
           title={
-            state.status === 'error' && lastOperation === 'summary'
+            canRetry && lastOperation === 'summary'
               ? copy.summaryRetry
               : copy.summaryGenerate
           }
@@ -132,7 +134,7 @@ export function DiseaseHypothesesScreen({
         }}
         testID="disease-hypotheses-generate"
         title={
-          state.status === 'error' && lastOperation === 'assessment'
+          canRetry && lastOperation === 'assessment'
             ? copy.retry
             : copy.generate
         }
@@ -167,23 +169,11 @@ export function DiseaseHypothesesScreen({
           <AiResponseText>{preview}</AiResponseText>
         </View>
       ) : null}
-      {state.status === 'cancelled' ? (
-        <Text testID="disease-hypotheses-cancelled">{copy.cancelled}</Text>
-      ) : null}
-      {state.status === 'insufficient' ? (
-        <Text testID="disease-hypotheses-insufficient">
-          {lastOperation === 'summary'
-            ? copy.summaryInsufficient
-            : copy.insufficient}
-        </Text>
-      ) : null}
-      {state.status === 'error' ? (
-        <DiseaseGenerationError
-          code={state.providerErrorCode}
-          summary={lastOperation === 'summary'}
-          onOpenProviderSelection={onOpenProviderSelection}
-        />
-      ) : null}
+      <DiseaseGenerationFeedback
+        state={state}
+        summary={lastOperation === 'summary'}
+        onOpenProviderSelection={onOpenProviderSelection}
+      />
       {state.status === 'result' ? (
         <View style={styles.results} testID="disease-hypotheses-results">
           <Text testID="disease-hypotheses-search-scope">

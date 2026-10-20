@@ -7,6 +7,7 @@ export function getDiseaseHypothesisCopy() {
     summaryGenerate: t('diseaseHypotheses.summaryGenerate'),
     summaryRetry: t('diseaseHypotheses.summaryRetry'),
     summaryError: t('diseaseHypotheses.summaryError'),
+    consentRequired: t('diseaseHypotheses.consentRequired'),
     summaryInsufficient: t('diseaseHypotheses.summaryInsufficient'),
     summaryExplanation: t('diseaseHypotheses.summaryExplanation'),
     summaryScope: t('diseaseHypotheses.summaryScope'),

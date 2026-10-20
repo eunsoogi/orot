@@ -74,6 +74,7 @@ const featureScreens = [
       'diseaseHypotheses.summaryScope',
       'diseaseHypotheses.summaryRetry',
       'diseaseHypotheses.summaryError',
+      'diseaseHypotheses.consentRequired',
       'diseaseHypotheses.summaryInsufficient',
       'diseaseHypotheses.explanation',
       'diseaseHypotheses.generate',
