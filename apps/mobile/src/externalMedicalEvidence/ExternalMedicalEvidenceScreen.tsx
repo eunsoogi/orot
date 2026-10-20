@@ -181,6 +181,7 @@ export function ExternalMedicalEvidenceScreen({
         ? state.publications.map(publication => (
             <View
               key={`${publication.source}:${publication.recordId}`}
+              testID={`external-evidence-publication-${publication.source}-${publication.recordId}`}
               style={styles.card}
             >
               <Text accessibilityRole="header" style={styles.title}>
@@ -229,7 +230,9 @@ const styles = StyleSheet.create({
   error: { color: appColors.danger },
   // Focus remains visible for keyboard users in both system appearances.
   inputFocused: { borderColor: appColors.primaryText, borderWidth: 2 },
+  // A result is a surface above the canvas, rather than a transparent outline.
   card: {
+    backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,

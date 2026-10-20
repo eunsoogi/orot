@@ -6,7 +6,9 @@ export const styles = StyleSheet.create({
   container: { gap: 12, padding: 20 },
   heading: { fontSize: 22, fontWeight: '700' },
   results: { gap: 12 },
+  // Filled surfaces preserve the card/canvas hierarchy in both system appearances.
   card: {
+    backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 14,
     borderWidth: 1,
@@ -14,6 +16,7 @@ export const styles = StyleSheet.create({
     padding: 16,
   },
   draft: {
+    backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 1,

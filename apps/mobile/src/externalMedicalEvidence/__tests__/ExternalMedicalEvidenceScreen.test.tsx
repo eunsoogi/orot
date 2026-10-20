@@ -77,6 +77,11 @@ test('requires query consent and presents provenance and dates', async () => {
     signal: expect.any(AbortSignal),
   });
   expect(await screen.findByText('Sleep and blood pressure')).toBeTruthy();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('external-evidence-publication-MED-12345').props.style,
+    ).backgroundColor,
+  ).toEqual(appColors.surface);
   expect(screen.getByText(/처음 공개된 날짜: 2024-03-01/)).toBeTruthy();
   expect(screen.getByText(/자료 수정 날짜: 확인할 수 없어요./)).toBeTruthy();
   expect(
