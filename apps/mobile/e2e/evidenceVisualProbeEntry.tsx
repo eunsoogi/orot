@@ -10,6 +10,7 @@ import { createNavigationController } from '../src/navigation/navigationControll
 import {
   evidenceVisualRecords,
   evidenceVisualReference,
+  evidenceVisualMedication,
 } from './evidenceVisualFixtures';
 import { evidenceVisualPeriod } from './evidenceVisualPeriod';
 
@@ -113,6 +114,7 @@ function Detail({
             evidenceVisualRecords[
               mode === 'unavailable' ? 'measurement' : mode
             ],
+            ...(mode === 'medication' ? [evidenceVisualMedication] : []),
           ],
         },
       };

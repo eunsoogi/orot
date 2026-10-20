@@ -60,6 +60,21 @@ export const evidenceVisualRecords = {
   },
 } satisfies Record<string, LocalHealthEvidenceRecord>;
 
+export const evidenceVisualMedication = {
+  kind: 'medication_definition',
+  record: {
+    id: 'synthetic-medication',
+    ingestedAt: metadata.ingestedAt,
+    provenance: metadata.provenance,
+    reviewState: metadata.reviewState,
+    medicationConceptIdentifier: 'synthetic-medication-concept',
+    displayText: '합성 예시약',
+    generalForm: 'tablet',
+    isArchived: false,
+    hasSchedule: true,
+  },
+} satisfies LocalHealthEvidenceRecord;
+
 export const evidenceVisualReference: EvidenceReference = {
   sourceKind: 'personal_record',
   sourceId: 'synthetic-source-alias',

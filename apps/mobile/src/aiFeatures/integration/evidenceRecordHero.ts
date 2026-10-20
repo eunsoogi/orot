@@ -1,6 +1,7 @@
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import { fieldLabels, visibleValue } from './evidenceSourceValues';
 import { sleepRecordSemantics } from '../../healthkit/sleep/sleepRecordSemantics';
+import { linkedDoseMedication } from '../../healthEvidence/doseMedicationLink';
 
 export interface EvidenceRecordHero {
   readonly heading?: string;
@@ -14,6 +15,7 @@ export interface EvidenceRecordHero {
 /** Projects existing fields only. Never generates a summary, computes a trend, or pairs unlinked measurements. */
 export function evidenceRecordHero(
   entry: LocalHealthEvidenceRecord,
+  records: readonly LocalHealthEvidenceRecord[] = [],
 ): EvidenceRecordHero {
   const record = entry.record as unknown as Record<string, unknown>;
   const consumed = ['effectiveAt'];
@@ -21,9 +23,16 @@ export function evidenceRecordHero(
     key => typeof record[key] === 'string',
   );
   if (headingKey) consumed.push(headingKey);
+  const medication = linkedDoseMedication(entry, records);
+  const linkedName =
+    medication?.kind === 'medication_definition'
+      ? medication.record.displayText
+      : medication?.kind === 'medication_assertion'
+        ? medication.record.medicationName
+        : undefined;
   const heading = headingKey
     ? visibleValue(record[headingKey], headingKey)
-    : undefined;
+    : linkedName;
   let value: string | undefined;
   let body: string | undefined;
   // Dose quantities belong to their saved event, even when the medication name is a separate linked record.

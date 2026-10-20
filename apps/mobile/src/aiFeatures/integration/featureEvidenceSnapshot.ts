@@ -63,7 +63,18 @@ export async function loadFeatureEvidenceSnapshot(
     id: entry.record.id,
   }));
   const persistedChunks = await data.loadCurrentChunks(identities, signal);
-  const staleArtifacts = await data.loadStaleArtifacts(identities, signal);
+  // Linked extracted names need the same transcript-revision guard as selected clinical rows.
+  const staleIdentities = [
+    ...identities,
+    ...selection.dependencies
+      .filter(
+        entry =>
+          entry.kind === 'medication_assertion' &&
+          entry.record.provenance.origin === 'derived',
+      )
+      .map(entry => ({ kind: entry.kind, id: entry.record.id })),
+  ];
+  const staleArtifacts = await data.loadStaleArtifacts(staleIdentities, signal);
   // A personal health overview neither queries nor embeds unrelated reviewed memory.
   const memoryRecords =
     scope?.selection === 'health_overview'
@@ -89,7 +100,7 @@ export async function loadFeatureEvidenceSnapshot(
     persistedChunks,
     loadCurrentPersistedChunks: () => data.loadCurrentChunks(identities),
     staleArtifacts,
-    loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(identities),
+    loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(staleIdentities),
     repository: data.repository,
     memoryRecords,
     memoryStorage: data.memoryStorage,

@@ -1,11 +1,22 @@
-import { DoseEventSchema, HealthObservationSchema } from '@orot/domain';
-import { evidenceVisualRecords } from '../e2e/evidenceVisualFixtures';
+import {
+  DoseEventSchema,
+  HealthObservationSchema,
+  MedicationDefinitionSchema,
+} from '@orot/domain';
+import {
+  evidenceVisualRecords,
+  evidenceVisualMedication,
+} from '../e2e/evidenceVisualFixtures';
 import { evidenceVisualPeriod } from '../e2e/evidenceVisualPeriod';
 import { presentEvidenceSource } from '../src/aiFeatures/integration/evidenceSourcePresentation';
 import { parseHealthContextScope } from '../src/healthEvidence/healthContext/scope';
 import { evidenceRecordHero } from '../src/aiFeatures/integration/evidenceRecordHero';
 
 test('visual evidence uses domain-valid events with distinct occurrence and import times', () => {
+  expect(
+    MedicationDefinitionSchema.safeParse(evidenceVisualMedication.record)
+      .success,
+  ).toBe(true);
   for (const entry of Object.values(evidenceVisualRecords)) {
     const schema =
       entry.kind === 'dose_event' ? DoseEventSchema : HealthObservationSchema;
@@ -15,7 +26,12 @@ test('visual evidence uses domain-valid events with distinct occurrence and impo
 });
 
 test('the fixture exercises medication, measurement, activity and categorical sleep presentation', () => {
-  expect(evidenceRecordHero(evidenceVisualRecords.medication)).toMatchObject({
+  expect(
+    evidenceRecordHero(evidenceVisualRecords.medication, [
+      evidenceVisualMedication,
+    ]),
+  ).toMatchObject({
+    heading: '합성 예시약',
     value: '1 정',
     atLabel: '복용 발생 시각',
   });

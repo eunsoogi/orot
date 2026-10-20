@@ -137,6 +137,6 @@ export function presentEvidenceSource(
   return document.records.map(entry => ({
     title: recordTitle(entry),
     rows: personalRecordRows(entry),
-    hero: evidenceRecordHero(entry),
+    hero: evidenceRecordHero(entry, document.records),
   }));
 }

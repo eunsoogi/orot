@@ -13,6 +13,7 @@ import { createPersonalSourceReader } from './personalSourceReader';
 import { fingerprint, stableJson } from './evidenceUtils';
 import type { StaleEvidenceArtifact } from './localData';
 import { healthSourceSemantics } from './healthSourceSemantics';
+import { guardDoseMedicationSource } from './doseSourceGuard';
 
 interface RecordShape {
   readonly id: string;
@@ -139,12 +140,20 @@ export function buildPersonalEvidence(input: {
       repository: input.repository,
       externalHealthKitIds: record.provenance?.source?.system === 'healthkit',
     });
+    const doseSource = guardDoseMedicationSource(
+      entry,
+      input.records,
+      input.repository,
+      readSource,
+      input.loadCurrentStaleArtifacts,
+    );
     const item = input.registry.add({
       reference,
       content,
-      readSource,
+      readSource: doseSource.readSource,
       async validate(signal, context: EvidenceValidationContext) {
         if (signal.aborted) return false;
+        if (!(await doseSource.validate(signal))) return false;
         const current = await input.repository.readRecord(
           entry.kind,
           record.id,

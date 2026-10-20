@@ -170,6 +170,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                     XCTAssertTrue(UITestConditions.exists(node(app, "ai-feature-source-\(mode)")))
                 } else {
                     XCTAssertTrue(app.staticTexts[value].waitForAppearance())
+                    if mode == "medication" {
+                        XCTAssertTrue(app.staticTexts["합성 예시약"].firstMatch.waitForAppearance())
+                    }
                     XCTAssertFalse(app.staticTexts["앱 저장 시각"].exists)
                     XCTAssertFalse(app.staticTexts["기록 시각"].exists)
                 }
