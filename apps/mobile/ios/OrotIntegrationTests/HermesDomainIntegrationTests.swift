@@ -3,6 +3,36 @@ import Foundation
 import XCTest
 
 final class HermesDomainIntegrationTests: OrotFailFastTestCase {
+    /// Real classifier, scripted responses: counts local overhead and provider dispatches, not inference time.
+    func testLargeCalendarClassificationReportsProgressAndCancellation() async throws {
+        let result = try await operation("ai-scale-calendar")
+        XCTAssertEqual(result["scriptedModel"] as? Bool, true)
+        let runs = try XCTUnwrap(result["runs"] as? [[String: Any]])
+        XCTAssertEqual(runs.count, 4)
+        for run in runs.prefix(3) {
+            if run["timeBudgetExceeded"] as? Bool == true {
+                XCTAssertEqual(run["status"] as? String, "partial")
+            } else {
+                XCTAssertEqual(run["status"] as? String, "complete")
+            }
+        }
+        XCTAssertEqual(runs.last?["completedBatches"] as? Int, 1)
+    }
+
+    /// Measures real encrypted local retrieval, never an actual model or user account.
+    func testLargeMixedLibraryMeasuresBoundedAiPreparation() async throws {
+        let result = try await operation("ai-scale", parameters: ["fixtureIdentifier": "test-ai-scale-\(UUID().uuidString)"])
+        XCTAssertEqual(result["encrypted"] as? Bool, true)
+        XCTAssertEqual(result["modelInvoked"] as? Bool, false)
+        let scales = try XCTUnwrap(result["scales"] as? [[String: Any]])
+        XCTAssertEqual(scales.count, 3)
+        for scale in scales {
+            XCTAssertEqual(scale["cancellationRejected"] as? Bool, true)
+            let sql = try XCTUnwrap(scale["sql"] as? [String: Any])
+            XCTAssertLessThanOrEqual(try XCTUnwrap(sql["maximumPayloadPage"] as? Int), 100)
+        }
+    }
+
     func testHostExecutesHermesOperations() async throws {
         let result = try await operation("connection")
         XCTAssertEqual(result["connected"] as? Bool, true)

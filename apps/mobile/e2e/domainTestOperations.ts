@@ -23,6 +23,19 @@ export async function runDomainTestOperation(
       ? parameters.storageIdentifier
       : undefined;
   switch (operation) {
+    case 'ai-scale-calendar': {
+      const { measureScaleCalendar } = await import('./aiScaleCalendar');
+      const runs = [];
+      for (const count of [1000, 10000, 50000])
+        runs.push(await measureScaleCalendar(count));
+      runs.push(await measureScaleCalendar(50000, true));
+      return { synthetic: true, scriptedModel: true, runs };
+    }
+    case 'ai-scale': {
+      const { runAiScaleTestOperation } =
+        await import('./aiScaleTestOperation');
+      return runAiScaleTestOperation(parameters.fixtureIdentifier);
+    }
     case 'checkpoint-persistence': {
       const { runCheckpointPersistenceOperation } =
         await import('./checkpointPersistenceOperation');
