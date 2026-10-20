@@ -6,6 +6,8 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
 import { styles } from './ConversationScreen.styles';
+import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
+import { PublicWebSourceLinks } from '../externalMedicalEvidence/PublicWebSourceLinks';
 
 /** Compact citations retain access to every actual source and its external provenance. */
 export function ConversationSources({
@@ -32,6 +34,16 @@ export function ConversationSources({
       contentContainerStyle={styles.sources}
     >
       {visible.map((reference, index) => {
+        if (isPublicWebReference(reference))
+          return (
+            <PublicWebSourceLinks
+              key={`${reference.evidenceId}:${index}`}
+              reference={reference}
+              linkStyle={styles.source}
+              textStyle={styles.sourceText}
+              onLinkError={onLinkError}
+            />
+          );
         const external = reference.sourceKind === 'external_medical';
         const locator = reference.locator as Record<string, unknown> | null;
         const title = external

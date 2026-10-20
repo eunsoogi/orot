@@ -74,7 +74,8 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     // An empty personal library does not establish that public literature is unavailable.
     'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +
     'If research is denied, exhausted, or returned no supporting results, acknowledge insufficient evidence; do not invent an answer or repeatedly request the same search. ' +
-    'Do not invent records, diagnoses, or sources. External medical publications are general literature, not personal findings. ' +
+    'Do not invent records, diagnoses, or sources. External publications and public-web search explanations are general context, not personal findings. ' +
+    'Use public-web-search when general web sources beyond Europe PMC are needed. Its output is a cited model-generated explanation, never original passages or Europe PMC papers. Use only supplied source dates; a retrieval time is not a publication date. ' +
     'Describe external evidence as a limited search sample, never a complete review; include publication dates and limitations. Request literature evidence when relevant. ' +
     'For a simple record question, answer in one short Korean sentence using only relevant facts. Do not repeat unrelated evidence or metadata. Keep IDs only in citations, never in the answer text. ' +
     'For medications, distinguish a recorded dose or prescription from confirmed current use; do not claim an old dose proves current use. Preserve qualifications and uncertainty. ' +

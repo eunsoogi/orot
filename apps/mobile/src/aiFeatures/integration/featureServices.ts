@@ -2,7 +2,7 @@ import { operationRunId } from './featureRunIdentity';
 import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
 import { withProviderStage } from '../../providers/diagnostics';
-import { createExternalConversationEvidence } from './externalConversationEvidence';
+import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceReference,
@@ -126,14 +126,16 @@ export function createAiFeatureServices(
     const data = await withProviderStage('disease', 'data', privateLocalData);
     const operationSignal = signal ?? new AbortController().signal;
     // Both explicit actions use the same bounded tools, consent and freshness boundary.
-    const external = createExternalConversationEvidence(
-      externalEvidence,
-      queryConsent,
-      { requireAbstract: true },
-    );
+    const external = createSelectedExternalEvidence({
+      selected,
+      consent,
+      literature: externalEvidence,
+      literatureConsent: queryConsent,
+      requireAbstract: true,
+    });
     const tools = [
       ...toolsFor(undefined, data, registry, 6, summary),
-      external.tool,
+      ...external.tools,
     ];
     const runId = dependencies.createOperationRunId?.() ?? operationRunId();
     const workflow = {
@@ -200,13 +202,15 @@ export function createAiFeatureServices(
         );
         const data = await withProviderStage('rag', 'data', privateLocalData);
         const signal = linked.controller.signal;
-        const external = createExternalConversationEvidence(
-          externalEvidence,
-          queryConsent,
-        );
+        const external = createSelectedExternalEvidence({
+          selected,
+          consent,
+          literature: externalEvidence,
+          literatureConsent: queryConsent,
+        });
         const tools = [
           ...toolsFor(undefined, data, registry, 6, true, 'rag'),
-          external.tool,
+          ...external.tools,
         ];
         const runId = dependencies.createOperationRunId?.() ?? operationRunId();
         const outcome = await ragRunner(

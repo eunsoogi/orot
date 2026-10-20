@@ -5,6 +5,8 @@ import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
+import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
+import { PublicWebSourceLinks } from '../externalMedicalEvidence/PublicWebSourceLinks';
 
 /** Compact links leave room for other record categories while retaining every exact citation. */
 export function EvidenceLinks({
@@ -29,6 +31,15 @@ export function EvidenceLinks({
       >
         {(expanded ? references : references.slice(0, 2)).map(
           (reference, index) => {
+            if (isPublicWebReference(reference))
+              return (
+                <PublicWebSourceLinks
+                  key={`${reference.evidenceId}:${index}`}
+                  reference={reference}
+                  linkStyle={styles.link}
+                  onLinkError={() => setLinkError(true)}
+                />
+              );
             const external = reference.sourceKind === 'external_medical';
             const label = external
               ? 'Europe PMC 의학 문헌'
@@ -88,7 +99,7 @@ export function EvidenceLinks({
       </ScrollView>
       {linkError ? (
         <AppText accessibilityRole="alert">
-          문헌 원문을 열지 못했어요. 다시 시도해 주세요.
+          출처를 열지 못했어요. 다시 시도해 주세요.
         </AppText>
       ) : null}
     </View>

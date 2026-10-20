@@ -24,6 +24,28 @@ function request(
 }
 
 describe('InferenceDisclosureSheet', () => {
+  it('discloses the selected model and exact public-web query without claiming to send record originals', async () => {
+    await render(
+      <InferenceDisclosureSheet
+        request={{
+          ...request('Synthetic public topic'),
+          providerId: 'chatgpt-plan:synthetic:gpt-6-luna',
+          modelId: 'gpt-6-luna',
+          consentScope: {
+            purpose: 'public_web_search',
+            dataCategories: ['public_web_search_terms'],
+            policyVersion: 'isolated-public-query-v1',
+          },
+        }}
+        onDecision={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('공개 웹검색어')).toBeTruthy();
+    expect(screen.getByText('GPT-6-Luna')).toBeTruthy();
+    expect(screen.queryByText('Synthetic public topic')).toBeNull();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
+    expect(screen.getByText('Synthetic public topic')).toBeTruthy();
+  });
   it('uses a native downward-dismissible sheet and treats dismissal as cancellation', async () => {
     const onDecision = jest.fn();
     await render(

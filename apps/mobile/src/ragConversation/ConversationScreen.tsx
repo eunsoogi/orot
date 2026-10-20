@@ -127,7 +127,7 @@ export function ConversationScreen({
           bottomInset={composerHeight}
           onOpenSource={onOpenSource}
           onLinkError={() =>
-            store.setError(id, '문헌 링크를 열지 못했어요. 다시 시도해 주세요.')
+            store.setError(id, '출처를 열지 못했어요. 다시 시도해 주세요.')
           }
         />
         <ConversationComposer

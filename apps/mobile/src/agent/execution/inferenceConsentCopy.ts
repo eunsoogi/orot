@@ -10,6 +10,7 @@ const purposes = {
     'medicalAppointments.inferenceDisclosure.forConversation',
   visit_questions: 'medicalAppointments.inferenceDisclosure.forVisit',
   public_medical_search: 'medicalAppointments.inferenceDisclosure.forSearch',
+  public_web_search: 'medicalAppointments.inferenceDisclosure.forWebSearch',
 } as const;
 const categories = {
   calendar_title_time: 'medicalAppointments.inferenceDisclosure.calendar',
@@ -19,6 +20,9 @@ const categories = {
   visit_title_time: 'medicalAppointments.inferenceDisclosure.visit',
   medical_literature: 'medicalAppointments.inferenceDisclosure.literature',
   medical_search_terms: 'medicalAppointments.inferenceDisclosure.searchTerms',
+  public_web_search_terms:
+    'medicalAppointments.inferenceDisclosure.webSearchTerms',
+  public_web_results: 'medicalAppointments.inferenceDisclosure.webResults',
 } as const;
 
 /** Explain the durable permission boundary, while the expandable preview still shows this exact request. */

@@ -16,3 +16,9 @@ export const publicMedicalSearchConsentScope = {
   dataCategories: ['medical_search_terms'],
   policyVersion: 'public-query-v1',
 } as const;
+
+export const publicWebSearchConsentScope = {
+  purpose: 'public_web_search',
+  dataCategories: ['public_web_search_terms'],
+  policyVersion: 'isolated-public-query-v1',
+} as const;

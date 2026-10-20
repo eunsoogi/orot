@@ -90,7 +90,12 @@ export function executionOptions(input: {
   readonly consent: MultiAgentWorkflowOptions['consent'];
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly tools: readonly EvidenceSearchTool[];
-  readonly external?: ReturnType<typeof createExternalConversationEvidence>;
+  readonly external?: Pick<
+    ReturnType<typeof createExternalConversationEvidence>,
+    'validates'
+  > & {
+    readonly usesPublicWeb?: boolean;
+  };
   readonly medicalExplanation?: boolean;
   readonly consentPurpose:
     'symptom_summary' | 'disease_hypotheses' | 'record_conversation';
@@ -109,6 +114,7 @@ export function executionOptions(input: {
           'reviewed_memory',
           'conversation',
           ...(input.external ? ['medical_literature'] : []),
+          ...(input.external?.usesPublicWeb ? ['public_web_results'] : []),
         ],
         policyVersion: 'local-records-v1',
       },
@@ -122,15 +128,16 @@ export function executionOptions(input: {
           : (['personal_record', 'reviewed_memory'] as const),
       },
       // Both local and literature tools need time for retrieval plus a cited answer.
-      budget: input.medicalExplanation
-        ? {
-            ...EVIDENCE_WORKFLOW_BUDGET,
-            maxModelCalls: 4,
-            maxOutputTokens: 1024,
-          }
-        : input.external
-          ? RAG_CONVERSATION_BUDGET
-          : EVIDENCE_WORKFLOW_BUDGET,
+      budget:
+        input.medicalExplanation || input.external?.usesPublicWeb
+          ? {
+              ...EVIDENCE_WORKFLOW_BUDGET,
+              maxModelCalls: 4,
+              maxOutputTokens: 1024,
+            }
+          : input.external
+            ? RAG_CONVERSATION_BUDGET
+            : EVIDENCE_WORKFLOW_BUDGET,
     },
     provider: input.selected.provider,
     tools: input.tools,

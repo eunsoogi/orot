@@ -51,6 +51,10 @@ export const medicalAppointmentsKo = {
     '다음 진료 질문을 준비할 정보를 보내요.',
   'medicalAppointments.inferenceDisclosure.forSearch':
     '공개 의학 문헌 검색에 사용할 검색어를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forWebSearch':
+    'AI가 만든 검색어로 공개 웹자료를 찾아요. 개인정보가 포함되어 있는지 확인해 주세요.',
+  'medicalAppointments.inferenceDisclosure.webSearchTerms': '공개 웹검색어',
+  'medicalAppointments.inferenceDisclosure.webResults': '공개 웹검색 자료',
   'medicalAppointments.inferenceDisclosure.healthRecords':
     '건강·복약·활동·수면·증상 기록',
   'medicalAppointments.inferenceDisclosure.memory': '확인한 기억',
