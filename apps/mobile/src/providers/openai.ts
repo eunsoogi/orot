@@ -1,5 +1,12 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
 import {
+  readAccountSummary,
+  isIssuedClientID,
+  invalidAccountSummary,
+} from './openaiAccountSummary';
+import type { OpenAIAccountSummary } from './openaiAccountSummary';
+export type { OpenAIAccountSummary } from './openaiAccountSummary';
+import {
   createChatGPTPlanProvider,
   listChatGPTPlanModels,
 } from '@orot/provider-openai';
@@ -10,6 +17,8 @@ import type {
   ChatGPTPlanNativeError,
   ChatGPTPlanNativeToolCall,
   ChatGPTPlanRequest,
+  ChatGPTPlanPublicWebRequest,
+  ChatGPTPlanWebSearchResult,
 } from '@orot/provider-openai';
 
 const EVENT_NAME = 'OpenAIProviderEvent';
@@ -25,17 +34,11 @@ interface NativeOpenAIProviderModule {
     issuedClientID: string,
   ): Promise<readonly ChatGPTPlanModelDescriptor[]>;
   startResponse(
-    request: ChatGPTPlanRequest,
+    request: ChatGPTPlanRequest | ChatGPTPlanPublicWebRequest,
     requestId: string,
     issuedClientID: string,
   ): void;
   cancelResponse(requestId: string): void;
-}
-
-export interface OpenAIAccountSummary {
-  readonly issuedClientID: string;
-  readonly requiresSignIn: boolean;
-  readonly hasDirectPlanAccess: boolean;
 }
 
 export type OpenAISignOutResult = 'revoked' | 'localCredentialsCleared';
@@ -53,6 +56,7 @@ type NativeOpenAIProviderPacket =
       readonly text: string;
       readonly toolCalls?: readonly ChatGPTPlanNativeToolCall[];
       readonly continuationItems?: readonly string[];
+      readonly webSearch?: ChatGPTPlanWebSearchResult;
     }
   | { readonly type: 'failed'; readonly error: ChatGPTPlanNativeError };
 
@@ -92,6 +96,11 @@ export const chatGPTPlanNativeBridge: ChatGPTPlanNativeBridge = {
   },
 
   async startResponse(requestId, issuedClientID, request) {
+    if (!nativeModule) throw bridgeUnavailable();
+    nativeModule.startResponse(request, requestId, issuedClientID);
+  },
+
+  async startPublicWebSearch(requestId, issuedClientID, request) {
     if (!nativeModule) throw bridgeUnavailable();
     nativeModule.startResponse(request, requestId, issuedClientID);
   },
@@ -205,46 +214,11 @@ function isToolCall(value: unknown): value is ChatGPTPlanNativeToolCall {
   );
 }
 
-function readAccountSummary(value: unknown): OpenAIAccountSummary {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw invalidAccountSummary();
-  }
-  const summary = value as Record<string, unknown>;
-  const keys = Object.keys(summary).sort();
-  if (
-    keys.join(',') !== 'hasDirectPlanAccess,issuedClientID,requiresSignIn' ||
-    !isIssuedClientID(summary.issuedClientID) ||
-    typeof summary.requiresSignIn !== 'boolean' ||
-    typeof summary.hasDirectPlanAccess !== 'boolean'
-  ) {
-    throw invalidAccountSummary();
-  }
-  return {
-    issuedClientID: summary.issuedClientID,
-    requiresSignIn: summary.requiresSignIn,
-    hasDirectPlanAccess: summary.hasDirectPlanAccess,
-  };
-}
-
-function isIssuedClientID(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value !== 'dynamic_agent_client' &&
-    /^[A-Za-z0-9._-]{1,256}$/.test(value)
-  );
-}
-
 function bridgeUnavailable(): Error {
   const error = new Error('The ChatGPT plan native bridge is not registered.');
   Object.assign(error, {
     code: 'NATIVE_MODULE_UNAVAILABLE',
     kind: 'provider' satisfies ChatGPTPlanNativeError['kind'],
   });
-  return error;
-}
-
-function invalidAccountSummary(): Error {
-  const error = new Error('The ChatGPT account summary is invalid.');
-  Object.assign(error, { code: 'INVALID_CHATGPT_ACCOUNT_SUMMARY' });
   return error;
 }

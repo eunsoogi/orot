@@ -63,4 +63,21 @@ describe('InMemoryProviderRegistry', () => {
       error: { code: 'invalid_provider', retryable: false },
     });
   });
+
+  it('preserves an optional public search method and rejects a malformed declaration', () => {
+    const original = new InMemoryFakeLanguageModelProvider({ id: 'public-capable' });
+    const searchPublicWeb = async () =>
+      providerSuccess({ text: 'Synthetic', callCount: 1, citations: [] });
+    const valid = Object.assign(original, { searchPublicWeb });
+    const registry = new InMemoryProviderRegistry();
+    expect(registry.register(valid).ok).toBe(true);
+    expect(registry.get('language-model', valid.id)?.searchPublicWeb).toBe(searchPublicWeb);
+    const invalid = Object.assign(new InMemoryFakeLanguageModelProvider(), {
+      searchPublicWeb: true,
+    }) as unknown as LanguageModelProvider;
+    expect(new InMemoryProviderRegistry().register(invalid)).toMatchObject({
+      ok: false,
+      error: { code: 'invalid_provider' },
+    });
+  });
 });

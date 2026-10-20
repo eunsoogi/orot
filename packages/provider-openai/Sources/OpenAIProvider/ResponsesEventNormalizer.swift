@@ -13,12 +13,14 @@ struct ResponsesEventNormalizer {
     private var functionCallsByItemID = [String: FunctionCallState]()
     private var emittedFunctionCalls = [String: ChatGPTResponsesFunctionCall]()
     private var completedOutput = ResponsesCompletedOutput()
+    private var webSearch: ResponsesPublicWebSearch
 
     /// Creates a normalizer while preserving the request identifier for diagnostics.
     ///
     /// Private stream state makes the synthesized memberwise initializer private.
-    init(requestID: String?) {
+    init(requestID: String?, publicWebSearch: Bool = false) {
         self.requestID = requestID
+        webSearch = ResponsesPublicWebSearch(enabled: publicWebSearch)
     }
 
     mutating func consume(_ frame: ResponsesSSEFrame) throws -> ChatGPTResponsesEvent? {
@@ -40,9 +42,13 @@ struct ResponsesEventNormalizer {
         case "response.output_text.delta", "response.refusal.delta":
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
             accumulatedText.append(delta)
+            if webSearch.enabled, accumulatedText.utf8.count > ResponsesPublicWebSearch.maxTextBytes {
+                throw ChatGPTResponsesError.malformedEvent
+            }
             return delta.isEmpty ? nil : .textDelta(delta)
         case "response.output_item.added":
             completedOutput.recordAdded(object)
+            try webSearch.recordAdded(object["item"] as? [String: Any])
             try recordFunctionCallItem(object["item"] as? [String: Any])
             return nil
         case "response.output_item.done":
@@ -79,7 +85,7 @@ struct ResponsesEventNormalizer {
             else {
                 throw Self.malformed("completion_state")
             }
-            let output = try completedOutput.resolve(Self.responseOutput(response))
+            let output = try completedOutput.resolve(Self.responseOutput(response, publicWebSearch: webSearch.enabled))
             response["output"] = output
             let finalText = try Self.responseText(response, fallback: accumulatedText)
             guard finalText == accumulatedText else { throw Self.malformed("completion_text") }
@@ -89,13 +95,16 @@ struct ResponsesEventNormalizer {
             else {
                 throw Self.malformed("completion_calls")
             }
-            // Keep opaque provider context that cannot be reconstructed from normalized calls.
-            let continuationItems = try output.map(Self.serialize)
+            // Only private function flows retain opaque continuation context; public
+            // search results can never seed a later private or public conversation.
+            let continuationItems = try (webSearch.enabled ? [] : output.map(Self.serialize))
+            let publicResult = try webSearch.result(output)
             completed = true
             return .completed(ChatGPTResponsesResult(
                 text: finalText,
                 toolCalls: functionCalls,
                 continuationItems: continuationItems,
+                webSearch: publicResult,
             ))
         case "response.incomplete":
             let response = object["response"] as? [String: Any]
@@ -126,6 +135,8 @@ struct ResponsesEventNormalizer {
         switch type {
         case "message", "reasoning":
             return
+        case "web_search_call" where webSearch.enabled:
+            return
         case "function_call":
             guard let itemID = item["id"] as? String, !itemID.isEmpty,
                   let callID = item["call_id"] as? String, !callID.isEmpty,
@@ -142,12 +153,12 @@ struct ResponsesEventNormalizer {
         }
     }
 
-    private static func responseOutput(_ response: [String: Any]) throws -> [[String: Any]] {
+    private static func responseOutput(_ response: [String: Any], publicWebSearch: Bool) throws -> [[String: Any]] {
         guard let rawOutput = response["output"] else { return [] }
         guard let output = rawOutput as? [[String: Any]] else { throw Self.malformed("output_array") }
         for item in output {
             guard let type = item["type"] as? String else { throw Self.malformed("output_type") }
-            guard ["function_call", "message", "reasoning"].contains(type) else {
+            guard ["function_call", "message", "reasoning"].contains(type) || (publicWebSearch && type == "web_search_call") else {
                 throw ChatGPTResponsesError.unsupportedCapability("hosted tools")
             }
         }

@@ -3,9 +3,18 @@ import Foundation
 public enum ChatGPTResponsesRequestDecoder {
     public static func decode(_ payload: NSDictionary) throws -> ChatGPTResponsesRequest {
         guard let value = payload as? [String: Any],
-              let model = value["model"] as? String,
-              let rawMessages = value["messages"] as? [[String: Any]],
-              !rawMessages.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
+              let model = value["model"] as? String else { throw ChatGPTResponsesError.invalidRequest }
+        // Public searches have no conversation/history channel, even if a caller adds one.
+        if value["publicWebQuery"] != nil {
+            guard Set(value.keys) == ["model", "publicWebQuery"],
+                  let query = value["publicWebQuery"] as? String,
+                  ResponsesPublicWebSearch.validQuery(query)
+            else { throw ChatGPTResponsesError.invalidRequest }
+            return ChatGPTResponsesRequest(model: model, messages: [], publicWebQuery: query)
+        }
+        guard
+            let rawMessages = value["messages"] as? [[String: Any]],
+            !rawMessages.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
 
         let messages = try rawMessages.map { message -> ChatGPTResponsesMessage in
             if let type = message["type"] as? String {

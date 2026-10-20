@@ -40,6 +40,17 @@ export interface ChatGPTPlanRequest {
   readonly toolChoice?: 'required';
 }
 
+/** Public queries have no message/history or function-tool channel. */
+export interface ChatGPTPlanPublicWebRequest {
+  readonly model: string;
+  readonly publicWebQuery: string;
+}
+
+export interface ChatGPTPlanWebSearchResult {
+  readonly callCount: number;
+  readonly citations: readonly { readonly url: string; readonly title: string }[];
+}
+
 export interface ChatGPTPlanNativeError {
   readonly message?: string;
   readonly kind?:
@@ -76,6 +87,7 @@ export type ChatGPTPlanNativeEvent =
       readonly text: string;
       readonly toolCalls?: readonly ChatGPTPlanNativeToolCall[];
       readonly continuationItems?: readonly string[];
+      readonly webSearch?: ChatGPTPlanWebSearchResult;
     }
   | { readonly requestId: string; readonly type: 'failed'; readonly error: ChatGPTPlanNativeError };
 
@@ -88,4 +100,9 @@ export interface ChatGPTPlanNativeBridge {
     request: ChatGPTPlanRequest,
   ): Promise<void>;
   cancelResponse(requestId: string): void;
+  startPublicWebSearch?(
+    requestId: string,
+    issuedClientID: string,
+    request: ChatGPTPlanPublicWebRequest,
+  ): Promise<void>;
 }
