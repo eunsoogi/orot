@@ -8,6 +8,8 @@ import { recordingLibraryService } from '../recording/recordingLibraryService';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { appColors } from '../layout/appColors';
+import { useAutomaticRecordingTranscription } from '../recording/useAutomaticRecordingTranscription';
+import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 
 /** Keeps the saved library in its own route while preserving deletion's leave guard. */
 export function SavedRecordingsRoute({
@@ -17,6 +19,9 @@ export function SavedRecordingsRoute({
 }) {
   const { select } = useRecordingSelection();
   const [busy, setBusy] = useState(false);
+  const transcription = useAutomaticRecordingTranscription(
+    transcriptEvidenceService,
+  );
   useNavigationLeaveStateRegistration({
     canLeave: !busy,
     hasUnsavedChanges: false,
@@ -29,6 +34,8 @@ export function SavedRecordingsRoute({
     <NavigationRouteScrollView>
       <View style={styles.container}>
         <RecordingLibraryPanel
+          automaticTranscription={transcription.state}
+          onSourceDeleted={transcription.cancel}
           service={recordingLibraryService}
           onBusyChange={setBusy}
           onOpenRecording={(summary, autoPlay) => {
