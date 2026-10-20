@@ -71,7 +71,26 @@ test.each([3, 4])(
     expect(f.requests).toHaveLength(maxModelCalls === 4 ? 2 : 0);
     for (const request of f.requests) {
       expect(request.tools).toBeUndefined();
-      expect(request.messages.some((message) => message.role === 'tool')).toBe(false);
+    }
+    if (maxModelCalls === 4) {
+      const first = f.requests[0]!.messages;
+      expect(
+        first.filter((message) => message.role === 'tool').map((message) => message.toolCallId),
+      ).toEqual(['chosen-1', 'chosen-2']);
+      expect(
+        first
+          .filter((message) => message.role === 'assistant')
+          .flatMap((message) => message.toolCalls ?? []),
+      ).toContainEqual({
+        id: 'chosen-2',
+        name: 'source-tool-1',
+        arguments: { query: 'synthetic concept' },
+      });
+      expect(
+        f.requests[1]!.messages.some(
+          (message) => message.role === 'tool' || message.role === 'assistant',
+        ),
+      ).toBe(false);
     }
   },
 );

@@ -86,6 +86,10 @@ export async function callPartitionedTaskResponse<TResult>(
         ...request.request,
         messages: [
           ...request.request.messages,
+          // The first group must return the last verified Tool result so the
+          // provider can drain its suspended callback. Later groups start fresh
+          // and must not consume that completed callback a second time.
+          ...(index === 0 ? (context.nativeToolMessages ?? []) : []),
           {
             role: 'system',
             content: `This is final source group ${index + 1} of ${groups.length}: ${group.resultPartition!.sourceKind}. Summarize only its supplied sources. Other source kinds are handled separately; do not report them as missing or request another search. Return the normal task result and exact citations.`,
