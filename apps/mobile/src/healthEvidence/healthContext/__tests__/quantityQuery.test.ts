@@ -4,6 +4,46 @@ import { createHealthEvidenceTestDatabase } from '../../localEvidenceTestSupport
 import { readHealthQuantityContext } from '../quantityQuery';
 import { healthContextDays } from '../window';
 
+test('keeps exact exclusive and inclusive boundaries when source times have sub-millisecond precision', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    const records = createRecordRepository(database);
+    for (const [id, at, amount] of [
+      ['before', '2026-10-01T00:00:00.0001Z', 1],
+      ['start', '2026-10-01T00:00:00.0005Z', 2],
+      ['last', '2026-10-02T00:00:00.0001Z', 4],
+      ['end', '2026-10-02T00:00:00.0005Z', 8],
+    ] as const) {
+      await records.put('health_observation', {
+        ...healthObservation(id, 'heart_rate', at),
+        ingestedAt: '2026-10-20T00:00:00Z',
+        value: { kind: 'quantity', amount, unit: 'count/min' },
+      });
+    }
+    const result = await readHealthQuantityContext(
+      database,
+      healthContextDays({
+        fromInclusive: '2026-10-01T00:00:00.0005Z',
+        toExclusive: '2026-10-02T00:00:00.0005Z',
+        timeZone: 'UTC',
+      }),
+    );
+    expect(
+      result.series[0]?.days.map(day => ({
+        date: day.date,
+        samples: day.samples,
+        sum: day.sum,
+      })),
+    ).toEqual([
+      { date: '2026-10-01', samples: 1, sum: 2 },
+      { date: '2026-10-02', samples: 1, sum: 4 },
+    ]);
+  } finally {
+    close();
+  }
+});
+
 test('summarizes every sample in the requested period rather than the latest two raw records', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
   try {

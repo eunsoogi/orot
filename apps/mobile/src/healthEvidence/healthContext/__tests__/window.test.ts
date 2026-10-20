@@ -53,3 +53,47 @@ test('rejects invalid zones, reversed windows and unbounded history', () => {
     recentHealthContextWindow(7, '2026-10-20T00:00:00Z', 'invalid/zone'),
   ).toThrow();
 });
+
+test('retains exact sub-millisecond endpoints and includes the partial day just after midnight', () => {
+  const window = {
+    fromInclusive: '2026-10-01T00:00:00.0005Z',
+    toExclusive: '2026-10-02T00:00:00.0005Z',
+    timeZone: 'UTC',
+  };
+  expect(healthContextDays(window)).toEqual([
+    {
+      date: '2026-10-01',
+      fromInclusive: window.fromInclusive,
+      toExclusive: '2026-10-02T00:00:00.000Z',
+      partial: true,
+    },
+    {
+      date: '2026-10-02',
+      fromInclusive: '2026-10-02T00:00:00.000Z',
+      toExclusive: window.toExclusive,
+      partial: true,
+    },
+  ]);
+  const recent = healthContextDays(
+    recentHealthContextWindow(7, window.toExclusive, 'UTC'),
+  );
+  expect(recent).toHaveLength(7);
+  expect(recent.at(-1)).toMatchObject({
+    date: '2026-10-02',
+    partial: true,
+    toExclusive: window.toExclusive,
+  });
+});
+
+test('accepts a nonempty exact period within one millisecond', () => {
+  const window = {
+    fromInclusive: '2026-10-01T00:00:00.0001Z',
+    toExclusive: '2026-10-01T00:00:00.0009Z',
+    timeZone: 'UTC',
+  };
+  expect(healthContextDays(window)).toEqual(
+    [{ date: '2026-10-01', ...window, partial: true }].map(
+      ({ timeZone: _zone, ...day }) => day,
+    ),
+  );
+});

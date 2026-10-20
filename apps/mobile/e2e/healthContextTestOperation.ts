@@ -64,6 +64,32 @@ export async function runHealthContextTestOperation(identifier: unknown) {
     const changedPressure = deleted.quantities.find(
       series => series.concept === 'blood pressure systolic',
     );
+    for (const [id, at, amount] of [
+      ['before', '2026-10-01T00:00:00.0001Z', 1],
+      ['start', '2026-10-01T00:00:00.0005Z', 2],
+      ['last', '2026-10-02T00:00:00.0001Z', 4],
+      ['end', '2026-10-02T00:00:00.0005Z', 8],
+    ] as const) {
+      await records.put('health_observation', {
+        id: `precision-${id}`,
+        effectiveAt: at,
+        recordedAt: at,
+        ingestedAt: '2026-10-20T00:00:00Z',
+        provenance: { origin: 'user_reported', sourceRecordIds: [] },
+        reviewState: { status: 'unreviewed' },
+        observationKind: 'measurement',
+        concept: 'heart_rate',
+        value: { kind: 'quantity', amount, unit: 'count/min' },
+      });
+    }
+    const precision = await read(
+      {
+        fromInclusive: '2026-10-01T00:00:00.0005Z',
+        toExclusive: '2026-10-02T00:00:00.0005Z',
+        timeZone: 'UTC',
+      },
+      ['measurements'],
+    );
     const projected = projectHealthContext(report);
     return {
       encrypted: true,
@@ -96,6 +122,11 @@ export async function runHealthContextTestOperation(identifier: unknown) {
         JSON.stringify(projectHealthContext(longReport)),
       ).byteLength,
       longElapsedMs,
+      exactBoundarySums: precision.quantities
+        .find(series => series.concept === 'heart_rate')
+        ?.days.map(day => day.sum),
+      exactPartialDays:
+        precision.days.length === 2 && precision.days.every(day => day.partial),
       elapsedMs,
     };
   } finally {

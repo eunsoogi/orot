@@ -63,6 +63,8 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertLessThan(try XCTUnwrap(result["projectedBytes"] as? Int), 12000)
         XCTAssertEqual(result["longWindowDays"] as? Int, 90)
         XCTAssertLessThan(try XCTUnwrap(result["longProjectedBytes"] as? Int), 12000)
+        XCTAssertEqual(result["exactBoundarySums"] as? [Int], [2, 4])
+        XCTAssertEqual(result["exactPartialDays"] as? Bool, true)
     }
 
     func testEncryptedSourceEvidenceAndRagRelationships() async throws {
