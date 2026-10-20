@@ -55,6 +55,55 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         capture(app, "manual-classification-schedule-home")
     }
 
+    /// Decline both rendered appearances; this verifies the actual disclosure without any provider send.
+    @MainActor
+    func testDisclosureCollapsedAndExpandedAcrossAppearances() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "medical-appointment-classification", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var original: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let original {
+                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
+                catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
+            }
+            app.terminate()
+        }
+        for dark in [false, true] {
+            // The modal intentionally hides the root accessibility marker; switch appearance before opening it.
+            _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
+                if original == nil {
+                    original = $0
+                }
+            })
+            let suffix = dark ? "dark" : "light"
+            tap(app, "medical-appointment-import")
+            XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
+            XCTAssertTrue(node(app, "inference-disclosure-allow").isEnabled)
+            // The sheet is accessible before its presentation finishes; capture only once both actions enter the window.
+            let presented = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                ["inference-disclosure-allow", "inference-disclosure-cancel"].allSatisfy {
+                    let action = self.node(app, $0)
+                    return action.exists && !action.frame.isEmpty && app.frame.contains(action.frame) && action.isHittable
+                }
+            }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [presented]), .completed)
+            capture(app, "transfer-consent-collapsed-\(suffix)")
+            tap(app, "inference-disclosure-expand")
+            let preview = node(app, "inference-disclosure-message-1")
+            XCTAssertTrue(preview.waitForAppearance())
+            let content = UITestConditions.text(preview)
+            XCTAssertTrue(content.contains("SENTINEL_HEALTH_VALUE"))
+            XCTAssertFalse(content.contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))
+            UITestConditions.scrollTo(preview, in: app)
+            XCTAssertTrue(preview.isHittable)
+            capture(app, "transfer-consent-expanded-\(suffix)")
+            tap(app, "inference-disclosure-cancel")
+            UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
+            XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+        }
+    }
+
     @MainActor
     private func launch(_ app: XCUIApplication, probe: String) {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", probe, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

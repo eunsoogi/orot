@@ -45,6 +45,15 @@ export function registerCapabilityTestEntry(route: TestRoute): boolean {
     case 'ai-feature-visit-questions':
       require('./aiFeatureVisitQuestionsProbeEntry');
       break;
+    case 'evidence-visual':
+      require('./evidenceVisualProbeEntry');
+      break;
+    case 'conversation-visual':
+      require('./conversationVisualProbeEntry');
+      break;
+    case 'summary-visual':
+      require('./summaryVisualProbeEntry');
+      break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');
       break;

@@ -58,10 +58,8 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         message(app, "답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        // The submitted synthetic message is local draft state, so the original journey explicitly confirms its leave guard.
-        let leave = app.alerts["저장하지 않은 내용이 있어요"]
-        XCTAssertTrue(UITestConditions.exists(leave), app.debugDescription)
-        leave.buttons["내용 버리고 나가기"].tap()
+        // Conversation sessions persist independently of route exit, including a failed provider request.
+        XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
         NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "settings-app-info", navigationID: "navigation-tab-settings")
@@ -77,6 +75,145 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
         XCTAssertFalse(node(app, "calendar-connect").exists)
         RecordingFixtureUITestConditions.capture(app, "default-ai-route-recovery-and-calendar-linking", testCase: self)
+    }
+
+    /// Inspect retained production routes in both appearances without starting a provider request.
+    @MainActor
+    func testAiScreensAndSeparateHistoriesAcrossAppearanceChanges() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var original: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let original {
+                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
+                catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
+            }
+            app.terminate()
+        }
+        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        for dark in [false, true] {
+            _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
+                if original == nil {
+                    original = $0
+                }
+            })
+            let suffix = dark ? "dark" : "light"
+            try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
+            node(app, "ai-feature-disease-hypotheses").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "disease-hypotheses-screen")))
+            try captureAppearance(app, "symptom-preparation-\(suffix)")
+            node(app, "symptom-summary-history-open").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "summary-history-screen")))
+            try captureAppearance(app, "summary-history-empty-\(suffix)")
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            XCTAssertTrue(UITestConditions.exists(node(app, "disease-hypotheses-screen")))
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+            node(app, "ai-feature-rag-conversation").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+            try captureAppearance(app, "conversation-empty-\(suffix)")
+            node(app, "rag-conversation-sessions-toggle").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
+            try captureAppearance(app, "conversation-history-\(suffix)")
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+            node(app, "ai-feature-visit-questions").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "next-visit-title")))
+            try captureAppearance(app, "visit-questions-ready-\(suffix)")
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["ai-features-screen"])
+            try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+            let classification = node(app, "open-medical-appointments")
+            UITestConditions.scrollTo(classification, in: app)
+            classification.tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "medical-appointment-select-provider")))
+            try captureAppearance(app, "calendar-classification-\(suffix)")
+            node(app, "medical-appointment-select-provider").tap()
+            XCTAssertTrue(UITestConditions.exists(node(app, "settings-provider-screen")))
+            try captureAppearance(app, "model-selection-\(suffix)")
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            XCTAssertTrue(UITestConditions.exists(node(app, "medical-appointment-select-provider")))
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            NavigationUITestConditions.route(app, markers: ["calendar-title"])
+        }
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+    }
+
+    /// The production source renderer reads declared event types and recovery states without patient data or inference.
+    @MainActor
+    func testEvidenceKindsAndRecoveryAcrossAppearances() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "evidence-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        app.launch()
+        var original: AppearanceUITestConditions.Snapshot?
+        defer {
+            if let original {
+                do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
+                catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
+            }
+            app.terminate()
+        }
+        for dark in [false, true] {
+            _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
+                if original == nil {
+                    original = $0
+                }
+            })
+            let suffix = dark ? "dark" : "light"
+            for (mode, value) in [("medication", "1 정"), ("measurement", "70.5 kg"), ("activity", "2400 걸음"), ("sleep", "코어 수면"), ("period", "집계 기간"), ("loading", ""), ("missing", ""), ("changed", ""), ("unavailable", "")] {
+                node(app, "evidence-visual-\(mode)").tap()
+                XCTAssertTrue(UITestConditions.exists(node(app, "ai-feature-source-detail")))
+                if value.isEmpty {
+                    XCTAssertTrue(UITestConditions.exists(node(app, "ai-feature-source-\(mode)")))
+                } else {
+                    XCTAssertTrue(app.staticTexts[value].waitForAppearance())
+                    XCTAssertFalse(app.staticTexts["앱 저장 시각"].exists)
+                    XCTAssertFalse(app.staticTexts["기록 시각"].exists)
+                }
+                try captureAppearance(app, "evidence-\(mode)-\(suffix)")
+                if mode == "period" {
+                    // Sections are horizontal tabs. Select the actual tab before checking its rendered facts.
+                    let tabs = try XCTUnwrap(node(app, "ai-feature-source-detail").scrollViews.allElementsBoundByIndex.first { $0.frame.height > 0 && $0.frame.height < 100 })
+                    let weight = app.otherElements["체중 · 측정 출처 2 3"].firstMatch
+                    for _ in 0 ..< 4 {
+                        if weight.exists, tabs.frame.contains(weight.frame), weight.isHittable {
+                            break
+                        }
+                        tabs.swipeLeft()
+                    }
+                    XCTAssertTrue(tabs.frame.contains(weight.frame))
+                    XCTAssertTrue(weight.isHittable)
+                    weight.tap()
+                    XCTAssertTrue(app.staticTexts["70.5 kg"].waitForAppearance())
+                    try captureAppearance(app, "evidence-period-measurements-\(suffix)")
+                }
+                if mode == "unavailable" {
+                    node(app, "ai-feature-source-retry").tap()
+                    XCTAssertTrue(app.staticTexts["70.5 kg"].waitForAppearance())
+                    try captureAppearance(app, "evidence-retry-recovered-\(suffix)")
+                }
+                try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+                XCTAssertTrue(UITestConditions.exists(node(app, "evidence-visual-picker")))
+            }
+        }
+    }
+
+    @MainActor
+    private func captureAppearance(_ app: XCUIApplication, _ name: String) throws {
+        // A mounted React scene may still have its detached zero-inset frame during the native push.
+        // Capture only after the actual toolbar and the conversation's safe-area frame are installed.
+        _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
+        if name.hasPrefix("conversation-empty-") {
+            let scene = node(app, "rag-conversation-screen")
+            let attached = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                scene.exists && scene.frame.minY > app.frame.minY
+            }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [attached]), .completed)
+        }
+        RecordingFixtureUITestConditions.capture(app, name, testCase: self)
     }
 
     @MainActor
