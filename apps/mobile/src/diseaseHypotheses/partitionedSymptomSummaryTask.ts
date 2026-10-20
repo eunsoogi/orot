@@ -24,6 +24,17 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
       const messages = symptomSummaryTask.createMessages(input);
       // Research turns need a tool decision, not duplicated facts for final prose generation.
       if (!input.resultPartition) return messages;
+      if (input.resultPartition.sourceKind === 'external_medical')
+        return [
+          ...messages,
+          {
+            role: 'system',
+            // This final group receives English source abstracts but serves Korean UI.
+            // Keep genuine limitations; never drop or accept untranslated notes to pass validation.
+            content:
+              'Translate the relevant publication context into Korean using your own concise wording. Do not copy English abstract prose. Write Korean titles, summaries and actual limitations. This group contains public sources only: explain only general concepts relevant to the request, never personal observations or conclusions. Keep each section to a short paragraph with its exact publication citation. Use uncertaintyNotes as Korean strings or an empty array when no limitation applies; never insert English placeholders. Keep all supplied sources available and choose only relevant ones; if their relevance is inadequate, explain that limitation in Korean rather than inventing useful evidence.',
+          },
+        ];
       const requiredRecordFacts = appleSummaryFactChecklist(
         input.evidence.items,
       );
@@ -62,12 +73,35 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
       const sourceBound = appleRecordSummarySchema(input, schema);
       if (sourceBound) return sourceBound;
       const properties = schema.properties as JsonObject;
+      const sections = properties.sections as JsonObject;
+      const item = sections.items as JsonObject;
+      const fields = item.properties as JsonObject;
       return {
         ...schema,
         properties: {
           ...properties,
           sections: {
-            ...(properties.sections as JsonObject),
+            ...sections,
+            ...(input.resultPartition.sourceKind === 'external_medical'
+              ? {
+                  items: {
+                    ...item,
+                    properties: {
+                      ...fields,
+                      title: {
+                        ...(fields.title as JsonObject),
+                        description:
+                          'Short Korean title for the relevant public medical concept. Never copy an English publication title.',
+                      },
+                      summary: {
+                        ...(fields.summary as JsonObject),
+                        description:
+                          "Concise Korean explanation of relevant findings and genuine limitations in this publication. Translate English source prose; do not copy it. Population findings do not establish this person's cause or diagnosis.",
+                      },
+                    },
+                  },
+                }
+              : {}),
             // One topic source can contain several concepts; summarize them together
             // so all source groups fit the task's existing overall section bound.
             maxItems: input.evidence.items.length,
