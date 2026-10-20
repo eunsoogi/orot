@@ -10,6 +10,8 @@ The focused medication, source, alias, payload-budget and consent suites passed 
 
 The unchanged external-transfer sheet uses native `pageSheet` and `allowSwipeDismissal`. The rerun consent tests confirm the close callback denies the pending request and does not remember approval. Actual downward-gesture delivery remains unverified; a callback test is not a native gesture trace.
 
+The same strict Sentinel passed exact source head `1ee11e8264f956bf73996ffb6c48d3d5c5e69e92`, with no unresolved findings. The native build completed (`/tmp/orot-medication-context-native-build.log`); its initial sealed-resource signature failure was repaired by re-signing with the existing identity, followed by successful separate strict verification. Upgrade installation and normal launch completed without resetting local data. The existing three saved questions and their changed-source notice remained visible. No new model request has run in this replay: the regenerate control is below the visible viewport and Device Hub still does not deliver scroll/drag. A direct scroll to reveal the existing control has been requested. No dose count, provider improvement or native consent gesture is inferred from this state.
+
 ## Visual sources
 
 - History: `apps/mobile/ios/build/issue212-design/history-reference.png`, also attached to issue comment 6269534689.
