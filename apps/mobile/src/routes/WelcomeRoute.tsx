@@ -4,7 +4,8 @@ import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
-import { formatDateTime, t } from '../i18n';
+import { t } from '../i18n';
+import { appointmentTimeLabel } from './nextAppointment';
 import { appColors } from '../layout/appColors';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -43,11 +44,7 @@ export default function WelcomeRoute({
   });
 
   const nextAppointment =
-    appointment &&
-    appointment.status !== 'cancelled' &&
-    Date.parse(appointment.effectiveAt) > Date.now()
-      ? appointment
-      : null;
+    appointment && appointment.status !== 'cancelled' ? appointment : null;
 
   return (
     <View style={styles.container}>
@@ -83,7 +80,7 @@ export default function WelcomeRoute({
         ) : nextAppointment ? (
           <View style={styles.section} testID="home-next-appointment">
             <Text style={styles.appointmentTime}>
-              {formatDateTime(new Date(nextAppointment.effectiveAt))}
+              {appointmentTimeLabel(nextAppointment)}
             </Text>
             <Text style={styles.appointmentClinic}>
               {nextAppointment.clinicLabel ??
