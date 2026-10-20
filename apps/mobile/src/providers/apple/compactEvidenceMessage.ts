@@ -1,3 +1,5 @@
+import { tabularHealthFacts } from './tabularHealthFacts';
+
 function object(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -63,8 +65,14 @@ export function compactAppleEvidenceMessage(content: string): string {
   } catch {
     return content;
   }
-  if (!body || !Array.isArray(body.records)) return content;
+  if (
+    !body ||
+    !Array.isArray(body.records) ||
+    Object.hasOwn(body, 'healthContextTableEncoding')
+  )
+    return content;
   let changed = false;
+  let usesTables = false;
   const records = body.records.map(value => {
     const record = object(value);
     if (
@@ -83,18 +91,32 @@ export function compactAppleEvidenceMessage(content: string): string {
     }
     if (!facts) return value;
     changed = true;
+    const projected = {
+      ...facts,
+      ...(Array.isArray(facts.quantities)
+        ? { quantities: facts.quantities.map(quantityFacts) }
+        : {}),
+    };
+    const compacted = tabularHealthFacts(projected);
+    usesTables ||= JSON.stringify(compacted) !== JSON.stringify(projected);
     return {
       ...record,
       content: {
         kind: 'health_context',
-        facts: {
-          ...facts,
-          ...(Array.isArray(facts.quantities)
-            ? { quantities: facts.quantities.map(quantityFacts) }
-            : {}),
-        },
+        facts: compacted,
       },
     };
   });
-  return changed ? JSON.stringify({ ...body, records }) : content;
+  return changed
+    ? JSON.stringify({
+        ...body,
+        records,
+        ...(usesTables
+          ? {
+              healthContextTableEncoding:
+                'Object arrays may use columns and rows. Each row follows column order; omittedCells lists absent [row,column] positions, distinct from explicit null values. All other values retain their source meaning.',
+            }
+          : {}),
+      })
+    : content;
 }
