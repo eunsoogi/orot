@@ -66,6 +66,9 @@ describe('useInferenceConsent', () => {
     );
 
     await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-expand'),
+    );
     expect(await view.findByText('Synthetic selected note A.')).toBeTruthy();
     await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('authorized'));
@@ -77,6 +80,9 @@ describe('useInferenceConsent', () => {
       />,
     );
     await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-expand'),
+    );
     expect(await view.findByText('Synthetic selected note B.')).toBeTruthy();
     expect(onResult).toHaveBeenCalledTimes(1);
     await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
@@ -95,6 +101,9 @@ describe('useInferenceConsent', () => {
     );
 
     await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-expand'),
+    );
     expect(
       await view.findByText('Synthetic cancellation request.'),
     ).toBeTruthy();
@@ -113,6 +122,9 @@ describe('useInferenceConsent', () => {
     );
 
     await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-expand'),
+    );
     expect(await view.findByText('Synthetic request.')).toBeTruthy();
     await act(async () => controller.abort());
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('renewal'));
@@ -130,6 +142,9 @@ describe('useInferenceConsent', () => {
       />,
     );
     await fireEvent.press(view.getByTestId('authorize-request'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-expand'),
+    );
     expect(await view.findByText('Synthetic second request.')).toBeTruthy();
     await act(async () => view.unmount());
     await waitFor(() =>

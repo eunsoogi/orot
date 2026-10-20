@@ -1,3 +1,5 @@
+import { operationRunId } from './featureRunIdentity';
+import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
 import { withProviderStage } from '../../providers/diagnostics';
 import { createExternalConversationEvidence } from './externalConversationEvidence';
@@ -74,19 +76,14 @@ export interface AiFeatureServiceDependencies {
 
 const DISEASE_REQUEST =
   '현재 앱 기록에서 검토할 수 있는 질환 가능성을 찾아 주세요. 확진하지 말고, 지지·반대 근거와 불확실성 및 더 필요한 자료를 모두 밝혀 주세요.';
-let operationSequence = 0;
-
-function operationRunId(): string {
-  operationSequence += 1;
-  return `ai-feature-${Date.now()}-${operationSequence}`;
-}
-
 /** Connects selected-AI operations and freshly revalidated local citations to owned feature screens. */
 export function createAiFeatureServices(
   consent: MultiAgentWorkflowOptions['consent'],
   dependencies: AiFeatureServiceDependencies = {},
 ): AiFeatureServices {
   const registry = new LocalEvidenceReferenceRegistry();
+  const queryConsent =
+    dependencies.externalQueryConsent ?? publicMedicalQueryConsent(consent);
   const externalEvidence =
     dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService();
   const loadLocalData =
@@ -131,7 +128,7 @@ export function createAiFeatureServices(
     // Both explicit actions use the same bounded tools, consent and freshness boundary.
     const external = createExternalConversationEvidence(
       externalEvidence,
-      dependencies.externalQueryConsent,
+      queryConsent,
       { requireAbstract: true },
     );
     const tools = [
@@ -148,6 +145,7 @@ export function createAiFeatureServices(
         tools,
         external,
         medicalExplanation: true,
+        consentPurpose: summary ? 'symptom_summary' : 'disease_hypotheses',
       }),
       request: summary
         ? '복용약과 활동·걸음수, 혈압·심박수·체중, 수면 및 증상 기록에서 확인된 내용을 날짜와 함께 정리해 주세요. 이어서 이 기록을 이해하는 데 도움이 되는 공개 의학 문헌을 검색하고, 문헌이 설명하는 일반적인 의미를 별도 항목으로 작성해 주세요. 개인 기록의 사실과 일반 의학 설명을 구분하고 개인의 질환이나 원인으로 단정하지 마세요. 검색을 사용할 수 없다면 의학 설명은 만들지 말고 그 한계를 밝히세요.'
@@ -204,7 +202,7 @@ export function createAiFeatureServices(
         const signal = linked.controller.signal;
         const external = createExternalConversationEvidence(
           externalEvidence,
-          dependencies.externalQueryConsent,
+          queryConsent,
         );
         const tools = [
           ...toolsFor(undefined, data, registry, 6, true, 'rag'),
@@ -223,6 +221,7 @@ export function createAiFeatureServices(
             resolveLocalEvidenceIdentity: reference =>
               registry.resolve(reference),
             workflow: executionOptions({
+              consentPurpose: 'record_conversation',
               selected,
               operationRunId: runId,
               consent,

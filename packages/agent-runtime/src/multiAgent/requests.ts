@@ -121,7 +121,7 @@ export function buildTaskRequest<TResult>(
             ...(effectiveInput.research
               ? [
                   `Research planning capacity for this response: ${JSON.stringify(effectiveInput.research)}`,
-                  'Candidate tools remain subject to their adapter scope checks. Planning capacity does not establish exact-query approval; each external search obtains separate consent after planning.',
+                  'Candidate tools remain subject to their adapter scope and consent checks. Planning capacity is not permission; an external search must be covered by the user-approved destination, purpose and data scope.',
                   nativeResearch
                     ? 'Empty initial evidence is not a completed search. Obtain missing facts through the supplied tools before answering.'
                     : 'Empty initial evidence does not mean a search returned no results. When the task permits research and supporting facts are missing, use type=request_evidence if canRequestEvidence is true instead of claiming a search failed or returning an unsupported answer.',

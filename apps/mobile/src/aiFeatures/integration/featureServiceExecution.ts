@@ -88,6 +88,8 @@ export function executionOptions(input: {
   readonly tools: readonly EvidenceSearchTool[];
   readonly external?: ReturnType<typeof createExternalConversationEvidence>;
   readonly medicalExplanation?: boolean;
+  readonly consentPurpose:
+    'symptom_summary' | 'disease_hypotheses' | 'record_conversation';
 }) {
   return {
     execution: {
@@ -96,6 +98,16 @@ export function executionOptions(input: {
       modelId: input.selected.modelId,
       recipient: input.selected.recipient,
       remoteProcessing: input.selected.remoteProcessing,
+      consentScope: {
+        purpose: input.consentPurpose,
+        dataCategories: [
+          'health_records',
+          'reviewed_memory',
+          'conversation',
+          ...(input.external ? ['medical_literature'] : []),
+        ],
+        policyVersion: 'local-records-v1',
+      },
       allowedScope: {
         sourceKinds: input.external
           ? ([

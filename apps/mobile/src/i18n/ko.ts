@@ -63,7 +63,8 @@ export const ko = {
   'settings.permission.healthData': '선택한 기록만',
   'settings.permission.calendar': '일정을 가져올 때 요청',
   'settings.externalTransfer': 'AI 외부전송',
-  'settings.externalTransferSummary': '전송할 내용과 목적을 요청마다 확인해요.',
+  'settings.externalTransferSummary':
+    '같은 계정·AI에서 같은 기능으로 같은 종류와 범위의 정보를 전송할 때에는 한 번만 동의받아요. 동의 내역에는 전송 원문 대신 해시값만 저장해요.',
   'settings.openSystemSettings': 'iOS 설정에서 관리',
   'settings.openSystemSettingsError':
     'iOS 설정을 열지 못했어요. 설정 앱에서 오롯의 권한을 확인해 주세요.',

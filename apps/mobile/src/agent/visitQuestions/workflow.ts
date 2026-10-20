@@ -1,3 +1,4 @@
+import { visitConsentScope } from '../execution/inferenceConsentScopes';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 import type {
@@ -118,6 +119,7 @@ export async function runVisitQuestionWorkflow(input: {
       modelId: input.selection.modelId,
       recipient: recipient!,
       remoteProcessing,
+      consentScope: visitConsentScope,
       allowedScope: {
         sourceKinds: ['personal_record', 'reviewed_memory'],
       },

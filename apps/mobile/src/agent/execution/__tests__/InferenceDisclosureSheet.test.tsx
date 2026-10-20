@@ -24,6 +24,31 @@ function request(
 }
 
 describe('InferenceDisclosureSheet', () => {
+  it('describes a reusable public-search permission without presenting Europe PMC as an AI model', async () => {
+    await render(
+      <InferenceDisclosureSheet
+        request={{
+          ...request('synthetic search terms'),
+          providerId: 'europe-pmc',
+          modelId: 'public-medical-search',
+          recipient: 'Europe PMC',
+          consentScope: {
+            purpose: 'public_medical_search',
+            dataCategories: ['medical_search_terms'],
+            policyVersion: 'public-query-v1',
+          },
+        }}
+        onDecision={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Europe PMC')).toBeTruthy();
+    expect(screen.getByText('증상·약·검사에 관한 검색어')).toBeTruthy();
+    expect(screen.queryByText('사용할 AI')).toBeNull();
+    expect(screen.queryByText('synthetic search terms')).toBeNull();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
+    expect(screen.getByText('synthetic search terms')).toBeTruthy();
+  });
+
   it('shows the exact model input and destination without local registry metadata', async () => {
     const selected = request();
     const onDecision = jest.fn();
@@ -32,16 +57,18 @@ describe('InferenceDisclosureSheet', () => {
       <InferenceDisclosureSheet request={selected} onDecision={onDecision} />,
     );
 
+    expect(screen.queryByText('Synthetic health value 120/80.')).toBeNull();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
     expect(screen.getByText('Synthetic health value 120/80.')).toBeTruthy();
-    expect(screen.getByText('서비스: private-provider-id')).toBeTruthy();
-    expect(screen.getByText('받는 곳: selected-account')).toBeTruthy();
-    expect(screen.getByText('모델: selected-model')).toBeTruthy();
+    expect(screen.getByText('private-provider-id')).toBeTruthy();
+    expect(screen.getByText('selected-account')).toBeTruthy();
+    expect(screen.getByText('selected-model')).toBeTruthy();
     expect(screen.queryByText(/private-run-id/u)).toBeNull();
     expect(
       screen.queryByText(/private-source-id|synthetic-oauth-secret/u),
     ).toBeNull();
 
-    fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
+    await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
     expect(onDecision).toHaveBeenCalledWith(true);
   });
 
@@ -115,6 +142,7 @@ describe('InferenceDisclosureSheet', () => {
       <InferenceDisclosureSheet request={selected} onDecision={jest.fn()} />,
     );
 
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
     expect(
       screen.getAllByText(/synthetic-tool-call-id/u).length,
     ).toBeGreaterThan(0);

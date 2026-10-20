@@ -90,6 +90,12 @@ export interface MultiAgentExecutionIdentity {
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  /** Trusted caller declares the reusable purpose/data boundary; record values and batch IDs are not permissions. */
+  readonly consentScope?: {
+    readonly purpose: string;
+    readonly dataCategories: readonly string[];
+    readonly policyVersion: string;
+  };
   readonly allowedScope: AllowedEvidenceScope;
   readonly budget: MultiAgentBudget;
 }
@@ -100,6 +106,7 @@ export interface OutboundProcessingRequest {
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  readonly consentScope?: MultiAgentExecutionIdentity['consentScope'];
   readonly allowedScope: AllowedEvidenceScope;
   readonly payload: LanguageModelRequest;
   readonly signal: AbortSignal;

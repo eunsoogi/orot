@@ -7,7 +7,7 @@ import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 
-// Search remains read-only; the external adapter obtains query-specific approval before networking.
+// Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const { options } = context;
 

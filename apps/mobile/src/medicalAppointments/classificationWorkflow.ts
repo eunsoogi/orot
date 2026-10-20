@@ -1,7 +1,6 @@
-import {
-  DEFAULT_MULTI_AGENT_BUDGET,
-  runMultiAgentWorkflow,
-} from '@orot/agent-runtime';
+import { calendarConsentScope } from '../agent/execution/inferenceConsentScopes';
+import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 import type {
   ExecutionConsentPort,
   MultiAgentRunResult,
@@ -122,13 +121,15 @@ export async function classifyCalendarEvents(
             modelId: input.modelId,
             recipient: input.recipient,
             remoteProcessing: input.remoteProcessing,
+            consentScope: calendarConsentScope,
             allowedScope: {
               sourceKinds: ['personal_record'],
               sourceIds: [
                 ...new Set(batch.evidence.items.map(item => item.sourceId)),
               ],
             },
-            budget: DEFAULT_MULTI_AGENT_BUDGET,
+            // Interactive consent and provider latency must not expire an otherwise valid batch.
+            budget: EVIDENCE_WORKFLOW_BUDGET,
           },
           provider: input.provider,
           request:

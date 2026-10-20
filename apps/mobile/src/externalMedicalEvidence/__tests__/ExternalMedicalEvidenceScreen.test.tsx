@@ -22,6 +22,31 @@ const publication: ExternalMedicalPublication = {
   retrievedAt: '2026-10-07T03:00:00.000Z',
 };
 
+test('declining the shared query permission does not call the literature service', async () => {
+  const service: EuropePmcMedicalEvidenceService = {
+    search: jest.fn(async () => ({ status: 'empty' as const })),
+  };
+  await render(
+    <ExternalMedicalEvidenceScreen
+      onBack={jest.fn()}
+      service={service}
+      onOpenArticle={jest.fn()}
+    />,
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('external-evidence-query'),
+    'synthetic query',
+  );
+  await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-cancel'),
+  );
+  expect(service.search).not.toHaveBeenCalled();
+  expect(
+    await screen.findByText(getExternalMedicalEvidenceCopy().consentRequired),
+  ).toBeTruthy();
+});
+
 test('requires query consent and presents provenance and dates', async () => {
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({
@@ -37,13 +62,6 @@ test('requires query consent and presents provenance and dates', async () => {
       onOpenArticle={onOpenArticle}
     />,
   );
-  expect(
-    screen.getByTestId('external-evidence-consent').props.accessibilityRole,
-  ).toBe('checkbox');
-  expect(screen.queryByText(/☐|☑/)).toBeNull();
-  expect(
-    screen.getByTestId('external-evidence-consent-indicator'),
-  ).toBeTruthy();
   const description = screen.getByText(
     getExternalMedicalEvidenceCopy().description,
   );
@@ -67,11 +85,13 @@ test('requires query consent and presents provenance and dates', async () => {
     borderWidth: 1,
   });
   await fireEvent.changeText(queryInput, 'sleep and blood pressure');
-  expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
+  expect(screen.getByTestId('external-evidence-search')).not.toBeDisabled();
   expect(service.search).not.toHaveBeenCalled();
 
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
   expect(service.search).toHaveBeenCalledWith('sleep and blood pressure', {
     externalQueryConsented: true,
     signal: expect.any(AbortSignal),
@@ -110,8 +130,10 @@ test('shows a localized fallback when publication authors are absent', async () 
     screen.getByTestId('external-evidence-query'),
     'query',
   );
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
 
   expect(await screen.findByText('저자 정보를 확인할 수 없어요.')).toBeTruthy();
 });
@@ -137,8 +159,10 @@ test('shows loading and empty-result states', async () => {
     screen.getByTestId('external-evidence-query'),
     'query',
   );
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
   expect(screen.getByTestId('external-evidence-loading')).toBeTruthy();
   expect(
     screen.getByTestId('external-evidence-search').props.accessibilityState,
@@ -162,7 +186,9 @@ test('shows an error when the provider is unavailable', async () => {
     screen.getByTestId('external-evidence-query'),
     'query',
   );
-  await fireEvent.press(screen.getByTestId('external-evidence-consent'));
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
   expect(await screen.findByText(/외부 자료를 불러오지 못했어요/)).toBeTruthy();
 });

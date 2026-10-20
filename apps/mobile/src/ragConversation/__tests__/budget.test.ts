@@ -19,6 +19,7 @@ test('shipping evidence workflows retain count and size bounds without an elapse
       remoteProcessing: false,
     },
     operationRunId: 'budget-test',
+    consentPurpose: 'record_conversation' as const,
     consent: { authorize: async () => 'authorized' as const },
     registry: new LocalEvidenceReferenceRegistry(),
     tools: [],

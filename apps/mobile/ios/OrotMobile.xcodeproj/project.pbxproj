@@ -158,6 +158,8 @@
 		E488898F748EC3A0F5075530 /* RecordingExportIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A8527D7475BD9834AA6F7F /* RecordingExportIntegrationTests.swift */; };
 		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
 		E8CD30C28EBA26EB15F6597C /* AutomaticTranscriptionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3F1E05C25D342E87BBFFD9 /* AutomaticTranscriptionUITests.swift */; };
+		5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */; };
+		2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */; };
 		F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */; };
 		F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000012 /* LocalE5EmbeddingModule.m */; };
 		F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */; };
@@ -348,6 +350,8 @@
 		E19810000000000000000015 /* LocalE5PreparationLifetimeRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationLifetimeRegression.swift; path = LocalE5PreparationLifetimeRegression.swift; sourceTree = "<group>"; };
 		E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormUITestConditions.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsentFingerprintModule.swift; path = OrotMobile/ConsentFingerprintModule.swift; sourceTree = "<group>"; };
+		F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConsentFingerprintModule.m; path = OrotMobile/ConsentFingerprintModule.m; sourceTree = "<group>"; };
 		F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingModule.swift; path = OrotMobile/LocalE5EmbeddingModule.swift; sourceTree = "<group>"; };
 		F24E00000000000000000012 /* LocalE5EmbeddingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocalE5EmbeddingModule.m; path = OrotMobile/LocalE5EmbeddingModule.m; sourceTree = "<group>"; };
 		F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingRequestSlot.swift; path = OrotMobile/LocalE5EmbeddingRequestSlot.swift; sourceTree = "<group>"; };
@@ -461,6 +465,8 @@
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
 				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
+				B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */,
+				F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
 				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
 				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
@@ -979,6 +985,8 @@
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
 				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
+				5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */,
+				2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
 				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
 				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,

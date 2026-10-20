@@ -33,9 +33,8 @@ test.each(['allow', 'cancel'] as const)(
       remote,
     );
     await fireEvent.press(importAction());
-    expect(
-      await screen.findByText('전송 전에 내용을 확인해 주세요'),
-    ).toBeTruthy();
+    expect(await screen.findByText('외부 전송 동의')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
     expect(screen.getByText(/"title":"치과 진료"/)).toBeTruthy();
     expect(screen.queryByText(/private-calendar-id/)).toBeNull();
     expect(selected.provider.generate).not.toHaveBeenCalled();
