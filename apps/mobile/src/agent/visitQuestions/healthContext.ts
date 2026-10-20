@@ -47,7 +47,7 @@ export function createVisitHealthContext(
         deletionGeneration: report.deletionGeneration,
       },
     });
-    return item;
+    return { item, limitations: report.limitations };
   };
   return {
     tool: {
@@ -56,6 +56,8 @@ export function createVisitHealthContext(
         const batch = await source.search(request);
         if ('status' in batch) return batch;
         const items: VisitQuestionEvidenceItem[] = [];
+        const gaps = new Set<string>();
+        let truncated = false;
         for (const item of batch.items) {
           if (request.signal.aborted)
             throw new Error('The health period read was cancelled.');
@@ -64,7 +66,22 @@ export function createVisitHealthContext(
             original && (await capture(original, item.content, request.signal));
           if (!current)
             throw new Error('The health period changed during retrieval.');
-          items.push(current);
+          items.push(current.item);
+          // Reader caps and unsupported categories are real coverage gaps. Unknown future
+          // diagnostics must not silently become user-facing claims about missing records.
+          for (const limitation of current.limitations) {
+            if (
+              limitation === 'quantity_sensor_series_limit_reached' ||
+              limitation === 'medication_catalog_limit_reached'
+            ) {
+              gaps.add(limitation);
+              truncated = true;
+            } else if (
+              limitation ===
+              'unsupported_sleep_categories_excluded_from_duration'
+            )
+              gaps.add(limitation);
+          }
         }
         return {
           ...batch,
@@ -72,6 +89,8 @@ export function createVisitHealthContext(
           coverage: batch.coverage.map(value => ({
             ...value,
             searchedSourceIds: items.map(item => item.sourceId),
+            gaps: [...new Set([...value.gaps, ...gaps])],
+            truncated: value.truncated || truncated,
           })),
         };
       },
@@ -95,7 +114,8 @@ export function createVisitHealthContext(
           visitQuestionCitationKey({ ...reference, content: '' })
       )
         return undefined;
-      return capture(original, healthContextContent(scope, report));
+      return (await capture(original, healthContextContent(scope, report)))
+        ?.item;
     },
     async validate(sourceValue: VisitQuestionHealthContextSource) {
       const report = await read(sourceValue.scope.window, [
