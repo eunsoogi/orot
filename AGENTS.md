@@ -8,6 +8,11 @@ This file applies to the entire repository and all subdirectories. System, devel
 - [`README.md`](README.md) is the source of truth for the product overview and user-facing features; [`docs/development.md`](docs/development.md) is the source of truth for the development environment and check procedures (`MUST`).
 - [`docs/code-quality.md`](docs/code-quality.md) is the source of truth for quality-check scope and tools; [`docs/releasing.md`](docs/releasing.md) is the source of truth for release verification, and `.github/workflows/release.yml` and the implementations in `scripts/release/` are the source of truth for its actual behavior (`MUST`). Do not copy detailed procedures into this file (`MUST NOT`).
 
+## Naming
+
+- Filenames, code identifiers, test scenarios, accessibility identifiers, and application strings MUST describe their feature, domain, or behavior. They MUST NOT embed issue numbers or use issue-specific prefixes.
+- Issue references MUST remain in GitHub metadata or documentation where they provide traceability, rather than becoming implementation names or runtime dependencies.
+
 ## Changes and verification
 
 - Before starting work, confirm the current changes and requested scope (`MUST`). Edit only the files needed within the assigned scope and preserve other contributors' changes (`MUST`). Do not include unrelated changes (`MUST NOT`).
