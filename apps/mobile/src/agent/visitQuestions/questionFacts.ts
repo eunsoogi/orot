@@ -1,5 +1,6 @@
 import type { VisitQuestionEvidenceItem } from './taskContract';
 import { periodQuestionQuantityFacts } from './periodQuestionFacts';
+import { rejectedQuantityTransformation } from './questionFactPrecision';
 
 interface DateFact {
   readonly year?: number;
@@ -189,7 +190,13 @@ export function unsupportedDateOrValueKind(
       )
         return 'quantity_precision';
     }
-    return 'quantity_value';
+    return (
+      rejectedQuantityTransformation(
+        Number(expression),
+        unit ?? '',
+        supportedNumbers,
+      ) ?? 'quantity_value'
+    );
   }
 
   const supportedDates = dateFacts(sourceText);
