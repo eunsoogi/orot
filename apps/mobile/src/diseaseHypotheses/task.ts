@@ -103,6 +103,17 @@ export const diseaseHypothesisTask: TaskResponderContract<DiseaseHypothesisAnaly
           ),
       });
     },
+    correctionInstructionForInvalidResult(reason) {
+      if (reason !== 'A hypothesis had unsupported or incomplete citations.')
+        return undefined;
+      // Use the runtime's single correction allowance; the next result is fully
+      // revalidated and still shares the original call, consent and time budget.
+      return (
+        'Return a corrected result in the same schema. Keep valid observations and exact citation IDs unchanged. ' +
+        'State only tentative possibilities supported by the supplied evidence, never a confirmed diagnosis or a claim that this person definitely has a disease. ' +
+        'Use uncertainty to describe limitations and missingData for genuinely missing facts. Do not invent symptoms, records or sources. Write user-facing text in Korean.'
+      );
+    },
   };
 
 /** Preloaded callers must attest coverage; tool-first callers establish coverage through tool results. */
