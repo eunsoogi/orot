@@ -11,7 +11,10 @@ import {
   createCalendarEvidenceBatch,
   MAX_CLASSIFICATION_EVIDENCE_ITEMS,
 } from './calendarEvidence';
-import { medicalAppointmentCopy } from './copy.ko';
+import {
+  createClassificationCandidates,
+  applyClassificationBatch,
+} from './classificationCandidates';
 import { classificationFailure } from './classificationFailure';
 import type { ClassificationFailure } from './classificationFailure';
 import { createAppointmentClassificationTask } from './classificationTask';
@@ -65,12 +68,7 @@ export async function classifyCalendarEvents(
   const totalBatches = Math.ceil(
     input.events.length / MAX_CLASSIFICATION_EVIDENCE_ITEMS,
   );
-  let candidates: CandidateReview[] = input.events.map((event, index) => ({
-    candidateId: candidateId(index),
-    event,
-    status: 'unclassified' as const,
-    reason: medicalAppointmentCopy.manualReview,
-  }));
+  let candidates = createClassificationCandidates(input.events);
   if (input.events.length === 0) {
     return {
       status: 'empty',
@@ -182,15 +180,11 @@ export async function classifyCalendarEvents(
       return failed;
     }
 
-    const byId = new Map(
-      run.value.classifications.map(result => [result.candidateId, result]),
+    candidates = applyClassificationBatch(
+      candidates,
+      start,
+      run.value.classifications,
     );
-    candidates = candidates.map(candidate => {
-      const result = byId.get(candidate.candidateId);
-      return result
-        ? { ...candidate, ...result, status: 'classified' }
-        : candidate;
-    });
     completedBatches += 1;
     input.onProgress?.({
       status: completedBatches === totalBatches ? 'complete' : 'partial',
@@ -236,10 +230,6 @@ function hasCompleteCitedResult(
     candidateIds.every(evidenceId => cited.has(evidenceId)) &&
     result.value.classifications.length === candidateIds.length
   );
-}
-
-function candidateId(index: number): string {
-  return `calendar-candidate-${index + 1}`;
 }
 
 function nextOperationRunId(): string {
