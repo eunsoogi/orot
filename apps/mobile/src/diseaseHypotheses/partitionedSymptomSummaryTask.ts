@@ -20,7 +20,7 @@ import {
 export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     ...symptomSummaryTask,
-    // Old checkpoints contain free record prose, not source-bound statistic selections.
+    // Version the Apple selection contract separately from cloud-provider prose.
     taskVersion: '6',
     createMessages(input) {
       const messages = symptomSummaryTask.createMessages(input);
