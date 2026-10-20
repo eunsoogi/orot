@@ -1,5 +1,8 @@
 import { readHealthObservationPage } from './healthObservationPages';
+import { readHealthMedicationPage } from './healthMedicationPages';
+import type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
 import type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';
+import type { HealthObservationPageFilter } from './healthObservationPageFilter';
 import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
@@ -34,9 +37,11 @@ export interface RecordWriter {
 }
 
 export interface RecordRepository extends RecordWriter {
+  listHealthMedicationPage(request: HealthMedicationPageRequest): Promise<HealthMedicationPage>;
   listHealthObservationPage(
     cursor?: HealthObservationCursor | null,
     limit?: number,
+    filter?: HealthObservationPageFilter,
   ): Promise<HealthObservationPage>;
   sourceRecords: SourceRecordRepository;
   evidenceSpans: EvidenceSpanRepository;
@@ -108,8 +113,9 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
   const transcripts = createTranscriptEvidenceRepository(database);
   return {
     ...sourceEvidenceRepositories,
-    listHealthObservationPage: (cursor, limit) =>
-      readHealthObservationPage(database, cursor, limit),
+    listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
+    listHealthObservationPage: (cursor, limit, filter) =>
+      readHealthObservationPage(database, cursor, limit, filter),
     transcripts,
     async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
       await database.transaction(async (transaction) => {

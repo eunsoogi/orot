@@ -3,10 +3,7 @@ import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
 import type { AppointmentRepository } from '@orot/storage';
 import type { Appointment } from '@orot/storage';
-import type {
-  HealthObservationCursor,
-  HealthObservationPage,
-} from '@orot/storage';
+import type { HealthObservationPageLoader } from '@orot/storage';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import type { AppRootTab } from '../navigation/rootTabs';
 import { t } from '../i18n';
@@ -14,7 +11,7 @@ import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRout
 import { RouteLoadError } from './RouteLoadError';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
-import type { HealthRecordsMedicationData } from '../healthkit/healthRecordsMedicationLibrary';
+import type { HealthRecordsMedicationLoader } from '../healthkit/healthRecordsMedicationLibrary';
 import WelcomeRoute from './WelcomeRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
 import { RecordsRoute } from './RecordsRoute';
@@ -63,10 +60,8 @@ interface AppRouteContentProps {
   readonly openRagConversation: () => void;
   readonly openExternalEvidence: () => void;
   readonly openRecording: () => void;
-  readonly loadHealthObservations: (
-    cursor: HealthObservationCursor | null,
-  ) => Promise<HealthObservationPage>;
-  readonly loadHealthRecordMedications: () => Promise<HealthRecordsMedicationData>;
+  readonly loadHealthObservations: HealthObservationPageLoader;
+  readonly loadHealthRecordMedications: HealthRecordsMedicationLoader;
   readonly healthRecordDetailSelection: HealthRecordsDetailSelection | null;
   readonly onHealthRecordDetailSelectionChange: (
     selection: HealthRecordsDetailSelection,

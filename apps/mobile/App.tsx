@@ -4,8 +4,7 @@ import type { ReactElement } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import type {
   AppointmentRepository,
-  HealthObservationCursor,
-  HealthObservationPage,
+  HealthObservationPageLoader,
 } from '@orot/storage';
 import type { HealthObservation } from '@orot/domain';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -35,8 +34,9 @@ import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
 import { listLocalHealthObservationPage } from './src/healthkit/healthObservationLibrary';
+import { healthObservationFixturePages } from './src/healthkit/healthObservationFixturePages';
 import type { HealthRecordsDetailSelection } from './src/healthkit/healthRecordsLibraryModel';
-import type { HealthRecordsMedicationData } from './src/healthkit/healthRecordsMedicationLibrary';
+import type { HealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 import { resolveHealthRecordsMedicationLoader } from './src/healthkit/healthRecordsMedicationLibrary';
 
 declare const require: (path: string) => {
@@ -50,10 +50,8 @@ interface AppProps {
   /** Keeps older blood-pressure fixtures working while the library uses one shared reader. */
   loadBloodPressureObservations?: () => Promise<readonly HealthObservation[]>;
   loadHealthObservations?: () => Promise<readonly HealthObservation[]>;
-  loadHealthObservationPage?: (
-    cursor: HealthObservationCursor | null,
-  ) => Promise<HealthObservationPage>;
-  loadHealthRecordMedications?: () => Promise<HealthRecordsMedicationData>;
+  loadHealthObservationPage?: HealthObservationPageLoader;
+  loadHealthRecordMedications?: HealthRecordsMedicationLoader;
   aiFeatureServiceDependencies?: AiFeatureServiceDependencies;
   /** Keeps App navigation real while E2E supplies deterministic synthetic visit-question operations. */
   renderVisitQuestions?: (input: VisitQuestionsRenderInput) => ReactElement;
@@ -83,10 +81,7 @@ export default function App({
     // Legacy injected fixtures remain supported; production always uses bounded SQL pages.
     const fixture = loadHealthObservations ?? loadBloodPressureObservations;
     return fixture
-      ? async (cursor: HealthObservationCursor | null) => ({
-          records: cursor ? [] : await fixture(),
-          nextCursor: null,
-        })
+      ? healthObservationFixturePages(fixture)
       : listLocalHealthObservationPage;
   }, [
     loadHealthObservationPage,

@@ -136,7 +136,10 @@ test('keeps an empty page reachable without automatically scanning remaining his
   expect(screen.queryByTestId('health-records-detail-empty')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-records-load-older'));
   await fireEvent.press(screen.getByTestId('health-records-detail-retry'));
-  expect(loadObservations).toHaveBeenLastCalledWith(cursor);
+  expect(loadObservations).toHaveBeenLastCalledWith(
+    cursor,
+    expect.objectContaining({ category: 'blood_pressure' }),
+  );
   expect(screen.getByTestId('health-record-row-0')).toBeTruthy();
   expect(screen.queryByTestId('health-records-load-older')).toBeNull();
 });

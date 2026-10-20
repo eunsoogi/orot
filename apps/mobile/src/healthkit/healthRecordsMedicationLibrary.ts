@@ -1,15 +1,19 @@
-import type { DoseEvent, MedicationDefinition } from '@orot/domain';
-import type { RecordRepository } from '@orot/storage';
+import type { DoseEvent } from '@orot/domain';
+import type {
+  RecordRepository,
+  HealthMedicationPage,
+  HealthMedicationPageRequest,
+} from '@orot/storage';
 
 export type ImportedMedicationDose = Extract<
   DoseEvent,
   { eventKind: 'observed' }
 >;
 
-export interface HealthRecordsMedicationData {
-  readonly definitions: readonly MedicationDefinition[];
-  readonly doseEvents: readonly ImportedMedicationDose[];
-}
+export type HealthRecordsMedicationData = HealthMedicationPage;
+export type HealthRecordsMedicationLoader = (
+  request?: HealthMedicationPageRequest,
+) => Promise<HealthRecordsMedicationData>;
 
 export const emptyHealthRecordsMedicationData: HealthRecordsMedicationData = {
   definitions: [],
@@ -22,9 +26,9 @@ export function loadEmptyHealthRecordsMedicationData(): Promise<HealthRecordsMed
 
 /** Avoids opening production storage when an app test injects observation fixtures. */
 export function resolveHealthRecordsMedicationLoader(
-  injectedLoader: (() => Promise<HealthRecordsMedicationData>) | undefined,
+  injectedLoader: HealthRecordsMedicationLoader | undefined,
   useEmptyLoader: boolean,
-): () => Promise<HealthRecordsMedicationData> {
+): HealthRecordsMedicationLoader {
   return (
     injectedLoader ??
     (useEmptyLoader
@@ -34,36 +38,20 @@ export function resolveHealthRecordsMedicationLoader(
 }
 
 /** Reads imported HealthKit rows already stored locally without starting an import. */
-export async function listLocalHealthRecordMedicationData(): Promise<HealthRecordsMedicationData> {
+export async function listLocalHealthRecordMedicationData(
+  request?: HealthMedicationPageRequest,
+): Promise<HealthRecordsMedicationData> {
   const { openLocalStorage } = await import('../storage/secureDatabase');
-  return listHealthRecordMedicationData(await openLocalStorage());
+  return listHealthRecordMedicationData(await openLocalStorage(), request);
 }
 
 export async function listHealthRecordMedicationData(
-  repository: Pick<RecordRepository, 'list'>,
+  repository: Pick<RecordRepository, 'listHealthMedicationPage'>,
+  request: HealthMedicationPageRequest = {
+    toInclusive: new Date().toISOString(),
+    includeTotals: true,
+  },
 ): Promise<HealthRecordsMedicationData> {
-  const [definitions, events] = await Promise.all([
-    repository.list('medication_definition'),
-    repository.list('dose_event'),
-  ]);
-  // The imported-records library excludes user-entered medication assertions.
-  return {
-    definitions: definitions.filter(isImportedHealthKitRecord),
-    doseEvents: events.filter(
-      (event): event is ImportedMedicationDose =>
-        event.eventKind === 'observed' && isImportedHealthKitRecord(event),
-    ),
-  };
-}
-
-function isImportedHealthKitRecord(record: {
-  readonly provenance: {
-    readonly origin: string;
-    readonly source?: { readonly system: string };
-  };
-}): boolean {
-  return (
-    record.provenance.origin === 'imported' &&
-    record.provenance.source?.system === 'healthkit'
-  );
+  // The storage query filters imported HealthKit rows before decoding a bounded page.
+  return repository.listHealthMedicationPage(request);
 }

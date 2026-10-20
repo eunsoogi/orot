@@ -1,24 +1,19 @@
-import type {
-  HealthObservationCursor,
-  HealthObservationPage,
-} from '@orot/storage';
+import type { HealthObservationPageLoader } from '@orot/storage';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
 import { HealthRecordsDetailScreen } from '../healthkit/HealthRecordsDetailScreen';
 import { HealthRecordsLibraryScreen } from '../healthkit/HealthRecordsLibraryScreen';
 import { HealthRecordsMedicationDetailScreen } from '../healthkit/HealthRecordsMedicationDetailScreen';
 import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
 import type { HealthObservationCategory } from '../healthkit/healthRecordsLibraryModel';
-import type { HealthRecordsMedicationData } from '../healthkit/healthRecordsMedicationLibrary';
+import type { HealthRecordsMedicationLoader } from '../healthkit/healthRecordsMedicationLibrary';
 import { t } from '../i18n';
 import { RouteLoadError } from './RouteLoadError';
 import type { AppNavigationRoute } from './appNavigationRoute';
 
 interface HealthRecordsRouteProps {
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
-  readonly loadObservations: (
-    cursor: HealthObservationCursor | null,
-  ) => Promise<HealthObservationPage>;
-  readonly loadMedicationData: () => Promise<HealthRecordsMedicationData>;
+  readonly loadObservations: HealthObservationPageLoader;
+  readonly loadMedicationData: HealthRecordsMedicationLoader;
   readonly onSelectionChange: (selection: HealthRecordsDetailSelection) => void;
   readonly route: 'health-records' | 'health-records-detail';
   readonly selection: HealthRecordsDetailSelection | null;
