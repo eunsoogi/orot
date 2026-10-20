@@ -159,6 +159,12 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
         }
     }
 
+    /// Long titles must retain their accessible name and reversible full-swipe behavior at both text-size boundaries.
+    @MainActor
+    func testConversationLongTitlesAndFullSwipeAcrossTextSizes() throws {
+        try ConversationHistoryUITestConditions.verifyLongTitlesAndFullSwipe(testCase: self)
+    }
+
     /// Reopen the actual latest row and retain its identity independently of UIKit's grouped text labels.
     @MainActor
     @discardableResult

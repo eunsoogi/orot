@@ -11,10 +11,10 @@ test('all four hosted fixture groups partition all maintained UI cases including
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [8, 7, 7, 7],
+    [8, 7, 8, 7],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 29);
+  assert.equal(original.length, 30);
   assert.deepEqual(groups.flat().slice().sort(), original.slice().sort());
   assert.deepEqual(iosTestInventory('fixtures', 'all'), original);
 });
