@@ -22,9 +22,22 @@ export function summaryStatisticRoleIssue(
       /(?:샘플|표본)(?:\s*(?:개수|수))?\s*(?:는|은|이|가)?\s*(?:총|합계|:|=)?\s*(\d+(?:\.\d+)?)\s*(?:개|건)/gu,
     ];
     for (const pattern of patterns)
-      for (const claim of normalized.matchAll(pattern))
-        if (!counts.includes(Number(claim[1])))
+      for (const claim of normalized.matchAll(pattern)) {
+        const tail = normalized.slice(claim.index! + claim[0].length);
+        // A correction inherits the same statistic role: verify the positive
+        // replacement, not the explicitly rejected number before "아니라".
+        const correction =
+          /^\s*(?:이|가)?\s*아니라\s*(\d+(?:\.\d+)?)\s*(?:개|건)/u.exec(tail);
+        if (
+          !correction &&
+          /^\s*(?:이|가)?\s*(?:아니에요|아닙니다|아니다|아님)(?:\s|[.!?。]|$)/u.test(
+            tail,
+          )
+        )
+          continue;
+        if (!counts.includes(Number(correction?.[1] ?? claim[1])))
           return 'statistic_roles' as const;
+      }
   }
   if (
     facts.some(
@@ -35,14 +48,21 @@ export function summaryStatisticRoleIssue(
   ) {
     for (const clause of normalized.split(/[.!?。\n]/u)) {
       const compact = clause.replace(/\s/gu, '');
-      // An explicit denial of an absence inference is a valid limitation, not an absence claim.
-      if (/(?:없|않)(?:다는|다고).{0,16}(?:아니|없)/u.test(compact)) continue;
-      if (
-        /완전한(?:하룻밤|밤)(?:의)?수면(?:기록|자료|데이터)?(?:은|는|이|가)?(?:기록되지(?:않|못)|기록이없|자료가없|없(?:음|어요|습니다|다|$))/u.test(
+      const absence =
+        /완전한(?:하룻밤|밤)(?:의)?수면(?:기록|자료|데이터)?(?:은|는|이|가)?(?:기록되지(?:않(?:았)?|못(?:했)?)|(?:기록이|자료가)?없(?:었)?)/u.exec(
           compact,
+        );
+      if (!absence) continue;
+      // Bind epistemic negation to this exact predicate. "수밖에 없다" affirms
+      // the inference, while "볼 수는 없다" denies that it is established.
+      const tail = compact.slice(absence.index + absence[0].length);
+      if (
+        /^(?:다고(?:볼|말할|단정할|판단할)수(?:는)?없|다는(?:뜻|의미)(?:은|는|이|가)?아니)/u.test(
+          tail,
         )
       )
-        return 'sleep_coverage' as const;
+        continue;
+      return 'sleep_coverage' as const;
     }
   }
   return undefined;

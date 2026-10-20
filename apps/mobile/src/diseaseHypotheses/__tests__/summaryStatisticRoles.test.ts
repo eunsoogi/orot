@@ -101,6 +101,7 @@ test.each([
 test.each([
   '기록일 평균 수면은 90분이며 완전한 밤 수면을 뜻하지는 않아요.',
   '기록일 평균 수면은 90분이에요. 이 집계만으로 완전한 밤 수면 기록이 없다고 볼 수는 없어요.',
+  '기록일 평균 수면은 90분이에요. 완전한 밤 수면은 기록되지 않았다고 볼 수는 없어요.',
 ])('preserves the actual sleep aggregation limitation: %s', summary => {
   expect(
     validate(
@@ -110,4 +111,31 @@ test.each([
       }),
     ).status,
   ).toBe('valid');
+});
+
+test('accepts an explicit correction to the supplied sample count but rejects an invented replacement', () => {
+  const source = content('activity', { quantities });
+  expect(
+    validate(
+      '기록일 평균 900걸음이고 표본 수는 60개가 아니라 210개예요.',
+      source,
+    ).status,
+  ).toBe('valid');
+  expect(
+    validate(
+      '기록일 평균 900걸음이고 표본 수는 60개가 아니라 999개예요.',
+      source,
+    ).status,
+  ).toBe('invalid');
+});
+
+test('does not mistake a compelled absence assertion for denial of that inference', () => {
+  expect(
+    validate(
+      '기록일 평균 수면은 90분이에요. 완전한 밤 수면 기록이 없다고 볼 수밖에 없어요.',
+      content('sleep', {
+        sleep: { meanRecordedDailyMinutes: 90, recordedDays: 3 },
+      }),
+    ).status,
+  ).toBe('invalid');
 });
