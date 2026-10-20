@@ -87,7 +87,9 @@ struct ResponsesEventNormalizer {
             }
             let output = try completedOutput.resolve(Self.responseOutput(response, publicWebSearch: webSearch.enabled))
             response["output"] = output
-            let finalText = try Self.responseText(response, fallback: accumulatedText)
+            let finalText = try ResponsesOutputText.resolve(
+                response, fallback: accumulatedText, publicWebSearch: webSearch.enabled,
+            )
             guard finalText == accumulatedText else { throw Self.malformed("completion_text") }
             let functionCalls = try Self.functionCalls(in: output)
             guard Self.emittedCallsMatch(emittedFunctionCalls, final: functionCalls),
@@ -199,26 +201,6 @@ struct ResponsesEventNormalizer {
             guard let call = final.first(where: { $0.id == item.callID }) else { return false }
             return item.name == call.name && (item.arguments.isEmpty || item.arguments == call.argumentsJSON)
         }
-    }
-
-    private static func responseText(_ response: [String: Any], fallback: String) throws -> String {
-        if let outputText = response["output_text"] as? String {
-            return outputText
-        }
-        guard let output = response["output"] as? [[String: Any]] else { return fallback }
-
-        var parts = [String]()
-        for item in output {
-            guard let content = item["content"] as? [[String: Any]] else { continue }
-            for part in content {
-                if part["type"] as? String == "output_text", let text = part["text"] as? String {
-                    parts.append(text)
-                } else if part["type"] as? String == "refusal", let refusal = part["refusal"] as? String {
-                    parts.append(refusal)
-                }
-            }
-        }
-        return parts.joined()
     }
 
     private static func isJSONObject(_ json: String) -> Bool {
