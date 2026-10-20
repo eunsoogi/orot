@@ -11,6 +11,15 @@ import { fingerprint } from './evidenceUtils';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import { summaryFactIssue } from '../../diseaseHypotheses/summaryFactValidation';
 import { healthOverviewFacts } from './healthOverviewFacts';
+import {
+  isPeriodSummarySource,
+  type SavedRecordSummarySource,
+} from '../../diseaseHypotheses/savedSummaries';
+import { healthContextRevision } from '../../healthEvidence/healthContext/scope';
+import {
+  healthContextContent,
+  registerHealthContextEvidence,
+} from './healthContextEvidence';
 
 function references(analysis: DiseaseHypothesisAnalysis) {
   return [
@@ -53,7 +62,19 @@ export async function captureSymptomSummarySources(
     const read = await registry.readSource(ref, signal);
     if (!original || read.status !== 'available')
       throw new Error('The cited source changed before saving.');
-    const records: SavedSummarySource['records'] =
+    if (read.document.sourceKind === 'health_context_period') {
+      const { scope, report } = read.document;
+      sources.push({
+        kind: 'health_context_period',
+        reference: original,
+        scope,
+        revision: healthContextRevision(scope, report),
+        deletionGeneration: report.deletionGeneration,
+      });
+      mapping.set(JSON.stringify(ref), original);
+      continue;
+    }
+    const records: SavedRecordSummarySource['records'] =
       read.document.sourceKind === 'personal_record'
         ? read.document.records.map(entry => ({
             kind: entry.kind,
@@ -89,6 +110,41 @@ export async function restoreSymptomSummary(
   let sourceChanged = false;
   const reviewEvidence: EvidenceItem[] = [];
   for (const source of saved.sources) {
+    if (isPeriodSummarySource(source)) {
+      const read = data.readHealthContext;
+      const report = read
+        ? await read(source.scope.window, [source.scope.topic])
+        : undefined;
+      sourceChanged ||=
+        !report ||
+        healthContextRevision(source.scope, report) !== source.revision;
+      const current =
+        report && read
+          ? registerHealthContextEvidence({
+              registry,
+              read,
+              report,
+              scope: source.scope,
+              original: source.reference,
+              expectedRevision: source.revision,
+            })
+          : registry.add({
+              reference: source.reference,
+              content: '',
+              validate: async () => false,
+              readSource: async () => ({ status: 'unavailable' }),
+            });
+      if (
+        report &&
+        healthContextRevision(source.scope, report) === source.revision
+      )
+        reviewEvidence.push({
+          ...source.reference,
+          content: healthContextContent(source.scope, report),
+        });
+      mapping.set(JSON.stringify(source.reference), referenceOnly(current));
+      continue;
+    }
     if (source.reference.sourceKind === 'external_medical') {
       mapping.set(JSON.stringify(source.reference), source.reference);
       continue;

@@ -12,6 +12,7 @@ import { createLocalEvidenceSearchTool } from './evidenceSearchTool';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { requireSelectedAi } from './provider';
+import { createHealthContextTool } from './healthContextTool';
 import {
   indexChangedFeatureEvidence,
   loadFeatureEvidenceSnapshot,
@@ -28,6 +29,9 @@ export function toolsFor(
   feature: 'disease' | 'rag' = 'disease',
 ) {
   return [
+    ...(data.readHealthContext
+      ? [createHealthContextTool(data.readHealthContext, registry, feature)]
+      : []),
     createLocalEvidenceSearchTool({
       id: 'local-personal-records',
       sourceKind: 'personal_record',

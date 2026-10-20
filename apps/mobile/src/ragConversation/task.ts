@@ -55,14 +55,14 @@ function priorMessages(
 /** Makes every turn cite fresh evidence; chat history is never treated as a source. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '3',
+  taskVersion: '4',
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   systemPrompt:
     'Answer the current question using only the supplied current evidence. Previous conversation is context, not evidence. ' +
     'Cite exact current evidence IDs in the top-level citations field. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
-    'For a broad question across health topics, choose the local tool with view=health_overview when available. It retrieves bounded recent medication, measurement, activity, sleep and symptom facts together. If requested topics are missing from a partial search and research is still permitted, request the missing topics before concluding that the records cannot answer. The model chooses each tool and query. ' +
+    'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, weekly or daily detail when needed, and use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
     'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
     // An empty personal library does not establish that public literature is unavailable.
     'When the user explicitly asks for literature and current sources do not support the answer, request evidence before declaring it unavailable if literature research is permitted. ' +

@@ -1,6 +1,6 @@
-import type { JsonObject, JsonValue } from '@orot/model-runtime';
+import type { JsonObject } from '@orot/model-runtime';
 import type { TaskResponderInput } from '@orot/agent-runtime';
-import { diseaseHypothesisSchema } from './resultValidation';
+import { summarySectionSchema } from './summarySectionSchema';
 import { MAX_SYMPTOM_SUMMARY_SECTIONS } from './types';
 import { SUMMARY_SYMPTOM_COVERAGE_NOTE } from './summaryCoverageNotes';
 
@@ -28,53 +28,43 @@ export function createSymptomSummarySchema(
         type: 'array',
         minItems: 1,
         maxItems: MAX_SYMPTOM_SUMMARY_SECTIONS,
-        items: {
-          ...diseaseHypothesisSchema,
-          // Factual summaries may omit limitations; the disease-assessment schema keeps them required.
-          required: [
-            'title',
-            'summary',
-            'supportingEvidence',
-            'contraryEvidence',
-          ],
-          properties: {
-            ...Object.fromEntries(
-              Object.entries(
-                diseaseHypothesisSchema.properties as Record<string, JsonValue>,
-              ).filter(([key]) => key !== 'uncertainty'),
-            ),
-            // Factual summaries must not manufacture uncertainty to satisfy a diagnosis schema.
-            contraryEvidence: {
-              type: 'array',
-              maxItems: 0,
-              items: referenceItems,
-              description:
-                'Return an empty array. This is a factual record summary, not a disease hypothesis. Narrate differing supported observations with supportingEvidence instead.',
-            },
-            uncertaintyNotes: {
-              type: 'array',
-              maxItems: 3,
-              items: { type: 'string', minLength: 1, maxLength: 500 },
-              description:
-                'Optional actual interpretive limitations, each written in Korean. Return an empty array or omit this property when none applies. Never add an English placeholder, abbreviation or unit alone. Do not invent uncertainty. Combined text must fit 500 characters.',
-            },
-            missingData: {
-              type: 'array',
-              items: { type: 'string', minLength: 1, maxLength: 160 },
-              description:
-                'Optional genuinely missing information needed for this summary. Write items in Korean. Omit this property or use an empty array when none is needed; never invent a gap.',
-            },
-            supportingEvidence: {
-              type: 'array',
-              minItems: 1,
-              description:
-                'Exact evidenceId strings from one sourceKind only. Use personal_record for record facts or external_medical for general medical context; never combine both kinds in one section.',
-              items: referenceItems,
-            },
-          },
-        },
+        items: summarySourceChoices(input, referenceItems),
       },
     },
     additionalProperties: false,
+  };
+}
+
+/** Native generation chooses a source-specific shape so private facts cannot share publication citations. */
+function summarySourceChoices(
+  input: TaskResponderInput | undefined,
+  fallback: JsonObject,
+): JsonObject {
+  const items = input?.evidence.items ?? [];
+  const kinds = [...new Set(items.map(item => item.sourceKind))];
+  if (kinds.length < 2) return summarySectionSchema(fallback);
+  return {
+    anyOf: kinds.map(kind => ({
+      ...summarySectionSchema({
+        type: 'string',
+        enum: [
+          ...new Set(
+            items
+              .filter(item => item.sourceKind === kind)
+              .map(item => item.evidenceId),
+          ),
+        ],
+      }),
+      title:
+        kind === 'external_medical'
+          ? 'PublicMedicalContext'
+          : kind === 'personal_record'
+            ? 'PersonalRecordFacts'
+            : 'ReviewedMemoryFacts',
+      description:
+        kind === 'external_medical'
+          ? 'General medical context supported only by retrieved publications. Never treat it as a personal observation.'
+          : 'Explicit personal facts from this source kind only. Keep general medical explanations in a separate public-context section.',
+    })),
   };
 }

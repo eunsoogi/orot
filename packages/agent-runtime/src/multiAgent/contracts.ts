@@ -86,11 +86,18 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly allowRankedLocalEvidence?: boolean;
   /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
   readonly requireAllEvidenceCitations?: boolean;
+  /** Opt in to current-ID enum guidance without forcing exhaustive citation counts. */
+  readonly constrainCitationIds?: boolean;
   /** Native-tool tasks may require one lookup per eligible source kind. Completed empty searches count as attempts. */
   readonly requiredToolEvidenceKinds?: readonly EvidenceSourceKind[];
+  /** Opt in only when createMessages includes every current item's full content and identity.
+   * Tool receipts then retain IDs, coverage and conflicts without duplicating that content. */
+  readonly nativeToolResultMode?: 'evidence_references';
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
+  /** One correction for closed envelope-shape or citation-binding failures; shares the result-correction budget. */
+  correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
 

@@ -77,6 +77,16 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(restored["ragChunksVerified"] as? Bool, true)
     }
 
+    /// Reopens the encrypted file and verifies that deleting a period input purges its saved derived text.
+    func testComputedPeriodSummaryRestoresAndPurgesDeletedInputs() async throws {
+        let result = try await operation("health-context-persistence", parameters: ["fixtureIdentifier": "test-period-summary-\(UUID().uuidString)"])
+        for key in ["encrypted", "reloaded", "periodSourceAvailable", "unrelatedDeletePreserved", "summaryPurged", "evidenceInvalidated"] {
+            XCTAssertEqual(result[key] as? Bool, true, key)
+        }
+        XCTAssertEqual(result["sourceChanged"] as? Bool, false)
+        XCTAssertEqual(result["periodRowsAfterDeletion"] as? Int, 0)
+    }
+
     func testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence() async throws {
         let parameters = ["fixtureIdentifier": "test-memory-\(UUID().uuidString)"]
         _ = try await operation("memory-create", parameters: parameters)

@@ -158,7 +158,12 @@ final class OrotProviderDiagnostics: NSObject {
                "task_summary_facts_medications", "task_summary_facts_pressure", "task_summary_facts_heart_rate",
                "task_summary_facts_body_mass", "task_summary_facts_activity", "task_summary_facts_other_quantity",
                "task_summary_facts_sleep", "task_summary_facts_placeholder", "task_summary_coverage",
-               "overview_selected",
+               "task_summary_empty_section_1", "task_summary_empty_section_2", "task_summary_empty_section_3", "task_summary_empty_section_4",
+               "task_summary_empty_section_5", "task_summary_empty_section_6", "task_summary_empty_section_7", "task_summary_empty_section_8",
+               "overview_selected", "context_started", "context_selected",
+               "context_preparation_started", "context_preparation_completed", "context_calendar_started", "context_calendar_completed",
+               "context_quantities_started", "context_quantities_completed", "context_medications_started", "context_medications_completed",
+               "context_sleep_started", "context_sleep_completed", "context_symptoms_started", "context_symptoms_completed",
                "task_quantity_ratio", "task_quantity_unit", "task_quantity_precision", "task_quantity_value",
                "type_error", "reference_error", "range_error"].contains(outcome)
         else { return }

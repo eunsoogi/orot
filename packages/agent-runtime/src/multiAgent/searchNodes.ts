@@ -144,7 +144,20 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       context.nativeToolMessages?.push({
         role: 'tool',
         toolCallId: context.pendingNativeToolCallId,
-        result: JSON.parse(canonicalJson(batch)),
+        // The full batch was size/scope/freshness checked and remains in currentEvidence.
+        // Rebuilt tasks can expose facts once; callback identity and coverage remain intact.
+        result: JSON.parse(
+          canonicalJson(
+            options.task.nativeToolResultMode === 'evidence_references'
+              ? {
+                  contentLocation: 'current_task_messages',
+                  evidenceIds: batch.items.map((item) => item.evidenceId),
+                  coverage: batch.coverage,
+                  conflicts: batch.conflicts,
+                }
+              : batch,
+          ),
+        ),
       });
       context.pendingNativeToolCallId = undefined;
       return {

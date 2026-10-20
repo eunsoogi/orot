@@ -86,7 +86,11 @@ export function taskResponseSchema<TResult>(
               ? contract.createResultSchema(input)
               : contract.resultSchema,
           ),
-          citations: taskCitationSchema(ids, contract.requireAllEvidenceCitations),
+          citations: taskCitationSchema(
+            ids,
+            contract.requireAllEvidenceCitations,
+            contract.constrainCitationIds,
+          ),
         },
       },
     ],

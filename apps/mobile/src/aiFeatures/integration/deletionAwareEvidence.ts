@@ -1,6 +1,7 @@
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { withLocalDeletionAwareRevalidation } from '../../memory/deletionAwareEvidenceRevalidation';
 import { compoundEvidenceReferences } from './compoundEvidenceReferences';
+import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
 
 type EvidenceRevalidator = (
   references: readonly EvidenceReference[],
@@ -50,9 +51,29 @@ export function revalidateWithLocalDeletionGuard(
         : reference,
   );
   if (identities.some(reference => !reference)) return Promise.resolve(false);
-  const expanded = (identities as EvidenceReference[]).map(
-    compoundEvidenceReferences,
+  const ordinary = (identities as EvidenceReference[]).filter(reference => {
+    const locator = reference.locator;
+    return !(
+      reference.sourceKind === 'personal_record' &&
+      locator &&
+      typeof locator === 'object' &&
+      !Array.isArray(locator) &&
+      (locator as Record<string, unknown>).kind === 'health_context_period'
+    );
+  });
+  const periods = (identities as EvidenceReference[]).filter(
+    reference => !ordinary.includes(reference),
   );
+  // Only registry-resolved, validated period locators use generation and aggregate-revision guards.
+  // Unknown locators remain fail-closed; a synthetic ID is never passed off as a stored source row.
+  if (
+    periods.some(
+      reference =>
+        !resolveIdentity || !parseHealthContextScope(reference.locator),
+    )
+  )
+    return Promise.resolve(false);
+  const expanded = ordinary.map(compoundEvidenceReferences);
   if (expanded.some(value => !value)) return Promise.resolve(false);
   const guardIdentities = expanded
     .flatMap(value => value ?? [])

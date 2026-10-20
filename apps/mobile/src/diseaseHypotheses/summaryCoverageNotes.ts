@@ -37,6 +37,8 @@ export function applySummaryCoverageNotes(
     'medication_assertion',
     'dose_event',
     'health_observation',
+    'health_context_quantity',
+    'health_context_sleep',
   ];
   // Untyped prose or a symptom entry can contain subjective symptoms, so absence cannot be established from it.
   if (
@@ -46,7 +48,11 @@ export function applySummaryCoverageNotes(
       return (
         item.sourceKind === 'personal_record' &&
         facts.length > 0 &&
-        facts.every(fact => supportedKinds.includes(String(fact.kind)))
+        facts.every(
+          fact =>
+            supportedKinds.includes(String(fact.kind)) ||
+            (fact.kind === 'health_context_symptoms' && fact.entryCount === 0),
+        )
       );
     })
   )

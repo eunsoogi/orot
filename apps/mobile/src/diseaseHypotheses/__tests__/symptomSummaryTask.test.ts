@@ -36,6 +36,11 @@ test('preserves authoritative source kinds when rebuilding a final response from
   const message = messages[0];
   if (message?.role !== 'user') throw new Error('Expected summary input.');
   const payload = JSON.parse(message.content as string);
+  expect(symptomSummaryTask.nativeToolResultMode).toBe('evidence_references');
+  expect(
+    payload.records.map((item: { content: string }) => item.content),
+  ).toEqual([...evidence.items, publication].map(item => item.content));
+  expect(payload.coverage).toEqual(evidence.coverage);
   // Content and titles cannot reliably identify provenance after tool-call history is rebuilt.
   expect(
     payload.records.map(

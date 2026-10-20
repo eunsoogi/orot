@@ -53,3 +53,44 @@ test('generation guidance never substitutes for local citation validation', () =
   );
   expect(result.status).toBe('invalid');
 });
+
+test('keeps personal-record and public-context citation choices in separate generation branches', () => {
+  const schema = JSON.parse(
+    JSON.stringify(
+      createSymptomSummarySchema({
+        request: '합성 요약',
+        evidence: {
+          ...evidence,
+          items: [
+            ...evidence.items,
+            {
+              ...evidence.items[0]!,
+              sourceKind: 'external_medical',
+              evidenceId: 'public-paper',
+            },
+          ],
+        },
+      }),
+    ),
+  );
+  const choices = schema.properties.sections.items.anyOf;
+  expect(choices).toHaveLength(2);
+  expect(
+    choices.map(
+      (choice: {
+        properties: { supportingEvidence: { items: { enum: string[] } } };
+      }) => choice.properties.supportingEvidence.items.enum,
+    ),
+  ).toEqual([[reference.evidenceId], ['public-paper']]);
+});
+
+test('selects one bounded topic source before writing its factual section', () => {
+  const schema = JSON.parse(
+    JSON.stringify(
+      createSymptomSummarySchema({ request: '합성 요약', evidence }),
+    ),
+  );
+  const properties = schema.properties.sections.items.properties;
+  expect(Object.keys(properties)[0]).toBe('supportingEvidence');
+  expect(properties.supportingEvidence.maxItems).toBe(1);
+});

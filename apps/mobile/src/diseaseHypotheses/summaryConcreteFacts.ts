@@ -1,7 +1,8 @@
 import type { DiseaseHypothesisAnalysis } from './types';
+import { matchesPeriodSleepMean } from './summaryPeriodDuration';
 
 type Fact = Record<string, unknown>;
-type Anchors = { texts: string[]; numbers: number[] };
+type Anchors = { texts: string[]; numbers: number[]; durations: number[] };
 type Source = { evidenceId: string; facts: readonly Fact[] };
 type MissingTopic =
   | 'facts_medications'
@@ -43,18 +44,44 @@ const numbers = (text: string) =>
   );
 const matches = (anchor: Anchors, text: string) =>
   anchor.texts.some(value => normalize(text).includes(normalize(value))) ||
-  anchor.numbers.some(value => numbers(text).includes(value));
+  anchor.numbers.some(value => numbers(text).includes(value)) ||
+  matchesPeriodSleepMean(text, anchor.durations);
 
 function anchorsFor(facts: readonly Fact[]) {
   const topics = new Map<string, Anchors>();
   const add = (topic: string, text?: string, number?: number) => {
-    const anchors = topics.get(topic) ?? { texts: [], numbers: [] };
+    const anchors = topics.get(topic) ?? {
+      texts: [],
+      numbers: [],
+      durations: [],
+    };
     if (text) anchors.texts.push(text);
     if (number !== undefined) anchors.numbers.push(number);
     topics.set(topic, anchors);
   };
   let suppliedUnit = false;
   for (const fact of facts) {
+    if (
+      fact.kind === 'health_context_quantity' &&
+      Array.isArray(fact.amounts)
+    ) {
+      for (const amount of fact.amounts)
+        if (typeof amount === 'number')
+          add(`quantity:${String(fact.concept)}`, undefined, amount);
+      suppliedUnit ||= typeof fact.unit === 'string' && fact.unit.length > 0;
+    }
+    if (
+      fact.kind === 'health_context_sleep' &&
+      typeof fact.minutes === 'number'
+    ) {
+      add('sleep');
+      topics.get('sleep')!.durations.push(fact.minutes * 60);
+    }
+    if (
+      fact.kind === 'health_context_symptoms' &&
+      typeof fact.entryCount === 'number'
+    )
+      add('symptoms', undefined, fact.entryCount);
     if (typeof fact.displayText === 'string')
       add('medications', fact.displayText);
     if (typeof fact.medicationName === 'string')
@@ -92,6 +119,7 @@ function anchorsFor(facts: readonly Fact[]) {
 export function summaryConcreteIssue(
   analysis: DiseaseHypothesisAnalysis,
   sources: readonly Source[],
+  onEmptySection?: (index: number) => void,
 ): MissingTopic | 'facts_placeholder' | 'units' | undefined {
   const hasConcreteFact = new Set<number>();
   const needsConcreteFact = new Set<number>();
@@ -124,7 +152,12 @@ export function summaryConcreteIssue(
     if (missing) return missing.issue;
   }
   // Another section's valid facts must not make an empty heading publishable.
-  if ([...needsConcreteFact].some(index => !hasConcreteFact.has(index)))
+  const empty = [...needsConcreteFact].find(
+    index => !hasConcreteFact.has(index),
+  );
+  if (empty !== undefined) {
+    onEmptySection?.(empty);
     return 'facts_placeholder';
+  }
   return undefined;
 }

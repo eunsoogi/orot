@@ -49,6 +49,18 @@ export function consumeResponderResponse<TResult>(
   }
   const { output: decoded, reason } = decodeTaskResponse<TResult>(response);
   if (!decoded) {
+    if (!correctionAttempted) {
+      try {
+        const instruction = context.options.task.correctionInstructionForInvalidEnvelope?.(reason!);
+        if (instruction?.trim()) {
+          // The same one-shot correction path rechecks budget, freshness and final validation.
+          context.responseCorrectionInstruction = instruction.trim();
+          return completeState();
+        }
+      } catch {
+        // Malformed output stays terminal when task-specific guidance fails.
+      }
+    }
     stop(context, reason!, 'invalid_output');
     return completeState();
   }
@@ -104,6 +116,19 @@ export function consumeResponderResponse<TResult>(
   }
   const citations = citationReferences(decoded.citations, input.evidence);
   if (!citations) {
+    if (!correctionAttempted) {
+      try {
+        const instruction = context.options.task.correctionInstructionForInvalidEnvelope?.(
+          'The result cited evidence outside the current validated evidence set.',
+        );
+        if (instruction?.trim()) {
+          context.responseCorrectionInstruction = instruction.trim();
+          return completeState();
+        }
+      } catch {
+        // Failed guidance never authorizes unbound or duplicate citations.
+      }
+    }
     stop(
       context,
       'The result cited evidence outside the current validated evidence set.',

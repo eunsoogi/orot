@@ -83,7 +83,10 @@ test('one selected overview returns bounded diverse facts with exact, revalidate
     registry,
     new AbortController().signal,
   );
-  expect(captured.sources[0]?.records).toHaveLength(4);
+  const capturedSource = captured.sources[0];
+  expect(
+    capturedSource && 'records' in capturedSource ? capturedSource.records : [],
+  ).toHaveLength(4);
   const restoredRegistry = new LocalEvidenceReferenceRegistry();
   const restored = await restoreSymptomSummary(
     {

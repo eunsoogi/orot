@@ -59,6 +59,13 @@ export async function runDomainTestOperation(
         await import('./healthContextTestOperation');
       return runHealthContextTestOperation(parameters.fixtureIdentifier);
     }
+    case 'health-context-persistence': {
+      const { runHealthContextPersistenceTestOperation } =
+        await import('./healthContextPersistenceTestOperation');
+      return runHealthContextPersistenceTestOperation(
+        parameters.fixtureIdentifier,
+      );
+    }
     case 'automatic-speech-readback':
     case 'automatic-speech-cleanup': {
       const {

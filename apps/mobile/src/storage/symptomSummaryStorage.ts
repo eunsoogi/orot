@@ -2,6 +2,12 @@ import { STORAGE_TABLES, type SqlDatabase } from '@orot/storage';
 import type { SymptomSummaryStorage } from '../diseaseHypotheses/savedSummaries';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
+import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
+import {
+  setupSummaryPeriods,
+  assertSummaryPeriodCurrent,
+  appendSummaryPeriod,
+} from './symptomSummaryPeriods';
 
 /** Append-only generated results live in the existing SQLCipher database, never plaintext preferences. */
 export function createSymptomSummaryStorage(
@@ -14,6 +20,8 @@ export function createSymptomSummaryStorage(
       throw error;
     }));
   async function setup() {
+    // Atomic period revalidation may sort private values even when the reader adapter was not opened first.
+    await database.execute('PRAGMA temp_store = MEMORY');
     await database.transaction(async tx => {
       await tx.execute(
         'CREATE TABLE IF NOT EXISTS symptom_summary_runs (id TEXT PRIMARY KEY NOT NULL, created_at TEXT NOT NULL, model_name TEXT NOT NULL, result_json TEXT NOT NULL)',
@@ -27,6 +35,7 @@ export function createSymptomSummaryStorage(
       await tx.execute(
         'CREATE INDEX IF NOT EXISTS symptom_summary_source_identity ON symptom_summary_sources (record_kind, record_id)',
       );
+      await setupSummaryPeriods(tx);
       // Delete derived health text when a cited row is deleted, including direct repository deletion.
       for (const [kind, { table }] of Object.entries(STORAGE_TABLES)) {
         await tx.execute(
@@ -59,7 +68,11 @@ export function createSymptomSummaryStorage(
           return;
         }
         // Recheck inside the write transaction so deletion cannot race a completed source read.
-        for (const source of value.sources)
+        for (const source of value.sources) {
+          if (isPeriodSummarySource(source)) {
+            await assertSummaryPeriodCurrent(tx, source);
+            continue;
+          }
           for (const record of source.records) {
             const memory = record.kind === 'reviewed_memory';
             const table = memory
@@ -86,17 +99,23 @@ export function createSymptomSummaryStorage(
             );
             if (stale.rows.length) throw new Error('A cited source is stale.');
           }
+        }
         await tx.execute(
           'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
           [value.id, value.createdAt, value.modelName, serialized],
         );
-        for (const source of value.sources)
+        for (const source of value.sources) {
+          if (isPeriodSummarySource(source)) {
+            await appendSummaryPeriod(tx, value.id, source);
+            continue;
+          }
           for (const record of source.records) {
             await tx.execute(
               'INSERT OR IGNORE INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',
               [value.id, record.kind, record.id],
             );
           }
+        }
       });
     },
     async list(before) {

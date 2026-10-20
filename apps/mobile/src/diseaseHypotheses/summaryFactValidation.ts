@@ -2,6 +2,7 @@ import type { EvidenceItem } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
 import { summaryConcreteIssue } from './summaryConcreteFacts';
 import { summarySleepDurationMismatch } from './summarySleepDuration';
+import { summaryPeriodFacts } from './summaryPeriodFacts';
 
 type Fact = Record<string, unknown>;
 function object(value: unknown): value is Fact {
@@ -11,7 +12,7 @@ function object(value: unknown): value is Fact {
 /** Decode only app-authored structured evidence; arbitrary source prose is never treated as JSON instructions. */
 export function structuredSummaryFacts(content: string): readonly Fact[] {
   const match =
-    /^(health_overview|health_observation|medication_definition|medication_assertion|dose_event|symptom_entry):\s*/u.exec(
+    /^(health_context|health_overview|health_observation|medication_definition|medication_assertion|dose_event|symptom_entry):\s*/u.exec(
       content,
     );
   if (!match) return [];
@@ -21,6 +22,7 @@ export function structuredSummaryFacts(content: string): readonly Fact[] {
       .split('\nsourceSemantics: ');
     const value: unknown = JSON.parse(json!);
     if (!object(value)) return [];
+    if (match[1] === 'health_context') return summaryPeriodFacts(value);
     if (match[1] === 'health_overview')
       return Array.isArray(value.records) ? value.records.filter(object) : [];
     return [
@@ -75,7 +77,7 @@ export function summaryFactCorrection(reason: string): string | undefined {
   if (reason === SUMMARY_FACT_REASONS.sleep_count)
     return 'Use the decoded sleep stage and the supplied individual interval. A HealthKit sleep category code is not a number of occurrences. Express intervalDurationSeconds in readable minutes and seconds; do not count sleep episodes or infer a nightly total. Preserve other facts and citation IDs.';
   if (reason === SUMMARY_FACT_REASONS.facts_placeholder)
-    return 'Remove empty headings and standalone sections that only state missing symptom-record coverage. Keep all concrete record facts. If that supplied-subset limit matters and is supported, put no_symptom_entries_in_supplied_records in optional coverageNotes instead. Never invent symptoms or imply the app lacks records.';
+    return 'Every section citing personal_record must state a concrete fact from that exact source. A general publication explanation must cite external_medical sources only, never personal records. Remove duplicate sections, empty headings and standalone symptom-coverage limitations. Keep the concrete facts for every available record topic. Use optional coverageNotes for a supported supplied-subset symptom limitation; never invent symptoms or imply the app lacks records.';
   const topic = Object.entries(SUMMARY_FACT_REASONS).find(
     ([key, value]) => key.startsWith('facts_') && value === reason,
   );
@@ -100,6 +102,7 @@ export function summaryFactIssue(
   onMedicationIssue?: (
     issue: 'completion' | 'unknown' | 'missing_data',
   ) => void,
+  onEmptySection?: (index: number) => void,
 ) {
   for (const section of analysis.hypotheses) {
     const cited = evidence.filter(
@@ -120,7 +123,9 @@ export function summaryFactIssue(
     if (
       facts.some(
         fact =>
-          fact.kind === 'health_observation' && fact.concept === 'step_count',
+          (fact.kind === 'health_observation' ||
+            fact.kind === 'health_context_quantity') &&
+          fact.concept === 'step_count',
       ) &&
       /걸음(?:수)?(?:는|은|이|가)?[:=]?[\d,.]+회/u.test(prose)
     )
@@ -199,5 +204,6 @@ export function summaryFactIssue(
         evidenceId: item.evidenceId,
         facts: structuredSummaryFacts(item.content),
       })),
+    onEmptySection,
   );
 }

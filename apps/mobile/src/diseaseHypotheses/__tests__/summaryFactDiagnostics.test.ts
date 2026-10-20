@@ -6,6 +6,59 @@ afterEach(() => {
   delete NativeModules.OrotProviderDiagnostics;
 });
 
+test('identifies only the bounded section position when a personal citation has no record fact', () => {
+  const report = jest.fn();
+  NativeModules.OrotProviderDiagnostics = { report };
+  const result = symptomSummaryTask.validateResult(
+    {
+      sections: [
+        hypothesis({
+          summary: '합성약이 등록되어 있어요.',
+          supportingEvidence: [reference.evidenceId],
+          uncertainty: '',
+          missingData: [],
+        }),
+        hypothesis({
+          summary: '연구에서 운동의 일반적 영향을 설명했어요.',
+          supportingEvidence: [reference.evidenceId],
+          uncertainty: '',
+          missingData: [],
+        }),
+      ],
+    },
+    {
+      request: '합성 기록',
+      evidence: {
+        ...evidence,
+        items: [
+          {
+            ...reference,
+            content: 'medication_definition: {"displayText":"합성약"}',
+          },
+        ],
+      },
+    },
+  );
+  expect(result.status).toBe('invalid');
+  expect(report).toHaveBeenCalledWith(
+    'disease',
+    'validation',
+    'task_summary_empty_section_2',
+  );
+  const correction = symptomSummaryTask.correctionInstructionForInvalidResult!(
+    'Replace empty section headings with cited concrete facts.',
+  );
+  expect(correction).toContain(
+    'personal_record must state a concrete fact from that exact source',
+  );
+  expect(correction).toContain(
+    'external_medical sources only, never personal records',
+  );
+  expect(JSON.stringify(report.mock.calls)).not.toMatch(
+    /합성약|연구|evidence-1/u,
+  );
+});
+
 test.each([
   ['body_mass', 'task_summary_facts_body_mass'],
   ['heart_rate', 'task_summary_facts_heart_rate'],

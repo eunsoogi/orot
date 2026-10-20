@@ -12,6 +12,8 @@ import { FakeBridge } from '../../../../../../packages/provider-openai/__tests__
 import { createAppointmentClassificationTask } from '../../../medicalAppointments/classificationTask';
 import { createVisitQuestionTaskResponder } from '../../../agent/visitQuestions/taskContract';
 import { serializeAppleRequest } from '../serializeRequest';
+import { symptomSummaryTask } from '../../../diseaseHypotheses/symptomSummaryTask';
+import { evidence as summaryEvidence } from '../../../diseaseHypotheses/taskTestSupport';
 
 const input = {
   request: 'Synthetic task',
@@ -111,4 +113,31 @@ test('sends the real workflow to the selected ChatGPT slug without unsupported c
   if (built.status !== 'ready') throw new Error('Expected ready request');
   expect((await provider.generate(built.request)).ok).toBe(true);
   expect(bridge.started[0]?.request.model).toBe('chosen-model');
+});
+
+test('serializes mixed-source summary choices and constrained top-level citation IDs for Apple', () => {
+  const evidence = {
+    ...summaryEvidence,
+    items: [
+      ...summaryEvidence.items,
+      {
+        ...summaryEvidence.items[0]!,
+        sourceKind: 'external_medical' as const,
+        evidenceId: 'public-paper',
+      },
+    ],
+  };
+  const built = buildTaskRequest(
+    new AppleFoundationModelsProvider(new FakeNativeBridge()),
+    symptomSummaryTask,
+    { ...input, evidence },
+    budget,
+  );
+  if (built.status !== 'ready')
+    throw new Error('Expected ready summary request');
+  const serialized = serializeAppleRequest(built.request);
+  const text = JSON.stringify(serialized.schema);
+  expect(text).toContain('PersonalRecordFacts');
+  expect(text).toContain('PublicMedicalContext');
+  expect(text).toContain('public-paper');
 });

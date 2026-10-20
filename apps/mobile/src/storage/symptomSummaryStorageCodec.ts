@@ -4,6 +4,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import type { SavedSymptomSummary } from '../diseaseHypotheses/savedSummaries';
 import { validateDiseaseHypothesisResult } from '../diseaseHypotheses/resultValidation';
 import { MAX_SYMPTOM_SUMMARY_SECTIONS } from '../diseaseHypotheses/types';
+import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 
 function object(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -44,9 +45,29 @@ export function decodeSavedSymptomSummary(
     )
       return null;
     for (const source of value.sources) {
+      if (object(source) && source.kind === 'health_context_period') {
+        const scope = parseHealthContextScope(source.scope);
+        if (
+          !scope ||
+          !reference(source.reference) ||
+          source.reference.sourceKind !== 'personal_record' ||
+          JSON.stringify(parseHealthContextScope(source.reference.locator)) !==
+            JSON.stringify(scope) ||
+          typeof source.revision !== 'string' ||
+          !source.revision ||
+          source.reference.sourceRevision !== source.revision ||
+          source.reference.evidenceRevision !== source.revision ||
+          !Number.isSafeInteger(source.deletionGeneration) ||
+          Number(source.deletionGeneration) < 0
+        )
+          return null;
+        continue;
+      }
       if (
         !object(source) ||
         !reference(source.reference) ||
+        (object(source.reference.locator) &&
+          source.reference.locator.kind === 'health_context_period') ||
         !Array.isArray(source.records) ||
         source.records.length > 32 ||
         source.records.some(
