@@ -53,11 +53,11 @@ export function summaryStatisticRoleIssue(
           compact,
         );
       if (!absence) continue;
-      // Bind epistemic negation to this exact predicate. "수밖에 없다" affirms
-      // the inference, while "볼 수는 없다" denies that it is established.
+      // Require the complete denial predicate through the sentence boundary.
+      // A quoted/negated denial or "수밖에 없다" must not inherit its exemption.
       const tail = compact.slice(absence.index + absence[0].length);
       if (
-        /^(?:다고(?:볼|말할|단정할|판단할)수(?:는)?없|다는(?:뜻|의미)(?:은|는|이|가)?아니)/u.test(
+        /^(?:다고(?:볼|말할|단정할|판단할)수(?:는)?없(?:었)?(?:어요|습니다|다|음)|다는(?:뜻|의미)(?:은|는|이|가)?(?:아니에요|아닙니다|아니다|아님))$/u.test(
           tail,
         )
       )

@@ -139,3 +139,14 @@ test('does not mistake a compelled absence assertion for denial of that inferenc
     ).status,
   ).toBe('invalid');
 });
+
+test('does not exempt a statement that negates the denial itself', () => {
+  expect(
+    validate(
+      '기록일 평균 수면은 90분이에요. 완전한 밤 수면 기록이 없다고 볼 수는 없다는 주장은 틀렸어요.',
+      content('sleep', {
+        sleep: { meanRecordedDailyMinutes: 90, recordedDays: 3 },
+      }),
+    ).status,
+  ).toBe('invalid');
+});
