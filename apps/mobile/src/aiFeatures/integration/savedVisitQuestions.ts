@@ -115,9 +115,13 @@ export async function restoreSavedVisitQuestions(input: {
     appointmentId,
     questions,
     caveats: [],
-    restorationNotice: hasQuestionWithoutSourceSpan
-      ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
-      : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
+    // An empty appointment list has no legacy metadata to restore or warn about.
+    restorationNotice:
+      questions.length === 0
+        ? ''
+        : hasQuestionWithoutSourceSpan
+          ? '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.'
+          : '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
   };
 }
 
