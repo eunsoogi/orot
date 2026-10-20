@@ -3,6 +3,7 @@ import type { JsonObject } from '@orot/model-runtime';
 import { partitionedSymptomSummaryTask as task } from '../partitionedSymptomSummaryTask';
 import { statisticSourcePeriod } from '../computedStatisticChoice';
 import { computedSummaryLimitations } from '../computedSummaryLimitations';
+import * as calendar from '../../healthEvidence/healthContext/window';
 import { reference } from '../taskTestSupport';
 
 test.each([
@@ -141,4 +142,76 @@ test('a nonempty source period within one millisecond is not discarded', () => {
       },
     }),
   ).toContain('2026-10-01 ~ 2026-10-01');
+});
+
+test('the task stream entry does not build calendars for incomplete selector prefixes', () => {
+  const input: TaskResponderInput = {
+    request: '기록 요약',
+    resultPartition: { sourceKind: 'personal_record', index: 0, total: 2 },
+    evidence: {
+      items: [
+        {
+          ...reference,
+          evidenceId: 'facts',
+          content:
+            'health_context: ' +
+            JSON.stringify({
+              topic: 'measurements',
+              period: {
+                fromInclusive: '2026-10-01T00:00:00Z',
+                toExclusive: '2026-10-02T00:00:00Z',
+                timeZone: 'UTC',
+              },
+              quantities: [
+                {
+                  concept: 'heart_rate',
+                  unit: 'bpm',
+                  meanOfRecordedDailyMeans: 70,
+                },
+              ],
+            }),
+        },
+      ],
+      coverage: [],
+      conflicts: [],
+    },
+  };
+  const build = jest.spyOn(calendar, 'healthContextDays');
+  try {
+    expect(
+      task.projectStreamedText!(
+        '{"type":"result","value":{"recordSummaries":',
+        input,
+      ),
+    ).toBeUndefined();
+    expect(build).not.toHaveBeenCalled();
+    const complete = task.projectStreamedText!(
+      JSON.stringify({
+        type: 'result',
+        value: { recordSummaries: { facts: { q0: 'mean' } } },
+        citations: ['facts'],
+      }),
+      input,
+    );
+    expect(build).toHaveBeenCalled();
+    expect(complete).toContain('2026-10-01 ~ 2026-10-01');
+    expect(complete).toContain('70 bpm');
+    build.mockClear();
+    const rawInput = {
+      ...input,
+      evidence: {
+        ...input.evidence,
+        items: [{ ...reference, content: 'Unstructured original source' }],
+      },
+    };
+    expect(
+      task.projectStreamedText!(
+        '{"value":{"sections":[{"summary":"기록된 혈압은 121 mmHg예요.',
+        rawInput,
+      ),
+    ).toBe('기록된 혈압은 121 mmHg예요.');
+    expect(build).not.toHaveBeenCalled();
+  } finally {
+    build.mockRestore();
+  }
 });

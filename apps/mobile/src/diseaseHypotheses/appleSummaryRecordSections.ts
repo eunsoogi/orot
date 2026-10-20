@@ -57,7 +57,7 @@ export function appleRecordTopics(input: TaskResponderInput) {
     id: string;
     title: string;
     choices: StatisticChoice[];
-    period?: string;
+    source: Record<string, unknown>;
     limitations: string[];
   }[] = [];
   for (const item of input.evidence.items) {
@@ -86,7 +86,8 @@ export function appleRecordTopics(input: TaskResponderInput) {
           id: item.evidenceId,
           title: titles[value.topic]!,
           choices,
-          period: statisticSourcePeriod(value),
+          // Schema/eligibility checks must not build calendar boundaries on stream prefixes.
+          source: value,
           limitations: computedSummaryLimitations(value),
         });
       }
@@ -150,7 +151,9 @@ export function normalizeAppleRecordSummary(
   for (const topic of topics) {
     const rendered = renderStatisticChoices(summaries[topic.id], topic.choices);
     if (!rendered) return;
-    const text = [topic.period, rendered].filter(Boolean).join('\n');
+    const text = [statisticSourcePeriod(topic.source), rendered]
+      .filter(Boolean)
+      .join('\n');
     if (text.length > 1200) return;
     sections.push({
       title: topic.title,
@@ -191,7 +194,9 @@ export function projectAppleRecordSummaries(
     const texts = topics.map(topic => {
       const text = renderStatisticChoices(summaries[topic.id], topic.choices);
       return text
-        ? [topic.period, text, ...topic.limitations].filter(Boolean).join('\n')
+        ? [statisticSourcePeriod(topic.source), text, ...topic.limitations]
+            .filter(Boolean)
+            .join('\n')
         : undefined;
     });
     if (
