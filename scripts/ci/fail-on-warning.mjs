@@ -59,6 +59,7 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   });
 }
 child.once('close', (code, signal) => {
+  scanner.finalize();
   const exitSignal = interruptedSignal ?? signal;
   const childStatus = spawnFailed
     ? 1
