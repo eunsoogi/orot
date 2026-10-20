@@ -19,6 +19,16 @@ export function periodQuestionQuantityFacts(
     )
       facts.push({ amount, unit });
   };
+  // Coverage is a calendar-day count, not a duration or a measured quantity.
+  // Only named projection fields authorize days; unrelated JSON numbers cannot.
+  const days = (amount: unknown) => {
+    if (
+      typeof amount === 'number' &&
+      Number.isSafeInteger(amount) &&
+      amount >= 0
+    )
+      add(amount, '일');
+  };
   const quantity = (entry: Value, unit: unknown) => {
     for (const field of [
       'meanOfRecordedDailyMeans',
@@ -29,13 +39,18 @@ export function periodQuestionQuantityFacts(
       add(entry[field], unit);
     if (object(entry.latest)) add(entry.latest.amount, unit);
     add(entry.sampleCount, '회');
-    add(entry.recordedDays, '일');
+    days(entry.recordedDays);
+    days(entry.missingCalendarDays);
   };
+  days(value.calendarDays);
   for (const series of objects(value.quantities)) {
     quantity(series, series.unit);
-    if (object(series.comparison))
+    if (object(series.comparison)) {
       for (const field of ['previousMean', 'recentMean', 'difference'])
         add(series.comparison[field], series.unit);
+      days(series.comparison.previousRecordedDays);
+      days(series.comparison.recentRecordedDays);
+    }
     for (const week of objects(series.weeks)) quantity(week, series.unit);
     for (const day of objects(series.days)) {
       for (const field of ['minimum', 'maximum', 'mean', 'sum', 'latest'])
@@ -46,12 +61,13 @@ export function periodQuestionQuantityFacts(
   for (const medication of objects(value.medications)) {
     for (const field of ['taken', 'skipped', 'otherDoseRecords'])
       add(medication[field], '회');
-    add(medication.daysWithDoseRecords, '일');
+    days(medication.daysWithDoseRecords);
   }
   if (object(value.sleep)) {
     add(value.sleep.meanRecordedDailyMinutes, '분');
     add(value.sleep.overlappingStageMinutes, '분');
-    add(value.sleep.recordedDays, '일');
+    days(value.sleep.recordedDays);
+    days(value.sleep.missingCalendarDays);
     if (object(value.sleep.stageMinutes))
       Object.values(value.sleep.stageMinutes).forEach(amount =>
         add(amount, '분'),
@@ -60,7 +76,7 @@ export function periodQuestionQuantityFacts(
   }
   if (object(value.symptoms)) {
     add(value.symptoms.entryCount, '개');
-    add(value.symptoms.recordedDays, '일');
+    days(value.symptoms.recordedDays);
   }
   return facts;
 }
