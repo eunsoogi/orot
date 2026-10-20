@@ -12,6 +12,7 @@ export class SavedVisitQuestionsReadError extends Error {
     | 'invalid_question'
     | 'missing_citation_source'
     | 'stale_artifact'
+    | 'changed_saved_questions'
     | 'changed_health_context';
 
   constructor(reason: SavedVisitQuestionsReadError['reason']) {
@@ -22,7 +23,9 @@ export class SavedVisitQuestionsReadError extends Error {
           ? 'A saved visit question no longer has its cited source.'
           : reason === 'changed_health_context'
             ? 'The saved health-period evidence changed or is unavailable.'
-            : 'A saved visit question relies on a corrected transcript.',
+            : reason === 'changed_saved_questions'
+              ? 'The saved visit-question list changed while loading.'
+              : 'A saved visit question relies on a corrected transcript.',
     );
     this.name = 'SavedVisitQuestionsReadError';
     this.reason = reason;
