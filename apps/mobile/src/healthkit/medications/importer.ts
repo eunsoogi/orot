@@ -37,11 +37,6 @@ export async function syncHealthKitMedications(
   const definitionResult = await options.healthKit.queryMedicationDefinitions(
     MEDICATION_DEFINITION_LIMIT,
   );
-  const definitions = await applyDefinitionSnapshot(
-    options.repository,
-    definitionResult,
-    options.now,
-  );
   const doseEvents = await syncDoseEventChanges(
     options.healthKit,
     options.repository,
@@ -51,6 +46,15 @@ export async function syncHealthKitMedications(
     options.now,
     options.refreshDoseHistory,
     retainedConcepts,
+  );
+  // A legacy checkpoint's only durable concept source may be these definitions.
+  // Do not remove them before dose scope is committed; failed/partial reads
+  // preserve them so a retry can still ask HealthKit for the missing tombstones.
+  const definitions = await applyDefinitionSnapshot(
+    options.repository,
+    definitionResult,
+    options.now,
+    doseEvents.status === 'completed',
   );
   return { definitions, doseEvents };
 }
