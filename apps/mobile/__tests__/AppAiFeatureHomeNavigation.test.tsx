@@ -79,7 +79,9 @@ test('shows three explained AI actions and keeps literature inside conversation'
     expect(await screen.findByTestId(routeId)).toBeTruthy();
     if (routeId === 'rag-conversation-screen') {
       expect(
-        screen.getByText('필요하면 동의를 받고 공개 의학 문헌도 찾아요.'),
+        screen.getByText(
+          '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
+        ),
       ).toBeTruthy();
     }
     await fireEvent.press(screen.getByTestId('navigation-back'));
