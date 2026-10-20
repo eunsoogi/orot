@@ -14,7 +14,8 @@ export function createCompactSchemaNames() {
         name,
         'S' +
           (names.size + 1) +
-          (typeof title === 'string' ? cleanName(title) : ''),
+          // A letter boundary keeps numeric title prefixes out of the index.
+          (typeof title === 'string' ? 'T' + cleanName(title) : ''),
       );
     return names.get(name)!;
   };

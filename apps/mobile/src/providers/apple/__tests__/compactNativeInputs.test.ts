@@ -131,3 +131,39 @@ test('native serialization keeps authored semantic titles and distinct sibling i
     values: ['answer'],
   });
 });
+
+test('numeric authored titles cannot collide with later native type indices', () => {
+  const request = serializeAppleRequest({
+    messages: [{ role: 'user', content: 'Use the supplied evidence.' }],
+    responseFormat: {
+      name: 'Answer',
+      schema: {
+        type: 'object',
+        title: '1Record',
+        properties: Object.fromEntries(
+          Array.from({ length: 10 }, (_, index) => [
+            'field' + index,
+            {
+              type: 'object',
+              title: index === 9 ? 'Record' : 'Section',
+              properties: {
+                value: { type: index === 9 ? 'string' : 'boolean' },
+              },
+            },
+          ]),
+        ),
+      },
+    },
+  });
+  const schema = request.nativeResponseSchema;
+  if (schema?.kind !== 'object') throw new Error('Expected object schema');
+  const names = [
+    schema.name,
+    ...schema.properties.map(property => {
+      if (property.schema.kind !== 'object')
+        throw new Error('Expected object child');
+      return property.schema.name;
+    }),
+  ];
+  expect(new Set(names).size).toBe(11);
+});
