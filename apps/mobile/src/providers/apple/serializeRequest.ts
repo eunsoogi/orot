@@ -3,6 +3,7 @@ import type {
   LanguageModelRequest,
 } from '@orot/model-runtime';
 import { compileResponseSchema, type AppleNativeRequest } from './schema';
+import { compactAppleEvidenceMessage } from './compactEvidenceMessage';
 
 const safetyInstructions = [
   'Follow the supplied task instructions and use only supplied evidence.',
@@ -30,7 +31,13 @@ export function serializeAppleRequest(
       instructions.push(content);
       continue;
     }
-    conversation.push(message.role + ': ' + content);
+    conversation.push(
+      message.role +
+        ': ' +
+        (message.role === 'user'
+          ? compactAppleEvidenceMessage(content)
+          : content),
+    );
     if (message.role === 'assistant' && message.toolCalls?.length) {
       conversation.push(
         'Requested tools: ' + JSON.stringify(message.toolCalls),

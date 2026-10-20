@@ -3,8 +3,9 @@ import Foundation
     import FoundationModels
 #endif
 
-/// Simulator-only opt-in lifecycle evidence. Never log prompts, arguments, results,
-/// credentials, or source content; correlation IDs below belong to the bridge, not the SDK.
+/// Opt-in numeric context diagnostics and Simulator-only lifecycle evidence.
+/// Never log prompts, arguments, results, credentials, or source content;
+/// lifecycle correlation IDs belong to the bridge, not the SDK.
 enum AppleNativeToolTrace {
     #if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
         /// Opt-in numeric measurements distinguish input pressure from model execution.
