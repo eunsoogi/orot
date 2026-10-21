@@ -82,7 +82,8 @@ function contextStyles({ colors }: NextVisitQuestionsTheme) {
       gap: 12,
       padding: 12,
       borderRadius: 16,
-      backgroundColor: colors.surfaceSubtle,
+      // This is a page-level card; subtle surfaces belong to controls inside cards.
+      backgroundColor: colors.surface,
     },
     provider: {
       backgroundColor: colors.surface,
