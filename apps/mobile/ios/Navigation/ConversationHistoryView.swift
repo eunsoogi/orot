@@ -31,7 +31,13 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     }
 
     @objc var headerTintColor: UIColor = .systemBlue {
-        didSet { createButton.tintColor = headerTintColor }
+        didSet {
+            createButton.tintColor = headerTintColor
+            // Glass configuration owns image foreground; view tint alone does not preserve the app token.
+            var configuration = createButton.configuration
+            configuration?.baseForegroundColor = headerTintColor
+            createButton.configuration = configuration
+        }
     }
 
     private let table = UITableView(frame: .zero, style: .insetGrouped)
@@ -116,6 +122,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         }
         configuration.cornerStyle = .capsule
         configuration.contentInsets = .zero
+        configuration.baseForegroundColor = headerTintColor
         configuration.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
         createButton.configuration = configuration
         createButton.tintColor = headerTintColor
