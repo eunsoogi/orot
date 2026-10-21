@@ -55,7 +55,8 @@ enum FormUITestConditions {
         reveal(input, in: app, scrollID: scrollID)
         input.tap()
         let current = input.value as? String ?? ""
-        // Populate the synthetic clipboard before opening the menu so Paste is present even on an empty editor.
+        // Keep replacement on the real focused editor; the contextual menu can omit Select All
+        // after long-press selection and never expose another page.
         // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
         defer {
             if !text.isEmpty {
@@ -66,55 +67,17 @@ enum FormUITestConditions {
             UIPasteboard.general.string = text
         }
         if !current.isEmpty, current != input.placeholderValue {
-            input.press(forDuration: 1)
-            let selectAll = editMenuItem(app, "Select All")
-            selectAll.tap()
+            input.typeKey("a", modifierFlags: .command)
             if text.isEmpty {
                 input.typeText(XCUIKeyboardKey.delete.rawValue)
             }
-        } else if !text.isEmpty {
-            input.press(forDuration: 1)
         }
         if !text.isEmpty {
-            // One native paste event avoids controlled-input character loss and per-key XCTest idling on a cold hosted runner.
-            // Select All keeps the native edit menu and selection. Paste replaces that selection directly,
-            // avoiding a delete event and a second long press that add no editor boundary.
-            let paste = editMenuItem(app, "Paste")
-            paste.tap()
+            // XCTest synthesizes iOS keyboard commands, so UIKit performs selection and paste.
+            // Exact readback below still rejects insertion, missed focus or incomplete replacement.
+            input.typeKey("v", modifierFlags: .command)
         }
         exactValue(input, equals: text)
-    }
-
-    private static func editMenuItem(_ app: XCUIApplication, _ label: String) -> XCUIElement {
-        let menuItem = app.menuItems[label]
-        let button = app.buttons[label]
-        let next = app.buttons["Next Page"]
-        // Large text pages menu commands, and UIKit exposes them as either role.
-        // Menu presentation can finish after the press returns. Reobserve all three
-        // choices until one is actionable instead of binding an absent role forever.
-        for page in 0 ... 6 {
-            var command: XCUIElement?
-            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                for candidate in [menuItem, button] where candidate.exists && candidate.isHittable {
-                    command = candidate
-                    return true
-                }
-                return next.exists && next.isHittable
-            }, object: nil)
-            guard UITestConditions.wait(for: [ready]) == .completed else {
-                XCTFail("Editor menu observation was interrupted")
-                return button
-            }
-            if let command {
-                return command
-            }
-            guard page < 6 else {
-                XCTFail("Editor command \(label) was absent after six menu pages")
-                return button
-            }
-            next.tap()
-        }
-        return button
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) {

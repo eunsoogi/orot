@@ -2,6 +2,16 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Replace the unavailable editor-menu wait with native keyboard editing
+
+At `56dfd5d5`, Questions / Summary passed its two original cases in 12m 36s total and Conversation passed its three original cases in 15m 59s. Review exceeded the required 20-minute total while repeatedly waiting for Select All as a MenuItem or Button, or Next Page. Its live log showed that same three-way observation at case time 630–636 seconds. The complete log identifies the first cited-review save/cancel/reload case: it focused `next-visit-question-text-0`, long-pressed it at 12:32:52 and began the unavailable-menu observation at 12:32:58. The owned run was cancelled only after every other feature group, including all eight Navigation cases and Recordings, had passed. Review ended cancelled at 12:48:59 after a 12:23:12 start (25m 47s); this fails the duration criterion and supplies no completed XCTest pass.
+
+The shared editor replacement helper now uses XCTest's actual iOS Command-A and Command-V key synthesis on the focused native editor. It retains measured viewport/hittability, the real input tap, synthetic clipboard ownership and cleanup, empty-string deletion, and exact final input-value equality. No app state or JavaScript value is injected. This removes dependence on a contextual menu that offered none of the awaited actions. It does not add a timeout or accept an incorrect partial replacement. The same original save, cancel, reload, appearance and keyboard assertions remain the required native checks.
+
+The pinned iOS Simulator SDK declares `typeKey:modifierFlags:` for iOS. The three helper sources type-check against that SDK with the platform's XCTest Swift overlay path; the first standalone attempt omitted that overlay and could not resolve XCTest assertion functions, so it supplies no type-check pass. Pinned SwiftFormat, diff check and canonical 639-path LOC pass. These are source/API checks only; the original Review journey and affected editor consumers still need authentic native execution, and all three Questions jobs still need successful totals below 20 minutes on the resulting candidate.
+
+Direct replacement callers are the transcript, AI-route, recording-library, next-visit-review and appointment UI tests. Their exact rendered values and original end-to-end assertions remain the integration oracles. Existing successful provider/product checks retain their original revisions and are not repeated locally for this test-helper correction.
+
 ## Preserve policy checks across the nested Questions workflow
 
 Policy run39592708160 at `963fd6ca` failed2 tests with496 passing and1 skipped. The Spotlight policy enumerated the new reusable-workflow caller as if it had native execution steps; the budget policy compared a leaf name against the fully expanded parent/leaf name. The same two files reproduced both failures locally (13 passed/2 failed). Their update inspects all three actual Questions execution leaves for indexing suppression before product download and checks both the leaf name and exact Questions wrapper name/target. Full visible job-name equality remains independently protected. No shipping workflow, inventory, timeout, selection or product change is included in this correction.
