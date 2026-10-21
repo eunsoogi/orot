@@ -53,10 +53,10 @@ enum FormUITestConditions {
 
     static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {
         reveal(input, in: app, scrollID: scrollID)
-        input.tap()
         let current = input.value as? String ?? ""
-        // Keep replacement on the real focused editor; the contextual menu can omit Select All
-        // after long-press selection and never expose another page.
+        input.tap()
+        // Send keys to the focused editor without resolving it again during selection changes.
+        // UIKit's Select All shortcut can leave a single-line editor's insertion point unchanged.
         // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
         defer {
             if !text.isEmpty {
@@ -67,15 +67,17 @@ enum FormUITestConditions {
             UIPasteboard.general.string = text
         }
         if !current.isEmpty, current != input.placeholderValue {
-            input.typeKey("a", modifierFlags: .command)
-            if text.isEmpty {
-                input.typeText(XCUIKeyboardKey.delete.rawValue)
-            }
+            // Erase both sides of the insertion point, including when a tap places it mid-text.
+            // UTF-16 length is a safe upper bound on native deletion steps for composed characters.
+            let count = current.utf16.count
+            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count))
+            app.typeText(String(repeating: XCUIKeyboardKey.forwardDelete.rawValue, count: count))
+            exactValue(input, equals: "")
         }
         if !text.isEmpty {
-            // XCTest synthesizes iOS keyboard commands, so UIKit performs selection and paste.
+            // XCTest synthesizes the paste command into the real focused UIKit editor.
             // Exact readback below still rejects insertion, missed focus or incomplete replacement.
-            input.typeKey("v", modifierFlags: .command)
+            app.typeKey("v", modifierFlags: .command)
         }
         exactValue(input, equals: text)
     }
