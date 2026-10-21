@@ -2,6 +2,14 @@
 
 final result: blocked
 
+## Back navigation accepted from the user's direct verification
+
+At `7ddd3e18`, the user explicitly confirmed that Back works when they use it and directed that further Back investigation stop. This current direct confirmation resolves the remaining gesture observation requirement. Earlier remote drags that did not change the screen remain unsuccessful tool-input observations; they are not relabeled as successful gestures. No further navigation test is requested or run.
+
+Before that direction, one bounded read-only debugger attempt attached to the synthetic visit process51873 as session `7a667088-4e65-432c-b2cf-898b7f2f74d2`. Its first expression failed to compile; module import returned no output; the final expression was rejected by the DAP backend as unsupported. No controller-depth or recognizer-state value was obtained, no app behavior was modified, and the session was detached successfully. These diagnostics establish no product defect and are now closed under the user's instruction.
+
+Existing actual conversation/session retention, the earlier user-confirmed evidence return, and the current pending-visit explicit Back/reentry observations retain their original scope and provenance. The preserved native-stack synchronization/leave-state repairs, mounted feature ownership and session selection remain in current source. Together with the user's current Back confirmation, they accept the original conversation and next-visit exit/bounce/retention requirements. This does not accept new question quality, all-screen visual coverage or whole-issue completion. No source, fixture or dependency changes are made in this reconciliation.
+
 ## Visit generation pending and failure appearance gaps
 
 The finite missing criterion was the production visit route's pending, unavailable and needs-clarification presentation in both appearances. Source `7e24ca1fadd70af01ac8957039c3f8cb050f76b6` adds only a test-entry launch option, `OROT_VISIT_GENERATION_VISUAL_STATE`, and a pure state helper. Unspecified settings retain the existing ready fixture; named states do not execute it. Pending settles only on the real caller's abort, pre-aborted calls do not start work, and undeclared settings fail explicitly. The normal app entry, provider, source reads, recording and persistence are unchanged. The material risk is confusing synthetic presentation with genuine model success; no such claim is made.
