@@ -11,7 +11,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     func testMeteringEventsPauseResumeAndExplicitCleanup() async throws {
         let app = XCUIApplication()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        start(app, observePermission: true)
+        start(app)
         // These are the original measured capture windows, not sleeps used to infer readiness.
         try await Task.sleep(for: .seconds(3))
         let initial = report(app, name: "microphone-initial")
@@ -59,7 +59,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func start(_ app: XCUIApplication, observePermission: Bool = false) {
+    private func start(_ app: XCUIApplication) {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "metering"]
         app.launch()
         status(app, "idle")
@@ -84,49 +84,11 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
             permission.name = "observed-microphone-system-permission"
             permission.lifetime = .keepAlways
             add(permission)
-            if observePermission {
-                attachPermissionObservation("before", app: app, springboard: springboard, alert: alert, allow: allow)
-            }
+            // Capture begins after permission. Re-querying the dismissed Allow button or whole
+            // app hierarchies here can consume the probe's unchanged 25-second capture lifetime.
             allow.tap()
-            if observePermission {
-                attachPermissionObservation("after", app: app, springboard: springboard, alert: alert, allow: allow)
-            }
         }
         status(app, "recording")
-    }
-
-    /// Observe the original single tap without adding a readiness gate or retry. Reads can perturb timing.
-    /// Successful dismissal can remove the button; that absence is diagnostic data, not an assertion failure.
-    @MainActor
-    private func attachPermissionObservation(_ phase: String, app: XCUIApplication, springboard: XCUIApplication, alert: XCUIElement, allow: XCUIElement) {
-        let exists = allow.exists
-        let snapshot = exists ? try? allow.snapshot() : nil
-        var value: [String: Any] = [
-            "phase": phase,
-            "coordinateUnits": "points",
-            "buttonExists": exists,
-            "isHittable": allow.isHittable,
-            "snapshotAvailable": snapshot != nil,
-            "appState": app.state.rawValue,
-            "springboardState": springboard.state.rawValue,
-            "alertExists": alert.exists,
-            "appWindowSnapshot": app.debugDescription,
-            "springboardWindowSnapshot": springboard.debugDescription,
-        ]
-        if let snapshot {
-            let frame = snapshot.frame
-            value["label"] = snapshot.label
-            value["enabled"] = snapshot.isEnabled
-            value["frame"] = ["x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height]
-        }
-        let attachment = if let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) {
-            XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-        } else {
-            XCTAttachment(string: "Permission observation serialization failed: \(value)")
-        }
-        attachment.name = "microphone-permission-\(phase)"
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 
     @MainActor
