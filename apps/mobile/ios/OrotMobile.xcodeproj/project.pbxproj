@@ -110,6 +110,7 @@
 		A64F00000000000000000012 /* RecordingMeteringPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000012 /* RecordingMeteringPermission.swift */; };
 		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
 		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
+		A64F00000000000000000045 /* RecordingCaptureDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */; };
 		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
@@ -311,6 +312,7 @@
 		B64F00000000000000000012 /* RecordingMeteringPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingMeteringPermission.swift; path = OrotMobile/RecordingMeteringPermission.swift; sourceTree = "<group>"; };
 		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
 		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
+		B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureDiagnostics.swift; path = OrotMobile/RecordingCaptureDiagnostics.swift; sourceTree = "<group>"; };
 		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
@@ -453,6 +455,7 @@
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
+				B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */,
 				B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */,
 				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F0000000000000000000E /* RecordingMetering.swift */,
@@ -977,6 +980,7 @@
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
+				A64F00000000000000000045 /* RecordingCaptureDiagnostics.swift in Sources */,
 				A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */,
 				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
 				A64F0000000000000000000E /* RecordingMetering.swift in Sources */,

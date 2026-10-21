@@ -1,3 +1,4 @@
+import AVFoundation
 @testable import Orot
 import UIKit
 import XCTest
@@ -6,6 +7,7 @@ import XCTest
 final class RecordingMeteringBoundaryTests: OrotFailFastTestCase {
     @MainActor
     func testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection() async throws {
+        try verifyPrivateCaptureDiagnostics()
         XCTAssertFalse(RecordingMeteringProbeModule.interruptionApplies(observedAt: 9, captureBeganAt: nil))
         XCTAssertFalse(RecordingMeteringProbeModule.interruptionApplies(observedAt: 9, captureBeganAt: 10))
         XCTAssertTrue(RecordingMeteringProbeModule.interruptionApplies(observedAt: 10, captureBeganAt: 10))
@@ -34,6 +36,33 @@ final class RecordingMeteringBoundaryTests: OrotFailFastTestCase {
                     XCTAssertEqual(results, expected, scenario.name)
                 }
             }
+        }
+    }
+
+    /// Generated PCM proves the decoded file clock; private native details must never enter diagnostic lines.
+    private func verifyPrivateCaptureDiagnostics() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1))
+        let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 32000))
+        buffer.frameLength = 32000
+        for index in 0 ..< 32000 {
+            buffer.floatChannelData![0][index] = 0
+        }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            try file.write(from: buffer)
+        }
+        XCTAssertEqual(try RecordingCaptureDiagnostics.encodedDurationMs(at: url), 2000)
+        XCTAssertEqual(RecordingCaptureDiagnostics.line(.stopped, clockMs: 5000, encodedMs: 21),
+                       "OROT_RECORDING_DIAGNOSTIC event=stopped clock_ms=5000 encoded_ms=21")
+        XCTAssertEqual(RecordingCaptureDiagnostics.line(.stopped, clockMs: -1, encodedMs: -1),
+                       "OROT_RECORDING_DIAGNOSTIC event=stopped")
+        XCTAssertEqual(RecordingCaptureDiagnostics.failureLine("INVALID_AUDIO"),
+                       "OROT_RECORDING_DIAGNOSTIC event=speech_failed reason=INVALID_AUDIO")
+        for privateCode in [url.path, "INVALID_AUDIO: private speech", "private-native-error"] {
+            XCTAssertEqual(RecordingCaptureDiagnostics.failureLine(privateCode),
+                           "OROT_RECORDING_DIAGNOSTIC event=speech_failed reason=OTHER")
         }
     }
 
