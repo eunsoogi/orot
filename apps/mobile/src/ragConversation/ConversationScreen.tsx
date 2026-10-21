@@ -65,62 +65,66 @@ export function ConversationScreen({
     onNavigationStateChange,
   );
 
+  const header = (
+    <View style={styles.header}>
+      {!navigationRouteKey && (
+        <Button
+          accessibilityLabel={navigationText.back.accessibilityLabel}
+          onPress={onBack}
+          title={navigationText.back.label}
+        />
+      )}
+      <View style={styles.titleRow}>
+        <Text accessibilityRole="header" style={styles.heading}>
+          {copy.title}
+        </Text>
+        <View style={styles.sessionActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.sessions}
+            onPress={onOpenHistory}
+            style={styles.sessionAction}
+            testID="rag-conversation-sessions-toggle"
+          >
+            <ComposerGlassBackground testID="rag-conversation-history-glass" />
+            <AppSymbol
+              name="clock.arrow.circlepath"
+              size={20}
+              color={appColors.primaryText}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.newConversation}
+            onPress={() => {
+              store.create();
+            }}
+            style={styles.sessionAction}
+            testID="rag-conversation-new-session"
+          >
+            <ComposerGlassBackground testID="rag-conversation-new-glass" />
+            <AppSymbol name="plus" size={20} color={appColors.primaryText} />
+          </Pressable>
+        </View>
+      </View>
+      {providerSelection ? (
+        <View style={styles.provider}>{providerSelection}</View>
+      ) : null}
+      {messages.length === 0 && !pendingMessage ? (
+        <Text style={styles.description}>{copy.description}</Text>
+      ) : null}
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.screen}
       testID="rag-conversation-screen"
     >
-      <View style={styles.header}>
-        {!navigationRouteKey && (
-          <Button
-            accessibilityLabel={navigationText.back.accessibilityLabel}
-            onPress={onBack}
-            title={navigationText.back.label}
-          />
-        )}
-        <View style={styles.titleRow}>
-          <Text accessibilityRole="header" style={styles.heading}>
-            {copy.title}
-          </Text>
-          <View style={styles.sessionActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.sessions}
-              onPress={onOpenHistory}
-              style={styles.sessionAction}
-              testID="rag-conversation-sessions-toggle"
-            >
-              <ComposerGlassBackground testID="rag-conversation-history-glass" />
-              <AppSymbol
-                name="clock.arrow.circlepath"
-                size={20}
-                color={appColors.primaryText}
-              />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.newConversation}
-              onPress={() => {
-                store.create();
-              }}
-              style={styles.sessionAction}
-              testID="rag-conversation-new-session"
-            >
-              <ComposerGlassBackground testID="rag-conversation-new-glass" />
-              <AppSymbol name="plus" size={20} color={appColors.primaryText} />
-            </Pressable>
-          </View>
-        </View>
-        {providerSelection ? (
-          <View style={styles.provider}>{providerSelection}</View>
-        ) : null}
-        {messages.length === 0 && !pendingMessage ? (
-          <Text style={styles.description}>{copy.description}</Text>
-        ) : null}
-      </View>
       <View style={styles.history}>
         <ConversationHistory
+          header={header}
           messages={messages}
           pendingMessage={pendingMessage}
           error={error}
