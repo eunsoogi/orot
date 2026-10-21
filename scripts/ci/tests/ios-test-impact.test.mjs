@@ -30,7 +30,16 @@ test('visit-question source changes select its provider and question suites only
     'apps/mobile/src/nextVisitQuestions/NextVisitQuestionsRoute.tsx',
   );
 
-  assert.deepEqual(sorted(impact.cohorts), sorted(['core-integration', 'questions', 'provider']));
+  assert.deepEqual(
+    sorted(impact.cohorts),
+    sorted([
+      'core-integration',
+      'questions-review',
+      'questions-conversation',
+      'questions-summary',
+      'provider',
+    ]),
+  );
 });
 
 test('native test files map to the cohort that owns their original assertions', () => {
@@ -40,7 +49,15 @@ test('native test files map to the cohort that owns their original assertions', 
   assert.deepEqual(backup.cohorts, ['backup']);
   assert.deepEqual(
     sorted(health.cohorts),
-    sorted(['core-integration', 'health', 'calendar', 'provider', 'questions']),
+    sorted([
+      'core-integration',
+      'health',
+      'calendar',
+      'provider',
+      'questions-review',
+      'questions-conversation',
+      'questions-summary',
+    ]),
   );
 });
 
@@ -114,9 +131,18 @@ test('domain E2E helpers are focused while shared test drivers keep the full inv
   const calendar = iosTestImpactForPath('apps/mobile/e2e/calendarClassificationTestOperation.ts');
   const shared = iosTestImpactForPath('apps/mobile/e2e/domainTestOperations.ts');
 
-  assert.deepEqual(sorted(calendar.cohorts), sorted(['calendar', 'provider', 'questions']));
+  assert.deepEqual(
+    sorted(calendar.cohorts),
+    sorted([
+      'calendar',
+      'provider',
+      'questions-review',
+      'questions-conversation',
+      'questions-summary',
+    ]),
+  );
   assert.equal(shared.reason, 'shared-test-driver');
-  assert.equal(shared.cohorts.length, 15);
+  assert.equal(shared.cohorts.length, 17);
 });
 
 test('unknown application and shared package changes select all dependent suites', () => {
@@ -124,9 +150,9 @@ test('unknown application and shared package changes select all dependent suites
   const shared = iosTestImpactForPath('packages/model-runtime/src/session.ts');
 
   assert.equal(unknown.reason, 'unknown-application-impact');
-  assert.equal(unknown.cohorts.length, 15);
+  assert.equal(unknown.cohorts.length, 17);
   assert.equal(shared.reason, 'shared-package');
-  assert.equal(shared.cohorts.length, 15);
+  assert.equal(shared.cohorts.length, 17);
 });
 
 test('new or unclassified native and E2E test files fail safe to the full suite', () => {
@@ -137,7 +163,7 @@ test('new or unclassified native and E2E test files fail safe to the full suite'
   ]) {
     const impact = iosTestImpactForPath(path);
 
-    assert.equal(impact.cohorts.length, 15, path);
+    assert.equal(impact.cohorts.length, 17, path);
     assert.ok(impact.reason.startsWith('unknown-'), path);
   }
 });
@@ -146,5 +172,5 @@ test('provider-openai package changes also select the separate OAuth suite', () 
   const impact = iosTestImpactForPath('packages/provider-openai/Sources/OAuth/Session.swift');
 
   assert.equal(impact.oauth, true);
-  assert.equal(impact.cohorts.length, 15);
+  assert.equal(impact.cohorts.length, 17);
 });

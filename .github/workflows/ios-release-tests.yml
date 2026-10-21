@@ -183,25 +183,12 @@ jobs:
         with: { cohort: recordings }
   questions:
     name: Questions
-    if: ${{ contains(fromJSON(inputs.cohorts), 'questions') }}
-    runs-on: xcode-27
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - name: Disable and verify Spotlight
-        uses: ./.github/actions/ios-host-bootstrap
-        with: { log_directory: artifacts/ios-cohort }
-      - uses: ./.github/actions/ios-test-cohort-executor
-        with:
-          cohort: questions
-          profile: fixtures
-          archive_digest: ${{ inputs.archive_digest }}
-          manifest_digest: ${{ inputs.manifest_digest }}
-      - name: Preserve setup diagnostics
-        if: always()
-        uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: questions }
+    if: ${{ contains(inputs.cohorts, 'questions-') }}
+    uses: ./.github/workflows/ios-question-tests.yml
+    with:
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   calendar:
     name: Calendar
     if: ${{ contains(fromJSON(inputs.cohorts), 'calendar') }}

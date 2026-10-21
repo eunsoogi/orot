@@ -42,7 +42,10 @@ const provider = [
 
 function canonical(cohorts) {
   const selected = new Set(cohorts);
-  return all.filter((cohort) => selected.has(cohort));
+  return all.filter(
+    (cohort) =>
+      selected.has(cohort) || (selected.has('questions') && cohort.startsWith('questions-')),
+  );
 }
 
 function impact(cohorts, reason, oauth = false) {

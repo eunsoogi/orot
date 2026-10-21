@@ -2,6 +2,16 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Partition Questions without separating stateful test journeys
+
+The user additionally requested actual Questions jobs below20 minutes and repair of the Navigation delay, while keeping #201/#210 paused. At `5bfdf0bd`, hosted job119169597723 in run39583111391 passed all8 original cases in29m57s overall; XCTest reported1290.441s for the cases. Its keyboard/conversation class took524.338s, review227.233s, consent73.653s and summary/literature465.246s. These are elapsed hosted observations, including7m45s before the main XCTest suite. CPU, peak RSS, disk, fixture bytes and child-process cost were not measured. No runtime saving is claimed before fresh hosted measurements.
+
+The candidate schedules Review (the complete review and consent classes), Conversation (the complete keyboard class) and Summary (the complete summary/literature class) separately. All8 identifiers and the full111-case inventory remain exactly once. Each original method retains its restart, restore, appearance, consent and cancellation sequence; the owned fixture/reset driver and producer-integrity guard remain. The fixture coordinator passes the planned exact identifiers to the existing driver, and protected UI/Provider/Questions checks include every new cohort. The outer cancellation boundary is30 minutes, not evidence of satisfying the requested under20-minute duration.
+
+Pre-change planning verification failed2 assertions with3 passing because no partition existed. Affected CI contracts passed58 tests after the change. The larger CI-policy run initially passed432 with5 failures caused by stale workflow/count expectations; those five affected files subsequently passed12 tests. Root lint passed with85 existing warnings, formatting and inventory passed, and the canonical LOC check passed636 paths after simplifying cohort selection. Fresh hosted per-job duration and current-head review remain required. No completed product/provider/physical-device check was repeated for this scheduling change.
+
+The same `5bfdf0bd` hosted run passed Calendar job119169597925 and Questions, confirming the earlier disclosure-expand and literature keyboard repairs on their authentic XCTest surface. Navigation remains unproved while its StaticText wait is diagnosed. Older individual checks retain their original head and are not a complete current-candidate CI pass.
+
 ## Match the retained no-provider navigation check to the requested web-search copy
 
 Navigation executor119141161699 in run39573894507 at `ef6129e3` entered `testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected`, opened the conversation screen and found its Send control. It then waited for the retired exact helper text about public medical literature. The current empty conversation instead states that it can find public web sources and medical literature, reflecting the user's web-search addition. The full log records the same StaticText wait from09:52:25.915 through10:10:37.252. The owned run was cancelled to preserve diagnostics; this interrupted case is not a completed test failure or pass. Earlier live-page inspection proved only a shorter repeated interval until the full log became available.

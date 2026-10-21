@@ -89,7 +89,7 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
       'ios-cohort-' + task.profile,
       log,
       'scripts/ci/run-ios-fixture-tests.mjs',
-      [task.profile, runFile, ownerFile, results],
+      [task.profile, runFile, ownerFile, results, ...task.identifiers],
       task.suite,
     );
     return JSON.parse(readFileSync(join(results, 'results.json'), 'utf8')).observations;

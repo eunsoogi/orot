@@ -30,6 +30,24 @@ const cohorts = {
   navigation: { profiles: ['fixtures'], suites: ['navigation'], minutes: 60 },
   recordings: { profiles: ['fixtures'], suites: ['recordings'], minutes: 60 },
   questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 45 },
+  'questions-review': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 30,
+    classes: ['NextVisitReviewUITests', 'VisitQuestionConsentUITests'],
+  },
+  'questions-conversation': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 30,
+    classes: ['KeyboardSafeAreaUITests'],
+  },
+  'questions-summary': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 30,
+    classes: ['SummaryAndLiteratureUITests'],
+  },
   calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 60 },
   provider: { profiles: ['provider-data'], minutes: 45 },
   health: { profiles: ['health-import'], minutes: 45 },
@@ -108,7 +126,10 @@ export function iosTestCohortTasks(name) {
     )
     .map((task) => ({
       ...task,
-      identifiers: iosTestInventory(task.profile, task.suite),
+      identifiers: iosTestInventory(task.profile, task.suite).filter(
+        (identifier) =>
+          !cohorts[name].classes || cohorts[name].classes.includes(identifier.split('/')[1]),
+      ),
     }));
 }
 

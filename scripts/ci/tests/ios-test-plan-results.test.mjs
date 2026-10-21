@@ -102,7 +102,7 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
 });
 
 test('selected aggregation accepts exactly the affected reports and records every skipped cohort', (t) => {
-  const selected = ['questions'];
+  const selected = ['questions-review', 'questions-conversation', 'questions-summary'];
   const { root } = reports(t, selected);
   const outcome = run(root, selected);
 

@@ -22,15 +22,15 @@ jobs:
       matrix:
         include:
           - check: UI
-            cohorts: '["core-integration","core-ui","navigation","recordings","questions","calendar","provider","health","microphone","selection"]'
+            cohorts: '["core-integration","core-ui","navigation","recordings","questions-review","questions-conversation","questions-summary","calendar","provider","health","microphone","selection"]'
           - check: Storage
             cohorts: '["persistence","isolation","backup","local-model","recordings"]'
           - check: Provider
-            cohorts: '["provider","selection","local-model","questions","calendar","health"]'
+            cohorts: '["provider","selection","local-model","questions-review","questions-conversation","questions-summary","calendar","health"]'
           - check: Speech
             cohorts: '["speech","microphone","recordings"]'
           - check: Questions
-            cohorts: '["questions","provider","calendar"]'
+            cohorts: '["questions-review","questions-conversation","questions-summary","provider","calendar"]'
     steps:
       - name: Require this domain's selected cohorts to succeed
         env:

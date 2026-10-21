@@ -17,7 +17,12 @@ export function cohortJobs(jobs) {
   );
   return Object.entries(jobs).flatMap(([callerId, caller]) => {
     if (!/ios-(debug|release)-tests\.yml$/.test(caller.uses ?? '')) return [];
-    return Object.entries(workflow(caller.uses).jobs).map(([id, leaf]) => {
+    const leaves = Object.entries(workflow(caller.uses).jobs).flatMap(([id, leaf]) =>
+      leaf.uses === './.github/workflows/ios-question-tests.yml'
+        ? Object.entries(workflow(leaf.uses).jobs)
+        : [[id, leaf]],
+    );
+    return leaves.map(([id, leaf]) => {
       const execution = leaf.steps.find((step) => step.uses === action);
       const inputs = { ...defaults, ...execution.with };
       for (const [key, value] of Object.entries(inputs))

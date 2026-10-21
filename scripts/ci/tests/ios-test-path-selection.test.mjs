@@ -26,7 +26,13 @@ test('recording source selects its full stateful group while a question helper s
     'speech',
   ]);
   assert.equal(recording.ios_oauth, false);
-  assert.deepEqual(questions.ios_test_cohorts, ['core-integration', 'questions', 'provider']);
+  assert.deepEqual(questions.ios_test_cohorts, [
+    'core-integration',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'provider',
+  ]);
   assert.equal(questions.ios_build, false);
 });
 
@@ -107,7 +113,13 @@ test('main pushes select affected cohorts from before and after SHAs and fail sa
   const incomplete = selectChecksForEvent('push', { before: sha('a') });
 
   assert.deepEqual(receivedArgs, [sha('a'), sha('b')]);
-  assert.deepEqual(selected.ios_test_cohorts, ['core-integration', 'questions', 'provider']);
+  assert.deepEqual(selected.ios_test_cohorts, [
+    'core-integration',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'provider',
+  ]);
   assert.equal(selected.ios_tests, true);
   assert.deepEqual(docsOnly.ios_test_cohorts, []);
   assert.deepEqual(incomplete.ios_test_cohorts, IOS_TEST_COHORT_NAMES);

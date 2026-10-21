@@ -35,15 +35,22 @@ test('independent hosted fixture jobs partition every logical group and retain p
     assert.equal(tasks[0].mode, 'fixture');
     return tasks;
   });
+  assert.deepEqual([...new Set(selected.map(({ suite }) => suite))], Object.keys(iosFixtureGroups));
   assert.deepEqual(
-    selected.map(({ suite }) => suite),
-    Object.keys(iosFixtureGroups),
+    selected.flatMap(({ identifiers }) => identifiers).sort(),
+    iosTestInventory('fixtures').sort(),
   );
-  const workflow = readFileSync('.github/workflows/ios-release-tests.yml', 'utf8');
+  const workflow = ['ios-release-tests.yml', 'ios-question-tests.yml']
+    .map((name) => readFileSync('.github/workflows/' + name, 'utf8'))
+    .join('\n');
   for (const { cohort } of jobs) assert.ok(workflow.includes('      cohort: ' + cohort));
   assert.doesNotMatch(workflow, /matrix:/);
   const cohortRunner = readFileSync('scripts/ci/run-ios-test-cohort.mjs', 'utf8');
   assert.match(cohortRunner, /OROT_IOS_TEST_SUITE: suite/);
+  assert.match(
+    cohortRunner,
+    /run-ios-fixture-tests\.mjs',[\s\S]*?\[task\.profile, runFile, ownerFile, results, \.\.\.task\.identifiers\]/,
+  );
   const runner = readFileSync('scripts/ci/run-ios-fixture-tests.mjs', 'utf8');
   assert.match(runner, /selected\.length \? selected : iosTestInventory\(profile, suite\)/);
   assert.match(runner, /resetIosTestFixtureContainer\(profile, owner, app\)/);
