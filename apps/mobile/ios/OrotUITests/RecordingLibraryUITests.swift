@@ -95,7 +95,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
 
     @MainActor
     func testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText() throws {
-        try inspect(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-OROT_TEST_INPUT_OBSERVATION", "YES"], suffix: "xxxl", dark: true, liveTheme: false, review: true)
+        try inspect(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"], suffix: "xxxl", dark: true, liveTheme: false, review: true)
     }
 
     @MainActor
@@ -106,7 +106,8 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
     @MainActor
     private func inspect(extra: [String], suffix: String, dark: Bool, liveTheme: Bool, review: Bool) throws {
         let app = XCUIApplication()
-        RecordingFixtureUITestConditions.launch(app, extra: extra + AppearanceUITestConditions.observationArguments)
+        let inputObservation = review ? ["-OROT_TEST_INPUT_OBSERVATION", "YES"] : []
+        RecordingFixtureUITestConditions.launch(app, extra: extra + inputObservation + AppearanceUITestConditions.observationArguments)
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {
             if let appearance {

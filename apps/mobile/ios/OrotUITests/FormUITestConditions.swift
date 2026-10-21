@@ -60,19 +60,17 @@ enum FormUITestConditions {
         guard let reference = reveal(input, in: app, scrollID: scrollID) else { return }
         let current = input.value as? String ?? ""
         input.tap()
-        guard exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID) else { return }
+        guard let focused = exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID) else { return }
         if !current.isEmpty, current != input.placeholderValue {
-            // A tap can place the caret anywhere. Clear both sides without a document-end shortcut:
-            // hosted native observations retained selection zero after that completed command.
-            // Each direction has the original text's finite UTF-16 bound, including composed text.
+            // Default activation placed the caret at the start in hosted traces. Touch the lower trailing
+            // interior of the independently observed input for these short, visible fixture contents.
+            // This is not a document-end operation for internally scrolled text; exact-empty must reject a missed end.
+            let point = CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
+                                 dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
+            app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
+            // The original UTF-16 bound also covers composed text without an unbounded edit loop.
             let deletion = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count)
             input.typeText(deletion)
-            // Read the completed edit once so an already-empty field does not pay for redundant native keys.
-            let remaining = input.value as? String ?? current
-            let forwardCount = remaining == input.placeholderValue ? 0 : min(current.utf16.count, remaining.utf16.count)
-            for _ in 0 ..< forwardCount {
-                input.typeKey(XCUIKeyboardKey.forwardDelete.rawValue, modifierFlags: [])
-            }
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
@@ -86,7 +84,7 @@ enum FormUITestConditions {
     }
 
     /// Focus can clip the AX frame. Keep the earlier observed height, reserve the observed occlusion, then independently verify the refocused input.
-    private static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String) -> Bool {
+    private static func exposeFocusedInput(_ input: XCUIElement, referenceSize: CGSize, in app: XCUIApplication, scrollID: String) -> (application: CGRect, input: CGRect)? {
         let keyboard = app.keyboards.firstMatch
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
@@ -95,7 +93,7 @@ enum FormUITestConditions {
         let scrollFrame = scroll.frame
         guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame) else {
             XCTFail("The focused input has no finite keyboard viewport")
-            return false
+            return nil
         }
         // Record the frames already queried by containment, without another AX read or private input value.
         // Native activity timestamps pair these observations with the existing test video if editing fails.
@@ -104,10 +102,10 @@ enum FormUITestConditions {
         if let keyboardFrame, let inputFrame, !geometry.contains(inputFrame, referenceSize: referenceSize) {
             guard let reservation = geometry.keyboardReservation(keyboardFrame, for: inputFrame, referenceSize: referenceSize) else {
                 XCTFail("The focused input has no finite occlusion boundary")
-                return false
+                return nil
             }
             // Dragging can dismiss the keyboard. Keep its observed space until refocus; a clipped slice cannot finish the reveal.
-            guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, focusedKeyboardFrame: reservation, referenceSize: referenceSize) != nil else { return false }
+            guard reveal(input, in: app, scroll: scroll, towardTop: inputFrame.minY <= geometry.viewport.minY, focusedKeyboardFrame: reservation, referenceSize: referenceSize) != nil else { return nil }
             input.tap()
         }
         // A reserved frame is only a scroll constraint, never evidence that the refocused editor is currently visible.
@@ -116,7 +114,7 @@ enum FormUITestConditions {
         let actualScrollFrame = scroll.frame
         guard let actual = FormScrollGeometry(application: actualApplicationFrame, scroll: actualScrollFrame, keyboard: actualKeyboardFrame) else {
             XCTFail("The refocused input has no finite keyboard viewport")
-            return false
+            return nil
         }
         let actualInputFrame = input.frame
         let contained = actual.contains(actualInputFrame, referenceSize: referenceSize)
@@ -124,9 +122,9 @@ enum FormUITestConditions {
         XCTContext.runActivity(named: "Refocused form viewport: application=\(actualApplicationFrame), scroll=\(actualScrollFrame), keyboard=\(String(describing: actualKeyboardFrame)), input=\(actualInputFrame), viewport=\(actual.viewport), referenceSize=\(referenceSize), contained=\(contained), hittable=\(hittable)") { _ in }
         guard contained, hittable else {
             XCTFail("The refocused input must fit the actual keyboard viewport before editing")
-            return false
+            return nil
         }
-        return true
+        return (application: actualApplicationFrame, input: actualInputFrame)
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) {
