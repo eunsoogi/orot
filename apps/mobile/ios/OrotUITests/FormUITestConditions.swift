@@ -71,7 +71,14 @@ enum FormUITestConditions {
             // UTF-16 length is a safe upper bound on native deletion steps for composed characters.
             let count = current.utf16.count
             app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count))
-            app.typeText(String(repeating: XCUIKeyboardKey.forwardDelete.rawValue, count: count))
+            let remaining = input.value as? String ?? ""
+            if remaining != input.placeholderValue {
+                // typeText treats Forward Delete's private-use character as text on iOS.
+                // Synthesize physical keys only for text still to the right of the caret.
+                for _ in 0 ..< remaining.utf16.count {
+                    app.typeKey(XCUIKeyboardKey.forwardDelete.rawValue, modifierFlags: [])
+                }
+            }
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
