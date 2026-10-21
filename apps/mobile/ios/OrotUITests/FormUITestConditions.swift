@@ -83,18 +83,34 @@ enum FormUITestConditions {
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
         let scroll = UITestConditions.element(app, scrollID)
-        guard let geometry = FormScrollGeometry(application: app.frame, scroll: scroll.frame, keyboard: keyboardFrame) else {
+        let applicationFrame = app.frame
+        let scrollFrame = scroll.frame
+        guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame) else {
             XCTFail("The focused input has no finite keyboard viewport")
             return false
         }
-        if let keyboardFrame, !geometry.contains(input.frame) {
+        // Record the frames already queried by containment, without another AX read or private input value.
+        // Native activity timestamps pair these observations with the existing test video if editing fails.
+        let inputFrame = keyboardFrame.map { _ in input.frame }
+        XCTContext.runActivity(named: "Focused form viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame)), input=\(String(describing: inputFrame)), viewport=\(geometry.viewport)") { _ in }
+        if let keyboardFrame, let inputFrame, !geometry.contains(inputFrame) {
             // The form dismisses its keyboard on drag. Keep the observed space while scrolling beside the editor, then restore focus.
             reveal(input, in: app, scroll: scroll, focusedKeyboardFrame: keyboardFrame)
             input.tap()
         }
         // A reserved frame is only a scroll constraint, never evidence that the refocused editor is currently visible.
         let actualKeyboardFrame = keyboard.exists ? keyboard.frame : nil
-        guard let actual = FormScrollGeometry(application: app.frame, scroll: scroll.frame, keyboard: actualKeyboardFrame), actual.contains(input.frame), input.isHittable else {
+        let actualApplicationFrame = app.frame
+        let actualScrollFrame = scroll.frame
+        guard let actual = FormScrollGeometry(application: actualApplicationFrame, scroll: actualScrollFrame, keyboard: actualKeyboardFrame) else {
+            XCTFail("The refocused input has no finite keyboard viewport")
+            return false
+        }
+        let actualInputFrame = input.frame
+        let contained = actual.contains(actualInputFrame)
+        let hittable = contained && input.isHittable
+        XCTContext.runActivity(named: "Refocused form viewport: application=\(actualApplicationFrame), scroll=\(actualScrollFrame), keyboard=\(String(describing: actualKeyboardFrame)), input=\(actualInputFrame), viewport=\(actual.viewport), contained=\(contained), hittable=\(hittable)") { _ in }
+        guard contained, hittable else {
             XCTFail("The refocused input must fit the actual keyboard viewport before editing")
             return false
         }
