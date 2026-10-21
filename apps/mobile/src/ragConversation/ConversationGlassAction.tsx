@@ -15,7 +15,7 @@ interface NativeProps extends ViewProps {
   disabled: boolean;
   actionLabel: string;
   actionTestID: string;
-  onPress: () => void;
+  onComposerPress: () => void;
 }
 const NativeGlassAction =
   Platform.OS === 'ios'
@@ -43,7 +43,7 @@ export function ConversationGlassAction({
       actionTestID={testID}
       // Only UIKit's 44pt UIButton is an accessibility action; this host spans the input material too.
       accessible={false}
-      onPress={onPress}
+      onComposerPress={onPress}
       style={StyleSheet.absoluteFill}
       testID={testID}
     />

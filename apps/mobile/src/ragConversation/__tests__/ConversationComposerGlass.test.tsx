@@ -24,6 +24,9 @@ test('uses borderless native Glass surfaces and one action control for Send and 
     ),
   ).toMatchObject({ borderWidth: 0, borderRadius: 28, overflow: 'hidden' });
   const send = screen.getByTestId('rag-conversation-send');
+  // Exercise the native event directly; a generic press can bubble to the public wrapper and hide a broken bridge.
+  expect(send.props.onPress).toBeUndefined();
+  expect(send.props.onComposerPress).toEqual(expect.any(Function));
   // UIKit exposes the actual 44pt button; the full input material must not become a second AX action.
   expect(send.props.accessible).toBe(false);
   expect(send.props.accessibilityLabel).toBeUndefined();
@@ -41,14 +44,17 @@ test('uses borderless native Glass surfaces and one action control for Send and 
     minWidth: 44,
     minHeight: 44,
   });
-  await fireEvent.press(send);
+  await fireEvent(send, 'composerPress');
   expect(props.onSend).toHaveBeenCalledTimes(1);
   await view.rerender(<ConversationComposer {...props} value="" busy />);
   expect(screen.getByTestId('rag-conversation-cancel').props).toMatchObject({
     busy: true,
     disabled: false,
   });
-  await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
+  await fireEvent(
+    screen.getByTestId('rag-conversation-cancel'),
+    'composerPress',
+  );
   expect(props.onCancel).toHaveBeenCalledTimes(1);
   await view.rerender(
     <ConversationComposer {...props} value="" busy={false} />,

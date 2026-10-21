@@ -26,7 +26,7 @@ RCT_EXPORT_VIEW_PROPERTY(busy, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(disabled, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(actionLabel, NSString)
 RCT_EXPORT_VIEW_PROPERTY(actionTestID, NSString)
-RCT_EXPORT_VIEW_PROPERTY(onPress, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onComposerPress, RCTDirectEventBlock)
 @end
 
 // Register the Swift view manager with React Native's UIKit view registry.

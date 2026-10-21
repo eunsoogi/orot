@@ -59,7 +59,8 @@ final class ComposerGlassActionView: UIView {
         didSet { update() }
     }
 
-    @objc var onPress: RCTDirectEventBlock?
+    // React Native shares event types across managers; topPress is already a bubbling event.
+    @objc var onComposerPress: RCTDirectEventBlock?
     private let button = UIButton(type: .system)
     private let inputMaterial = ComposerGlassSurfaceView()
     private let group: UIVisualEffectView
@@ -92,7 +93,7 @@ final class ComposerGlassActionView: UIView {
             inputMaterial.bottomAnchor.constraint(equalTo: group.contentView.bottomAnchor),
             inputMaterial.trailingAnchor.constraint(equalTo: button.leadingAnchor, constant: -8),
         ])
-        button.addAction(UIAction { [weak self] _ in self?.onPress?([:]) }, for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in self?.onComposerPress?([:]) }, for: .touchUpInside)
         update()
     }
 
