@@ -2,6 +2,14 @@
 
 final result: blocked
 
+## Current diagnostic replay and consent gesture check
+
+The same strict Sentinel passed exact source head `33181fec95849fcdd7e1b73c7e1ae80df243f58f` without findings. Its native build and first separate strict signature verification passed; upgrade installation and normal launch completed without resetting data (`/tmp/orot-visit-coverage-diagnostics-{native-build,signature,install}.log`). This is deployment evidence, not whole-issue acceptance.
+
+The actual Luna visit workflow ran09:56:45.462–09:57:15.854 (`/tmp/orot-visit-coverage-diagnostics-console.log`). All five context topics completed by09:56:50.266. Two unit rejections and task-schema rejection preceded the existing bounded correction; the workflow then reported `result` and displayed three review candidates. No coverage diagnostic was emitted in this run. Consequently this replay does not identify the cause of the earlier `needs_clarification` failure, prove stable latency or establish clinical/question quality. Review was cancelled and the original three saved questions remained. The private capture is `visit-coverage-replay-private.png`; no private source/model text is reproduced here.
+
+At the same source head, the disclosure, consent-hook and remembered-permission suites passed24 tests (`/tmp/orot-consent-dismissal-recheck.log`,1.642s). A normal Luna symptom-summary request then opened the actual native disclosure sheet. Three remote downward drags from its header, body and upper edge left it visible, without an approval action. These observations do not establish whether actual touch dismissal fails or the remote gesture is not delivered to the sheet. A direct-touch check was requested while this exact sheet remained pending. It must not be replaced by a component-prop assertion, and cancellation, repeat prompting and absence of dispatch remain distinct runtime checks. Existing receipt history has not been cleared. Private before capture: `consent-downward-before-private.png`.
+
 ## Coverage diagnostics and recovered interaction
 
 Switching Device Hub to its separate compact screen window delivered an actual upward drag and exposed the regenerate control. Horizontal drags also move source tabs, although the immediate capture may show scrolling momentum; a subsequent settled view is required before a coordinate click. The earlier main-window drag limitation no longer blocks navigation. The outstanding direct-scroll user request was superseded by this observed recovery. No XCUITest was used.
