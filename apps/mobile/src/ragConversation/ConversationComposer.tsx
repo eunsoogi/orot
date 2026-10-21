@@ -133,7 +133,9 @@ export function ConversationComposer({
           testID="rag-conversation-action-slot"
         />
       </View>
-      <Text style={styles.disclaimer}>{copy.disclaimer}</Text>
+      <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
+        {copy.disclaimer}
+      </Text>
     </View>
   );
 }

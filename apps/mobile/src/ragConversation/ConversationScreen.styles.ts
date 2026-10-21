@@ -135,5 +135,8 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+  // The floating editor stays Glass; its caution needs a page-colored reading
+  // surface so enlarged text never blends with conversation content beneath it.
+  composerDisclaimer: { backgroundColor: appColors.background },
   error: { color: appColors.danger },
 });

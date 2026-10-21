@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import * as Native from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
+import { appColors } from '../../layout/appColors';
+import { getRagConversationCopy } from '../copy';
 
 const props = {
   busy: false,
@@ -21,6 +23,15 @@ const originalDimensions = Native.Dimensions.get('window');
 
 beforeEach(() => Native.Dimensions.set({ window: dimensions }));
 afterEach(() => Native.Dimensions.set({ window: originalDimensions }));
+
+test('keeps the fixed caution readable above scrolling conversation text', async () => {
+  await render(<ConversationComposer {...props} value="" />);
+  expect(
+    Native.StyleSheet.flatten(
+      screen.getByText(getRagConversationCopy().disclaimer).props.style,
+    ).backgroundColor,
+  ).toEqual(appColors.background);
+});
 
 test('ignores stale native frame height after clearing a large draft', async () => {
   const view = await render(<ConversationComposer {...props} value="" />);
