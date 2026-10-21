@@ -101,6 +101,15 @@ export default function InferenceDisclosureSheet({
           style={styles.panel}
           testID="inference-disclosure-sheet"
         >
+          {/* Keep the pull-down cue fixed while reviewing long input. UIKit owns the gesture. */}
+          <View
+            testID="inference-disclosure-grabber"
+            style={styles.grabber}
+            pointerEvents="none"
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.header}>
               <View style={styles.icon}>

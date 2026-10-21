@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { LanguageModelInputPart } from '@orot/model-runtime';
 import InferenceDisclosureSheet from '../InferenceDisclosureSheet';
+import { appColors } from '../../../layout/appColors';
 
 function request(
   content:
@@ -24,6 +25,26 @@ function request(
 }
 
 describe('InferenceDisclosureSheet', () => {
+  it('keeps a visible top grabber outside scrolling content without intercepting native gestures', async () => {
+    const onDecision = jest.fn();
+    await render(
+      <InferenceDisclosureSheet request={request()} onDecision={onDecision} />,
+    );
+    const grabber = screen.getByTestId('inference-disclosure-grabber', {
+      includeHiddenElements: true,
+    });
+    expect(grabber).toHaveStyle({
+      marginTop: 8,
+      marginBottom: 13,
+      alignSelf: 'center',
+      width: 36,
+      height: 5,
+      backgroundColor: appColors.secondary,
+    });
+    expect(grabber.props.pointerEvents).toBe('none');
+    expect(grabber.props.accessibilityElementsHidden).toBe(true);
+    expect(onDecision).not.toHaveBeenCalled();
+  });
   it('immediately previews unclassified web text and makes no reusable-consent promise', async () => {
     await render(
       <InferenceDisclosureSheet

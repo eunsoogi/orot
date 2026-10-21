@@ -13,9 +13,18 @@ export const disclosureStyles = StyleSheet.create({
     backgroundColor: appColors.background,
     overflow: 'hidden',
   },
+  grabber: {
+    // Reserve the previous 26pt top inset outside the scroller so text cannot cover the cue.
+    marginTop: 8,
+    marginBottom: 13,
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: appColors.secondary,
+  },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 26,
     paddingBottom: 20,
     gap: 14,
   },

@@ -2,6 +2,12 @@
 
 final result: blocked
 
+## Consent sheet grabber
+
+The user directly confirmed that pulling down dismisses the external-transfer sheet and requested a visible top handle. This is user-reported touch behavior, separate from the earlier remote drags that did not dismiss it. The disclosure now reserves its existing 26 pt top inset outside scrolling content for a centered 36 by 5 pt rounded grabber. It uses the shared dynamic secondary color in both appearances, ignores pointer events and is hidden from the accessibility tree. The native page-sheet gesture, explicit Cancel action, approval, receipts and dispatch paths are unchanged. Moving the existing inset rather than adding height preserves the selected grouped-card layout.
+
+The faithful initial missing-grabber regression failed (`/tmp/orot-consent-grabber-red.log`); the disclosure, real consent-hook and receipt suites then passed 25 tests (`/tmp/orot-consent-grabber-final-focused.log`, 0.821s). The full mobile run passed 486 suites and 1,728 tests (`/tmp/orot-consent-grabber-mobile.log`, 86.413s). Root types, lint, format, inventory and canonical LOC passed; existing warnings remain. Current-head review and actual light/dark handle captures are pending. Remote operation was retried: the existing sheet was visible with expanded input, but Cancel did not visibly settle before the Device Hub window changed. This does not prove a fresh gesture or cancellation result. No approval was pressed and no private screenshot is published.
+
 ## Current diagnostic replay and consent gesture check
 
 The same strict Sentinel passed exact source head `33181fec95849fcdd7e1b73c7e1ae80df243f58f` without findings. Its native build and first separate strict signature verification passed; upgrade installation and normal launch completed without resetting data (`/tmp/orot-visit-coverage-diagnostics-{native-build,signature,install}.log`). This is deployment evidence, not whole-issue acceptance.
