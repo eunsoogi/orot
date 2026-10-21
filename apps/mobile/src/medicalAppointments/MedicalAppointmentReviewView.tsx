@@ -57,7 +57,8 @@ export function MedicalAppointmentReviewView(props: Props) {
         </Text>
       </View>
       <SelectedModelControl
-        name={props.provider?.displayName ?? copy.noProvider}
+        // Keep this action scan-friendly; missing execution details are explanatory status copy.
+        name={props.provider?.displayName ?? copy.chooseProvider}
         local={props.provider?.privacyBoundary === 'on-device'}
         onPress={props.onOpenProviderSelection}
         label="진료 일정 분류에 사용할 AI 선택"

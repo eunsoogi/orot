@@ -115,6 +115,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
   'medicalAppointments.actions.loadCalendar': '선택한 AI로 분류',
   'medicalAppointments.actions.classify': '선택한 AI로 분류',
+  'medicalAppointments.actions.chooseProvider': 'AI 선택',
   'medicalAppointments.actions.manual': '일정 직접 입력',
   'medicalAppointments.status.loading': '캘린더 일정을 불러오는 중입니다.',
   'medicalAppointments.status.classifying': '일정을 분류하고 있습니다.',

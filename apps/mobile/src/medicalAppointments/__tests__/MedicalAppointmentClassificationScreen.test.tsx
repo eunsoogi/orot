@@ -18,6 +18,20 @@ test('opens model selection from the displayed classification model', async () =
   expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
 });
 
+test('keeps the unselected model action concise without enabling classification', async () => {
+  const { onOpenProviderSelection } = await renderScreen(
+    [[]],
+    repository(),
+    null,
+  );
+  const selector = screen.getByTestId('medical-appointment-select-provider');
+  expect(selector).toHaveTextContent('AI 선택');
+  expect(selector).not.toHaveTextContent(copy.noProvider);
+  expect(importAction()).toBeDisabled();
+  await fireEvent.press(selector);
+  expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
+});
+
 test.each(['allow', 'cancel'] as const)(
   'requires actual-request approval and keeps manual entry after %s',
   async decision => {
@@ -97,7 +111,8 @@ test('does not save unclassified events when no AI has been selected', async () 
     null,
   );
   await fireEvent.press(importAction());
-  expect(await screen.findByText(copy.noProvider)).toBeTruthy();
+  expect(await screen.findByText(copy.chooseProvider)).toBeTruthy();
+  expect(importAction()).toBeDisabled();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   expect(screen.queryByText('진료')).toBeNull();
   await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
