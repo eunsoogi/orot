@@ -2,6 +2,8 @@ name: Navigation integration tests
 on:
   workflow_call:
     inputs:
+      # One producer prefix selects products; each consumer still verifies the supplied content digests.
+      artifact_name: { type: string, default: ios-test-release-products }
       archive_digest: { required: true, type: string }
       manifest_digest: { required: true, type: string }
       cohorts: { required: true, type: string }
@@ -26,6 +28,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: navigation-features
+          artifact_name: ${{ inputs.artifact_name }}
           profile: fixtures
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -47,6 +50,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: navigation-routes
+          artifact_name: ${{ inputs.artifact_name }}
           profile: fixtures
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -68,6 +72,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: navigation-imports
+          artifact_name: ${{ inputs.artifact_name }}
           profile: fixtures
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}

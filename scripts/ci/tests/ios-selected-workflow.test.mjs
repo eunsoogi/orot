@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import test from 'node:test';
 import { REQUIRED_CI_JOBS } from '../../release/ci-required-jobs.mjs';
+import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { workflow } from './fixtures/ios-workflow.mjs';
 
 const directory = '.github/workflows/';
@@ -68,6 +69,9 @@ test('selected input forwarding and checks retain clear stages without a full-va
       'iOS / Build / ${{ needs.selection.outputs.configuration }}',
       'iOS / Plan / Select',
       'iOS / Test / Selection',
+      ...iosTestExecutionPlan()
+        .filter((job) => job.configuration === 'Release')
+        .map((job) => 'iOS / Test / ' + job.name),
       'iOS / Validate / Complete',
     ].sort(),
   );

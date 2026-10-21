@@ -127,7 +127,7 @@ Release 75개 관측과 Speech 9개 관측은 독립 기능 작업 16개에 정�
 
 ## 전체 CI와 제품 재사용
 
-전체·선택 E2E의 각 독립 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 전체 시간이며, 취소나 미실행은 통과로 집계하지 않습니다. 정상 실행이 이를 넘는 독립 관측은 별도 작업으로 나누고, 완료된 입력 동작 뒤 잘못된 값을 기다리는 등의 대기는 원인을 고칩니다. 테스트 내부의 상태 의존 단계와 정확한 값·접근성 검증은 유지합니다.
+전체·선택 E2E의 각 독립 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. 선택 실행의 `group/navigation`·`group/calendar`·`group/questions`와 `all`도 전체 실행과 같은 독립 fixture cohort를 사용하며, 요청한 원래 관측의 합집합을 검증합니다. 선택 실행은 보호된 전체 검증 결과를 만들지 않습니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 전체 시간이며, 취소나 미실행은 통과로 집계하지 않습니다. 정상 실행이 이를 넘는 독립 관측은 별도 작업으로 나누고, 완료된 입력 동작 뒤 잘못된 값을 기다리는 등의 대기는 원인을 고칩니다. 테스트 내부의 상태 의존 단계와 정확한 값·접근성 검증은 유지합니다.
 
 `E2E Test`는 PR의 `opened`·`synchronize`·`reopened`·`ready_for_review`·`converted_to_draft`·`edited` 이벤트에서 Linux 영향 분석을 수행하고, `main` push에서도 이벤트의 `before`와 `after` commit을 비교합니다. 초안과 제목·본문만 바꾼 이벤트는 선택 기록을 남기고 Mac runner를 시작하지 않습니다. Ready 전환·재오픈·새 head·base branch 변경은 현재 head를 다시 비교하며, 영향을 받는 cohort가 있을 때만 Mac 작업을 시작합니다. `main` push도 영향받은 cohort가 있을 때만 Mac 작업을 시작하고, 비교나 영향 분석이 불완전하면 전체 cohort로 대체합니다. `workflow_dispatch`를 `main`에서 실행하면 전체 검증 graph를 시작합니다. 전체·선택 CI는 deployment environment를 사용하지 않습니다. GitHub는 workflow 이름과 check 이름을 함께 표시합니다. `E2E Test / Build / Debug`, `E2E Test / Test / Speech`처럼 역할·짧은 대상으로 통일하고, check 이름에 E2E를 다시 붙이지 않습니다. 초안과 main 외부 수동 실행은 `Deferred /` check 이름으로 보호된 Ready 결과와 분리합니다. Ready PR의 제목·본문 수정은 같은 PR·head·base의 성공한 Ready 결과를 확인해 보호된 상태 이름을 유지하며, 그 증거가 없으면 실패합니다. 기능별 호출을 명시적 독립 작업으로 선언해 matrix 괄호·내부 파라미터·시간 제한 숫자가 이름에 나타나지 않게 합니다. 집중 진단은 `E2E Test - Selected / iOS /` 아래에서 Plan·Build·Test·Validate 단계와 대상을 표시합니다. Linux에서 경로 선택, 실행 목록 검증, 결과 집계와 필수 상태를 처리합니다. 저장소 밖의 다른 Mac 사용량과 실제 runner 대기는 실행 시 별도로 관측합니다.
 

@@ -117,6 +117,7 @@ test('full and focused visible job names use one consistent role and target', ()
     [
       'iOS / Plan / Select',
       'iOS / Build / ${{ needs.selection.outputs.configuration }}',
+      'iOS / Test',
       'iOS / Test / Selection',
       'iOS / Validate / Complete',
     ].sort(),

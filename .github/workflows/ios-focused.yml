@@ -36,6 +36,7 @@ jobs:
       identifier: ${{ steps.selection.outputs.identifier }}
       prepare_ui: ${{ steps.selection.outputs.prepareUi }}
       fixture_suite: ${{ steps.selection.outputs.fixtureSuite }}
+      cohorts: ${{ steps.selection.outputs.cohorts }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -64,6 +65,7 @@ jobs:
       identifier: ${{ needs.selection.outputs.identifier }}
       prepare_ui: ${{ needs.selection.outputs.prepare_ui }}
       fixture_suite: ${{ needs.selection.outputs.fixture_suite }}
+      cohorts: ${{ needs.selection.outputs.cohorts }}
       archive_digest: ${{ steps.build.outputs.archive_digest }}
       manifest_digest: ${{ steps.build.outputs.manifest_digest }}
     steps:
@@ -83,6 +85,12 @@ jobs:
           path: artifacts/ios-focus/product-artifact
           if-no-files-found: error
           retention-days: 7
+      - name: Preserve the small producer manifest for partition aggregation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ios-focused-manifest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus/product-artifact/manifest.json
+          if-no-files-found: error
       - name: Preserve build and selection diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -96,7 +104,7 @@ jobs:
           retention-days: 7
   completeness:
     name: Validate / Complete
-    needs: [selection, products, execution]
+    needs: [selection, products, execution, fixture_execution]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -110,11 +118,23 @@ jobs:
       - name: Require selection, build and actual execution success
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: node -e 'if(Object.values(JSON.parse(process.env.RESULTS)).some(job=>job.result!=="success")) throw new Error("Incomplete integration focus");'
+          COHORTS: ${{ needs.selection.outputs.cohorts }}
+        run: node --input-type=module -e 'import { verifyFocusedIosJobResults } from "./scripts/ci/ios-focused-selection.mjs"; verifyFocusedIosJobResults(JSON.parse(process.env.RESULTS), JSON.parse(process.env.COHORTS));'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.selection.outputs.cohorts == '[]'
         with:
           name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-focus-results
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.selection.outputs.cohorts != '[]'
+        with:
+          name: ios-focused-manifest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus-results/product-artifact
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.selection.outputs.cohorts != '[]'
+        with:
+          pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-focus-results/cohorts
       - name: Apply the exact selection oracle to exported evidence
         env:
           PROFILE: ${{ inputs.profile }}
@@ -122,11 +142,23 @@ jobs:
           TEST_ID: ${{ inputs.scenario_name }}
         run: node scripts/ci/ios-focused-results.mjs "$PROFILE" "$SOURCE_FILE" "$TEST_ID" artifacts/ios-focus-results
 
+  fixture_execution:
+    name: Test
+    needs: products
+    if: ${{ needs.products.outputs.cohorts != '[]' }}
+    uses: ./.github/workflows/ios-release-tests.yml
+    with:
+      artifact_name: ios-focused-products
+      archive_digest: ${{ needs.products.outputs.archive_digest }}
+      manifest_digest: ${{ needs.products.outputs.manifest_digest }}
+      cohorts: ${{ needs.products.outputs.cohorts }}
+
   execution:
     name: Test / Selection
     needs: products
+    if: ${{ needs.products.outputs.cohorts == '[]' }}
     runs-on: xcode-27
-    # Stateful local-model groups retain their original operation and setup allowances.
+    # Single cases and stateful drivers retain their exact sequence within the same hard job limit.
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

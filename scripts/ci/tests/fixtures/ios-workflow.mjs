@@ -40,7 +40,17 @@ export function cohortJobs(jobs) {
   );
   return Object.entries(jobs).flatMap(([callerId, caller]) => {
     if (!/ios-(debug|release)-tests\.yml$/.test(caller.uses ?? '')) return [];
-    const leaves = Object.entries(workflow(caller.uses).jobs).flatMap(([id, leaf]) =>
+    const definition = workflow(caller.uses);
+    const supplied = {
+      ...Object.fromEntries(
+        Object.entries(definition.on.workflow_call.inputs).map(([key, input]) => [
+          key,
+          input.default,
+        ]),
+      ),
+      ...caller.with,
+    };
+    const leaves = Object.entries(definition.jobs).flatMap(([id, leaf]) =>
       /^\.\/\.github\/workflows\/ios-(question|navigation|calendar)-tests\.yml$/.test(
         leaf.uses ?? '',
       )
@@ -52,7 +62,7 @@ export function cohortJobs(jobs) {
       const inputs = { ...defaults, ...execution.with };
       for (const [key, value] of Object.entries(inputs))
         if (typeof value === 'string')
-          inputs[key] = value.replace(/\$\{\{ inputs\.(\w+) \}\}/g, (_, name) => caller.with[name]);
+          inputs[key] = value.replace(/\$\{\{ inputs\.(\w+) \}\}/g, (_, name) => supplied[name]);
       return [id, { callerId, caller, leaf, inputs }];
     });
   });

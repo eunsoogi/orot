@@ -59,3 +59,11 @@ for (const [suite, count] of [
     }
   });
 }
+
+test('selected fixture groups use the same independent leaves instead of one aggregate VM', () => {
+  const { jobs } = workflow('.github/workflows/ios-focused.yml');
+  assert.equal(jobs.fixture_execution?.uses, './.github/workflows/ios-release-tests.yml');
+  assert.equal(jobs.fixture_execution.with.cohorts, '${{ needs.products.outputs.cohorts }}');
+  assert.equal(jobs.fixture_execution.with.artifact_name, 'ios-focused-products');
+  assert.equal(jobs.execution.if, "${{ needs.products.outputs.cohorts == '[]' }}");
+});

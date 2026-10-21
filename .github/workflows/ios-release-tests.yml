@@ -2,6 +2,8 @@ name: Release integration tests
 on:
   workflow_call:
     inputs:
+      # One producer prefix selects products; each consumer still verifies the supplied content digests.
+      artifact_name: { type: string, default: ios-test-release-products }
       archive_digest: { required: true, type: string }
       manifest_digest: { required: true, type: string }
       cohorts: { required: true, type: string }
@@ -27,6 +29,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: core-integration
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -48,6 +51,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: core-ui
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -69,6 +73,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: persistence
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -90,6 +95,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: isolation
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -111,6 +117,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: backup
+          artifact_name: ${{ inputs.artifact_name }}
           profile: backup
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -132,6 +139,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: local-model
+          artifact_name: ${{ inputs.artifact_name }}
           profile: local-model
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -144,6 +152,7 @@ jobs:
     if: ${{ contains(inputs.cohorts, 'navigation-') }}
     uses: ./.github/workflows/ios-navigation-tests.yml
     with:
+      artifact_name: ${{ inputs.artifact_name }}
       archive_digest: ${{ inputs.archive_digest }}
       manifest_digest: ${{ inputs.manifest_digest }}
       cohorts: ${{ inputs.cohorts }}
@@ -161,6 +170,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: recordings
+          artifact_name: ${{ inputs.artifact_name }}
           profile: fixtures
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -173,6 +183,7 @@ jobs:
     if: ${{ contains(inputs.cohorts, 'questions-') }}
     uses: ./.github/workflows/ios-question-tests.yml
     with:
+      artifact_name: ${{ inputs.artifact_name }}
       archive_digest: ${{ inputs.archive_digest }}
       manifest_digest: ${{ inputs.manifest_digest }}
       cohorts: ${{ inputs.cohorts }}
@@ -181,6 +192,7 @@ jobs:
     if: ${{ contains(inputs.cohorts, 'calendar-') }}
     uses: ./.github/workflows/ios-calendar-tests.yml
     with:
+      artifact_name: ${{ inputs.artifact_name }}
       archive_digest: ${{ inputs.archive_digest }}
       manifest_digest: ${{ inputs.manifest_digest }}
       cohorts: ${{ inputs.cohorts }}
@@ -198,6 +210,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: speech
+          artifact_name: ${{ inputs.artifact_name }}
           profile: speech
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
