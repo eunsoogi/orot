@@ -2,6 +2,12 @@
 
 final result: blocked
 
+## Evidence toolbar ownership
+
+The actual question-source view inherited Edit questions or Save changes from the retained hidden feature. The selected minimal evidence reference shows only Back and Home in this state; native navigation remains system-owned. The cause was functional action registration, not a new styling choice: a newly mounted source/provider route also renders the retained feature under its own active primary-action context. Hiding that view alone does not disable its hooks. The feature subtree now receives no primary-action host while either overlay is active. The visible provider overlay keeps its own model-confirmation control, and returning restores the originating feature action and edited draft.
+
+The initial test harness needed the shared App fixture's unrelated native-backup mock and the actual native-toolbar selector; those failures are not product RED. The faithful baseline then reproduced both leaked actions (`/tmp/orot-overlay-actions-red-native.log`,2 failed). Four affected suites /11 tests passed after repair (`/tmp/orot-overlay-actions-green.log`). The strengthened native-action-array and provider-return assertions are included in the full mobile run:485 suites /1,715 tests passed (`/tmp/orot-overlay-actions-mobile.log`,88.792s). Root types, lint, format, inventory and canonical585-path LOC passed, with85 existing lint warnings; individual LSP diagnostics for the changed flow are empty. No request, consent, persistence, source facts or theme tokens changed. Current-head strict review and authentic visual replay remain pending. The existing reference was opened; there are no new raster assets or mockups in this functional repair. Whole-screen visual acceptance remains blocked.
+
 ## Medication evidence clarity
 
 The outbound period projection now distinguishes a known absent Health schedule from an unavailable flag and labels user-confirmed use, observed dose events, catalog-only registration and prescription-only evidence. Raw dose counts, occurrence times and archived state are retained; storage identities remain excluded. English visit guidance acknowledges documented use without inferring future adherence, missed doses or a prescription. These labels do not establish the unread target medication's actual dose count or prove that Luna will produce a useful question.
