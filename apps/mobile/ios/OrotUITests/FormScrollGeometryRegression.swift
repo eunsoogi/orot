@@ -53,6 +53,50 @@ enum FormScrollGeometryRegression {
         try verifyPagedListTraversal()
         try verifyContainedOccludedTargetDirection()
         try verifyFocusedEditorReservation()
+        try verifyClippedFocusedExtent()
+    }
+
+    private static func verifyClippedFocusedExtent() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let keyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
+        let focused = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: keyboard))
+        // Actual hosted frames: the AX slice ends at 546 while its keyboard frame starts at 590.
+        let observations: [(CGFloat, CGFloat, CGFloat)] = [(449.8334706624346, 96.16652933756541, 195.6669921875), (511.5000101725261, 34.49998982747388, 93)]
+        for (origin, height, minimum) in observations {
+            let slice = CGRect(x: 51.833333015441895, y: origin, width: 298.33331298828125, height: height)
+            let reference = CGSize(width: slice.width, height: minimum)
+            XCTAssertTrue(focused.contains(slice))
+            XCTAssertFalse(focused.contains(slice, referenceSize: reference))
+            let reservation = try XCTUnwrap(focused.keyboardReservation(keyboard, for: slice, referenceSize: reference))
+            XCTAssertEqual(reservation.minY, 546, accuracy: 0.0001)
+            let duringDrag = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: nil, reservedKeyboard: reservation))
+            XCTAssertFalse(duringDrag.contains(slice, referenceSize: reference))
+            let restored = CGRect(x: slice.minX, y: 546 - minimum - 8, width: slice.width, height: minimum)
+            XCTAssertTrue(duringDrag.contains(restored, referenceSize: reference))
+            XCTAssertTrue(focused.contains(restored, referenceSize: reference))
+            XCTAssertEqual(focused.keyboardReservation(keyboard, for: restored, referenceSize: reference), keyboard)
+            let hiddenKeyboard = keyboard.offsetBy(dx: 0, dy: 328)
+            XCTAssertEqual(focused.keyboardReservation(hiddenKeyboard, for: slice, referenceSize: reference), hiddenKeyboard)
+            for invalid: CGFloat in [.nan, .infinity, 0, -1] {
+                XCTAssertFalse(focused.contains(slice, referenceSize: CGSize(width: slice.width, height: invalid)))
+                XCTAssertNil(focused.keyboardReservation(keyboard, for: slice, referenceSize: CGSize(width: slice.width, height: invalid)))
+                XCTAssertFalse(focused.contains(restored, referenceSize: CGSize(width: invalid, height: minimum)))
+                XCTAssertNil(focused.keyboardReservation(keyboard, for: slice, referenceSize: CGSize(width: invalid, height: minimum)))
+            }
+            // Width changes can reflow text; a shorter frame then cannot establish keyboard clipping.
+            let reflowed = CGSize(width: reference.width + 1, height: minimum)
+            XCTAssertFalse(focused.contains(restored, referenceSize: reflowed))
+            XCTAssertNil(focused.keyboardReservation(keyboard, for: slice, referenceSize: reflowed))
+            let rounded = CGSize(width: reference.width + 0.00005, height: minimum + 0.00005)
+            XCTAssertTrue(focused.contains(restored, referenceSize: rounded))
+            XCTAssertNotNil(focused.keyboardReservation(keyboard, for: slice, referenceSize: rounded))
+        }
+        let topSlice = CGRect(x: 52, y: 0, width: 298, height: 96)
+        XCTAssertEqual(focused.keyboardReservation(keyboard, for: topSlice, referenceSize: CGSize(width: 298, height: 196)), keyboard)
+        let noKeyboard = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: nil))
+        XCTAssertTrue(noKeyboard.contains(CGRect(x: 52, y: 450, width: 298, height: 196), referenceSize: CGSize(width: 298, height: 196)))
+        XCTAssertNil(focused.keyboardReservation(.zero, for: topSlice, referenceSize: CGSize(width: 298, height: 196)))
+        XCTAssertNil(focused.keyboardReservation(keyboard, for: .infinite, referenceSize: CGSize(width: 298, height: 196)))
     }
 
     private static func verifyFocusedEditorReservation() throws {

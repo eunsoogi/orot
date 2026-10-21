@@ -19,9 +19,26 @@ struct FormScrollGeometry {
         viewport = visible
     }
 
-    /// Retain the existing vertical containment tolerance for AX rounding; hittability remains the caller's separate observation.
-    func contains(_ target: CGRect) -> Bool {
-        Self.valid(target) && target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
+    /// A focused AX frame can contain only the visible slice. Retain the previously observed height as a minimum, not an unproved full extent.
+    func contains(_ target: CGRect, referenceSize: CGSize? = nil) -> Bool {
+        guard Self.valid(target) else { return false }
+        if let referenceSize {
+            guard Self.valid(referenceSize), abs(target.width - referenceSize.width) <= Self.coordinateTolerance,
+                  target.height + Self.coordinateTolerance >= referenceSize.height else { return false }
+        }
+        return target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
+    }
+
+    /// The keyboard AX frame can omit its prediction surface. A bottom-clipped input supplies a stricter observed edge for the scroll constraint.
+    func keyboardReservation(_ keyboard: CGRect, for target: CGRect, referenceSize: CGSize) -> CGRect? {
+        guard Self.valid(keyboard), Self.valid(target), Self.valid(referenceSize),
+              abs(target.width - referenceSize.width) <= Self.coordinateTolerance else { return nil }
+        // Top clipping or an offscreen keyboard does not establish a new bottom boundary.
+        guard keyboard.intersects(application), target.height + Self.coordinateTolerance < referenceSize.height,
+              target.minY > viewport.minY + Self.coordinateTolerance else { return keyboard }
+        let top = min(keyboard.minY, target.maxY)
+        let reservation = CGRect(x: keyboard.minX, y: top, width: keyboard.width, height: keyboard.maxY - top)
+        return Self.valid(reservation) ? reservation : nil
     }
 
     /// Scroll beside a focused editor; dragging within it can move its caret or scroll its text instead of the form.
@@ -56,7 +73,12 @@ struct FormScrollGeometry {
         return (CGVector(dx: x, dy: y), CGVector(dx: x, dy: endY))
     }
 
-    /// Positive dimensions alone admit infinity. Check derived edges too, because finite components can overflow when added.
+    /// Reference dimensions must be finite and positive before comparing observed extents.
+    private static func valid(_ size: CGSize) -> Bool {
+        size.width.isFinite && size.height.isFinite && size.width > 0 && size.height > 0
+    }
+
+    /// Frame edges must remain finite even when their individual components are finite.
     private static func valid(_ rect: CGRect) -> Bool {
         !rect.isNull && !rect.isInfinite && rect.size.width > 0 && rect.size.height > 0 &&
             [rect.origin.x, rect.origin.y, rect.width, rect.height, rect.minX, rect.minY, rect.maxX, rect.maxY].allSatisfy(\.isFinite)
