@@ -2,6 +2,16 @@
 
 final result: blocked
 
+## Finite acceptance audit and pull request preparation
+
+The same strict reviewer passed clean `9ae2f6c8d3c0340617c21c509ab3a1889e8c42f5` with no unresolved findings in the finite requirement8 and appearance/mockup audit. The actual reductions include title30 to25, body17 to16, source minimum56 to44 and user-message padding16 to14. Native navigation,44/48pt touch targets and the user-retained16pt/600 symptom actions remain. The later maximum-text header, input-clear and caution observations replace the affected old layout evidence. Requirement8 is accepted.
+
+The existing81 synthetic captures and subsequent actual observations cover AI selection, calendar classification, next-visit preparation/review, conversations/history, evidence details, symptom preparation/results/history, transfer consent, recording/library/transcription, public literature and Home appointment timing. The reviewer compared changed consumers and retained source/dependency boundaries; later paired comparisons and header/surface/grabber repairs supersede affected earlier screenshots. Loading, empty, disabled, selected, error/retry, restored and destructive observations keep their original individual scope. No concrete unapplied mockup or required appearance gap remains. The two appearance/mockup requirements are accepted without new execution or cosmetic changes. A separate fresh screenshot for every theoretical state is not an added requirement.
+
+Draft PR [213](https://github.com/eunsoogi/orot/pull/213) publishes the implementation branch against `main`. Its issue linkage, assignee, milestone and existing labels were read back. No completed local test, build, provider request, Back check or screen observation was repeated for this preparation. The production source remains `6ba70f10`; this reconciliation changes prose only. Prior tests and strict source reviews retain their recorded revisions and applicability rather than becoming new runs.
+
+Exactly two product acceptance gaps remain: `EVIDENCE-R1-SUMMARY-001`, the current actual Luna summary through validation and displayed completion, and requirement9, source-by-source quality acceptance of the recorded actual next-visit questions. Historical successes and synthetic results do not replace them. Current-head mandatory CI and parent acceptance/merge are separate remaining PR gates. The overall result therefore stays blocked; the user-confirmed Back behavior stays accepted. No new review scope, feature or visual refinement is introduced.
+
 ## Conversation Dynamic Type defects and bounded repairs
 
 The unmet criterion was preserving readable, usable compact conversation controls at maximum text size. On unchanged source `3c72f0c0`, Computer Use selected Text Size11 on the owned Simulator. Live-change process71394 showed the empty placeholder clipped inside the fixed44pt editor; a fresh maximum-text launch74208 also showed the fixed title/provider/description taking almost the whole reading area. These authentic pre-change captures are `conversation-max-text-light-{before,relaunch}.jpg` in `apps/mobile/ios/build/ai-design-qa/references/`. No actual model, source, recording or Back operation was used. The user-confirmed Back behavior remains accepted.
