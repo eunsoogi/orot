@@ -2,6 +2,12 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Preserve canonical project bytes through CocoaPods preparation
+
+Ready CI run39565260826 at `f91f5a09` stopped both Debug and Release producers before compilation: pinned CocoaPods setup rewrote `project.pbxproj`, so the existing product source-integrity guard correctly rejected the changed input. No dependent native test result is claimed. The same pinned CocoaPods1.17 installation's Xcodeproj serializer reproduced the byte mismatch locally (`/tmp/orot-project-order-red.log`). The correction moves16 dictionary entries into the serializer's existing order. Parsed before/after property lists are deeply equal: all404 objects, target settings, references and array order remain unchanged.
+
+An actual deployment-mode Pods installation then preserved the canonical project bytes (`/tmp/orot-project-order-pods.log`). The existing privacy semantic-normalization script restored its equivalent generated plist formatting; no privacy change remains. Source integrity is not bypassed or relaxed. Frozen workspace dependencies were restored after checkout recovery, and canonical LOC passed623 paths (`/tmp/orot-project-order-loc.log`). A local root format attempt could not run because the restored checkout lacks pinned quality tools (`/tmp/orot-project-order-format.log`); this is not a formatter success or product defect. The maintained surface policy explicitly excludes generated `.pbxproj` formatting, while all actual formatted source, dependency, fixture and workflow inputs remain identical to the passed `f91f5a09` checks. No completed product, provider, unit or UI test was repeated. The new candidate still needs its affected native CI and bounded ordering-delta review.
+
 ## Repair stale policy expectations after registering additional regressions
 
 The actual policy CI failure at `c354aa8d` was reproduced locally by the nine affected policy files:41 tests,32 passed and9 failed (`/tmp/orot-policy-inventory-red.log`). The registered inventory contains111 distinct observations: Release75, Debug27 and Speech9. Stale95/109 totals, Debug25, three missing exact provider identities and two newly registered summary/literature cases using the existing fresh-install default caused eight failures. The ninth still expected the90-second budget that the user explicitly removed. The underlying inventory, reset mode, shipping budgets, workflow execution and product behavior were not changed to make these assertions pass.
