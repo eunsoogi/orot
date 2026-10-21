@@ -2,6 +2,14 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Match the retained no-provider navigation check to the requested web-search copy
+
+Navigation executor119141161699 in run39573894507 at `ef6129e3` entered `testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected`, opened the conversation screen and found its Send control. It then waited for the retired exact helper text about public medical literature. The current empty conversation instead states that it can find public web sources and medical literature, reflecting the user's web-search addition. The full log records the same StaticText wait from09:52:25.915 through10:10:37.252. The owned run was cancelled to preserve diagnostics; this interrupted case is not a completed test failure or pass. Earlier live-page inspection proved only a shorter repeated interval until the full log became available.
+
+The test now expects that current full sentence. Its real StaticText existence and `isHittable` assertions, no-provider request/recovery checks, route geometry, provider-disclosure rejection and navigation behavior remain unchanged. The message helper, waits, timeouts, fixtures and workflow inventory are untouched. No shipping UI copy or Back behavior was changed. Corrected native execution remains pending and no repeated provider or whole-product verification is claimed.
+
+Root lint, format, Swift syntax parsing and canonical623-path LOC pass (`/tmp/orot-navigation-copy-{lint,format,loc}.log`). The tracked file set and shipping boundaries are unchanged from their individual prior passes; syntax/readback is not a new native execution receipt. Fresh CI must execute the retained case with the corrected sentence.
+
 ## Deliver the first literature Search tap while the query is focused
 
 Questions executor119141161668 in run39573894507 at `ef6129e3` failed the existing native first-tap assertion in `SummaryAndLiteratureUITests.swift:86`. After typing a synthetic query and tapping Search once, the consent sheet was absent and the keyboard had closed; the recorded AX tree still showed the literature screen. The test's real first-tap assertion is retained. Pinned React Native's ScrollView responder captures a non-input tap to dismiss the keyboard when `keyboardShouldPersistTaps` is absent/default `never`; this screen had no override.
