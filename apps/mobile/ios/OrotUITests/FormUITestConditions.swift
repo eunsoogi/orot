@@ -11,7 +11,7 @@ enum FormUITestConditions {
     }
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45) {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil) {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -23,7 +23,7 @@ enum FormUITestConditions {
             let keyboardFrame = keyboard.exists ? keyboard.frame : nil
             let targetFrame = target.exists ? target.frame : nil
             lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
-            guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame) else {
+            guard let geometry = FormScrollGeometry(application: applicationFrame, scroll: scrollFrame, keyboard: keyboardFrame, reservedKeyboard: focusedKeyboardFrame) else {
                 XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
                 return
             }
@@ -33,7 +33,8 @@ enum FormUITestConditions {
             if attempt == 16 {
                 break
             }
-            guard let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: horizontalPosition, maximumScrollFraction: maximumScrollFraction) else {
+            let position = focusedKeyboardFrame == nil ? horizontalPosition : targetFrame.flatMap { geometry.horizontalPosition(outside: $0) }
+            guard let position, let gesture = geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: position, maximumScrollFraction: maximumScrollFraction) else {
                 XCTFail("The form gesture has invalid coordinates")
                 return
             }
@@ -55,6 +56,7 @@ enum FormUITestConditions {
         reveal(input, in: app, scrollID: scrollID)
         let current = input.value as? String ?? ""
         input.tap()
+        guard exposeFocusedInput(input, in: app, scrollID: scrollID) else { return }
         if !current.isEmpty, current != input.placeholderValue {
             // A tap can place the caret within the text. The first backward sequence removes
             // its left side before a physical document-end command; the second removes the rest.
@@ -73,6 +75,30 @@ enum FormUITestConditions {
             }
         }
         exactValue(input, equals: text)
+    }
+
+    /// Focus changes the viewport. Reserve only the keyboard actually observed, then verify the real viewport again after refocusing.
+    private static func exposeFocusedInput(_ input: XCUIElement, in app: XCUIApplication, scrollID: String) -> Bool {
+        let keyboard = app.keyboards.firstMatch
+        // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
+        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        let scroll = UITestConditions.element(app, scrollID)
+        guard let geometry = FormScrollGeometry(application: app.frame, scroll: scroll.frame, keyboard: keyboardFrame) else {
+            XCTFail("The focused input has no finite keyboard viewport")
+            return false
+        }
+        if let keyboardFrame, !geometry.contains(input.frame) {
+            // The form dismisses its keyboard on drag. Keep the observed space while scrolling beside the editor, then restore focus.
+            reveal(input, in: app, scroll: scroll, focusedKeyboardFrame: keyboardFrame)
+            input.tap()
+        }
+        // A reserved frame is only a scroll constraint, never evidence that the refocused editor is currently visible.
+        let actualKeyboardFrame = keyboard.exists ? keyboard.frame : nil
+        guard let actual = FormScrollGeometry(application: app.frame, scroll: scroll.frame, keyboard: actualKeyboardFrame), actual.contains(input.frame), input.isHittable else {
+            XCTFail("The refocused input must fit the actual keyboard viewport before editing")
+            return false
+        }
+        return true
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) {

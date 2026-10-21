@@ -6,10 +6,11 @@ struct FormScrollGeometry {
     let viewport: CGRect
     private static let coordinateTolerance: CGFloat = 0.0001
 
-    init?(application: CGRect, scroll: CGRect, keyboard: CGRect?) {
+    init?(application: CGRect, scroll: CGRect, keyboard: CGRect?, reservedKeyboard: CGRect? = nil) {
         guard Self.valid(application), Self.valid(scroll) else { return nil }
         var visible = scroll.intersection(application)
-        if let keyboard {
+        // A drag can dismiss the keyboard. Retain its observed space until the input is refocused.
+        for keyboard in [keyboard, reservedKeyboard].compactMap(\.self) {
             guard Self.valid(keyboard) else { return nil }
             visible.size.height = min(visible.maxY, keyboard.minY) - visible.minY
         }
@@ -21,6 +22,18 @@ struct FormScrollGeometry {
     /// Retain the existing vertical containment tolerance for AX rounding; hittability remains the caller's separate observation.
     func contains(_ target: CGRect) -> Bool {
         Self.valid(target) && target.minY >= viewport.minY - Self.coordinateTolerance && target.maxY <= viewport.maxY + Self.coordinateTolerance
+    }
+
+    /// Scroll beside a focused editor; dragging within it can move its caret or scroll its text instead of the form.
+    func horizontalPosition(outside target: CGRect) -> CGFloat? {
+        guard Self.valid(target) else { return nil }
+        let leftEnd = min(max(target.minX, viewport.minX), viewport.maxX)
+        let rightStart = min(max(target.maxX, viewport.minX), viewport.maxX)
+        let left = leftEnd - viewport.minX
+        let right = viewport.maxX - rightStart
+        guard max(left, right) > 0 else { return nil }
+        let x = right >= left ? rightStart + right / 2 : viewport.minX + left / 2
+        return (x - viewport.minX) / viewport.width
     }
 
     func gesture(target: CGRect?, towardTop: Bool, horizontalPosition: CGFloat, maximumScrollFraction: CGFloat = 0.45) -> (start: CGVector, end: CGVector)? {

@@ -52,6 +52,31 @@ enum FormScrollGeometryRegression {
         XCTAssertEqual(translated.start.dy, 512.5)
         try verifyPagedListTraversal()
         try verifyContainedOccludedTargetDirection()
+        try verifyFocusedEditorReservation()
+    }
+
+    private static func verifyFocusedEditorReservation() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let keyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
+        // The hosted large editor is partially covered after focus despite its pre-focus containment.
+        let editor = CGRect(x: 52, y: 450, width: 298, height: 196)
+        let before = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: nil))
+        XCTAssertTrue(before.contains(editor))
+        for current in [nil, keyboard, keyboard.offsetBy(dx: 0, dy: 328)] {
+            let reserved = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: current, reservedKeyboard: keyboard))
+            XCTAssertEqual(reserved.viewport.maxY, 590)
+            XCTAssertFalse(reserved.contains(editor))
+            let position = try XCTUnwrap(reserved.horizontalPosition(outside: editor))
+            let gesture = try XCTUnwrap(reserved.gesture(target: editor, towardTop: false, horizontalPosition: position))
+            XCTAssertGreaterThan(gesture.start.dx, editor.maxX)
+            XCTAssertLessThan(gesture.start.dx, reserved.viewport.maxX)
+            XCTAssertFalse(editor.contains(CGPoint(x: gesture.start.dx, y: gesture.start.dy)))
+        }
+        XCTAssertNil(before.horizontalPosition(outside: app))
+        XCTAssertNil(before.horizontalPosition(outside: .infinite))
+        XCTAssertNil(FormScrollGeometry(application: app, scroll: app, keyboard: nil, reservedKeyboard: .zero))
+        let taller = try XCTUnwrap(FormScrollGeometry(application: app, scroll: app, keyboard: keyboard.offsetBy(dx: 0, dy: -40), reservedKeyboard: keyboard))
+        XCTAssertEqual(taller.viewport.maxY, 550)
     }
 
     private static func verifyContainedOccludedTargetDirection() throws {
