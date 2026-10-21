@@ -85,6 +85,7 @@ describe('EvidenceSourceDetailScreen', () => {
     );
 
     expect(await screen.findByText('70.5 kg')).toBeTruthy();
+    expectReferenceHeading();
     expect(screen.getAllByText(/2026년 1월 2일/u).length).toBeGreaterThan(0);
     expect(screen.getByText('HealthKit')).toBeTruthy();
     expect(screen.queryByText('원문에 기록된 측정값')).toBeNull();
@@ -115,7 +116,16 @@ describe('EvidenceSourceDetailScreen', () => {
       );
 
       expect(await screen.findByTestId(testId)).toBeTruthy();
+      expectReferenceHeading();
       expect(screen.queryByText('70.5 kg')).toBeNull();
     },
   );
 });
+
+/** The selected reference has a larger title; preserve its weight and system text scaling. */
+function expectReferenceHeading() {
+  const heading = screen.getByRole('header', { name: '근거 살펴보기' });
+  expect(heading).toHaveStyle({ fontSize: 36, fontWeight: '700' });
+  expect(heading.props.allowFontScaling).not.toBe(false);
+  expect(heading.props.numberOfLines).toBeUndefined();
+}

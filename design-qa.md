@@ -2,6 +2,12 @@
 
 final result: blocked
 
+## Evidence heading fidelity
+
+The combined toolbar comparison also confirms the previously open title-size mismatch. At853px normalized width, the selected reference's bright heading ink measures53px high and the actual retained-settings capture measures38px. Measurement uses RGB channels each at least200 within reference `(40,95,810,185)` and normalized implementation `(40,140,810,210)`, excluding status/subtitle text. This comparison establishes a difference at the observed settings, not an independent readback of system text-size configuration. The same title copy is present in both states. The heading changes from26pt to36pt while retaining700 weight, the system font, unrestricted lines and native text scaling. Other styles, source content and navigation are unchanged.
+
+The three available/changed/missing cases failed the new reference-size expectation before repair (`/tmp/orot-evidence-heading-red.log`). The affected source/overlay/source-return suites then passed3 suites /7 tests (`/tmp/orot-evidence-heading-green.log`). Root types, lint, format, inventory and canonical585-path LOC pass; the existing85 lint warnings remain. Individual LSP diagnostics for the source component are empty. The prior full485-suite /1,715-test execution remains bound to `68dc7b61`; its unchanged business, persistence, provider and consent boundaries are reused individually, not reported as a new full run. The changed source component is rechecked above. Native title geometry, current-head review and post-fix combined comparison are pending; no whole-screen visual pass is claimed.
+
 ## Evidence toolbar ownership
 
 The actual question-source view inherited Edit questions or Save changes from the retained hidden feature. The selected minimal evidence reference shows only Back and Home in this state; native navigation remains system-owned. The cause was functional action registration, not a new styling choice: a newly mounted source/provider route also renders the retained feature under its own active primary-action context. Hiding that view alone does not disable its hooks. The feature subtree now receives no primary-action host while either overlay is active. The visible provider overlay keeps its own model-confirmation control, and returning restores the originating feature action and edited draft.
