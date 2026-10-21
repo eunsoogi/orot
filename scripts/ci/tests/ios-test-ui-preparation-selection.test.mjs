@@ -10,6 +10,7 @@ test('full cohort plans and focused selections agree on UI preparation for every
   const planCohorts = iosTestExecutionPlan().map(({ cohort }) => cohort);
   const uiCohorts = new Set([
     'core-ui',
+    'recording-evidence',
     'backup',
     'navigation-features',
     'navigation-routes',

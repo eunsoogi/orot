@@ -22,7 +22,19 @@ const cohorts = {
   },
   // Hosted jobs separate independent feature suites. Only phases that exchange state stay in one task driver.
   'core-integration': { profiles: ['core'], suites: ['integration'], minutes: 20 },
-  'core-ui': { profiles: ['core'], suites: ['ui'], minutes: 20 },
+  // Separate intact UI methods so host preparation and post-test work fit the whole-job limit.
+  'core-ui': {
+    profiles: ['core'],
+    suites: ['ui'],
+    minutes: 20,
+    classes: ['RootNavigationUITests', 'TestHostConnectionTests'],
+  },
+  'recording-evidence': {
+    profiles: ['core'],
+    suites: ['ui'],
+    minutes: 20,
+    classes: ['RecordingExportUITests', 'TranscriptEvidenceUITests'],
+  },
   persistence: { profiles: ['core'], suites: ['shared-persistence'], minutes: 20 },
   isolation: { profiles: ['core'], suites: ['isolation'], minutes: 20 },
   backup: { profiles: ['backup'], minutes: 20 },

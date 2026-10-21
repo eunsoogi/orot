@@ -41,6 +41,7 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
   assert.deepEqual(plan.notSelectedCohorts, [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'local-model',
@@ -74,6 +75,7 @@ test('a full plan schedules all 111 observations and OAuth when selected', (t) =
   const cohorts = [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'backup',
@@ -96,14 +98,14 @@ test('a full plan schedules all 111 observations and OAuth when selected', (t) =
   ];
   const { plan, outputs } = run(t, cohorts, true);
 
-  assert.equal(plan.selectedCohorts.length, 21);
+  assert.equal(plan.selectedCohorts.length, 22);
   assert.equal(plan.notSelectedCohorts.length, 0);
   assert.equal(plan.uniqueTestCases, 111);
   assert.equal(plan.scheduledTestObservations, 111);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 4);
-  assert.equal(JSON.parse(outputs.release_cohorts).length, 17);
+  assert.equal(JSON.parse(outputs.release_cohorts).length, 18);
   assert.equal(outputs.has_debug, 'true');
   assert.equal(outputs.has_release, 'true');
   assert.equal(outputs.oauth_required, 'true');

@@ -1,7 +1,7 @@
 // Maintained native tests can span non-obvious cohorts, so explicit inventory ownership takes precedence over filename heuristics.
 export const maintainedNativeTestOwners = new Map([
-  ['apps/mobile/ios/orotuitests/recordingexportuitests.swift', ['core-ui']],
-  ['apps/mobile/ios/orotuitests/transcriptevidenceuitests.swift', ['core-ui']],
+  ['apps/mobile/ios/orotuitests/recordingexportuitests.swift', ['recording-evidence']],
+  ['apps/mobile/ios/orotuitests/transcriptevidenceuitests.swift', ['recording-evidence']],
   ['apps/mobile/ios/orotuitests/pagedhealthrecordsuitests.swift', ['navigation-routes']],
   [
     'apps/mobile/ios/orotuitests/unifiedimportuitests.swift',
@@ -13,3 +13,27 @@ export const maintainedNativeTestOwners = new Map([
     ['core-integration'],
   ],
 ]);
+
+// Shared UI and recording sources retain all of their independently scheduled test dependents.
+export const sharedUiCohorts = [
+  'core-ui',
+  'recording-evidence',
+  'navigation',
+  'recordings',
+  'questions',
+  'calendar',
+  'provider',
+  'health',
+  'microphone',
+  'selection',
+];
+export const recordingCohorts = [
+  'core-integration',
+  'recording-evidence',
+  'persistence',
+  'isolation',
+  'backup',
+  'recordings',
+  'microphone',
+  'speech',
+];

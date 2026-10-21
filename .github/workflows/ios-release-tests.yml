@@ -59,6 +59,28 @@ jobs:
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
         with: { cohort: core-ui }
+  recording_evidence:
+    name: Recording evidence
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recording-evidence') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: recording-evidence
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: core
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: recording-evidence }
   persistence:
     name: Persistence
     if: ${{ contains(fromJSON(inputs.cohorts), 'persistence') }}

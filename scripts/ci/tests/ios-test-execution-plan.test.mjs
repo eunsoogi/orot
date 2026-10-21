@@ -2,10 +2,40 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
+
+test('core UI navigation and recording evidence have separate jobs without splitting original methods', () => {
+  const cohorts = ['core-ui', 'recording-evidence'];
+  const jobs = iosTestExecutionPlan().filter((job) => cohorts.includes(job.cohort));
+  assert.deepEqual(
+    jobs.map((job) => job.cohort),
+    cohorts,
+  );
+  const tasks = jobs.map((job) => {
+    const tasks = iosTestCohortTasks(job.cohort);
+    assert.equal(tasks.length, 1);
+    assert.equal(tasks[0].suite, 'ui');
+    assert.equal(tasks[0].mode, 'plain');
+    assert.equal(job.minutes, 20);
+    return tasks[0];
+  });
+  const actual = tasks.flatMap((task) => task.identifiers);
+  assert.equal(actual.length, 6);
+  assert.equal(new Set(actual).size, 6);
+  assert.deepEqual(actual.slice().sort(), iosTestInventory('core', 'ui').slice().sort());
+  assert.deepEqual(
+    tasks.map((task) => task.identifiers.length),
+    [4, 2],
+  );
+  assert.deepEqual(
+    new Set(tasks[1].identifiers.map((identifier) => identifier.split('/')[1])),
+    new Set(['RecordingExportUITests', 'TranscriptEvidenceUITests']),
+  );
+});
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 21);
+  assert.equal(plan.length, 22);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
   const actual = plan.flatMap((job) =>

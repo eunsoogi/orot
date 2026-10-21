@@ -16,7 +16,7 @@ const workflow = (name) => yaml.load(readFileSync('.github/workflows/' + name, '
 test('each full CI schedules every cohort once after verified products are available', () => {
   const full = workflow('e2e-test.yml');
   const cohorts = cohortJobs(full.jobs);
-  assert.equal(cohorts.length, 21);
+  assert.equal(cohorts.length, 22);
   assert.equal(iosTestExecutionPlan().filter((entry) => entry.cohort === 'speech').length, 1);
   for (const [, job] of cohorts) {
     assert.equal(job.inputs.sample, undefined);
@@ -93,8 +93,8 @@ test('actual Linux plan reports separate producers, independent suites and the c
     });
     assert.equal(result.status, 0, result.stderr);
     const value = JSON.parse(result.stdout);
-    assert.equal(value.macJobs, 26);
-    assert.equal(value.maximumConcurrentMacJobs, 23);
+    assert.equal(value.macJobs, 27);
+    assert.equal(value.maximumConcurrentMacJobs, 24);
     assert.equal(value.uniqueTestCases, 111);
     assert.equal(value.scheduledTestObservations, 111);
     assert.equal(value.focusedSelectionObservations, undefined);

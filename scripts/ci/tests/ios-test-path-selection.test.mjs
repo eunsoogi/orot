@@ -18,6 +18,7 @@ test('recording source selects its full stateful group while a question helper s
   assert.deepEqual(recording.ios_test_cohorts, [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'backup',

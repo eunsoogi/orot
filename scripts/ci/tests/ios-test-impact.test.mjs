@@ -14,6 +14,7 @@ test('recording source changes retain stateful and native recording-export depen
     sorted([
       'core-integration',
       'core-ui',
+      'recording-evidence',
       'persistence',
       'isolation',
       'backup',
@@ -42,6 +43,16 @@ test('visit-question source changes select its provider and question suites only
   );
 });
 
+test('recording evidence retains its native geometry and synthetic entry dependents', () => {
+  for (const path of [
+    'apps/mobile/ios/OrotUITests/ExportDismissalGeometry.swift',
+    'apps/mobile/e2e/transcription/recordingExportProbeDiagnostics.ts',
+  ]) {
+    assert.ok(existsSync(path));
+    assert.ok(iosTestImpactForPath(path).cohorts.includes('recording-evidence'), path);
+  }
+});
+
 test('native test files map to the cohort that owns their original assertions', () => {
   const backup = iosTestImpactForPath('apps/mobile/ios/OrotUITests/BackupPersistenceUITests.swift');
   const health = iosTestImpactForPath('apps/mobile/ios/OrotMobile/HealthKitAuthorization.swift');
@@ -64,8 +75,8 @@ test('native test files map to the cohort that owns their original assertions', 
 
 test('maintained native tests select each cohort that owns their assertions', () => {
   const cases = [
-    ['apps/mobile/ios/OrotUITests/RecordingExportUITests.swift', ['core-ui']],
-    ['apps/mobile/ios/OrotUITests/TranscriptEvidenceUITests.swift', ['core-ui']],
+    ['apps/mobile/ios/OrotUITests/RecordingExportUITests.swift', ['recording-evidence']],
+    ['apps/mobile/ios/OrotUITests/TranscriptEvidenceUITests.swift', ['recording-evidence']],
     ['apps/mobile/ios/OrotUITests/PagedHealthRecordsUITests.swift', ['navigation-routes']],
     [
       'apps/mobile/ios/OrotUITests/UnifiedImportUITests.swift',
@@ -92,16 +103,23 @@ test('maintained native tests select each cohort that owns their assertions', ()
 test('source paths include cohorts owning their maintained native dependent tests', () => {
   const cases = [
     {
+      sourcePath: 'apps/mobile/src/transcription/TranscriptCorrectionEditor.tsx',
+      testPath: 'apps/mobile/ios/OrotUITests/TranscriptEvidenceUITests.swift',
+      cohort: 'recording-evidence',
+      identifier:
+        'OrotUITests/TranscriptEvidenceUITests/testNativeReviewHistoryPlaybackAndDeleteConfirmation',
+    },
+    {
       sourcePath: 'apps/mobile/src/recording/RecordingExportPanel.tsx',
       testPath: 'apps/mobile/ios/OrotUITests/RecordingExportUITests.swift',
-      cohort: 'core-ui',
+      cohort: 'recording-evidence',
       identifier:
         'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
     },
     {
       sourcePath: 'apps/mobile/src/recording/recordingExportService.ts',
       testPath: 'apps/mobile/ios/OrotUITests/RecordingExportUITests.swift',
-      cohort: 'core-ui',
+      cohort: 'recording-evidence',
       identifier:
         'OrotUITests/RecordingExportUITests/testActualAudioShareDismissalCleansTemporaryFilesAndPreservesSource',
     },
@@ -147,7 +165,7 @@ test('domain E2E helpers are focused while shared test drivers keep the full inv
     ]),
   );
   assert.equal(shared.reason, 'shared-test-driver');
-  assert.equal(shared.cohorts.length, 21);
+  assert.equal(shared.cohorts.length, 22);
 });
 
 test('unknown application and shared package changes select all dependent suites', () => {
@@ -155,9 +173,9 @@ test('unknown application and shared package changes select all dependent suites
   const shared = iosTestImpactForPath('packages/model-runtime/src/session.ts');
 
   assert.equal(unknown.reason, 'unknown-application-impact');
-  assert.equal(unknown.cohorts.length, 21);
+  assert.equal(unknown.cohorts.length, 22);
   assert.equal(shared.reason, 'shared-package');
-  assert.equal(shared.cohorts.length, 21);
+  assert.equal(shared.cohorts.length, 22);
 });
 
 test('new or unclassified native and E2E test files fail safe to the full suite', () => {
@@ -168,7 +186,7 @@ test('new or unclassified native and E2E test files fail safe to the full suite'
   ]) {
     const impact = iosTestImpactForPath(path);
 
-    assert.equal(impact.cohorts.length, 21, path);
+    assert.equal(impact.cohorts.length, 22, path);
     assert.ok(impact.reason.startsWith('unknown-'), path);
   }
 });
@@ -177,5 +195,5 @@ test('provider-openai package changes also select the separate OAuth suite', () 
   const impact = iosTestImpactForPath('packages/provider-openai/Sources/OAuth/Session.swift');
 
   assert.equal(impact.oauth, true);
-  assert.equal(impact.cohorts.length, 21);
+  assert.equal(impact.cohorts.length, 22);
 });
