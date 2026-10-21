@@ -2,6 +2,12 @@
 
 final result: blocked
 
+## User-directed transfer of the two remaining provider follow-ups
+
+On October21 the user explicitly removed current Luna symptom-summary acceptance and actual next-visit question quality from this issue. Authenticated creation/readback registered [214](https://github.com/eunsoogi/orot/issues/214) for current Luna completion/save/restore and [215](https://github.com/eunsoogi/orot/issues/215) for source-by-source actual question quality and evidenced repairs. Both retain their original evidence limits, assignee and milestone. Neither follow-up remains an acceptance or merge gate for this issue. The earlier gap statements below describe the previous scope and are superseded by this explicit decision; the transfer does not manufacture successful provider or quality evidence.
+
+All retained product/design requirements are accepted. PR213 remains a draft while current mandatory CI is incomplete. At `c354aa8d`, policy CI run39562921854 failed nine assertions concerning stale inventory counts, newly registered cases/reset expectations and the removed90-second budget. Those actual failures must be resolved before readiness. Existing successful checks and user-confirmed Back behavior will not be repeated for this scope change.
+
 ## Finite acceptance audit and pull request preparation
 
 The same strict reviewer passed clean `9ae2f6c8d3c0340617c21c509ab3a1889e8c42f5` with no unresolved findings in the finite requirement8 and appearance/mockup audit. The actual reductions include title30 to25, body17 to16, source minimum56 to44 and user-message padding16 to14. Native navigation,44/48pt touch targets and the user-retained16pt/600 symptom actions remain. The later maximum-text header, input-clear and caution observations replace the affected old layout evidence. Requirement8 is accepted.
