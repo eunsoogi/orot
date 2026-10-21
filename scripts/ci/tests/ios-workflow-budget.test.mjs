@@ -39,7 +39,13 @@ test('Debug, Release and OAuth consumers wait only for their corresponding separ
     const configuration = entry.configuration.toLowerCase();
     assert.deepEqual(caller.needs, ['plan', configuration + '_products']);
     assert.equal(leaf.needs, undefined);
-    assert.equal(leaf.name, entry.name);
+    const nameParts = entry.name.split(' / ');
+    assert.equal(leaf.name, nameParts.at(-1));
+    if (nameParts.length > 1) {
+      const wrapper = read('ios-release-tests.yml').jobs.questions;
+      assert.equal(wrapper.name, nameParts[0]);
+      assert.equal(wrapper.uses, './.github/workflows/ios-question-tests.yml');
+    }
     assert.equal(inputs.profile, entry.profile);
     assert.equal(leaf['timeout-minutes'], entry.minutes);
     assert.equal(inputs.artifact_name, 'ios-test-' + configuration + '-products');

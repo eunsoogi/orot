@@ -2,6 +2,12 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Preserve policy checks across the nested Questions workflow
+
+Policy run39592708160 at `963fd6ca` failed2 tests with496 passing and1 skipped. The Spotlight policy enumerated the new reusable-workflow caller as if it had native execution steps; the budget policy compared a leaf name against the fully expanded parent/leaf name. The same two files reproduced both failures locally (13 passed/2 failed). Their update inspects all three actual Questions execution leaves for indexing suppression before product download and checks both the leaf name and exact Questions wrapper name/target. Full visible job-name equality remains independently protected. No shipping workflow, inventory, timeout, selection or product change is included in this correction.
+
+The two affected policy files and independent complete job-name contract then passed18 tests. Targeted root ESLint and pinned Prettier checks, diff check and canonical638-path LOC pass. Earlier static and native receipts retain their original revision; this policy-only correction does not claim a new product/provider execution. Remote policy success, the actual Navigation result and each Questions job's under20-minute hosted result remain required.
+
 ## Select the actual native Send action in the no-provider navigation test
 
 Full Navigation log119169597790 from run39583111391 at `5bfdf0bd` proves that the corrected empty-conversation helper sentence passed at10:48:47. The case then populated its synthetic input and tapped `rag-conversation-send` as an `Other` at10:49:10, followed by an unfulfilled StaticText wait from10:49:12 until cancellation. The owned run was cancelled only after every other scheduled feature group, including Recordings, completed successfully. The Navigation case remains interrupted, not passed.
