@@ -14,6 +14,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         launch(app, probe: "medical-appointment-classification")
         tap(app, "medical-appointment-import")
         XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
+        tap(app, "inference-disclosure-expand")
         let preview = node(app, "inference-disclosure-message-1")
         XCTAssertTrue(preview.exists)
         let scroll = node(app, "inference-disclosure-preview")

@@ -2,6 +2,14 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Expand the compact disclosure before inspecting its exact payload
+
+Calendar executor119141161592 in run39573894507 at `ef6129e3` opened the disclosure successfully, then failed `AppointmentConsentUITests.swift:18` because the test expected message1 before expanding the compact review. The same assertion failed in the earlier0232 run; the composer event repair does not resolve this separate stale interaction. The shipping sheet starts calendar requests collapsed and mounts `InferenceDisclosurePreview` only after the expand action. The existing appearance test already follows that interaction.
+
+The first consent test now taps the same expand action before its existing payload assertion. The actual XCTest existence, sentinel health inclusion, calendar identifier exclusion, cancellation/zero provider calls, approval/one failed call, no-save and manual-entry assertions remain unchanged. No production behavior, warning helper, timeout, fixture, test identity or workflow selection changes. The preserved hosted failure is the pre-change proof; fresh native execution is still required for the corrected interaction. Completed product/provider and other individual CI results retain their original head and are not relabeled as a new pass.
+
+Root lint, format, inventory, Swift syntax parsing and canonical623-path LOC checks pass after this one-line test interaction repair (`/tmp/orot-calendar-disclosure-{lint,format,inventory}.log`). Swift parsing does not prove XCTest compilation or UI behavior. No completed product, provider or unit run was repeated for a native-test-only change. The corrected native execution and bounded current-head review remain pending.
+
 ## Repair the native composer event collision that blocked Debug UI execution
 
 Run39566521765 at `0232baf3` passed all four builds, OAuth and Provider execution. Selection, Health and Microphone then repeatedly waited for the same warning toast after tapping `(370.0,811.7)`. The Selection live log retained that unchanged wait for over10 minutes; its AX observation is `/tmp/orot-selection-warning-stall.ax.txt`. The owned run was cancelled rather than allowed to consume further time. Its overall result remains cancelled, with incomplete executors unproved; earlier individual passes are not a complete native gate.
