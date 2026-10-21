@@ -23,6 +23,7 @@ import { registerCapabilityTestEntry } from './capabilityTestEntry';
 import { registerTestApplicationRenderer } from './testApplicationRenderer';
 import { registerNavigationTestObserver } from '../src/navigation/navigationTestObservation';
 import { AppearanceTestObservation } from './AppearanceTestObservation';
+import { compactNavigationObservation } from './compactNavigationObservation';
 
 const settingsManager = NativeModules.SettingsManager as
   | {
@@ -104,6 +105,7 @@ function TestObservationWrapper({ children }: PropsWithChildren) {
 function GeometryTestWrapper({ children }: PropsWithChildren) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const navigationMarker = useRef<ComponentRef<typeof Text>>(null);
+  const gestureMarker = useRef<ComponentRef<typeof Text>>(null);
   useEffect(() => {
     if (!lifecycleObservation) return;
     let active = true;
@@ -111,10 +113,14 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
     const timer = setInterval(() => {
       NativeModules.OrotTestControl.navigationSnapshot().then(
         (value: unknown) => {
-          if (active)
+          if (active) {
             navigationMarker.current?.setNativeProps({
               accessibilityLabel: JSON.stringify(value),
             });
+            gestureMarker.current?.setNativeProps({
+              accessibilityLabel: compactNavigationObservation(value),
+            });
+          }
         },
       );
     }, 200);
@@ -134,6 +140,15 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
             accessibilityLabel="{}"
             style={styles.geometryMarkerText}
             testID="navigation-test-observation"
+          >
+            {t('probe.layout.layoutObservation')}
+          </Text>
+          <Text
+            ref={gestureMarker}
+            accessible
+            accessibilityLabel="{}"
+            style={styles.geometryMarkerText}
+            testID="navigation-gesture-observation"
           >
             {t('probe.layout.layoutObservation')}
           </Text>
