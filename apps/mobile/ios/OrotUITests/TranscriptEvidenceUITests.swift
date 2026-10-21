@@ -83,28 +83,10 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
     @MainActor
     private func reveal(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> XCUIElement {
         let target = element(app, id)
-        let scroll = element(app, "recording-controls-scroll")
-        for _ in 0 ..< 12 {
-            if unobscured(app, target) {
-                return target
-            }
-            // Stay inside the production screen's bounded scroll viewport, above the keyboard.
-            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.15 : 0.35))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.35 : 0.15))
-            start.press(forDuration: 0.05, thenDragTo: end)
-        }
-        XCTAssertTrue(unobscured(app, target), app.debugDescription)
+        // Use the measured scroll/keyboard viewport and app-anchored gestures shared by native form tests.
+        // Visibility, hit testing and the final native tap remain required after scrolling.
+        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: upward)
         return target
-    }
-
-    @MainActor
-    private func unobscured(_ app: XCUIApplication, _ target: XCUIElement) -> Bool {
-        guard target.exists, target.isHittable else { return false }
-        let frame = target.frame
-        let keyboard = app.keyboards.firstMatch
-        let bottom = keyboard.exists ? min(app.frame.maxY, keyboard.frame.minY) : app.frame.maxY
-        // AX reported the covered save button hittable while the failure video showed it below the keyboard.
-        return !frame.isEmpty && frame.minY >= app.frame.minY && frame.maxY <= bottom
     }
 
     @MainActor

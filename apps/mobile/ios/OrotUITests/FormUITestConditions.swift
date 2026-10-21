@@ -55,8 +55,7 @@ enum FormUITestConditions {
         reveal(input, in: app, scrollID: scrollID)
         let current = input.value as? String ?? ""
         input.tap()
-        // Send keys to the focused editor without resolving it again during selection changes.
-        // UIKit's Select All shortcut can leave a single-line editor's insertion point unchanged.
+        // Edit the real native input without relying on a Select All selection surviving AX queries.
         // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
         defer {
             if !text.isEmpty {
@@ -67,18 +66,11 @@ enum FormUITestConditions {
             UIPasteboard.general.string = text
         }
         if !current.isEmpty, current != input.placeholderValue {
-            // Erase both sides of the insertion point, including when a tap places it mid-text.
-            // UTF-16 length is a safe upper bound on native deletion steps for composed characters.
-            let count = current.utf16.count
-            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count))
-            let remaining = input.value as? String ?? ""
-            if remaining != input.placeholderValue {
-                // typeText treats Forward Delete's private-use character as text on iOS.
-                // Synthesize physical keys only for text still to the right of the caret.
-                for _ in 0 ..< remaining.utf16.count {
-                    app.typeKey(XCUIKeyboardKey.forwardDelete.rawValue, modifierFlags: [])
-                }
-            }
+            // A tap can put the caret before the text. iOS accepts Forward Delete without
+            // deleting it, so move to the document end using UIKit's native keyboard command.
+            // Then backward deletion has a finite UTF-16 upper bound, including composed text.
+            input.typeKey(XCUIKeyboardKey.downArrow.rawValue, modifierFlags: .command)
+            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count))
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
@@ -86,8 +78,7 @@ enum FormUITestConditions {
             // value is distinguishable from a paste command that did not reach the intended editor.
             XCTAssertEqual(UIPasteboard.general.string, text, "The owned fixture clipboard must survive native deletion")
             // Resolve the intended editor for paste rather than sending it to the whole application.
-            // This does not assume XCTest will restore keyboard focus; exact readback remains required.
-            // Exact readback below still rejects insertion, missed focus or incomplete replacement.
+            // This does not assume XCTest will restore focus; exact readback rejects missed or incomplete edits.
             input.typeKey("v", modifierFlags: .command)
         }
         exactValue(input, equals: text)
