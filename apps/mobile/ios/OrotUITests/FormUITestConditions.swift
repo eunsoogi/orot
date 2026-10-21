@@ -55,31 +55,20 @@ enum FormUITestConditions {
         reveal(input, in: app, scrollID: scrollID)
         let current = input.value as? String ?? ""
         input.tap()
-        // Edit the real native input without relying on a Select All selection surviving AX queries.
-        // Do not read another app's clipboard: the owned fixture Simulator clears this value after the action.
-        defer {
-            if !text.isEmpty {
-                UIPasteboard.general.string = nil
-            }
-        }
-        if !text.isEmpty {
-            UIPasteboard.general.string = text
-        }
         if !current.isEmpty, current != input.placeholderValue {
-            // A tap can put the caret before the text. iOS accepts Forward Delete without
-            // deleting it, so move to the document end using UIKit's native keyboard command.
-            // Then backward deletion has a finite UTF-16 upper bound, including composed text.
+            // A tap can place the caret within the text. The first backward sequence removes
+            // its left side before a physical document-end command; the second removes the rest.
+            // Both sequences have the original text's finite UTF-16 bound, including composed text.
+            let deletion = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count)
+            input.typeText(deletion)
             input.typeKey(XCUIKeyboardKey.downArrow.rawValue, modifierFlags: .command)
-            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count))
+            input.typeText(deletion)
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
-            // Observe our own fixture clipboard without rewriting it after deletion, so a lost
-            // value is distinguishable from a paste command that did not reach the intended editor.
-            XCTAssertEqual(UIPasteboard.general.string, text, "The owned fixture clipboard must survive native deletion")
-            // Resolve the intended editor for paste rather than sending it to the whole application.
-            // This does not assume XCTest will restore focus; exact readback rejects missed or incomplete edits.
-            input.typeKey("v", modifierFlags: .command)
+            // Use native text entry: physical paste commands have missed or duplicated insertion
+            // during field changes. Exact readback still rejects incomplete replacement.
+            input.typeText(text)
         }
         exactValue(input, equals: text)
     }
