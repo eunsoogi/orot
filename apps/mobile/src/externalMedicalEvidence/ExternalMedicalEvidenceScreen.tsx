@@ -122,6 +122,7 @@ export function ExternalMedicalEvidenceScreen({
     <>
       <ScrollView
         contentContainerStyle={[styles.container, navigationInset]}
+        keyboardShouldPersistTaps="handled"
         testID="external-medical-evidence-screen"
       >
         {navigationRouteKey ? null : (

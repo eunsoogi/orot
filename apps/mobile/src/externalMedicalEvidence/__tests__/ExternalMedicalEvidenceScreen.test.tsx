@@ -33,6 +33,13 @@ test('declining the shared query permission does not call the literature service
       onOpenArticle={jest.fn()}
     />,
   );
+  // The native first-tap regression exercises keyboard delivery; this protects
+  // the ScrollView configuration that lets the focused input's Search tap through.
+  expect(
+    screen.getByTestId('external-medical-evidence-screen').props
+      .keyboardShouldPersistTaps,
+  ).toBe('handled');
+  await fireEvent(screen.getByTestId('external-evidence-query'), 'focus');
   await fireEvent.changeText(
     screen.getByTestId('external-evidence-query'),
     'synthetic query',

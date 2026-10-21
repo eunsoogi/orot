@@ -2,6 +2,14 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Deliver the first literature Search tap while the query is focused
+
+Questions executor119141161668 in run39573894507 at `ef6129e3` failed the existing native first-tap assertion in `SummaryAndLiteratureUITests.swift:86`. After typing a synthetic query and tapping Search once, the consent sheet was absent and the keyboard had closed; the recorded AX tree still showed the literature screen. The test's real first-tap assertion is retained. Pinned React Native's ScrollView responder captures a non-input tap to dismiss the keyboard when `keyboardShouldPersistTaps` is absent/default `never`; this screen had no override.
+
+The literature ScrollView now uses `keyboardShouldPersistTaps="handled"`, so its Search button can receive the first focused-input tap. Search consent, source service, request cancellation, error recovery and article navigation are unchanged. The existing unit test now protects that configuration and focuses the input before verifying that declining consent never calls the service. Its pre-fix run failed1 test with4 passing (`/tmp/orot-literature-keyboard-red.log`); unit delivery does not emulate UIKit keyboard routing. The retained native case remains the required actual-surface proof on the next hosted execution.
+
+The affected screen and localization-routing suites passed10 tests (`/tmp/orot-literature-keyboard-green.log`,0.878s). Mobile types, root lint/format/inventory and canonical623-path LOC passed (`/tmp/orot-literature-keyboard-{types,lint,format,inventory,loc}.log`). Codegraph found the screen's four direct fixture/integration/test callers; TypeScript LSP status reports an available server, not a diagnostic run. Production changes are limited to the one ScrollView prop; fixtures, native assertions, providers, dependencies and workflows remain unchanged. Current-head strict review and hosted native proof are still required.
+
 ## Expand the compact disclosure before inspecting its exact payload
 
 Calendar executor119141161592 in run39573894507 at `ef6129e3` opened the disclosure successfully, then failed `AppointmentConsentUITests.swift:18` because the test expected message1 before expanding the compact review. The same assertion failed in the earlier0232 run; the composer event repair does not resolve this separate stale interaction. The shipping sheet starts calendar requests collapsed and mounts `InferenceDisclosurePreview` only after the expand action. The existing appearance test already follows that interaction.
