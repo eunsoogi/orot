@@ -2,6 +2,12 @@
 
 final result: pending mandatory CI and parent acceptance
 
+## Select the actual native Send action in the no-provider navigation test
+
+Full Navigation log119169597790 from run39583111391 at `5bfdf0bd` proves that the corrected empty-conversation helper sentence passed at10:48:47. The case then populated its synthetic input and tapped `rag-conversation-send` as an `Other` at10:49:10, followed by an unfulfilled StaticText wait from10:49:12 until cancellation. The owned run was cancelled only after every other scheduled feature group, including Recordings, completed successfully. The Navigation case remains interrupted, not passed.
+
+The broad identifier query selected the native material host, which shares the action identifier and spans the input region. `ComposerGlassActionView.hitTest` deliberately passes through material touches; only its trailing44pt UIButton invokes `onComposerPress`. The other maintained conversation tests already query `app.buttons` for this action. This test now does the same, retains actual existence and message/hittability checks, and explicitly checks that Send is enabled and hittable before tapping. Shipping events/layout, fixture data, no-provider assertions, cancellation rules, waits and timeouts are unchanged. The exact native case must pass on the next hosted execution; no prior partial result is promoted.
+
 ## Partition Questions without separating stateful test journeys
 
 The user additionally requested actual Questions jobs below20 minutes and repair of the Navigation delay, while keeping #201/#210 paused. At `5bfdf0bd`, hosted job119169597723 in run39583111391 passed all8 original cases in29m57s overall; XCTest reported1290.441s for the cases. Its keyboard/conversation class took524.338s, review227.233s, consent73.653s and summary/literature465.246s. These are elapsed hosted observations, including7m45s before the main XCTest suite. CPU, peak RSS, disk, fixture bytes and child-process cost were not measured. No runtime saving is claimed before fresh hosted measurements.

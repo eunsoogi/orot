@@ -47,13 +47,16 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(conversation, in: app, scrollID: "ai-features-screen")
         conversation.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
-        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-send")))
+        // The material host shares the identifier; only the native UIButton dispatches Send.
+        let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
+        XCTAssertTrue(UITestConditions.exists(send))
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
         FormUITestConditions.replace(input, with: "orot-no-provider-check", in: app, scrollID: "rag-conversation-screen")
         input.typeText("\n")
-        let send = node(app, "rag-conversation-send")
         FormUITestConditions.reveal(send, in: app, scrollID: "rag-conversation-screen")
+        XCTAssertTrue(send.isEnabled)
+        XCTAssertTrue(send.isHittable)
         send.tap()
         message(app, "답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
