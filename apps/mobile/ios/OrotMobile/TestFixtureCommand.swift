@@ -48,7 +48,10 @@
             do {
                 receipt["before"] = try TestFixtureState.snapshot(token)
                 switch action {
-                case "reset": try TestFixtureState.reset(token)
+                case "reset":
+                    // Preserve bounded synthetic input evidence before clearing this owned fixture.
+                    receipt["inputObservation"] = TestTextInputObservation.consume()
+                    try TestFixtureState.reset(token)
                 case "seed": try TestFixtureState.seedPollution(token)
                 case "inspect": break
                 default: throw NSError(domain: "OrotFixtureCommand", code: 1)
