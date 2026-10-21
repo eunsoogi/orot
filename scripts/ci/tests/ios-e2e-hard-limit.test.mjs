@@ -39,7 +39,7 @@ test('the hosted execution plan never advertises a test allowance above 20 minut
 });
 
 for (const [suite, count] of [
-  ['navigation', 3],
+  ['navigation', 4],
   ['calendar', 2],
 ]) {
   test(`${suite} partitions intact XCTest methods without omitting or repeating observations`, () => {
@@ -66,4 +66,19 @@ test('selected fixture groups use the same independent leaves instead of one agg
   assert.equal(jobs.fixture_execution.with.cohorts, '${{ needs.products.outputs.cohorts }}');
   assert.equal(jobs.fixture_execution.with.artifact_name, 'ios-focused-products');
   assert.equal(jobs.execution.if, "${{ needs.products.outputs.cohorts == '[]' }}");
+});
+
+// Keep the long large-text journey intact, with its own setup and cleanup allowance.
+test('large-text navigation has an independent hard-limited job', () => {
+  const ids = iosTestCohortTasks('navigation-accessibility').flatMap((task) => task.identifiers);
+  assert.deepEqual(ids, [
+    'OrotUITests/RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable',
+  ]);
+  const job = workflow('.github/workflows/ios-navigation-tests.yml').jobs.accessibility;
+  assert.equal(job['timeout-minutes'], 20);
+  assert.equal(
+    job.steps.find((step) => step.uses === './.github/actions/ios-test-cohort-executor').with
+      .cohort,
+    'navigation-accessibility',
+  );
 });

@@ -13,6 +13,7 @@ test('full cohort plans and focused selections agree on UI preparation for every
     'backup',
     'navigation-features',
     'navigation-routes',
+    'navigation-accessibility',
     'navigation-imports',
     'recordings',
     'questions-review',

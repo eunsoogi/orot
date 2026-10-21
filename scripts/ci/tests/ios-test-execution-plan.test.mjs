@@ -5,7 +5,7 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 20);
+  assert.equal(plan.length, 21);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
   const actual = plan.flatMap((job) =>

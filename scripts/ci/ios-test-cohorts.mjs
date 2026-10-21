@@ -46,8 +46,14 @@ const cohorts = {
       'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
-      'RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable',
     ],
+  },
+  // Large-text launch and cleanup are independent of route recovery and need their own VM budget.
+  'navigation-accessibility': {
+    profiles: ['fixtures'],
+    suites: ['navigation'],
+    minutes: 20,
+    cases: ['RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable'],
   },
   'navigation-imports': {
     profiles: ['fixtures'],

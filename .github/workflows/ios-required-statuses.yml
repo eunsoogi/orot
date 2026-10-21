@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - check: UI
-            cohorts: '["core-integration","core-ui","navigation-features","navigation-routes","navigation-imports","recordings","questions-review","questions-conversation","questions-summary","calendar-consent","calendar-appointments","provider","health","microphone","selection"]'
+            cohorts: '["core-integration","core-ui","navigation-features","navigation-routes","navigation-accessibility","navigation-imports","recordings","questions-review","questions-conversation","questions-summary","calendar-consent","calendar-appointments","provider","health","microphone","selection"]'
           - check: Storage
             cohorts: '["persistence","isolation","backup","local-model","recordings"]'
           - check: Provider

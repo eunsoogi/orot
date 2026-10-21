@@ -9,11 +9,11 @@ import {
 // A group remains an exact diagnostic union while native work uses the full plan's bounded leaves.
 test('focused aggregate groups retain their exact original methods across independent jobs', () => {
   for (const [group, count] of [
-    ['navigation', 3],
+    ['navigation', 4],
     ['calendar', 2],
     ['questions', 3],
     ['recordings', 1],
-    ['all', 9],
+    ['all', 10],
   ]) {
     const selection = selectFocusedIosTests(
       'ios/fixtures',

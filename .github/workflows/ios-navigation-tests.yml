@@ -58,6 +58,28 @@ jobs:
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
         with: { cohort: navigation-routes }
+  accessibility:
+    name: Accessibility
+    if: ${{ contains(fromJSON(inputs.cohorts), 'navigation-accessibility') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: navigation-accessibility
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: fixtures
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: navigation-accessibility }
   imports:
     name: Imports
     if: ${{ contains(fromJSON(inputs.cohorts), 'navigation-imports') }}

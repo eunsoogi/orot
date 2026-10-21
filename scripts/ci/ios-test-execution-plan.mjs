@@ -11,6 +11,7 @@ const names = [
   ['local-model', 'Local model'],
   ['navigation-features', 'Navigation / Features'],
   ['navigation-routes', 'Navigation / Routes'],
+  ['navigation-accessibility', 'Navigation / Accessibility'],
   ['navigation-imports', 'Navigation / Imports'],
   ['recordings', 'Recordings'],
   ['questions-review', 'Questions / Review'],
