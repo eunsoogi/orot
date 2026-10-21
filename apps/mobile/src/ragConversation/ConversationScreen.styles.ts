@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     gap: 20,
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 0,
   },
   empty: {
     color: appColors.secondary,
@@ -110,6 +110,15 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 11,
     paddingBottom: 11,
+  },
+  placeholderMeasurement: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    opacity: 0,
+    minHeight: 0,
+    maxHeight: undefined,
   },
   send: {
     borderRadius: 26,

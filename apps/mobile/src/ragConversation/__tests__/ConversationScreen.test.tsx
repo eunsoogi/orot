@@ -42,12 +42,14 @@ test('keeps short input compact and scrolls long drafts within a bounded height'
     maxHeight: 96,
   });
   expect(input.props.scrollEnabled).toBe(false);
+  await fireEvent.changeText(input, '합성 첫째 줄\n합성 둘째 줄\n합성 셋째 줄');
   await fireEvent(input, 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 300 } },
   });
   expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
     true,
   );
+  await fireEvent.changeText(input, '짧은 합성 질문');
   await fireEvent(input, 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 32 } },
   });

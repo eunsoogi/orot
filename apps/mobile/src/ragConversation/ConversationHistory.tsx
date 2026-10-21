@@ -51,7 +51,7 @@ export function ConversationHistory({
       testID="rag-conversation-history"
     >
       {header}
-      <View style={[styles.container, { paddingBottom: 0 }]}>
+      <View style={styles.container}>
         {!messages.length && (
           <View style={styles.empty}>
             <Text style={styles.disclaimer}>

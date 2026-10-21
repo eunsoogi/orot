@@ -39,6 +39,7 @@ export function ConversationComposer({
     minimumHeight,
     Math.min(Math.ceil(96 * textScale), Math.floor(height / 3)),
   );
+  const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
   const [contentHeight, setContentHeight] = useState(minimumHeight);
   const boundedHeight = Math.max(
     minimumHeight,
@@ -47,6 +48,7 @@ export function ConversationComposer({
   useEffect(() => {
     if (!value) setContentHeight(minimumHeight);
   }, [value, minimumHeight]);
+  useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
   return (
     <View
       style={[styles.composerArea, navigationInset]}
@@ -64,22 +66,43 @@ export function ConversationComposer({
           style={styles.composerField}
           testID="rag-conversation-composer-field"
         >
+          <Text
+            pointerEvents="none"
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.input, styles.placeholderMeasurement]}
+            onLayout={event =>
+              setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
+            }
+            testID="rag-conversation-placeholder-measurement"
+          >
+            {copy.placeholder}
+          </Text>
           <TextInput
             accessibilityLabel={copy.placeholder}
             // Keep the keyboard available so users can draft while a response runs.
             editable
             maxLength={1000}
             multiline
-            scrollEnabled={boundedHeight >= maximumHeight}
+            scrollEnabled={
+              value
+                ? boundedHeight >= maximumHeight
+                : placeholderHeight > maximumHeight
+            }
             onContentSizeChange={event => {
               // Native size includes padding. Keep typed content intrinsic: a fixed nonempty
               // height prevents Fabric from relaying multiline layout changes on iOS.
-              setContentHeight(
-                Math.max(
-                  minimumHeight,
-                  Math.min(maximumHeight, event.nativeEvent.contentSize.height),
-                ),
-              );
+              if (value)
+                setContentHeight(
+                  Math.max(
+                    minimumHeight,
+                    Math.min(
+                      maximumHeight,
+                      event.nativeEvent.contentSize.height,
+                    ),
+                  ),
+                );
             }}
             onChangeText={value => {
               onChangeText(value);
@@ -87,12 +110,18 @@ export function ConversationComposer({
             placeholder={copy.placeholder}
             placeholderTextColor={appColors.secondary}
             // A cleared multiline native editor can retain its previous intrinsic height.
-            // Empty placeholder lines also use native measurements at larger text sizes;
-            // typed content stays intrinsic so Fabric can relay multiline changes.
+            // UITextView can retain the previous frame in an empty content-size event.
+            // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
+            // shrinks independently. Typed content remains intrinsic for Fabric layout.
             style={[
               styles.input,
               { minHeight: minimumHeight, maxHeight: maximumHeight },
-              !value && { height: boundedHeight },
+              !value && {
+                height: Math.max(
+                  minimumHeight,
+                  Math.min(maximumHeight, placeholderHeight),
+                ),
+              },
             ]}
             testID="rag-conversation-input"
             value={value}
