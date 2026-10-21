@@ -2,6 +2,14 @@
 
 final result: blocked
 
+## Compact citation requirement acceptance
+
+At `b9074e46`, direct comparison reuses the already completed Light/Dark conversation captures in `simulator-oct20-conversation-citation/` and the attached `conversation-both-reference.png`, whose conversation pane retains selected option3. No test, UI action or model request is repeated. The earlier actual one-tap citation navigation, keyboard-present repair and return through native Back retain their original invocation in Conversation states and composer follow-up. The selected evidence-detail reference and normal-card comparison are recorded separately above.
+
+Current `ConversationSources` keeps a horizontal non-wrapping row, single-line source labels, two initially visible references and an expandable remaining-count action. Current comparison from `c7e2db50` changes only the optional public-web source branch; local citation layout, first-tap handling and source callback remain. The new public branch likewise emits single-line labeled links into the same row; its actual source opening was verified in Public web conversation replay and permission-stop feedback. The completed source screenshots show a compact citation above the composer in both appearances; longer source content is not copied into the answer card. Actual labels, safe source URLs and extra citations remain available rather than substituting illustrative mock content.
+
+This accepts the original finite compact-citation/detail/mockup requirement. It preserves authentic functional checks, native navigation and the user's later Glass-composer refinement. It does not claim all screen states, next-visit quality or overall issue completion.
+
 ## Reconcile grounded conversation, prompt language and model-selected period retrieval
 
 At clean source `4955583c`, current readback is compared with the recorded executions below; no suite, provider request or completed UI test is repeated. This accepts three finite requirements rather than all-provider reliability or whole-issue completion.
