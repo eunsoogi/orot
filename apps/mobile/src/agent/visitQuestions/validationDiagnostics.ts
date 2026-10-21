@@ -1,4 +1,6 @@
 import { providerDiagnostic } from '../../providers/diagnostics';
+import { reportVisitQuestionCoverage } from './coverageDiagnostics';
+import type { VisitQuestionEvidenceBatch } from './taskContract';
 
 const knownReasons = {
   'A visit requires three to five question candidates.': 'task_question_count',
@@ -16,10 +18,14 @@ const knownReasons = {
 } as const;
 
 /** Only local fixed reasons become codes; rejected output and unknown text never leave this function. */
-export function reportVisitQuestionValidation(result: {
-  status: string;
-  reason?: string;
-}) {
+export function reportVisitQuestionValidation(
+  result: {
+    status: string;
+    reason?: string;
+  },
+  evidence?: VisitQuestionEvidenceBatch,
+) {
+  if (evidence) reportVisitQuestionCoverage(evidence);
   if (result.status !== 'invalid') return;
   const code =
     result.reason && Object.hasOwn(knownReasons, result.reason)

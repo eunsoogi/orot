@@ -160,7 +160,7 @@ export function createVisitQuestionTaskResponder() {
     },
     validateResult(value: JsonValue, input: VisitQuestionResponderInput) {
       const result = validateVisitQuestionTaskResult(value, input);
-      reportVisitQuestionValidation(result);
+      reportVisitQuestionValidation(result, input.evidence);
       return result;
     },
   };

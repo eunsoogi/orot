@@ -172,6 +172,9 @@ final class OrotProviderDiagnostics: NSObject {
                "context_quantities_started", "context_quantities_completed", "context_medications_started", "context_medications_completed",
                "context_sleep_started", "context_sleep_completed", "context_symptoms_started", "context_symptoms_completed",
                "task_quantity_ratio", "task_quantity_unit", "task_quantity_precision", "task_quantity_value",
+               "task_coverage_gap", "task_coverage_empty", "task_coverage_conflict", "task_coverage_truncated",
+               "task_coverage_memory", "task_coverage_sleep", "task_coverage_reader_limit",
+               "task_coverage_payload", "task_coverage_topic_limit",
                "type_error", "reference_error", "range_error"].contains(outcome)
         else { return }
         NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ outcome=%@", feature, stage, outcome)
