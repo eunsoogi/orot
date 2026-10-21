@@ -82,9 +82,13 @@ enum FormUITestConditions {
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
-            // XCTest synthesizes the paste command into the real focused UIKit editor.
+            // Observe our own fixture clipboard without rewriting it after deletion, so a lost
+            // value is distinguishable from a paste command that did not reach the intended editor.
+            XCTAssertEqual(UIPasteboard.general.string, text, "The owned fixture clipboard must survive native deletion")
+            // Resolve the intended editor for paste rather than sending it to the whole application.
+            // This does not assume XCTest will restore keyboard focus; exact readback remains required.
             // Exact readback below still rejects insertion, missed focus or incomplete replacement.
-            app.typeKey("v", modifierFlags: .command)
+            input.typeKey("v", modifierFlags: .command)
         }
         exactValue(input, equals: text)
     }
