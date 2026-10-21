@@ -26,6 +26,7 @@ export type TranscriptError =
   | 'model'
   | 'unsupported'
   | 'timeout'
+  | 'noSpeech'
   | 'missing';
 
 /** Retain a closed recovery category, never provider messages or protected file paths. */
@@ -37,6 +38,7 @@ export function transcriptionCreationError(error: unknown): TranscriptError {
   if (reason === 'UNSUPPORTED_DEVICE' || reason === 'UNSUPPORTED_LANGUAGE')
     return 'unsupported';
   if (reason === 'TRANSCRIPTION_TIMEOUT') return 'timeout';
+  if (reason === 'NO_RECOGNIZED_SPEECH') return 'noSpeech';
   if (reason === 'RECORDING_FILE_MISSING') return 'missing';
   return 'create';
 }
@@ -52,6 +54,8 @@ export function errorLabel(error: TranscriptError): string {
       return t('recording.transcript.unsupportedHelp');
     case 'timeout':
       return t('recording.transcript.timeoutHelp');
+    case 'noSpeech':
+      return t('recording.transcript.noSpeechHelp');
     case 'missing':
       return t('recording.library.playbackMissing');
   }

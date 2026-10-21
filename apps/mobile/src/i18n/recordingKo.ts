@@ -18,6 +18,8 @@ export const recordingKo = {
     '이 기기나 언어에서는 기기 내 음성 인식을 사용할 수 없어요.',
   'recording.transcript.timeoutHelp':
     '음성 인식 시간이 초과됐어요. 저장된 녹음으로 다시 시도해 주세요.',
+  'recording.transcript.noSpeechHelp':
+    '인식된 말이 없어요. 녹음을 들어 소리가 담겼는지 확인한 뒤 다시 시도해 주세요.',
   'recording.consent.description':
     '녹음 전에 상담 참여자 모두에게 녹음 사실을 알리고 동의를 받아 주세요.',
   'recording.consent.acknowledgement': '참여자에게 알리고 동의를 받았어요',
