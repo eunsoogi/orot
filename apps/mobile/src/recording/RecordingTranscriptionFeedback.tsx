@@ -19,7 +19,7 @@ export default function RecordingTranscriptionFeedback({
 }: RecordingTranscriptionFeedbackProps) {
   if (!snapshot || snapshot.status === 'complete') return null;
   const reason = snapshot.failureReason ?? '';
-  // Never expose provider text: it can contain file paths or native diagnostics.
+  // Keep automatic recovery aligned with review; only closed reasons select help, never provider details.
   const help = reason.startsWith('PERMISSION_')
     ? t('recording.transcript.permissionHelp')
     : reason === 'MODEL_UNAVAILABLE'
@@ -28,7 +28,9 @@ export default function RecordingTranscriptionFeedback({
         ? t('recording.transcript.unsupportedHelp')
         : reason === 'TRANSCRIPTION_TIMEOUT'
           ? t('recording.transcript.timeoutHelp')
-          : null;
+          : reason === 'NO_RECOGNIZED_SPEECH'
+            ? t('recording.transcript.noSpeechHelp')
+            : null;
 
   return (
     <View

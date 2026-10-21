@@ -14,6 +14,7 @@ import type { RecordingLibraryService } from '../src/recording/recordingLibraryS
 import { openLocalStorage } from '../src/storage/secureDatabase';
 import { appleOnDeviceSpeechTranscriptionProvider } from '../src/transcription';
 import type { NativeSpeechTranscriptionResponse } from '../src/transcription';
+import type { AppleOnDeviceSpeechProvider } from '../src/transcription/provider';
 import { createTranscriptEvidenceService } from '../src/transcription/transcriptEvidenceService';
 import fixture from './transcription/fixtures/synthetic-korean.json';
 
@@ -45,7 +46,12 @@ export async function cleanupAutomaticProbeSource(sourceId: string) {
 }
 
 /** The fixture adapter replaces microphone capture and source linking only. */
-export async function prepareAutomaticProbe() {
+export async function prepareAutomaticProbe(
+  provider: Pick<
+    AppleOnDeviceSpeechProvider,
+    'transcribeRecording'
+  > = appleOnDeviceSpeechTranscriptionProvider,
+) {
   const sample = fixture.cases[0];
   if (!sample) throw new Error('PROBE_FIXTURE_MISSING');
   const recording = await installSyntheticTranscriptionRecording(
@@ -100,11 +106,10 @@ export async function prepareAutomaticProbe() {
         providerCalls += 1;
         events.push('speech-provider-start');
         // Forward cancellation unchanged; native code still checks registered fixture integrity.
-        const result =
-          await appleOnDeviceSpeechTranscriptionProvider.transcribeRecording({
-            ...request,
-            syntheticFixture: true,
-          });
+        const result = await provider.transcribeRecording({
+          ...request,
+          syntheticFixture: true,
+        });
         if (result.ok) speechResult = result.value;
         events.push(
           result.ok ? 'speech-provider-complete' : 'speech-provider-failed',
