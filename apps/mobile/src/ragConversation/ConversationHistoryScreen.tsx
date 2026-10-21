@@ -7,6 +7,7 @@ import {
   View,
   type NativeSyntheticEvent,
   type ViewProps,
+  type ColorValue,
 } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -25,6 +26,13 @@ interface HistoryRow {
 }
 interface NativeHistoryProps extends ViewProps {
   readonly rows: readonly HistoryRow[];
+  readonly headerTitle: string;
+  readonly headerCount: string;
+  readonly newSessionLabel: string;
+  readonly headerTextColor: ColorValue;
+  readonly headerSecondaryColor: ColorValue;
+  readonly headerTintColor: ColorValue;
+  readonly onCreateSession: () => void;
   readonly onSelectSession: (
     event: NativeSyntheticEvent<{ id: number }>,
   ) => void;
@@ -73,34 +81,45 @@ export function ConversationHistoryScreen({
     store.select(id);
     onBack();
   };
+  const create = () => {
+    store.create();
+    onBack();
+  };
   return (
     <View style={[styles.screen, inset]} testID="conversation-history-screen">
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text accessibilityRole="header" style={styles.heading}>
-            대화 기록
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="새 대화"
-            style={styles.newButton}
-            onPress={() => {
-              store.create();
-              onBack();
-            }}
-            testID="conversation-history-new"
-          >
-            <ComposerGlassBackground />
-            <AppSymbol name="plus" size={20} color={appColors.primaryText} />
-          </Pressable>
+      {/* UIKit scrolls this header with its rows, so large text cannot consume a fixed viewport. */}
+      {!NativeHistory ? (
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <Text accessibilityRole="header" style={styles.heading}>
+              대화 기록
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="새 대화"
+              style={styles.newButton}
+              onPress={create}
+              testID="conversation-history-new"
+            >
+              <ComposerGlassBackground />
+              <AppSymbol name="plus" size={20} color={appColors.primaryText} />
+            </Pressable>
+          </View>
+          <Text style={styles.count}>{rows.length}개의 대화</Text>
         </View>
-        <Text style={styles.count}>{rows.length}개의 대화</Text>
-      </View>
+      ) : null}
       {NativeHistory ? (
         <NativeHistory
           testID="conversation-history-list"
           style={styles.list}
           rows={rows}
+          headerTitle="대화 기록"
+          headerCount={`${rows.length}개의 대화`}
+          newSessionLabel="새 대화"
+          headerTextColor={appColors.text}
+          headerSecondaryColor={appColors.secondary}
+          headerTintColor={appColors.primaryText}
+          onCreateSession={create}
           onSelectSession={event => select(event.nativeEvent.id)}
           onDeleteSession={event => store.remove(event.nativeEvent.id)}
         />

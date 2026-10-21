@@ -4,6 +4,31 @@ import { ConversationHistoryScreen } from '../ConversationHistoryScreen';
 import * as sessionsContext from '../ConversationSessionsContext';
 import { createConversationSessions } from '../conversationSessions';
 
+test('keeps the large heading and new-session action inside the scrolling native list', async () => {
+  const store = createConversationSessions();
+  const onBack = jest.fn();
+  const sessionHook = jest
+    .spyOn(sessionsContext, 'useConversationSessions')
+    .mockReturnValue(store);
+  try {
+    await render(<ConversationHistoryScreen onBack={onBack} />);
+    const list = screen.getByTestId('conversation-history-list');
+    // A fixed React header can consume the entire list viewport at accessibility sizes.
+    expect(screen.queryByText('대화 기록')).toBeNull();
+    expect(list.props).toMatchObject({
+      headerTitle: '대화 기록',
+      headerCount: '1개의 대화',
+      newSessionLabel: '새 대화',
+    });
+    await fireEvent(list, 'createSession', { nativeEvent: {} });
+    expect(store.getSnapshot().sessions).toHaveLength(2);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  } finally {
+    sessionHook.mockRestore();
+    store.dispose();
+  }
+});
+
 /** Native visual checks cover actual clipping; this protects wrapping and the real undo action. */
 test('lets deletion feedback wrap and restores the removed session', async () => {
   const store = createConversationSessions();

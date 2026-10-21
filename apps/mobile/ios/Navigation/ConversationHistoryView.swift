@@ -9,7 +9,36 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
 
     @objc var onSelectSession: RCTDirectEventBlock?
     @objc var onDeleteSession: RCTDirectEventBlock?
+    @objc var onCreateSession: RCTDirectEventBlock?
+    @objc var headerTitle = "" {
+        didSet { updateHeaderText() }
+    }
+
+    @objc var headerCount = "" {
+        didSet { updateHeaderText() }
+    }
+
+    @objc var newSessionLabel = "" {
+        didSet { updateHeaderText() }
+    }
+
+    @objc var headerTextColor: UIColor = .label {
+        didSet { heading.textColor = headerTextColor }
+    }
+
+    @objc var headerSecondaryColor: UIColor = .secondaryLabel {
+        didSet { count.textColor = headerSecondaryColor }
+    }
+
+    @objc var headerTintColor: UIColor = .systemBlue {
+        didSet { createButton.tintColor = headerTintColor }
+    }
+
     private let table = UITableView(frame: .zero, style: .insetGrouped)
+    private let header = UIStackView()
+    private let heading = UILabel()
+    private let count = UILabel()
+    private let createButton = UIButton(type: .system)
     private var sections = [(title: String, rows: [[String: Any]])]()
 
     override init(frame: CGRect) {
@@ -24,7 +53,22 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         table.estimatedRowHeight = 82
         table.rowHeight = UITableView.automaticDimension
         table.sectionHeaderTopPadding = 0
+        configureHeader()
         addSubview(table)
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: ConversationHistorySurfaceView, _: UITraitCollection) in
+                view.setNeedsLayout()
+            }
+        } else {
+            NotificationCenter.default.addObserver(self, selector: #selector(contentSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
+        }
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    /// The table caches its header height; older supported iOS versions also need font changes to invalidate it.
+    @objc private func contentSizeChanged() {
+        setNeedsLayout()
     }
 
     @available(*, unavailable)
@@ -35,6 +79,59 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     override func layoutSubviews() {
         super.layoutSubviews()
         table.frame = bounds
+        guard bounds.width > 0 else { return }
+        let target = CGSize(width: bounds.width, height: UIView.layoutFittingCompressedSize.height)
+        let height = header.systemLayoutSizeFitting(target, withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height
+        if table.tableHeaderView !== header || header.frame.size != CGSize(width: bounds.width, height: height) {
+            header.frame = CGRect(x: 0, y: 0, width: bounds.width, height: height)
+            table.tableHeaderView = header
+        }
+    }
+
+    /// Keep the original large-title styling inside the scrolling owner; Undo stays in React's visible footer.
+    private func configureHeader() {
+        header.axis = .vertical
+        header.spacing = 8
+        header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 24, bottom: 8, trailing: 24)
+        header.accessibilityIdentifier = "conversation-history-header"
+        let titleRow = UIStackView(arrangedSubviews: [heading, createButton])
+        titleRow.axis = .horizontal
+        titleRow.alignment = .center
+        titleRow.spacing = 12
+        // React text uses body-category scaling even for custom font sizes; do not cap accessibility text.
+        heading.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 34, weight: .bold))
+        heading.adjustsFontForContentSizeCategory = true
+        heading.numberOfLines = 0
+        heading.accessibilityTraits.insert(.header)
+        count.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 14))
+        count.adjustsFontForContentSizeCategory = true
+        count.numberOfLines = 0
+        heading.textColor = headerTextColor
+        count.textColor = headerSecondaryColor
+        var configuration: UIButton.Configuration = if #available(iOS 26.0, *) {
+            .glass()
+        } else {
+            .gray()
+        }
+        configuration.cornerStyle = .capsule
+        configuration.contentInsets = .zero
+        configuration.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
+        createButton.configuration = configuration
+        createButton.tintColor = headerTintColor
+        createButton.accessibilityIdentifier = "conversation-history-new"
+        createButton.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        createButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        createButton.addAction(UIAction { [weak self] _ in self?.onCreateSession?([:]) }, for: .touchUpInside)
+        header.addArrangedSubview(titleRow)
+        header.addArrangedSubview(count)
+    }
+
+    private func updateHeaderText() {
+        heading.text = headerTitle
+        count.text = headerCount
+        createButton.accessibilityLabel = newSessionLabel
+        setNeedsLayout()
     }
 
     private func rebuildSections() {
