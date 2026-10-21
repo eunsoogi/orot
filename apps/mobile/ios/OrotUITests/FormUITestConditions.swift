@@ -66,9 +66,11 @@ enum FormUITestConditions {
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
-            // Use native text entry: physical paste commands have missed or duplicated insertion
-            // during field changes. Exact readback still rejects incomplete replacement.
-            input.typeText(text)
+            // A batched native string lost characters in a controlled input. Complete each
+            // character action and its app-idleness wait before sending the next edit.
+            for character in text {
+                input.typeText(String(character))
+            }
         }
         exactValue(input, equals: text)
     }
