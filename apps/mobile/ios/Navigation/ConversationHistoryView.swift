@@ -31,13 +31,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     }
 
     @objc var headerTintColor: UIColor = .systemBlue {
-        didSet {
-            createButton.tintColor = headerTintColor
-            // Glass configuration owns image foreground; view tint alone does not preserve the app token.
-            var configuration = createButton.configuration
-            configuration?.baseForegroundColor = headerTintColor
-            createButton.configuration = configuration
-        }
+        didSet { createSymbol.tintColor = headerTintColor }
     }
 
     private let table = UITableView(frame: .zero, style: .insetGrouped)
@@ -45,6 +39,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     private let heading = UILabel()
     private let count = UILabel()
     private let createButton = UIButton(type: .system)
+    private let createSymbol = AppSymbolView()
     private var sections = [(title: String, rows: [[String: Any]])]()
 
     override init(frame: CGRect) {
@@ -115,17 +110,27 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         count.numberOfLines = 0
         heading.textColor = headerTextColor
         count.textColor = headerSecondaryColor
-        var configuration: UIButton.Configuration = if #available(iOS 26.0, *) {
-            .glass()
-        } else {
-            .gray()
-        }
-        configuration.cornerStyle = .capsule
-        configuration.contentInsets = .zero
-        configuration.baseForegroundColor = headerTintColor
-        configuration.image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
-        createButton.configuration = configuration
-        createButton.tintColor = headerTintColor
+        // Share the original React action's material/symbol composition, including dynamic foreground ownership.
+        let material = ComposerGlassSurfaceView()
+        material.translatesAutoresizingMaskIntoConstraints = false
+        createButton.addSubview(material)
+        NSLayoutConstraint.activate([
+            material.leadingAnchor.constraint(equalTo: createButton.leadingAnchor),
+            material.trailingAnchor.constraint(equalTo: createButton.trailingAnchor),
+            material.topAnchor.constraint(equalTo: createButton.topAnchor),
+            material.bottomAnchor.constraint(equalTo: createButton.bottomAnchor),
+        ])
+        createSymbol.symbolName = "plus"
+        createSymbol.pointSize = 20
+        createSymbol.tintColor = headerTintColor
+        createSymbol.translatesAutoresizingMaskIntoConstraints = false
+        createButton.addSubview(createSymbol)
+        NSLayoutConstraint.activate([
+            createSymbol.centerXAnchor.constraint(equalTo: createButton.centerXAnchor),
+            createSymbol.centerYAnchor.constraint(equalTo: createButton.centerYAnchor),
+            createSymbol.widthAnchor.constraint(equalToConstant: 20),
+            createSymbol.heightAnchor.constraint(equalToConstant: 20),
+        ])
         createButton.accessibilityIdentifier = "conversation-history-new"
         createButton.widthAnchor.constraint(equalToConstant: 44).isActive = true
         createButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
