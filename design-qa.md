@@ -2,6 +2,14 @@
 
 final result: blocked
 
+## User-created recording and encoded duration mismatch
+
+At source `91eec9c9` (documentation head `28eed80e`), the saved library was initially empty. The user then made a real test recording directly and reported completion. Capture showed a saved result with approximately five seconds of metadata and an automatic-transcription failure. The separate library listed the source, and its review route offered full-audio playback, transcription retry and export. Playback displayed zero whole seconds; explicit transcription retry returned the generic creation failure. These are failures, not playback or speech acceptance.
+
+A read-only inspection copied only that recorder-managed M4A to the private local path `/tmp/orot-recording-sample-private.m4a`, without uploading or changing the source. `afinfo` reports an encoded duration of0.021769 seconds,960 valid frames and12 audio-data bytes, despite the approximately five-second saved metadata. A bounded top-level container inspection confirms a20-byte `mdat` atom. The mismatch explains why whole-second playback appears as zero, but does not identify what truncated capture or independently establish the speech error category. No transcript text, recording identifier, source timestamp or actual audio is published. The original remains on the phone; no deletion or reset was performed.
+
+The production start path requests microphone permission and starts from its callback; the activation-aware helper currently belongs only to the diagnostic capture path. This is an investigated hypothesis, not an established cause of this recording. A pending user question distinguishes a first microphone-permission transition from an already-authorized start. No permission, duration, recorder-lifetime or fallback patch has been applied based only on that hypothesis. Apple documents `stop()` as closing the audio file and separately provides a completion delegate; neither statement proves the cause of the observed mismatch. Next verification must distinguish capture/finalization from playback and local speech without replacing the user's short file with a synthetic success.
+
 ## Consent sheet grabber
 
 The user directly confirmed that pulling down dismisses the external-transfer sheet and requested a visible top handle. This is user-reported touch behavior, separate from the earlier remote drags that did not dismiss it. The disclosure now reserves its existing 26 pt top inset outside scrolling content for a centered 36 by 5 pt rounded grabber. It uses the shared dynamic secondary color in both appearances, ignores pointer events and is hidden from the accessibility tree. The native page-sheet gesture, explicit Cancel action, approval, receipts and dispatch paths are unchanged. Moving the existing inset rather than adding height preserves the selected grouped-card layout.
