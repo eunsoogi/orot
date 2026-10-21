@@ -15,7 +15,7 @@ jobs:
   build:
     name: OAuth
     runs-on: xcode-27
-    timeout-minutes: 60
+    timeout-minutes: 20
     outputs:
       archive_digest: ${{ steps.products.outputs.archive_digest }}
       manifest_digest: ${{ steps.products.outputs.manifest_digest }}

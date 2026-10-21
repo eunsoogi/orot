@@ -47,7 +47,7 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         tap(app, "transcript-edit-0")
         let input = element(app, "transcript-input-0")
         let correction = "사용자가 확인한 전사 수정"
-        // Exercise the actual native selection/paste editor and exact value readback, including wrapped menu commands.
+        // Exercise the actual native selection/paste editor and exact value readback, using UIKit keyboard commands.
         FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")
         tap(app, "transcript-save-0")
         value(app, "transcript-evidence-correction-status", "saved")

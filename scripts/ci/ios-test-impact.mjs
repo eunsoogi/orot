@@ -41,10 +41,9 @@ const provider = [
 ];
 
 function canonical(cohorts) {
-  const selected = new Set(cohorts);
-  return all.filter(
-    (cohort) =>
-      selected.has(cohort) || (selected.has('questions') && cohort.startsWith('questions-')),
+  // Filtering the maintained plan expands a family and deduplicates overlapping selections in plan order.
+  return all.filter((cohort) =>
+    cohorts.some((selected) => cohort === selected || cohort.startsWith(selected + '-')),
   );
 }
 

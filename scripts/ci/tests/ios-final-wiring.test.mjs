@@ -84,7 +84,11 @@ test('full and focused visible job names use one consistent role and target', ()
     assert.equal(job.strategy, undefined);
     for (const leaf of leaves) {
       const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
-      if (leaf.uses === './.github/workflows/ios-question-tests.yml') {
+      if (
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar)-tests\.yml$/.test(
+          leaf.uses ?? '',
+        )
+      ) {
         for (const question of Object.values(workflow(leaf.uses).jobs))
           names.push([job.name, name, question.name].join(' / '));
       } else names.push([job.name, name].join(' / '));

@@ -81,15 +81,10 @@ enum FormUITestConditions {
     }
 
     private static func exactValue(_ input: XCUIElement, equals text: String) {
-        let matches = {
-            let value = input.value as? String ?? ""
-            return value == text || (text.isEmpty && value == input.placeholderValue)
-        }
-        // Avoid the expectation's initial polling interval when the observed value already matches.
-        if matches() {
-            return
-        }
-        let exact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in matches() }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [exact]), .completed, input.debugDescription)
+        // Native key synthesis has completed and waited for the app to idle. A missed edit
+        // cannot finish later without another action; fail with its actual value instead of polling forever.
+        let value = input.value as? String ?? ""
+        let observed = text.isEmpty && value == input.placeholderValue ? "" : value
+        XCTAssertEqual(observed, text, "The completed native edit must replace the entire input value")
     }
 }

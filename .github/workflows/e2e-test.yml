@@ -148,7 +148,7 @@ jobs:
       name: Debug
       profile: provider-data
       artifact_name: ios-test-debug-products
-      timeout_minutes: 60
+      timeout_minutes: 20
   release_products:
     name: Build
     needs: plan
@@ -158,7 +158,7 @@ jobs:
       name: Release
       profile: core
       artifact_name: ios-test-release-products
-      timeout_minutes: 60
+      timeout_minutes: 20
   debug_execution:
     name: Test
     needs: [plan, debug_products]

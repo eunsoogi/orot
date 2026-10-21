@@ -40,7 +40,12 @@ test('independent hosted fixture jobs partition every logical group and retain p
     selected.flatMap(({ identifiers }) => identifiers).sort(),
     iosTestInventory('fixtures').sort(),
   );
-  const workflow = ['ios-release-tests.yml', 'ios-question-tests.yml']
+  const workflow = [
+    'ios-release-tests.yml',
+    'ios-question-tests.yml',
+    'ios-navigation-tests.yml',
+    'ios-calendar-tests.yml',
+  ]
     .map((name) => readFileSync('.github/workflows/' + name, 'utf8'))
     .join('\n');
   for (const { cohort } of jobs) assert.ok(workflow.includes('      cohort: ' + cohort));

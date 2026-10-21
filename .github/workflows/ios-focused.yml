@@ -56,7 +56,7 @@ jobs:
     name: Build / ${{ needs.selection.outputs.configuration }}
     needs: selection
     runs-on: xcode-27
-    timeout-minutes: 60
+    timeout-minutes: 20
     outputs:
       profile: ${{ needs.selection.outputs.profile }}
       mode: ${{ needs.selection.outputs.mode }}
@@ -127,7 +127,7 @@ jobs:
     needs: products
     runs-on: xcode-27
     # Stateful local-model groups retain their original operation and setup allowances.
-    timeout-minutes: ${{ needs.products.outputs.mode == 'local-model' && 65 || 45 }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

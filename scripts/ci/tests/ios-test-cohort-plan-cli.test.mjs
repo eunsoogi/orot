@@ -44,12 +44,15 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
     'persistence',
     'isolation',
     'local-model',
-    'navigation',
+    'navigation-features',
+    'navigation-routes',
+    'navigation-imports',
     'recordings',
     'questions-review',
     'questions-conversation',
     'questions-summary',
-    'calendar',
+    'calendar-consent',
+    'calendar-appointments',
     'provider',
     'health',
     'microphone',
@@ -74,12 +77,15 @@ test('a full plan schedules all 111 observations and OAuth when selected', (t) =
     'isolation',
     'backup',
     'local-model',
-    'navigation',
+    'navigation-features',
+    'navigation-routes',
+    'navigation-imports',
     'recordings',
     'questions-review',
     'questions-conversation',
     'questions-summary',
-    'calendar',
+    'calendar-consent',
+    'calendar-appointments',
     'provider',
     'health',
     'microphone',
@@ -88,14 +94,14 @@ test('a full plan schedules all 111 observations and OAuth when selected', (t) =
   ];
   const { plan, outputs } = run(t, cohorts, true);
 
-  assert.equal(plan.selectedCohorts.length, 17);
+  assert.equal(plan.selectedCohorts.length, 20);
   assert.equal(plan.notSelectedCohorts.length, 0);
   assert.equal(plan.uniqueTestCases, 111);
   assert.equal(plan.scheduledTestObservations, 111);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 4);
-  assert.equal(JSON.parse(outputs.release_cohorts).length, 13);
+  assert.equal(JSON.parse(outputs.release_cohorts).length, 16);
   assert.equal(outputs.has_debug, 'true');
   assert.equal(outputs.has_release, 'true');
   assert.equal(outputs.oauth_required, 'true');

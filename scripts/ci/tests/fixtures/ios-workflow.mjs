@@ -6,6 +6,29 @@ const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 
 export const workflow = (path) => yaml.load(readFileSync(path, 'utf8'));
 
+/** Follow actual job dependencies when measuring which independent leaves can run together. */
+function ancestors(jobs, id) {
+  const needs = jobs[id].needs;
+  const dependencies = typeof needs === 'string' ? [needs] : (needs ?? []);
+  return dependencies.flatMap((dependency) => [dependency, ...ancestors(jobs, dependency)]);
+}
+
+/** Enumerate independent producer families while retaining each nested leaf's scheduling weight. */
+export function maximumConcurrentJobWeight(jobs, ids, weight) {
+  let maximum = 0;
+  for (let bits = 0; bits < 1 << ids.length; bits++) {
+    const active = ids.filter((_, index) => bits & (1 << index));
+    if (
+      active.every((id) => !ancestors(jobs, id).some((dependency) => active.includes(dependency)))
+    )
+      maximum = Math.max(
+        maximum,
+        active.reduce((sum, id) => sum + weight(id), 0),
+      );
+  }
+  return maximum;
+}
+
 /** Follow the two producer-specific calls without hiding their caller or leaf dependency boundaries. */
 export function cohortJobs(jobs) {
   const action = './.github/actions/ios-test-cohort-executor';
@@ -18,7 +41,9 @@ export function cohortJobs(jobs) {
   return Object.entries(jobs).flatMap(([callerId, caller]) => {
     if (!/ios-(debug|release)-tests\.yml$/.test(caller.uses ?? '')) return [];
     const leaves = Object.entries(workflow(caller.uses).jobs).flatMap(([id, leaf]) =>
-      leaf.uses === './.github/workflows/ios-question-tests.yml'
+      /^\.\/\.github\/workflows\/ios-(question|navigation|calendar)-tests\.yml$/.test(
+        leaf.uses ?? '',
+      )
         ? Object.entries(workflow(leaf.uses).jobs)
         : [[id, leaf]],
     );
