@@ -62,13 +62,17 @@ enum FormUITestConditions {
         input.tap()
         guard exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID) else { return }
         if !current.isEmpty, current != input.placeholderValue {
-            // A tap can place the caret within the text. The first backward sequence removes
-            // its left side before a physical document-end command; the second removes the rest.
-            // Both sequences have the original text's finite UTF-16 bound, including composed text.
+            // A tap can place the caret anywhere. Clear both sides without a document-end shortcut:
+            // hosted native observations retained selection zero after that completed command.
+            // Each direction has the original text's finite UTF-16 bound, including composed text.
             let deletion = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count)
             input.typeText(deletion)
-            input.typeKey(XCUIKeyboardKey.downArrow.rawValue, modifierFlags: .command)
-            input.typeText(deletion)
+            // Read the completed edit once so an already-empty field does not pay for redundant native keys.
+            let remaining = input.value as? String ?? current
+            let forwardCount = remaining == input.placeholderValue ? 0 : min(current.utf16.count, remaining.utf16.count)
+            for _ in 0 ..< forwardCount {
+                input.typeKey(XCUIKeyboardKey.forwardDelete.rawValue, modifierFlags: [])
+            }
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
