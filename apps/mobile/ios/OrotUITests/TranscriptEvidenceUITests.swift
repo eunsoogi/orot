@@ -73,7 +73,11 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
 
     @MainActor
     private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        UITestConditions.element(app, id)
+        // Recording rows expose a real button role; avoid scanning every node type for that action.
+        if id.hasPrefix("recording-details-") {
+            return app.buttons.matching(identifier: id).firstMatch
+        }
+        return UITestConditions.element(app, id)
     }
 
     @MainActor

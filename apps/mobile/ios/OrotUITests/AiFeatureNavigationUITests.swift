@@ -12,7 +12,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        defer { app.terminate() }
+        defer { UITestConditions.terminateStandaloneApp(app) }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-empty-recordings", navigationID: "navigation-tab-home")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
@@ -92,7 +92,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
                 catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
             }
-            app.terminate()
+            UITestConditions.terminateStandaloneApp(app)
         }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
         for dark in [false, true] {
@@ -157,7 +157,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
                 catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
             }
-            app.terminate()
+            UITestConditions.terminateStandaloneApp(app)
         }
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {

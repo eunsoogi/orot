@@ -10,7 +10,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     func testMeteringEventsPauseResumeAndExplicitCleanup() async throws {
         let app = XCUIApplication()
-        defer { terminateStandaloneApp(app) }
+        defer { UITestConditions.terminateStandaloneApp(app) }
         start(app, observePermission: true)
         // These are the original measured capture windows, not sleeps used to infer readiness.
         try await Task.sleep(for: .seconds(3))
@@ -50,21 +50,12 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     func testWallClockDeadlineEndsCaptureAndCleansItsArtifact() {
         let app = XCUIApplication()
-        defer { terminateStandaloneApp(app) }
+        defer { UITestConditions.terminateStandaloneApp(app) }
         start(app)
         status(app, "completed")
         let completed = dictionary(report(app, name: "microphone-wall-clock-deadline"), "state")
         XCTAssertEqual(completed["reason"] as? String, "timeout")
         XCTAssertEqual(completed["cleanupComplete"] as? Bool, true)
-    }
-
-    /// Fixture completion already uninstalls the owned app and verifies absence. Avoid a second
-    /// XCTest termination acknowledgement; standalone invocations still own their app cleanup.
-    @MainActor
-    private func terminateStandaloneApp(_ app: XCUIApplication) {
-        if ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] == nil {
-            app.terminate()
-        }
     }
 
     @MainActor

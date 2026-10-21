@@ -2,6 +2,14 @@ import XCTest
 
 @MainActor
 enum UITestConditions {
+    /// A validated fixture session owns host cleanup and verifies the app's removal or reset.
+    /// Avoid duplicate XCTest termination acknowledgements; standalone tests still clean up their app.
+    static func terminateStandaloneApp(_ app: XCUIApplication) {
+        if ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"] == nil {
+            app.terminate()
+        }
+    }
+
     /// Await the condition itself. Poll pacing yields the run loop; it does not impose a completion budget.
     /// Cancellation never reports success. Synchronous Apple AX IPC still cannot be interrupted here.
     static func wait(for conditions: [XCTNSPredicateExpectation], cancelled: () -> Bool = { withUnsafeCurrentTask { $0?.isCancelled ?? false } }) -> XCTWaiter.Result {
