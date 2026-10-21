@@ -2,6 +2,16 @@
 
 final result: blocked
 
+## Full App recording routes and calendar model selection
+
+The same signed test product at source `468fad97` was relaunched as the existing full-App medical-appointment navigation fixture (PID77539). This preserves production App routes, native navigation, recording screens and saved-library service. The fixture supplies a synthetic appointment repository/calendar adapter and selected Apple availability; it does not establish actual provider availability or inference. No code changed for this replay.
+
+Records opened the production capture route. Its saved-library action appears at the top right, while the capture body contains no inline saved list or transcript review. In both settled Light and Dark, acknowledgement changes from a neutral empty circle with the unconfirmed label to a filled check and confirmed label. AX reports `checkbox, unchecked`/`checkbox, checked`, and the microphone action is respectively disabled/enabled. No microphone action was pressed. Acknowledgement was returned to unchecked. The saved action opened its own native route, showing the persisted synthetic source and the correct untranscribed label. Both appearances were captured. Native Back returned to capture without an exit prompt, and Home returned to the root. An edge drag did not change the route; it is not accepted as gesture delivery or gesture success.
+
+Schedule opened the actual classification route, where `medical-appointment-select-provider` opened AI selection. Explicitly choosing the existing Apple option enabled `provider-selection-confirm`; confirming returned to classification with its model control present. The classification and pending-confirmation screens were captured in Light and Dark. The calendar-permission error and disabled classification action remained visible, so no classification request or account connection was made. This proves the requested selector/confirmation UI, not a model response. The existing shared selector implementation remains unchanged.
+
+Captures are `recording-app-{checked,unchecked}-{light,dark}.png`, `recording-library-app-{light,dark}.png`, `calendar-classification-selection-{light,dark}.png` and `calendar-model-confirmation-{light,dark}.png` in the existing design artifact directory. These are implementation observations, not new mockups or a full reference comparison. Original Light/Text Size3 was restored and the settled Home screen was observed. The synthetic source remains available; no recording was deleted. The three bounded requirements now have direct UI evidence: distinguishable accessible acknowledgement, separate saved-library route, and an explicit classification-model selection action. Full appearance/state coverage, real capture/pause behavior and the original ten requirements remain separate.
+
 ## Automatic and manual empty-result runtime verification
 
 The same strict Sentinel passed source head `468fad9733c0a69a6e94ba5dccec8e4bfbaeab92`, resolving `EMPTY-SPEECH-RECOVERY-001` without new findings. The final full mobile execution passed488 suites /1,734 tests in76.457s (`/tmp/orot-empty-speech-final-mobile.log`). The two preceding full failures remain recorded below. Individual static and focused receipts keep their original source and execution provenance; this does not claim whole-issue acceptance.
