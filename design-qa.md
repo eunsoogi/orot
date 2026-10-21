@@ -1,6 +1,12 @@
 # Issue 212 design comparison
 
-final result: blocked
+final result: pending mandatory CI and parent acceptance
+
+## Repair stale policy expectations after registering additional regressions
+
+The actual policy CI failure at `c354aa8d` was reproduced locally by the nine affected policy files:41 tests,32 passed and9 failed (`/tmp/orot-policy-inventory-red.log`). The registered inventory contains111 distinct observations: Release75, Debug27 and Speech9. Stale95/109 totals, Debug25, three missing exact provider identities and two newly registered summary/literature cases using the existing fresh-install default caused eight failures. The ninth still expected the90-second budget that the user explicitly removed. The underlying inventory, reset mode, shipping budgets, workflow execution and product behavior were not changed to make these assertions pass.
+
+The repair retains exact counts and identifier equality, adds the missing streaming/medication-cursor identities, asserts the exact three conservative fresh-install cases and expects the shipping null elapsed cutoff while preserving cancellation assertions. Current development/validation prose now records111 observations consistently. The same nine files passed41 tests without skips (`/tmp/orot-policy-inventory-green.log`,2.323s). Root lint, format and inventory passed; canonical LOC passed623 changed paths at250 or fewer lines (`/tmp/orot-policy-inventory-{lint,format,inventory,loc}.log`). Unchanged types, product/provider/unit and UI checks retain their prior provenance; none was repeated. Current remote CI and the same reviewer's bounded delta review remain separate readiness gates.
 
 ## User-directed transfer of the two remaining provider follow-ups
 

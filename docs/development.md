@@ -111,7 +111,7 @@ Core의 `state-persistence`는 명시적인 fresh-install 단계에서 실제 SQ
 
 iOS 선택 검증은 독립된 `E2E Test - Selected` workflow(`e2e-selected.yml`)의 `focus_profile=ios/<profile>`, `focus_scenario_file=apps/mobile/ios/<target>/<class>.swift`, `focus_scenario_name=<target>/<class>/<method>` 입력을 사용합니다. 후보 브랜치를 `--ref`로 지정하고 `focus_pr_number`를 함께 전달하면 workflow의 실제 SHA와 해당 PR의 저장소·브랜치·HEAD가 일치해야 실행합니다. 부분 이름이나 다른 프로필의 사례는 허용하지 않습니다. `backup`과 `local-model`은 상태를 이어받는 단계가 있으므로 각각 해당 클래스 파일과 `focus_scenario_name=all`을 지정해 전체 단계 그룹을 선택합니다. 선택 검증은 재시도 없이 검증된 제품을 사용하고, UI 사례는 별도의 앱 연결 준비를 거칩니다. 선택 결과는 자체 검사로 보고하며 보호된 전체 검증을 충족하지 않습니다.
 
-전체 release dispatch는 Debug 25개, Release 75개, Speech 9개로 총 109개의 서로 다른 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. Ready PR은 변경 영향으로 선택한 cohort만 실행합니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. Ready PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
+전체 release dispatch는 Debug 27개, Release 75개, Speech 9개로 총 111개의 서로 다른 관측을 각각 한 번씩 실행하며 별도 선택 사례를 뒤에 추가하지 않습니다. Ready PR은 변경 영향으로 선택한 cohort만 실행합니다. 집중 진단은 `run-ios-focused-tests.sh`를 사용하는 별도 workflow로 유지합니다. Ready PR의 merge checkout과 수동 선택의 PR head 확인은 각각 실제 실행 SHA에 묶이며, 집중 진단의 성공을 전체 실행의 성공으로 집계하지 않습니다.
 
 실제 실행·초기화 driver는 Apple 도구를 호출하기 전에 새 `simctl list -j` 응답의 runtime과 기기 정보를 함께 확인합니다. Simulator를 변경하지 않는 cohort 조정기는 소유권 계약만 확인하며 같은 상태 조회를 중복 실행하지 않습니다. fixture의 초기화·삭제 전 검증 결과를 다음 변경까지 캐시하지 않습니다. Simulator 명령은 시작·종료 시점과 소요 시간·종료 상태를 stderr에 남기며, stdout을 사용하는 기존 호출 결과와 분리합니다. UI 위치는 같은 판정이나 제스처 준비 안에서 한 번 읽고, 다음 판정이나 제스처 뒤에는 다시 관측합니다. 이 변경의 실제 시간 절감 여부는 동일한 검증 범위의 실행 자료로 판단합니다.
 
@@ -137,7 +137,7 @@ production 캐시는 복원과 저장을 분리합니다. 캐시에 포함되는
 
 cohort의 한 단계나 독립 fixture 사례가 실패하면 원래 로그와 결과를 보존하고 소유한 자료를 정리한 뒤 후속 실행을 중단합니다. 실행하지 않은 cohort 단계는 `not-run`, fixture는 `notRun` 목록에 기록하며 성공으로 집계하지 않습니다. 한 `xcodebuild` 호출 내부에서 여러 사례가 실행되는 경계는 별도이며, 이 스케줄링 중단만으로 모든 사례가 첫 실패 순간에 중단됐다고 주장하지 않습니다. 실패·누락·skip·취소·오래된 결과가 있으면 전체 검증은 실패합니다. Backup restore와 local-model 재실행의 종속 단계는 전용 순서를 유지합니다. Provider 프로필의 8개 원래 테스트도 필수입니다. Foundation Models 관련 네 사례는 명시적인 mock 응답으로 앱·브리지·workflow를 검증합니다. mock 결과를 실제 Apple 모델 실행으로 표시하거나, 실패한 앱 동작을 skip으로 처리하지 않습니다. Speech와 다른 원래 검증의 실제 실행 요구는 유지합니다.
 
-원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. 전체 release 검증은 Debug 25개, Release 75개, Speech 9개 관측을 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. Ready PR은 변경 영향 분석이 고른 완전한 cohort만 실행하며 선택하지 않은 cohort도 결과에 명시합니다. Linux 집계는 현재 head·run·attempt의 각 선택 cohort 보고서를 확인하고, 전체 release dispatch에서는 15개 cohort와 109개 관측 및 네 빌드·OAuth 실행을 요구합니다. 원시 artifact와 결과 파일도 run·attempt별로 분리하며 다른 실행의 성공을 재사용해 통과시키지 않습니다.
+원래 55개 요구사항과 대체 테스트·판정 기준·초기화·비용·실패 이력은 [iOS 검증 목록](ios-validation.md)에 있습니다. 전체 release 검증은 Debug 27개, Release 75개, Speech 9개 관측을 포함합니다. Speech는 asset 준비 1개, 실제 통합 테스트 6개, 화면 저장 1개와 별도 프로세스의 저장 자료 검증 1개를 한 번씩 실행합니다. Ready PR은 변경 영향 분석이 고른 완전한 cohort만 실행하며 선택하지 않은 cohort도 결과에 명시합니다. Linux 집계는 현재 head·run·attempt의 각 선택 cohort 보고서를 확인하고, 전체 release dispatch에서는 15개 cohort와 111개 관측 및 네 빌드·OAuth 실행을 요구합니다. 원시 artifact와 결과 파일도 run·attempt별로 분리하며 다른 실행의 성공을 재사용해 통과시키지 않습니다.
 
 #198의 수락에는 최종 후보에서 전체 CI 한 번의 성공이 필요합니다. 각 관측은 해당 실행 안에서 한 번 수행하며, 세 번의 성공을 모으기 위한 추가 전체 실행이나 Speech 반복은 하지 않습니다. 후보 head와 실제 checkout, run·attempt, 전체 결과와 첫 실패를 보존합니다. 실패 원인을 수정해 후보가 바뀌면 변경된 후보에 필요한 검증을 수행하며 이전 성공을 새 후보의 결과로 사용하지 않습니다. 실패한 작업만 재실행하거나 focused 결과로 전체 검증을 대신하지 않습니다. 한 번의 성공이 장기적인 안정성을 통계적으로 보장하지는 않습니다.
 
