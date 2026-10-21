@@ -1,7 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { ConversationScreen } from '../ConversationScreen';
+
+const originalDimensions = Dimensions.get('window');
+// The 44pt baseline is the standard text-size contract, not Jest's default 2x font scale.
+beforeEach(() =>
+  Dimensions.set({ window: { ...originalDimensions, fontScale: 1 } }),
+);
+afterEach(() => Dimensions.set({ window: originalDimensions }));
 
 test('uses borderless native Glass surfaces and one action control for Send and Stop', async () => {
   const props = {

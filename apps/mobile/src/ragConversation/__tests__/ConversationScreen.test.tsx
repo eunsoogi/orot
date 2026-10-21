@@ -4,11 +4,18 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { ConversationScreen } from '../ConversationScreen';
 import { getRagConversationCopy } from '../copy';
 import type { RagConversationOutcome } from '../service';
+
+const originalDimensions = Dimensions.get('window');
+// Compact baseline assertions explicitly use the standard Dynamic Type size.
+beforeEach(() =>
+  Dimensions.set({ window: { ...originalDimensions, fontScale: 1 } }),
+);
+afterEach(() => Dimensions.set({ window: originalDimensions }));
 
 const reference = {
   sourceKind: 'personal_record' as const,

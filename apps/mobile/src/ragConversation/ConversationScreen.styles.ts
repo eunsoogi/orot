@@ -111,7 +111,6 @@ export const styles = StyleSheet.create({
     paddingTop: 11,
     paddingBottom: 11,
   },
-  emptyInput: { height: 44 },
   send: {
     borderRadius: 26,
     minWidth: 44,
