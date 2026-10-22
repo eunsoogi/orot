@@ -191,7 +191,11 @@ test('focused consumer verifies exact products before its only boot and retains 
     /continue-on-error|build-ios-tests\.mjs|test-with-building|test-iterations/,
   );
   assert.match(action, /build-ios-tests\.mjs "\$PROFILE"/);
-  assert.doesNotMatch(action, /simctl|ios-test-simulator/);
+  // Registry cleanup is allowed; booting remains reserved for the verified consumer step.
+  assert.deepEqual(action.match(/(?:xcrun\s+)?simctl\b[^\n]*/g) ?? [], [
+    'xcrun simctl delete unavailable',
+  ]);
+  assert.doesNotMatch(action, /ios-test-simulator/);
   assert.match(source, /Tear down the owned destination\n\s+if: always\(\)/);
   assert.match(source, /Preserve integration execution diagnostics\n\s+if: always\(\)/);
 });
