@@ -96,6 +96,7 @@ test('full and focused visible job names use one consistent role and target', ()
   }
   const expected = [
     'Plan / Coverage',
+    'Plan / Select',
     'Validate / Complete',
     ...['Debug', 'Release', 'Production', 'OAuth'].map((name) => 'Build / ' + name),
     ...iosTestExecutionPlan().map((item) => 'Test / ' + item.name),

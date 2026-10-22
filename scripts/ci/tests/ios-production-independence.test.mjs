@@ -86,17 +86,23 @@ test('portable test producers never compile or cache unrelated production or OAu
   assert.equal(producer.inputs.production_build, undefined);
 });
 
-test('production failure, cancellation, skip or a missing result keeps final validation red', () => {
+test('selection or production failure, cancellation, skip or a missing result keeps final validation red', () => {
   const { jobs } = full();
   assert.ok(jobs.completeness.needs.includes('production_validation'));
   const success = Object.fromEntries(
     jobs.completeness.needs.map((id) => [id, { result: 'success' }]),
   );
-  assert.doesNotThrow(() => validateIosTestExecutionResults(success, IOS_TEST_COHORT_NAMES, true));
-  for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
-    const current = structuredClone(success);
-    if (result === undefined) delete current.production_validation;
-    else current.production_validation.result = result;
-    assert.throws(() => validateIosTestExecutionResults(current, IOS_TEST_COHORT_NAMES, true));
-  }
+  assert.doesNotThrow(() =>
+    validateIosTestExecutionResults(success, IOS_TEST_COHORT_NAMES, true, 'full'),
+  );
+  for (const job of ['selection', 'production_validation'])
+    for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+      const current = structuredClone(success);
+      if (result === undefined) delete current[job];
+      else current[job].result = result;
+      assert.throws(
+        () => validateIosTestExecutionResults(current, IOS_TEST_COHORT_NAMES, true, 'full'),
+        new RegExp(job + ' expected success'),
+      );
+    }
 });

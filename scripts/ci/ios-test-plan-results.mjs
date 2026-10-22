@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { IOS_TEST_COHORT_NAMES, iosTestExecutionPlan } from './ios-test-execution-plan.mjs';
 import { verifyIosTestCohortResults } from './ios-test-cohort-results.mjs';
+import { isIosValidationTier, validateFullIosSelection } from './ios-validation-tier.mjs';
 
 // Verify only the exact selected cohort reports, then preserve executed and excluded inventory separately.
 const [directory, ...extra] = process.argv.slice(2);
@@ -21,6 +22,15 @@ if (
 )
   throw new Error('Integration aggregation requires its actual workflow context');
 const plan = iosTestExecutionPlan(selectedCohorts);
+const validationTier = process.env.OROT_IOS_VALIDATION_TIER;
+const oauthValue = process.env.OROT_IOS_OAUTH_TESTS;
+if (!isIosValidationTier(validationTier))
+  throw new Error('Integration aggregation requires a known validation tier');
+if (oauthValue !== 'true' && oauthValue !== 'false')
+  throw new Error('Integration aggregation requires the OAuth selection decision');
+const oauthRequired = oauthValue === 'true';
+// A result artifact repeats the Full boundary so consumers can reject PR-sized evidence.
+if (validationTier === 'full') validateFullIosSelection(selectedCohorts, oauthRequired);
 const notSelectedCohorts = IOS_TEST_COHORT_NAMES.filter(
   (cohort) => !selectedCohorts.includes(cohort),
 );
@@ -56,6 +66,9 @@ writeFileSync(
   join(directory, 'complete.json'),
   JSON.stringify(
     {
+      schemaVersion: 2,
+      validationTier,
+      oauthRequired,
       ...context,
       selectedCohorts,
       notSelectedCohorts,

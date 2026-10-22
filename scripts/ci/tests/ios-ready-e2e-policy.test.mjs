@@ -238,11 +238,11 @@ test('the protected Build check consumes OAuth evidence only when the selected p
 });
 
 test('the selection artifact records the event decision and the result artifact records executed cohorts', () => {
-  const source = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
-  const selector = readFileSync('scripts/ci/select-changed-paths.mjs', 'utf8');
+  const selectionAction = readFileSync('.github/actions/ios-e2e-selection/action.yml', 'utf8');
+  const selector = readFileSync('scripts/ci/ios-e2e-selection-report.mjs', 'utf8');
   const aggregator = readFileSync('scripts/ci/ios-test-plan-results.mjs', 'utf8');
   assert.match(
-    source,
+    selectionAction,
     /ios-e2e-selection-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
   );
   assert.match(selector, /selectedCohorts[\s\S]*notSelectedCohorts[\s\S]*fullValidationDeferred/);

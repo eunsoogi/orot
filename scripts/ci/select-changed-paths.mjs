@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,8 @@ import {
   selectEverything,
 } from './changed-paths-core.mjs';
 import { selectChecksForPaths } from './changed-paths-select.mjs';
-import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
+import { writeSelectionOutputs, writeSelectionReport } from './ios-e2e-selection-report.mjs';
+import { iosValidationTierForEvent } from './ios-validation-tier.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -51,9 +52,17 @@ function gitDiff(args) {
 }
 
 export function resolveChangedPaths(eventName, payload, runDiff = gitDiff) {
-  // Only known title/body edits bypass source checks; unknown payloads run every check.
+  // Full inventory triggers and known metadata edits bypass diffs; unknown comparisons select every check.
   if (eventName === 'workflow_dispatch') {
-    return { complete: true, forceAll: true, paths: [], reason: 'manual-full-verification' };
+    return { complete: true, forceAll: true, paths: [], reason: 'manual-full-inventory-selection' };
+  }
+  if (eventName === 'schedule') {
+    return {
+      complete: true,
+      forceAll: true,
+      paths: [],
+      reason: 'scheduled-full-inventory-selection',
+    };
   }
   try {
     let args;
@@ -108,107 +117,34 @@ export function resolveChangedPaths(eventName, payload, runDiff = gitDiff) {
   }
 }
 
-export function selectChecksForEvent(eventName, payload, runDiff = gitDiff, policies = null) {
+export function selectChecksForEvent(
+  eventName,
+  payload,
+  runDiff = gitDiff,
+  policies = null,
+  ref = process.env.GITHUB_REF ?? '',
+) {
   const comparison = resolveChangedPaths(eventName, payload, runDiff);
-  if (comparison.forceAll || !comparison.complete) return selectEverything(comparison.reason);
-  if (comparison.metadataOnlyEdit) {
-    const selection = emptySelection(comparison.reason);
+  let selection;
+  if (comparison.forceAll || !comparison.complete) selection = selectEverything(comparison.reason);
+  else if (comparison.metadataOnlyEdit) {
+    selection = emptySelection(comparison.reason);
     selection.metadata_only_edit = true;
-    return selection;
+  } else {
+    try {
+      selection = selectChecksForPaths(comparison.paths, policies ?? loadPolicies());
+      if (comparison.reason === 'no-changes') selection.reason = 'no-changes';
+    } catch {
+      selection = selectEverything('selection-unavailable');
+    }
   }
-  try {
-    const selection = selectChecksForPaths(comparison.paths, policies ?? loadPolicies());
-    if (comparison.reason === 'no-changes') selection.reason = 'no-changes';
-    return selection;
-  } catch {
-    return selectEverything('selection-unavailable');
-  }
+  selection.validation_tier = iosValidationTierForEvent(eventName, ref);
+  return selection;
 }
 
 export function resolveFullValidationDeferred(eventName, payload) {
   // Only an explicit draft PR event may defer the required full E2E gate.
   return eventName === 'pull_request' && payload?.pull_request?.draft === true;
-}
-
-function writeOutputs(selection, outputPath, fullValidationDeferred) {
-  if (!outputPath && process.env.GITHUB_ACTIONS === 'true') {
-    throw new Error('GitHub Actions did not provide an output file');
-  }
-  if (!outputPath) return;
-  const lines = [
-    'all=' + selection.all,
-    'reason=' + selection.reason,
-    'full_validation_deferred=' + fullValidationDeferred,
-    'metadata_only_edit=' + selection.metadata_only_edit,
-    'ios_test_cohorts=' + JSON.stringify(selection.ios_test_cohorts),
-    'ios_test_impact_reasons=' + JSON.stringify(selection.ios_test_impact_reasons),
-  ];
-  for (const key of CHECK_KEYS) lines.push(key + '=' + selection[key]);
-  // Write completion last so dependent jobs can distinguish a finished selection from a failed selector.
-  lines.push('selection_complete=true');
-  appendFileSync(outputPath, lines.join('\n') + '\n');
-}
-
-function writeSelectionReport(selection, eventName, payload, fullValidationDeferred) {
-  if (process.env.GITHUB_ACTIONS !== 'true') return;
-  const selectedCohorts = selection.ios_test_cohorts;
-  const notSelectedCohorts = IOS_TEST_COHORT_NAMES.filter(
-    (cohort) => !selectedCohorts.includes(cohort),
-  );
-  const report = {
-    schemaVersion: 1,
-    event: eventName || 'unknown',
-    action: payload?.action ?? null,
-    sourceSha: process.env.GITHUB_SHA ?? null,
-    runId: process.env.GITHUB_RUN_ID ?? null,
-    attempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
-    ref: process.env.GITHUB_REF ?? null,
-    pullRequest: payload?.pull_request
-      ? {
-          number: payload.pull_request.number ?? null,
-          draft: payload.pull_request.draft === true,
-          baseSha: payload.pull_request.base?.sha ?? null,
-          headSha: payload.pull_request.head?.sha ?? null,
-        }
-      : null,
-    selectionComplete: true,
-    reason: selection.reason,
-    changedPaths: selection.paths,
-    impactReasons: selection.ios_test_impact_reasons,
-    selectedCheckFamilies: CHECK_KEYS.filter((key) => selection[key]),
-    selectedCohorts,
-    notSelectedCohorts,
-    oauthSelected: selection.ios_oauth,
-    fullValidationDeferred,
-    metadataOnlyEdit: selection.metadata_only_edit === true,
-  };
-  const path = 'artifacts/ios-e2e-selection.json';
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync(path, JSON.stringify(report, null, 2) + '\n');
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    const disposition = fullValidationDeferred
-      ? 'deferred until the pull request is ready for review'
-      : selection.metadata_only_edit
-        ? 'metadata-only edit; no new E2E run is scheduled for the unchanged source head'
-        : selectedCohorts.length || selection.ios_oauth
-          ? 'scheduled for automatic execution'
-          : 'no iOS E2E tests selected';
-    appendFileSync(
-      process.env.GITHUB_STEP_SUMMARY,
-      [
-        '## iOS E2E selection',
-        '',
-        `Decision: ${disposition}.`,
-        `Reason: ${selection.reason}.`,
-        `Selected cohorts: ${selectedCohorts.join(', ') || 'none'}.`,
-        `Not selected cohorts: ${notSelectedCohorts.join(', ') || 'none'}.`,
-        `OAuth suite: ${selection.ios_oauth ? 'selected' : 'not selected'}.`,
-        '',
-        'The exact selection is saved in the `ios-e2e-selection` artifact.',
-        '',
-      ].join('\n'),
-    );
-  }
 }
 
 function main() {
@@ -225,6 +161,8 @@ function main() {
   process.stdout.write(
     'CI path selection: event=' +
       (eventName || 'unknown') +
+      ' tier=' +
+      selection.validation_tier +
       ' reason=' +
       selection.reason +
       ' changed=' +
@@ -236,7 +174,7 @@ function main() {
       '\n',
   );
   writeSelectionReport(selection, eventName, payload, fullValidationDeferred);
-  writeOutputs(selection, process.env.GITHUB_OUTPUT, fullValidationDeferred);
+  writeSelectionOutputs(selection, process.env.GITHUB_OUTPUT, fullValidationDeferred);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

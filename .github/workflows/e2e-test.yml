@@ -1,10 +1,12 @@
 name: E2E Test
 on:
-  # Ready PRs and main pushes select impacts; main dispatch remains full release validation.
+  # PRs and main pushes select impact; weekly and main-dispatch runs provide Full evidence.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
   push: { branches: [main] }
   workflow_dispatch: {}
+  schedule:
+    - cron: '0 18 * * 0'
 permissions:
   contents: read
   pull-requests: read
@@ -22,6 +24,7 @@ jobs:
     outputs:
       complete: ${{ steps.select.outputs.selection_complete }}
       deferred: ${{ steps.select.outputs.full_validation_deferred }}
+      validation_tier: ${{ steps.select.outputs.validation_tier }}
       ios_test_cohorts: ${{ steps.select.outputs.ios_test_cohorts }}
       ios_oauth: ${{ steps.select.outputs.ios_oauth }}
       metadata_only_edit: ${{ steps.select.outputs.metadata_only_edit }}
@@ -36,14 +39,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with: { node-version-file: .nvmrc }
       - id: select
-        run: node scripts/ci/select-changed-paths.mjs
-      - name: Preserve the event decision and selected inventory
-        if: steps.select.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ios-e2e-selection-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-e2e-selection.json
-          if-no-files-found: error
+        uses: ./.github/actions/ios-e2e-selection
   reuse_ready_evidence:
     name: Reuse / Ready evidence
     needs: selection
@@ -181,6 +177,7 @@ jobs:
     name: Validate
     needs:
       [
+        selection,
         plan,
         production_validation,
         oauth_products,
@@ -196,6 +193,7 @@ jobs:
       execution_results: ${{ toJSON(needs) }}
       selected_cohorts: ${{ needs.plan.outputs.selected_cohorts }}
       oauth_required: ${{ needs.plan.outputs.oauth_required == 'true' }}
+      validation_tier: ${{ needs.selection.outputs.validation_tier }}
   ios_simulator_build:
     name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred / Build' || 'Validate / Build' }}
     needs: [selection, plan, completeness, reuse_ready_evidence]

@@ -81,7 +81,7 @@ test('the finite feature plan permits independent parallel jobs without repeatin
   const weight = (id) => cohorts.filter(([, job]) => job.callerId === id).length || 1;
   assert.equal(
     ids.reduce((sum, id) => sum + weight(id), 0),
-    plan.length + 5,
+    plan.length + 6,
   );
   assert.equal(maximumConcurrentJobWeight(jobs, ids, weight), plan.length + 2);
   assert.deepEqual([...jobs.completeness.needs].sort(), ['plan', ...ids].sort());
@@ -115,10 +115,10 @@ test('test producers publish portable products without booting a Simulator or ru
   assert.doesNotMatch(execution, /ios-test-products-build|build-ios-tests/);
 });
 
-test('the completeness workflow passes selected run evidence to its exact validator', () => {
+test('the completeness workflow passes selection tier and run evidence to its exact validator', () => {
   const { jobs } = full();
   const completion = completionJob(jobs);
-  const gate = completion.steps.find((step) => step.name?.includes('Require selected producers'));
+  const gate = completion.steps.find((step) => step.name?.includes('Require selection'));
   assert.equal(jobs.completeness.if, "${{ always() && needs.plan.result != 'skipped' }}");
   assert.equal(jobs.completeness.with.execution_results, '${{ toJSON(needs) }}');
   assert.equal(
@@ -129,10 +129,15 @@ test('the completeness workflow passes selected run evidence to its exact valida
     jobs.completeness.with.oauth_required,
     "${{ needs.plan.outputs.oauth_required == 'true' }}",
   );
+  assert.equal(
+    jobs.completeness.with.validation_tier,
+    '${{ needs.selection.outputs.validation_tier }}',
+  );
   assert.equal(completion.if, 'always()');
   assert.equal(gate.env.OROT_IOS_EXECUTION_RESULTS, '${{ inputs.execution_results }}');
   assert.equal(gate.env.OROT_IOS_TEST_COHORTS, '${{ inputs.selected_cohorts }}');
   assert.equal(gate.env.OROT_IOS_OAUTH_TESTS, '${{ inputs.oauth_required }}');
+  assert.equal(gate.env.OROT_IOS_VALIDATION_TIER, '${{ inputs.validation_tier }}');
   assert.equal(gate.run, 'node scripts/ci/ios-test-execution-completeness.mjs');
   const resultsUpload = completion.steps.find((step) =>
     step.name?.includes('Preserve verified selected results'),

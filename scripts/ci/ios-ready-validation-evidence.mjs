@@ -131,7 +131,8 @@ function inspectSelection(selectionPath, candidatePath, current) {
   const candidate = readJson(candidatePath);
   const verified = verifyReusableReadySelection(selection, candidate, current);
   writeReceipt({
-    schemaVersion: 1,
+    schemaVersion: 2,
+    validationTier: verified.validationTier,
     event: 'pull_request',
     action: 'edited',
     currentPullRequest: current.pullRequest,
@@ -176,6 +177,8 @@ async function main() {
     const verified = verifyReusableReadyResults(selection, complete, candidate, current);
     const receipt = readJson('artifacts/ios-e2e-reuse.json');
     if (
+      receipt.schemaVersion !== 2 ||
+      receipt.validationTier !== 'pr' ||
       receipt.source?.runId !== verified.sourceRunId ||
       receipt.source?.attempt !== verified.sourceAttempt
     )

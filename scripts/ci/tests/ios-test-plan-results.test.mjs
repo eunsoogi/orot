@@ -71,7 +71,12 @@ function reports(t, selectedCohorts = IOS_TEST_COHORT_NAMES) {
   return { root, attachments };
 }
 
-function run(root, selectedCohorts = IOS_TEST_COHORT_NAMES) {
+function run(
+  root,
+  selectedCohorts = IOS_TEST_COHORT_NAMES,
+  validationTier = 'full',
+  oauthRequired = true,
+) {
   return spawnSync(process.execPath, ['scripts/ci/ios-test-plan-results.mjs', root], {
     encoding: 'utf8',
     env: {
@@ -80,6 +85,8 @@ function run(root, selectedCohorts = IOS_TEST_COHORT_NAMES) {
       GITHUB_RUN_ID: context.runId,
       GITHUB_RUN_ATTEMPT: context.attempt,
       OROT_IOS_TEST_COHORTS: JSON.stringify(selectedCohorts),
+      OROT_IOS_VALIDATION_TIER: validationTier,
+      OROT_IOS_OAUTH_TESTS: String(oauthRequired),
     },
   });
 }
@@ -90,6 +97,9 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
   assert.equal(result.observations.length, 111);
+  assert.equal(result.schemaVersion, 2);
+  assert.equal(result.validationTier, 'full');
+  assert.equal(result.oauthRequired, true);
   assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 111);
   assert.deepEqual(result.selectedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.executedCohorts, IOS_TEST_COHORT_NAMES);
@@ -104,11 +114,13 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
 test('selected aggregation accepts exactly the affected reports and records every skipped cohort', (t) => {
   const selected = ['questions-review', 'questions-conversation', 'questions-summary'];
   const { root } = reports(t, selected);
-  const outcome = run(root, selected);
+  const outcome = run(root, selected, 'pr', false);
 
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
   assert.deepEqual(result.selectedCohorts, selected);
+  assert.equal(result.validationTier, 'pr');
+  assert.equal(result.oauthRequired, false);
   assert.deepEqual(result.executedCohorts, selected);
   assert.deepEqual(
     result.notSelectedCohorts,
@@ -124,7 +136,7 @@ test('selected aggregation accepts exactly the affected reports and records ever
 test('the Speech evidence verifier runs only when the Speech cohort is selected', (t) => {
   const selected = ['speech'];
   const { root } = reports(t, selected);
-  const outcome = run(root, selected);
+  const outcome = run(root, selected, 'pr', false);
 
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
@@ -134,6 +146,15 @@ test('the Speech evidence verifier runs only when the Speech cohort is selected'
     JSON.parse(readFileSync(join(root, 'speech-accuracy.json'), 'utf8')).cases.length,
     3,
   );
+});
+
+test('Full result artifacts require all cohorts and the OAuth suite', (t) => {
+  const partial = ['core-ui'];
+  const partialReports = reports(t, partial);
+  assert.notEqual(run(partialReports.root, partial, 'full', true).status, 0);
+
+  const fullReports = reports(t);
+  assert.notEqual(run(fullReports.root, IOS_TEST_COHORT_NAMES, 'full', false).status, 0);
 });
 
 for (const failure of [

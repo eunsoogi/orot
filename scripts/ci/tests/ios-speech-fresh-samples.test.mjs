@@ -45,6 +45,7 @@ test('each full CI schedules every cohort once after verified products are avail
       'production_validation',
       'release_products',
       'release_execution',
+      'selection',
     ].sort(),
   );
 });

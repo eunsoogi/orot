@@ -37,7 +37,8 @@ function validateSelectionReport(selection, candidate, current) {
   const names = validateCandidate(candidate, current);
   const run = candidate.run;
   if (
-    selection?.schemaVersion !== 1 ||
+    selection?.schemaVersion !== 2 ||
+    selection.validationTier !== 'pr' ||
     selection.event !== 'pull_request' ||
     !['opened', 'synchronize', 'reopened', 'ready_for_review', 'edited'].includes(
       selection.action,
@@ -75,6 +76,7 @@ function validateSelectionReport(selection, candidate, current) {
   }
   iosTestExecutionPlan();
   return {
+    validationTier: selection.validationTier,
     selectedCohorts: selected,
     notSelectedCohorts,
     oauthRequired: selection.oauthSelected,
@@ -97,6 +99,9 @@ export function verifyReusableReadyResults(selection, complete, candidate, curre
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   if (
+    complete?.schemaVersion !== 2 ||
+    complete.validationTier !== 'pr' ||
+    complete.oauthRequired !== selection.oauthSelected ||
     complete?.sourceSha !== selection.sourceSha ||
     String(complete.runId) !== verified.sourceRunId ||
     String(complete.attempt) !== verified.sourceAttempt ||
