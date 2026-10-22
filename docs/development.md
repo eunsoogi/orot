@@ -92,7 +92,7 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 수동 `authentication` 집중 suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켜세요. 아래 명령은 두 사례를 모두 실행하며, prompted 사례에서 일치하는 얼굴을 입력해야 합니다. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
 
 ```sh
-OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
+OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core build/ios-core-keychain-auth.xcresult build/ios-core-keychain-auth-results.json
 ```
 
