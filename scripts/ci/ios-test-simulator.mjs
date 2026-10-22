@@ -40,12 +40,11 @@ function simctl(...args) {
   return runIosSimulatorCommand(args).trim();
 }
 
-/** Keep Apple's migration/readiness progress visible while sampling the wait. No boot retry or service mutation is performed. */
+/** Keep Apple's boot progress visible; omit final process sampling only after readiness succeeds. */
 async function bootOwnedSimulator(owner, ownerPath) {
-  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl', {
-    skipFinalProcessSnapshot: true,
-  });
+  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
   let stage = 'boot';
+  let bootReadinessConfirmed = false;
   let failure;
   try {
     simctl('boot', owner.udid);
@@ -76,6 +75,7 @@ async function bootOwnedSimulator(owner, ownerPath) {
         new Error(`iOS bootstatus failed: ${outcome.signal ?? outcome.status}`),
         outcome,
       );
+    bootReadinessConfirmed = true;
   } catch (error) {
     failure = error;
     recordIosPreparationDiagnostic(
@@ -84,7 +84,7 @@ async function bootOwnedSimulator(owner, ownerPath) {
     );
   } finally {
     try {
-      await stopSampling();
+      await stopSampling({ skipFinalProcessSnapshot: bootReadinessConfirmed });
     } catch (error) {
       // A resource sidecar failure must not replace the original boot failure or signal.
       failure ??= error;

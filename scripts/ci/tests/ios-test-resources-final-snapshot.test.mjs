@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { iosTestResourceSampler } from '../ios-test-resources.mjs';
 
-test('sampler can skip only its final process query while keeping the other observations', async () => {
+test('stop callback can skip the final process query after readiness confirmation', async () => {
   const root = mkdtempSync(join(tmpdir(), 'orot-resource-final-process-'));
   const sidecar = join(root, 'resources.jsonl');
   const commands = [];
@@ -16,12 +16,8 @@ test('sampler can skip only its final process query while keeping the other obse
   }
 
   try {
-    const stopSampling = await iosTestResourceSampler(sidecar, {
-      intervalMs: 60000,
-      execute,
-      skipFinalProcessSnapshot: true,
-    });
-    await stopSampling();
+    const stopSampling = await iosTestResourceSampler(sidecar, { intervalMs: 60000, execute });
+    await stopSampling({ skipFinalProcessSnapshot: true });
 
     const entries = readFileSync(sidecar, 'utf8').trim().split('\n').map(JSON.parse);
     assert.deepEqual(
@@ -36,7 +32,7 @@ test('sampler can skip only its final process query while keeping the other obse
     assert.deepEqual(entries[1].observations, {
       memory: 'vm_stat synthetic\n',
       swap: 'sysctl synthetic\n',
-      processes: { unavailable: 'process snapshot skipped by boot policy' },
+      processes: { unavailable: 'process snapshot skipped after boot readiness' },
     });
     assert.ok(Number.isFinite(entries[1].commandElapsedMs.memory));
     assert.ok(Number.isFinite(entries[1].commandElapsedMs.swap));

@@ -79,7 +79,7 @@ export async function iosTestResourceSnapshot(
     ['processes', 'ps', ['-axo', 'pid,ppid,%cpu,rss,comm']],
   ]) {
     if (name === 'processes' && stage === 'after' && skipFinalProcessSnapshot) {
-      entry.observations[name] = { unavailable: 'process snapshot skipped by boot policy' };
+      entry.observations[name] = { unavailable: 'process snapshot skipped after boot readiness' };
       commandElapsedMs[name] = null;
       continue;
     }
@@ -113,8 +113,8 @@ export async function iosTestResourceSnapshot(
 /**
  * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
  * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
- * Boot sampling can omit its final process listing when hosted `ps` stalls after readiness, preserving
- * earlier process evidence and final memory/swap telemetry.
+ * A caller may omit the final process listing after it confirms readiness, preserving earlier evidence and
+ * final memory/swap telemetry while retaining the process snapshot when readiness fails.
  */
 export async function iosTestResourceSampler(
   path,
@@ -127,12 +127,14 @@ export async function iosTestResourceSampler(
   let activeSample;
   let failure;
   let stopPromise;
+  const defaultSkipFinalProcessSnapshot = skipFinalProcessSnapshot;
 
-  const sample = (stage) => {
+  const sample = (stage, finalSampleOptions = {}) => {
     const controller = new AbortController();
     activeController = controller;
     const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal, {
-      skipFinalProcessSnapshot,
+      skipFinalProcessSnapshot:
+        finalSampleOptions.skipFinalProcessSnapshot ?? defaultSkipFinalProcessSnapshot,
     });
     activeSample = pending;
     return pending.finally(() => {
@@ -155,7 +157,7 @@ export async function iosTestResourceSampler(
   await sample('before');
   scheduleNext();
 
-  return () => {
+  return ({ skipFinalProcessSnapshot: skipFinal = defaultSkipFinalProcessSnapshot } = {}) => {
     if (stopPromise) return stopPromise;
     stopped = true;
     clearTimeout(timer);
@@ -163,7 +165,7 @@ export async function iosTestResourceSampler(
     stopPromise = (async () => {
       if (activeSample) await activeSample;
       if (failure) throw failure;
-      await sample('after');
+      await sample('after', { skipFinalProcessSnapshot: skipFinal });
     })();
     return stopPromise;
   };
