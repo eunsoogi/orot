@@ -4,6 +4,8 @@
 #import <Security/Security.h>
 #import <XCTest/XCTest.h>
 
+#import "OrotFaceIDTestSupport.h"
+
 @interface KeychainAuthenticationIntegrationTests : XCTestCase
 @end
 
@@ -11,6 +13,7 @@
 
 /// Run as the documented focused selection because it requires Simulator Face ID input.
 - (void)testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch {
+    OrotAssertFaceIDAvailable();
     NSString *service = [NSString
         stringWithFormat:@"com.orot.tests.keychain-auth.interactive.%@", NSUUID.UUID.UUIDString];
     NSString *account = @"synthetic-biometric-fixture";
@@ -77,6 +80,8 @@
         XCTAssertEqualObjects(context.localizedReason, @"Read a synthetic Keychain fixture");
         XCTAssertFalse(context.interactionNotAllowed);
 
+        // Let Security prompt through this query; evaluating the reusable context first would hide
+        // that behavior.
         OSStatus readStatus = SecItemCopyMatching((__bridge CFDictionaryRef)readQuery, &result);
         XCTAssertEqual(readStatus, (OSStatus)errSecSuccess,
                        @"A matching Simulator biometric must permit the protected query");
@@ -102,6 +107,7 @@
 /// Exercise the prompted query context and the protected-query no-UI result using synthetic
 /// Keychain items.
 - (void)testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi {
+    OrotAssertFaceIDAvailable();
     NSString *servicePrefix =
         [NSString stringWithFormat:@"com.orot.tests.keychain-auth.%@", NSUUID.UUID.UUIDString];
     NSString *account = @"synthetic-fixture";
