@@ -104,7 +104,7 @@ Speech 자산 준비는 설치를 한 번 요청하고 실제 완료·오류·�
 
 테스트 실행은 `-test-timeouts-enabled NO`를 명시하고 사례별 실행 허용 시간을 지정하지 않습니다. UI 조건·native broker·asset 설치·앱 receipt·일반 준비 명령은 실제 결과를 기다립니다. UI의 50ms run-loop 양보와 receipt의 50ms 확인 간격은 관측 주기이며 완료 제한이 아닙니다. receipt를 기다리는 동안 소유권과 `simctl launch`가 반환한 실제 PID의 생존을 확인하고, 다른 PID의 receipt·프로세스 종료·오류는 실패합니다. 끝나지 않은 조건을 성공으로 처리하지 않습니다. Apple 내부 접근성 IPC의 자체 중단·runner crash는 이 정책으로 해결됐다고 해석하지 않습니다.
 
-공통 XCTest 준비·종료 단계는 호스트 소켓 대기를 별도 작업에서 수행해 메인 실행 흐름의 앱 상태 통지를 막지 않습니다. UI fixture 준비는 호스트 응답 뒤에도 XCTest가 `com.orot.mobile`의 `.notRunning` 상태를 직접 관측해야 본문에 진입합니다. 호스트 명령 완료와 XCTest의 상태 반영은 서로 다른 경계입니다. 이 관측에는 경과 시간 제한이나 앱 실행 재시도를 추가하지 않습니다. 실제 XCTest를 사용하는 메인 실행 흐름 회귀 검사는 macOS와 Xcode에서 `node --test scripts/ci/tests/ios-test-fixture-runloop.test.mjs`로 실행합니다. Apple XCTest가 없는 Linux에서는 이 검사만 실행하지 않으며, 현재 iOS 113개 사례의 필수 실행에는 영향을 주지 않습니다.
+공통 XCTest 준비·종료 단계는 호스트 소켓 대기를 별도 작업에서 수행해 메인 실행 흐름의 앱 상태 통지를 막지 않습니다. UI fixture 준비는 호스트 응답 뒤에도 XCTest가 `com.orot.mobile`의 `.notRunning` 상태를 직접 관측해야 본문에 진입합니다. 호스트 명령 완료와 XCTest의 상태 반영은 서로 다른 경계입니다. 이 관측에는 경과 시간 제한이나 앱 실행 재시도를 추가하지 않습니다. 실제 XCTest를 사용하는 메인 실행 흐름 회귀 검사는 macOS와 Xcode에서 `node --test scripts/ci/tests/ios-test-fixture-runloop.test.mjs`로 실행합니다. Apple XCTest가 없는 Linux에서는 이 검사만 실행하지 않으며, 현재 iOS 112개 사례의 필수 실행에는 영향을 주지 않습니다.
 
 전체 hosted job의 `timeout-minutes`는 VM 실행·취소·artifact 및 소유 기기 정리를 위한 바깥 경계로 유지합니다. 실패 뒤 선택적으로 수집하는 설치 상태 5초·앱 로그 30초, resource sample 10초, 진단 수집기의 용량·수명과 종료 유예는 보조 관측과 소유 자식 정리만 제한합니다. 이들은 테스트 성공을 만들거나 본문을 재시도하지 않으며 관측 실패는 별도로 남깁니다. 제품의 25초 녹음 자동 종료와 실제 Speech 서비스 취소는 제품 요구사항으로 유지합니다.
 
