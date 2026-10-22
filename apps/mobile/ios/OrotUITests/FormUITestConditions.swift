@@ -82,9 +82,10 @@ enum FormUITestConditions {
             let point = CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
                                  dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
             app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
-            // The original UTF-16 bound also covers composed text without an unbounded edit loop.
-            let deletion = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count)
-            input.typeText(deletion)
+            // XCTest dropped backspaces when the controlled field received them as one batch.
+            for _ in current {
+                app.typeText(XCUIKeyboardKey.delete.rawValue)
+            }
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
