@@ -68,7 +68,11 @@ export async function iosTestResourceSnapshot(
   index = 0,
   execute = executeResourceCommand,
   signal,
-  { skipInitialProcessSnapshot = false, skipFinalProcessSnapshot = false } = {},
+  {
+    skipInitialProcessSnapshot = false,
+    skipDuringProcessSnapshot = false,
+    skipFinalProcessSnapshot = false,
+  } = {},
 ) {
   const started = performance.now();
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
@@ -81,13 +85,15 @@ export async function iosTestResourceSnapshot(
     if (
       name === 'processes' &&
       ((stage === 'before' && skipInitialProcessSnapshot) ||
+        (stage === 'during' && skipDuringProcessSnapshot) ||
         (stage === 'after' && skipFinalProcessSnapshot))
     ) {
       entry.observations[name] = {
-        unavailable:
-          stage === 'before'
-            ? 'process snapshot skipped before XCTest launch'
-            : 'process snapshot skipped after boot readiness',
+        unavailable: {
+          before: 'process snapshot skipped before XCTest launch',
+          during: 'periodic process snapshot skipped to avoid blocking sampler shutdown',
+          after: 'process snapshot skipped after readiness or test success',
+        }[stage],
       };
       commandElapsedMs[name] = null;
       continue;
@@ -123,8 +129,9 @@ export async function iosTestResourceSnapshot(
  * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
  * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
  * A caller may omit the initial process listing before XCTest when boot sampling already captured host state.
- * A caller may omit the final process listing after it confirms readiness, preserving earlier evidence and
- * final memory/swap telemetry while retaining the process snapshot when readiness fails.
+ * A caller may omit periodic process listings while a boot or test process runs, preserving memory/swap
+ * samples while avoiding a slow `ps` child holding the final sample behind its close event. Callers may also
+ * omit the final process listing after success while retaining it on failure.
  */
 export async function iosTestResourceSampler(
   path,
@@ -132,6 +139,7 @@ export async function iosTestResourceSampler(
     intervalMs = 20000,
     execute = executeResourceCommand,
     skipInitialProcessSnapshot = false,
+    skipDuringProcessSnapshot = false,
     skipFinalProcessSnapshot = false,
   } = {},
 ) {
@@ -149,6 +157,7 @@ export async function iosTestResourceSampler(
     activeController = controller;
     const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal, {
       skipInitialProcessSnapshot,
+      skipDuringProcessSnapshot,
       skipFinalProcessSnapshot:
         finalSampleOptions.skipFinalProcessSnapshot ?? defaultSkipFinalProcessSnapshot,
     });

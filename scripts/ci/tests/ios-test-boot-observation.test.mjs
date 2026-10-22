@@ -100,7 +100,9 @@ for (const status of [0, 65])
           ? {
               memory: 'synthetic vm_stat\n',
               swap: 'synthetic sysctl\n',
-              processes: { unavailable: 'process snapshot skipped after boot readiness' },
+              processes: {
+                unavailable: 'process snapshot skipped after readiness or test success',
+              },
             }
           : {
               memory: 'synthetic vm_stat\n',

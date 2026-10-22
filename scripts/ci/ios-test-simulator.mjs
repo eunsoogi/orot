@@ -40,9 +40,12 @@ function simctl(...args) {
   return runIosSimulatorCommand(args).trim();
 }
 
-/** Keep Apple's boot progress visible; omit final process sampling only after readiness succeeds. */
+/** Keep Apple's boot progress visible while reserving process snapshots for the boot boundaries. */
 async function bootOwnedSimulator(owner, ownerPath) {
-  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
+  // A periodic `ps` can outlive bootstatus and hold shutdown; retain the initial and failure snapshots.
+  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl', {
+    skipDuringProcessSnapshot: true,
+  });
   let stage = 'boot';
   let bootReadinessConfirmed = false;
   let failure;

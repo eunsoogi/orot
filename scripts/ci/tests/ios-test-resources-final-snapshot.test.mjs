@@ -32,7 +32,7 @@ test('stop callback can skip the final process query after readiness confirmatio
     assert.deepEqual(entries[1].observations, {
       memory: 'vm_stat synthetic\n',
       swap: 'sysctl synthetic\n',
-      processes: { unavailable: 'process snapshot skipped after boot readiness' },
+      processes: { unavailable: 'process snapshot skipped after readiness or test success' },
     });
     assert.ok(Number.isFinite(entries[1].commandElapsedMs.memory));
     assert.ok(Number.isFinite(entries[1].commandElapsedMs.swap));
