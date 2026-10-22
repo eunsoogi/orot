@@ -54,6 +54,59 @@ enum FormScrollGeometryRegression {
         try verifyContainedOccludedTargetDirection()
         try verifyFocusedEditorReservation()
         try verifyClippedFocusedExtent()
+        try verifyPostEditSaveGesture()
+    }
+
+    private static func verifyPostEditSaveGesture() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let scroll = CGRect(x: 0, y: 62, width: 402, height: 778)
+        let keyboard = CGRect(x: 0, y: 590, width: 402, height: 226)
+        let editor = CGRect(x: 51.833333015441895, y: 435.16667683919263, width: 298.33331298828125, height: 93)
+        let save = CGRect(x: 205.00000476837158, y: 539.6666768391926, width: 146.66665649414062, height: 47.9998779296875)
+        for origin in [CGPoint.zero, CGPoint(x: 11, y: 23)] {
+            let movedEditor = editor.offsetBy(dx: origin.x, dy: origin.y)
+            let movedSave = save.offsetBy(dx: origin.x, dy: origin.y)
+            let geometry = try XCTUnwrap(FormScrollGeometry(application: app.offsetBy(dx: origin.x, dy: origin.y), scroll: scroll.offsetBy(dx: origin.x, dy: origin.y), keyboard: keyboard.offsetBy(dx: origin.x, dy: origin.y)))
+            // These hosted frames are contained even though native hit testing correctly rejects the covered Save.
+            XCTAssertTrue(geometry.contains(movedSave))
+            let center = try XCTUnwrap(geometry.gesture(target: movedSave, towardTop: false, horizontalPosition: 0.5))
+            XCTAssertTrue(movedEditor.contains(CGPoint(x: center.start.dx + origin.x, y: center.start.dy + origin.y)))
+            let saveOnly = try XCTUnwrap(geometry.horizontalPosition(outside: movedSave))
+            let wrongMargin = try XCTUnwrap(geometry.gesture(target: movedSave, towardTop: false, horizontalPosition: saveOnly))
+            XCTAssertTrue(movedEditor.contains(CGPoint(x: wrongMargin.start.dx + origin.x, y: wrongMargin.start.dy + origin.y)))
+            let position = try XCTUnwrap(geometry.horizontalPosition(outside: movedEditor))
+            let gesture = try XCTUnwrap(geometry.gesture(target: movedSave, towardTop: false, horizontalPosition: position))
+            for point in [gesture.start, gesture.end] {
+                let absolute = CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)
+                XCTAssertTrue(geometry.viewport.contains(absolute))
+                XCTAssertFalse(movedEditor.contains(absolute))
+            }
+            XCTAssertNil(geometry.horizontalPosition(outside: app.offsetBy(dx: origin.x, dy: origin.y)))
+            XCTAssertNil(geometry.horizontalPosition(outside: .zero))
+            for current in [nil, keyboard, keyboard.offsetBy(dx: 0, dy: 328)] {
+                let bounded = try XCTUnwrap(FormScrollGeometry(application: app.offsetBy(dx: origin.x, dy: origin.y), scroll: scroll.offsetBy(dx: origin.x, dy: origin.y), keyboard: current?.offsetBy(dx: origin.x, dy: origin.y)))
+                let gutter = try XCTUnwrap(bounded.horizontalPosition(outside: movedEditor))
+                // The observed offscreen/absent keyboard previously allowed a touch at y=645.5,
+                // where the appearing keyboard intercepted it and inserted an extra character.
+                if current == nil || current!.minY > app.maxY {
+                    let unsafe = try XCTUnwrap(bounded.gesture(target: movedSave, towardTop: false, horizontalPosition: gutter))
+                    XCTAssertGreaterThan(unsafe.start.dy + origin.y, movedEditor.maxY)
+                }
+                for towardTop in [false, true] {
+                    let safe = try XCTUnwrap(bounded.gesture(target: movedSave, towardTop: towardTop, horizontalPosition: gutter, maximumScrollFraction: 0.7, verticalBounds: movedEditor))
+                    for point in [safe.start, safe.end] {
+                        let absolute = CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)
+                        XCTAssertTrue(bounded.viewport.contains(absolute))
+                        XCTAssertTrue((movedEditor.minY ... movedEditor.maxY).contains(absolute.y))
+                        XCTAssertFalse(movedEditor.contains(absolute))
+                    }
+                    XCTAssertEqual(safe.end.dy > safe.start.dy, towardTop)
+                }
+                for invalid in [CGRect.zero, .null, .infinite, movedEditor.offsetBy(dx: 0, dy: 1000)] {
+                    XCTAssertNil(bounded.gesture(target: movedSave, towardTop: false, horizontalPosition: gutter, verticalBounds: invalid))
+                }
+            }
+        }
     }
 
     private static func verifyClippedFocusedExtent() throws {

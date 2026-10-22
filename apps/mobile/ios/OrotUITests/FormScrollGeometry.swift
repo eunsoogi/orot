@@ -53,7 +53,7 @@ struct FormScrollGeometry {
         return (x - viewport.minX) / viewport.width
     }
 
-    func gesture(target: CGRect?, towardTop: Bool, horizontalPosition: CGFloat, maximumScrollFraction: CGFloat = 0.45) -> (start: CGVector, end: CGVector)? {
+    func gesture(target: CGRect?, towardTop: Bool, horizontalPosition: CGFloat, maximumScrollFraction: CGFloat = 0.45, verticalBounds: CGRect? = nil) -> (start: CGVector, end: CGVector)? {
         guard horizontalPosition.isFinite, (0 ... 1).contains(horizontalPosition),
               maximumScrollFraction.isFinite, maximumScrollFraction > 0, maximumScrollFraction <= 0.7 else { return nil }
         let measuredTarget = target.flatMap { Self.valid($0) ? $0 : nil }
@@ -61,13 +61,23 @@ struct FormScrollGeometry {
         // still needs a gesture, retain its search direction instead of oscillating
         // across the edge; measured clipping always takes precedence.
         let above = measuredTarget.map { contains($0) ? towardTop : $0.minY < viewport.minY } ?? towardTop
-        let travelLimit = viewport.height * maximumScrollFraction
+        // A keyboard can appear between AX observation and touch delivery. Stay beside
+        // the same visible editor vertically too, without treating that band as visibility proof.
+        var gestureViewport = viewport
+        if let verticalBounds {
+            guard Self.valid(verticalBounds) else { return nil }
+            let top = max(viewport.minY, verticalBounds.minY)
+            let bottom = min(viewport.maxY, verticalBounds.maxY)
+            gestureViewport = CGRect(x: viewport.minX, y: top, width: viewport.width, height: bottom - top)
+            guard Self.valid(gestureViewport) else { return nil }
+        }
+        let travelLimit = gestureViewport.height * maximumScrollFraction
         let overflow = measuredTarget.map { above ? viewport.minY - $0.minY : $0.maxY - viewport.maxY } ?? travelLimit
         // Virtualized lists can opt into longer travel while an offscreen row is being located.
         // The 70% ceiling keeps both endpoints inside the viewport from the existing 25%/75% origins.
         let distance = min(max(overflow + 8, 30), travelLimit)
         let x = viewport.minX + viewport.width * horizontalPosition - application.minX
-        let y = viewport.minY + viewport.height * (above ? 0.25 : 0.75) - application.minY
+        let y = gestureViewport.minY + gestureViewport.height * (above ? 0.25 : 0.75) - application.minY
         let endY = y + (above ? distance : -distance)
         guard [x, y, endY].allSatisfy(\.isFinite) else { return nil }
         return (CGVector(dx: x, dy: y), CGVector(dx: x, dy: endY))

@@ -49,7 +49,10 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         let correction = "사용자가 확인한 전사 수정"
         // Exercise native keyboard editing and exact value readback through the real transcript input.
         FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")
-        tap(app, "transcript-save-0")
+        // Reveal beside the active editor so a keyboard-covered Save scrolls the form, not the text view.
+        let save = element(app, "transcript-save-0")
+        FormUITestConditions.reveal(save, in: app, scrollID: "recording-controls-scroll", avoiding: input)
+        save.tap()
         value(app, "transcript-evidence-correction-status", "saved")
         XCTAssertEqual(text(app, "transcript-text-0"), correction)
         let history = text(app, "transcript-history-0-1", upward: true)
