@@ -89,6 +89,15 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
+Core 기본 목록에는 보호된 항목을 UI 없이 조회할 때 거부되는 회귀 검사가 포함됩니다. 보호 항목의 정상 조회는 Simulator에서 Face ID 입력이 필요해 별도의 집중 사례로 실행합니다. owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켠 다음 합성 Keychain 인증 창이 나타나면 일치하는 얼굴을 입력하세요. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
+
+```sh
+OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
+OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core build/ios-core-keychain-auth.xcresult build/ios-core-keychain-auth-results.json
+```
+
+이 집중 사례는 Simulator UI 입력이 필요하므로 113개 release 관측 목록에는 포함하지 않습니다. 해당 task가 소유한 Simulator만 사용하고 owner 파일을 통해 정리하세요. 테스트는 합성 데이터만 저장합니다.
+
 제품과 의존성을 준비한 뒤 기록된 기기만 부팅합니다. hosted 실행은 승인된 runtime을 확인한 뒤 공개 `simctl runtime dyld_shared_cache update <runtime>` 명령이 끝나야 Simulator를 생성·부팅합니다. 선택한 runtime만 대상으로 하며 강제 재생성이나 삭제는 하지 않습니다. 이 준비 시간과 resource samples도 전체 비용에 포함하고, 개발용 Mac과 자체 호스팅 러너에서는 이 단계를 추가하지 않습니다. `test-without-building`은 consumer에서 다시 컴파일하지 않습니다. CI는 run·attempt·source와 build input·제품 digest를 검증한 뒤 Simulator를 생성하며, 검증 실패를 빌드나 다른 제품으로 대체하지 않습니다. 실행은 한 destination과 worker를 사용하고 첫 실패·결과 bundle·첨부 자료·단계 시간·resource samples를 보존합니다.
 
 Speech 자산 준비는 설치를 한 번 요청하고 실제 완료·오류·취소를 기다립니다. 테스트 준비용 180초 제한은 두지 않습니다. 요청 직전과 성공·실패 시점의 공개 `Progress` 수치를 첨부하며, 이 단위를 다운로드 바이트나 설치 성공으로 해석하지 않습니다. 준비 실행 중에는 소유 Simulator의 Orot 진단과 관측된 자산·Speech 프로세스의 공개 로그를 최대 8 MiB까지 보존합니다. 수집기 자체에 90분 상한을 두고 테스트 종료 시 해당 자식 프로세스만 정리합니다. 수집 실패·잘림·종료 확인 실패는 별도로 기록하며 원래 테스트 결과를 바꾸지 않습니다.

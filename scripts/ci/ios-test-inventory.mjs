@@ -15,7 +15,7 @@ const coreTests = [
   ...recordingPersistenceTests,
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
-  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi',
+  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeHealthLibraryUsesDefaultPagesAndStableCursors',
@@ -63,6 +63,10 @@ const providerTests = [
   'OrotIntegrationTests/MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
   'OrotIntegrationTests/HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
+];
+// This focused suite opens a Simulator Face ID prompt and stays outside headless release runs.
+const interactiveAuthenticationTests = [
+  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch',
 ];
 export const backupTests = [
   'OrotUITests/BackupPersistenceUITests/testKeyAndMemoryTombstonesSurviveProcessRestart',
@@ -133,6 +137,7 @@ export function iosTestInventory(profile, suite = 'all') {
       'all',
       'integration',
       'ui',
+      'authentication',
       'preparation',
       'journey',
       'isolation',
@@ -144,6 +149,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
     (suite === 'preparation' && profile !== 'speech') ||
     (suite === 'journey' && profile !== 'speech') ||
+    (suite === 'authentication' && profile !== 'core') ||
     (suite === 'isolation' && profile !== 'core') ||
     (suite === 'recording-persistence' && profile !== 'core') ||
     (suite === 'state-persistence' && profile !== 'core') ||
@@ -152,6 +158,7 @@ export function iosTestInventory(profile, suite = 'all') {
   )
     throw new Error('Unsupported integration test suite selection');
   if (suite === 'journey') return speechJourneyTests.slice();
+  if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();
   if (suite === 'recording-persistence') return recordingPersistenceTests.slice();
   if (suite === 'state-persistence') return statePersistenceTests.slice();

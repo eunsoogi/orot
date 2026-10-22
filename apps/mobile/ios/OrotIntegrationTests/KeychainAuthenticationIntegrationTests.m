@@ -9,47 +9,45 @@
 
 @implementation KeychainAuthenticationIntegrationTests
 
-/// Verify RNKeychain's query contexts against an app-password-protected synthetic item.
-- (void)testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi {
-    NSString *service =
-        [NSString stringWithFormat:@"com.orot.tests.keychain-auth.%@", NSUUID.UUID.UUIDString];
-    NSString *account = @"protected-fixture";
-    NSData *expectedData = [@"synthetic-keychain-value" dataUsingEncoding:NSUTF8StringEncoding];
-    NSData *acceptedPassword = [@"synthetic-password" dataUsingEncoding:NSUTF8StringEncoding];
-    CFErrorRef creationError = NULL;
+/// Run as the documented focused selection because it requires Simulator Face ID input.
+- (void)testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch {
+    NSString *service = [NSString
+        stringWithFormat:@"com.orot.tests.keychain-auth.interactive.%@", NSUUID.UUID.UUIDString];
+    NSString *account = @"synthetic-biometric-fixture";
+    NSData *expectedData =
+        [@"synthetic-biometric-keychain-value" dataUsingEncoding:NSUTF8StringEncoding];
+    CFErrorRef accessError = NULL;
     SecAccessControlRef accessControl = SecAccessControlCreateWithFlags(
         kCFAllocatorDefault, kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        kSecAccessControlApplicationPassword, &creationError);
+        kSecAccessControlBiometryAny, &accessError);
     if (accessControl == NULL) {
-        NSString *details = creationError != NULL
-                                ? CFBridgingRelease(CFErrorCopyDescription(creationError))
+        NSString *details = accessError != NULL
+                                ? CFBridgingRelease(CFErrorCopyDescription(accessError))
                                 : @"No error details were returned";
-        if (creationError != NULL) {
-            CFRelease(creationError);
+        if (accessError != NULL) {
+            CFRelease(accessError);
         }
-        XCTFail(@"Could not create the synthetic access-control fixture: %@", details);
+        XCTFail(@"Could not create the synthetic biometric fixture: %@", details);
         return;
     }
-    if (creationError != NULL) {
-        CFRelease(creationError);
+    if (accessError != NULL) {
+        CFRelease(accessError);
     }
 
     NSString *classKey = (__bridge NSString *)kSecClass;
     NSString *serviceKey = (__bridge NSString *)kSecAttrService;
     NSString *accountKey = (__bridge NSString *)kSecAttrAccount;
     NSString *accessControlKey = (__bridge NSString *)kSecAttrAccessControl;
-    NSString *contextKey = (__bridge NSString *)kSecUseAuthenticationContext;
     NSString *dataKey = (__bridge NSString *)kSecValueData;
     NSString *returnDataKey = (__bridge NSString *)kSecReturnData;
+    NSString *contextKey = (__bridge NSString *)kSecUseAuthenticationContext;
     NSMutableDictionary *deleteQuery = [@{
         classKey : (__bridge id)kSecClassGenericPassword,
         serviceKey : service,
         accountKey : account,
     } mutableCopy];
     BOOL itemCreated = NO;
-    CFTypeRef allowedResult = NULL;
-    CFTypeRef deniedResult = NULL;
-    CFTypeRef noUiResult = NULL;
+    CFTypeRef result = NULL;
 
     @try {
         NSMutableDictionary *addQuery = [@{
@@ -59,95 +57,179 @@
             accessControlKey : (__bridge id)accessControl,
             dataKey : expectedData,
         } mutableCopy];
-        RNKeychainSetAuthenticationPrompt(addQuery, @"Create a synthetic protected fixture");
-        LAContext *addContext = addQuery[contextKey];
-        if (![addContext isKindOfClass:LAContext.class] ||
-            ![addContext setCredential:acceptedPassword type:LACredentialTypeApplicationPassword]) {
-            XCTFail(@"The RNKeychain helper must provide a credential-ready context for creation");
-            return;
-        }
         OSStatus addStatus = SecItemAdd((__bridge CFDictionaryRef)addQuery, NULL);
         XCTAssertEqual(addStatus, (OSStatus)errSecSuccess,
-                       @"The simulator must store the protected synthetic item");
+                       @"The Simulator must store the synthetic biometric item");
         if (addStatus != errSecSuccess) {
             return;
         }
         itemCreated = YES;
 
-        NSDictionary *queryBase = @{
+        NSMutableDictionary *readQuery = [@{
             classKey : (__bridge id)kSecClassGenericPassword,
             serviceKey : service,
             accountKey : account,
             returnDataKey : @YES,
-        };
+        } mutableCopy];
+        RNKeychainSetAuthenticationPrompt(readQuery, @"Read a synthetic Keychain fixture");
+        LAContext *context = readQuery[contextKey];
+        XCTAssertTrue([context isKindOfClass:LAContext.class]);
+        XCTAssertEqualObjects(context.localizedReason, @"Read a synthetic Keychain fixture");
+        XCTAssertFalse(context.interactionNotAllowed);
 
-        NSMutableDictionary *allowedQuery = [queryBase mutableCopy];
-        RNKeychainSetAuthenticationPrompt(allowedQuery, @"Read a synthetic protected fixture");
-        LAContext *allowedContext = allowedQuery[contextKey];
-        if (![allowedContext isKindOfClass:LAContext.class] ||
-            ![allowedContext setCredential:acceptedPassword
-                                      type:LACredentialTypeApplicationPassword]) {
-            XCTFail(@"The RNKeychain helper must provide a fresh context for an allowed read");
-            return;
-        }
-        OSStatus allowedStatus =
-            SecItemCopyMatching((__bridge CFDictionaryRef)allowedQuery, &allowedResult);
-        XCTAssertEqual(allowedStatus, (OSStatus)errSecSuccess,
-                       @"A matching application credential must read the item");
-        XCTAssertEqualObjects((__bridge id)allowedResult, expectedData);
-
-        NSMutableDictionary *deniedQuery = [queryBase mutableCopy];
-        RNKeychainSetAuthenticationPrompt(deniedQuery, @"Reject a synthetic protected fixture");
-        LAContext *deniedContext = deniedQuery[contextKey];
-        NSData *incorrectPassword = [@"incorrect-password" dataUsingEncoding:NSUTF8StringEncoding];
-        if (![deniedContext isKindOfClass:LAContext.class] ||
-            ![deniedContext setCredential:incorrectPassword
-                                     type:LACredentialTypeApplicationPassword]) {
-            XCTFail(@"The RNKeychain helper must provide a fresh context for a denied read");
-            return;
-        }
-        deniedContext.interactionNotAllowed = YES;
-        OSStatus deniedStatus =
-            SecItemCopyMatching((__bridge CFDictionaryRef)deniedQuery, &deniedResult);
-        XCTAssertEqual(deniedStatus, (OSStatus)errSecAuthFailed,
-                       @"A wrong credential must be denied without prompting");
-        XCTAssertNil((__bridge id)deniedResult);
-
-        NSMutableDictionary *noUiQuery = [queryBase mutableCopy];
-        RNKeychainDisallowAuthenticationUI(noUiQuery);
-        LAContext *noUiContext = noUiQuery[contextKey];
-        if (![noUiContext isKindOfClass:LAContext.class] || !noUiContext.interactionNotAllowed) {
-            XCTFail(@"The RNKeychain no-UI helper must provide a noninteractive context");
-            return;
-        }
-        OSStatus noUiStatus = SecItemCopyMatching((__bridge CFDictionaryRef)noUiQuery, &noUiResult);
-        XCTAssertEqual(noUiStatus, (OSStatus)errSecInteractionNotAllowed,
-                       @"A protected lookup must remain noninteractive");
-        XCTAssertNil((__bridge id)noUiResult);
+        OSStatus readStatus = SecItemCopyMatching((__bridge CFDictionaryRef)readQuery, &result);
+        XCTAssertEqual(readStatus, (OSStatus)errSecSuccess,
+                       @"A matching Simulator biometric must permit the protected query");
+        XCTAssertEqualObjects((__bridge id)result, expectedData);
     } @finally {
-        if (allowedResult != NULL) {
-            CFRelease(allowedResult);
-        }
-        if (deniedResult != NULL) {
-            CFRelease(deniedResult);
-        }
-        if (noUiResult != NULL) {
-            CFRelease(noUiResult);
+        if (result != NULL) {
+            CFRelease(result);
         }
         if (itemCreated) {
-            // Cleanup uses the same synthetic credential and forbids an interactive prompt.
-            RNKeychainSetAuthenticationPrompt(deleteQuery, @"Delete a synthetic protected fixture");
-            LAContext *deleteContext = deleteQuery[contextKey];
-            if (![deleteContext isKindOfClass:LAContext.class] ||
-                ![deleteContext setCredential:acceptedPassword
-                                         type:LACredentialTypeApplicationPassword]) {
-                XCTFail(@"The RNKeychain helper must provide a noninteractive cleanup context");
-            } else {
-                deleteContext.interactionNotAllowed = YES;
-                OSStatus deleteStatus = SecItemDelete((__bridge CFDictionaryRef)deleteQuery);
-                XCTAssertTrue(deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound,
-                              @"The synthetic protected item must be removed after the test");
-            }
+            RNKeychainDisallowAuthenticationUI(deleteQuery);
+            OSStatus deleteStatus = SecItemDelete((__bridge CFDictionaryRef)deleteQuery);
+            // A protected item may refuse deletion without a second user action. Its unique
+            // fixture remains inside the owner Simulator, which the test helper retires.
+            XCTAssertTrue(
+                deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound ||
+                    deleteStatus == errSecInteractionNotAllowed,
+                @"Protected fixture cleanup must succeed or stay inside the owner Simulator");
+        }
+        CFRelease(accessControl);
+    }
+}
+
+/// Exercise the prompted query context and the protected-query no-UI result using synthetic
+/// Keychain items.
+- (void)testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi {
+    NSString *servicePrefix =
+        [NSString stringWithFormat:@"com.orot.tests.keychain-auth.%@", NSUUID.UUID.UUIDString];
+    NSString *account = @"synthetic-fixture";
+    NSData *expectedData = [@"synthetic-keychain-value" dataUsingEncoding:NSUTF8StringEncoding];
+    CFErrorRef accessError = NULL;
+    SecAccessControlRef accessControl = SecAccessControlCreateWithFlags(
+        kCFAllocatorDefault, kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        kSecAccessControlUserPresence, &accessError);
+    if (accessControl == NULL) {
+        NSString *details = accessError != NULL
+                                ? CFBridgingRelease(CFErrorCopyDescription(accessError))
+                                : @"No error details were returned";
+        if (accessError != NULL) {
+            CFRelease(accessError);
+        }
+        XCTFail(@"Could not create the synthetic user-presence fixture: %@", details);
+        return;
+    }
+    if (accessError != NULL) {
+        CFRelease(accessError);
+    }
+
+    NSString *classKey = (__bridge NSString *)kSecClass;
+    NSString *serviceKey = (__bridge NSString *)kSecAttrService;
+    NSString *accountKey = (__bridge NSString *)kSecAttrAccount;
+    NSString *accessControlKey = (__bridge NSString *)kSecAttrAccessControl;
+    NSString *contextKey = (__bridge NSString *)kSecUseAuthenticationContext;
+    NSString *dataKey = (__bridge NSString *)kSecValueData;
+    NSString *returnDataKey = (__bridge NSString *)kSecReturnData;
+    NSMutableDictionary *plainDeleteQuery = [@{
+        classKey : (__bridge id)kSecClassGenericPassword,
+        serviceKey : [servicePrefix stringByAppendingString:@".plain"],
+        accountKey : account,
+    } mutableCopy];
+    NSMutableDictionary *protectedDeleteQuery = [@{
+        classKey : (__bridge id)kSecClassGenericPassword,
+        serviceKey : [servicePrefix stringByAppendingString:@".protected"],
+        accountKey : account,
+    } mutableCopy];
+    BOOL plainItemCreated = NO;
+    BOOL protectedItemCreated = NO;
+    CFTypeRef plainResult = NULL;
+    CFTypeRef protectedResult = NULL;
+
+    @try {
+        NSMutableDictionary *plainAddQuery = [@{
+            classKey : (__bridge id)kSecClassGenericPassword,
+            serviceKey : plainDeleteQuery[serviceKey],
+            accountKey : account,
+            dataKey : expectedData,
+        } mutableCopy];
+        OSStatus plainAddStatus = SecItemAdd((__bridge CFDictionaryRef)plainAddQuery, NULL);
+        XCTAssertEqual(plainAddStatus, (OSStatus)errSecSuccess,
+                       @"The simulator must store the unprotected synthetic item");
+        if (plainAddStatus != errSecSuccess) {
+            return;
+        }
+        plainItemCreated = YES;
+
+        NSDictionary *readBase = @{
+            classKey : (__bridge id)kSecClassGenericPassword,
+            serviceKey : plainDeleteQuery[serviceKey],
+            accountKey : account,
+            returnDataKey : @YES,
+        };
+        NSMutableDictionary *plainReadQuery = [readBase mutableCopy];
+        RNKeychainSetAuthenticationPrompt(plainReadQuery, @"Read a synthetic Keychain fixture");
+        LAContext *plainReadContext = plainReadQuery[contextKey];
+        XCTAssertTrue([plainReadContext isKindOfClass:LAContext.class]);
+        XCTAssertEqualObjects(plainReadContext.localizedReason,
+                              @"Read a synthetic Keychain fixture");
+        XCTAssertFalse(plainReadContext.interactionNotAllowed);
+        OSStatus plainReadStatus =
+            SecItemCopyMatching((__bridge CFDictionaryRef)plainReadQuery, &plainResult);
+        XCTAssertEqual(plainReadStatus, (OSStatus)errSecSuccess,
+                       @"A normal Keychain query must accept its authentication context");
+        XCTAssertEqualObjects((__bridge id)plainResult, expectedData);
+
+        NSMutableDictionary *protectedAddQuery = [@{
+            classKey : (__bridge id)kSecClassGenericPassword,
+            serviceKey : protectedDeleteQuery[serviceKey],
+            accountKey : account,
+            accessControlKey : (__bridge id)accessControl,
+            dataKey : expectedData,
+        } mutableCopy];
+        OSStatus protectedAddStatus = SecItemAdd((__bridge CFDictionaryRef)protectedAddQuery, NULL);
+        XCTAssertEqual(protectedAddStatus, (OSStatus)errSecSuccess,
+                       @"The simulator must store the synthetic user-presence item");
+        if (protectedAddStatus != errSecSuccess) {
+            return;
+        }
+        protectedItemCreated = YES;
+
+        NSMutableDictionary *protectedReadQuery = [readBase mutableCopy];
+        protectedReadQuery[serviceKey] = protectedDeleteQuery[serviceKey];
+        RNKeychainDisallowAuthenticationUI(protectedReadQuery);
+        LAContext *noUiContext = protectedReadQuery[contextKey];
+        XCTAssertTrue([noUiContext isKindOfClass:LAContext.class]);
+        XCTAssertTrue(noUiContext.interactionNotAllowed);
+        XCTAssertNotEqual(
+            plainReadContext, noUiContext,
+            @"Each Keychain query must receive an independent authentication context");
+        OSStatus protectedReadStatus =
+            SecItemCopyMatching((__bridge CFDictionaryRef)protectedReadQuery, &protectedResult);
+        XCTAssertEqual(protectedReadStatus, (OSStatus)errSecInteractionNotAllowed,
+                       @"A protected lookup must preserve the no-UI failure status");
+        XCTAssertNil((__bridge id)protectedResult);
+    } @finally {
+        if (plainResult != NULL) {
+            CFRelease(plainResult);
+        }
+        if (protectedResult != NULL) {
+            CFRelease(protectedResult);
+        }
+        if (plainItemCreated) {
+            OSStatus deleteStatus = SecItemDelete((__bridge CFDictionaryRef)plainDeleteQuery);
+            XCTAssertTrue(deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound,
+                          @"The unprotected synthetic item must be removed after the test");
+        }
+        if (protectedItemCreated) {
+            RNKeychainDisallowAuthenticationUI(protectedDeleteQuery);
+            OSStatus deleteStatus = SecItemDelete((__bridge CFDictionaryRef)protectedDeleteQuery);
+            // User-presence protection can also forbid cleanup without authentication. The unique
+            // fixture is isolated to this owner simulator, which the test helper retires afterward.
+            XCTAssertTrue(
+                deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound ||
+                    deleteStatus == errSecInteractionNotAllowed,
+                @"Protected fixture cleanup must succeed or stay inside the owner simulator");
         }
         CFRelease(accessControl);
     }

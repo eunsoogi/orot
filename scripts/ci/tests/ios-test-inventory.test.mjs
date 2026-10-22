@@ -40,9 +40,14 @@ test('separate Core and Speech runners cover every registered boundary without d
     assert.ok(ui.every((id) => id.startsWith('OrotUITests/')));
   }
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
+  const authentication = iosTestInventory('core', 'authentication');
+  assert.deepEqual(authentication, [
+    'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch',
+  ]);
+  assert.ok(authentication.every((identifier) => !iosTestInventory('core').includes(identifier)));
   for (const identifier of [
     'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
-    'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi',
+    'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',
@@ -56,6 +61,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   );
   assert.throws(() => iosTestInventory('core', 'preparation'));
   assert.throws(() => iosTestInventory('core', 'journey'));
+  assert.throws(() => iosTestInventory('speech', 'authentication'));
   assert.throws(() => iosTestInventory('speech', 'unknown'));
   assert.throws(() => iosTestInventory('provider-data', 'ui'));
 });
@@ -82,6 +88,10 @@ test('each profile declares unique existing cases and every test method is sched
     }
   }
   for (const identifier of iosTestInventory('speech', 'preparation')) {
+    seen.add(identifier);
+    assertTestMethodDeclared(identifier);
+  }
+  for (const identifier of iosTestInventory('core', 'authentication')) {
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }
