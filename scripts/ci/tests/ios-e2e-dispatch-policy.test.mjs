@@ -207,6 +207,7 @@ test('drafts use deferred names while metadata-only edits reuse protected valida
     assert.equal(
       evaluate(jobs.selection.outputs.non_protected_contexts, {
         github: { event_name: event, ref, event: { pull_request: { draft } } },
+        inputs: { candidate_pr_number: tier === 'candidate' ? '217' : '' },
         steps: {
           select: {
             outputs: {

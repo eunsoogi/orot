@@ -15,7 +15,7 @@ const readText = (path) => readFileSync(path, 'utf8');
 function evaluateGuard(expression, context) {
   const source = expression
     .replace(/^\$\{\{\s*|\s*\}\}$/g, '')
-    .replace(/(?:needs|github|steps)(?:\.[a-z_]+)+/g, (path) => {
+    .replace(/(?:inputs|needs|github|steps)(?:\.[a-z_]+)+/g, (path) => {
       const value = path.split('.').reduce((current, key) => current?.[key], context);
       return JSON.stringify(value ?? '');
     });
@@ -96,7 +96,9 @@ test('ready events select current-head work while drafts and metadata edits neve
     (entry) => entry.check === 'UI',
   );
   const domainGuard = statusWorkflow.jobs.status.steps[0];
-  const receiptStep = e2e.jobs.ios_simulator_build.steps[0];
+  const receiptStep = e2e.jobs.ios_simulator_build.steps.find(
+    ({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt',
+  );
   const receiptAction = yaml.load(
     readText('.github/actions/ios-e2e-validation-receipt/action.yml'),
   );
@@ -136,6 +138,7 @@ test('ready events select current-head work while drafts and metadata edits neve
         ref: scenario.ref ?? 'refs/pull/203/merge',
         event,
       },
+      inputs: { candidate_pr_number: scenario.candidatePrNumber ?? '' },
       needs: {
         completeness: { result: scenario.result ?? 'skipped' },
         reuse_ready_evidence: {

@@ -12,7 +12,9 @@ test('draft metadata defers Build while ready metadata still requires reusable e
   const receiptAction = yaml.load(
     readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
   );
-  const invocation = workflow.jobs.ios_simulator_build.steps[0];
+  const invocation = workflow.jobs.ios_simulator_build.steps.find(
+    ({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt',
+  );
   const guard = receiptAction.runs.steps.find(
     ({ name }) => name === 'Require the applicable ready validation evidence',
   );

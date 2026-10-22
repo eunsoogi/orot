@@ -36,8 +36,8 @@ jobs:
       metadata_only_edit: ${{ steps.select.outputs.metadata_only_edit }}
       # An edited event exposes the full PR diff, so metadata-only edits must reuse existing source results.
       run_ios: ${{ steps.select.outcome == 'success' && !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) && steps.select.outputs.validation_tier != 'diagnostic' && steps.select.outputs.metadata_only_edit != 'true' && (steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true') }}
-      diagnostic: ${{ steps.select.outputs.validation_tier == 'diagnostic' }}
-      non_protected_contexts: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || steps.select.outputs.validation_tier == 'diagnostic' }}
+      diagnostic: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && inputs.candidate_pr_number == '' }}
+      non_protected_contexts: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && inputs.candidate_pr_number == '') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         # A PR comparison needs its base history; incomplete selection must not bypass required checks.
@@ -209,6 +209,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      # GitHub must check out this repository before it can load a local composite action.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
       - uses: ./.github/actions/ios-e2e-validation-receipt
         with:
           selection_complete: ${{ needs.selection.outputs.complete }}

@@ -76,7 +76,28 @@ test('the protected Build check consumes OAuth evidence only when the selected p
   assert.match(verify.env.OROT_IOS_OAUTH_RECEIPT_PATH, /inputs\.oauth_required/);
   assert.match(verify.run, /ios-production-receipt\.mjs verify/);
   assert.doesNotMatch(verify.run, /oauth-receipt/);
-  assert.equal(build.steps[0].uses, './.github/actions/ios-e2e-validation-receipt');
+  assert.ok(
+    build.steps.some(({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt'),
+  );
+});
+
+test('the receipt action is checked out before the runner loads it', () => {
+  const build = read('e2e-test.yml').jobs.ios_simulator_build;
+  const receiptAction = yaml.load(
+    readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
+  );
+  const checkoutIndex = build.steps.findIndex(({ uses }) => uses?.startsWith('actions/checkout@'));
+  const receiptIndex = build.steps.findIndex(
+    ({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt',
+  );
+
+  assert.notEqual(checkoutIndex, -1);
+  assert.notEqual(receiptIndex, -1);
+  assert.ok(checkoutIndex < receiptIndex);
+  assert.equal(
+    receiptAction.runs.steps.some(({ uses }) => uses?.startsWith('actions/checkout@')),
+    false,
+  );
 });
 
 test('the selection artifact records the event decision and the result artifact records executed cohorts', () => {
