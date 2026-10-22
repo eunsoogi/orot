@@ -1,12 +1,15 @@
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
 
-const TIERS = new Set(['pr', 'main-impact', 'full', 'diagnostic', 'unclassified']);
+const TIERS = new Set(['pr', 'main-impact', 'full', 'candidate', 'diagnostic', 'unclassified']);
 
-/** Resolve evidence provenance from the workflow event; selected breadth never promotes a tier. */
-export function iosValidationTierForEvent(eventName, ref) {
+/** The caller passes a candidate number only after live PR identity verification; breadth never promotes a tier. */
+export function iosValidationTierForEvent(eventName, ref, candidatePrNumber = '') {
   if (eventName === 'pull_request') return 'pr';
   if (eventName === 'push' && ref === 'refs/heads/main') return 'main-impact';
-  if (eventName === 'workflow_dispatch') return ref === 'refs/heads/main' ? 'full' : 'diagnostic';
+  if (eventName === 'workflow_dispatch') {
+    if (typeof candidatePrNumber === 'string' && candidatePrNumber !== '') return 'candidate';
+    return ref === 'refs/heads/main' ? 'full' : 'diagnostic';
+  }
   if (eventName === 'schedule' && ref === 'refs/heads/main') return 'full';
   return 'unclassified';
 }

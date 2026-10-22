@@ -40,17 +40,15 @@ test('draft, metadata and diagnostic runs cannot satisfy the full integration ga
     e2e,
     /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
   );
-  assert.match(e2e, /workflow_dispatch: \{\}/);
+  assert.match(e2e, /^ {2}workflow_dispatch:\n {4}inputs:\n {6}candidate_pr_number:/m);
   assert.match(e2e, /^ {2}push: \{ branches: \[main\] \}$/m);
   assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
-  assert.match(
-    e2e,
-    /github\.event_name == 'workflow_dispatch' && github\.ref != 'refs\/heads\/main'/,
-  );
+  assert.match(e2e, /steps\.select\.outputs\.validation_tier != 'diagnostic'/);
   assert.match(e2e, /metadata_only_edit != 'true'/);
   assert.match(e2e, /needs\.completeness\.result/);
-  assert.match(e2e, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
-  assert.match(e2e, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
+  const receipt = read('.github/actions/ios-e2e-validation-receipt/action.yml');
+  assert.match(receipt, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
+  assert.match(receipt, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
   assert.match(
     e2e,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
@@ -78,7 +76,7 @@ test('manual focus uses exact integration selection and retains PR-scoped supers
   assert.match(focus, /ios-focused-results\.mjs/);
   assert.doesNotMatch(focus, /ios-profile-status/);
   const full = read('.github/workflows/e2e-test.yml');
-  assert.match(full, /workflow_dispatch: \{\}/);
-  assert.match(full, /github\.ref != 'refs\/heads\/main'/);
+  assert.match(full, /^ {2}workflow_dispatch:\n {4}inputs:\n {6}candidate_pr_number:/m);
+  assert.match(full, /validation_tier != 'diagnostic'/);
   assert.match(full, /diagnostic:/);
 });

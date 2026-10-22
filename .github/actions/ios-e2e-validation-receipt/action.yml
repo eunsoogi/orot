@@ -1,0 +1,46 @@
+name: Verify E2E validation receipt
+description: Require valid selection and verify the production build receipt for this run.
+inputs:
+  selection_complete: { description: Completed selection flag., required: true }
+  deferred: { description: Deferred Full validation flag., required: true }
+  run_ios: { description: Whether iOS validation was selected., required: true }
+  diagnostic: { description: Diagnostic-only selection flag., required: true }
+  metadata_only_edit: { description: Metadata-only PR edit flag., required: true }
+  reuse_result: { description: Same-head evidence reuse result., required: true }
+  oauth_required: { description: Whether OAuth execution was selected., required: true }
+runs:
+  using: composite
+  steps:
+    - name: Require the applicable ready validation evidence
+      shell: bash
+      env:
+        COMPLETE: ${{ inputs.selection_complete }}
+        DEFERRED: ${{ inputs.deferred }}
+        RUN_IOS: ${{ inputs.run_ios }}
+        DIAGNOSTIC: ${{ inputs.diagnostic }}
+        METADATA_ONLY_EDIT: ${{ inputs.metadata_only_edit }}
+        REUSE_RESULT: ${{ inputs.reuse_result }}
+      run: test "$COMPLETE" = true && test "$DIAGNOSTIC" != true && { test "$RUN_IOS" != true || test "$DEFERRED" != true; } && { test "$DEFERRED" = true || test "$METADATA_ONLY_EDIT" != true || test "$REUSE_RESULT" = success; }
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with: { persist-credentials: false }
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      with: { node-version-file: .nvmrc }
+    - name: Read the completed production build receipt
+      if: inputs.run_ios == 'true'
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/production-receipt
+    - name: Read the separate OAuth execution receipt
+      if: inputs.run_ios == 'true' && inputs.oauth_required == 'true'
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
+        path: artifacts/oauth-receipt
+    - name: Verify production receipt at this run and head
+      if: inputs.run_ios == 'true'
+      shell: bash
+      env:
+        OROT_IOS_OAUTH_REQUIRED: ${{ inputs.oauth_required }}
+        OROT_IOS_OAUTH_RECEIPT_PATH: ${{ inputs.oauth_required == 'true' && 'artifacts/oauth-receipt/products/receipt.json' || '' }}
+      run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json

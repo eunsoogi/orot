@@ -33,16 +33,18 @@ test('five Linux integration domain leaves retain the exact required context nam
   const e2e = workflow('.github/workflows/e2e-test.yml');
   const required = e2e.jobs.required_statuses;
   const protectedNameExpression =
-    /\$\{\{\s*needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred' \|\| 'Validate'\s*\}\}/;
+    /\$\{\{\s*github\.event_name == 'workflow_dispatch' && inputs\.candidate_pr_number != '' && 'Candidate' \|\| needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred' \|\| 'Validate'\s*\}\}/;
   assert.match(required.name, protectedNameExpression);
   const readyName = required.name.replace(protectedNameExpression, 'Validate');
   const deferredName = required.name.replace(protectedNameExpression, 'Deferred');
+  const candidateName = required.name.replace(protectedNameExpression, 'Candidate');
   const actual = protectedLeaves(required.uses.replace(/^\.\//, ''), [readyName]);
   const expected = REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'];
   assert.deepEqual(actual.sort(), expected.filter((name) => name !== 'Validate / Build').sort());
   assert.equal(deferredName, 'Deferred');
+  assert.equal(candidateName, 'Candidate');
   const buildNameExpression =
-    /\$\{\{\s*needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred \/ Build' \|\| 'Validate \/ Build'\s*\}\}/;
+    /\$\{\{\s*github\.event_name == 'workflow_dispatch' && inputs\.candidate_pr_number != '' && 'Candidate \/ Receipt' \|\| needs\.selection\.outputs\.non_protected_contexts == 'true' && 'Deferred \/ Build' \|\| 'Validate \/ Build'\s*\}\}/;
   assert.match(e2e.jobs.ios_simulator_build.name, buildNameExpression);
   assert.equal(
     e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Validate / Build'),
@@ -52,12 +54,23 @@ test('five Linux integration domain leaves retain the exact required context nam
     e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Deferred / Build'),
     'Deferred / Build',
   );
+  assert.equal(
+    e2e.jobs.ios_simulator_build.name.replace(buildNameExpression, 'Candidate / Receipt'),
+    'Candidate / Receipt',
+  );
   assert.equal(e2e.jobs.ios_simulator_build['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.plan.needs, 'selection');
   assert.equal(e2e.jobs.completeness.uses, './.github/workflows/ios-test-completeness.yml');
   assert.equal(e2e.jobs.selection['runs-on'], 'ubuntu-24.04');
   assert.equal(e2e.jobs.selection.steps[0].with['fetch-depth'], 0);
 });
+
+function resolveDefaultJobName(name) {
+  return name.replace(
+    /\$\{\{\s*github\.event_name == 'workflow_dispatch' && inputs\.candidate_pr_number != '' && 'Candidate \/ [^']+' \|\| '([^']+)'\s*\}\}/g,
+    '$1',
+  );
+}
 
 test('full and focused visible job names use one consistent role and target', () => {
   const root = workflow('.github/workflows/e2e-test.yml');
@@ -75,8 +88,9 @@ test('full and focused visible job names use one consistent role and target', ()
   );
   const names = [];
   for (const job of Object.values(full)) {
+    const jobName = resolveDefaultJobName(job.name);
     if (!job.uses) {
-      names.push(job.name);
+      names.push(jobName);
       continue;
     }
     const leaves = Object.values(workflow(job.uses.replace(/^\.\//, '')).jobs);
@@ -90,8 +104,8 @@ test('full and focused visible job names use one consistent role and target', ()
         )
       ) {
         for (const question of Object.values(workflow(leaf.uses).jobs))
-          names.push([job.name, name, question.name].join(' / '));
-      } else names.push([job.name, name].join(' / '));
+          names.push([jobName, name, question.name].join(' / '));
+      } else names.push([jobName, name].join(' / '));
     }
   }
   const expected = [

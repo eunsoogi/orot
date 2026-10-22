@@ -4,7 +4,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
   push: { branches: [main] }
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      candidate_pr_number:
+        description: 'Run complete validation for this open Draft pull request head.'
+        required: false
+        type: string
+        default: ''
   schedule:
     - cron: '0 18 * * 0'
 permissions:
@@ -18,7 +24,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   selection:
-    name: Plan / Select
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Select' || 'Plan / Select' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -29,9 +35,9 @@ jobs:
       ios_oauth: ${{ steps.select.outputs.ios_oauth }}
       metadata_only_edit: ${{ steps.select.outputs.metadata_only_edit }}
       # An edited event exposes the full PR diff, so metadata-only edits must reuse existing source results.
-      run_ios: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) && !(github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') && steps.select.outputs.metadata_only_edit != 'true' && (steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true') }}
-      diagnostic: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
-      non_protected_contexts: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') }}
+      run_ios: ${{ steps.select.outcome == 'success' && !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) && steps.select.outputs.validation_tier != 'diagnostic' && steps.select.outputs.metadata_only_edit != 'true' && (steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true') }}
+      diagnostic: ${{ steps.select.outputs.validation_tier == 'diagnostic' }}
+      non_protected_contexts: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || steps.select.outputs.validation_tier == 'diagnostic' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         # A PR comparison needs its base history; incomplete selection must not bypass required checks.
@@ -40,8 +46,10 @@ jobs:
         with: { node-version-file: .nvmrc }
       - id: select
         uses: ./.github/actions/ios-e2e-selection
+        with:
+          candidate_pr_number: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number || '' }}
   reuse_ready_evidence:
-    name: Reuse / Ready evidence
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Reuse Ready evidence' || 'Reuse / Ready evidence' }}
     needs: selection
     if: ${{ needs.selection.outputs.metadata_only_edit == 'true' && needs.selection.outputs.complete == 'true' && needs.selection.outputs.non_protected_contexts != 'true' }}
     permissions: { actions: read, contents: read }
@@ -94,7 +102,7 @@ jobs:
           path: artifacts/ios-e2e-reuse.json
           if-no-files-found: error
   plan:
-    name: Plan / Coverage
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Coverage' || 'Plan / Coverage' }}
     needs: selection
     if: ${{ always() && !cancelled() && needs.selection.outputs.run_ios == 'true' }}
     outputs:
@@ -119,16 +127,16 @@ jobs:
           OROT_IOS_OAUTH_TESTS: ${{ needs.selection.outputs.ios_oauth }}
         run: node scripts/ci/ios-test-cohort-plan-cli.mjs
   production_validation:
-    name: Build
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Production build' || 'Build' }}
     needs: plan
     uses: ./.github/workflows/ios-production-validation.yml
   oauth_products:
-    name: Build
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / OAuth build' || 'Build' }}
     needs: plan
     if: ${{ needs.plan.outputs.oauth_required == 'true' }}
     uses: ./.github/workflows/ios-oauth-build.yml
   oauth_execution:
-    name: Test
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / OAuth test' || 'Test' }}
     needs: [plan, oauth_products]
     if: ${{ needs.plan.outputs.oauth_required == 'true' }}
     uses: ./.github/workflows/ios-oauth-execution.yml
@@ -136,7 +144,7 @@ jobs:
       archive_digest: ${{ needs.oauth_products.outputs.archive_digest }}
       manifest_digest: ${{ needs.oauth_products.outputs.manifest_digest }}
   debug_products:
-    name: Build
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Debug build' || 'Build' }}
     needs: plan
     if: ${{ needs.plan.outputs.has_debug == 'true' }}
     uses: ./.github/workflows/ios-test-products-build.yml
@@ -146,7 +154,7 @@ jobs:
       artifact_name: ios-test-debug-products
       timeout_minutes: 20
   release_products:
-    name: Build
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Release build' || 'Build' }}
     needs: plan
     if: ${{ needs.plan.outputs.has_release == 'true' }}
     uses: ./.github/workflows/ios-test-products-build.yml
@@ -156,7 +164,7 @@ jobs:
       artifact_name: ios-test-release-products
       timeout_minutes: 20
   debug_execution:
-    name: Test
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Debug tests' || 'Test' }}
     needs: [plan, debug_products]
     if: ${{ needs.plan.outputs.has_debug == 'true' }}
     uses: ./.github/workflows/ios-debug-tests.yml
@@ -165,7 +173,7 @@ jobs:
       manifest_digest: ${{ needs.debug_products.outputs.manifest_digest }}
       cohorts: ${{ needs.plan.outputs.debug_cohorts }}
   release_execution:
-    name: Test
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Release tests' || 'Test' }}
     needs: [plan, release_products]
     if: ${{ needs.plan.outputs.has_release == 'true' }}
     uses: ./.github/workflows/ios-release-tests.yml
@@ -174,7 +182,7 @@ jobs:
       manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
       cohorts: ${{ needs.plan.outputs.release_cohorts }}
   completeness:
-    name: Validate
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Completeness' || 'Validate' }}
     needs:
       [
         selection,
@@ -195,46 +203,24 @@ jobs:
       oauth_required: ${{ needs.plan.outputs.oauth_required == 'true' }}
       validation_tier: ${{ needs.selection.outputs.validation_tier }}
   ios_simulator_build:
-    name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred / Build' || 'Validate / Build' }}
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Receipt' || needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred / Build' || 'Validate / Build' }}
     needs: [selection, plan, completeness, reuse_ready_evidence]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require the applicable ready validation evidence
-        env:
-          COMPLETE: ${{ needs.selection.outputs.complete }}
-          DEFERRED: ${{ needs.selection.outputs.deferred }}
-          RUN_IOS: ${{ needs.selection.outputs.run_ios }}
-          DIAGNOSTIC: ${{ needs.selection.outputs.diagnostic }}
-          METADATA_ONLY_EDIT: ${{ needs.selection.outputs.metadata_only_edit }}
-          REUSE_RESULT: ${{ needs.reuse_ready_evidence.result }}
-        run: test "$COMPLETE" = true && test "$DIAGNOSTIC" != true && { test "$RUN_IOS" != true || test "$DEFERRED" != true; } && { test "$DEFERRED" = true || test "$METADATA_ONLY_EDIT" != true || test "$REUSE_RESULT" = success; }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with: { node-version-file: .nvmrc }
-      - name: Read the completed production build receipt
-        if: needs.selection.outputs.run_ios == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: ./.github/actions/ios-e2e-validation-receipt
         with:
-          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/production-receipt
-      - name: Read the separate OAuth execution receipt
-        if: needs.selection.outputs.run_ios == 'true' && needs.plan.outputs.oauth_required == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/oauth-receipt
-      - name: Verify production receipt at this run and head
-        if: needs.selection.outputs.run_ios == 'true'
-        env:
-          OROT_IOS_OAUTH_REQUIRED: ${{ needs.plan.outputs.oauth_required }}
-          OROT_IOS_OAUTH_RECEIPT_PATH: ${{ needs.plan.outputs.oauth_required == 'true' && 'artifacts/oauth-receipt/products/receipt.json' || '' }}
-        run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json
+          selection_complete: ${{ needs.selection.outputs.complete }}
+          deferred: ${{ needs.selection.outputs.deferred }}
+          run_ios: ${{ needs.selection.outputs.run_ios }}
+          diagnostic: ${{ needs.selection.outputs.diagnostic }}
+          metadata_only_edit: ${{ needs.selection.outputs.metadata_only_edit }}
+          reuse_result: ${{ needs.reuse_ready_evidence.result }}
+          oauth_required: ${{ needs.plan.outputs.oauth_required }}
   required_statuses:
-    # Drafts stay deferred; non-draft metadata edits keep protected names and require exact evidence reuse.
-    name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred' || 'Validate' }}
+    # Drafts stay deferred, candidates use a separate namespace, and Ready metadata edits reuse exact evidence.
+    name: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate' || needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred' || 'Validate' }}
     needs: [selection, completeness, reuse_ready_evidence]
     if: always()
     uses: ./.github/workflows/ios-required-statuses.yml

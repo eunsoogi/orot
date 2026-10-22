@@ -11,6 +11,9 @@ const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
 const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
 const platformSelector = readRepositoryFile('scripts/quality/platforms.mjs');
+const e2eReceiptAction = readRepositoryFile(
+  '.github/actions/ios-e2e-validation-receipt/action.yml',
+);
 const surfacePolicy = JSON.parse(readRepositoryFile('scripts/quality/surface-policy.json'));
 const qualitySurfaceAction = readRepositoryFile('.github/actions/run-quality-surface/action.yml');
 const qualitySetupAction = readRepositoryFile('.github/actions/setup-linux-quality/action.yml');
@@ -178,7 +181,7 @@ test('uses singular workflow names and matching paths with direct checks and can
     e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
     /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
   );
-  assert.match(e2eWorkflow, /workflow_dispatch: \{\}/);
+  assert.match(e2eWorkflow, /^ {2}workflow_dispatch:\n {4}inputs:\n {6}candidate_pr_number:/m);
   assert.doesNotMatch(e2eWorkflow, /push:\n\s+branches: \[main\]/);
   assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
   // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.
@@ -192,7 +195,8 @@ test('uses singular workflow names and matching paths with direct checks and can
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
   assert.match(buildJob, /name: \$\{\{[^\n]*'Validate \/ Build'/);
-  assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
+  assert.match(buildJob, /uses: \.\/\.github\/actions\/ios-e2e-validation-receipt/);
+  assert.match(e2eReceiptAction, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });

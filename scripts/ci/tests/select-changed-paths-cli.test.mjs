@@ -9,7 +9,12 @@ import { CHECK_KEYS } from '../changed-paths-core.mjs';
 
 const CLI_PATH = fileURLToPath(new URL('../select-changed-paths.mjs', import.meta.url));
 
-function runManualDispatch(outputPath, ref = 'refs/heads/main', includeSummary = false) {
+function runManualDispatch(
+  outputPath,
+  ref = 'refs/heads/main',
+  includeSummary = false,
+  candidate = null,
+) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-ci-paths-'));
   const eventPath = join(directory, 'event.json');
   const summaryPath = join(directory, 'summary.md');
@@ -25,7 +30,16 @@ function runManualDispatch(outputPath, ref = 'refs/heads/main', includeSummary =
         GITHUB_EVENT_PATH: eventPath,
         GITHUB_OUTPUT: outputPath,
         GITHUB_REF: ref,
+        ...(candidate ? { GITHUB_SHA: candidate.headSha } : {}),
+        ...(candidate ? { GITHUB_REPOSITORY: 'eunsoogi/orot' } : {}),
         ...(includeSummary ? { GITHUB_STEP_SUMMARY: summaryPath } : {}),
+        ...(candidate
+          ? {
+              OROT_IOS_CANDIDATE_PR_NUMBER: String(candidate.number),
+              OROT_IOS_CANDIDATE_HEAD_REF: candidate.headRef,
+              OROT_IOS_CANDIDATE_HEAD_SHA: candidate.headSha,
+            }
+          : {}),
       },
     });
     const reportPath = join(directory, 'artifacts/ios-e2e-selection.json');
@@ -81,6 +95,38 @@ test('off-main manual dispatch is described as diagnostic without protected iOS 
     assert.equal(report.validationTier, 'diagnostic');
     assert.match(summary, /diagnostic selection only; protected iOS validation is not scheduled/);
     assert.doesNotMatch(summary, /scheduled for automatic execution/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('a verified candidate dispatch records its exact PR head and full selection', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orot-ci-paths-output-'));
+  const outputPath = join(directory, 'output');
+  const candidate = {
+    number: 217,
+    headRef: 'eunsoogi/issue-216-validation-policy',
+    headSha: 'a'.repeat(40),
+  };
+  try {
+    const { result, report, summary } = runManualDispatch(
+      outputPath,
+      'refs/heads/' + candidate.headRef,
+      true,
+      candidate,
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(report.validationTier, 'candidate');
+    assert.deepEqual(report.candidatePullRequest, {
+      repository: 'eunsoogi/orot',
+      number: candidate.number,
+      headRef: candidate.headRef,
+      headSha: candidate.headSha,
+    });
+    assert.equal(report.sourceSha, candidate.headSha);
+    assert.equal(report.selectedCohorts.length, 24);
+    assert.equal(report.oauthSelected, true);
+    assert.match(summary, /full candidate validation for the verified Draft PR head/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -157,6 +157,17 @@ test('Full result artifacts require all cohorts and the OAuth suite', (t) => {
   assert.notEqual(run(fullReports.root, IOS_TEST_COHORT_NAMES, 'full', false).status, 0);
 });
 
+test('candidate result artifacts retain their tier and require the complete suite', (t) => {
+  const candidateReports = reports(t);
+  const candidate = run(candidateReports.root, IOS_TEST_COHORT_NAMES, 'candidate', true);
+  assert.equal(candidate.status, 0, candidate.stderr);
+  const complete = JSON.parse(readFileSync(join(candidateReports.root, 'complete.json'), 'utf8'));
+  assert.equal(complete.validationTier, 'candidate');
+
+  const partialReports = reports(t, ['core-ui']);
+  assert.notEqual(run(partialReports.root, ['core-ui'], 'candidate', true).status, 0);
+});
+
 for (const failure of [
   'missing-job',
   'unexpected-job',

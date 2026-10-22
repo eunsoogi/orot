@@ -123,6 +123,7 @@ export function selectChecksForEvent(
   runDiff = gitDiff,
   policies = null,
   ref = process.env.GITHUB_REF ?? '',
+  candidatePrNumber = '',
 ) {
   const comparison = resolveChangedPaths(eventName, payload, runDiff);
   let selection;
@@ -138,7 +139,7 @@ export function selectChecksForEvent(
       selection = selectEverything('selection-unavailable');
     }
   }
-  selection.validation_tier = iosValidationTierForEvent(eventName, ref);
+  selection.validation_tier = iosValidationTierForEvent(eventName, ref, candidatePrNumber);
   return selection;
 }
 
@@ -155,7 +156,15 @@ function main() {
   } catch {
     // Missing event details take the same full-verification path as a failed comparison.
   }
-  const selection = selectChecksForEvent(eventName, payload);
+  // Candidate provenance is supplied only by the preceding live PR validation step.
+  const selection = selectChecksForEvent(
+    eventName,
+    payload,
+    gitDiff,
+    null,
+    process.env.GITHUB_REF ?? '',
+    process.env.OROT_IOS_CANDIDATE_PR_NUMBER ?? '',
+  );
   const fullValidationDeferred = resolveFullValidationDeferred(eventName, payload);
   const selected = CHECK_KEYS.filter((key) => selection[key]);
   process.stdout.write(

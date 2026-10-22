@@ -63,3 +63,18 @@ test('release rejects a legacy full-path push run even if it claims every requir
     false,
   );
 });
+
+test('a candidate dispatch on a PR branch cannot become main release evidence', () => {
+  const candidate = {
+    id: 10001,
+    path: fullPath,
+    event: 'workflow_dispatch',
+    head_branch: 'eunsoogi/issue-216-validation-policy',
+    head_sha: sourceSha,
+    status: 'completed',
+    conclusion: 'success',
+    created_at: '2026-10-22T00:00:00Z',
+  };
+
+  assert.deepEqual(latestMainValidationRuns(sourceSha, [candidate]), []);
+});

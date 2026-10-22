@@ -28,6 +28,32 @@ test('full release dispatch requires every producer and executor, including sepa
   assert.equal(complete.validationTier, 'full');
 });
 
+test('candidate validation also requires every cohort, OAuth, and producer result', () => {
+  const results = resultsFor(IOS_TEST_COHORT_NAMES, true);
+  const complete = validateIosTestExecutionResults(
+    results,
+    IOS_TEST_COHORT_NAMES,
+    true,
+    'candidate',
+  );
+
+  assert.equal(complete.validationTier, 'candidate');
+  assert.throws(
+    () => validateIosTestExecutionResults(results, ['core-ui'], true, 'candidate'),
+    /Full validation requires the canonical complete cohort inventory/,
+  );
+  assert.throws(
+    () =>
+      validateIosTestExecutionResults(
+        resultsFor(IOS_TEST_COHORT_NAMES, false),
+        IOS_TEST_COHORT_NAMES,
+        false,
+        'candidate',
+      ),
+    /Full validation requires OAuth/,
+  );
+});
+
 test('a focused selection explicitly skips unused configurations and OAuth jobs', () => {
   const selected = ['backup'];
   const results = resultsFor(selected, false);

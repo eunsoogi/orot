@@ -15,8 +15,9 @@ export function validateIosTestExecutionResults(
     throw new Error('Integration completeness requires a known validation tier');
   if (plan.length !== selectedCohorts.length || plan.length === 0)
     throw new Error('Integration completeness requires a nonempty selected plan');
-  // Only complete inventory plus OAuth can produce Full evidence, even when a PR selects all tests.
-  if (validationTier === 'full') validateFullIosSelection(selectedCohorts, oauthRequired);
+  // Candidate runs execute the same full scope but retain separate provenance from main Full evidence.
+  if (validationTier === 'full' || validationTier === 'candidate')
+    validateFullIosSelection(selectedCohorts, oauthRequired);
 
   const selected = new Set(selectedCohorts);
   const notSelectedCohorts = IOS_TEST_COHORT_NAMES.filter((cohort) => !selected.has(cohort));

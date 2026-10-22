@@ -41,7 +41,8 @@ test('manual selection has an independent entry and cannot create full protected
   assert.equal(entry.source.name, 'E2E Test - Selected');
   assert.deepEqual(Object.keys(entry.source.on), ['workflow_dispatch']);
   const full = workflow(directory + 'e2e-test.yml');
-  assert.deepEqual(full.on.workflow_dispatch, {});
+  assert.deepEqual(Object.keys(full.on.workflow_dispatch.inputs), ['candidate_pr_number']);
+  assert.equal(full.on.workflow_dispatch.inputs.candidate_pr_number.required, false);
   assert.ok(!Object.values(full.jobs).some((job) => job.uses === focusedPath));
 });
 

@@ -29,8 +29,9 @@ if (!isIosValidationTier(validationTier))
 if (oauthValue !== 'true' && oauthValue !== 'false')
   throw new Error('Integration aggregation requires the OAuth selection decision');
 const oauthRequired = oauthValue === 'true';
-// A result artifact repeats the Full boundary so consumers can reject PR-sized evidence.
-if (validationTier === 'full') validateFullIosSelection(selectedCohorts, oauthRequired);
+// Candidate artifacts repeat the Full boundary without changing their separate provenance tier.
+if (validationTier === 'full' || validationTier === 'candidate')
+  validateFullIosSelection(selectedCohorts, oauthRequired);
 const notSelectedCohorts = IOS_TEST_COHORT_NAMES.filter(
   (cohort) => !selectedCohorts.includes(cohort),
 );
