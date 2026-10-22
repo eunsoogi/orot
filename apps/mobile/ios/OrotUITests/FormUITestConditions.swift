@@ -68,12 +68,13 @@ enum FormUITestConditions {
     static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {
         let replaceStartedAt = ProcessInfo.processInfo.systemUptime
         defer { recordTiming("replace-total", since: replaceStartedAt) }
-        guard let reference = measure("reveal") { reveal(input, in: app, scrollID: scrollID) } else { return }
+        // Pass measured closures as explicit arguments so Swift binds `else` to each guard statement.
+        guard let reference = measure("reveal", { reveal(input, in: app, scrollID: scrollID) }) else { return }
         let current = measure("value-read") { input.value as? String ?? "" }
         measure("field-tap") { input.tap() }
-        guard let focused = measure("focused-input") {
+        guard let focused = measure("focused-input", {
             exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID)
-        } else { return }
+        }) else { return }
         let shouldReplace = if current.isEmpty {
             false
         } else {
