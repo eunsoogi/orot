@@ -1,4 +1,7 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { AppSymbol } from '../layout/AppSymbol';
+import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import RecordingLibrarySummaryRow from './RecordingLibrarySummaryRow';
@@ -14,6 +17,7 @@ export default function RecordingLibraryList({
   disabled,
   onOpen,
   onDelete,
+  onNewRecording,
 }: {
   readonly recordings: readonly RecordingLibrarySummary[];
   readonly loading: boolean;
@@ -21,12 +25,34 @@ export default function RecordingLibraryList({
   readonly disabled: boolean;
   readonly onOpen: (id: string, autoPlay?: boolean) => void;
   readonly onDelete: (source: RecordingSourceRecord) => void;
+  readonly onNewRecording?: () => void;
 }) {
   return (
     <>
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('recording.library.title')}
-      </Text>
+      <View style={styles.libraryHeading}>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, onNewRecording && styles.pageTitle]}
+        >
+          {t('recording.library.title')}
+        </Text>
+        {onNewRecording ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('recording.start')}
+            disabled={disabled}
+            onPress={onNewRecording}
+            style={styles.listPlaybackButton}
+            testID="saved-recordings-new"
+          >
+            <ComposerGlassBackground />
+            <AppSymbol name="mic.fill" color={appColors.primaryText} />
+          </Pressable>
+        ) : null}
+      </View>
+      {onNewRecording ? (
+        <Text style={styles.copy}>{t('recording.library.description')}</Text>
+      ) : null}
       {loading ? <Text>{t('recording.library.loading')}</Text> : null}
       {loadError ? (
         <Text accessibilityRole="alert" style={styles.error}>

@@ -9,7 +9,10 @@ import { expandedActionSteps, workflow } from './fixtures/ios-workflow.mjs';
 test('execution jobs consume compiled products without reinstalling build dependencies', () => {
   const executions = [
     ...Object.values(workflow('.github/workflows/ios-debug-tests.yml').jobs),
-    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs),
+    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs).filter(
+      (job) => !job.uses,
+    ),
+    ...Object.values(workflow('.github/workflows/ios-question-tests.yml').jobs),
     workflow('.github/workflows/ios-focused.yml').jobs.execution,
     workflow('.github/workflows/ios-oauth-execution.yml').jobs.execution,
   ];

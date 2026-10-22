@@ -67,7 +67,12 @@ export async function configureHealthKitAutoSync(
       return { status: 'retryable' as const, attemptedFeatures: [] };
     }
 
-    return await refreshHealthKitAutoSyncSelection(options);
+    // Reviewing medication access may expose doses older than a saved anchor.
+    // Explicit setup replays bounded dose pages; ordinary launch sync stays incremental.
+    return await refreshHealthKitAutoSyncSelection({
+      ...options,
+      refreshMedicationDoseHistory: selected.includes('medications'),
+    });
   } catch {
     // The selection is already stored, so only the aggregate sync status needs a retry marker.
     try {

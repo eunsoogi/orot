@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { SelectedModelControl } from '../layout/SelectedModelControl';
 import type { Appointment } from '@orot/domain';
 import { AppSymbol } from '../layout/AppSymbol';
 import { nextVisitQuestionsCopy as copy } from './copy';
@@ -57,30 +58,18 @@ export function VisitProviderCard({
   const styles = contextStyles(theme);
   return (
     <View testID="next-visit-provider">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${copy.provider.choose}, ${provider.displayName}`}
+      <SelectedModelControl
+        name={provider.displayName}
+        local={provider.privacyBoundary === 'on-device'}
+        label={`${copy.provider.choose}, ${provider.displayName}`}
         onPress={onChoose}
-        style={[styles.card, styles.provider]}
         testID="next-visit-provider-select"
-      >
-        <View style={styles.icon}>
-          <AppSymbol name="waveform" color={theme.colors.accentText} />
-        </View>
-        <View style={styles.content}>
-          <Text style={styles.title}>선택한 AI · {provider.displayName}</Text>
-          <Text style={styles.caption}>
-            {provider.privacyBoundary === 'on-device'
-              ? copy.provider.onDevice
-              : copy.provider.remote}
-          </Text>
-        </View>
-        <AppSymbol
-          name="chevron.right"
-          size={14}
-          color={theme.colors.textMuted}
-        />
-      </Pressable>
+      />
+      <Text style={styles.caption}>
+        {provider.privacyBoundary === 'on-device'
+          ? copy.provider.onDevice
+          : copy.provider.remote}
+      </Text>
     </View>
   );
 }
@@ -93,7 +82,8 @@ function contextStyles({ colors }: NextVisitQuestionsTheme) {
       gap: 12,
       padding: 12,
       borderRadius: 16,
-      backgroundColor: colors.surfaceSubtle,
+      // This is a page-level card; subtle surfaces belong to controls inside cards.
+      backgroundColor: colors.surface,
     },
     provider: {
       backgroundColor: colors.surface,

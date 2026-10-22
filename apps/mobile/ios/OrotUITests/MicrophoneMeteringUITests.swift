@@ -10,7 +10,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     func testMeteringEventsPauseResumeAndExplicitCleanup() async throws {
         let app = XCUIApplication()
-        defer { app.terminate() }
+        defer { UITestConditions.terminateStandaloneApp(app) }
         start(app)
         // These are the original measured capture windows, not sleeps used to infer readiness.
         try await Task.sleep(for: .seconds(3))
@@ -50,7 +50,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     func testWallClockDeadlineEndsCaptureAndCleansItsArtifact() {
         let app = XCUIApplication()
-        defer { app.terminate() }
+        defer { UITestConditions.terminateStandaloneApp(app) }
         start(app)
         status(app, "completed")
         let completed = dictionary(report(app, name: "microphone-wall-clock-deadline"), "state")
@@ -79,14 +79,15 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
             let description = alert.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
             XCTAssertTrue(description.localizedCaseInsensitiveContains("microphone") || description.contains("마이크"), description)
             let allow = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "허용", "OK", "확인"])).firstMatch
-            XCTAssertTrue(allow.exists, "The system microphone permission prompt must expose an allow action")
+            XCTAssertTrue(allow.exists, alert.debugDescription)
             let permission = XCTAttachment(screenshot: springboard.screenshot())
             permission.name = "observed-microphone-system-permission"
             permission.lifetime = .keepAlways
             add(permission)
+            // Capture begins after permission. Re-querying the dismissed Allow button or whole
+            // app hierarchies here can consume the probe's unchanged 25-second capture lifetime.
             allow.tap()
         }
-        // The actual Allow tap and recording state prove permission success without full Accessibility-tree snapshots.
         status(app, "recording")
     }
 
@@ -103,7 +104,7 @@ final class MicrophoneMeteringUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
-        // tap() resolves its target. Avoid another synchronous AX poll inside the capture deadline.
+        XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         target.tap()
     }
 

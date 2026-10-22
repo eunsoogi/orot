@@ -6,9 +6,9 @@ export const transcriptEvidenceStyles = StyleSheet.create({
   container: { gap: 16, paddingTop: 16 },
   title: {
     color: appColors.text,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '700',
-    lineHeight: 38,
+    lineHeight: 36,
   },
   localNotice: {
     alignItems: 'flex-start',
@@ -36,7 +36,7 @@ export const transcriptEvidenceStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  summaryTitle: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  summaryTitle: { color: appColors.text, fontSize: 22, fontWeight: '700' },
   copy: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
   segments: { gap: 12, paddingBottom: 4 },
   segment: {
@@ -135,7 +135,7 @@ export const transcriptEvidenceStyles = StyleSheet.create({
     gap: 10,
     padding: 16,
   },
-  editorTitle: { color: appColors.text, fontSize: 24, fontWeight: '700' },
+  editorTitle: { color: appColors.text, fontSize: 22, fontWeight: '700' },
   input: {
     minHeight: 96,
     borderWidth: 1.5,

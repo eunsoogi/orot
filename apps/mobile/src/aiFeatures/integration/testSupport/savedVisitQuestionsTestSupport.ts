@@ -139,6 +139,8 @@ export function repositories(input: {
   let currentStaleArtifacts = [...(input.staleArtifacts ?? [])];
   const records = {
     get: jest.fn(async (kind: string, id: string) => {
+      if (kind === 'visit_question')
+        return input.questions.find(candidate => candidate.id === id) ?? null;
       if (kind === 'transcript_segment')
         return transcriptSegments.get(id) ?? null;
       return null;

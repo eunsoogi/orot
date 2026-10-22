@@ -149,29 +149,37 @@ public final class HealthKitModule: NSObject {
         }
 
         let predicate = HKQuery.predicateForSamples(withStart: query.startDate, end: query.endDate, options: [])
-        let descriptor = HKQueryDescriptor(sampleType: sampleType, predicate: predicate)
-        let nativeQuery = HKSampleQuery(
-            queryDescriptors: [descriptor],
-            limit: query.limit,
-            sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)],
-        ) { _, samples, error in
-            if let error {
-                reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+        withMedicationDoseScope(feature: query.feature, predicate: predicate) { scoped in
+            guard case let .success(scope) = scoped else {
+                if case let .failure(error) = scoped {
+                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                }
                 return
             }
-            guard let samples else {
-                reject("HEALTHKIT_QUERY_FAILED", "HealthKit returned no query result.", nil)
-                return
+            let descriptor = HKQueryDescriptor(sampleType: sampleType, predicate: scope.predicate)
+            let nativeQuery = HKSampleQuery(
+                queryDescriptors: [descriptor],
+                limit: query.limit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)],
+            ) { _, samples, error in
+                if let error {
+                    reject("HEALTHKIT_QUERY_FAILED", error.localizedDescription, error as NSError)
+                    return
+                }
+                guard let samples else {
+                    reject("HEALTHKIT_QUERY_FAILED", "HealthKit returned no query result.", nil)
+                    return
+                }
+                // An empty result only means no matching samples are visible to this app.
+                do {
+                    let snapshots = try samples.map(HealthKitBoundary.snapshot)
+                    resolve(HealthKitBoundary.sampleResult(availability: "available", samples: snapshots))
+                } catch {
+                    reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
+                }
             }
-            // An empty result only means no matching samples are visible to this app.
-            do {
-                let snapshots = try samples.map(HealthKitBoundary.snapshot)
-                resolve(HealthKitBoundary.sampleResult(availability: "available", samples: snapshots))
-            } catch {
-                reject("HEALTHKIT_SERIALIZATION_FAILED", error.localizedDescription, error as NSError)
-            }
+            self.store.execute(nativeQuery)
         }
-        store.execute(nativeQuery)
     }
 
     #if DEBUG && targetEnvironment(simulator)

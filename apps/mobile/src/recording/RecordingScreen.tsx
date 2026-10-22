@@ -21,6 +21,7 @@ import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions
 
 interface RecordingScreenProps {
   onBack: () => void;
+  onOpenSavedRecordings?: () => void;
   service?: RecordingService;
   playbackService?: RecordingPlaybackService;
   /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
@@ -37,6 +38,7 @@ const initialSnapshot: RecordingSnapshot = {
 
 export default function RecordingScreen({
   onBack,
+  onOpenSavedRecordings,
   service = recordingService,
   playbackService = service,
   transcriptService,
@@ -193,6 +195,7 @@ export default function RecordingScreen({
 
   return (
     <RecordingControls
+      onOpenSavedRecordings={onOpenSavedRecordings}
       onBack={onBack}
       stateReady={stateReady}
       status={snapshot.status}

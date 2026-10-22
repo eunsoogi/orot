@@ -77,6 +77,8 @@ export type {
   VisitBrief,
 } from './visits';
 export type { VisitQuestion, VisitQuestionCreate } from './visitQuestions';
+export { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
+export type { VisitQuestionHealthContextSource } from './visitQuestionHealthContext';
 export {
   createTranscriptCorrection,
   TranscriptAudioRangeSchema,

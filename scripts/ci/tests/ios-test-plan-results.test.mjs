@@ -89,8 +89,8 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
   const outcome = run(root);
   assert.equal(outcome.status, 0, outcome.stderr);
   const result = JSON.parse(readFileSync(join(root, 'complete.json'), 'utf8'));
-  assert.equal(result.observations.length, 95);
-  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 95);
+  assert.equal(result.observations.length, 111);
+  assert.equal(new Set(result.observations.map((entry) => entry.identifier)).size, 111);
   assert.deepEqual(result.selectedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.executedCohorts, IOS_TEST_COHORT_NAMES);
   assert.deepEqual(result.notSelectedCohorts, []);
@@ -102,7 +102,7 @@ test('the actual aggregation CLI requires every feature report and all Korean fi
 });
 
 test('selected aggregation accepts exactly the affected reports and records every skipped cohort', (t) => {
-  const selected = ['questions'];
+  const selected = ['questions-review', 'questions-conversation', 'questions-summary'];
   const { root } = reports(t, selected);
   const outcome = run(root, selected);
 

@@ -1,6 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync } from 'node:fs';
-import { selectFocusedIosTests, verifyFocusedIosPullRequest } from './ios-focused-selection.mjs';
+import {
+  focusedIosTestCohorts,
+  selectFocusedIosTests,
+  verifyFocusedIosPullRequest,
+} from './ios-focused-selection.mjs';
 
 const [profile, file, name, number = '', ...extra] = process.argv.slice(2);
 if (extra.length || process.env.GITHUB_ACTIONS !== 'true' || !process.env.GITHUB_OUTPUT)
@@ -34,7 +38,7 @@ if (number) {
 }
 appendFileSync(
   process.env.GITHUB_OUTPUT,
-  Object.entries(selection)
+  Object.entries({ ...selection, cohorts: JSON.stringify(focusedIosTestCohorts(selection)) })
     .filter(([key]) => key !== 'identifiers')
     .map(([key, value]) => `${key}=${value}`)
     .join('\n') + '\n',

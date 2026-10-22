@@ -1,10 +1,16 @@
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import { periodQuestionQuantityFacts } from './periodQuestionFacts';
+import { rejectedQuantityTransformation } from './questionFactPrecision';
 
 interface DateFact {
-  readonly year: number;
+  readonly year?: number;
   readonly month: number;
   readonly day?: number;
 }
+
+// A month/day is a date, not a dose or measurement; a bare day still remains a numeric claim.
+const KOREAN_PARTIAL_DATE =
+  /(?<!\d)(0?[1-9]|1[0-2])\s*월(?:\s*(0?[1-9]|[12]\d|3[01])\s*일)?/gu;
 
 function dateFacts(text: string): DateFact[] {
   const facts: DateFact[] = [];
@@ -21,6 +27,13 @@ function dateFacts(text: string): DateFact[] {
         ...(day ? { day: Number(day) } : {}),
       });
     }
+  }
+  const remaining = patterns.reduce(
+    (value, pattern) => value.replace(pattern, ' '),
+    text,
+  );
+  for (const [, month, day] of remaining.matchAll(KOREAN_PARTIAL_DATE)) {
+    facts.push({ month: Number(month), ...(day ? { day: Number(day) } : {}) });
   }
   return facts;
 }
@@ -75,7 +88,14 @@ function structuredQuantityFacts(text: string): string[] {
       }
       Object.values(object).forEach(visit);
     };
-    visit(JSON.parse(json));
+    const parsed: unknown = JSON.parse(json);
+    visit(parsed);
+    if (text.startsWith('health_context: ')) {
+      for (const { amount, unit } of periodQuestionQuantityFacts(parsed))
+        facts.push(
+          `${normalizeNumericValue(String(amount))}\u0000${normalizeUnit(unit)}`,
+        );
+    }
     return facts;
   } catch {
     return [];
@@ -97,7 +117,8 @@ function numericFacts(text: string): Set<string> {
     .replace(
       /(?<!\d)((?:19|20)\d{2})\s*년\s*(0?[1-9]|1[0-2])\s*월(?:\s*(0?[1-9]|[12]\d|3[01])\s*일)?/gu,
       ' ',
-    );
+    )
+    .replace(KOREAN_PARTIAL_DATE, ' ');
   const facts = new Set(
     [...withoutDates.matchAll(NUMERIC_FACT_PATTERN)].map(
       ([, expression, unit]) => {
@@ -120,6 +141,24 @@ export function hasUnsupportedDateOrValue(
   citedEvidence: readonly VisitQuestionEvidenceItem[],
   appointmentDate?: string,
 ): boolean {
+  return (
+    unsupportedDateOrValueKind(text, citedEvidence, appointmentDate) !==
+    undefined
+  );
+}
+
+/** Returns only a closed failure category, without exposing the questioned date or quantity. */
+export function unsupportedDateOrValueKind(
+  text: string,
+  citedEvidence: readonly VisitQuestionEvidenceItem[],
+  appointmentDate?: string,
+):
+  | 'date'
+  | 'quantity_ratio'
+  | 'quantity_unit'
+  | 'quantity_precision'
+  | 'quantity_value'
+  | undefined {
   const sourceTexts = [
     appointmentDate ?? '',
     ...citedEvidence.flatMap(item => [item.content, item.effectiveTime ?? '']),
@@ -129,17 +168,47 @@ export function hasUnsupportedDateOrValue(
   const supportedNumbers = new Set(
     sourceTexts.flatMap(value => [...numericFacts(value)]),
   );
-  if ([...numericFacts(text)].some(value => !supportedNumbers.has(value)))
-    return true;
+  const unsupported = [...numericFacts(text)].find(
+    value => !supportedNumbers.has(value),
+  );
+  if (unsupported) {
+    const [expression, unit] = unsupported.split('\u0000');
+    if (expression!.includes('/')) return 'quantity_ratio';
+    for (const supported of supportedNumbers) {
+      const [sourceExpression, sourceUnit] = supported.split('\u0000');
+      if (expression === sourceExpression && unit !== sourceUnit)
+        return 'quantity_unit';
+      const actual = Number(expression);
+      const source = Number(sourceExpression);
+      // This tolerance classifies floating-point noise for diagnostics only; the claim stays rejected.
+      if (
+        unit === sourceUnit &&
+        Number.isFinite(actual) &&
+        Number.isFinite(source) &&
+        Math.abs(actual - source) <=
+          Number.EPSILON * Math.max(1, Math.abs(source)) * 8
+      )
+        return 'quantity_precision';
+    }
+    return (
+      rejectedQuantityTransformation(
+        Number(expression),
+        unit ?? '',
+        supportedNumbers,
+      ) ?? 'quantity_value'
+    );
+  }
 
   const supportedDates = dateFacts(sourceText);
   return dateFacts(text).some(
     date =>
       !supportedDates.some(
         supported =>
-          date.year === supported.year &&
+          (date.year === undefined || date.year === supported.year) &&
           date.month === supported.month &&
           (date.day === undefined || date.day === supported.day),
       ),
-  );
+  )
+    ? 'date'
+    : undefined;
 }

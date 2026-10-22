@@ -198,7 +198,7 @@ export function createEuropePmcEvidenceSearchTool(options: {
     sourceKind: 'external_medical',
     execution: 'external_read_only',
     description:
-      'Search Europe PMC for a short publication query after separate user approval of the exact query. Results include original links and publication/update provenance.',
+      'Search Europe PMC for a short publication query after separate user permission to send medical-search terms to this destination. Results include original links and publication/update provenance.',
     inputSchema: querySchema,
     parseInput: parseQuery,
     async search(request) {

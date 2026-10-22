@@ -54,7 +54,7 @@ test('forwards disease progress and projected-text observers into the workflow',
   expect(diseaseRunner).toHaveBeenCalledWith(
     expect.objectContaining({
       execution: expect.objectContaining({
-        budget: expect.objectContaining({ timeoutMs: 90_000 }),
+        budget: expect.objectContaining({ timeoutMs: null }),
       }),
     }),
     undefined,

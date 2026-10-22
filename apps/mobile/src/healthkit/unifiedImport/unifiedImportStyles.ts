@@ -5,7 +5,7 @@ import { appColors } from '../../layout/appColors';
 export const unifiedImportStyles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: appColors.background },
   container: { flexGrow: 1, padding: 24, gap: 20 },
-  title: { color: appColors.text, fontSize: 32, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   description: { color: appColors.secondary, fontSize: 17, lineHeight: 25 },
   card: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -1,9 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import type { AlertButton } from 'react-native';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
-import { navigationText } from '../../../i18n/navigation';
 import {
   apple,
   localData,
@@ -21,7 +19,7 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('confirms before leaving a source citation during its local reread', async () => {
+test('leaves a read-only citation without confirmation and ignores its late reread', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const record = memoryRecord(1);
   const source = localData([record]);
@@ -29,7 +27,12 @@ test('confirms before leaving a source citation during its local reread', async 
   const pendingRead = new Promise<PersistedMemoryRecord[]>(resolve => {
     finishRead = resolve;
   });
-  const listRecords = jest.fn(() => pendingRead);
+  let blockViewerRead = false;
+  // Saving now reads the cited source too; defer only the viewer's later read
+  // so this test still observes leaving an in-flight read-only detail screen.
+  const listRecords = jest.fn(async () =>
+    blockViewerRead ? pendingRead : [record],
+  );
   source.data.memoryStorage.listRecords =
     listRecords as typeof source.data.memoryStorage.listRecords;
   const diseaseRunner = jest.fn(
@@ -71,25 +74,22 @@ test('confirms before leaving a source citation during its local reread', async 
 
   await fireEvent.press(route.getByTestId('ai-feature-disease-hypotheses'));
   await fireEvent.press(route.getByTestId('disease-hypotheses-generate'));
-  await fireEvent.press(await route.findByText(/원문 근거 열기/));
-  await waitFor(() => expect(listRecords).toHaveBeenCalled());
-  expect(route.getByTestId('ai-feature-source-loading')).toBeTruthy();
-
-  await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(
-    navigationText.leaveOngoingOperation.title,
+  const openSource = await route.findByLabelText(/원문 근거 열기/);
+  const earlierReads = listRecords.mock.calls.length;
+  blockViewerRead = true;
+  await fireEvent.press(openSource);
+  await waitFor(() =>
+    expect(listRecords.mock.calls.length).toBeGreaterThan(earlierReads),
   );
-  await pressAlertButton(alert, 0);
   expect(route.getByTestId('ai-feature-source-loading')).toBeTruthy();
 
   await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  await pressAlertButton(alert, 1);
   await waitFor(() =>
     expect(route.queryByTestId('ai-feature-source-detail')).toBeNull(),
   );
   await act(async () => finishRead([record]));
+  expect(alert).not.toHaveBeenCalled();
+  expect(route.queryByTestId('ai-feature-source-detail')).toBeNull();
   expect(route.getByTestId('disease-hypotheses-results')).toBeTruthy();
 });
 
@@ -107,15 +107,4 @@ function routeDependencies(
     loadLocalData: async () => localData([memoryRecord(1)]).data,
     ...overrides,
   };
-}
-
-/** Uses the native confirmation button to resume the route guard. */
-async function pressAlertButton(alert: jest.SpyInstance, index: number) {
-  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
-  const press = buttons?.[index]?.onPress;
-  if (!press) throw new Error(`Alert button ${index} was not registered.`);
-  await act(async () => {
-    press();
-    await Promise.resolve();
-  });
 }

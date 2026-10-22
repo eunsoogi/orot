@@ -6,6 +6,10 @@ import type {
 } from '@orot/agent-runtime';
 import { createExecutionConsentRegistry } from './consentRegistry';
 import InferenceDisclosureSheet from './InferenceDisclosureSheet';
+import { createRememberedInferenceConfirmation } from './rememberedInferenceConsent';
+import { fingerprintConsentSnapshot } from './consentFingerprint';
+import { inferenceConsentReceipts } from '../../storage/inferenceConsentStorage';
+import { consentPermissionKey } from './consentPermissionKey';
 
 interface PendingConfirmation {
   readonly request: OutboundProcessingRequest;
@@ -24,6 +28,7 @@ export function useInferenceConsent(): InferenceConsentController {
     useState<OutboundProcessingRequest | null>(null);
   const pending = useRef<PendingConfirmation | null>(null);
   const mounted = useRef(false);
+  const [canRemember, setCanRemember] = useState(true);
 
   const finish = useCallback((approved: boolean) => {
     const current = pending.current;
@@ -70,11 +75,31 @@ export function useInferenceConsent(): InferenceConsentController {
   }, []);
 
   const consent = useMemo(
-    () => createExecutionConsentRegistry(confirm),
+    () =>
+      createExecutionConsentRegistry(
+        createRememberedInferenceConfirmation(confirm, {
+          receipts: inferenceConsentReceipts,
+          digest: async snapshot => {
+            const digest = await fingerprintConsentSnapshot(snapshot);
+            if (mounted.current) setCanRemember(true);
+            return digest;
+          },
+          onUnavailable: () => {
+            if (mounted.current) setCanRemember(false);
+          },
+        }),
+      ),
     [confirm],
   );
   const disclosureSheet = (
-    <InferenceDisclosureSheet request={pendingRequest} onDecision={finish} />
+    <InferenceDisclosureSheet
+      request={pendingRequest}
+      onDecision={finish}
+      canRemember={
+        canRemember &&
+        Boolean(pendingRequest && consentPermissionKey(pendingRequest))
+      }
+    />
   );
 
   return { consent, disclosureSheet };

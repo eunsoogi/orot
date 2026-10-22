@@ -1,5 +1,29 @@
 import { boundedVisitGeneration } from '../boundedVisitGeneration';
 
+test('keeps the default request alive beyond 90 seconds until the person cancels', async () => {
+  jest.useFakeTimers();
+  try {
+    const controller = new AbortController();
+    let active: AbortSignal | undefined;
+    let completed = false;
+    const pending = boundedVisitGeneration(controller.signal, async signal => {
+      active = signal;
+      return new Promise<never>(() => {});
+    }).then(result => {
+      completed = true;
+      return result;
+    });
+    await jest.advanceTimersByTimeAsync(180_000);
+    expect(completed).toBe(false);
+    expect(active?.aborted).toBe(false);
+    controller.abort();
+    await expect(pending).resolves.toEqual({ status: 'cancelled' });
+    expect(active?.aborted).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test('keeps the route alive for a valid 60-second tool workflow', async () => {
   jest.useFakeTimers();
   try {

@@ -1,27 +1,11 @@
 import { IOS_TEST_COHORT_NAMES } from './ios-test-execution-plan.mjs';
-import { maintainedNativeTestOwners } from './ios-test-impact-owners.mjs';
+import {
+  maintainedNativeTestOwners,
+  sharedUiCohorts as ui,
+  recordingCohorts as recording,
+} from './ios-test-impact-owners.mjs';
 
 const all = IOS_TEST_COHORT_NAMES;
-const ui = [
-  'core-ui',
-  'navigation',
-  'recordings',
-  'questions',
-  'calendar',
-  'provider',
-  'health',
-  'microphone',
-  'selection',
-];
-const recording = [
-  'core-integration',
-  'persistence',
-  'isolation',
-  'backup',
-  'recordings',
-  'microphone',
-  'speech',
-];
 // The maintained plan includes recording-export UI and root-tab integration assertions.
 const recordingSource = [...recording, 'core-ui'];
 const navigationSource = [...ui, 'core-integration'];
@@ -41,8 +25,10 @@ const provider = [
 ];
 
 function canonical(cohorts) {
-  const selected = new Set(cohorts);
-  return all.filter((cohort) => selected.has(cohort));
+  // Filtering the maintained plan expands a family and deduplicates overlapping selections in plan order.
+  return all.filter((cohort) =>
+    cohorts.some((selected) => cohort === selected || cohort.startsWith(selected + '-')),
+  );
 }
 
 function impact(cohorts, reason, oauth = false) {
@@ -91,7 +77,14 @@ function sourceImpact(path) {
       return impact(recordingSource, 'recording-source');
     case 'transcription':
       return impact(
-        ['core-integration', 'persistence', 'recordings', 'microphone', 'speech'],
+        [
+          'core-integration',
+          'recording-evidence',
+          'persistence',
+          'recordings',
+          'microphone',
+          'speech',
+        ],
         'transcription-source',
       );
     case 'healthEvidence':
@@ -120,7 +113,10 @@ function sourceImpact(path) {
       );
     case 'agent':
     case 'aiFeatures':
-      return impact([...provider, 'navigation', 'core-ui'], 'cross-feature-workflow-source');
+      return impact(
+        [...provider, 'navigation', 'core-ui', 'recording-evidence'],
+        'cross-feature-workflow-source',
+      );
     case 'navigation':
       return impact(navigationSource, 'shared-ui-source');
     case 'layout':
@@ -164,7 +160,10 @@ function nativeTestImpact(path) {
       lower.includes('playback') ||
       lower.includes('export')
     )
-      return impact(['recordings', 'persistence', 'backup'], 'recording-ui-test');
+      return impact(
+        ['recording-evidence', 'recordings', 'persistence', 'backup'],
+        'recording-ui-test',
+      );
     if (
       lower.includes('navigation') ||
       lower.includes('safarea') ||

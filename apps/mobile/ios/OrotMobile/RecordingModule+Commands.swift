@@ -118,6 +118,7 @@ public extension RecordingModule {
                 return
             }
             self.recorder?.pause()
+            RecordingCaptureDiagnostics.emit(.paused, clockMs: self.currentDurationMs())
             self.deactivateAudioSession()
             self.status = .paused
             self.stopTimer()
@@ -161,6 +162,7 @@ public extension RecordingModule {
                 return
             }
             self.wasInterrupted = false
+            RecordingCaptureDiagnostics.emit(.resumed, clockMs: self.currentDurationMs())
             self.status = .recording
             self.startTimer()
             self.emitState()
@@ -189,9 +191,11 @@ public extension RecordingModule {
             }
 
             self.lastDurationMs = self.currentDurationMs()
+            RecordingCaptureDiagnostics.emit(.stopping, clockMs: self.lastDurationMs)
             self.stopTimer()
             self.recorder?.stop()
             self.recorder = nil
+            RecordingCaptureDiagnostics.emit(.stopped, clockMs: self.lastDurationMs, fileURL: url)
             let allowUnverifiedProtectionForSimulator: Bool
             #if DEBUG && targetEnvironment(simulator)
                 allowUnverifiedProtectionForSimulator = self.syntheticCapture != nil

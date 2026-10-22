@@ -23,20 +23,27 @@ test('tool-enabled visit replies use the native mixed-response envelope', () => 
   expect(output.value.citations).toEqual(['evidence-alias-7']);
 });
 
-test('empty-library literature probe requests a real tool protocol call before answering', () => {
-  const script = appleModelMockScript('rag-workflow');
-  const input = { ...request([]), tools, toolChoice: 'required' as const };
-  expect(JSON.parse(script[0](input).text!)).toEqual({
-    kind: 'tool_calls',
-    toolCalls: [
-      {
-        name: tools[0].name,
-        arguments: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
-      },
-    ],
-  });
-  expect(script).toHaveLength(2);
-});
+test.each([undefined, 'required'] as const)(
+  'empty-library literature probe chooses a protocol call with toolChoice=%s',
+  toolChoice => {
+    const script = appleModelMockScript('rag-workflow');
+    const input = {
+      ...request([]),
+      tools,
+      ...(toolChoice ? { toolChoice } : {}),
+    };
+    expect(JSON.parse(script[0](input).text!)).toEqual({
+      kind: 'tool_calls',
+      toolCalls: [
+        {
+          name: tools[0].name,
+          arguments: { query: '(sleep duration adults) AND HAS_ABSTRACT:y' },
+        },
+      ],
+    });
+    expect(script).toHaveLength(2);
+  },
+);
 
 function request(ids: string[]): LanguageModelRequest {
   return {

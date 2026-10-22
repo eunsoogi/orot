@@ -84,7 +84,14 @@ test('full and focused visible job names use one consistent role and target', ()
     assert.equal(job.strategy, undefined);
     for (const leaf of leaves) {
       const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
-      names.push([job.name, name].join(' / '));
+      if (
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/.test(
+          leaf.uses ?? '',
+        )
+      ) {
+        for (const question of Object.values(workflow(leaf.uses).jobs))
+          names.push([job.name, name, question.name].join(' / '));
+      } else names.push([job.name, name].join(' / '));
     }
   }
   const expected = [
@@ -110,19 +117,21 @@ test('full and focused visible job names use one consistent role and target', ()
     [
       'iOS / Plan / Select',
       'iOS / Build / ${{ needs.selection.outputs.configuration }}',
+      'iOS / Test',
       'iOS / Test / Selection',
       'iOS / Validate / Complete',
     ].sort(),
   );
 });
 
-test('full integration execution preserves 95 observations, eight existing provider cases and seven native lifecycle cases', () => {
+test('full integration execution preserves 111 observations and every registered provider case', () => {
   const scheduled = ['release', 'speech', 'debug'].flatMap((cohort) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(scheduled.length, 95);
+  // Release75 + Debug27 + Speech9 retain each original case and the added regressions.
+  assert.equal(scheduled.length, 111);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 95);
+  assert.equal(identifiers.size, 111);
   const provider = iosTestInventory('provider-data');
   const expectedProvider = [
     'AppleNativeToolLifecycleTests/testCallbackResultDrainsBeforeFreshGeneration',
@@ -133,15 +142,18 @@ test('full integration execution preserves 95 observations, eight existing provi
     'AppleNativeToolLifecycleTests/testWatchdogReleasesAnOrphanedCallback',
     'AppleNativeToolLifecycleTests/testParallelCallbackFailsWithoutPublishingAnotherTool',
     'RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
+    'AppleModelIntegrationTests/testStreamingFailurePreservesKnownNativeDecisions',
     'AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
     'AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',
     'AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',
     'ProviderIntegrationTests/testSyntheticCatalogStreamLimitAndCancellationUseProviderBridge',
     'ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
+    'MedicationDoseCursorTests/testCatalogShrinkageAndEmptyVisibilityRetainDeletionScope',
+    'MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
     'HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
     'HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
   ].map((name) => `OrotIntegrationTests/${name}`);
-  // Exact identities preserve the existing eight cases; a count alone could hide a replacement.
+  // Exact identities preserve old cases plus streaming/dose regressions; a count can hide replacements.
   assert.deepEqual([...provider].sort(), expectedProvider.sort());
   for (const identifier of provider) assert.ok(identifiers.has(identifier));
   const workflowSource = readFileSync('.github/workflows/e2e-test.yml', 'utf8');

@@ -13,31 +13,34 @@ const source: RecordingSourceRecord = {
   reviewState: { status: 'unreviewed' },
 };
 
-test('routes a saved source and playback intent without embedding its review below the list', async () => {
-  const onOpenRecording = jest.fn();
-  await render(
-    <RecordingLibraryPanel
-      onOpenRecording={onOpenRecording}
-      service={{
-        list: async () => [source],
-        listSummaries: async () => [
-          { source, durationMs: 12000, transcriptReviewState: 'unavailable' },
-        ],
-        deleteRecording: jest.fn(),
-      }}
-    />,
-  );
-  await fireEvent.press(screen.getByTestId('recording-details-saved-source'));
-  expect(onOpenRecording).toHaveBeenLastCalledWith(
-    expect.objectContaining({ source }),
-    false,
-  );
-  expect(screen.queryByTestId('recording-detail')).toBeNull();
-  await fireEvent.press(
-    screen.getByTestId('recording-playback-list-button-saved-source'),
-  );
-  expect(onOpenRecording).toHaveBeenLastCalledWith(
-    expect.objectContaining({ source }),
-    true,
-  );
-});
+test.each([12000, null])(
+  'routes playback with duration %s without embedding review below the list',
+  async durationMs => {
+    const onOpenRecording = jest.fn();
+    await render(
+      <RecordingLibraryPanel
+        onOpenRecording={onOpenRecording}
+        service={{
+          list: async () => [source],
+          listSummaries: async () => [
+            { source, durationMs, transcriptReviewState: 'unavailable' },
+          ],
+          deleteRecording: jest.fn(),
+        }}
+      />,
+    );
+    await fireEvent.press(screen.getByTestId('recording-details-saved-source'));
+    expect(onOpenRecording).toHaveBeenLastCalledWith(
+      expect.objectContaining({ source }),
+      false,
+    );
+    expect(screen.queryByTestId('recording-detail')).toBeNull();
+    await fireEvent.press(
+      screen.getByTestId('recording-playback-list-button-saved-source'),
+    );
+    expect(onOpenRecording).toHaveBeenLastCalledWith(
+      expect.objectContaining({ source }),
+      true,
+    );
+  },
+);

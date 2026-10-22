@@ -164,27 +164,27 @@ describe('visit-question shared workflow', () => {
           evidenceIds: [alias.evidenceId],
         },
       ];
-      const { provider } = makeProvider([
-        JSON.stringify({
-          type: 'result',
-          value: { status: 'suggestions', questions },
-          citations: [citation],
-        }),
-      ]);
+      const response = JSON.stringify({
+        type: 'result',
+        value: { status: 'suggestions', questions },
+        citations: [citation],
+      });
+      const { provider, requests } = makeProvider([response, response]);
       const { selection, option } = selectedOption(provider, 'on-device');
-      return runVisitQuestionWorkflow({
+      const result = await runVisitQuestionWorkflow({
         prepared: preparedWithDose,
         selection,
         providerOptions: [option],
       });
+      return { result, requestCount: requests.length };
     };
 
     expect(
-      (await runWithQuestion('복용량 5 mg을 진료에서 확인할까요?')).status,
-    ).toBe('ready');
+      await runWithQuestion('복용량 5 mg을 진료에서 확인할까요?'),
+    ).toMatchObject({ result: { status: 'ready' }, requestCount: 1 });
     expect(
-      (await runWithQuestion('복용량 5 g을 진료에서 확인할까요?')).status,
-    ).toBe('needs_clarification');
+      await runWithQuestion('복용량 5 g을 진료에서 확인할까요?'),
+    ).toMatchObject({ result: { status: 'unavailable' }, requestCount: 2 });
   });
 
   it('does not call the selected provider when remote payload consent is declined', async () => {

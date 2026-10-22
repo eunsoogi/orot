@@ -4,11 +4,18 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { ConversationScreen } from '../ConversationScreen';
 import { getRagConversationCopy } from '../copy';
 import type { RagConversationOutcome } from '../service';
+
+const originalDimensions = Dimensions.get('window');
+// Compact baseline assertions explicitly use the standard Dynamic Type size.
+beforeEach(() =>
+  Dimensions.set({ window: { ...originalDimensions, fontScale: 1 } }),
+);
+afterEach(() => Dimensions.set({ window: originalDimensions }));
 
 const reference = {
   sourceKind: 'personal_record' as const,
@@ -30,16 +37,29 @@ test('keeps short input compact and scrolls long drafts within a bounded height'
     />,
   );
   const input = screen.getByTestId('rag-conversation-input');
-  expect(StyleSheet.flatten(input.props.style).height).toBe(44);
+  expect(StyleSheet.flatten(input.props.style)).toMatchObject({
+    minHeight: 44,
+    maxHeight: 96,
+  });
+  expect(input.props.scrollEnabled).toBe(false);
+  await fireEvent.changeText(input, '합성 첫째 줄\n합성 둘째 줄\n합성 셋째 줄');
   await fireEvent(input, 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 300 } },
   });
-  expect(StyleSheet.flatten(input.props.style).height).toBe(96);
-  expect(input.props.scrollEnabled).toBe(true);
+  expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
+    true,
+  );
+  await fireEvent.changeText(input, '짧은 합성 질문');
   await fireEvent(input, 'contentSizeChange', {
     nativeEvent: { contentSize: { height: 32 } },
   });
-  expect(StyleSheet.flatten(input.props.style).height).toBe(44);
+  expect(StyleSheet.flatten(input.props.style)).toMatchObject({
+    minHeight: 44,
+    maxHeight: 96,
+  });
+  expect(screen.getByTestId('rag-conversation-input').props.scrollEnabled).toBe(
+    false,
+  );
 });
 
 test('cancel releases the composer and discards a late answer', async () => {
@@ -128,7 +148,7 @@ test('renders a grounded answer with a source action and reports absent evidence
     appColors.secondary,
   );
   expect(StyleSheet.flatten(conversationInput.props.style)).toMatchObject({
-    backgroundColor: appColors.surface,
+    backgroundColor: 'transparent',
     color: appColors.text,
   });
 
@@ -138,8 +158,7 @@ test('renders a grounded answer with a source action and reports absent evidence
       screen.getByTestId('rag-conversation-composer-field').props.style,
     ),
   ).toMatchObject({
-    borderColor: appColors.primaryText,
-    borderWidth: 2,
+    borderWidth: 0,
   });
   await fireEvent(conversationInput, 'blur');
   expect(
@@ -147,8 +166,7 @@ test('renders a grounded answer with a source action and reports absent evidence
       screen.getByTestId('rag-conversation-composer-field').props.style,
     ),
   ).toMatchObject({
-    borderColor: appColors.secondary,
-    borderWidth: 1,
+    borderWidth: 0,
   });
   await fireEvent.changeText(conversationInput, '혈압 기록을 보여줘');
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
@@ -201,9 +219,13 @@ test('shows loading and a recoverable response failure', async () => {
   expect(screen.getByTestId('rag-conversation-progress').props.children).toBe(
     getRagConversationCopy().loading,
   );
-  expect(
-    screen.getByTestId('rag-conversation-cancel').props.accessibilityState,
-  ).toMatchObject({ busy: true, disabled: false });
+  // The bridge configures UIKit's button; the material host is not a second accessible action.
+  expect(screen.getByTestId('rag-conversation-cancel').props).toMatchObject({
+    busy: true,
+    disabled: false,
+    accessible: false,
+    actionLabel: getRagConversationCopy().cancel,
+  });
   resolve({ status: 'unavailable' });
   expect(await screen.findByText(/답변을 만들지 못했어요/)).toBeTruthy();
 });

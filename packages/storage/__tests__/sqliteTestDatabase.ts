@@ -24,7 +24,7 @@ export function openSqliteTestDatabase(path: string): {
 
   function executeSync(query: string, parameters: SqlValue[] = []): SqlResult {
     const statement = handle.prepare(query);
-    if (/^\s*(SELECT|PRAGMA)\b/i.test(query)) {
+    if (/^\s*(SELECT|PRAGMA|EXPLAIN)\b/i.test(query)) {
       return { rows: statement.all(...parameters) };
     }
     const result = statement.run(...parameters);

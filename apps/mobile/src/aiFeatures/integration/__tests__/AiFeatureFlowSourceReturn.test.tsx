@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { getDiseaseHypothesisCopy } from '../../../diseaseHypotheses/copy';
 import { runDiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { referenceOnly } from '../testSupport/personalEvidenceTestSupport';
@@ -81,7 +80,6 @@ test('preserves the conversation and answer after opening and returning from its
 
 test('preserves generated hypotheses after opening and returning from their citation', async () => {
   const source = localData([memoryRecord(1)]);
-  let citationLabel = '';
   const diseaseRunner = jest.fn(
     async (options: Parameters<typeof runDiseaseHypothesisAnalysis>[0]) => {
       const item = (await searchFixtureEvidence(options.tools)).items[0];
@@ -91,7 +89,6 @@ test('preserves generated hypotheses after opening and returning from their cita
           reason: 'unavailable',
         } as const;
       const reference = referenceOnly(item);
-      citationLabel = getDiseaseHypothesisCopy().source(item.sourceId);
       return {
         status: 'workflow',
         result: {
@@ -135,7 +132,9 @@ test('preserves generated hypotheses after opening and returning from their cita
   await fireEvent.press(screen.getByTestId('ai-feature-disease-hypotheses'));
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
   expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();
-  await fireEvent.press(screen.getByText(citationLabel));
+  await fireEvent.press(
+    screen.getByRole('button', { name: /^원문 근거 열기 · 검토한 메모/ }),
+  );
   expect(await screen.findByTestId('ai-feature-source-detail')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
 

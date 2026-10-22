@@ -9,16 +9,25 @@ import { canonicalJson, utf8ByteLength } from './protocol';
 import { completeState, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
+import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
+import { canReserveToolModelCall } from './evidenceToolModelBudget';
 
 /** Tool definitions describe capabilities only. No record is read until a model requests it. */
 export function withNativeTools<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   request: LanguageModelRequest,
+  requireEvidence = false,
 ): LanguageModelRequest {
   if (!context.options.provider.capabilities.toolCalling || context.options.tools.length === 0)
     return request;
+  const requiredKind = missingNativeEvidenceKind(context);
+  const offeredTools = context.options.tools.filter(
+    (tool) =>
+      (!requiredKind || tool.sourceKind === requiredKind) && canReserveToolModelCall(tool, state),
+  );
   const available =
+    offeredTools.length > 0 &&
     state.toolCalls < state.budget.maxToolCalls &&
     state.modelCalls < state.budget.maxModelCalls &&
     state.evidenceReferences.length < state.budget.maxEvidenceItems;
@@ -32,16 +41,28 @@ export function withNativeTools<TResult>(
           ? 'Use the supplied read-only tools to obtain missing evidence. Request one tool at a time. Do not fabricate a search result or emit a JSON research plan instead of calling a tool.'
           : 'The tool budget is exhausted. Answer only from returned evidence, or state that it is insufficient.',
       },
+      ...(available && requiredKind
+        ? [
+            {
+              role: 'system' as const,
+              content: `The task needs evidence from ${requiredKind}, which has not been searched. Choose a matching tool and its query before returning the final answer.`,
+            },
+          ]
+        : []),
       ...(context.nativeToolMessages ?? []),
     ],
     ...(available
       ? {
-          // A first evidence-free answer cannot be grounded. The model still chooses
-          // the tool and query; completed empty/denied searches may end truthfully.
-          ...(state.toolCalls === 0 && state.evidenceReferences.length === 0
+          // Conversation-capable tasks first let the model identify a non-factual reply.
+          // A dependent empty-evidence result is retried with a mandatory model-selected tool.
+          ...(requiredKind ||
+          requireEvidence ||
+          (!context.options.task.isEvidenceIndependentResult &&
+            state.toolCalls === 0 &&
+            state.evidenceReferences.length === 0)
             ? { toolChoice: 'required' as const }
             : {}),
-          tools: context.options.tools.map((tool) => ({
+          tools: offeredTools.map((tool) => ({
             name: tool.id,
             description: tool.description,
             inputSchema: guidedSchema(tool.inputSchema),
@@ -60,6 +81,7 @@ export function consumeNativeToolCall<TResult>(
   if (!response.toolCalls.length) return undefined;
   const call = response.toolCalls[0];
   const tool = call && context.options.tools.find((value) => value.id === call.name);
+  const requiredKind = missingNativeEvidenceKind(context);
   let input;
   try {
     input = tool?.parseInput(call?.arguments);
@@ -72,6 +94,7 @@ export function consumeNativeToolCall<TResult>(
     response.toolCalls.length !== 1 ||
     !call?.id ||
     !tool ||
+    (requiredKind !== undefined && tool.sourceKind !== requiredKind) ||
     !input ||
     !isSourceAllowed(context.options.execution.allowedScope, tool.sourceKind)
   ) {
@@ -81,6 +104,7 @@ export function consumeNativeToolCall<TResult>(
   if (
     state.toolCalls >= state.budget.maxToolCalls ||
     state.modelCalls >= state.budget.maxModelCalls ||
+    !canReserveToolModelCall(tool, state) ||
     state.evidenceReferences.length >= state.budget.maxEvidenceItems ||
     utf8ByteLength(canonicalJson(response)) > state.budget.maxPayloadBytes
   ) {

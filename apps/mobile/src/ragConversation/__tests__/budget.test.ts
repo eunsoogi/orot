@@ -6,7 +6,7 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 import { RAG_CONVERSATION_BUDGET } from '../budget';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 
-test('shipping evidence workflows share the bounded 90-second profile', () => {
+test('shipping evidence workflows retain count and size bounds without an elapsed deadline', () => {
   const option = createAppleSelectionOption('available');
   const input = {
     selected: {
@@ -19,6 +19,7 @@ test('shipping evidence workflows share the bounded 90-second profile', () => {
       remoteProcessing: false,
     },
     operationRunId: 'budget-test',
+    consentPurpose: 'record_conversation' as const,
     consent: { authorize: async () => 'authorized' as const },
     registry: new LocalEvidenceReferenceRegistry(),
     tools: [],
@@ -34,6 +35,6 @@ test('shipping evidence workflows share the bounded 90-second profile', () => {
   );
   expect(RAG_CONVERSATION_BUDGET).toEqual({
     ...DEFAULT_MULTI_AGENT_BUDGET,
-    timeoutMs: 90_000,
+    timeoutMs: null,
   });
 });

@@ -10,6 +10,28 @@ import {
 
 const importAction = () => screen.getByTestId('medical-appointment-import');
 
+test('opens model selection from the displayed classification model', async () => {
+  const { onOpenProviderSelection } = await renderScreen([[]], repository());
+  await fireEvent.press(
+    screen.getByTestId('medical-appointment-select-provider'),
+  );
+  expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
+});
+
+test('keeps the unselected model action concise without enabling classification', async () => {
+  const { onOpenProviderSelection } = await renderScreen(
+    [[]],
+    repository(),
+    null,
+  );
+  const selector = screen.getByTestId('medical-appointment-select-provider');
+  expect(selector).toHaveTextContent('AI 선택');
+  expect(selector).not.toHaveTextContent(copy.noProvider);
+  expect(importAction()).toBeDisabled();
+  await fireEvent.press(selector);
+  expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
+});
+
 test.each(['allow', 'cancel'] as const)(
   'requires actual-request approval and keeps manual entry after %s',
   async decision => {
@@ -25,9 +47,8 @@ test.each(['allow', 'cancel'] as const)(
       remote,
     );
     await fireEvent.press(importAction());
-    expect(
-      await screen.findByText('전송 전에 내용을 확인해 주세요'),
-    ).toBeTruthy();
+    expect(await screen.findByText('외부 전송 동의')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
     expect(screen.getByText(/"title":"치과 진료"/)).toBeTruthy();
     expect(screen.queryByText(/private-calendar-id/)).toBeNull();
     expect(selected.provider.generate).not.toHaveBeenCalled();
@@ -90,7 +111,8 @@ test('does not save unclassified events when no AI has been selected', async () 
     null,
   );
   await fireEvent.press(importAction());
-  expect(await screen.findByText(copy.noProvider)).toBeTruthy();
+  expect(await screen.findByText(copy.chooseProvider)).toBeTruthy();
+  expect(importAction()).toBeDisabled();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   expect(screen.queryByText('진료')).toBeNull();
   await fireEvent.press(screen.getByTestId('medical-appointment-manual'));

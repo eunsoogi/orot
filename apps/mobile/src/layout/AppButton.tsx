@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, type ButtonProps } from 'react-native';
 import { appColors } from './appColors';
 
-/** Product buttons retain async accessibility state and allow multiline accessible labels. */
+/** Compact product actions keep a 48pt minimum and grow with multiline Dynamic Type labels. */
 export function AppButton({
   title,
   color,
@@ -12,7 +12,7 @@ export function AppButton({
   accessibilityHint,
   accessibilityState,
   variant = 'primary',
-}: ButtonProps & { readonly variant?: 'primary' | 'secondary' }) {
+}: ButtonProps & { readonly variant?: 'primary' | 'secondary' | 'neutral' }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -26,14 +26,18 @@ export function AppButton({
       onPress={onPress}
       style={[
         styles.button,
-        variant === 'secondary' && styles.secondary,
+        variant !== 'primary' && styles.secondary,
         color ? { backgroundColor: color } : null,
         disabled && styles.disabled,
       ]}
       testID={testID}
     >
       <Text
-        style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}
+        style={[
+          styles.label,
+          variant === 'secondary' && styles.secondaryLabel,
+          variant === 'neutral' && styles.neutralLabel,
+        ]}
       >
         {title}
       </Text>
@@ -44,19 +48,19 @@ export function AppButton({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: appColors.primaryAction,
-    borderRadius: 16,
-    minHeight: 52,
+    borderRadius: 14,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   label: {
     color: appColors.onPrimary,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   disabled: { opacity: 0.45 },
   // Secondary actions keep the same touch target while letting grouped rows stay quiet.
@@ -66,4 +70,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   secondaryLabel: { color: appColors.primaryText },
+  // Peer actions share a neutral surface and label, without implying a preferred operation.
+  neutralLabel: { color: appColors.text },
 });

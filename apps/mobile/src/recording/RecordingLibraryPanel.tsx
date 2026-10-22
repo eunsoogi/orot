@@ -24,6 +24,7 @@ import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTran
 
 interface RecordingLibraryPanelProps {
   readonly service: RecordingLibraryService;
+  readonly onNewRecording?: () => void;
   readonly onOpenRecording?: (
     summary: RecordingLibrarySummary,
     autoPlay: boolean,
@@ -41,6 +42,7 @@ interface RecordingLibraryPanelProps {
 /** Shows real saved-audio summaries and one selected detail with shared delete recovery. */
 export default function RecordingLibraryPanel({
   service,
+  onNewRecording,
   onOpenRecording,
   transcriptService,
   automaticTranscription = null,
@@ -188,6 +190,7 @@ export default function RecordingLibraryPanel({
   return (
     <View style={styles.container} testID="recording-library-panel">
       <RecordingLibraryList
+        onNewRecording={onNewRecording}
         recordings={recordings}
         loading={loading}
         loadError={loadError}

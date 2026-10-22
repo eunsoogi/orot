@@ -82,17 +82,45 @@ public extension ChatGPTOAuthClient {
             throw ChatGPTResponsesError.httpFailure(diagnostics)
         }
         guard httpResponse.statusCode == 200 else { throw ChatGPTResponsesError.invalidHTTPResponse }
-        guard httpResponse.value(forHTTPHeaderField: "content-type")?.lowercased().hasPrefix("text/event-stream") == true else {
+        let contentType = httpResponse.value(forHTTPHeaderField: "content-type")?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // The direct plan route can omit MIME metadata. Only the expected API host may use
+        // the same bounded SSE decoder without it; completion/call validation remains mandatory.
+        let missingExpectedType = (contentType == nil || contentType == "") && httpResponse.url?.host?.lowercased() == "api.openai.com"
+        guard contentType?.hasPrefix("text/event-stream") == true || missingExpectedType else {
+            // Diagnose only closed header categories; never print URLs, tokens or response content.
+            if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+                let mime = httpResponse.mimeType?.lowercased() ?? ""
+                let category = ["application/json", "text/html", "text/plain", "application/octet-stream"].contains(mime)
+                    ? mime : mime.isEmpty ? "missing" : "other"
+                let host = httpResponse.url?.host?.lowercased() == "api.openai.com" ? "expected" : "other"
+                NSLog("OROT_PROVIDER_DIAGNOSTIC provider=openai stage=headers status=%d content=%@ host=%@",
+                      httpResponse.statusCode, category, host)
+                if mime == "application/json" {
+                    // The bounded parser returns structural categories only; provider code/message stays private.
+                    let diagnostics = try await ResponsesHTTPFailureParser.diagnostics(
+                        for: body, statusCode: httpResponse.statusCode, requestID: nil,
+                    )
+                    NSLog("OROT_PROVIDER_DIAGNOSTIC provider=openai stage=unexpected_json shape=%@ truncated=%d",
+                          diagnostics.bodyShape ?? "unknown", diagnostics.bodyTruncated ? 1 : 0)
+                }
+            }
             throw ChatGPTResponsesError.invalidContentType
         }
 
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var decoder = ResponsesSSEDecoder()
-                var normalizer = ResponsesEventNormalizer(requestID: requestID)
+                var normalizer = ResponsesEventNormalizer(requestID: requestID, publicWebSearch: input.publicWebQuery != nil)
+                var publicStreamBytes = 0
                 do {
                     for try await chunk in body {
                         try Task.checkCancellation()
+                        if input.publicWebQuery != nil {
+                            // Bound the entire hosted-search stream, including reasoning and
+                            // repeated metadata, rather than only its displayed answer text.
+                            publicStreamBytes += chunk.count
+                            guard publicStreamBytes <= 1_048_576 else { throw ChatGPTResponsesError.malformedEvent }
+                        }
                         for frame in try decoder.append(chunk) {
                             if let event = try normalizer.consume(frame) {
                                 continuation.yield(event)

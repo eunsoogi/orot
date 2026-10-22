@@ -49,6 +49,7 @@ function validateProvider(provider: RegisteredProvider): ProviderError | undefin
       typeof capabilities.streaming !== 'boolean' ||
       typeof capabilities.toolCalling !== 'boolean' ||
       typeof capabilities.structuredOutput !== 'boolean' ||
+      (provider.searchPublicWeb !== undefined && typeof provider.searchPublicWeb !== 'function') ||
       (capabilities.streaming && typeof provider.stream !== 'function')
     ) {
       return invalidProvider('Language model capabilities must match the provider methods.');

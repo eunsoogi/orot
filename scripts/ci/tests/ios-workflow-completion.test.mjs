@@ -213,7 +213,8 @@ test('RAG probe preserves the shipping budget and waits beyond its former outer 
     assert.equal(value.forwardedBudget(), value.budget);
     assert.equal(typeof value.fixture.RAG_WORKFLOW_PUBLIC_QUERY, 'string');
     assert.ok(value.question().includes(`"${value.fixture.RAG_WORKFLOW_PUBLIC_QUERY}"`));
-    assert.equal(value.budget.timeoutMs, 90_000);
+    // The shared shipping policy removed elapsed cutoff; count/size limits and abort still apply.
+    assert.equal(value.budget.timeoutMs, null);
   } finally {
     value.work.resolve({ status: 'complete' });
   }

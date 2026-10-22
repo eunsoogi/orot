@@ -13,6 +13,7 @@ import type {
   EvidenceCoverage,
   EvidenceNeed,
   EvidenceReference,
+  EvidenceSourceKind,
   ExecutionConsentPort,
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
@@ -45,13 +46,19 @@ export interface TaskResponderInput {
   readonly request: string;
   readonly context?: JsonValue;
   readonly evidence: EvidenceBatch;
+  /** Final source groups are separate generation units, not missing evidence or independent saved results. */
+  readonly resultPartition?: {
+    readonly sourceKind: EvidenceSourceKind;
+    readonly index: number;
+    readonly total: number;
+  };
   /** Capacity to ask the bounded planner; candidates do not guarantee adapter scope support, results, or query consent. */
   readonly research?: {
     readonly canRequestEvidence: boolean;
     readonly allowedScope: AllowedEvidenceScope;
     readonly candidateTools: readonly Pick<
       import('./evidenceContracts').EvidenceSearchTool,
-      'id' | 'sourceKind' | 'execution'
+      'id' | 'sourceKind' | 'execution' | 'additionalModelCalls'
     >[];
     readonly remainingModelCalls: number;
     readonly remainingToolCalls: number;
@@ -75,17 +82,37 @@ export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskVersion: string;
   readonly systemPrompt: string;
   readonly resultSchema: JsonObject;
+  /** Generation guidance may bind opaque IDs to the current bounded batch; local validation remains authoritative. */
+  readonly createResultSchema?: (input: TaskResponderInput) => JsonObject;
   /** Projects only approved display text from partial structured JSON; omitted tasks never expose raw tokens. */
   projectStreamedText?(rawOutput: string, input: TaskResponderInput): string | undefined;
   /** Allows bounded external truncation only; gaps, conflicts and local truncation still block. */
   readonly allowBoundedExternalEvidence?: boolean;
   /** Accepts ranked local hits only when coverage explicitly records a completed ranked search. */
   readonly allowRankedLocalEvidence?: boolean;
+  /** Explicitly identify non-factual conversation/clarification values. Only uncited, locally
+   * valid results may bypass evidence coverage; required source kinds remain mandatory. */
+  isEvidenceIndependentResult?(value: JsonValue, input: TaskResponderInput): boolean;
   /** Exhaustive tasks must cite every supplied item; ordinary answers cite only their selected evidence. */
   readonly requireAllEvidenceCitations?: boolean;
+  /** Opt in to current-ID enum guidance without forcing exhaustive citation counts. */
+  readonly constrainCitationIds?: boolean;
+  /** Native-tool tasks may require one lookup per eligible source kind. Completed empty searches count as attempts. */
+  readonly requiredToolEvidenceKinds?: readonly EvidenceSourceKind[];
+  /** Opt in only when createMessages includes every current item's full content and identity.
+   * Tool receipts then retain IDs, coverage and conflicts without duplicating that content. */
+  readonly nativeToolResultMode?: 'evidence_references';
+  /** Opt in only for results whose source groups can be merged without another model synthesis.
+   * Every group and the merged value pass normal citation/task validation; partial values stay ephemeral. */
+  readonly finalResultPartition?: {
+    readonly by: 'source_kind';
+    mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
+  };
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
+  /** One correction for closed envelope-shape or citation-binding failures; shares the result-correction budget. */
+  correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
 

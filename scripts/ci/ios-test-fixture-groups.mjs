@@ -8,7 +8,12 @@ export const iosFixtureGroups = Object.freeze({
     'UnifiedImportUITests',
   ],
   recordings: ['RecordingLibraryUITests', 'RecordingPlaybackUITests'],
-  questions: ['NextVisitReviewUITests', 'KeyboardSafeAreaUITests', 'VisitQuestionConsentUITests'],
+  questions: [
+    'NextVisitReviewUITests',
+    'KeyboardSafeAreaUITests',
+    'VisitQuestionConsentUITests',
+    'SummaryAndLiteratureUITests',
+  ],
   calendar: [
     'HealthImportUITests',
     'AppointmentConsentUITests',

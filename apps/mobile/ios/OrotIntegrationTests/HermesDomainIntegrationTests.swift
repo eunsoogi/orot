@@ -3,6 +3,36 @@ import Foundation
 import XCTest
 
 final class HermesDomainIntegrationTests: OrotFailFastTestCase {
+    /// Real classifier, scripted responses: counts local overhead and provider dispatches, not inference time.
+    func testLargeCalendarClassificationReportsProgressAndCancellation() async throws {
+        let result = try await operation("ai-scale-calendar")
+        XCTAssertEqual(result["scriptedModel"] as? Bool, true)
+        let runs = try XCTUnwrap(result["runs"] as? [[String: Any]])
+        XCTAssertEqual(runs.count, 4)
+        for run in runs.prefix(3) {
+            if run["timeBudgetExceeded"] as? Bool == true {
+                XCTAssertEqual(run["status"] as? String, "partial")
+            } else {
+                XCTAssertEqual(run["status"] as? String, "complete")
+            }
+        }
+        XCTAssertEqual(runs.last?["completedBatches"] as? Int, 1)
+    }
+
+    /// Measures real encrypted local retrieval, never an actual model or user account.
+    func testLargeMixedLibraryMeasuresBoundedAiPreparation() async throws {
+        let result = try await operation("ai-scale", parameters: ["fixtureIdentifier": "test-ai-scale-\(UUID().uuidString)"])
+        XCTAssertEqual(result["encrypted"] as? Bool, true)
+        XCTAssertEqual(result["modelInvoked"] as? Bool, false)
+        let scales = try XCTUnwrap(result["scales"] as? [[String: Any]])
+        XCTAssertEqual(scales.count, 3)
+        for scale in scales {
+            XCTAssertEqual(scale["cancellationRejected"] as? Bool, true)
+            let sql = try XCTUnwrap(scale["sql"] as? [String: Any])
+            XCTAssertLessThanOrEqual(try XCTUnwrap(sql["maximumPayloadPage"] as? Int), 100)
+        }
+    }
+
     func testHostExecutesHermesOperations() async throws {
         let result = try await operation("connection")
         XCTAssertEqual(result["connected"] as? Bool, true)
@@ -33,6 +63,40 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
                        "healthQueries=5; healthRecords=6; bloodPressure=2; sleep=asleepDeep; dose=not_logged; medication=timeBasis:local_ingest; appointment=confirmed; transcript=source-linked; cipher=available; wrongKey=rejected; cleanup=true")
     }
 
+    /// Uses real SQLCipher period queries and Hermes calendar handling; no HealthKit or model request occurs.
+    func testLongitudinalHealthContextPreservesCoverageAndInvalidatesDeletion() async throws {
+        let result = try await operation("health-context", parameters: ["fixtureIdentifier": "test-health-context-\(UUID().uuidString)"])
+        XCTAssertEqual(result["encrypted"] as? Bool, true)
+        XCTAssertEqual(result["synthetic"] as? Bool, true)
+        XCTAssertEqual(result["calendarDays"] as? Int, 4)
+        XCTAssertEqual(result["firstDate"] as? String, "2026-10-01")
+        XCTAssertEqual(result["pressureDays"] as? Int, 3)
+        XCTAssertEqual(result["pressureSamples"] as? Int, 6)
+        XCTAssertEqual(result["pressureDailyMeans"] as? [Int], [131, 133, 134])
+        XCTAssertEqual(result["bodyMass"] as? Double, 70.5)
+        XCTAssertEqual(result["stepSums"] as? [Int], [800, 1600])
+        let medication = try XCTUnwrap(result["medication"] as? [String: Any])
+        XCTAssertEqual(medication["scheduleRegistered"] as? Bool, true)
+        XCTAssertEqual(medication["taken"] as? Int, 1)
+        XCTAssertEqual(medication["skipped"] as? Int, 0)
+        XCTAssertEqual(medication["otherDoseRecords"] as? Int, 1)
+        XCTAssertEqual(medication["daysWithDoseRecords"] as? Int, 2)
+        let sleep = try XCTUnwrap(result["sleep"] as? [String: Any])
+        XCTAssertEqual(sleep["asleepSeconds"] as? Int, 5400)
+        XCTAssertEqual(sleep["overlappingStageSeconds"] as? Int, 1800)
+        let symptoms = try XCTUnwrap(result["symptoms"] as? [String: Any])
+        XCTAssertEqual(symptoms["entryCount"] as? Int, 1)
+        XCTAssertEqual((symptoms["latest"] as? [[String: Any]])?.first?["severity"] as? Int, 3)
+        XCTAssertEqual(result["cacheReused"] as? Bool, true)
+        XCTAssertEqual(result["deletionInvalidated"] as? Bool, true)
+        XCTAssertEqual(result["tempStore"] as? Int, 2)
+        XCTAssertLessThan(try XCTUnwrap(result["projectedBytes"] as? Int), 12000)
+        XCTAssertEqual(result["longWindowDays"] as? Int, 90)
+        XCTAssertLessThan(try XCTUnwrap(result["longProjectedBytes"] as? Int), 12000)
+        XCTAssertEqual(result["exactBoundarySums"] as? [Int], [2, 4])
+        XCTAssertEqual(result["exactPartialDays"] as? Bool, true)
+    }
+
     func testEncryptedSourceEvidenceAndRagRelationships() async throws {
         let parameters = ["storageIdentifier": "test-storage-\(UUID().uuidString)"]
         let created = try await operation("storage-create", parameters: parameters)
@@ -41,6 +105,16 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         let restored = try await operation("storage-read", parameters: parameters)
         XCTAssertEqual(restored["sourceAndEvidenceRestored"] as? Bool, true)
         XCTAssertEqual(restored["ragChunksVerified"] as? Bool, true)
+    }
+
+    /// Reopens the encrypted file and verifies that deleting a period input purges its saved derived text.
+    func testComputedPeriodSummaryRestoresAndPurgesDeletedInputs() async throws {
+        let result = try await operation("health-context-persistence", parameters: ["fixtureIdentifier": "test-period-summary-\(UUID().uuidString)"])
+        for key in ["encrypted", "reloaded", "periodSourceAvailable", "unrelatedDeletePreserved", "summaryPurged", "evidenceInvalidated"] {
+            XCTAssertEqual(result[key] as? Bool, true, key)
+        }
+        XCTAssertEqual(result["sourceChanged"] as? Bool, false)
+        XCTAssertEqual(result["periodRowsAfterDeletion"] as? Int, 0)
     }
 
     func testMemoryDeletionKeepsTombstonesAndRemovesSearchEvidence() async throws {

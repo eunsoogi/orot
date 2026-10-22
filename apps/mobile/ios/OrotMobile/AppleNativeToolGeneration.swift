@@ -1,8 +1,16 @@
 import Foundation
 
-/// One SDK generation owns at most one Tool callback. Bridge replies and SDK termination
-/// are separate: returning a tool call to JS must not release its suspended native producer.
+/// One SDK generation owns one accepted Tool callback; additional proposals are declined.
+/// Bridge replies and SDK termination are separate: publishing the accepted call must
+/// not release its suspended native producer.
 final class AppleNativeToolGeneration: @unchecked Sendable {
+    enum FailureCategory: String {
+        case requiredToolMissing = "required_tool_missing"
+        case callbackConflict = "callback_conflict"
+        case toolArguments = "tool_arguments"
+        case bridgeState = "bridge_state"
+    }
+
     enum Phase { case generating, waiting, draining, terminated }
     typealias Response = [String: Any]
     private let lock = NSLock()
@@ -14,13 +22,14 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
     private var watchdog: DispatchWorkItem?
     private var call: Response?
     private var terminalError: Error?
-    private let timeoutSeconds: TimeInterval
+    private let timeoutSeconds: TimeInterval?
     let requestId: String
     // This is application correlation identity, never an SDK-generated transcript ID.
     let callId: String
     let onTermination: () -> Void
 
-    init(requestId: String, timeoutSeconds: TimeInterval = 90, onTermination: @escaping () -> Void) {
+    /// Interactive work ends through caller cancellation; finite watchdogs are explicit opt-ins.
+    init(requestId: String, timeoutSeconds: TimeInterval? = nil, onTermination: @escaping () -> Void) {
         self.requestId = requestId
         self.timeoutSeconds = timeoutSeconds
         callId = requestId + "-bridge-tool-" + UUID().uuidString
@@ -35,8 +44,10 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
                     lock.unlock(); continuation.resume(throwing: failure("Native generation already ended.")); return
                 }
                 reply = continuation
-                let timeout = DispatchWorkItem { [weak self] in
-                    self?.cancel(Self.failure("Native tool generation exceeded its deadline."))
+                let timeout = timeoutSeconds.map { _ in
+                    DispatchWorkItem { [weak self] in
+                        self?.cancel(Self.failure("Native tool generation exceeded its deadline."))
+                    }
                 }
                 watchdog = timeout
                 producer = Task {
@@ -44,7 +55,9 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
                     catch { self.finish(.failure(error)) }
                 }
                 lock.unlock()
-                DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: timeout)
+                if let timeout, let timeoutSeconds {
+                    DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: timeout)
+                }
             }
         } onCancel: { self.cancel(CancellationError()) }
     }
@@ -52,9 +65,20 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
     func invoke(name: String, arguments: [String: Any]) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             lock.lock()
+            if phase == .waiting || phase == .draining {
+                lock.unlock()
+                // The SDK may propose parallel calls despite the one-at-a-time instruction.
+                // Decline extras explicitly without executing them or cancelling the accepted
+                // callback. Its result must still drain before the next common-runtime request.
+                if ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") {
+                    NSLog("OROT_PROVIDER_DIAGNOSTIC provider=apple category=extra_callback_rejected")
+                }
+                continuation.resume(returning: #"{"status":"not_executed","reason":"Only one tool call is executed per generation. Request remaining searches in a fresh request."}"#)
+                return
+            }
             guard phase == .generating, let currentReply = reply else {
                 lock.unlock()
-                let error = Self.failure("Only one tool callback is permitted in a native generation.")
+                let error = Self.failure("Only one tool callback is permitted in a native generation.", category: .callbackConflict)
                 continuation.resume(throwing: error)
                 cancel(error)
                 return
@@ -139,8 +163,8 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
         Self.failure(message)
     }
 
-    static func failure(_ message: String) -> NSError {
+    static func failure(_ message: String, category: FailureCategory = .bridgeState) -> NSError {
         NSError(domain: "AppleFoundationModels", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: message, "code": "GENERATION_FAILED"])
+                userInfo: [NSLocalizedDescriptionKey: message, "code": "GENERATION_FAILED", "diagnosticCategory": category.rawValue])
     }
 }

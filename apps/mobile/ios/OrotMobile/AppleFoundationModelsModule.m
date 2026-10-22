@@ -9,3 +9,8 @@ RCT_EXTERN_METHOD(generate : (NSDictionary *)payload requestId : (NSString *)req
 RCT_EXTERN_METHOD(startStream : (NSDictionary *)payload requestId : (NSString *)requestId)
 RCT_EXTERN_METHOD(cancel : (NSString *)requestId)
 @end
+
+@interface RCT_EXTERN_MODULE (OrotProviderDiagnostics, NSObject)
+RCT_EXTERN_METHOD(report : (NSString *)feature stage : (NSString *)stage outcome : (NSString *)
+                      outcome)
+@end

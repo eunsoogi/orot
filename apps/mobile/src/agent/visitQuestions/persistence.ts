@@ -17,6 +17,8 @@ import {
   createReviewedVisitQuestionRecord,
   saveReviewedVisitQuestionMemory,
 } from './persistenceRecords';
+import { assertHealthPeriodCurrent } from '../../storage/healthPeriodDependencies';
+import { appendVisitQuestionPeriod } from '../../storage/visitQuestionPeriods';
 
 export interface SaveReviewedVisitQuestionsInput {
   readonly appointmentId: string;
@@ -54,7 +56,7 @@ export async function saveReviewedVisitQuestions(
     );
   }
 
-  const saved = await input.repository.transaction(async writer => {
+  const saved = await input.repository.transaction(async (writer, sql) => {
     const appointment = await writer.get('appointment', input.appointmentId);
     if (
       !appointment ||
@@ -85,7 +87,11 @@ export async function saveReviewedVisitQuestions(
       );
       if (!metadata)
         throw new Error('A cited evidence reference is no longer available.');
-      await assertCurrentVisitQuestionRecord(writer, citation, metadata);
+      if (metadata.healthContextSource) {
+        if (!sql)
+          throw new Error('Atomic health-period validation is unavailable.');
+        await assertHealthPeriodCurrent(sql, metadata.healthContextSource);
+      } else await assertCurrentVisitQuestionRecord(writer, citation, metadata);
     }
 
     const previous = await writer.list('visit_question');
@@ -105,8 +111,14 @@ export async function saveReviewedVisitQuestions(
         metadataByCitation: input.evidence.metadataByCitation,
       }),
     );
-    for (const question of reviewed)
+    for (const question of reviewed) {
       await writer.put('visit_question', question);
+      for (const source of question.healthContextSources ?? []) {
+        if (!sql)
+          throw new Error('Atomic health-period storage is unavailable.');
+        await appendVisitQuestionPeriod(sql, question.id, source);
+      }
+    }
     return { appointment, questions: reviewed };
   });
 

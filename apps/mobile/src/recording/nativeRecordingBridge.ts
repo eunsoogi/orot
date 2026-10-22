@@ -23,6 +23,7 @@ export {
 } from './recordingExportNativeBridge';
 
 export interface RecordingBridge extends RecordingPlaybackService {
+  readDuration(recordingId: string): Promise<number>;
   stopPlayback(): Promise<void>;
   subscribePlayback(
     listener: (state: RecordingPlaybackState) => void,
@@ -36,6 +37,12 @@ export interface RecordingBridge extends RecordingPlaybackService {
 }
 
 export const nativeRecordingBridge: RecordingBridge = {
+  readDuration(recordingId) {
+    const module = requireNativeModule();
+    if (!module.getRecordingDuration)
+      throw new Error('Saved audio metadata is unavailable.');
+    return module.getRecordingDuration(recordingId, false);
+  },
   getState() {
     return requireNativeModule().getState();
   },
@@ -150,6 +157,16 @@ export async function commitRecordingDeletion(
   recordingId: string,
 ): Promise<void> {
   await deletionMethod('commitRecordingDeletion')(recordingId);
+}
+
+/** Only the dedicated Simulator build tolerates unavailable protection metadata for disposable fixture audio. */
+export async function readSyntheticRecordingDuration(
+  recordingId: string,
+): Promise<number> {
+  const module = requireNativeModule();
+  if (!module.getRecordingDuration)
+    throw new Error('Saved audio metadata is unavailable.');
+  return module.getRecordingDuration(recordingId, true);
 }
 
 export async function playSyntheticTranscriptionRange(

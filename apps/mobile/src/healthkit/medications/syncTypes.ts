@@ -5,10 +5,11 @@ import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint'
 // A full definition query is required before the importer can consider deletions.
 export const MEDICATION_DEFINITION_LIMIT = 0;
 export const MEDICATION_DOSE_EVENT_PAGE_SIZE = 200;
-export const DOSE_EVENT_CHECKPOINT_KEY = healthKitSampleChangesCheckpointKey(
-  'medications',
-  'medicationDoseEvents',
-);
+// A previous unscoped anchor may have advanced over invisible historical doses.
+// A new query scope needs a fresh cursor without deleting imported records or old checkpoints.
+export const DOSE_EVENT_CHECKPOINT_KEY =
+  healthKitSampleChangesCheckpointKey('medications', 'medicationDoseEvents') +
+  ':medication-scope';
 
 export type MedicationHealthKitClient = Pick<
   HealthKitNativeModule,
@@ -40,6 +41,8 @@ export interface MedicationSyncOptions {
   readonly healthKit: MedicationHealthKitClient;
   readonly repository: MedicationRepository;
   readonly now: () => string;
+  /** Explicit re-import replays history in bounded pages; background refresh keeps the saved anchor. */
+  readonly refreshDoseHistory?: boolean;
   /** Set only by the explicit Settings setup after the user selected medication records. */
   readonly rememberForAutoSync?: boolean;
 }

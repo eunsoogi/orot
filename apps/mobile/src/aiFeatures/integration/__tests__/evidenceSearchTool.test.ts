@@ -187,6 +187,8 @@ test('Korean heart-rate search includes structured measurements without changing
 test.each([
   ['최근 혈압 기록', 'blood pressure'],
   ['최근 걸음 수', 'step_count'],
+  ['최근 걷는 기록', 'step_count'],
+  ['최근 복약 기록', 'medication'],
   ['최근 몸무게', 'body_mass'],
   ['최근 수면 기록', 'hkcategorytypeidentifiersleepanalysis'],
 ])(

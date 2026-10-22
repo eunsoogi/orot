@@ -4,9 +4,14 @@ import OSLog
 import React
 
 extension RecordingModule {
+    public func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        RecordingCaptureDiagnostics.emit(flag ? .finished : .finishFailed, fileURL: recorder.url)
+    }
+
     public func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error _: Error?) {
         workQueue.async {
             guard self.recorder === recorder, self.status == .recording else { return }
+            RecordingCaptureDiagnostics.emit(.encodeFailed, clockMs: self.currentDurationMs())
             recorder.pause()
             self.deactivateAudioSession()
             self.status = .paused
@@ -49,6 +54,7 @@ extension RecordingModule {
             guard recorder.record() else { throw RecordingModuleError.startFailed }
         }
         self.recorder = recorder
+        RecordingCaptureDiagnostics.emit(.started, clockMs: Int(recorder.currentTime * 1000))
         beginSession(identifier: identifier, url: url)
         resolve(snapshot())
     }
@@ -95,10 +101,16 @@ extension RecordingModule {
 
     func requestMicrophonePermission(_ completion: @escaping (Bool) -> Void) {
         DispatchQueue.main.async {
+            let reply: (Bool) -> Void = { granted in
+                RecordingCaptureDiagnostics.emit(granted ? .permissionGranted : .permissionDenied)
+                completion(granted)
+            }
             if #available(iOS 17.0, *) {
-                AVAudioApplication.requestRecordPermission(completionHandler: completion)
+                RecordingCaptureDiagnostics.emit(AVAudioApplication.shared.recordPermission == .undetermined ? .permissionFirst : .permissionKnown)
+                AVAudioApplication.requestRecordPermission(completionHandler: reply)
             } else {
-                AVAudioSession.sharedInstance().requestRecordPermission(completion)
+                RecordingCaptureDiagnostics.emit(AVAudioSession.sharedInstance().recordPermission == .undetermined ? .permissionFirst : .permissionKnown)
+                AVAudioSession.sharedInstance().requestRecordPermission(reply)
             }
         }
     }

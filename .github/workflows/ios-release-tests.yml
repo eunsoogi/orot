@@ -2,6 +2,8 @@ name: Release integration tests
 on:
   workflow_call:
     inputs:
+      # One producer prefix selects products; each consumer still verifies the supplied content digests.
+      artifact_name: { type: string, default: ios-test-release-products }
       archive_digest: { required: true, type: string }
       manifest_digest: { required: true, type: string }
       cohorts: { required: true, type: string }
@@ -17,7 +19,7 @@ jobs:
     name: Core
     if: ${{ contains(fromJSON(inputs.cohorts), 'core-integration') }}
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -27,6 +29,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: core-integration
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -38,7 +41,7 @@ jobs:
     name: UI
     if: ${{ contains(fromJSON(inputs.cohorts), 'core-ui') }}
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -48,6 +51,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: core-ui
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -55,11 +59,33 @@ jobs:
         if: always()
         uses: ./.github/actions/ios-test-cohort-diagnostics
         with: { cohort: core-ui }
+  recording_evidence:
+    name: Recording evidence
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recording-evidence') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: recording-evidence
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: core
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: recording-evidence }
   persistence:
     name: Persistence
     if: ${{ contains(fromJSON(inputs.cohorts), 'persistence') }}
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -69,6 +95,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: persistence
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -80,7 +107,7 @@ jobs:
     name: Isolation
     if: ${{ contains(fromJSON(inputs.cohorts), 'isolation') }}
     runs-on: xcode-27
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -90,6 +117,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: isolation
+          artifact_name: ${{ inputs.artifact_name }}
           profile: core
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -101,7 +129,7 @@ jobs:
     name: Backup
     if: ${{ contains(fromJSON(inputs.cohorts), 'backup') }}
     runs-on: xcode-27
-    timeout-minutes: 65
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -111,6 +139,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: backup
+          artifact_name: ${{ inputs.artifact_name }}
           profile: backup
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -122,7 +151,7 @@ jobs:
     name: Local model
     if: ${{ contains(fromJSON(inputs.cohorts), 'local-model') }}
     runs-on: xcode-27
-    timeout-minutes: 65
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -132,6 +161,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: local-model
+          artifact_name: ${{ inputs.artifact_name }}
           profile: local-model
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}
@@ -141,93 +171,45 @@ jobs:
         with: { cohort: local-model }
   navigation:
     name: Navigation
-    if: ${{ contains(fromJSON(inputs.cohorts), 'navigation') }}
-    runs-on: xcode-27
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - name: Disable and verify Spotlight
-        uses: ./.github/actions/ios-host-bootstrap
-        with: { log_directory: artifacts/ios-cohort }
-      - uses: ./.github/actions/ios-test-cohort-executor
-        with:
-          cohort: navigation
-          profile: fixtures
-          archive_digest: ${{ inputs.archive_digest }}
-          manifest_digest: ${{ inputs.manifest_digest }}
-      - name: Preserve setup diagnostics
-        if: always()
-        uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: navigation }
+    if: ${{ contains(inputs.cohorts, 'navigation-') }}
+    uses: ./.github/workflows/ios-navigation-tests.yml
+    with:
+      artifact_name: ${{ inputs.artifact_name }}
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   recordings:
     name: Recordings
-    if: ${{ contains(fromJSON(inputs.cohorts), 'recordings') }}
-    runs-on: xcode-27
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - name: Disable and verify Spotlight
-        uses: ./.github/actions/ios-host-bootstrap
-        with: { log_directory: artifacts/ios-cohort }
-      - uses: ./.github/actions/ios-test-cohort-executor
-        with:
-          cohort: recordings
-          profile: fixtures
-          archive_digest: ${{ inputs.archive_digest }}
-          manifest_digest: ${{ inputs.manifest_digest }}
-      - name: Preserve setup diagnostics
-        if: always()
-        uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: recordings }
+    if: ${{ contains(inputs.cohorts, 'recordings-') }}
+    uses: ./.github/workflows/ios-recording-tests.yml
+    with:
+      artifact_name: ${{ inputs.artifact_name }}
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   questions:
     name: Questions
-    if: ${{ contains(fromJSON(inputs.cohorts), 'questions') }}
-    runs-on: xcode-27
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - name: Disable and verify Spotlight
-        uses: ./.github/actions/ios-host-bootstrap
-        with: { log_directory: artifacts/ios-cohort }
-      - uses: ./.github/actions/ios-test-cohort-executor
-        with:
-          cohort: questions
-          profile: fixtures
-          archive_digest: ${{ inputs.archive_digest }}
-          manifest_digest: ${{ inputs.manifest_digest }}
-      - name: Preserve setup diagnostics
-        if: always()
-        uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: questions }
+    if: ${{ contains(inputs.cohorts, 'questions-') }}
+    uses: ./.github/workflows/ios-question-tests.yml
+    with:
+      artifact_name: ${{ inputs.artifact_name }}
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   calendar:
     name: Calendar
-    if: ${{ contains(fromJSON(inputs.cohorts), 'calendar') }}
-    runs-on: xcode-27
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with: { persist-credentials: false }
-      - name: Disable and verify Spotlight
-        uses: ./.github/actions/ios-host-bootstrap
-        with: { log_directory: artifacts/ios-cohort }
-      - uses: ./.github/actions/ios-test-cohort-executor
-        with:
-          cohort: calendar
-          profile: fixtures
-          archive_digest: ${{ inputs.archive_digest }}
-          manifest_digest: ${{ inputs.manifest_digest }}
-      - name: Preserve setup diagnostics
-        if: always()
-        uses: ./.github/actions/ios-test-cohort-diagnostics
-        with: { cohort: calendar }
+    if: ${{ contains(inputs.cohorts, 'calendar-') }}
+    uses: ./.github/workflows/ios-calendar-tests.yml
+    with:
+      artifact_name: ${{ inputs.artifact_name }}
+      archive_digest: ${{ inputs.archive_digest }}
+      manifest_digest: ${{ inputs.manifest_digest }}
+      cohorts: ${{ inputs.cohorts }}
   speech:
     name: Speech
     if: ${{ contains(fromJSON(inputs.cohorts), 'speech') }}
     runs-on: xcode-27
-    timeout-minutes: 90
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
@@ -237,6 +219,7 @@ jobs:
       - uses: ./.github/actions/ios-test-cohort-executor
         with:
           cohort: speech
+          artifact_name: ${{ inputs.artifact_name }}
           profile: speech
           archive_digest: ${{ inputs.archive_digest }}
           manifest_digest: ${{ inputs.manifest_digest }}

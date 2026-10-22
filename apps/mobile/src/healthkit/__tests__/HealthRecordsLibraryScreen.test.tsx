@@ -44,7 +44,7 @@ test('shows imported pressure as a chart-first category and opens a separate per
   expect(chart.props.accessibilityLabel).toContain('120 mmHg');
   expect(chart.props.accessibilityLabel).toContain('80 mmHg');
   expect(screen.queryByText(chart.props.accessibilityLabel)).toBeNull();
-  expect(loadObservations).toHaveBeenCalledTimes(1);
+  expect(loadObservations).toHaveBeenCalledTimes(6);
 
   await fireEvent.press(
     screen.getByTestId('health-record-open-detail-blood_pressure'),

@@ -62,6 +62,9 @@ export const medicalAppointmentCopy = {
   get noProvider() {
     return t('medicalAppointments.status.noProvider');
   },
+  get chooseProvider() {
+    return t('medicalAppointments.actions.chooseProvider');
+  },
   get emptyCoverage() {
     return t('medicalAppointments.status.emptyCoverage');
   },

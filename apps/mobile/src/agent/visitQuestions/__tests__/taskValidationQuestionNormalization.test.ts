@@ -76,12 +76,12 @@ describe('visit-question response repair contract', () => {
     expect(validation).toMatchObject({ status: 'invalid' });
   });
 
-  it('offers correction guidance only for question field formatting failures', () => {
+  it('offers known question correction guidance while keeping safety, citation and schema failures terminal', () => {
     const instruction = responder.correctionInstructionForInvalidResult?.(
       'A visit question must end with a question mark.',
     );
 
-    expect(instruction).toContain('의문문');
+    expect(instruction).toContain('Korean interrogative');
     expect(
       responder.correctionInstructionForInvalidResult?.(
         'The clarification contains unsafe clinical advice.',

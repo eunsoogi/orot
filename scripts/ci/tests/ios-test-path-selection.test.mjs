@@ -18,15 +18,24 @@ test('recording source selects its full stateful group while a question helper s
   assert.deepEqual(recording.ios_test_cohorts, [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'backup',
-    'recordings',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
     'microphone',
     'speech',
   ]);
   assert.equal(recording.ios_oauth, false);
-  assert.deepEqual(questions.ios_test_cohorts, ['core-integration', 'questions', 'provider']);
+  assert.deepEqual(questions.ios_test_cohorts, [
+    'core-integration',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'provider',
+  ]);
   assert.equal(questions.ios_build, false);
 });
 
@@ -107,7 +116,13 @@ test('main pushes select affected cohorts from before and after SHAs and fail sa
   const incomplete = selectChecksForEvent('push', { before: sha('a') });
 
   assert.deepEqual(receivedArgs, [sha('a'), sha('b')]);
-  assert.deepEqual(selected.ios_test_cohorts, ['core-integration', 'questions', 'provider']);
+  assert.deepEqual(selected.ios_test_cohorts, [
+    'core-integration',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'provider',
+  ]);
   assert.equal(selected.ios_tests, true);
   assert.deepEqual(docsOnly.ios_test_cohorts, []);
   assert.deepEqual(incomplete.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
@@ -161,7 +176,7 @@ test('draft source changes stay explicitly selected while the full validation is
     resolveFullValidationDeferred('pull_request', { pull_request: { draft: true } }),
     true,
   );
-  assert.equal(selection.ios_test_cohorts.includes('recordings'), true);
+  assert.equal(selection.ios_test_cohorts.includes('recordings-review'), true);
 });
 
 test('unavailable path comparison fails safe to all checks and cohorts', () => {

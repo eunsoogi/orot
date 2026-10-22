@@ -5,6 +5,10 @@ import type {
 } from '../taskContract';
 import { DoseEventSchema } from '@orot/domain';
 import { chunkStructuredRecord } from '@orot/rag';
+import {
+  unsupportedDateOrValueKind,
+  hasUnsupportedDateOrValue,
+} from '../questionFacts';
 
 const responder = createVisitQuestionTaskResponder();
 const source: VisitQuestionEvidenceItem = {
@@ -52,15 +56,39 @@ function validation(questionText: string, evidenceText: string) {
   return responder.validateResult({ status: 'suggestions', questions }, input);
 }
 
-function expectClarification(questionText: string, evidenceText: string) {
-  // The app message stays inside a valid task result rather than a generic runtime failure.
+function expectRejectedFact(questionText: string, evidenceText: string) {
+  // Invalid facts remain rejected while the workflow may request one bounded correction.
   expect(validation(questionText, evidenceText)).toMatchObject({
-    status: 'valid',
-    value: { status: 'needs_clarification' },
+    status: 'invalid',
+    reason: 'A visit question contains an unsupported date or numeric value.',
   });
 }
 
 describe('visit-question numeric fact validation', () => {
+  it.each([
+    ['120/80 mmHg', '120 mmHg와 80 mmHg', 'quantity_ratio'],
+    ['5 g', '5 mg', 'quantity_unit'],
+    ['5.000000000000001 mg', '5 mg', 'quantity_precision'],
+    ['6 mg', '5 mg', 'quantity_value'],
+  ])(
+    'classifies %s without authorizing an unsupported claim',
+    (text, content, kind) => {
+      const evidence = [{ ...source, content }];
+      expect(unsupportedDateOrValueKind(text, evidence)).toBe(kind);
+      expect(hasUnsupportedDateOrValue(text, evidence)).toBe(true);
+    },
+  );
+  it('recognizes a Korean month and day as a date supported by the cited timestamp', () => {
+    expect(
+      validation(
+        '9월 1일 기록의 의미를 진료에서 확인할까요?',
+        '합성 건강 기록',
+      ),
+    ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
+    expectRejectedFact('9월 2일 기록의 의미를 확인할까요?', '합성 건강 기록');
+    expectRejectedFact('복용 기간을 1일로 정할까요?', '합성 건강 기록');
+    expectRejectedFact('측정값 9를 확인할까요?', '합성 건강 기록');
+  });
   it('compares heart-rate quantities with their complete denominator', () => {
     const evidence =
       'health_observation: {"value":{"amount":72,"unit":"count/min"}}';
@@ -72,8 +100,8 @@ describe('visit-question numeric fact validation', () => {
         ),
       ).toMatchObject({ status: 'valid', value: { status: 'suggestions' } });
     }
-    expectClarification('심박수 73 회/분 기록을 확인할까요?', evidence);
-    expectClarification('심박수 72 회/초 기록을 확인할까요?', evidence);
+    expectRejectedFact('심박수 73 회/분 기록을 확인할까요?', evidence);
+    expectRejectedFact('심박수 72 회/초 기록을 확인할까요?', evidence);
   });
   it('preserves an amount and unit stored as separate structured fields', () => {
     const doseEvent = DoseEventSchema.parse({
@@ -92,7 +120,7 @@ describe('visit-question numeric fact validation', () => {
     expect(
       validation('복용량 5 mg을 진료에서 확인할까요?', structuredDose).status,
     ).toBe('valid');
-    expectClarification('복용량 5 g을 진료에서 확인할까요?', structuredDose);
+    expectRejectedFact('복용량 5 g을 진료에서 확인할까요?', structuredDose);
   });
 
   it('preserves units, signs, and ordered ratios while accepting source-matched values', () => {
@@ -102,15 +130,12 @@ describe('visit-question numeric fact validation', () => {
         '건강 관찰 기록: 혈압 120/80 mmHg',
       ).status,
     ).toBe('valid');
-    expectClarification(
+    expectRejectedFact(
       '혈압 80/120 mmHg를 진료에서 어떻게 확인할까요?',
       '건강 관찰 기록: 혈압 120/80 mmHg',
     );
-    expectClarification('5 g 복용을 확인하면 좋을까요?', '복용량: 5 mg');
-    expectClarification(
-      '측정값이 9였는지 확인하면 좋을까요?',
-      '합성 건강 기록',
-    );
-    expectClarification('5를 복용했는지 확인하면 좋을까요?', '기록된 값: -5');
+    expectRejectedFact('5 g 복용을 확인하면 좋을까요?', '복용량: 5 mg');
+    expectRejectedFact('측정값이 9였는지 확인하면 좋을까요?', '합성 건강 기록');
+    expectRejectedFact('5를 복용했는지 확인하면 좋을까요?', '기록된 값: -5');
   });
 });

@@ -63,10 +63,15 @@ describe('bounded Calendar classification workflow', () => {
     ]);
     expect(progress).toEqual([1, 2]);
     for (const [request] of generate.mock.calls) {
-      expect(request.messages).toHaveLength(3);
+      expect(request.messages).toHaveLength(4);
       const candidates = JSON.parse(
         stringContent(request.messages[1]) ?? '',
       ).candidates;
+      const format = JSON.parse(stringContent(request.messages[3]) ?? '');
+      expect(
+        format.responseSchema.properties.value.properties.classifications
+          .maxItems,
+      ).toBe(candidates.length);
       expect(candidates.length).toBeLessThanOrEqual(8);
       expect(JSON.stringify(request.messages)).not.toContain(
         'private-calendar-id',

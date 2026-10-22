@@ -1,5 +1,27 @@
 import { ragConversationTask } from '../task';
 
+test('lets multi-topic questions use bounded overview and short paragraphs instead of forcing one sentence', () => {
+  const messages = ragConversationTask.createMessages({
+    request: 'Explain my steps, sleep and measurements.',
+    evidence: { items: [], coverage: [], conflicts: [] },
+  });
+  const user = messages[0];
+  if (user?.role !== 'user' || typeof user.content !== 'string')
+    throw new Error('Expected task input');
+  const input = JSON.parse(user.content);
+  expect(input.displayTimeZone).toBe(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+  expect(input.answerRequirements).toContain(
+    'short paragraphs for multiple requested topics',
+  );
+  expect(input.answerRequirements).not.toContain('Write one Korean sentence');
+  expect(ragConversationTask.systemPrompt).toContain('view=health_overview');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'steps, never occurrences',
+  );
+});
+
 test('guides Korean literature questions to research before declaring missing sources unavailable', () => {
   const prompt = ragConversationTask.systemPrompt;
   expect(prompt).toContain('Write the user-facing answer in Korean');
@@ -96,7 +118,7 @@ test.each(['scheduled', 'rescheduled', 'completed', 'cancelled'])(
     // A calendar title alone never establishes that its consultation happened.
     expect(body.temporalRequirements).toContain('scheduled');
     expect(body.temporalRequirements).toContain('completed');
-    expect(body.temporalRequirements).toContain('상담 중');
+    expect(body.temporalRequirements).toContain('ongoing or completed care');
   },
 );
 

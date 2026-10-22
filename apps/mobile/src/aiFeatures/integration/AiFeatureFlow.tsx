@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { Text, View } from 'react-native';
@@ -22,6 +22,8 @@ import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
+import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
+import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 
 export interface AiFeatureFlowProps {
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -51,6 +53,9 @@ export function AiFeatureFlow({
   serviceDependencies,
   services,
 }: AiFeatureFlowProps) {
+  const primaryActionHost = useContext(NavigationPrimaryActionContext);
+  const { state: shared, setState: setShared } =
+    useAiFeatureSharedNavigationState();
   const {
     articleOpenError,
     handleOpenArticle,
@@ -85,8 +90,7 @@ export function AiFeatureFlow({
     <View style={styles.container} testID="ai-feature-flow">
       {!providerSelectionOpen &&
       !sourceDetailOpen &&
-      screenRoute !== 'visit-questions' &&
-      screenRoute !== 'rag-conversation' ? (
+      screenRoute === 'entry' ? (
         <AiProviderSelectorRow
           onPress={openProviderSelection}
           resolveSelectedAi={resolveSelectedAiForRoute}
@@ -108,38 +112,77 @@ export function AiFeatureFlow({
               : styles.featureScreen
           }
         >
-          <AiFeatureFlowScreen
-            route={screenRoute}
-            navigationRouteKey={screenRouteKey ?? undefined}
-            onFeatureNavigationStateChange={reportFeatureNavigationState}
-            renderVisitQuestions={renderVisitQuestions}
-            onRouteStateChange={reportVisitQuestionsRouteState}
-            onBack={requestBack}
-            onOpenVisitQuestions={
-              renderVisitQuestions
-                ? () => pushFeatureRoute('visit-questions')
-                : undefined
+          {/* A hidden retained screen must not publish its action into the overlay's toolbar. */}
+          <NavigationPrimaryActionContext.Provider
+            value={
+              sourceDetailOpen || providerSelectionOpen
+                ? null
+                : primaryActionHost
             }
-            onOpenDiseaseHypotheses={() =>
-              pushFeatureRoute('disease-hypotheses')
-            }
-            onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
-            onOpenExternalEvidence={() => pushFeatureRoute('external-evidence')}
-            onOpenProviderSelection={openProviderSelection}
-            onOpenSource={openSource}
-            resolveSelectedAi={resolveSelectedAiForRoute}
-            confirmConsent={async request =>
-              (await consent.authorize(request)) === 'authorized'
-            }
-            selectedAiRevision={selectedAiRevision}
-            services={services}
-            onOpenArticle={publication => {
-              handleOpenArticle(publication).then(
-                () => undefined,
-                () => undefined,
-              );
-            }}
-          />
+          >
+            <AiFeatureFlowScreen
+              route={screenRoute}
+              navigationRouteKey={screenRouteKey ?? undefined}
+              onFeatureNavigationStateChange={reportFeatureNavigationState}
+              renderVisitQuestions={renderVisitQuestions}
+              onRouteStateChange={reportVisitQuestionsRouteState}
+              onBack={requestBack}
+              onOpenVisitQuestions={
+                renderVisitQuestions
+                  ? () => pushFeatureRoute('visit-questions')
+                  : undefined
+              }
+              onOpenDiseaseHypotheses={() =>
+                pushFeatureRoute('disease-hypotheses')
+              }
+              onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
+              onOpenConversationHistory={() =>
+                pushFeatureRoute('conversation-history')
+              }
+              onOpenSummaryHistory={() => {
+                setShared(current => ({
+                  ...current,
+                  summaryReturnRouteKey: screenRouteKey,
+                }));
+                pushFeatureRoute('summary-history');
+              }}
+              restoredSummary={
+                shared.summarySelection?.routeKey === screenRouteKey
+                  ? shared.summarySelection.value
+                  : undefined
+              }
+              onRestoreSummary={value => {
+                // Target the retained originating scene; selecting history never invokes generation.
+                const routeKey = shared.summaryReturnRouteKey;
+                if (!routeKey) return;
+                setShared(current => ({
+                  ...current,
+                  summarySelection: {
+                    routeKey,
+                    value,
+                  },
+                }));
+                requestBack();
+              }}
+              onOpenExternalEvidence={() =>
+                pushFeatureRoute('external-evidence')
+              }
+              onOpenProviderSelection={openProviderSelection}
+              onOpenSource={openSource}
+              resolveSelectedAi={resolveSelectedAiForRoute}
+              confirmConsent={async request =>
+                (await consent.authorize(request)) === 'authorized'
+              }
+              selectedAiRevision={selectedAiRevision}
+              services={services}
+              onOpenArticle={publication => {
+                handleOpenArticle(publication).then(
+                  () => undefined,
+                  () => undefined,
+                );
+              }}
+            />
+          </NavigationPrimaryActionContext.Provider>
         </View>
         {sourceDetailOpen && sourceReference ? (
           <View style={styles.sourceOverlay}>

@@ -11,8 +11,13 @@ import {
   readSelectedStaleArtifacts,
 } from './currentEvidenceChunks';
 import type { EvidenceRecordIdentity } from './currentEvidenceChunks';
+import {
+  createHealthContextReader,
+  type HealthContextReader,
+} from './healthContext/reader';
 
 export interface LocalEvidenceData {
+  readonly readHealthContext?: HealthContextReader;
   readCandidates(
     query: string,
     signal?: AbortSignal,
@@ -37,6 +42,7 @@ export function createLocalEvidenceData(
   database: SqlDatabase,
 ): LocalEvidenceData {
   let prepared: Promise<void> | undefined;
+  const readHealthContext = createHealthContextReader(database);
   const prepare = () => {
     // SQL ranking may sort private values. Keep temporary query state off plaintext disk.
     prepared ??= database
@@ -49,6 +55,10 @@ export function createLocalEvidenceData(
     return prepared;
   };
   return {
+    async readHealthContext(window, topics, signal, trace) {
+      await prepare();
+      return readHealthContext(window, topics, signal, trace);
+    },
     async readCandidates(query, signal, scope) {
       await prepare();
       return readEvidenceCandidates(database, query, signal, scope);

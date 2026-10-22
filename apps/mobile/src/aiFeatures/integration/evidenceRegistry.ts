@@ -1,10 +1,13 @@
 import { LocalEvidenceIdentifiers } from './evidenceIdentifiers';
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
-import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { ReviewState } from '@orot/domain';
 import type { ChunkRecordType, EvidenceChunk } from '@orot/rag';
-import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import { fingerprint } from './evidenceUtils';
+import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
+export type {
+  EvidenceSourceDocument,
+  EvidenceSourceReadResult,
+} from './evidenceSourceDocument';
 
 export interface EvidenceValidationContext {
   once<T>(key: object, load: () => Promise<T>): Promise<T>;
@@ -14,20 +17,6 @@ type ReferenceValidator = (
   signal: AbortSignal,
   context: EvidenceValidationContext,
 ) => Promise<boolean>;
-
-export type EvidenceSourceDocument =
-  | {
-      readonly sourceKind: 'personal_record';
-      readonly records: readonly LocalHealthEvidenceRecord[];
-    }
-  | {
-      readonly sourceKind: 'reviewed_memory';
-      readonly record: PersistedMemoryRecord;
-    };
-
-export type EvidenceSourceReadResult =
-  | { readonly status: 'available'; readonly document: EvidenceSourceDocument }
-  | { readonly status: 'missing' | 'changed' | 'unavailable' };
 
 type SourceReader = (signal: AbortSignal) => Promise<EvidenceSourceReadResult>;
 

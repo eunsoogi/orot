@@ -38,7 +38,8 @@ export function useNextVisitQuestionsController<
   );
   const appointmentKey =
     appointment.status === 'ready'
-      ? appointment.appointment.id
+      ? // A rescheduled or edited appointment invalidates work even when its stable ID is unchanged.
+        JSON.stringify(appointment.appointment)
       : appointment.status;
   const providerKey =
     provider.status === 'available' || provider.status === 'unavailable'

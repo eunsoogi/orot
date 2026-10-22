@@ -184,12 +184,12 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: appColors.background,
-    gap: 24,
+    gap: 20,
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 28,
   },
-  title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   section: { gap: 8 },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     flexDirection: 'row',
     gap: 16,
-    minHeight: 64,
+    minHeight: 60,
     paddingHorizontal: 16,
   },
   rowCopy: { flex: 1, gap: 4, paddingVertical: 10 },

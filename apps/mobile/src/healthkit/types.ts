@@ -118,6 +118,10 @@ export interface HealthKitSampleChangesQuery {
   readonly sampleKind: HealthKitSampleKind;
   readonly limit: number;
   readonly cursor: string | null;
+  /** Medication replay preserves the cursor's historical scope while resetting only its native anchor. */
+  readonly resetAnchor?: boolean;
+  /** Legacy checkpoint migration retains previously imported medication metadata, including tombstone scope. */
+  readonly medicationConceptIdentifiers?: readonly string[];
 }
 
 /** Persist each page's additions, deletions, and cursor together before querying again. */
