@@ -48,6 +48,7 @@
 		8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */; };
 		864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */; };
 		864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */; };
+		A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */; };
 		876D141638AF896A8D2D6787 /* FormUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */; };
 		88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */; };
 		88FB7164A1DEA04EF469C5FB /* HealthKitReadAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 395605C47A4A72CC7137804F /* HealthKitReadAuthorization.swift */; };
@@ -265,6 +266,7 @@
 		ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixtureIsolationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatePersistenceIntegrationTests.swift; sourceTree = "<group>"; };
+		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
 		B1011000B1011000B1011003 /* AppSymbolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSymbolView.swift; sourceTree = "<group>"; };
@@ -589,6 +591,7 @@
 				ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */,
 				AEF80EF44A90417A6FE731D2 /* RecordingPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
+				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
 			);
 			name = OrotIntegrationTests;
 			path = OrotIntegrationTests;
@@ -1112,6 +1115,7 @@
 				8629F5A0250EE62FAE67801E /* FixtureIsolationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28D /* RecordingPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
+				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1395,7 +1399,6 @@
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
-				SWIFT_OBJC_BRIDGING_HEADER = "OrotIntegrationTests/OrotIntegrationTests-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orot.app/Orot";
 				VALIDATE_PRODUCT = YES;
@@ -1439,7 +1442,6 @@
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
-				SWIFT_OBJC_BRIDGING_HEADER = "OrotIntegrationTests/OrotIntegrationTests-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Orot.app/Orot";
 			};

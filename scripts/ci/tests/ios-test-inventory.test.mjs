@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
+
+function assertTestMethodDeclared(identifier) {
+  const [target, suite, method] = identifier.split('/');
+  const base = `apps/mobile/ios/${target}/${suite}`;
+  const sourcePath = ['swift', 'm']
+    .map((extension) => `${base}.${extension}`)
+    .find((path) => existsSync(path));
+  assert.ok(sourcePath, `Missing test source for ${identifier}`);
+  const source = readFileSync(sourcePath, 'utf8');
+  const declaration = sourcePath.endsWith('.swift') ? `func ${method}(` : `- (void)${method}`;
+  assert.ok(source.includes(declaration), identifier);
+}
 
 test('separate Core and Speech runners cover every registered boundary without duplication or silent subsets', () => {
   // Target boundaries stop dependent UI work while preserving the full original inventory.
@@ -30,7 +42,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   assert.equal(iosTestInventory('speech', 'preparation').length, 1);
   for (const identifier of [
     'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
-    'OrotIntegrationTests/StatePersistenceIntegrationTests/testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi',
+    'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testRootTabAccessibilityKeepsDisabledAndSelectedTraitsTogether',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testBackAndHomeNeverExposeRootTabSelectionToAccessibility',
     'OrotIntegrationTests/NavigationLayoutIntegrationTests/testPrimaryNavigationActionsKeepTheirMinimumNativeTargetSize',
@@ -66,25 +78,24 @@ test('each profile declares unique existing cases and every test method is sched
     assert.equal(new Set(inventory).size, inventory.length);
     for (const identifier of inventory) {
       seen.add(identifier);
-      const [target, suite, method] = identifier.split('/');
-      const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
-      assert.ok(source.includes(`func ${method}(`), identifier);
+      assertTestMethodDeclared(identifier);
     }
   }
   for (const identifier of iosTestInventory('speech', 'preparation')) {
     seen.add(identifier);
-    const [target, suite, method] = identifier.split('/');
-    const source = readFileSync(`apps/mobile/ios/${target}/${suite}.swift`, 'utf8');
-    assert.ok(source.includes(`func ${method}(`), identifier);
+    assertTestMethodDeclared(identifier);
   }
   for (const target of ['OrotIntegrationTests', 'OrotUITests']) {
-    for (const file of readdirSync(`apps/mobile/ios/${target}`).filter((file) =>
-      file.endsWith('.swift'),
+    for (const file of readdirSync(`apps/mobile/ios/${target}`).filter(
+      (file) => file.endsWith('.swift') || file.endsWith('.m'),
     )) {
       const source = readFileSync(`apps/mobile/ios/${target}/${file}`, 'utf8');
-      for (const match of source.matchAll(/func (test\w+)\(/g))
+      const testMethods = file.endsWith('.swift')
+        ? source.matchAll(/func (test\w+)\(/g)
+        : source.matchAll(/-\s*\(void\)\s*(test\w+)\b/g);
+      for (const match of testMethods)
         assert.ok(
-          seen.has(`${target}/${file.slice(0, -6)}/${match[1]}`),
+          seen.has(`${target}/${file.slice(0, file.lastIndexOf('.'))}/${match[1]}`),
           `Unscheduled test ${file}/${match[1]}`,
         );
     }
