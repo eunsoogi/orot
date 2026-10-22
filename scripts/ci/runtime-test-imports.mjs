@@ -130,11 +130,36 @@ function referencedCandidates(specifier, importer, root, workspace, candidates) 
   ];
 }
 
+/** Follow app/E2E edges so only runtime-reachable Jest helpers affect selection. */
+function reachableTestReferences(candidatePaths, root, workspace) {
+  const candidateSet = new Set(candidatePaths);
+  const importablePaths = new Set([...workspace.importers, ...candidatePaths]);
+  // Non-Jest sources are conservative roots; Jest helpers enter only through static imports.
+  const pending = workspace.importers.filter((path) => !isJestTestOnlyPath(path));
+  const visited = new Set();
+  const referencedBy = new Set();
+  while (pending.length) {
+    const importer = pending.pop();
+    if (visited.has(importer)) continue;
+    visited.add(importer);
+    const parsed = scanModuleSpecifiers(readFileSync(resolve(root, importer), 'utf8'));
+    if (parsed.unknownReason) return { unknownReason: parsed.unknownReason };
+    for (const specifier of parsed.specifiers) {
+      const targets = referencedCandidates(specifier, importer, root, workspace, importablePaths);
+      for (const target of targets) {
+        if (candidateSet.has(target)) referencedBy.add(importer);
+        else pending.push(target);
+      }
+    }
+  }
+  return { referencingImporters: [...referencedBy].sort() };
+}
+
 /**
- * Prove that changed Jest tests have no app or E2E importer. The selector runs
- * before dependency installation, so this scanner uses Node built-ins and
- * checked-in workspace entry-point metadata; any unreadable source or dynamic
- * loader that defeats static resolution keeps the conservative iOS path.
+ * Prove that changed Jest tests have no app or E2E importer, including through
+ * runtime-reachable Jest helpers. The selector runs before dependency
+ * installation, so this uses checked-in workspace metadata and fails closed
+ * when reachable source cannot be resolved statically.
  */
 export function analyzeRuntimeTestImports(changedPaths, { root = ROOT } = {}) {
   const candidatePaths = [...new Set(changedPaths.filter(isJestTestOnlyPath))].sort();
@@ -146,7 +171,6 @@ export function analyzeRuntimeTestImports(changedPaths, { root = ROOT } = {}) {
       referencingImporters: [],
     };
   try {
-    const candidateSet = new Set(candidatePaths);
     for (const path of candidatePaths) {
       const absolute = resolve(root, path);
       if (!absolute.startsWith(resolve(root) + '/') || !existsSync(absolute))
@@ -161,18 +185,9 @@ export function analyzeRuntimeTestImports(changedPaths, { root = ROOT } = {}) {
         return unknown('candidate-not-regular-file', candidatePaths);
     }
     const workspace = readRuntimeWorkspace(root);
-    const referencedBy = new Set();
-    for (const importer of workspace.importers) {
-      // Jest-only importers are not part of the runtime or E2E module graph.
-      if (isJestTestOnlyPath(importer)) continue;
-      const parsed = scanModuleSpecifiers(readFileSync(resolve(root, importer), 'utf8'));
-      if (parsed.unknownReason) return unknown(parsed.unknownReason, candidatePaths);
-      for (const specifier of parsed.specifiers) {
-        if (referencedCandidates(specifier, importer, root, workspace, candidateSet).length)
-          referencedBy.add(importer);
-      }
-    }
-    const referencingImporters = [...referencedBy].sort();
+    const references = reachableTestReferences(candidatePaths, root, workspace);
+    if (references.unknownReason) return unknown(references.unknownReason, candidatePaths);
+    const referencingImporters = references.referencingImporters;
     return referencingImporters.length
       ? {
           status: 'referenced',

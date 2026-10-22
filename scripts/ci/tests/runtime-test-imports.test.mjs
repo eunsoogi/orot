@@ -39,16 +39,21 @@ test('relative imports from application and E2E sources keep a candidate in macO
   });
 });
 
-test('workspace package exports to a Jest helper remain in macOS scope', () => {
+test('workspace package exports that reach a Jest helper keep the candidate in macOS scope', () => {
   withWorkspace((root) => {
     const candidate = 'packages/domain/__tests__/fixture.test.ts';
     write(root, candidate, 'export const value = true;');
     write(
       root,
+      'packages/domain/__tests__/support/bridge.ts',
+      "export { value } from '../fixture.test';\n",
+    );
+    write(
+      root,
       'packages/domain/package.json',
       JSON.stringify({
         name: '@orot/domain',
-        exports: { './test-fixture': './__tests__/fixture.test.ts' },
+        exports: { './test-fixture': './__tests__/support/bridge.ts' },
       }),
     );
     write(root, 'apps/mobile/src/Consumer.ts', "import '@orot/domain/test-fixture';\n");
@@ -56,7 +61,7 @@ test('workspace package exports to a Jest helper remain in macOS scope', () => {
     const result = analyzeRuntimeTestImports([candidate], { root });
 
     assert.equal(result.status, 'referenced');
-    assert.deepEqual(result.referencingImporters, ['apps/mobile/src/Consumer.ts']);
+    assert.deepEqual(result.referencingImporters, ['packages/domain/__tests__/support/bridge.ts']);
   });
 });
 
@@ -105,11 +110,16 @@ test('imports in Jest tests do not make another Jest test a runtime dependency',
   withWorkspace((root) => {
     const candidate = 'packages/storage/__tests__/querySupport.ts';
     write(root, candidate, 'export const open = () => true;');
+    write(
+      root,
+      'packages/storage/__tests__/support/bridge.ts',
+      "export { open } from '../querySupport';\n",
+    );
     write(root, 'packages/storage/package.json', JSON.stringify({ name: '@orot/storage' }));
     write(
       root,
       'apps/mobile/src/storage/__tests__/storage.test.ts',
-      "import { open } from '../../../../../packages/storage/__tests__/querySupport';\nvoid open;\n",
+      "import { open } from '../../../../../packages/storage/__tests__/support/bridge';\nvoid open;\n",
     );
 
     const result = analyzeRuntimeTestImports([candidate], { root });

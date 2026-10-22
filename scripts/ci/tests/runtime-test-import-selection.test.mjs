@@ -57,6 +57,34 @@ test('runtime or E2E references keep a test-only change in macOS scope', () => {
   });
 });
 
+test('runtime dependencies that pass through a Jest helper keep the candidate in macOS scope', () => {
+  withRuntimeImportRoot((root) => {
+    const testPath = 'apps/mobile/src/__tests__/data.ts';
+    write(root, testPath, 'export const fixture = true;');
+    write(root, 'apps/mobile/App.tsx', "import './src/Consumer';\n");
+    write(root, 'apps/mobile/src/Consumer.ts', "import './__tests__/bridge';\n");
+    write(root, 'apps/mobile/src/__tests__/bridge.ts', "import './data';\n");
+
+    const selection = selectChecksForPaths([testPath], null, { runtimeRoot: root });
+
+    assert.equal(selection.runtime_test_import_analysis.status, 'referenced');
+    assert.equal(selection.ios_build, true);
+    assert.equal(selection.ios_tests, true);
+  });
+});
+
+test('a real transcription RNTL-only change avoids macOS when runtime does not import it', () => {
+  const testPath = 'apps/mobile/src/transcription/__tests__/TranscriptEvidencePanel.test.tsx';
+
+  const selection = selectChecksForPaths([testPath]);
+
+  assert.equal(selection.runtime_test_import_analysis.status, 'unreferenced');
+  assert.equal(selection.typecheck, true);
+  assert.equal(selection.unit_tests, true);
+  assert.equal(selection.ios_build, false);
+  assert.equal(selection.ios_tests, false);
+});
+
 test('ambiguous import analysis and mixed application changes retain macOS checks', () => {
   withRuntimeImportRoot((root) => {
     const testPath = 'apps/mobile/src/recording/__tests__/Panel.test.tsx';
@@ -66,6 +94,7 @@ test('ambiguous import analysis and mixed application changes retain macOS check
       'apps/mobile/src/recording/loader.ts',
       'export const load = (name) => import(name);',
     );
+    write(root, 'apps/mobile/App.tsx', "import './src/recording/loader';\n");
 
     const ambiguous = selectChecksForPaths([testPath], null, { runtimeRoot: root });
     const mixed = selectChecksForPaths(

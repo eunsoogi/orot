@@ -1,4 +1,4 @@
-/** Discover maintained runtime importers and checked-in package and alias entry points. */
+/** Discover maintained source paths, package entries, and aliases without following links. */
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { SOURCE_EXTENSIONS } from './runtime-test-paths.mjs';
@@ -69,6 +69,9 @@ export function readRuntimeWorkspace(root) {
     const packageRoot = join(packagesRoot, entry.name);
     const sourceRoot = join(packageRoot, 'src');
     if (existsSync(sourceRoot)) walkSources(root, sourceRoot, importers);
+    // Package-root Jest helpers are traversable only when a runtime module imports them.
+    const testsRoot = join(packageRoot, '__tests__');
+    if (existsSync(testsRoot)) walkSources(root, testsRoot, importers);
     const manifestPath = join(packageRoot, 'package.json');
     if (!existsSync(manifestPath)) continue;
     assertNoSymbolicPath(root, manifestPath);

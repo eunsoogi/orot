@@ -42,6 +42,14 @@ function isDeclarationName(tokens, index) {
   );
 }
 
+/** Ambient TypeScript declarations describe loaders without executing them. */
+function isAmbientRequireDeclaration(tokens, index) {
+  return (
+    ['const', 'let', 'var'].includes(tokens[index - 1]?.value) &&
+    tokens[index - 2]?.value === 'declare'
+  );
+}
+
 function aliasBinding(tokens, index, aliases) {
   if (tokens[index].value === 'require' && tokens[index - 1]?.value === '=')
     return declarationBinding(tokens, index - 1);
@@ -110,6 +118,7 @@ export function scanModuleSpecifiers(source) {
       const specifier = staticSource(tokens, index + 1);
       if (specifier !== undefined && specifier !== null) specifiers.push(specifier);
     } else if (token.value === 'require' || loaderAliases.has(token.value)) {
+      if (token.value === 'require' && isAmbientRequireDeclaration(tokens, index)) continue;
       const directCall = next?.value === '(';
       const resolutionCall =
         next?.value === '.' &&

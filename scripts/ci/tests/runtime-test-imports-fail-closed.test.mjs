@@ -72,11 +72,41 @@ test('computed require access remains ambiguous for runtime source analysis', ()
   });
 });
 
+test('ambient TypeScript require declarations do not hide static edges or excuse dynamic calls', () => {
+  withWorkspace((root) => {
+    const candidate = 'apps/mobile/src/feature/__tests__/feature.test.ts';
+    const importer = 'apps/mobile/src/feature/consumer.ts';
+    write(root, candidate, 'export const value = true;');
+    write(root, 'apps/mobile/App.tsx', "import './src/feature/consumer';\n");
+    write(
+      root,
+      importer,
+      'declare const require: (specifier: string) => unknown;\n' +
+        "export const loaded = require('./__tests__/feature.test');\n",
+    );
+
+    const staticResult = analyzeRuntimeTestImports([candidate], { root });
+    assert.equal(staticResult.status, 'referenced');
+    assert.deepEqual(staticResult.referencingImporters, [importer]);
+
+    write(
+      root,
+      importer,
+      'declare const require: (specifier: string) => unknown;\n' +
+        'export const loaded = require(moduleName);\n',
+    );
+    const dynamicResult = analyzeRuntimeTestImports([candidate], { root });
+    assert.equal(dynamicResult.status, 'unknown');
+    assert.equal(dynamicResult.reason, 'dynamic-module-loader');
+  });
+});
+
 test('nonliteral module loading, unreadable candidates, and malformed sources fail closed', () => {
   withWorkspace((root) => {
     const candidate = 'apps/mobile/src/feature/__tests__/feature.test.ts';
     write(root, candidate, 'export const feature = true;');
     write(root, 'apps/mobile/src/feature/loader.ts', 'export const load = (name) => import(name);');
+    write(root, 'apps/mobile/App.tsx', "import './src/feature/loader';\n");
 
     const dynamic = analyzeRuntimeTestImports([candidate], { root });
     assert.equal(dynamic.status, 'unknown');
