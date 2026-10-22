@@ -107,9 +107,11 @@
     NSString *account = @"synthetic-fixture";
     NSData *expectedData = [@"synthetic-keychain-value" dataUsingEncoding:NSUTF8StringEncoding];
     CFErrorRef accessError = NULL;
+    // The Simulator accepted a user-presence-only item without interaction. Requiring biometrics
+    // matches the prompted case and keeps the no-UI assertion on an authentication-gated item.
     SecAccessControlRef accessControl = SecAccessControlCreateWithFlags(
         kCFAllocatorDefault, kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        kSecAccessControlUserPresence, &accessError);
+        kSecAccessControlBiometryAny, &accessError);
     if (accessControl == NULL) {
         NSString *details = accessError != NULL
                                 ? CFBridgingRelease(CFErrorCopyDescription(accessError))
@@ -117,7 +119,7 @@
         if (accessError != NULL) {
             CFRelease(accessError);
         }
-        XCTFail(@"Could not create the synthetic user-presence fixture: %@", details);
+        XCTFail(@"Could not create the synthetic biometric fixture: %@", details);
         return;
     }
     if (accessError != NULL) {
@@ -189,7 +191,7 @@
         } mutableCopy];
         OSStatus protectedAddStatus = SecItemAdd((__bridge CFDictionaryRef)protectedAddQuery, NULL);
         XCTAssertEqual(protectedAddStatus, (OSStatus)errSecSuccess,
-                       @"The simulator must store the synthetic user-presence item");
+                       @"The simulator must store the synthetic biometric item");
         if (protectedAddStatus != errSecSuccess) {
             return;
         }
@@ -224,7 +226,7 @@
         if (protectedItemCreated) {
             RNKeychainDisallowAuthenticationUI(protectedDeleteQuery);
             OSStatus deleteStatus = SecItemDelete((__bridge CFDictionaryRef)protectedDeleteQuery);
-            // User-presence protection can also forbid cleanup without authentication. The unique
+            // Biometric protection can also forbid cleanup without authentication. The unique
             // fixture is isolated to this owner simulator, which the test helper retires afterward.
             XCTAssertTrue(
                 deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound ||
