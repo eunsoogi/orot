@@ -3,7 +3,33 @@ import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createIosTestProducts, verifyIosTestProducts } from '../ios-test-products.mjs';
+import { productContext } from '../ios-test-product-context.mjs';
 import { createProductFixture } from './ios-test-products-fixture.mjs';
+
+test('rejects legacy 27.0 products with an expected-versus-observed toolchain diagnosis', () => {
+  const fixture = createProductFixture('core', {
+    xcodeVersion: '27.0',
+    sdkVersion: '27.0',
+    developerDirectory: '/Applications/Xcode.app/Contents/Developer',
+  });
+  try {
+    assert.throws(
+      () => productContext(fixture.source, 'core', fixture.env),
+      (error) => {
+        assert.match(error.message, /expected Xcode 27\.1/);
+        assert.match(error.message, /iOS Simulator SDK 27\.1/);
+        assert.match(error.message, /platform Darwin/);
+        assert.match(error.message, /architecture arm64/);
+        assert.match(error.message, /actual Xcode 27\.0/);
+        assert.match(error.message, /iOS Simulator SDK 27\.0/);
+        assert.match(error.message, /developer directory \/Applications\/Xcode\.app/);
+        return true;
+      },
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
 
 test('round-trips exact Release products for a compatible Speech consumer without a compiler fallback', async () => {
   const fixture = createProductFixture();

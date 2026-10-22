@@ -31,8 +31,8 @@ function publicString(value) {
   return typeof value === 'string' && value.length <= 160 ? value : null;
 }
 
-/** Xcode 27.0 simctl help/list reports `pairs` as an object. Only the empty shape is observed locally;
- * nonempty entries have no verified member contract and must remain unknown, never inferred as no pairs.
+/** Xcode 27.0 simctl help/list reported `pairs` as an object; only its empty shape was observed then.
+ * Nonempty entries have no verified member contract and must remain unknown, never inferred as no pairs.
  * Project the owned device and selected runtime only; omit foreign names, paths and arbitrary fields. */
 export function iosPreparationInventory(owner, snapshot, device, runtime) {
   const pairs = snapshot.pairs;

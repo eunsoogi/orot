@@ -110,7 +110,7 @@ console.log('synthetic owned fixture operation');
   const driverArgs = [
     resolve(repository, 'scripts/ci/run-ios-fixture-tests.mjs'),
     profile,
-    join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
+    join(value.products, 'OrotTests_iphonesimulator27.1-arm64.xctestrun'),
     ownerFile,
     output,
     ...identifiers,

@@ -9,9 +9,14 @@ import { checkArchiveNames, productDigest } from '../ios-test-product-integrity.
 test('shares only identical generic Release inputs and preserves each execution destination', () => {
   assert.deepEqual(iosTestBuildSpec('core'), iosTestBuildSpec('speech'));
   assert.notDeepEqual(iosTestBuildSpec('core'), iosTestBuildSpec('provider-data'));
+  for (const profile of ['core', 'speech', 'backup', 'fixtures', 'local-model', 'provider-data']) {
+    assert.equal(iosTestConfig(profile).xcode, '27.1');
+    assert.equal(iosTestConfig(profile).sdk, '27.1');
+  }
   assert.equal(iosTestConfig('speech').runtimeBuild, '23C54');
   assert.equal(iosTestConfig('speech').runtime, 'com.apple.CoreSimulator.SimRuntime.iOS-26-2');
   assert.equal(iosTestConfig('core').runtime, 'com.apple.CoreSimulator.SimRuntime.iOS-27-0');
+  assert.equal(iosTestConfig('core').device, 'com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro');
   assert.throws(() => iosTestConfig('unknown'), /Unknown integration test profile/);
 });
 
