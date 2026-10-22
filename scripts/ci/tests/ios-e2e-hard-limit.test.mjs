@@ -40,6 +40,7 @@ test('the hosted execution plan never advertises a test allowance above 20 minut
 
 for (const [suite, count] of [
   ['navigation', 4],
+  ['recordings', 3],
   ['calendar', 2],
 ]) {
   test(`${suite} partitions intact XCTest methods without omitting or repeating observations`, () => {
@@ -81,4 +82,25 @@ test('large-text navigation has an independent hard-limited job', () => {
       .cohort,
     'navigation-accessibility',
   );
+});
+
+// Whole original journeys keep their own setup/reset/cleanup; only independent methods change VM ownership.
+test('recording leaves schedule controls, transcript review and playback with complete method coverage', () => {
+  const { jobs } = workflow('.github/workflows/ios-recording-tests.yml');
+  assert.deepEqual(Object.keys(jobs), ['controls', 'review', 'playback']);
+  for (const [id, count] of [
+    ['controls', 3],
+    ['review', 2],
+    ['playback', 2],
+  ]) {
+    const cohort = `recordings-${id}`;
+    assert.equal(iosTestCohortTasks(cohort)[0].identifiers.length, count);
+    assert.equal(jobs[id]['timeout-minutes'], 20);
+    assert.equal(jobs[id].if, "${{ contains(fromJSON(inputs.cohorts), '" + cohort + "') }}");
+    const executor = jobs[id].steps.find(
+      (step) => step.uses === './.github/actions/ios-test-cohort-executor',
+    );
+    assert.equal(executor.with.cohort, cohort);
+    assert.equal(executor.with.profile, 'fixtures');
+  }
 });

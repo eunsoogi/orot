@@ -2,6 +2,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
+// Each recording leaf retains the same fixture/reset contract while owning independent complete methods.
+const recordingFixture = { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 };
+
 const cohorts = {
   release: { profiles: ['core', 'fixtures', 'backup', 'local-model'], minutes: 200 },
   // Hosted Release consumers partition tasks, never individual cases or stateful restore/model phases.
@@ -73,7 +76,23 @@ const cohorts = {
     minutes: 20,
     classes: ['SafeAreaNavigationUITests', 'UnifiedImportUITests'],
   },
-  recordings: { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 },
+  recordings: recordingFixture,
+  'recordings-controls': {
+    ...recordingFixture,
+    cases: [
+      'RecordingLibraryUITests/testActiveAndPausedRecordingControlsAcrossAppearanceChanges',
+      'RecordingLibraryUITests/testRecordingConsentAndSeparateLibraryAcrossAppearanceChanges',
+      'RecordingLibraryUITests/testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport',
+    ],
+  },
+  'recordings-review': {
+    ...recordingFixture,
+    cases: [
+      'RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
+      'RecordingLibraryUITests/testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText',
+    ],
+  },
+  'recordings-playback': { ...recordingFixture, classes: ['RecordingPlaybackUITests'] },
   questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 20 },
   'questions-review': {
     profiles: ['fixtures'],

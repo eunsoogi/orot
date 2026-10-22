@@ -24,7 +24,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             if !TestFixtureCommand.prepareIsolationIfRequested() {
                 return true
             }
-            TestTextInputObservation.startIfRequested()
         #endif
 
         let delegate = ReactNativeDelegate()

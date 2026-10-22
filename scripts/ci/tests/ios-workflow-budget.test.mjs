@@ -45,7 +45,7 @@ test('Debug, Release and OAuth consumers wait only for their corresponding separ
       assert.equal(wrapper.name, nameParts[0]);
       assert.match(
         wrapper.uses,
-        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar)-tests\.yml$/,
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/,
       );
     }
     assert.equal(inputs.profile, entry.profile);

@@ -35,7 +35,7 @@ test('core UI navigation and recording evidence have separate jobs without split
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 22);
+  assert.equal(plan.length, 24);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
   const actual = plan.flatMap((job) =>
@@ -101,7 +101,12 @@ test('new process, reset, restore and Speech preparation dependencies remain ins
 });
 
 test('selected plans retain full original task groups while omitting unrelated cohorts', () => {
-  const selected = iosTestExecutionPlan(['backup', 'recordings']);
+  const selected = iosTestExecutionPlan([
+    'backup',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
+  ]);
   const actual = selected.flatMap((job) =>
     iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
   );
@@ -111,9 +116,9 @@ test('selected plans retain full original task groups while omitting unrelated c
 
   assert.deepEqual(
     selected.map((job) => job.cohort),
-    ['backup', 'recordings'],
+    ['backup', 'recordings-controls', 'recordings-review', 'recordings-playback'],
   );
-  assert.deepEqual(actual, expected);
+  assert.deepEqual(actual.slice().sort(), expected.slice().sort());
   assert.equal(new Set(actual).size, actual.length);
   assert.equal(
     selected.some((job) => job.cohort === 'speech'),

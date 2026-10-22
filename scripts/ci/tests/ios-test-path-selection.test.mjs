@@ -22,7 +22,9 @@ test('recording source selects its full stateful group while a question helper s
     'persistence',
     'isolation',
     'backup',
-    'recordings',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
     'microphone',
     'speech',
   ]);
@@ -174,7 +176,7 @@ test('draft source changes stay explicitly selected while the full validation is
     resolveFullValidationDeferred('pull_request', { pull_request: { draft: true } }),
     true,
   );
-  assert.equal(selection.ios_test_cohorts.includes('recordings'), true);
+  assert.equal(selection.ios_test_cohorts.includes('recordings-review'), true);
 });
 
 test('unavailable path comparison fails safe to all checks and cohorts', () => {

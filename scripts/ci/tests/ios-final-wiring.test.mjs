@@ -85,7 +85,7 @@ test('full and focused visible job names use one consistent role and target', ()
     for (const leaf of leaves) {
       const name = leaf.name.replace('${{ inputs.name }}', job.with?.name);
       if (
-        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar)-tests\.yml$/.test(
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/.test(
           leaf.uses ?? '',
         )
       ) {

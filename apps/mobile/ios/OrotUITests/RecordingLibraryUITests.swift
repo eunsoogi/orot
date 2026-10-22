@@ -106,8 +106,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
     @MainActor
     private func inspect(extra: [String], suffix: String, dark: Bool, liveTheme: Bool, review: Bool) throws {
         let app = XCUIApplication()
-        let inputObservation = review ? ["-OROT_TEST_INPUT_OBSERVATION", "YES"] : []
-        RecordingFixtureUITestConditions.launch(app, extra: extra + inputObservation + AppearanceUITestConditions.observationArguments)
+        RecordingFixtureUITestConditions.launch(app, extra: extra + AppearanceUITestConditions.observationArguments)
         var appearance: AppearanceUITestConditions.Snapshot?
         defer {
             if let appearance {

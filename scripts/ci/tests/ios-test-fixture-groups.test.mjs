@@ -45,6 +45,7 @@ test('independent hosted fixture jobs partition every logical group and retain p
     'ios-question-tests.yml',
     'ios-navigation-tests.yml',
     'ios-calendar-tests.yml',
+    'ios-recording-tests.yml',
   ]
     .map((name) => readFileSync('.github/workflows/' + name, 'utf8'))
     .join('\n');

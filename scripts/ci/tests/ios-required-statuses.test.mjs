@@ -166,3 +166,17 @@ test('metadata edits require verified same-head ready evidence before any protec
     0,
   );
 });
+
+// Recording partitions inherit the original UI, stored-state and speech gates independently.
+test('every recording leaf retains all original protected domain failure boundaries', () => {
+  for (const cohort of ['recordings-controls', 'recordings-review', 'recordings-playback']) {
+    for (const check of ['UI', 'Storage', 'Speech']) {
+      assert.equal(
+        evaluate(check, { selected: true, result: 'success', cohorts: [cohort] }).status,
+        0,
+      );
+      for (const result of ['failure', 'cancelled', 'skipped', ''])
+        assert.notEqual(evaluate(check, { selected: true, result, cohorts: [cohort] }).status, 0);
+    }
+  }
+});
