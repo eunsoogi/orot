@@ -3,6 +3,11 @@ import XCTest
 
 @MainActor
 enum FormUITestConditions {
+    /// React Native backs multiline TextInput with UITextView; query that role instead of scanning every accessibility element.
+    static func multilineInput(_ app: XCUIApplication, identifier: String) -> XCUIElement {
+        app.textViews.matching(identifier: identifier).firstMatch
+    }
+
     /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
     /// Noninteractive text callers must prove rendered visibility separately when opting out of hit testing.
     @discardableResult

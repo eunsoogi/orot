@@ -45,7 +45,7 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         XCTAssertEqual(report.actualEndMs, 1801)
 
         tap(app, "transcript-edit-0")
-        let input = element(app, "transcript-input-0")
+        let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
         let correction = "사용자가 확인한 전사 수정"
         // Exercise native keyboard editing and exact value readback through the real transcript input.
         FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")

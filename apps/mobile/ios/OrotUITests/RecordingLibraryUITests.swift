@@ -154,7 +154,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         }
         if editTranscript {
             reveal(app, "transcript-edit-0").tap()
-            let input = UITestConditions.element(app, "transcript-input-0")
+            let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
             FormUITestConditions.replace(input, with: "수정됨", in: app, scrollID: "recording-controls-scroll")
             XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
             capture(app, "recording-transcript-editor-\(suffix)")
