@@ -78,6 +78,19 @@ for (const status of [0, 65]) {
         samples.map((sample) => sample.stage),
         ['before', 'after'],
       );
+      const processSamples = result.calls.filter((call) => call.name === 'ps');
+      const finalSample = samples.find((sample) => sample.stage === 'after');
+      // Keep the terminal process inventory on failure; a successful run needs no extra scan.
+      assert.equal(processSamples.length, status === 0 ? 1 : 2);
+      assert.equal(
+        samples.find((sample) => sample.stage === 'before').observations.processes,
+        'fixture app diagnostic\n',
+      );
+      if (status === 0) {
+        assert.match(finalSample.observations.processes.unavailable, /successful boot or XCTest/);
+      } else {
+        assert.equal(finalSample.observations.processes, 'fixture app diagnostic\n');
+      }
       assert.match(
         result.outcome.stdout,
         new RegExp(`IOS_TEST_STAGE elapsed_ms=\\d+ exit=${status}`),

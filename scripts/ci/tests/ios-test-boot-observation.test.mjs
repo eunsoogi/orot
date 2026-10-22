@@ -7,7 +7,13 @@ import test from 'node:test';
 import { iosTestConfig } from '../ios-test-config.mjs';
 
 // Drive the actual CLI with public-command fixtures; policy tests must never boot a device or sample their host.
-function run(bootStatus, hosted = false, cacheStatus = 0, blockedDiagnostic = false) {
+function run(
+  bootStatus,
+  hosted = false,
+  cacheStatus = 0,
+  blockedDiagnostic = false,
+  bootCommandStatus = 0,
+) {
   const root = mkdtempSync(join(tmpdir(), 'orot-boot-observation-'));
   const ownerPath = join(root, 'owner.json');
   const config = iosTestConfig('speech');
@@ -29,6 +35,7 @@ const command=args[1];
 if(command==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else if(command==='create')console.log('owned-device');
 else if(command==='runtime') { console.log('Runtime shared cache ready'); process.exit(${cacheStatus}); }
+else if(command==='boot')process.exit(${bootCommandStatus});
 else if(command==='bootstatus') {
  console.log('Waiting for Data Migration');
  if(${blockedDiagnostic}){const file=${JSON.stringify(ownerPath + '.boot.resources.jsonl')};fs.unlinkSync(file);fs.mkdirSync(file);}
@@ -85,7 +92,19 @@ for (const status of [0, 65])
         resources.map((sample) => sample.stage),
         ['before', 'after'],
       );
-      assert.ok(resources.every((sample) => sample.observations.processes === 'synthetic ps\n'));
+      assert.equal(resources[0].observations.processes, 'synthetic ps\n');
+      if (status === 0) {
+        // A successful readiness boundary keeps memory and swap but avoids a final process query.
+        assert.deepEqual(resources[1].observations, {
+          memory: 'synthetic vm_stat\n',
+          swap: 'synthetic sysctl\n',
+          processes: {
+            unavailable: 'final process snapshot skipped after successful boot or XCTest',
+          },
+        });
+      } else {
+        assert.equal(resources[1].observations.processes, 'synthetic ps\n');
+      }
       assert.equal(value.calls.filter((args) => args[1] === 'boot').length, 1);
       assert.deepEqual(
         value.calls.filter((args) => args[1] === 'bootstatus'),
@@ -98,6 +117,30 @@ for (const status of [0, 65])
       rmSync(value.root, { recursive: true, force: true });
     }
   });
+
+test('a failed simulator boot keeps its final process snapshot and does not publish readiness', () => {
+  const value = run(0, false, 0, false, 65);
+  try {
+    assert.notEqual(value.outcome.status, 0);
+    assert.equal(existsSync(value.environment), false);
+    assert.equal(value.calls.filter((args) => args[1] === 'bootstatus').length, 0);
+    const resources = readFileSync(value.ownerPath + '.boot.resources.jsonl', 'utf8')
+      .trim()
+      .split('\n')
+      .map(JSON.parse);
+    assert.equal(resources[0].observations.processes, 'synthetic ps\n');
+    assert.equal(resources[1].observations.processes, 'synthetic ps\n');
+    const diagnostics = readFileSync(value.ownerPath + '.preparation.jsonl', 'utf8')
+      .trim()
+      .split('\n')
+      .map(JSON.parse);
+    assert.equal(diagnostics.at(-1).event, 'boot-failed');
+    assert.equal(diagnostics.at(-1).stage, 'boot');
+    assert.equal(diagnostics.at(-1).status, 65);
+  } finally {
+    rmSync(value.root, { recursive: true, force: true });
+  }
+});
 
 test('hosted preparation completes only the selected runtime cache before creating or booting a device', () => {
   for (const status of [0, 65]) {
@@ -148,6 +191,11 @@ test('a real bootstatus SIGABRT preserves the original signal and prevents readi
         assert.equal(saved[0].event, 'pre-boot-inventory');
         assert.deepEqual(saved[0].pairs, { status: 'observed-empty', entryCount: 0 });
         assert.equal(saved.at(-1).signal, 'SIGABRT');
+        const resources = readFileSync(value.ownerPath + '.boot.resources.jsonl', 'utf8')
+          .trim()
+          .split('\n')
+          .map(JSON.parse);
+        assert.equal(resources.at(-1).observations.processes, 'synthetic ps\n');
       } else {
         assert.match(value.outcome.stderr, /diagnostic-write-failed/);
         assert.match(value.outcome.stderr, /resource-write-failed/);

@@ -144,7 +144,10 @@ if (
 if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
   throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
-const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl');
+// Keep the pre-test process baseline, but skip periodic scans while XCTest is running.
+const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl', {
+  skipDuringProcessSnapshot: true,
+});
 const stopDiagnostics =
   profile === 'speech' && tests.some((test) => test.includes('/SpeechAssetPreparationTests/'))
     ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')
@@ -154,6 +157,7 @@ const stopAuthDiagnostics =
     ? startIosAuthDiagnostics(owner.udid, resolve(results) + '.auth.jsonl')
     : async () => {};
 const started = Date.now();
+let testStageSucceeded = false;
 const outcome = spawn(
   'xcodebuild',
   [
@@ -190,6 +194,7 @@ try {
     outcome.once('error', reject);
     outcome.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
+  testStageSucceeded = status === 0;
   await stopDiagnostics();
   await stopAuthDiagnostics();
   if (status !== 0) {
@@ -224,5 +229,6 @@ try {
 } finally {
   await stopDiagnostics();
   await stopAuthDiagnostics();
-  await stopSampling();
+  // Keep terminal process evidence after a test failure; successful XCTest needs no extra scan.
+  await stopSampling({ skipFinalProcessSnapshot: testStageSucceeded });
 }

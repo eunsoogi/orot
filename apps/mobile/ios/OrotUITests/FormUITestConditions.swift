@@ -88,10 +88,11 @@ enum FormUITestConditions {
             exactValue(input, equals: "")
         }
         if !text.isEmpty {
-            // A batched native string lost characters in a controlled input. Complete each
-            // character action and its app-idleness wait before sending the next edit.
+            // Keep per-character synchronization because batched input dropped characters
+            // in controlled fields. The app's focused descendant receives each key without
+            // asking XCTest to resolve the changing field query for every character.
             for character in text {
-                input.typeText(String(character))
+                app.typeText(String(character))
             }
         }
         exactValue(input, equals: text)

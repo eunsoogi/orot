@@ -67,6 +67,7 @@ export async function iosTestResourceSnapshot(
   index = 0,
   execute = executeResourceCommand,
   signal,
+  { skipDuringProcessSnapshot = false, skipFinalProcessSnapshot = false } = {},
 ) {
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
   for (const [name, program, args] of [
@@ -74,6 +75,19 @@ export async function iosTestResourceSnapshot(
     ['swap', 'sysctl', ['vm.swapusage']],
     ['processes', 'ps', ['-axo', 'pid,ppid,%cpu,rss,comm']],
   ]) {
+    if (
+      name === 'processes' &&
+      ((stage === 'during' && skipDuringProcessSnapshot) ||
+        (stage === 'after' && skipFinalProcessSnapshot))
+    ) {
+      entry.observations[name] = {
+        unavailable:
+          stage === 'during'
+            ? 'periodic process snapshot skipped during boot or XCTest'
+            : 'final process snapshot skipped after successful boot or XCTest',
+      };
+      continue;
+    }
     if (signal?.aborted) {
       entry.observations[name] = { unavailable: 'sampling stopped' };
       continue;
@@ -94,12 +108,12 @@ export async function iosTestResourceSnapshot(
 }
 
 /**
- * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
- * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
+ * Capture sequential host samples without overlapping queries. Callers can skip periodic process scans
+ * during boot or XCTest, then omit the final process scan only after success; failures retain that evidence.
  */
 export async function iosTestResourceSampler(
   path,
-  { intervalMs = 20000, execute = executeResourceCommand } = {},
+  { intervalMs = 20000, execute = executeResourceCommand, skipDuringProcessSnapshot = false } = {},
 ) {
   let index = 0;
   let stopped = false;
@@ -109,10 +123,13 @@ export async function iosTestResourceSampler(
   let failure;
   let stopPromise;
 
-  const sample = (stage) => {
+  const sample = (stage, { skipFinalProcessSnapshot = false } = {}) => {
     const controller = new AbortController();
     activeController = controller;
-    const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal);
+    const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal, {
+      skipDuringProcessSnapshot,
+      skipFinalProcessSnapshot,
+    });
     activeSample = pending;
     return pending.finally(() => {
       if (activeSample === pending) activeSample = undefined;
@@ -134,7 +151,7 @@ export async function iosTestResourceSampler(
   await sample('before');
   scheduleNext();
 
-  return () => {
+  return ({ skipFinalProcessSnapshot = false } = {}) => {
     if (stopPromise) return stopPromise;
     stopped = true;
     clearTimeout(timer);
@@ -142,7 +159,7 @@ export async function iosTestResourceSampler(
     stopPromise = (async () => {
       if (activeSample) await activeSample;
       if (failure) throw failure;
-      await sample('after');
+      await sample('after', { skipFinalProcessSnapshot });
     })();
     return stopPromise;
   };
