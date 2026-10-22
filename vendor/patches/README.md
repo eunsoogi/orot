@@ -147,16 +147,19 @@ gamma-disabled RNScreens sources, and one Android-only safe-area-context state
 source. At pinned upstream commit `4b4e22c`, Keychain's `src` tree has no
 Codegen spec: [`src/index.ts`](https://github.com/oblador/react-native-keychain/blob/4b4e22cb3d6064c9bd7b897ba63bdba18baca84f/src/index.ts) calls the legacy `NativeModules` bridge, [`KeychainModule`](https://github.com/oblador/react-native-keychain/blob/4b4e22cb3d6064c9bd7b897ba63bdba18baca84f/android/src/main/java/com/oblador/keychain/KeychainModule.kt) extends `ReactContextBaseJavaModule`, [`KeychainPackage`](https://github.com/oblador/react-native-keychain/blob/4b4e22cb3d6064c9bd7b897ba63bdba18baca84f/android/src/main/java/com/oblador/keychain/KeychainPackage.kt) uses `ReactPackage`, and the [iOS manager header](https://github.com/oblador/react-native-keychain/blob/4b4e22cb3d6064c9bd7b897ba63bdba18baca84f/ios/RNKeychainManager/RNKeychainManager.h) conforms to `RCTBridgeModule`. The Keychain patch removes the unused `codegenConfig` metadata that registers those empty specs; it leaves the Android native module and package sources unchanged. The Codegen, Keychain, RNScreens, and safe-area patches omit the diagnosed empty inputs from generation or the iOS pod source list.
 
-The other 19 notices refer to nine Objective-C category implementation files,
-repeated as five Debug, nine Release, and five Production warnings. Orot's
-Debug and Release app configurations set `-ObjC`, and the historical Production
-link command contains it. Apple's
+At the historical pre-anchor candidate, the remaining 19 notices came from
+nine Objective-C category implementation files, repeated as five Debug, nine
+Release, and five Production warnings. Orot's Debug and Release app
+configurations set `-ObjC`, and the historical Production link command contains
+it. Apple's
 [QA1490](https://developer.apple.com/library/archive/qa/qa1490/_index.html)
 explains that this flag loads static-library members that implement categories.
-Keep these objects so their category methods remain available. The clean
-candidate builds emit no empty-unit warning and reproduce the 5/9/5 category
-notices. This source disposition does not establish category runtime behavior;
-that evidence remains pending.
+The current RNScreens patch adds nine hidden archive-anchor functions to those
+category implementation files so the members are not empty while preserving
+the category implementations. The integrated product-candidate logs at
+`ff8767a` contain no RNScreens empty-object markers in Debug, Release, or
+Production. The logs establish the current warning disposition; they do not
+isolate every category method at runtime.
 
 The four downloaded logs reproduce the issue's 1,518 selected occurrences and
 38 groups when the classifier includes primary `warning:` diagnostics, Metro

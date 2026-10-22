@@ -1,5 +1,7 @@
 import Foundation
+import LocalAuthentication
 @testable import Orot
+import Security
 import XCTest
 
 /// Three host invocations retain one real database and prove new process identities without accessibility sessions.
@@ -38,6 +40,116 @@ final class StatePersistenceIntegrationTests: OrotFailFastTestCase {
         let result = try await operation("memory-verify-deletion", parameters: ["fixtureIdentifier": memoryIdentifier()])
         truths(result, ["absentFromMemoryAndSearch", "networkDisabled"])
         try attach(fixture, phase: "absence")
+    }
+
+    /// Exercises protected Keychain access with synthetic credentials and without prompting for user data.
+    func testProtectedKeychainQueryAcceptsCredentialRejectsWrongCredentialAndDisallowsUi() {
+        let service = "com.orot.tests.keychain-auth.\(UUID().uuidString)"
+        let account = "protected-fixture"
+        let expectedData = Data("synthetic-keychain-value".utf8)
+        let acceptedPassword = Data("synthetic-password".utf8)
+        var creationError: Unmanaged<CFError>?
+        guard let accessControl = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .applicationPassword,
+            &creationError,
+        ) else {
+            let details = creationError.map { CFErrorCopyDescription($0.takeRetainedValue()) as String }
+                ?? "No error details were returned"
+            XCTFail("Could not create the synthetic access-control fixture: \(details)")
+            return
+        }
+
+        // The unique item is app-password protected so Security itself evaluates the production LAContext.
+        let keyClass = kSecClass as String
+        let serviceKey = kSecAttrService as String
+        let accountKey = kSecAttrAccount as String
+        let accessControlKey = kSecAttrAccessControl as String
+        let contextKey = kSecUseAuthenticationContext as String
+        let deleteQuery = NSMutableDictionary(dictionary: [
+            keyClass: kSecClassGenericPassword,
+            serviceKey: service,
+            accountKey: account,
+        ])
+        defer {
+            RNKeychainSetAuthenticationPrompt(deleteQuery, "Delete a synthetic protected fixture")
+            guard let deleteContext = deleteQuery[contextKey] as? LAContext,
+                  deleteContext.setCredential(acceptedPassword, type: .applicationPassword)
+            else {
+                XCTFail("The RNKeychain helper must provide a noninteractive cleanup context")
+                return
+            }
+            deleteContext.interactionNotAllowed = true
+            let deleteStatus = SecItemDelete(deleteQuery as CFDictionary)
+            XCTAssertTrue(
+                deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound,
+                "The synthetic protected item must be removed after the test",
+            )
+        }
+
+        let addQuery = NSMutableDictionary(dictionary: [
+            keyClass: kSecClassGenericPassword,
+            serviceKey: service,
+            accountKey: account,
+            accessControlKey: accessControl,
+            kSecValueData as String: expectedData,
+        ])
+        RNKeychainSetAuthenticationPrompt(addQuery, "Create a synthetic protected fixture")
+        guard let addContext = addQuery[contextKey] as? LAContext,
+              addContext.setCredential(acceptedPassword, type: .applicationPassword)
+        else {
+            XCTFail("The RNKeychain helper must provide a credential-ready context for creation")
+            return
+        }
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        XCTAssertEqual(addStatus, errSecSuccess, "The simulator must store the protected synthetic item")
+        guard addStatus == errSecSuccess else { return }
+
+        let queryBase: [String: Any] = [
+            keyClass: kSecClassGenericPassword,
+            serviceKey: service,
+            accountKey: account,
+            kSecReturnData as String: true,
+        ]
+
+        let allowedQuery = NSMutableDictionary(dictionary: queryBase)
+        RNKeychainSetAuthenticationPrompt(allowedQuery, "Read a synthetic protected fixture")
+        guard let allowedContext = allowedQuery[contextKey] as? LAContext,
+              allowedContext.setCredential(acceptedPassword, type: .applicationPassword)
+        else {
+            XCTFail("The RNKeychain helper must provide a fresh context for an allowed read")
+            return
+        }
+        var allowedResult: CFTypeRef?
+        let allowedStatus = SecItemCopyMatching(allowedQuery as CFDictionary, &allowedResult)
+        XCTAssertEqual(allowedStatus, errSecSuccess, "A matching application credential must read the item")
+        XCTAssertEqual(allowedResult as? Data, expectedData)
+
+        let deniedQuery = NSMutableDictionary(dictionary: queryBase)
+        RNKeychainSetAuthenticationPrompt(deniedQuery, "Reject a synthetic protected fixture")
+        guard let deniedContext = deniedQuery[contextKey] as? LAContext,
+              deniedContext.setCredential(Data("incorrect-password".utf8), type: .applicationPassword)
+        else {
+            XCTFail("The RNKeychain helper must provide a fresh context for a denied read")
+            return
+        }
+        deniedContext.interactionNotAllowed = true
+        var deniedResult: CFTypeRef?
+        let deniedStatus = SecItemCopyMatching(deniedQuery as CFDictionary, &deniedResult)
+        XCTAssertEqual(deniedStatus, errSecAuthFailed, "A wrong credential must be denied without prompting")
+        XCTAssertNil(deniedResult)
+
+        let noUiQuery = NSMutableDictionary(dictionary: queryBase)
+        RNKeychainDisallowAuthenticationUI(noUiQuery)
+        guard let noUiContext = noUiQuery[contextKey] as? LAContext, noUiContext.interactionNotAllowed else {
+            XCTFail("The RNKeychain no-UI helper must provide a noninteractive context")
+            return
+        }
+        var noUiResult: CFTypeRef?
+        let noUiStatus = SecItemCopyMatching(noUiQuery as CFDictionary, &noUiResult)
+        XCTAssertEqual(noUiStatus, errSecInteractionNotAllowed, "A protected lookup must remain noninteractive")
+        XCTAssertNil(noUiResult)
     }
 
     private func fixtureIdentifier() throws -> String {
