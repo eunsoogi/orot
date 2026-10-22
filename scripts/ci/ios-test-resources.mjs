@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 
 const sampleTimeoutMs = 10000;
@@ -60,7 +61,7 @@ export function executeResourceCommand(program, args, { signal } = {}, run = exe
   });
 }
 
-/** Host observations stay nonblocking and do not attribute pressure to a particular process. */
+/** Keep host sampling asynchronous and record observer cost without attributing pressure to a process. */
 export async function iosTestResourceSnapshot(
   path,
   stage,
@@ -68,7 +69,9 @@ export async function iosTestResourceSnapshot(
   execute = executeResourceCommand,
   signal,
 ) {
+  const started = performance.now();
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
+  const commandElapsedMs = {};
   for (const [name, program, args] of [
     ['memory', 'vm_stat', []],
     ['swap', 'sysctl', ['vm.swapusage']],
@@ -76,8 +79,10 @@ export async function iosTestResourceSnapshot(
   ]) {
     if (signal?.aborted) {
       entry.observations[name] = { unavailable: 'sampling stopped' };
+      commandElapsedMs[name] = null;
       continue;
     }
+    const commandStarted = performance.now();
     try {
       entry.observations[name] = await execute(program, args, {
         encoding: 'utf8',
@@ -88,8 +93,14 @@ export async function iosTestResourceSnapshot(
       });
     } catch (error) {
       entry.observations[name] = { unavailable: String(error) };
+    } finally {
+      // Monotonic command times separate slow host queries from sampler scheduling gaps.
+      commandElapsedMs[name] = Math.round((performance.now() - commandStarted) * 1000) / 1000;
     }
   }
+  entry.completedAt = new Date().toISOString();
+  entry.elapsedMs = Math.round((performance.now() - started) * 1000) / 1000;
+  entry.commandElapsedMs = commandElapsedMs;
   appendFileSync(path, JSON.stringify(entry) + '\n');
 }
 
