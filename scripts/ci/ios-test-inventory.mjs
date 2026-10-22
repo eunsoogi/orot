@@ -15,7 +15,6 @@ const coreTests = [
   ...recordingPersistenceTests,
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
-  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testLargeHealthLibraryUsesDefaultPagesAndStableCursors',
@@ -64,8 +63,9 @@ const providerTests = [
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
   'OrotIntegrationTests/HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
 ];
-// This focused suite opens a Simulator Face ID prompt and stays outside headless release runs.
+// Both protected-item checks require Face ID enrollment; the positive case also opens a match prompt.
 const interactiveAuthenticationTests = [
+  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi',
   'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch',
 ];
 export const backupTests = [

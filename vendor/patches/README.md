@@ -156,10 +156,10 @@ it. Apple's
 explains that this flag loads static-library members that implement categories.
 The current RNScreens patch adds nine hidden archive-anchor functions to those
 category implementation files so the members are not empty while preserving
-the category implementations. The integrated product-candidate logs at
+the category implementations. The integrated product-candidate logs from
 `ff8767a` contain no RNScreens empty-object markers in Debug, Release, or
-Production. The logs establish the current warning disposition; they do not
-isolate every category method at runtime.
+Production. These logs document that candidate's warning disposition; they do
+not isolate every category method at runtime.
 
 The four downloaded logs reproduce the issue's 1,518 selected occurrences and
 38 groups when the classifier includes primary `warning:` diagnostics, Metro
