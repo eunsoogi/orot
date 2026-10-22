@@ -86,6 +86,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
   },
-  title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   message: { color: appColors.secondary, fontSize: 15, lineHeight: 23 },
 });

@@ -75,7 +75,10 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
       initial.items.some(item => item.content.includes('uncommon-zeta')),
     ).toBe(false);
 
-    const [tool] = toolsFor(initial, data, registry);
+    // This regression exercises ranked raw-record drilldown independently of the additional period tool.
+    const tool = toolsFor(initial, data, registry).find(
+      candidate => candidate.id === 'local-personal-records',
+    )!;
     const request = {
       operationRunId: 'bounded-evidence-test',
       operationKey: 'tool-1',

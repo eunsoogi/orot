@@ -5,6 +5,7 @@ import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 import {
+  maximumConcurrentJobWeight,
   cohortJobs,
   completionJob,
   expandedActionSteps,
@@ -13,10 +14,6 @@ import {
 
 const full = () => workflow('.github/workflows/e2e-test.yml');
 const read = (name) => workflow('.github/workflows/' + name);
-const needs = (job) => (typeof job.needs === 'string' ? [job.needs] : (job.needs ?? []));
-function ancestors(jobs, id) {
-  return needs(jobs[id]).flatMap((dependency) => [dependency, ...ancestors(jobs, dependency)]);
-}
 
 test('Debug, Release and OAuth consumers wait only for their corresponding separate producers', () => {
   const { jobs } = full();
@@ -39,7 +36,18 @@ test('Debug, Release and OAuth consumers wait only for their corresponding separ
     const configuration = entry.configuration.toLowerCase();
     assert.deepEqual(caller.needs, ['plan', configuration + '_products']);
     assert.equal(leaf.needs, undefined);
-    assert.equal(leaf.name, entry.name);
+    const nameParts = entry.name.split(' / ');
+    assert.equal(leaf.name, nameParts.at(-1));
+    if (nameParts.length > 1) {
+      const wrapper = Object.values(read('ios-release-tests.yml').jobs).find(
+        (job) => job.name === nameParts[0],
+      );
+      assert.equal(wrapper.name, nameParts[0]);
+      assert.match(
+        wrapper.uses,
+        /^\.\/\.github\/workflows\/ios-(question|navigation|calendar|recording)-tests\.yml$/,
+      );
+    }
     assert.equal(inputs.profile, entry.profile);
     assert.equal(leaf['timeout-minutes'], entry.minutes);
     assert.equal(inputs.artifact_name, 'ios-test-' + configuration + '-products');
@@ -75,19 +83,7 @@ test('the finite feature plan permits independent parallel jobs without repeatin
     ids.reduce((sum, id) => sum + weight(id), 0),
     plan.length + 5,
   );
-  // Enumerate producer-specific families; every leaf inside each family is independently scheduled.
-  let maximum = 0;
-  for (let bits = 0; bits < 1 << ids.length; bits++) {
-    const active = ids.filter((_, index) => bits & (1 << index));
-    if (
-      active.every((id) => !ancestors(jobs, id).some((dependency) => active.includes(dependency)))
-    )
-      maximum = Math.max(
-        maximum,
-        active.reduce((sum, id) => sum + weight(id), 0),
-      );
-  }
-  assert.equal(maximum, plan.length + 2);
+  assert.equal(maximumConcurrentJobWeight(jobs, ids, weight), plan.length + 2);
   assert.deepEqual([...jobs.completeness.needs].sort(), ['plan', ...ids].sort());
   assert.equal(jobs.production_validation.if, undefined);
   assert.equal(jobs.debug_products.if, "${{ needs.plan.outputs.has_debug == 'true' }}");

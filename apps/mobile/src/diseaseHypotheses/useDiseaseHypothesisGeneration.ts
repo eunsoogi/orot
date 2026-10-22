@@ -12,8 +12,11 @@ import {
 import type { AiWorkflowObserver } from '../agent/workflowActivity';
 import { t } from '../i18n';
 
-type ScreenState =
-  | { readonly status: 'idle' | 'loading' | 'cancelled' | 'insufficient' }
+export type DiseaseGenerationState =
+  | {
+      readonly status:
+        'idle' | 'loading' | 'cancelled' | 'insufficient' | 'consent_required';
+    }
   | { readonly status: 'result'; readonly value: DiseaseHypothesisAnalysis }
   | {
       readonly status: 'error';
@@ -28,11 +31,30 @@ type DiseaseHypothesisGenerator = (
 /** Owns one cancellable run and ignores activity emitted after cancel or unmount. */
 export function useDiseaseHypothesisGeneration(
   onGenerate: DiseaseHypothesisGenerator,
+  restoredSummary?: DiseaseHypothesisAnalysis,
 ) {
-  const [state, setState] = useState<ScreenState>({ status: 'idle' });
+  const [state, setState] = useState<DiseaseGenerationState>({
+    status: 'idle',
+  });
   const [activity, setActivity] = useState<string>();
   const [preview, setPreview] = useState('');
+  const [lastOperation, setLastOperation] = useState<'summary' | 'assessment'>(
+    'assessment',
+  );
   const operationController = useRef<AbortController | null>(null);
+
+  // The native history route returns a saved value to this retained scene, without another model call.
+  useEffect(() => {
+    if (restoredSummary && !operationController.current) {
+      setPreview('');
+      setLastOperation(
+        restoredSummary.presentation === 'symptom_summary'
+          ? 'summary'
+          : 'assessment',
+      );
+      setState({ status: 'result', value: restoredSummary });
+    }
+  }, [restoredSummary]);
 
   useEffect(
     () => () => {
@@ -43,10 +65,15 @@ export function useDiseaseHypothesisGeneration(
     [],
   );
 
-  async function generate() {
+  async function generate(
+    generator: DiseaseHypothesisGenerator = onGenerate,
+    operation: 'summary' | 'assessment' = 'assessment',
+  ) {
     if (operationController.current) return;
     const controller = new AbortController();
     operationController.current = controller;
+    // Retrying a summary must never silently select the separate disease-assessment operation.
+    setLastOperation(operation);
     const isCurrent = () =>
       operationController.current === controller && !controller.signal.aborted;
     setState({ status: 'loading' });
@@ -68,7 +95,7 @@ export function useDiseaseHypothesisGeneration(
     };
 
     try {
-      const outcome = await onGenerate(controller.signal, observer);
+      const outcome = await generator(controller.signal, observer);
       if (!isCurrent()) return;
       setActivity(undefined);
       // Keep display-approved partial text when a run cannot finish validation.
@@ -81,6 +108,10 @@ export function useDiseaseHypothesisGeneration(
         setState({ status: 'insufficient' });
       } else if (outcome.result.status === 'cancelled') {
         setState({ status: 'cancelled' });
+      } else if (outcome.result.status === 'consent_required') {
+        // A closed or denied disclosure stops dispatch; it is not a model failure.
+        // Retain any earlier safe draft without presenting it as a finished answer.
+        setState({ status: 'consent_required' });
       } else {
         setState({
           status: 'error',
@@ -111,5 +142,21 @@ export function useDiseaseHypothesisGeneration(
     setState({ status: 'cancelled' });
   }
 
-  return { state, activity, preview, generate, cancel };
+  return {
+    lastOperation,
+    state,
+    activity,
+    preview,
+    generate,
+    cancel,
+    restore: (value: DiseaseHypothesisAnalysis) => {
+      if (!operationController.current) {
+        setPreview('');
+        setLastOperation(
+          value.presentation === 'symptom_summary' ? 'summary' : 'assessment',
+        );
+        setState({ status: 'result', value });
+      }
+    },
+  };
 }

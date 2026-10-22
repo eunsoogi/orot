@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { selectFocusedIosTests } from './ios-focused-selection.mjs';
+import { focusedIosTestCohorts, selectFocusedIosTests } from './ios-focused-selection.mjs';
+import { verifyIosTestCohortResults } from './ios-test-cohort-results.mjs';
 import { verifyIosObservationList } from './ios-test-results.mjs';
 
 // Selection and JSON completeness checks require no Apple tools and run on Linux after the Mac exporter.
@@ -38,8 +39,29 @@ const reportFile =
         ].includes(selection.mode)
       ? `${selection.mode}/results.json`
       : 'results.json';
-const report = JSON.parse(readFileSync(join(directory, reportFile), 'utf8'));
-const observations = verifyIosObservationList(report.observations, selection.identifiers);
+const cohorts = focusedIosTestCohorts(selection);
+let actual;
+if (cohorts.length) {
+  const reports = join(directory, 'cohorts');
+  const artifact = (cohort) => `ios-cohort-report-${cohort}-${context.runId}-${context.attempt}`;
+  if (JSON.stringify(readdirSync(reports).sort()) !== JSON.stringify(cohorts.map(artifact).sort()))
+    throw new Error('Focused reports omit a selected partition or include an unexpected report');
+  actual = cohorts.flatMap((cohort) =>
+    verifyIosTestCohortResults(
+      JSON.parse(readFileSync(join(reports, artifact(cohort), 'results.json'), 'utf8')),
+      cohort,
+      {
+        sourceSha: context.sourceSha,
+        runId: String(context.runId),
+        attempt: String(context.attempt),
+      },
+    ),
+  );
+} else {
+  actual = JSON.parse(readFileSync(join(directory, reportFile), 'utf8')).observations;
+}
+// The union must still match the caller's original selection, not merely each partition independently.
+const observations = verifyIosObservationList(actual, selection.identifiers);
 console.log(
   JSON.stringify({
     sourceSha: context.sourceSha,

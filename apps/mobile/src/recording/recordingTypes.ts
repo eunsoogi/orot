@@ -42,6 +42,8 @@ export interface RecordingPlaybackState {
 
 /** Keeps playback controls independent from capture while exposing optional native events and stop. */
 export interface RecordingPlaybackService {
+  /** Reads the protected audio file, including recordings saved before duration metadata existed. */
+  readDuration?(recordingId: string): Promise<number>;
   playRange(
     recordingId: string,
     startMs: number,

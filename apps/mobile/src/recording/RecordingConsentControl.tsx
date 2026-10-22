@@ -21,23 +21,42 @@ export function RecordingConsentControl({
       accessibilityState={{ checked, disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={recordingControlStyles.consentRow}
+      style={[
+        recordingControlStyles.consentRow,
+        checked && recordingControlStyles.consentSelected,
+      ]}
       testID="recording-consent"
     >
-      {/* The participant icon matches the consent card; the native checkbox state remains exposed to assistive technology. */}
+      {/* A checkmark and explicit state distinguish consent without depending only on color. */}
       <View
         style={recordingControlStyles.consentIndicator}
         testID="recording-consent-indicator"
       >
         <AppSymbol
-          name={checked ? 'person.2.fill' : 'person.2'}
-          size={26}
-          color={checked ? appColors.primary : appColors.secondary}
+          name={checked ? 'checkmark.circle.fill' : 'circle'}
+          size={32}
+          color={checked ? appColors.primaryText : appColors.secondary}
         />
       </View>
-      <Text style={recordingControlStyles.copy}>
-        {t('recording.consent.acknowledgement')}
-      </Text>
+      <View style={recordingControlStyles.consentCopy}>
+        <Text style={recordingControlStyles.consentTitle}>
+          {t('recording.consent.acknowledgement')}
+        </Text>
+        <Text
+          style={
+            checked
+              ? recordingControlStyles.consentCheckedText
+              : recordingControlStyles.copy
+          }
+          testID="recording-consent-status"
+        >
+          {t(
+            checked
+              ? 'recording.consent.checked'
+              : 'recording.consent.unchecked',
+          )}
+        </Text>
+      </View>
     </Pressable>
   );
 }

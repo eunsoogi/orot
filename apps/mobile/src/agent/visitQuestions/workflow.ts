@@ -1,3 +1,4 @@
+import { visitConsentScope } from '../execution/inferenceConsentScopes';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
 import type {
@@ -19,12 +20,17 @@ import type { VisitQuestionContextResult } from './evidenceService';
 import { createVisitQuestionTaskResponder } from './taskContract';
 import type { VisitQuestionTaskResult } from './taskContract';
 import { mapVisitQuestionWorkflowResult } from './workflowResults';
+import {
+  providerDiagnostic,
+  reportProviderException,
+  reportWorkflowOutcome,
+} from '../../providers/diagnostics';
 
 type ReadyContext = Extract<VisitQuestionContextResult, { status: 'ready' }>;
 
 let nextOperationId = 0;
 
-/** Runs #30 through the shared role handoff; app-owned fallback copy is localized and consent stays fresh. */
+/** Runs visit preparation through the shared handoff; consent precedes each remote payload. */
 export async function runVisitQuestionWorkflow(input: {
   readonly prepared: ReadyContext;
   readonly selection: ProviderSelection | null;
@@ -100,6 +106,7 @@ export async function runVisitQuestionWorkflow(input: {
       ),
     initialEvidenceCount: aliases.batch.items.length,
     maxEvidenceItems: budget.maxEvidenceItems,
+    healthContextTool: input.prepared.healthContextTool,
   });
   nextOperationId += 1;
   const operationRunId = `visit-question-${nextOperationId}`;
@@ -113,6 +120,7 @@ export async function runVisitQuestionWorkflow(input: {
       modelId: input.selection.modelId,
       recipient: recipient!,
       remoteProcessing,
+      consentScope: visitConsentScope,
       allowedScope: {
         sourceKinds: ['personal_record', 'reviewed_memory'],
       },
@@ -139,6 +147,7 @@ export async function runVisitQuestionWorkflow(input: {
   };
 
   try {
+    providerDiagnostic('visit', 'workflow', 'started');
     const result = await runMultiAgentWorkflow(options, {
       ...(input.signal ? { signal: input.signal } : {}),
       ...(input.observer?.onProgress
@@ -148,11 +157,20 @@ export async function runVisitQuestionWorkflow(input: {
         ? { onTaskStreamEvent: input.observer.onTaskStreamEvent }
         : {}),
     });
+    reportWorkflowOutcome(
+      'visit',
+      result.status,
+      'providerErrorCode' in result ? result.providerErrorCode : undefined,
+      'reason' in result ? result.reason : undefined,
+    );
     return await mapVisitQuestionWorkflowResult({
       result,
       aliases,
       prepared: input.prepared,
     });
+  } catch (error) {
+    reportProviderException('visit', error);
+    throw error;
   } finally {
     // A later recommendation must start with a new consent snapshot.
     consent.clear(operationRunId);

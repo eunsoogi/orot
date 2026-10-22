@@ -1,6 +1,7 @@
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
 import { extractPartialJsonStringAtPath } from '@orot/agent-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
+import { reportVisitQuestionValidation } from './validationDiagnostics';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -124,28 +125,43 @@ export function createVisitQuestionTaskResponder() {
         {
           role: 'user',
           content: [
-            `요청: ${input.request}`,
-            `예약 및 사용자 맥락: ${JSON.stringify(input.context ?? null)}`,
-            `사용 가능한 근거: ${JSON.stringify(evidence)}`,
-            `기록 간 충돌: ${JSON.stringify(input.evidence.conflicts)}`,
-            `검색 범위와 한계: ${JSON.stringify(input.evidence.coverage)}`,
+            `Request: ${input.request}`,
+            `Appointment and user context: ${JSON.stringify(input.context ?? null)}`,
+            `Available evidence: ${JSON.stringify(evidence)}`,
+            `Record conflicts: ${JSON.stringify(input.evidence.conflicts)}`,
+            `Search coverage and limits: ${JSON.stringify(input.evidence.coverage)}`,
           ].join('\n'),
         },
       ];
     },
     correctionInstructionForInvalidResult(reason: string): string | undefined {
-      // Only retry question form; citation, safety and other validation failures remain terminal.
+      // Both corrections share the runtime's single retry and original budget, consent and freshness checks.
+      // Missing evidence, conflicts, unsafe copy and invalid citation bindings remain terminal.
+      if (
+        reason ===
+        'A visit question contains an unsupported date or numeric value.'
+      )
+        return [
+          'The previous questions failed exact date, value or unit validation against their cited evidence.',
+          'Rewrite the entire structured response using only the same current evidence and task constraints.',
+          'Copy a date or measured value only when that exact value and unit occur in the evidenceIds for that question.',
+          'Do not round, convert units, calculate new quantities or invent normal ranges or thresholds.',
+          'If a number is not necessary, describe the specific observed item or supported change without adding a number; retain the clinical discussion purpose and actual evidence limits.',
+          'Keep each questionText a concise Korean interrogative, preserve uncertainty and all citation and safety constraints, and return only the requested JSON.',
+        ].join('\n');
       if (reason !== 'A visit question must end with a question mark.')
         return undefined;
       return [
-        '이전 응답은 질문 필드의 로컬 검증을 통과하지 못했습니다.',
-        '같은 근거와 작업 제약을 사용해 구조화 응답 전체를 다시 작성하세요.',
-        '각 questionText를 물음표 하나로 끝나는 짧은 한국어 의문문으로 작성하세요.',
-        'evidenceIds로 뒷받침되는 내용만 쓰고 불확실성과 안전 규칙을 지키며 요청된 JSON만 반환하세요.',
+        'The previous response failed local question-field validation.',
+        'Rewrite the entire structured response using the same evidence and task constraints.',
+        'Write each questionText as one concise Korean interrogative ending with exactly one question mark.',
+        'Use only facts supported by evidenceIds, preserve uncertainty and safety constraints, and return only the requested JSON.',
       ].join('\n');
     },
     validateResult(value: JsonValue, input: VisitQuestionResponderInput) {
-      return validateVisitQuestionTaskResult(value, input);
+      const result = validateVisitQuestionTaskResult(value, input);
+      reportVisitQuestionValidation(result, input.evidence);
+      return result;
     },
   };
 }

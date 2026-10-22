@@ -6,7 +6,10 @@ import {
 } from '../src';
 import { validBudget } from '../src/multiAgent/workflowSupport';
 
-function options(provider: LanguageModelProvider, timeoutMs: number): MultiAgentWorkflowOptions {
+function options(
+  provider: LanguageModelProvider,
+  timeoutMs: number | null,
+): MultiAgentWorkflowOptions {
   return {
     execution: {
       operationRunId: 'finite-deadline',
@@ -64,6 +67,30 @@ test('accepts an explicit 90-second deadline, rejects a larger one, and retains 
   expect(DEFAULT_MULTI_AGENT_BUDGET.timeoutMs).toBe(45_000);
   expect(validBudget(options(provider, 90_000))).toBe(true);
   expect(validBudget(options(provider, 90_001))).toBe(false);
+});
+
+test('explicitly disables the elapsed deadline while caller cancellation still aborts the provider', async () => {
+  const fixture = stalledProvider();
+  const input = options(fixture.provider, null);
+  expect(validBudget(input)).toBe(true);
+  jest.useFakeTimers();
+  try {
+    const controller = new AbortController();
+    let completed = false;
+    const pending = runMultiAgentWorkflow(input, { signal: controller.signal }).then((result) => {
+      completed = true;
+      return result;
+    });
+    await fixture.started;
+    await jest.advanceTimersByTimeAsync(180_000);
+    expect(completed).toBe(false);
+    expect(fixture.signal()?.aborted).toBe(false);
+    controller.abort();
+    expect((await pending).status).toBe('cancelled');
+    expect(fixture.signal()?.aborted).toBe(true);
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test.each(['deadline', 'caller'] as const)(

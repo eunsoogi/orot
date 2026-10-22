@@ -187,7 +187,7 @@ describe('visit question task responder', () => {
     });
   });
 
-  it('accepts dates and values present in cited evidence and asks when they conflict', () => {
+  it('accepts cited dates and values but rejects unsupported facts before a bounded correction', () => {
     const supported = response({
       questions: [
         {
@@ -213,8 +213,8 @@ describe('visit question task responder', () => {
     });
     const validation = responder.validateResult(unsupported, input);
     expect(validation).toMatchObject({
-      status: 'valid',
-      value: { status: 'needs_clarification' },
+      status: 'invalid',
+      reason: 'A visit question contains an unsupported date or numeric value.',
     });
   });
 

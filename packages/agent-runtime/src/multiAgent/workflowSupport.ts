@@ -8,7 +8,7 @@ import type {
   MultiAgentRunResult,
   MultiAgentWorkflowOptions,
 } from './contracts';
-import { MAX_MULTI_AGENT_BUDGET } from './contracts';
+export { validBudget } from './budgetValidation';
 import {
   isSourceAllowed,
   isEvidenceReference,
@@ -25,6 +25,7 @@ import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
 import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
+import { validToolModelCost } from './evidenceToolModelBudget';
 
 function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope): boolean {
   // Network access is reserved for external medical sources; local health and memory tools stay local.
@@ -34,19 +35,8 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
   return (
     /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(tool.id) &&
     executionMatchesSource &&
+    validToolModelCost(tool) &&
     isSourceAllowed(scope, tool.sourceKind)
-  );
-}
-
-export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
-  // Require every limit so a malformed runtime config cannot disable one guardrail by omission.
-  const keys = Object.keys(MAX_MULTI_AGENT_BUDGET) as (keyof typeof MAX_MULTI_AGENT_BUDGET)[];
-  return (
-    Object.keys(options.execution.budget).length === keys.length &&
-    keys.every((key) => {
-      const value = options.execution.budget[key];
-      return Number.isSafeInteger(value) && value > 0 && value <= MAX_MULTI_AGENT_BUDGET[key];
-    })
   );
 }
 

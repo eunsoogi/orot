@@ -9,7 +9,7 @@ export const recordingExportPanelStyles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 10,
   },
-  title: { color: appColors.text, fontSize: 32, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 30, fontWeight: '700' },
   privacyNote: {
     alignItems: 'center',
     flexDirection: 'row',

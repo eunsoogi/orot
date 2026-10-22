@@ -1,4 +1,5 @@
 import type { SqlDatabase } from '@orot/storage';
+import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
@@ -119,7 +120,14 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
 
   async listInvalidatedSourceIds(): Promise<string[]> {
     await this.ensureTable();
-    return [...(await listSupersededTranscriptRevisionIds(this.database))];
+    // Period deletion can fence a derived version while the Rememori engine is already open.
+    // Refreshing through the existing invalidation port prevents its cached text from resurfacing.
+    return [
+      ...new Set([
+        ...(await listSupersededTranscriptRevisionIds(this.database)),
+        ...(await listInvalidatedHealthPeriods(this.database)),
+      ]),
+    ];
   }
 
   async markSourceRemoved(sourceId: string): Promise<void> {

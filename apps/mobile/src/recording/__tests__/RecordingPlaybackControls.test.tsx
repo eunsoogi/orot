@@ -87,3 +87,136 @@ test('explains a missing saved audio file while leaving retry available', async 
       .disabled,
   ).toBe(false);
 });
+
+test('plays an older saved recording without duration metadata using the actual file duration', async () => {
+  const playback = {
+    readDuration: jest.fn(async () => 12_340),
+    playRange: jest.fn(async () => ({
+      startMs: 0,
+      endMs: 12_340,
+      actualStartMs: 0,
+    })),
+  };
+  const view = await render(
+    <RecordingPlaybackControls
+      durationMs={null}
+      playbackService={playback}
+      recordingId="legacy-recording"
+    />,
+  );
+  expect(view.getByTestId('recording-playback-button')).toBeEnabled();
+  await fireEvent.press(view.getByTestId('recording-playback-button'));
+  expect(playback.readDuration).toHaveBeenCalledWith('legacy-recording');
+  expect(playback.playRange).toHaveBeenCalledWith(
+    'legacy-recording',
+    0,
+    12_340,
+  );
+});
+
+test('stopping while file metadata is loading prevents later playback dispatch', async () => {
+  let finishDuration!: (duration: number) => void;
+  const playback = {
+    readDuration: jest.fn(
+      () =>
+        new Promise<number>(resolve => {
+          finishDuration = resolve;
+        }),
+    ),
+    playRange: jest.fn(async () => ({
+      startMs: 0,
+      endMs: 12000,
+      actualStartMs: 0,
+    })),
+    stopPlayback: jest.fn(async () => {}),
+  };
+  const view = await render(
+    <RecordingPlaybackControls
+      durationMs={null}
+      playbackService={playback}
+      recordingId="legacy-recording"
+    />,
+  );
+  await fireEvent.press(view.getByTestId('recording-playback-button'));
+  await fireEvent.press(view.getByTestId('recording-playback-stop'));
+  await act(async () => {
+    finishDuration(12000);
+  });
+  expect(playback.playRange).not.toHaveBeenCalled();
+  expect(view.getByTestId('recording-playback-button')).toBeEnabled();
+});
+
+test('a new source remains playable after the previous source pending read is invalidated', async () => {
+  let finishDuration!: (duration: number) => void;
+  const playback = {
+    readDuration: jest.fn(
+      () =>
+        new Promise<number>(resolve => {
+          finishDuration = resolve;
+        }),
+    ),
+    playRange: jest.fn(),
+  };
+  const view = await render(
+    <RecordingPlaybackControls
+      durationMs={null}
+      playbackService={playback}
+      recordingId="A"
+    />,
+  );
+  await fireEvent.press(view.getByTestId('recording-playback-button'));
+  await view.rerender(
+    <RecordingPlaybackControls
+      durationMs={null}
+      playbackService={playback}
+      recordingId="B"
+    />,
+  );
+  await act(async () => {
+    finishDuration(12000);
+  });
+  expect(playback.playRange).not.toHaveBeenCalled();
+  expect(view.getByTestId('recording-playback-button')).toBeEnabled();
+});
+
+test('a retained route losing focus cancels pending metadata playback', async () => {
+  let finishDuration!: (duration: number) => void;
+  const playback = {
+    readDuration: jest.fn(
+      () =>
+        new Promise<number>(resolve => {
+          finishDuration = resolve;
+        }),
+    ),
+    playRange: jest.fn(),
+  };
+  const view = await render(
+    <RecordingPlaybackControls
+      durationMs={null}
+      playbackService={playback}
+      recordingId="A"
+    />,
+  );
+  await fireEvent.press(view.getByTestId('recording-playback-button'));
+  await view.rerender(
+    <RecordingPlaybackControls
+      active={false}
+      durationMs={null}
+      playbackService={playback}
+      recordingId="A"
+    />,
+  );
+  await act(async () => {
+    finishDuration(12000);
+  });
+  expect(playback.playRange).not.toHaveBeenCalled();
+  await view.rerender(
+    <RecordingPlaybackControls
+      active
+      durationMs={null}
+      playbackService={playback}
+      recordingId="A"
+    />,
+  );
+  expect(view.getByTestId('recording-playback-button')).toBeEnabled();
+});

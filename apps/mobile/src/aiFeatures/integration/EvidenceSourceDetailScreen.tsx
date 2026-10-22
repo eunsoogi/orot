@@ -9,6 +9,7 @@ import { appColors } from '../../layout/appColors';
 import { navigationText } from '../../i18n/navigation';
 import type { EvidenceSourceReadResult } from './evidenceRegistry';
 import { presentEvidenceSource } from './evidenceSourcePresentation';
+import { EvidenceSourceSections } from './EvidenceSourceSections';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState';
 
@@ -45,8 +46,8 @@ export function EvidenceSourceDetailScreen({
     {
       hasUnsavedChanges: false,
       isRecording: false,
-      // Citation reads stop on unmount, so shared navigation confirms before aborting them.
-      hasOngoingOperation: state.status === 'loading',
+      // A read has no user-owned work to lose; unmount cancels it without blocking UIKit's pop.
+      hasOngoingOperation: false,
     },
     attempt,
     onNavigationStateChange,
@@ -73,6 +74,7 @@ export function EvidenceSourceDetailScreen({
     state.status === 'available' ? presentEvidenceSource(state.document) : [];
   return (
     <ScrollView
+      style={styles.screen}
       contentContainerStyle={[styles.container, navigationInset]}
       testID="ai-feature-source-detail"
     >
@@ -86,8 +88,9 @@ export function EvidenceSourceDetailScreen({
         />
       )}
       <Text accessibilityRole="header" style={styles.heading}>
-        {t('aiFeatures.source.title')}
+        근거 살펴보기
       </Text>
+      <Text style={styles.subtitle}>답변에 인용된 저장 기록</Text>
       {state.status === 'loading' ? (
         <Text testID="ai-feature-source-loading">
           {t('aiFeatures.source.loading')}
@@ -127,39 +130,18 @@ export function EvidenceSourceDetailScreen({
           />
         </View>
       ) : null}
-      {presentation.map((section, sectionIndex) => (
-        <View key={`${section.title}-${sectionIndex}`} style={styles.section}>
-          <Text accessibilityRole="header" style={styles.title}>
-            {section.title}
-          </Text>
-          {section.rows.map((row, rowIndex) => (
-            <View key={`${row.label}-${rowIndex}`} style={styles.row}>
-              <Text style={styles.label}>{row.label}</Text>
-              <Text selectable style={styles.value}>
-                {row.value}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ))}
+      {state.status === 'available' ? (
+        <EvidenceSourceSections sections={presentation} />
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12, padding: 20 },
-  heading: { fontSize: 22, fontWeight: '700' },
-  section: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-    padding: 16,
-  },
-  title: { fontSize: 17, fontWeight: '700' },
+  screen: { flex: 1, backgroundColor: appColors.background },
+  container: { gap: 12, paddingHorizontal: 24, paddingTop: 20 },
+  // Match the selected reference title without overriding system text scaling or its existing weight.
+  heading: { fontSize: 36, fontWeight: '700' },
+  subtitle: { fontSize: 14, color: appColors.secondary, marginBottom: 12 },
   error: { color: appColors.danger },
-  row: { gap: 2 },
-  label: { color: appColors.secondary, fontSize: 13, fontWeight: '600' },
-  value: { color: appColors.text, fontSize: 15, lineHeight: 21 },
 });

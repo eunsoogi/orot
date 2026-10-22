@@ -84,12 +84,20 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                             slot.event(["type": "tool_call", "toolCall": Self.nativeToolCall(toolCall)] as NSDictionary)
                         }
                         if responseRequests.finish(slot) {
-                            slot.event([
+                            var payload: [String: Any] = [
                                 "type": "completed",
                                 "text": response.text,
                                 "toolCalls": response.toolCalls.map(Self.nativeToolCall),
                                 "continuationItems": response.continuationItems,
-                            ] as NSDictionary)
+                            ]
+                            // Public-search output carries provider citations, not fetched originals.
+                            if let search = response.webSearch {
+                                payload["webSearch"] = [
+                                    "callCount": search.callCount,
+                                    "citations": search.citations.map { ["url": $0.url, "title": $0.title] },
+                                ]
+                            }
+                            slot.event(payload as NSDictionary)
                         }
                         return
                     }

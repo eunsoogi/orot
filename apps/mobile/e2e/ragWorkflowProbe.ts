@@ -24,7 +24,8 @@ export interface RagWorkflowProbeResult {
   readonly outcome?: RagConversationOutcome;
   readonly failure?: string;
   readonly elapsedMs: number;
-  readonly workflowBudgetMs: number;
+  /** null records the shipping profile's absence of an automatic elapsed deadline. */
+  readonly workflowBudgetMs: number | null;
   readonly parentAborted: boolean;
 }
 

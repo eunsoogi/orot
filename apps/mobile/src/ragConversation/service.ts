@@ -1,4 +1,8 @@
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import {
+  providerDiagnostic,
+  reportWorkflowOutcome,
+} from '../providers/diagnostics';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -11,6 +15,7 @@ import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/dele
 import type { LocalEvidenceIdentityResolver } from '../aiFeatures/integration/deletionAwareEvidence';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 import { ragConversationTask } from './task';
+import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
 import type {
   GroundedRagAnswer,
   RagConversationCurrentEvidence,
@@ -114,13 +119,9 @@ export async function runRagConversationTurn(
         })
       : [];
     const initialEvidence = selectEvidence(snapshot.batch, hits);
-    if (
-      !initialEvidence.items.length &&
-      !options.workflow.tools?.some(
-        tool => tool.sourceKind === 'external_medical',
-      )
-    )
-      return { status: 'no_evidence' };
+    // The model may answer a social or clarifying turn even when retrieval has no hits.
+    // The task/runtime still require a lookup and citations for substantive factual claims.
+    providerDiagnostic('rag', 'workflow', 'started');
     const result = await runMultiAgentWorkflow(
       {
         ...options.workflow,
@@ -140,22 +141,35 @@ export async function runRagConversationTurn(
       },
       invocation,
     );
+    reportWorkflowOutcome(
+      'rag',
+      result.status,
+      'providerErrorCode' in result ? result.providerErrorCode : undefined,
+      'reason' in result ? result.reason : undefined,
+    );
     if (result.status === 'result') {
+      if (result.value.answerKind === 'conversation') {
+        return result.citations.length
+          ? { status: 'insufficient' }
+          : { status: 'answer', answer: result.value.answer, citations: [] };
+      }
       if (!result.citations.length) return { status: 'insufficient' };
       return {
         status: 'answer',
         // Label source-relative time even when the model omits that qualifier in its prose.
-        answer: result.citations.some(
-          reference => reference.sourceKind === 'external_medical',
-        )
-          ? `${result.value.answer}\n\n공개 의학 문헌의 일부 검색 결과를 참고했어요. 개인의 진단이나 전체 문헌 검토를 대신하지 않아요.`
-          : result.coverage.some(
-                coverage =>
-                  coverage.truncated &&
-                  coverage.selectionMethod === 'ranked_retrieval',
+        answer: result.citations.some(isPublicWebReference)
+          ? `${result.value.answer}\n\n공개 웹자료를 바탕으로 AI가 정리한 설명을 참고했어요. 함께 표시된 출처에서 원문을 확인할 수 있어요.`
+          : result.citations.some(
+                reference => reference.sourceKind === 'external_medical',
               )
-            ? `${result.value.answer}\n\n원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
-            : `${result.value.answer}\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.`,
+            ? `${result.value.answer}\n\n공개 의학 문헌의 일부 검색 결과를 참고했어요. 개인의 진단이나 전체 문헌 검토를 대신하지 않아요.`
+            : result.coverage.some(
+                  coverage =>
+                    coverage.truncated &&
+                    coverage.selectionMethod === 'ranked_retrieval',
+                )
+              ? `${result.value.answer}\n\n원문 기록 당시의 내용을 관련도가 높은 일부 기록에서 정리했어요. 전체 복용 목록이나 병력을 빠짐없이 확인한 결과는 아니에요.`
+              : `${result.value.answer}\n\n원문 기록 당시의 내용을 바탕으로 한 답변이에요.`,
         citations: result.citations,
       };
     }
@@ -163,6 +177,7 @@ export async function runRagConversationTurn(
       ? { status: 'insufficient' }
       : { status: 'unavailable' };
   } catch {
+    providerDiagnostic('rag', 'workflow', 'failed');
     return { status: 'unavailable' };
   }
 }

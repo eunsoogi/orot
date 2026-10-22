@@ -14,6 +14,7 @@ import {
   MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
+import { HEALTH_OVERVIEW_PRIORITY_SQL } from './healthOverviewScope';
 
 export interface RankedEvidenceCursor {
   readonly score: number;
@@ -59,19 +60,25 @@ export async function readRankedEvidencePage(
   }
   // Literal query values are bound, including app-owned translations of stored concept names.
   const terms = evidenceQueryTerms(query);
-  const score = terms.length
-    ? terms
-        .map(
-          () =>
-            'CASE WHEN instr(lower(r.payload_json), ?) > 0 THEN 1 ELSE 0 END',
-        )
-        .join(' + ')
-    : '0';
+  const score =
+    options.scope?.selection === 'health_overview' &&
+    kind === 'health_observation'
+      ? HEALTH_OVERVIEW_PRIORITY_SQL
+      : terms.length
+        ? `(SELECT ${terms
+            .map(() => 'CASE WHEN instr(folded.text, ?) > 0 THEN 1 ELSE 0 END')
+            .join(
+              ' + ',
+            )} FROM (SELECT lower(r.payload_json) AS text LIMIT 1) folded)`
+        : '0';
   const cursor = options.cursor;
   const scope = candidateScopeCondition(kind, options.scope);
   const parameters: SqlValue[] = [
     MAX_HEALTH_EVIDENCE_RECORD_BYTES,
-    ...terms,
+    ...(options.scope?.selection === 'health_overview' &&
+    kind === 'health_observation'
+      ? []
+      : terms),
     ...scope.parameters,
   ];
   if (cursor) {
@@ -100,33 +107,37 @@ export async function readRankedEvidencePage(
   }
   parameters.push(limit + 1);
   const time = localQueryTimestampKeyExpression('r.effective_at');
-  // Window ranking carries only IDs and sort keys, never the full payload corpus.
-  // With no specific query, each observation concept gets a turn before dense kinds repeat.
+  // LIMIT keeps the correlated fold from being flattened and repeated for each term.
+  // Only one row's text is folded at a time; the materialized corpus contains keys, not payloads.
+  const scored = `SELECT r.id, (${score}) AS score,
+    CASE WHEN r.effective_at IS NULL THEN '' ELSE (${time}) END AS sort_time,
+    json_extract(r.payload_json, '$.concept') AS concept
+    FROM ${STORAGE_TABLES[kind].table} r WHERE ${scope.sql}`;
+  // Health diversity needs two sorts. Compute its score/time once before the window stage.
   const diversity =
     kind === 'health_observation'
-      ? 'row_number() OVER (PARTITION BY concept ORDER BY score DESC, sort_time DESC, id ASC)'
-      : '1';
+      ? `WITH scored AS MATERIALIZED (${scored})
+        SELECT id, score, sort_time, row_number() OVER (
+          PARTITION BY concept ORDER BY score DESC, sort_time DESC, id ASC
+        ) AS diversity_rank FROM scored`
+      : `SELECT id, score, sort_time, 1 AS diversity_rank FROM (${scored})`;
   const result = await executor.execute(
-    `SELECT r.id, ranked.score, ranked.sort_time, ranked.diversity_rank,
+    `SELECT r.id, page.score, page.sort_time, page.diversity_rank,
        CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json,
        length(CAST(r.payload_json AS BLOB)) AS payload_bytes
      FROM ${STORAGE_TABLES[kind].table} r JOIN (
-       SELECT id, score, sort_time, ${diversity} AS diversity_rank FROM (
-         SELECT r.id, (${score}) AS score,
-           CASE WHEN r.effective_at IS NULL THEN '' ELSE (${time}) END AS sort_time,
-           json_extract(r.payload_json, '$.concept') AS concept
-         FROM ${STORAGE_TABLES[kind].table} r WHERE ${scope.sql}
-       )
-     ) ranked ON ranked.id = r.id
+       SELECT ranked.* FROM (${diversity}) ranked
      ${
        cursor
          ? `WHERE ranked.score < ?
        OR (ranked.score = ? AND ranked.diversity_rank > ?)
        OR (ranked.score = ? AND ranked.diversity_rank = ? AND ranked.sort_time < ?)
-       OR (ranked.score = ? AND ranked.diversity_rank = ? AND ranked.sort_time = ? AND r.id > ?)`
+       OR (ranked.score = ? AND ranked.diversity_rank = ? AND ranked.sort_time = ? AND ranked.id > ?)`
          : ''
      }
-     ORDER BY ranked.score DESC, ranked.diversity_rank ASC, ranked.sort_time DESC, r.id ASC LIMIT ?`,
+       ORDER BY ranked.score DESC, ranked.diversity_rank ASC, ranked.sort_time DESC, ranked.id ASC LIMIT ?
+     ) page ON page.id = r.id
+     ORDER BY page.score DESC, page.diversity_rank ASC, page.sort_time DESC, r.id ASC`,
     parameters,
   );
   // Native SQL cannot be interrupted by this port; never publish a cancelled read.

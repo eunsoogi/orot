@@ -18,6 +18,8 @@ import { buildPersonalEvidence } from './personalEvidence';
 import type { StaleEvidenceArtifact } from './localData';
 
 export interface LocalEvidenceSnapshot {
+  /** Internal typed rows for bounded overview projection; never serialized to a provider. */
+  readonly personalRecords?: ReadonlyMap<string, LocalHealthEvidenceRecord>;
   readonly inventory: HealthEvidenceInventory;
   readonly items: readonly EvidenceItem[];
   readonly chunks: readonly EvidenceChunk[];
@@ -104,6 +106,7 @@ export async function createLocalEvidenceSnapshot(input: {
   ];
 
   return {
+    personalRecords: personal.recordsByEvidenceId,
     inventory: input.inventory,
     items,
     chunks,

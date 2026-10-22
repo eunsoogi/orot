@@ -46,7 +46,7 @@ test('supplies scoped research capacity without claiming query consent or forcin
     remainingResearchCycles: 1,
   });
   expect(fixture.requests[0]?.messages[0]?.content).toContain(
-    'Planning capacity does not establish exact-query approval',
+    'Planning capacity is not permission; an external search must be covered by the user-approved destination, purpose and data scope.',
   );
 
   expect(fixture.requests[0]?.messages[0]?.content).toContain(

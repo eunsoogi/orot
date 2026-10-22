@@ -8,6 +8,7 @@ import type { ChatGPTPlanModelDescriptor, ChatGPTPlanNativeBridge } from './nati
 import { toProviderError } from './errors';
 import { createChatGPTPlanStream } from './stream';
 import { cancellableStream } from './cancellable-stream';
+import { searchPublicWeb } from './public-web-search';
 
 let requestSequence = 0;
 
@@ -66,6 +67,12 @@ export function createChatGPTPlanProvider(
       structuredOutput: false,
       toolCalling: true,
     },
+    ...(options.bridge.startPublicWebSearch
+      ? ({
+          searchPublicWeb: (request, execution) =>
+            searchPublicWeb(options, nextRequestID(), request.query, execution?.signal),
+        } satisfies Pick<LanguageModelProvider, 'searchPublicWeb'>)
+      : {}),
     async generate(request, execution) {
       for await (const result of provider.stream!(request, execution)) {
         if (!result.ok) return result;

@@ -3,6 +3,7 @@ import { HealthObservationSchema } from '@orot/domain';
 import type { RecordRepository, RecordKind } from '@orot/storage';
 import type { EvidenceChunk, HybridEvidenceSearchHit } from '@orot/rag';
 import type { VisitQuestionEvidenceItem } from './taskContract';
+import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { readVisitEvidenceSnapshots } from './evidenceSourceSnapshots';
 
 export interface VisitQuestionEvidenceMetadata {
@@ -18,6 +19,7 @@ export interface VisitQuestionEvidenceMetadata {
   readonly recordKind?: RecordKind;
   readonly evidenceRecordId?: string;
   readonly evidenceSpanId?: string;
+  readonly healthContextSource?: VisitQuestionHealthContextSource;
   /** Keeps each reviewed-memory citation tied to the bounded local query that found it. */
   readonly memorySearchQuery?: string;
   readonly healthObservationConflict?: {

@@ -1,3 +1,5 @@
+import type { HealthObservationPageFilter } from '@orot/storage';
+
 /** Reads the records the app already saved; it never starts a HealthKit import. */
 export async function listLocalHealthObservations() {
   const { openLocalStorage } = await import('../storage/secureDatabase');
@@ -12,8 +14,15 @@ export async function listLocalHealthObservations() {
 /** Loads only the next visible batch; reading never triggers a HealthKit import. */
 export async function listLocalHealthObservationPage(
   cursor: import('@orot/storage').HealthObservationCursor | null = null,
+  filter?: HealthObservationPageFilter,
 ) {
   const { openLocalStorage } = await import('../storage/secureDatabase');
   const repository = await openLocalStorage();
-  return repository.listHealthObservationPage(cursor);
+  // Decode at most 100 selected-type rows without walking unrelated Watch
+  // history. Denser periods retain bounded pagination.
+  return repository.listHealthObservationPage(
+    cursor,
+    filter ? 100 : 50,
+    filter,
+  );
 }

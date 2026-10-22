@@ -1,6 +1,13 @@
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { AppRegistry, Keyboard, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  Keyboard,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { Appointment } from '@orot/domain';
 import { InMemoryFakeLanguageModelProvider } from '@orot/model-runtime';
 import App from '../App';
@@ -16,6 +23,12 @@ import type {
   ProviderSelectionStore,
 } from '../src/providers/selection/types';
 import type { NextVisitQuestion } from '../src/nextVisitQuestions/types';
+import { createVisitGenerationVisualRun } from './visitGenerationVisualState';
+
+const launchSettings =
+  NativeModules.SettingsManager?.settings ??
+  NativeModules.SettingsManager?.getConstants?.().settings ??
+  {};
 
 // Keep production App navigation while limiting synthetic provider and route data to visit questions.
 const syntheticProvider = new InMemoryFakeLanguageModelProvider({
@@ -93,12 +106,15 @@ const syntheticQuestions: readonly NextVisitQuestion<VisitQuestionEvidenceItem>[
 const visitQuestionOperations: VisitQuestionRouteOperations = {
   loadAppointment: async () => syntheticAppointment,
   // Fixture output stops before provider inference, consent, and app-health storage are invoked.
-  generate: async () => ({
-    status: 'ready',
-    questions: syntheticQuestions,
-    caveats: [],
-    validateSource: async (_reference, signal) => !signal.aborted,
-  }),
+  generate: createVisitGenerationVisualRun(
+    launchSettings.OROT_VISIT_GENERATION_VISUAL_STATE,
+    async () => ({
+      status: 'ready',
+      questions: syntheticQuestions,
+      caveats: [],
+      validateSource: async (_reference, signal) => !signal.aborted,
+    }),
+  ),
   save: async ({ questions, caveats }) => ({
     questions,
     caveats,

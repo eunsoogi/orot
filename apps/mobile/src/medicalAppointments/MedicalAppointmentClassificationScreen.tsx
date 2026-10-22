@@ -25,6 +25,7 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly selectedProviderUnavailable?: boolean;
   readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings?: () => void;
+  readonly onOpenProviderSelection?: () => void;
 }
 
 /** One import scans every returned event and saves only confidently medical occurrences. */
@@ -37,6 +38,7 @@ export default function MedicalAppointmentClassificationScreen({
   selectedProviderUnavailable = false,
   onOpenManual,
   onOpenCalendarSettings,
+  onOpenProviderSelection,
 }: MedicalAppointmentClassificationScreenProps) {
   // Every remote request retains its own disclosure and authorization boundary.
   const { consent, disclosureSheet } = useInferenceConsent();
@@ -188,6 +190,7 @@ export default function MedicalAppointmentClassificationScreen({
   return (
     <>
       <MedicalAppointmentReviewView
+        onOpenProviderSelection={onOpenProviderSelection}
         provider={selectedProvider}
         providerUnavailable={selectedProviderUnavailable}
         providerReady={providerReady}

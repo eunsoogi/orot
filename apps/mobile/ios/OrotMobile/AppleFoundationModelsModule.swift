@@ -80,7 +80,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
                     }
                 } catch {
                     if finish(slot) {
-                        event(appleFoundationModelsPacket("error", "GENERATION_FAILED", error.localizedDescription, nil))
+                        event(appleFoundationModelsErrorPacket(error))
                     }
                 }
             }

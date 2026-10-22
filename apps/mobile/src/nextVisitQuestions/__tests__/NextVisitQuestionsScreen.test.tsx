@@ -106,11 +106,8 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
     '수정한 증상 변화 질문',
   );
   await fireEvent.press(screen.getByTestId('next-visit-source-0-0'));
-  expect(screen.getByTestId('next-visit-source-content').props.children).toBe(
-    source.content,
-  );
+  expect(screen.queryByTestId('next-visit-source-sheet')).toBeNull();
   expect(onOpenSource).toHaveBeenCalledWith(source);
-  await fireEvent.press(screen.getByTestId('next-visit-source-close'));
 
   await fireEvent.press(screen.getByTestId('next-visit-question-details-1'));
   await fireEvent.press(screen.getByTestId('next-visit-question-up-1'));

@@ -4,7 +4,7 @@ import { FlatList } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type {
   HealthObservationCursor,
-  HealthObservationPage,
+  HealthObservationPageLoader,
 } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -23,9 +23,7 @@ import { HealthRecordsDetailRecordRow } from './HealthRecordsDetailRecordRow';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
 
 interface HealthRecordsDetailScreenProps {
-  readonly loadObservations: (
-    cursor: HealthObservationCursor | null,
-  ) => Promise<HealthObservationPage>;
+  readonly loadObservations: HealthObservationPageLoader;
   readonly onBack: () => void;
   readonly onSelectionChange: (selection: HealthRecordsDetailSelection) => void;
   readonly selection: Omit<HealthRecordsDetailSelection, 'category'> & {
@@ -83,7 +81,11 @@ export function HealthRecordsDetailScreen({
       setLoadState('loading');
       try {
         // One request reads one storage page, even for a dense selected period.
-        const page = await loadObservations(after);
+        const page = await loadObservations(after, {
+          category: selection.category,
+          ...(start ? { fromInclusive: start.toISOString() } : {}),
+          toInclusive: now,
+        });
         if (request !== generation.current) return;
         setObservations(current =>
           after ? [...current, ...page.records] : page.records,
@@ -105,7 +107,7 @@ export function HealthRecordsDetailScreen({
         }
       }
     },
-    [loadObservations, start],
+    [loadObservations, start, selection.category, now],
   );
 
   useEffect(() => {

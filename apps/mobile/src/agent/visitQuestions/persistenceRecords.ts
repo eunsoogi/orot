@@ -7,6 +7,7 @@ import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
 } from './taskContract';
+import { healthPeriodDependencyId } from '../../storage/healthPeriodDependencies';
 
 function uniqueValues(values: readonly string[]): string[] {
   return [...new Set(values)];
@@ -39,6 +40,12 @@ export function createReviewedVisitQuestionRecord(input: {
       return metadata?.evidenceSpanId ? [metadata.evidenceSpanId] : [];
     }),
   );
+  const healthContextSources = input.question.citations.flatMap(citation => {
+    const source = input.metadataByCitation.get(
+      visitQuestionCitationKey(citation),
+    )?.healthContextSource;
+    return source ? [source] : [];
+  });
 
   // The local app has no user account ID; this marks an explicit on-device human review.
   return VisitQuestionCreateSchema.parse({
@@ -56,6 +63,7 @@ export function createReviewedVisitQuestionRecord(input: {
     rationale: input.question.rationale.trim(),
     priority: input.question.priority,
     evidenceSpanIds,
+    ...(healthContextSources.length ? { healthContextSources } : {}),
     appointmentId: input.appointmentId,
     position: input.position,
   });
@@ -74,6 +82,7 @@ export async function saveReviewedVisitQuestionMemory(
     questions.flatMap(question => [
       question.appointmentId,
       ...question.provenance.sourceRecordIds,
+      ...(question.healthContextSources ?? []).map(healthPeriodDependencyId),
     ]),
   );
   const sourceDates = new Map<string, string>([

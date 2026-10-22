@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 24,
   },
-  title: { color: appColors.text, fontSize: 40, fontWeight: '700' },
+  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 22 },
   recordingAction: {
     alignItems: 'center',
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     gap: 12,
-    minHeight: 116,
+    minHeight: 108,
     marginTop: 4,
   },
   recordingIcon: {
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 16,
-    minHeight: 94,
+    minHeight: 88,
     paddingHorizontal: 18,
   },
   healthIcon: {

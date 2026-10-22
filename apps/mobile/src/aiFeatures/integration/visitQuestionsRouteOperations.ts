@@ -1,5 +1,8 @@
 import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
-import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import type {
+  EvidenceBatch,
+  OutboundProcessingRequest,
+} from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
@@ -32,6 +35,12 @@ type ReadyGeneration = Extract<
   GenerationOutcome<VisitQuestionEvidenceItem>,
   { status: 'ready' }
 >;
+type EvidenceCoverageState = Pick<
+  VisitQuestionEvidenceCollection,
+  'memoryStatus'
+> & {
+  readonly batch: Pick<EvidenceBatch, 'coverage' | 'conflicts'>;
+};
 
 export type VisitQuestionRouteGeneration =
   | (ReadyGeneration & {
@@ -63,7 +72,7 @@ export interface VisitQuestionRouteOperations {
 }
 
 function currentEvidenceCaveats(
-  collections: readonly VisitQuestionEvidenceCollection[],
+  collections: readonly EvidenceCoverageState[],
 ): EvidenceCaveat[] {
   const caveats = new Set<EvidenceCaveat>();
   if (
@@ -152,9 +161,24 @@ async function generate(
     };
   }
 
-  const collections = [context.evidence];
+  const collections: EvidenceCoverageState[] = [context.evidence];
+  const periodTool = context.healthContextTool;
   const workflowContext: ReadyContext = {
     ...context,
+    ...(periodTool
+      ? {
+          healthContextTool: {
+            ...periodTool,
+            async search(request) {
+              const batch = await periodTool.search(request);
+              // Real period limits are coverage gaps, unlike an ordinary top-k raw-record selection.
+              if (!('status' in batch))
+                collections.push({ batch, memoryStatus: 'not_searched' });
+              return batch;
+            },
+          },
+        }
+      : {}),
     async searchEvidence(query, maxEvidenceItems, sourceKind, signal) {
       const result = await context.searchEvidence(
         query,
@@ -171,7 +195,7 @@ async function generate(
     selection: input.selectedAi.selection as ProviderSelection,
     providerOptions: [input.selectedAi.option],
     recipient: input.selectedAi.recipient,
-    // Selection does not imply consent; #30 authorizes this exact outbound request before inference.
+    // Selection does not imply permission to transmit the resulting health context.
     confirmConsent: input.confirmConsent,
     signal: input.signal,
     ...(input.observer ? { observer: input.observer } : {}),

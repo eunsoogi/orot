@@ -12,6 +12,10 @@ import type { VisitQuestionEvidenceCollection } from './evidenceCollection';
 import { hasConflictingHealthObservations } from './evidenceCollection';
 import type { VisitQuestionEvidenceItem } from './taskContract';
 import type { EvidenceReference } from '@orot/agent-runtime';
+import type { EvidenceSearchTool } from '@orot/agent-runtime';
+import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
+import { parseHealthContextScope } from '../../healthEvidence/healthContext/scope';
+import { createVisitHealthContext } from './healthContext';
 import { reloadPersonalVisitEvidence } from './reloadPersonalEvidence';
 import { visitQuestionCitationKey } from './evidence';
 import {
@@ -38,6 +42,7 @@ export type VisitQuestionContextResult =
       };
       readonly query: string;
       readonly evidence: VisitQuestionEvidenceCollection;
+      readonly healthContextTool?: EvidenceSearchTool;
       readonly searchEvidence: (
         query: string,
         maxEvidenceItems: number,
@@ -85,6 +90,7 @@ export async function prepareVisitQuestionContext(input: {
   readonly rag: VisitQuestionRagPort;
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
+  readonly readHealthContext?: HealthContextReader;
   readonly signal?: AbortSignal;
 }): Promise<VisitQuestionContextResult> {
   if (!Number.isFinite(Date.parse(input.now))) {
@@ -135,6 +141,9 @@ export async function prepareVisitQuestionContext(input: {
   // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
   const evidence = { ...initialEvidence, metadataByCitation };
+  const healthContext = input.readHealthContext
+    ? createVisitHealthContext(input.readHealthContext, metadataByCitation)
+    : undefined;
   // A later search can reveal a conflict that was split across batches.
   let hasMaterialConflict = initialEvidence.batch.conflicts.length > 0;
   const searchEvidence = async (
@@ -182,6 +191,7 @@ export async function prepareVisitQuestionContext(input: {
     repository: input.repository,
     buildChunks,
     currentTime: input.currentTime ?? (() => new Date().toISOString()),
+    validateHealthContext: healthContext?.validate,
   });
 
   return {
@@ -191,8 +201,11 @@ export async function prepareVisitQuestionContext(input: {
     appointmentContext: context,
     query,
     evidence,
+    ...(healthContext ? { healthContextTool: healthContext.tool } : {}),
     searchEvidence,
     async reloadPersonalEvidence(reference) {
+      if (parseHealthContextScope(reference.locator))
+        return healthContext?.reload(reference);
       const mapped = await reloadPersonalVisitEvidence(
         input.repository,
         buildChunks,

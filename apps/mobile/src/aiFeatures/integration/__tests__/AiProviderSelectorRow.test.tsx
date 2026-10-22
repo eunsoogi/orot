@@ -39,7 +39,7 @@ test('shows the actual selected model and keeps the selector accessible', async 
     screen.getByRole('button', { name: '사용할 AI, GPT model' }),
   ).toBeTruthy();
   expect(screen.getByTestId('symbol-sparkles')).toBeTruthy();
-  expect(screen.getByTestId('symbol-chevron.right')).toBeTruthy();
+  expect(screen.getByTestId('symbol-chevron.down')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
   expect(onPress).toHaveBeenCalledTimes(1);
 });

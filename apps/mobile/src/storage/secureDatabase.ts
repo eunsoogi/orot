@@ -22,6 +22,7 @@ import {
   migrateDatabaseKeyForBackup,
 } from '../backup/nativeBackupMigration';
 import { formatStorageOpenDiagnostic } from './storageDiagnostics';
+import { setupVisitQuestionPeriods } from './visitQuestionPeriods';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
@@ -109,7 +110,7 @@ export function openLocalStorage(): Promise<RecordRepository> {
       } catch {
         // BackupStatusRecovery retries and reports this without rotating the SQLCipher key.
       }
-      return openEncryptedStorage({
+      const records = await openEncryptedStorage({
         name: DATABASE_NAME,
         keyStore,
         randomBytes: fillSecureRandomBytes,
@@ -125,6 +126,10 @@ export function openLocalStorage(): Promise<RecordRepository> {
           return database;
         },
       });
+      // Install derived-period deletion guards before any caller receives a writer, including after restore.
+      if (!database) throw new Error('The encrypted database is not open.');
+      await database.transaction(setupVisitQuestionPeriods);
+      return records;
     })().catch(error => {
       // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.
       if (shouldLogStorageDiagnostics()) {

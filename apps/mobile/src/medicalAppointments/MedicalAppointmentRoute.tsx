@@ -1,5 +1,6 @@
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { useEffect, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -25,6 +26,7 @@ interface MedicalAppointmentRouteProps {
   readonly manual: boolean;
   readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings: () => void;
+  readonly onOpenProviderSelection?: () => void;
   readonly loadAppointments: () => Promise<AppointmentRepository>;
   readonly selectedAiResolverOptions?: SelectedAiResolverOptions;
 }
@@ -49,9 +51,11 @@ export default function MedicalAppointmentRoute({
   manual,
   onOpenManual,
   onOpenCalendarSettings,
+  onOpenProviderSelection,
   loadAppointments,
   selectedAiResolverOptions,
 }: MedicalAppointmentRouteProps) {
+  const focused = useIsFocused();
   const [repository, setRepository] = useState<AppointmentRepository | null>(
     null,
   );
@@ -79,6 +83,8 @@ export default function MedicalAppointmentRoute({
   }, [loadAppointments, repositoryLoadAttempt]);
 
   useEffect(() => {
+    // The retained scene must reload selection after returning from the model settings page.
+    if (!focused) return;
     if (manual) {
       // Manual entry is local-only and must not trigger provider/account reads.
       setSelectedAi(null);
@@ -99,7 +105,7 @@ export default function MedicalAppointmentRoute({
     return () => {
       active = false;
     };
-  }, [manual, selectedAiResolverOptions]);
+  }, [focused, manual, selectedAiResolverOptions]);
 
   if (repositoryLoadError) {
     return (
@@ -169,6 +175,7 @@ export default function MedicalAppointmentRoute({
         recipient={resolvedAi?.recipient ?? null}
         selectedProviderUnavailable={selectedAi.status === 'unavailable'}
         onOpenCalendarSettings={onOpenCalendarSettings}
+        onOpenProviderSelection={onOpenProviderSelection}
         onOpenManual={onOpenManual}
       />
     </>

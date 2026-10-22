@@ -59,7 +59,10 @@ export function useNextVisitQuestionsRoute(
   const generationRequest = useRef(0);
   const refreshAppointment = useCallback(async () => {
     const request = ++appointmentRequest.current;
-    setAppointment({ status: 'loading' });
+    // Reentry refreshes the current appointment without erasing a draft for an unchanged visit.
+    setAppointment(current =>
+      current.status === 'ready' ? current : { status: 'loading' },
+    );
     setSaveNotice('');
     try {
       const current = await operations.loadAppointment(

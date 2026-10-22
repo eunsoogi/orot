@@ -40,17 +40,20 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let messages: [ChatGPTResponsesMessage]
     public let tools: [ChatGPTResponsesToolDefinition]
     public let toolChoice: String?
+    public let publicWebQuery: String?
 
     public init(
         model: String,
         messages: [ChatGPTResponsesMessage],
         tools: [ChatGPTResponsesToolDefinition] = [],
         toolChoice: String? = nil,
+        publicWebQuery: String? = nil,
     ) {
         self.model = model
         self.messages = messages
         self.tools = tools
         self.toolChoice = toolChoice
+        self.publicWebQuery = publicWebQuery
     }
 }
 
@@ -58,15 +61,18 @@ public struct ChatGPTResponsesResult: Equatable, Sendable {
     public let text: String
     public let toolCalls: [ChatGPTResponsesFunctionCall]
     public let continuationItems: [String]
+    public let webSearch: ChatGPTPublicWebSearchResult?
 
     public init(
         text: String,
         toolCalls: [ChatGPTResponsesFunctionCall] = [],
         continuationItems: [String] = [],
+        webSearch: ChatGPTPublicWebSearchResult? = nil,
     ) {
         self.text = text
         self.toolCalls = toolCalls
         self.continuationItems = continuationItems
+        self.webSearch = webSearch
     }
 }
 

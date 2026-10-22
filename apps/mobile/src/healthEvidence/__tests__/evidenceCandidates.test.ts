@@ -134,7 +134,15 @@ test('large identifier tables preserve exact substring matching for arbitrary ID
       SELECT 'unrelated-' || value, ?, ?, ?, '{}' FROM n`,
       [at, at, at],
     );
-    for (const id of ['outside record / 42', '기록/가', 'record', 'x']) {
+    const special = [
+      'outside record / 42',
+      '기록/가',
+      'record',
+      'x',
+      '기록😀끝',
+      'e\u0301/기록',
+    ];
+    for (const id of special) {
       await database.execute(
         'INSERT INTO symptom_entries (id, effective_at, recorded_at, ingested_at, payload_json) VALUES (?, ?, ?, ?, ?)',
         [id, at, at, at, '{}'],
@@ -144,10 +152,11 @@ test('large identifier tables preserve exact substring matching for arbitrary ID
       [
         ...(await findEvidenceIdentifiers(
           database,
-          'prefix: outside record / 42; 기록/가; outside record / 42.',
+          '합성 긴 전사 문장 '.repeat(200) +
+            'prefix: outside record / 42; 기록/가; outside record / 42; 기록😀끝; e\u0301/기록.',
         )),
       ].sort(),
-    ).toEqual(['outside record / 42', '기록/가', 'record', 'x'].sort());
+    ).toEqual([...special].sort());
     expect(await findEvidenceIdentifiers(database, 'none here')).toEqual([]);
   } finally {
     close();

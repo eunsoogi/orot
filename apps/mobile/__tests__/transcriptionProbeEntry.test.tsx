@@ -22,6 +22,10 @@ jest.mock('../e2e/transcription/RecordingLibraryVisualProbe', () => ({
   RecordingLibraryVisualProbe: 'RecordingLibraryVisualProbe',
 }));
 
+jest.mock('../e2e/transcription/RecordingSessionVisualProbe', () => ({
+  RecordingSessionVisualProbe: 'RecordingSessionVisualProbe',
+}));
+
 function loadProbeEntry(settings: Record<string, unknown>) {
   jest.resetModules();
   const reactNative = require('react-native');
@@ -54,4 +58,12 @@ test('launches the saved-recording visual probe only when requested', () => {
       OROT_TRANSCRIPTION_PROBE_MODE: 'recording-library-visual',
     }),
   ).toBe('RecordingLibraryVisualProbe');
+});
+
+test('keeps synthetic active recording UI behind its explicit Simulator selector', () => {
+  expect(
+    loadProbeEntry({
+      OROT_TRANSCRIPTION_PROBE_MODE: 'recording-session-visual',
+    }),
+  ).toBe('RecordingSessionVisualProbe');
 });

@@ -1,0 +1,82 @@
+name: Recording integration tests
+on:
+  workflow_call:
+    inputs:
+      # One producer prefix selects products; each consumer still verifies the supplied content digests.
+      artifact_name: { type: string, default: ios-test-release-products }
+      archive_digest: { required: true, type: string }
+      manifest_digest: { required: true, type: string }
+      cohorts: { required: true, type: string }
+permissions: { contents: read }
+env:
+  CI: 'true'
+  TZ: UTC
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  EXPECTED_NODE_VERSION: '22.23.2'
+jobs:
+  controls:
+    name: Controls
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recordings-controls') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: recordings-controls
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: fixtures
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: recordings-controls }
+  review:
+    name: Review
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recordings-review') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: recordings-review
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: fixtures
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: recordings-review }
+  playback:
+    name: Playback
+    if: ${{ contains(fromJSON(inputs.cohorts), 'recordings-playback') }}
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with: { log_directory: artifacts/ios-cohort }
+      - uses: ./.github/actions/ios-test-cohort-executor
+        with:
+          cohort: recordings-playback
+          artifact_name: ${{ inputs.artifact_name }}
+          profile: fixtures
+          archive_digest: ${{ inputs.archive_digest }}
+          manifest_digest: ${{ inputs.manifest_digest }}
+      - name: Preserve setup diagnostics
+        if: always()
+        uses: ./.github/actions/ios-test-cohort-diagnostics
+        with: { cohort: recordings-playback }

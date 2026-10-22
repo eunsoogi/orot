@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from '@orot/model-runtime';
+import type { JsonValue } from '@orot/model-runtime';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -7,33 +7,17 @@ import type {
   TaskResultValidation,
 } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
+import {
+  clinicalClaimIssue,
+  type ClinicalClaimIssue,
+} from './clinicalClaimGuard';
+export { canPreviewDiseaseHypothesisSummary } from './clinicalClaimGuard';
 
-// The model emits opaque IDs; the app restores exact, current references after validation.
-const referenceSchema: JsonObject = { type: 'string', minLength: 1 };
+export { diseaseHypothesisSchema } from './diseaseResultSchema';
 
-export const diseaseHypothesisSchema: JsonObject = {
-  type: 'object',
-  required: [
-    'title',
-    'summary',
-    'supportingEvidence',
-    'contraryEvidence',
-    'uncertainty',
-    'missingData',
-  ],
-  properties: {
-    title: { type: 'string', minLength: 1, maxLength: 120 },
-    summary: { type: 'string', minLength: 1, maxLength: 1200 },
-    supportingEvidence: { type: 'array', minItems: 1, items: referenceSchema },
-    contraryEvidence: { type: 'array', items: referenceSchema },
-    uncertainty: { type: 'string', minLength: 1, maxLength: 500 },
-    missingData: {
-      type: 'array',
-      items: { type: 'string', minLength: 1, maxLength: 160 },
-    },
-  },
-  additionalProperties: false,
-};
+/** Closed categories identify validation boundaries without exposing model or record content. */
+export type DiseaseValidationCode =
+  'fields' | 'citations' | 'certainty' | 'section_count';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -50,48 +34,6 @@ function stableJson(value: unknown): string {
         `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`,
     )
     .join(',')}}`;
-}
-
-// Prompt wording is advisory, so reject common certainty claims before displaying model text.
-const definitiveClaimPatterns = [
-  /\b(?:confirmed|definitive(?:ly)?|definitely|certainly|unquestionably)\b/iu,
-  /\b(?:you|the patient)\s+(?:(?:definitely|certainly)\s+)?(?:have|has)\b/iu,
-  /\bdiagnosed with\b/iu,
-  /\b(?:there is|there's)\s+no (?:clinical )?uncertainty\b/iu,
-  /(?:확진|확실히|분명히|명백히|틀림없이|진단(?:받았|받으셨|되었|된|이다|입니다|이에요|이야))/u,
-  /(?:불확실(?:성|한 점)(?:이)?|모호함)(?:은|는|이)?\s*(?:없|전혀 없)/u,
-];
-
-// Remove only these explicit disclaimers; any added diagnosis claim stays checked.
-function withoutUncertaintyDisclaimers(text: string): string {
-  return text
-    .replace(/현재 자료만으로는 확진할 수 없어요\.?/gu, ' ')
-    .replace(
-      /\bno definitive diagnosis can be made from these records\.?/giu,
-      ' ',
-    );
-}
-
-/** Applies the final summary's diagnosis guard before any partial text reaches the screen. */
-export function canPreviewDiseaseHypothesisSummary(text: string): boolean {
-  if (!text.trim() || text.length > 1200) return false;
-  const candidate = withoutUncertaintyDisclaimers(text);
-  return !definitiveClaimPatterns.some(pattern => pattern.test(candidate));
-}
-
-function containsDefinitiveClinicalClaim(
-  hypothesis: DiseaseHypothesisAnalysis['hypotheses'][number],
-): boolean {
-  return [
-    hypothesis.title,
-    hypothesis.summary,
-    hypothesis.uncertainty,
-    ...hypothesis.missingData,
-  ].some(text =>
-    definitiveClaimPatterns.some(pattern =>
-      pattern.test(withoutUncertaintyDisclaimers(text)),
-    ),
-  );
 }
 
 export function referenceOnly(item: EvidenceItem): EvidenceReference {
@@ -152,8 +94,14 @@ function referencesFor(
 function readHypothesis(
   value: unknown,
   evidence: EvidenceBatch,
+  allowEmptyUncertainty = false,
+  onInvalid?: (code: DiseaseValidationCode) => void,
+  onClinicalClaim?: (issue: ClinicalClaimIssue) => void,
 ): DiseaseHypothesisAnalysis['hypotheses'][number] | undefined {
-  if (!isObject(value)) return undefined;
+  if (!isObject(value)) {
+    onInvalid?.('fields');
+    return undefined;
+  }
   const keys = [
     'title',
     'summary',
@@ -162,7 +110,10 @@ function readHypothesis(
     'uncertainty',
     'missingData',
   ];
-  if (Object.keys(value).some(key => !keys.includes(key))) return undefined;
+  if (Object.keys(value).some(key => !keys.includes(key))) {
+    onInvalid?.('fields');
+    return undefined;
+  }
   if (
     typeof value.title !== 'string' ||
     value.title.trim().length === 0 ||
@@ -171,17 +122,22 @@ function readHypothesis(
     value.summary.trim().length === 0 ||
     value.summary.length > 1200 ||
     typeof value.uncertainty !== 'string' ||
-    value.uncertainty.trim().length === 0 ||
+    (!allowEmptyUncertainty && value.uncertainty.trim().length === 0) ||
     value.uncertainty.length > 500 ||
     !Array.isArray(value.missingData) ||
     value.missingData.some(
       item => typeof item !== 'string' || !item.trim() || item.length > 160,
     )
-  )
+  ) {
+    onInvalid?.('fields');
     return undefined;
+  }
   const supportingEvidence = referencesFor(value.supportingEvidence, evidence);
   const contraryEvidence = referencesFor(value.contraryEvidence, evidence);
-  if (!supportingEvidence?.length || !contraryEvidence) return undefined;
+  if (!supportingEvidence?.length || !contraryEvidence) {
+    onInvalid?.('citations');
+    return undefined;
+  }
   const hypothesis = {
     title: value.title,
     summary: value.summary,
@@ -190,28 +146,54 @@ function readHypothesis(
     uncertainty: value.uncertainty,
     missingData: value.missingData,
   };
-  return containsDefinitiveClinicalClaim(hypothesis) ? undefined : hypothesis;
+  const claimIssue = clinicalClaimIssue(hypothesis);
+  if (claimIssue) {
+    onInvalid?.('certainty');
+    onClinicalClaim?.(claimIssue);
+    return undefined;
+  }
+  return hypothesis;
 }
 
 export function validateDiseaseHypothesisResult(
   value: JsonValue,
   input: TaskResponderInput,
+  options: {
+    readonly allowEmptyUncertainty?: boolean;
+    // Factual topic summaries may use eight sections; disease assessment keeps the default of three.
+    readonly maxSections?: 3 | 8;
+    readonly onInvalid?: (code: DiseaseValidationCode) => void;
+    readonly onClinicalClaim?: (issue: ClinicalClaimIssue) => void;
+  } = {},
 ): TaskResultValidation<DiseaseHypothesisAnalysis> {
   if (
     !isObject(value) ||
     Object.keys(value).some(key => key !== 'hypotheses')
   ) {
+    options.onInvalid?.('fields');
     return { status: 'invalid', reason: 'Expected a hypotheses array.' };
   }
   const hypotheses = value.hypotheses;
   if (
     !Array.isArray(hypotheses) ||
     hypotheses.length < 1 ||
-    hypotheses.length > 3
+    hypotheses.length > (options.maxSections ?? 3)
   ) {
-    return { status: 'invalid', reason: 'Expected one to three hypotheses.' };
+    options.onInvalid?.('section_count');
+    return {
+      status: 'invalid',
+      reason: 'Expected a bounded non-empty sections array.',
+    };
   }
-  const parsed = hypotheses.map(item => readHypothesis(item, input.evidence));
+  const parsed = hypotheses.map(item =>
+    readHypothesis(
+      item,
+      input.evidence,
+      options.allowEmptyUncertainty,
+      options.onInvalid,
+      options.onClinicalClaim,
+    ),
+  );
   if (parsed.some(item => !item)) {
     return {
       status: 'invalid',

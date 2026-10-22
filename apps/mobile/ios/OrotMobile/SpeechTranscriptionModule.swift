@@ -71,13 +71,19 @@ public final class SpeechTranscriptionModule: NSObject {
         let task = Task {
             defer { registry.finish(requestID, handle: handle) }
             do {
-                try await resolve(operation(request))
+                RecordingCaptureDiagnostics.emit(.speechStarted)
+                let result = try await operation(request)
+                RecordingCaptureDiagnostics.emit(.speechCompleted)
+                resolve(result)
             } catch let failure as SpeechTranscriptionFailure {
+                RecordingCaptureDiagnostics.failure(failure.code)
                 reject(failure.code, failure.message, nil)
             } catch is CancellationError {
+                RecordingCaptureDiagnostics.failure("TRANSCRIPTION_CANCELLED")
                 let failure = SpeechTranscriptionDeadline.cancelledFailure()
                 reject(failure.code, failure.message, nil)
             } catch {
+                RecordingCaptureDiagnostics.failure("SPEECH_RECOGNITION_FAILED")
                 reject("SPEECH_RECOGNITION_FAILED", error.localizedDescription, error as NSError)
             }
         }

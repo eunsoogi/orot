@@ -25,6 +25,25 @@ export function validateSampleChangesQuery(
   validateFeatureSampleKind(query.feature, query.sampleKind);
   validateLimit(query.limit);
   validateCursor(query.cursor);
+  const concepts = query.medicationConceptIdentifiers;
+  if (
+    concepts !== undefined &&
+    (query.feature !== 'medications' ||
+      !Array.isArray(concepts) ||
+      !concepts.every(isNonEmptyString) ||
+      concepts.join('').length > MAX_CURSOR_LENGTH)
+  ) {
+    throw codedError('INVALID_REQUEST', 'Medication query scope is invalid.');
+  }
+  if (
+    query.resetAnchor !== undefined &&
+    (query.feature !== 'medications' || typeof query.resetAnchor !== 'boolean')
+  ) {
+    throw codedError(
+      'INVALID_REQUEST',
+      'Only medication queries can reset their anchor.',
+    );
+  }
 }
 
 export function requireSampleChangesResult(

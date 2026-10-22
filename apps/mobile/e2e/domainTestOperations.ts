@@ -23,6 +23,19 @@ export async function runDomainTestOperation(
       ? parameters.storageIdentifier
       : undefined;
   switch (operation) {
+    case 'ai-scale-calendar': {
+      const { measureScaleCalendar } = await import('./aiScaleCalendar');
+      const runs = [];
+      for (const count of [1000, 10000, 50000])
+        runs.push(await measureScaleCalendar(count));
+      runs.push(await measureScaleCalendar(50000, true));
+      return { synthetic: true, scriptedModel: true, runs };
+    }
+    case 'ai-scale': {
+      const { runAiScaleTestOperation } =
+        await import('./aiScaleTestOperation');
+      return runAiScaleTestOperation(parameters.fixtureIdentifier);
+    }
     case 'checkpoint-persistence': {
       const { runCheckpointPersistenceOperation } =
         await import('./checkpointPersistenceOperation');
@@ -53,6 +66,18 @@ export async function runDomainTestOperation(
       const { runHealthPaginationTestOperation } =
         await import('./healthPaginationTestOperation');
       return runHealthPaginationTestOperation(parameters.fixtureIdentifier);
+    }
+    case 'health-context': {
+      const { runHealthContextTestOperation } =
+        await import('./healthContextTestOperation');
+      return runHealthContextTestOperation(parameters.fixtureIdentifier);
+    }
+    case 'health-context-persistence': {
+      const { runHealthContextPersistenceTestOperation } =
+        await import('./healthContextPersistenceTestOperation');
+      return runHealthContextPersistenceTestOperation(
+        parameters.fixtureIdentifier,
+      );
     }
     case 'automatic-speech-readback':
     case 'automatic-speech-cleanup': {

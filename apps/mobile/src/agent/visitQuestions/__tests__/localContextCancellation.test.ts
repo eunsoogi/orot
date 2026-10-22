@@ -50,6 +50,7 @@ describe('visit-question generation cancellation', () => {
     const signal = new AbortController().signal;
     jest.mocked(loadSecureDatabaseModule).mockResolvedValue({
       openLocalStorage: jest.fn().mockResolvedValue(repository),
+      openLocalAgentMemoryDatabase: jest.fn().mockResolvedValue({}),
     } as never);
     jest.mocked(openLocalE5RagService).mockResolvedValue(rag as never);
     jest.mocked(openLocalAgentMemory).mockResolvedValue(memory as never);

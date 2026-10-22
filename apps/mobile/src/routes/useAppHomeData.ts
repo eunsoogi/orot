@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
+import { AppState } from 'react-native';
+import {
+  appointmentDisplayUntil,
+  selectNextAppointment,
+} from './nextAppointment';
 
 export type LibraryLoadState = 'loading' | 'ready' | 'failed';
 
@@ -20,15 +25,42 @@ export function useAppHomeData(
   const [recordingState, setRecordingState] =
     useState<LibraryLoadState>('loading');
   const activeRef = useRef(false);
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    // Refresh at the nearest end boundary and on foreground; retained Home scenes must not freeze their clock.
+    // An intervening data refresh must not restart a delay measured from an older minute tick.
+    const schedulingTime = Date.now();
+    const nextBoundary = Math.min(
+      ...appointments
+        .map(appointmentDisplayUntil)
+        .filter(time => time > schedulingTime),
+    );
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.max(1, Math.min(60_000, nextBoundary - schedulingTime)),
+    );
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [appointments, now]);
 
   const refreshAppointments = useCallback(async () => {
     if (activeRef.current) setAppointmentState('loading');
     try {
       const repository = await loadAppointments();
       if (!activeRef.current) return;
+      const next = await repository.list();
+      if (!activeRef.current) return;
       setAppointmentRepository(repository);
-      setAppointments(await repository.list());
-      if (activeRef.current) setAppointmentState('ready');
+      setAppointments(next);
+      // Select the new snapshot against its receipt time, including visits that have already ended.
+      setNow(Date.now());
+      setAppointmentState('ready');
     } catch {
       if (activeRef.current) setAppointmentState('failed');
     }
@@ -55,19 +87,8 @@ export function useAppHomeData(
   }, [refreshAppointments, refreshRecordings]);
 
   const nextAppointment = useMemo(
-    () =>
-      appointments
-        .filter(
-          appointment =>
-            (appointment.status === 'scheduled' ||
-              appointment.status === 'rescheduled') &&
-            Date.parse(appointment.effectiveAt) > Date.now(),
-        )
-        .sort(
-          (left, right) =>
-            Date.parse(left.effectiveAt) - Date.parse(right.effectiveAt),
-        )[0] ?? null,
-    [appointments],
+    () => selectNextAppointment(appointments, now),
+    [appointments, now],
   );
 
   return {

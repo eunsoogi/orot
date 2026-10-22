@@ -1,5 +1,6 @@
 import { AppointmentSchema, compareTimestamps } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
+import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
 import type { LocalRecordQueryService } from '@orot/agent-runtime';
 import type { EvidenceChunk } from '@orot/rag';
@@ -42,6 +43,9 @@ export function createVisitQuestionEvidenceRevalidator(input: {
   readonly repository: VisitQuestionEvidenceRepository;
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime: () => string;
+  readonly validateHealthContext?: (
+    source: VisitQuestionHealthContextSource,
+  ) => Promise<boolean>;
 }): (citations: readonly VisitQuestionEvidenceItem[]) => Promise<boolean> {
   return async citations => {
     if (citations.length === 0) return false;
@@ -83,8 +87,18 @@ export function createVisitQuestionEvidenceRevalidator(input: {
           return false;
       }
       const personalCitations = citations.filter(
-        citation => citation.sourceKind === 'personal_record',
+        citation =>
+          citation.sourceKind === 'personal_record' &&
+          !input.metadataByCitation.get(visitQuestionCitationKey(citation))
+            ?.healthContextSource,
       );
+      for (const citation of citations) {
+        const period = input.metadataByCitation.get(
+          visitQuestionCitationKey(citation),
+        )?.healthContextSource;
+        if (period && !(await input.validateHealthContext?.(period)))
+          return false;
+      }
       if (personalCitations.length > 0) {
         const identities = personalCitations.map(citation => {
           const metadata = input.metadataByCitation.get(

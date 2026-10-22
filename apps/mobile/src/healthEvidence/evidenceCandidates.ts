@@ -11,6 +11,8 @@ import {
   MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
+import { HEALTH_OVERVIEW_KINDS } from './healthOverviewScope';
+import { doseMedicationLink } from './doseMedicationLink';
 
 export interface LocalEvidenceCandidates {
   /** Catalog describes the whole stored corpus; candidate payloads below are not an enumeration. */
@@ -38,21 +40,34 @@ function dependencyIds(
   return [...ids];
 }
 
-/** Reads only forward provenance identities, never all rows linked back to a source. */
+/** Reads forward provenance and typed medication links, never all rows linked back to a source. */
 async function readDependencies(
   executor: SqlExecutor,
   candidates: readonly LocalHealthEvidenceRecord[],
   signal?: AbortSignal,
 ): Promise<LocalHealthEvidenceRecord[]> {
   const ids = dependencyIds(candidates);
+  const medications = candidates.flatMap(entry => {
+    const link = doseMedicationLink(entry);
+    return link ? [link] : [];
+  });
+  if (new Set([...ids, ...medications.map(link => link.id)]).size > 1024)
+    throw new Error('Selected evidence has too many source dependencies.');
   const selected = new Set(
     candidates.map(item => `${item.kind}\u0000${item.record.id}`),
   );
   const dependencies: LocalHealthEvidenceRecord[] = [];
   for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
-    for (let offset = 0; offset < ids.length; offset += 100) {
+    // Dose links identify a table as well as an ID; same-ID rows in other tables are not dependencies.
+    const kindIds = [
+      ...new Set([
+        ...ids,
+        ...medications.filter(link => link.kind === kind).map(link => link.id),
+      ]),
+    ];
+    for (let offset = 0; offset < kindIds.length; offset += 100) {
       checkHealthEvidenceAbort(signal);
-      const batch = ids.slice(offset, offset + 100);
+      const batch = kindIds.slice(offset, offset + 100);
       const result = await executor.execute(
         `SELECT id, CASE WHEN length(CAST(payload_json AS BLOB)) <= ? THEN payload_json ELSE NULL END AS payload_json,
           length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table}
@@ -99,17 +114,28 @@ export async function readEvidenceCandidates(
       totalRecordCount += total;
       if (total) availableKinds.push(kind);
       // Source documents support selected clinical evidence; they are not themselves a clinical claim.
-      if (!total || kind === 'source_record') continue;
-      const page = await readRankedEvidencePage(transaction, kind, query, {
-        limit:
-          kind === 'health_observation'
-            ? 16
-            : kind === 'transcript_segment'
-              ? 8
-              : 4,
-        signal,
-        scope,
-      });
+      if (
+        !total ||
+        kind === 'source_record' ||
+        (scope?.selection === 'health_overview' &&
+          !HEALTH_OVERVIEW_KINDS.has(kind))
+      )
+        continue;
+      const page = await readRankedEvidencePage(
+        transaction,
+        kind,
+        scope?.selection === 'health_overview' ? '' : query,
+        {
+          limit:
+            kind === 'health_observation'
+              ? 16
+              : kind === 'transcript_segment'
+                ? 8
+                : 4,
+          signal,
+          scope,
+        },
+      );
       candidates.push(...page.records);
       hasMoreCandidates ||= page.nextCursor !== null;
       if (page.incomplete) truncatedKinds.push(kind);

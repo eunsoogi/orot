@@ -2,10 +2,40 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
+import { iosTestInventory } from '../ios-test-inventory.mjs';
+
+test('core UI navigation and recording evidence have separate jobs without splitting original methods', () => {
+  const cohorts = ['core-ui', 'recording-evidence'];
+  const jobs = iosTestExecutionPlan().filter((job) => cohorts.includes(job.cohort));
+  assert.deepEqual(
+    jobs.map((job) => job.cohort),
+    cohorts,
+  );
+  const tasks = jobs.map((job) => {
+    const tasks = iosTestCohortTasks(job.cohort);
+    assert.equal(tasks.length, 1);
+    assert.equal(tasks[0].suite, 'ui');
+    assert.equal(tasks[0].mode, 'plain');
+    assert.equal(job.minutes, 20);
+    return tasks[0];
+  });
+  const actual = tasks.flatMap((task) => task.identifiers);
+  assert.equal(actual.length, 6);
+  assert.equal(new Set(actual).size, 6);
+  assert.deepEqual(actual.slice().sort(), iosTestInventory('core', 'ui').slice().sort());
+  assert.deepEqual(
+    tasks.map((task) => task.identifiers.length),
+    [4, 2],
+  );
+  assert.deepEqual(
+    new Set(tasks[1].identifiers.map((identifier) => identifier.split('/')[1])),
+    new Set(['RecordingExportUITests', 'TranscriptEvidenceUITests']),
+  );
+});
 
 test('independent feature suites have distinct jobs and preserve all registered observations', () => {
   const plan = iosTestExecutionPlan();
-  assert.equal(plan.length, 15);
+  assert.equal(plan.length, 24);
   assert.equal(new Set(plan.map((job) => job.name)).size, plan.length);
   assert.equal(plan.filter((job) => job.configuration === 'Debug').length, 4);
   const actual = plan.flatMap((job) =>
@@ -14,8 +44,40 @@ test('independent feature suites have distinct jobs and preserve all registered 
   const original = ['release', 'debug', 'speech'].flatMap((name) =>
     iosTestCohortTasks(name).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 95);
+  assert.equal(actual.length, 111);
   assert.deepEqual(actual.slice().sort(), original.slice().sort());
+});
+
+test('Questions partitions complete stateful cases into three independently scheduled jobs', () => {
+  const jobs = iosTestExecutionPlan().filter((job) => job.cohort.startsWith('questions-'));
+  assert.deepEqual(
+    jobs.map((job) => job.cohort),
+    ['questions-review', 'questions-conversation', 'questions-summary'],
+  );
+  const identifiers = jobs.flatMap((job) =>
+    iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
+  );
+  assert.deepEqual(
+    identifiers.slice().sort(),
+    iosTestCohortTasks('questions')[0].identifiers.slice().sort(),
+  );
+  assert.equal(new Set(identifiers).size, 8);
+  for (const job of jobs) {
+    const tasks = iosTestCohortTasks(job.cohort);
+    assert.equal(tasks.length, 1);
+    assert.equal(tasks[0].mode, 'fixture');
+    // Relaunch, saved state, appearance and consent assertions stay inside their original XCTest methods.
+    const classes = new Set(tasks[0].identifiers.map((identifier) => identifier.split('/')[1]));
+    for (const name of classes)
+      assert.equal(
+        jobs.filter((candidate) =>
+          iosTestCohortTasks(candidate.cohort)[0].identifiers.some(
+            (identifier) => identifier.split('/')[1] === name,
+          ),
+        ).length,
+        1,
+      );
+  }
 });
 
 test('new process, reset, restore and Speech preparation dependencies remain inside their required task drivers', () => {
@@ -39,7 +101,12 @@ test('new process, reset, restore and Speech preparation dependencies remain ins
 });
 
 test('selected plans retain full original task groups while omitting unrelated cohorts', () => {
-  const selected = iosTestExecutionPlan(['backup', 'recordings']);
+  const selected = iosTestExecutionPlan([
+    'backup',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
+  ]);
   const actual = selected.flatMap((job) =>
     iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
   );
@@ -49,9 +116,9 @@ test('selected plans retain full original task groups while omitting unrelated c
 
   assert.deepEqual(
     selected.map((job) => job.cohort),
-    ['backup', 'recordings'],
+    ['backup', 'recordings-controls', 'recordings-review', 'recordings-playback'],
   );
-  assert.deepEqual(actual, expected);
+  assert.deepEqual(actual.slice().sort(), expected.slice().sort());
   assert.equal(new Set(actual).size, actual.length);
   assert.equal(
     selected.some((job) => job.cohort === 'speech'),

@@ -11,19 +11,21 @@ import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import {
   healthRecordCategoryTitle,
   healthRecordPeriodTitle,
+  healthRecordPeriodStart,
 } from './healthRecordsLibraryModel';
 import { buildHealthRecordsMedicationDetailRows } from './healthRecordsMedicationDetailModel';
 import { healthRecordPeriods } from './healthRecordsDetailModel';
 import { HealthRecordsMedicationRecordRow } from './HealthRecordsMedicationRecordRow';
 import { healthRecordsDetailStyles as styles } from './HealthRecordsDetailScreen.styles';
-import type { HealthRecordsMedicationData } from './healthRecordsMedicationLibrary';
+import type { HealthRecordsMedicationLoader } from './healthRecordsMedicationLibrary';
+import type { HealthObservationCursor } from '@orot/storage';
 import {
   emptyHealthRecordsMedicationData,
   loadEmptyHealthRecordsMedicationData,
 } from './healthRecordsMedicationLibrary';
 
 interface HealthRecordsMedicationDetailScreenProps {
-  readonly loadMedicationData?: () => Promise<HealthRecordsMedicationData>;
+  readonly loadMedicationData?: HealthRecordsMedicationLoader;
   readonly onBack: () => void;
   readonly onSelectionChange: (selection: HealthRecordsDetailSelection) => void;
   readonly selection: HealthRecordsDetailSelection;
@@ -43,6 +45,8 @@ export function HealthRecordsMedicationDetailScreen({
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [revision, setRevision] = useState(0);
   const generation = useRef(0);
+  const pending = useRef(false);
+  const [cursor, setCursor] = useState<HealthObservationCursor | null>(null);
   const now = useRef(new Date().toISOString()).current;
   const rows = useMemo(
     () => buildHealthRecordsMedicationDetailRows(data, selection.period, now),
@@ -57,26 +61,68 @@ export function HealthRecordsMedicationDetailScreen({
     inputRevision: 0,
   } satisfies NavigationLeaveState);
 
-  const reload = useCallback(async () => {
-    const request = ++generation.current;
-    setLoadState('loading');
-    try {
-      const next = await loadMedicationData();
-      if (request !== generation.current) return;
-      setData(next);
-      setLoadState('ready');
-    } catch {
-      if (request === generation.current) setLoadState('failed');
-    } finally {
-      if (request === generation.current) setRevision(value => value + 1);
-    }
-  }, [loadMedicationData]);
+  const reload = useCallback(
+    async (after: HealthObservationCursor | null = null) => {
+      if (pending.current) return;
+      pending.current = true;
+      const request = ++generation.current;
+      setLoadState('loading');
+      try {
+        const start = healthRecordPeriodStart(
+          selection.period,
+          now,
+        )?.toISOString();
+        const next = await loadMedicationData({
+          cursor: after,
+          fromInclusive: start,
+          toInclusive: now,
+          includeTotals: false,
+        });
+        if (request !== generation.current) return;
+        // Keep earlier names and rows while appending a bounded page of actual dose events.
+        setData(previous =>
+          after
+            ? {
+                ...next,
+                definitions: [
+                  ...new Map(
+                    [...previous.definitions, ...next.definitions].map(item => [
+                      item.id,
+                      item,
+                    ]),
+                  ).values(),
+                ],
+                doseEvents: [
+                  ...new Map(
+                    [...previous.doseEvents, ...next.doseEvents].map(item => [
+                      item.id,
+                      item,
+                    ]),
+                  ).values(),
+                ],
+              }
+            : next,
+        );
+        setCursor(next.nextCursor ?? null);
+        setLoadState('ready');
+      } catch {
+        if (request === generation.current) setLoadState('failed');
+      } finally {
+        if (request === generation.current) {
+          pending.current = false;
+          setRevision(value => value + 1);
+        }
+      }
+    },
+    [loadMedicationData, now, selection.period],
+  );
 
   useEffect(() => {
     void reload();
     return () => {
       // A result for an old route or period must not replace the active record list.
       generation.current += 1;
+      pending.current = false;
     };
   }, [reload]);
 
@@ -84,6 +130,20 @@ export function HealthRecordsMedicationDetailScreen({
   return (
     <FlatList
       data={rows}
+      onEndReached={() => {
+        if (cursor && loadState === 'ready') void reload(cursor);
+      }}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={
+        cursor ? (
+          <AppButton
+            onPress={() => void reload(cursor)}
+            testID="health-records-detail-more"
+            title={t('healthRecords.loadOlder')}
+            variant="secondary"
+          />
+        ) : undefined
+      }
       keyExtractor={row => row.doseEvent.id}
       contentContainerStyle={[styles.container, navigationInset]}
       ListEmptyComponent={
@@ -141,7 +201,12 @@ export function HealthRecordsMedicationDetailScreen({
             ))}
           </View>
           <Text style={styles.count}>
-            {t('healthRecords.recordCount', { count: rows.length })}
+            {t(
+              cursor
+                ? 'healthRecords.loadedRecordCount'
+                : 'healthRecords.recordCount',
+              { count: rows.length },
+            )}
           </Text>
           {loadState === 'loading' ? (
             <Text testID="health-records-detail-loading">
@@ -154,7 +219,7 @@ export function HealthRecordsMedicationDetailScreen({
                 {t('healthRecords.error')}
               </Text>
               <AppButton
-                onPress={() => void reload()}
+                onPress={() => void reload(cursor)}
                 testID="health-records-detail-retry"
                 title={t('healthRecords.retry')}
                 variant="secondary"

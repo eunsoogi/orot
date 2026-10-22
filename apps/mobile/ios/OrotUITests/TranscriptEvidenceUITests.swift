@@ -47,9 +47,12 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
         tap(app, "transcript-edit-0")
         let input = element(app, "transcript-input-0")
         let correction = "사용자가 확인한 전사 수정"
-        // Exercise the actual native selection/paste editor and exact value readback, including wrapped menu commands.
+        // Exercise native keyboard editing and exact value readback through the real transcript input.
         FormUITestConditions.replace(input, with: correction, in: app, scrollID: "recording-controls-scroll")
-        tap(app, "transcript-save-0")
+        // Reveal beside the active editor so a keyboard-covered Save scrolls the form, not the text view.
+        let save = element(app, "transcript-save-0")
+        FormUITestConditions.reveal(save, in: app, scrollID: "recording-controls-scroll", avoiding: input)
+        save.tap()
         value(app, "transcript-evidence-correction-status", "saved")
         XCTAssertEqual(text(app, "transcript-text-0"), correction)
         let history = text(app, "transcript-history-0-1", upward: true)
@@ -73,34 +76,20 @@ final class TranscriptEvidenceUITests: OrotFailFastTestCase {
 
     @MainActor
     private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        UITestConditions.element(app, id)
+        // Recording rows expose a real button role; avoid scanning every node type for that action.
+        if id.hasPrefix("recording-details-") {
+            return app.buttons.matching(identifier: id).firstMatch
+        }
+        return UITestConditions.element(app, id)
     }
 
     @MainActor
     private func reveal(_ app: XCUIApplication, _ id: String, upward: Bool = false) -> XCUIElement {
         let target = element(app, id)
-        let scroll = element(app, "recording-controls-scroll")
-        for _ in 0 ..< 12 {
-            if unobscured(app, target) {
-                return target
-            }
-            // Stay inside the production screen's bounded scroll viewport, above the keyboard.
-            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.15 : 0.35))
-            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.35 : 0.15))
-            start.press(forDuration: 0.05, thenDragTo: end)
-        }
-        XCTAssertTrue(unobscured(app, target), app.debugDescription)
+        // Use the measured scroll/keyboard viewport and app-anchored gestures shared by native form tests.
+        // Visibility, hit testing and the final native tap remain required after scrolling.
+        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: upward)
         return target
-    }
-
-    @MainActor
-    private func unobscured(_ app: XCUIApplication, _ target: XCUIElement) -> Bool {
-        guard target.exists, target.isHittable else { return false }
-        let frame = target.frame
-        let keyboard = app.keyboards.firstMatch
-        let bottom = keyboard.exists ? min(app.frame.maxY, keyboard.frame.minY) : app.frame.maxY
-        // AX reported the covered save button hittable while the failure video showed it below the keyboard.
-        return !frame.isEmpty && frame.minY >= app.frame.minY && frame.maxY <= bottom
     }
 
     @MainActor

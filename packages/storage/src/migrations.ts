@@ -1,3 +1,5 @@
+import { createHealthObservationLibraryIndex } from './healthObservationPageFilter';
+import { createHealthMedicationLibraryIndex } from './healthMedicationPages';
 import { isRecordKind, parseRecord, STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap } from './contracts';
 import type { SqlDatabase, SqlExecutor } from './sql';
@@ -5,7 +7,7 @@ import { createTranscriptEvidenceIntegrity } from './transcriptEvidenceMigration
 import { createSourceDeletionIntegrity } from './sourceDeletionMigrations';
 import { localQueryTimestampKeyExpression } from './localQueryTimestamp';
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 async function readUserVersion(database: SqlExecutor): Promise<number> {
   const result = await database.execute('PRAGMA user_version');
@@ -192,24 +194,30 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
   if (currentVersion === CURRENT_SCHEMA_VERSION) return;
 
   await database.transaction(async (transaction) => {
-    if (currentVersion === 0) {
-      const hasLegacy = await hasLegacyTable(transaction);
-      await createInitialTables(transaction);
-      if (hasLegacy) {
-        await migrateLegacyRows(transaction);
-        await transaction.execute('DROP TABLE records');
+    // Version nine already has the other integrity/index structures. Do not
+    // rebuild those large indexes merely to add the category/period reader.
+    if (currentVersion < 9) {
+      if (currentVersion === 0) {
+        const hasLegacy = await hasLegacyTable(transaction);
+        await createInitialTables(transaction);
+        if (hasLegacy) {
+          await migrateLegacyRows(transaction);
+          await transaction.execute('DROP TABLE records');
+        }
+      } else {
+        // Add newly declared record tables, then preserve older rows while changing their schema.
+        await createInitialTables(transaction);
       }
-    } else {
-      // Add newly declared record tables, then preserve older rows while changing their schema.
-      await createInitialTables(transaction);
+      await makeRecordedAtNullable(transaction, 'health_observations');
+      await makeRecordedAtNullable(transaction, 'dose_events');
+      await createSourceEvidenceIntegrity(transaction);
+      await createSourceDeletionIntegrity(transaction);
+      await createTranscriptEvidenceIntegrity(transaction);
+      await createSyncCheckpoints(transaction);
+      await createLocalQueryIndexes(transaction);
     }
-    await makeRecordedAtNullable(transaction, 'health_observations');
-    await makeRecordedAtNullable(transaction, 'dose_events');
-    await createSourceEvidenceIntegrity(transaction);
-    await createSourceDeletionIntegrity(transaction);
-    await createTranscriptEvidenceIntegrity(transaction);
-    await createSyncCheckpoints(transaction);
-    await createLocalQueryIndexes(transaction);
-    await transaction.execute('PRAGMA user_version = 9');
+    await createHealthObservationLibraryIndex(transaction);
+    await createHealthMedicationLibraryIndex(transaction);
+    await transaction.execute('PRAGMA user_version = 10');
   });
 }

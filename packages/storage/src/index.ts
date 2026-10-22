@@ -53,5 +53,14 @@ export type {
 } from './sourceEvidence';
 export type { SqlDatabase, SqlExecutor, SqlResult, SqlTransaction, SqlValue } from './sql';
 
-export type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';
+export type {
+  HealthObservationCursor,
+  HealthObservationPage,
+  HealthObservationPageLoader,
+} from './healthObservationPages';
+export type {
+  HealthObservationPageFilter,
+  HealthObservationPageCategory,
+} from './healthObservationPageFilter';
 export { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
+export type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';

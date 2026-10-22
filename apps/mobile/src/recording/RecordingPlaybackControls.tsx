@@ -17,6 +17,7 @@ interface RecordingPlaybackControlsProps {
   readonly playbackService: RecordingPlaybackService;
   readonly autoPlay?: boolean;
   readonly onAutoPlayConsumed?: () => void;
+  readonly active?: boolean;
 }
 
 const idlePlayback: RecordingPlaybackState = {
@@ -51,17 +52,35 @@ export default function RecordingPlaybackControls({
   playbackService,
   autoPlay = false,
   onAutoPlayConsumed,
+  active = true,
 }: RecordingPlaybackControlsProps) {
   const autoPlayStarted = useRef(false);
+  const requestGeneration = useRef(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const [localPlaying, setLocalPlaying] = useState(false);
   const [playbackState, setPlaybackState] =
     useState<RecordingPlaybackState>(idlePlayback);
   const [error, setError] = useState<string | null>(null);
+  const [fileDuration, setFileDuration] = useState<number | null>(null);
+  useEffect(() => {
+    setFileDuration(null);
+    setLocalPlaying(false);
+    setPlaybackState(idlePlayback);
+    setError(null);
+    return () => {
+      requestGeneration.current += 1;
+    };
+  }, [recordingId, playbackService, active]);
   const playing =
     localPlaying ||
     (playbackState.status === 'playing' &&
       playbackState.recordingId === recordingId);
-  const canPlay = durationMs !== null && durationMs > 0 && !playing;
+  const canPlay =
+    active &&
+    !playing &&
+    (Boolean(playbackService.readDuration) ||
+      (durationMs !== null && durationMs > 0));
 
   useEffect(
     () => playbackService.subscribePlayback?.(setPlaybackState),
@@ -69,16 +88,32 @@ export default function RecordingPlaybackControls({
   );
 
   const playRecording = useCallback(async (): Promise<void> => {
-    if (!canPlay || durationMs === null) return;
+    if (!canPlay) return;
+    const generation = ++requestGeneration.current;
     setLocalPlaying(true);
     setError(null);
     try {
-      await playbackService.playRange(recordingId, 0, durationMs);
+      // Whole-recording playback uses the file clock, never a wall-clock estimate or transcript availability.
+      const actualDuration = playbackService.readDuration
+        ? await playbackService.readDuration(recordingId)
+        : durationMs;
+      // Stop, replacement, unmount, or a retained route losing focus cancels pending dispatch.
+      if (!activeRef.current || generation !== requestGeneration.current)
+        return;
+      if (
+        actualDuration === null ||
+        !Number.isFinite(actualDuration) ||
+        actualDuration <= 0
+      )
+        throw new Error('Invalid saved audio duration.');
+      setFileDuration(actualDuration);
+      await playbackService.playRange(recordingId, 0, actualDuration);
     } catch (failure) {
+      if (generation !== requestGeneration.current) return;
       setError(playbackErrorMessage(failure));
       setPlaybackState(idlePlayback);
     } finally {
-      setLocalPlaying(false);
+      if (generation === requestGeneration.current) setLocalPlaying(false);
     }
   }, [canPlay, durationMs, playbackService, recordingId]);
 
@@ -95,6 +130,8 @@ export default function RecordingPlaybackControls({
 
   async function stopRecording(): Promise<void> {
     if (!playbackService.stopPlayback) return;
+    requestGeneration.current += 1;
+    setLocalPlaying(false);
     try {
       await playbackService.stopPlayback();
     } catch (failure) {
@@ -108,14 +145,14 @@ export default function RecordingPlaybackControls({
   const activeDuration =
     activePlayback && playbackState.durationMs > 0
       ? playbackState.durationMs
-      : (durationMs ?? 0);
+      : (fileDuration ?? durationMs ?? 0);
   const position = activePlayback ? playbackState.positionMs : 0;
   const progress =
     activeDuration > 0 ? Math.min(100, (position / activeDuration) * 100) : 0;
   const durationLabel =
-    durationMs === null
+    fileDuration === null && durationMs === null
       ? t('recording.library.durationUnavailable')
-      : formatRecordingDuration(durationMs);
+      : formatRecordingDuration(fileDuration ?? durationMs ?? 0);
 
   return (
     <View style={styles.playbackCard} testID="recording-playback-controls">

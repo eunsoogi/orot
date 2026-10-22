@@ -150,6 +150,7 @@ export async function renderScreen(
   };
   const onOpenManual = jest.fn();
   const onOpenCalendarSettings = jest.fn();
+  const onOpenProviderSelection = jest.fn();
   const screenProps = {
     bridge,
     repository: appointments,
@@ -157,6 +158,7 @@ export async function renderScreen(
     recipient: provider ? 'selected-account' : null,
     onOpenManual,
     onOpenCalendarSettings,
+    onOpenProviderSelection,
   };
   const view = await render(
     <MedicalAppointmentClassificationScreen
@@ -168,6 +170,7 @@ export async function renderScreen(
     bridge,
     onOpenManual,
     onOpenCalendarSettings,
+    onOpenProviderSelection,
     updateCalendarSync: async (next: CalendarAutoSyncState) => {
       await act(async () => {
         view.rerender(

@@ -4,69 +4,22 @@ import type {
   EvidenceSearchRequest,
   EvidenceSearchTool,
 } from '@orot/agent-runtime';
-import type { JsonObject } from '@orot/model-runtime';
+import {
+  querySchema,
+  plainQuerySchema,
+  queryInput,
+} from './evidenceSearchQuery';
 import { evidenceRagSearchQuery } from '../../healthEvidence/evidenceCandidateScope';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
+import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
+import { healthOverviewEvidence } from './healthOverviewEvidence';
+import { scopedEvidenceItems } from './evidenceItemScope';
 import { localEvidenceKey } from './evidenceSnapshot';
 import {
   jsonByteLength,
   MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
 } from './evidenceUtils';
-
-const querySchema: JsonObject = {
-  type: 'object',
-  required: ['query'],
-  properties: { query: { type: 'string', minLength: 1, maxLength: 1000 } },
-  additionalProperties: false,
-};
-
-function queryInput(value: unknown): JsonObject | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    return undefined;
-  const record = value as Record<string, unknown>;
-  if (
-    Object.keys(record).length !== 1 ||
-    typeof record.query !== 'string' ||
-    record.query.trim().length === 0 ||
-    record.query.trim().length > 1000
-  ) {
-    return undefined;
-  }
-  return { query: record.query.trim() };
-}
-
-function withinRange(
-  item: EvidenceItem,
-  range: EvidenceSearchRequest['allowedScope']['timeRange'],
-): boolean {
-  if (!range) return true;
-  if (!item.effectiveTime) return false;
-  const value = Date.parse(item.effectiveTime);
-  const from = Date.parse(range.fromInclusive);
-  const to = Date.parse(range.toExclusive);
-  return (
-    Number.isFinite(value) &&
-    Number.isFinite(from) &&
-    Number.isFinite(to) &&
-    value >= from &&
-    value < to
-  );
-}
-
-function scopedItems(
-  snapshot: LocalEvidenceSnapshot,
-  request: EvidenceSearchRequest,
-  sourceKind: EvidenceItem['sourceKind'],
-): EvidenceItem[] {
-  return snapshot.items.filter(
-    item =>
-      item.sourceKind === sourceKind &&
-      (!request.allowedScope.sourceIds ||
-        request.allowedScope.sourceIds.includes(item.sourceId)) &&
-      withinRange(item, request.allowedScope.timeRange),
-  );
-}
 
 function resultCoverage(
   snapshot: LocalEvidenceSnapshot,
@@ -96,31 +49,59 @@ function resultCoverage(
 export function createLocalEvidenceSearchTool(input: {
   readonly id: string;
   readonly sourceKind: EvidenceItem['sourceKind'];
+  readonly maxResults?: number;
   readonly snapshot?: LocalEvidenceSnapshot;
+  readonly registry?: LocalEvidenceReferenceRegistry;
+  readonly allowHealthOverview?: boolean;
   readonly rag: Pick<LocalE5RagService, 'search'>;
   readonly loadSnapshot?: (
     query: string,
     request: EvidenceSearchRequest,
   ) => Promise<LocalEvidenceSnapshot>;
 }): EvidenceSearchTool {
+  const allowOverview = Boolean(
+    input.allowHealthOverview && input.sourceKind === 'personal_record',
+  );
   return {
     id: input.id,
     sourceKind: input.sourceKind,
     execution: 'local_read_only',
     description:
       input.sourceKind === 'personal_record'
-        ? '로컬 건강 기록, 방문 정보, transcript에서 질문과 관련된 현재 근거를 검색합니다.'
-        : '검토된 로컬 기억에서 질문과 관련된 현재 근거를 검색합니다.',
-    inputSchema: querySchema,
-    parseInput: queryInput,
+        ? 'Search local medication registrations and doses, health measurements, activity, sleep, symptoms, visits and transcripts. Transcripts or photos are not prerequisites. ' +
+          (allowOverview
+            ? 'For a general health summary choose view=health_overview to retrieve bounded recent facts across health topics in one read. '
+            : '') +
+          'Otherwise specify the desired record types in query for relevance ranking. A partial result never establishes that omitted records do not exist.'
+        : 'Search current, reviewed local memory relevant to the question.',
+    inputSchema: allowOverview ? querySchema : plainQuerySchema,
+    parseInput: value => queryInput(value, allowOverview),
     async search(request) {
-      const parsed = queryInput(request.input);
+      const parsed = queryInput(request.input, allowOverview);
       if (!parsed) throw new Error('The local evidence query is invalid.');
       let snapshot = input.snapshot ?? unsearchedSnapshot;
       try {
         if (input.loadSnapshot)
           snapshot = await input.loadSnapshot(parsed.query as string, request);
-        const candidates = scopedItems(snapshot, request, input.sourceKind);
+        if (
+          parsed.view === 'health_overview' &&
+          input.sourceKind === 'personal_record' &&
+          !request.allowedScope.sourceIds
+        ) {
+          if (!input.registry)
+            throw new Error('Overview source validation is unavailable.');
+          return healthOverviewEvidence(
+            snapshot,
+            input.registry,
+            request,
+            input.maxResults ?? request.resultLimit,
+          );
+        }
+        const candidates = scopedEvidenceItems(
+          snapshot.items,
+          request,
+          input.sourceKind,
+        );
         const candidateKeys = new Set(candidates.map(localEvidenceKey));
         const chunks = snapshot.chunks.filter(chunk =>
           candidateKeys.has(
@@ -159,7 +140,14 @@ export function createLocalEvidenceSearchTool(input: {
           request.maxPayloadBytes,
           MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
         );
-        for (const hit of hits.slice(0, request.resultLimit)) {
+        // Keep bounded room for a later model-selected literature search or refinement.
+        for (const hit of hits.slice(
+          0,
+          Math.min(
+            request.resultLimit,
+            input.maxResults ?? request.resultLimit,
+          ),
+        )) {
           const item = byKey.get(localEvidenceKey(hit.chunk.metadata));
           if (!item || seen.has(localEvidenceKey(item))) continue;
           const candidate = [...selected, item];

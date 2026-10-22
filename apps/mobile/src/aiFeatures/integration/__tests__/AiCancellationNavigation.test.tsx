@@ -94,7 +94,7 @@ test('symptom analysis cancels from the bottom navigation without a duplicate bo
   ).toBeNull();
 });
 
-test('chat keeps composing available while its sole cancel action is in the bottom navigation', async () => {
+test('chat keeps composing available with stop in the send position and no navigation stop', async () => {
   let signal: AbortSignal | undefined;
   await render(
     <Shell>
@@ -118,7 +118,7 @@ test('chat keeps composing available while its sole cancel action is in the bott
     within(screen.getByTestId('content')).queryByTestId(
       'rag-conversation-cancel',
     ),
-  ).toBeNull();
+  ).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input').props.editable).toBe(
     true,
   );
@@ -127,7 +127,9 @@ test('chat keeps composing available while its sole cancel action is in the bott
     '다음 질문 초안',
   );
   await fireEvent.press(
-    within(screen.getByTestId('bottom-navigation')).getByText('요청 취소'),
+    within(screen.getByTestId('content')).getByTestId(
+      'rag-conversation-cancel',
+    ),
   );
   expect(signal?.aborted).toBe(true);
   expect(screen.getByText('답변 생성을 중지했어요.')).toBeTruthy();

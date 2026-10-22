@@ -4,6 +4,8 @@ export type FeatureScreenRoute =
   | 'visit-questions'
   | 'disease-hypotheses'
   | 'rag-conversation'
+  | 'conversation-history'
+  | 'summary-history'
   | 'external-evidence';
 
 /** Names accepted by the shared route controller for the complete AI flow. */
@@ -18,6 +20,8 @@ export function isFeatureScreenRoute(
     route === 'visit-questions' ||
     route === 'disease-hypotheses' ||
     route === 'rag-conversation' ||
+    route === 'conversation-history' ||
+    route === 'summary-history' ||
     route === 'external-evidence'
   );
 }

@@ -106,9 +106,13 @@ export function createTranscriptEvidenceService(
     if (committed.length > 0) return committed;
     const recognizedSegments = result.value.segments ?? [];
     if (recognizedSegments.length === 0) {
-      throw new Error(
-        'The on-device speech engine returned no timestamped segments.',
-      );
+      // A supported engine can return no speech; preserve the source without suggesting a hardware failure.
+      throw new TranscriptRecognitionError({
+        code: 'provider_unavailable',
+        message:
+          'NO_RECOGNIZED_SPEECH: The on-device speech engine returned no timestamped segments.',
+        retryable: true,
+      });
     }
     const recordedAt = now().toISOString();
     const segments = recognizedSegments.map((segment, segmentOrdinal) => {

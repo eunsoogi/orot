@@ -8,9 +8,9 @@ import {
 
 test.each([
   [30_000, 'ready'],
-  [50_000, 'unavailable'],
+  [50_000, 'ready'],
 ] as const)(
-  'bounds two model calls of %i ms with a 90-second deadline',
+  'allows two model calls of %i ms without a fixed elapsed deadline',
   async (delay, status) => {
     jest.useFakeTimers();
     try {
@@ -44,7 +44,7 @@ test.each([
       });
       await jest.advanceTimersByTimeAsync(45_001);
       expect(completed).toBe(false);
-      await jest.advanceTimersByTimeAsync(45_000);
+      await jest.advanceTimersByTimeAsync(180_000);
       expect((await pending).status).toBe(status);
     } finally {
       jest.clearAllTimers();

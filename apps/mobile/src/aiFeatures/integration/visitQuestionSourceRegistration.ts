@@ -10,6 +10,10 @@ import type {
   EvidenceSourceReadResult,
   LocalEvidenceReferenceRegistry,
 } from './evidenceRegistry';
+import {
+  healthContextRevision,
+  parseHealthContextScope,
+} from '../../healthEvidence/healthContext/scope';
 
 export interface VisitQuestionSourceService {
   registerVisitQuestionSource(
@@ -40,7 +44,7 @@ function isStructuredRecordLocator(
 }
 
 /**
- * #30 fingerprints linked SourceRecords; typed fallback requires its empty-list
+ * Visit evidence fingerprints linked SourceRecords; typed fallback requires its empty-list
  * fingerprint as the provenance signal.
  */
 function selfAnchoredStructuredRecordId(
@@ -81,7 +85,7 @@ async function readSelfAnchoredRecord(
   };
 }
 
-/** Registers #30 citations in the app source route without exposing their local IDs. */
+/** Registers visit citations in the app source route without exposing their local IDs. */
 export function createVisitQuestionSourceService(
   registry: LocalEvidenceReferenceRegistry,
   loadLocalData: () => Promise<AiFeatureLocalData>,
@@ -99,6 +103,30 @@ export function createVisitQuestionSourceService(
             return { status: 'changed' };
           const data = await loadLocalData();
           if (reference.sourceKind === 'personal_record') {
+            const scope = parseHealthContextScope(reference.locator);
+            if (scope) {
+              if (!data.readHealthContext) return { status: 'unavailable' };
+              const report = await data.readHealthContext(
+                scope.window,
+                [scope.topic],
+                signal,
+              );
+              if (
+                signal.aborted ||
+                healthContextRevision(scope, report) !==
+                  reference.evidenceRevision ||
+                !(await validate(signal))
+              )
+                return { status: 'changed' };
+              return {
+                status: 'available',
+                document: {
+                  sourceKind: 'health_context_period',
+                  scope,
+                  report,
+                },
+              };
+            }
             const structuredRecordId =
               selfAnchoredStructuredRecordId(reference);
             if (structuredRecordId) {

@@ -1,7 +1,7 @@
 // LangGraph reads ReadableStream during module initialization on Hermes.
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
-import { AppRegistry } from 'react-native';
+import { AppRegistry, NativeModules } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import App from '../App';
 import { name as appName } from '../app.json';
@@ -10,6 +10,16 @@ import { createAppleSelectionOption } from '../src/providers/selection/options';
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
 import type { ProviderSelectionStore } from '../src/providers/selection/types';
 import type { SelectedAiResolverOptions } from '../src/aiFeatures/integration/provider';
+import { homeAppointmentTimingFixture } from './homeAppointmentTimingFixture';
+
+const settingsManager = NativeModules?.SettingsManager;
+const launchSettings =
+  settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
+// Capture the fixture origin once, so Home refreshes do not postpone its end boundary.
+const homeAppointments = homeAppointmentTimingFixture(
+  launchSettings.OROT_HOME_APPOINTMENT_TIMING,
+  Date.now(),
+);
 
 const selectedOption = createAppleSelectionOption('available');
 const selectionStore: ProviderSelectionStore = {
@@ -28,7 +38,7 @@ const aiFeatureServiceDependencies: AiFeatureServiceDependencies = {
   selectedAi,
 };
 const appointmentRepository: AppointmentRepository = {
-  list: async () => [],
+  list: async () => homeAppointments,
   create: async () => {
     throw new Error('This navigation probe does not save appointments.');
   },

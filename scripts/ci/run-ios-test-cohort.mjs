@@ -89,11 +89,12 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
       'ios-cohort-' + task.profile,
       log,
       'scripts/ci/run-ios-fixture-tests.mjs',
-      [task.profile, runFile, ownerFile, results],
+      [task.profile, runFile, ownerFile, results, ...task.identifiers],
       task.suite,
     );
     return JSON.parse(readFileSync(join(results, 'results.json'), 'utf8')).observations;
   }
+  // Plain tasks can partition a suite too. Bind execution and verification to the same planned subset.
   const bundle = join(taskDirectory, 'results.xcresult');
   let executionError;
   let observations;
@@ -102,14 +103,14 @@ const report = await executeIosTestCohortTasks(tasks, async (task) => {
       'ios-cohort-' + task.profile,
       log,
       'scripts/ci/run-ios-tests.mjs',
-      [task.profile, runFile, ownerFile, bundle],
+      [task.profile, runFile, ownerFile, bundle, ...task.identifiers],
       task.suite,
     );
     command(
       'ios-cohort-results',
       join(taskDirectory, 'verification.log'),
       'scripts/ci/ios-test-results.mjs',
-      [task.profile, bundle, join(taskDirectory, 'results.json')],
+      [task.profile, bundle, join(taskDirectory, 'results.json'), ...task.identifiers],
       task.suite,
     );
     observations = JSON.parse(

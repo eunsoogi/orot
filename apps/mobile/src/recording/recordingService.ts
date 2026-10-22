@@ -3,6 +3,7 @@ import { saveRecordingSource } from './recordingPersistence';
 import type { RecordingService } from './recordingTypes';
 
 export const recordingService: RecordingService = {
+  readDuration: recordingId => nativeRecordingBridge.readDuration(recordingId),
   getState: () => nativeRecordingBridge.getState(),
   subscribe: listener => nativeRecordingBridge.subscribe(listener),
   start: consentAcknowledged =>

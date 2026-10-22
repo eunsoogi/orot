@@ -9,17 +9,23 @@ import { isCurrentTranscriptArtifactStale } from './transcriptInvalidations';
 
 export class SavedVisitQuestionsReadError extends Error {
   readonly reason:
-    'invalid_question' | 'missing_citation_source' | 'stale_artifact';
+    | 'invalid_question'
+    | 'missing_citation_source'
+    | 'stale_artifact'
+    | 'changed_saved_questions'
+    | 'changed_health_context';
 
-  constructor(
-    reason: 'invalid_question' | 'missing_citation_source' | 'stale_artifact',
-  ) {
+  constructor(reason: SavedVisitQuestionsReadError['reason']) {
     super(
       reason === 'invalid_question'
         ? 'A saved visit question is incomplete.'
         : reason === 'missing_citation_source'
           ? 'A saved visit question no longer has its cited source.'
-          : 'A saved visit question relies on a corrected transcript.',
+          : reason === 'changed_health_context'
+            ? 'The saved health-period evidence changed or is unavailable.'
+            : reason === 'changed_saved_questions'
+              ? 'The saved visit-question list changed while loading.'
+              : 'A saved visit question relies on a corrected transcript.',
     );
     this.name = 'SavedVisitQuestionsReadError';
     this.reason = reason;
