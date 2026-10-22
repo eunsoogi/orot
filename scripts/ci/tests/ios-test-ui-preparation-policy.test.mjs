@@ -18,7 +18,9 @@ function fixture() {
   const owner = { udid: '11111111-2222-4333-8444-555555555555' };
   writeFileSync(runFile, 'verified product archive identity');
   writeFileSync(ownerFile, JSON.stringify(owner));
-  const environment = { DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer' };
+  const environment = {
+    DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
+  };
   return { root, resultsDirectory, runFile, ownerFile, owner, environment };
 }
 

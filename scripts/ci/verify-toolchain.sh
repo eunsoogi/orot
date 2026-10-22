@@ -3,8 +3,8 @@ set -euo pipefail
 
 expected_node="${EXPECTED_NODE_VERSION:-22.23.2}"
 expected_pnpm="${EXPECTED_PNPM_VERSION:-12.3.4}"
-expected_xcode="${EXPECTED_XCODE_VERSION:-27.0}"
-expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.0}"
+expected_xcode="${EXPECTED_XCODE_VERSION:-27.1}"
+expected_simulator_sdk="${EXPECTED_IOS_SIMULATOR_SDK:-27.1}"
 expected_simulator_runtime_name="${EXPECTED_IOS_SIMULATOR_RUNTIME_NAME:-iOS 27.0}"
 expected_simulator_runtime_id="${EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER:-com.apple.CoreSimulator.SimRuntime.iOS-27-0}"
 expected_simulator_device_name="${EXPECTED_IOS_SIMULATOR_DEVICE_NAME:-iPhone 18 Pro}"
@@ -79,10 +79,11 @@ actual_macos="$(sw_vers -productVersion)"
 
 actual_developer_dir="${DEVELOPER_DIR:-}"
 expected_developer_dir="/Applications/Xcode.app/Contents/Developer"
-# The macOS 26 runner exposes Xcode 26.2 through its versioned app bundle.
-if [[ "$expected_xcode" == "26.2" ]]; then
-  expected_developer_dir="/Applications/Xcode_26.2.app/Contents/Developer"
-fi
+# Use versioned bundles because the xcode-27 image can change its default app between releases.
+case "$expected_xcode" in
+  26.2) expected_developer_dir="/Applications/Xcode_26.2.app/Contents/Developer" ;;
+  27.1) expected_developer_dir="/Applications/Xcode_27.1.app/Contents/Developer" ;;
+esac
 [[ "$actual_developer_dir" == "$expected_developer_dir" ]] || fail_version DEVELOPER_DIR "$expected_developer_dir" "$actual_developer_dir"
 actual_xcode_details="$(xcodebuild -version)"
 actual_xcode="$(printf '%s\n' "$actual_xcode_details" | sed -n '1s/^Xcode //p')"

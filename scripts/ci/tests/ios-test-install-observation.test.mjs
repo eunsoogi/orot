@@ -51,7 +51,7 @@ if(args[1]==='list'){
     process.execPath,
     [
       resolve(repository, 'scripts/ci/run-ios-fixture-isolation-tests.mjs'),
-      join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
+      join(value.products, 'OrotTests_iphonesimulator27.1-arm64.xctestrun'),
       ownerFile,
       output,
     ],

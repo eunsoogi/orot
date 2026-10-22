@@ -28,8 +28,8 @@ runs:
         IOS_CACHE_RUNNER_OS: ${{ runner.os }}
         IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
         MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
-        EXPECTED_XCODE_VERSION: '27.0'
-        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
+        EXPECTED_XCODE_VERSION: '27.1'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.1'
         EXPECTED_PNPM_VERSION: '12.3.4'
         EXPECTED_RUBY_VERSION: '4.0.7'
         EXPECTED_COCOAPODS_VERSION: '1.17.0'
@@ -47,8 +47,8 @@ runs:
         IOS_CACHE_RUNNER_OS: ${{ runner.os }}
         IOS_CACHE_RUNNER_ARCH: ${{ runner.arch }}
         MACOS_VERSION: ${{ steps.production_toolchain.outputs.macos_version }}
-        EXPECTED_XCODE_VERSION: '27.0'
-        EXPECTED_IOS_SIMULATOR_SDK: '27.0'
+        EXPECTED_XCODE_VERSION: '27.1'
+        EXPECTED_IOS_SIMULATOR_SDK: '27.1'
         EXPECTED_PNPM_VERSION: '12.3.4'
         EXPECTED_RUBY_VERSION: '4.0.7'
         EXPECTED_COCOAPODS_VERSION: '1.17.0'

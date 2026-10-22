@@ -56,9 +56,9 @@ const acceptedHostProfiles = [
   },
   ...['27.0', '27.0.1', '27.3.4', '99.17.42'].map((macosVersion) => ({
     macosVersion,
-    developerDir: '/Applications/Xcode.app/Contents/Developer',
-    xcodeVersion: '27.0',
-    simulatorSdk: '27.0',
+    developerDir: '/Applications/Xcode_27.1.app/Contents/Developer',
+    xcodeVersion: '27.1',
+    simulatorSdk: '27.1',
     runtime: runtime27,
     device: currentSimulator,
   })),
@@ -127,10 +127,10 @@ test('still rejects a missing pinned Simulator runtime on macOS 99.17.42', () =>
 test('still rejects a missing pinned Simulator device on macOS 99.17.42', () => {
   const result = runToolchainCheck(
     {
-      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
       SIMULATED_MACOS_VERSION: '99.17.42',
-      EXPECTED_XCODE_VERSION: '27.0',
-      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+      EXPECTED_XCODE_VERSION: '27.1',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.1',
       EXPECTED_IOS_SIMULATOR_RUNTIME_NAME: runtime27.name,
       EXPECTED_IOS_SIMULATOR_RUNTIME_IDENTIFIER: runtime27.identifier,
       EXPECTED_IOS_SIMULATOR_DEVICE_NAME: currentSimulator.name,
@@ -149,11 +149,11 @@ test('still rejects a missing pinned Simulator device on macOS 99.17.42', () => 
 test('still rejects a mismatched Xcode version on macOS 99.17.42', () => {
   const result = runToolchainCheck(
     {
-      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
       SIMULATED_MACOS_VERSION: '99.17.42',
       SIMULATED_XCODE_VERSION: '28.0',
-      EXPECTED_XCODE_VERSION: '27.0',
-      EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+      EXPECTED_XCODE_VERSION: '27.1',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.1',
     },
     {
       availableRuntimes: [runtime27],
@@ -162,15 +162,36 @@ test('still rejects a mismatched Xcode version on macOS 99.17.42', () => {
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Toolchain mismatch for Xcode: expected 27\.0, got 28\.0/);
+  assert.match(result.stderr, /Toolchain mismatch for Xcode: expected 27\.1, got 28\.0/);
+});
+
+test('rejects the legacy 27.0 Simulator SDK even when Xcode is pinned to 27.1', () => {
+  const result = runToolchainCheck(
+    {
+      DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
+      EXPECTED_XCODE_VERSION: '27.1',
+      EXPECTED_IOS_SIMULATOR_SDK: '27.1',
+      SIMULATED_IOS_SIMULATOR_SDK: '27.0',
+    },
+    {
+      availableRuntimes: [runtime27],
+      availableDevices: { [runtime27.identifier]: [currentSimulator] },
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.stderr,
+    /Toolchain mismatch for iOS-Simulator-SDK: expected 27\.1, got 27\.0/,
+  );
 });
 
 test('includes the complete Xcode build string in its cache fingerprint', () => {
   const profile = {
-    DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+    DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
     SIMULATED_MACOS_VERSION: '27.0',
-    EXPECTED_XCODE_VERSION: '27.0',
-    EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+    EXPECTED_XCODE_VERSION: '27.1',
+    EXPECTED_IOS_SIMULATOR_SDK: '27.1',
     SIMULATED_XCODE_BUILD_VERSION: 'different-build',
   };
   const result = runToolchainCheck(profile, {
@@ -181,11 +202,11 @@ test('includes the complete Xcode build string in its cache fingerprint', () => 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(
     result.githubOutput,
-    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
+    `macos_version=27.0\nxcodebuild_fingerprint=${expectedXcodeBuildFingerprint('27.1', 'different-build')}\n`,
   );
   assert.equal(
     result.githubEnvironment,
-    `XCODEBUILD_FINGERPRINT=${expectedXcodeBuildFingerprint('27.0', 'different-build')}\n`,
+    `XCODEBUILD_FINGERPRINT=${expectedXcodeBuildFingerprint('27.1', 'different-build')}\n`,
   );
 });
 

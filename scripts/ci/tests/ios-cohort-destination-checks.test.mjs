@@ -71,7 +71,7 @@ else console.log('synthetic bounded diagnostic');
         ...process.env,
         GITHUB_ACTIONS: 'true',
         PROFILE: definition.profiles[0],
-        DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+        DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
         GITHUB_RUN_ID: '12345',
         GITHUB_RUN_ATTEMPT: '1',
         GITHUB_JOB: 'debug-test',
