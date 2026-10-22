@@ -2,8 +2,16 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
+import { NextVisitQuestionsSessionProvider } from './NextVisitQuestionsSession';
+import { ConversationSessionsProvider } from '../../ragConversation/ConversationSessionsContext';
+import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 
 export interface AiFeatureSharedNavigationState {
+  readonly summaryReturnRouteKey: string | null;
+  readonly summarySelection: {
+    readonly routeKey: string;
+    readonly value: DiseaseHypothesisAnalysis;
+  } | null;
   readonly sourceReference: EvidenceReference | null;
   readonly sourceReturnRoute: FeatureScreenRoute;
   readonly sourceReturnRouteKey: string | null;
@@ -19,6 +27,8 @@ interface AiFeatureSharedNavigationStateContextValue {
 }
 
 const initialState: AiFeatureSharedNavigationState = {
+  summaryReturnRouteKey: null,
+  summarySelection: null,
   sourceReference: null,
   sourceReturnRoute: 'entry',
   sourceReturnRouteKey: null,
@@ -41,7 +51,13 @@ export function AiFeatureSharedNavigationStateProvider({
   const value = useMemo(() => ({ state, setState }), [state]);
   return (
     <AiFeatureSharedNavigationStateContext.Provider value={value}>
-      {children}
+      <ConversationSessionsProvider>
+        <NextVisitQuestionsSessionProvider
+          selectedAiRevision={state.selectedAiRevision}
+        >
+          {children}
+        </NextVisitQuestionsSessionProvider>
+      </ConversationSessionsProvider>
     </AiFeatureSharedNavigationStateContext.Provider>
   );
 }

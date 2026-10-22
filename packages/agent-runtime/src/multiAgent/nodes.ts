@@ -8,6 +8,7 @@ import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { createSearchNodes } from './searchNodes';
+import { canReserveToolModelCall } from './evidenceToolModelBudget';
 import { consumeTaskModelResponse, finishModelFailure } from './taskResponse';
 
 // These nodes implement the role handoff; search remains a selected deterministic tool call.
@@ -114,7 +115,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       options.request,
       state.evidenceNeed,
       options.execution.allowedScope,
-      options.tools,
+      options.tools.filter((tool) => canReserveToolModelCall(tool, state)),
       state.budget,
     );
     const outcome = await callModelWithEvidenceFreshness(context, request);

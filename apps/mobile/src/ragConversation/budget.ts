@@ -1,4 +1,4 @@
 import { EVIDENCE_WORKFLOW_BUDGET } from '../agent/evidenceWorkflowBudget';
 
-/** Literature turns include three model calls and one network search inside one finite deadline. */
+/** Literature turns share the interactive profile while retaining bounded calls and search results. */
 export const RAG_CONVERSATION_BUDGET = EVIDENCE_WORKFLOW_BUDGET;

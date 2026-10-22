@@ -1,10 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
-import type { HealthObservation } from '@orot/domain';
-import type {
-  HealthObservationCursor,
-  HealthObservationPage,
-} from '@orot/storage';
+import type { HealthObservationPageLoader } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -15,24 +11,22 @@ import type { HealthRecordFilter } from './HealthRecordsCategoryFilter';
 import { HealthRecordsLibraryHeader } from './HealthRecordsLibraryHeader';
 import { HealthRecordsCategoryCard } from './HealthRecordsCategoryCard';
 import { HealthRecordsMedicationCategoryCard } from './HealthRecordsMedicationCategoryCard';
-import type { HealthRecordsMedicationData } from './healthRecordsMedicationLibrary';
-import type {
-  HealthObservationCategory,
-  HealthRecordsDetailSelection,
-} from './healthRecordsLibraryModel';
+import type { HealthRecordsMedicationLoader } from './healthRecordsMedicationLibrary';
+import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import {
-  classifyHealthObservation,
   healthRecordCategories,
   orderHealthRecordCategories,
 } from './healthRecordsLibraryModel';
+import {
+  observationCategories,
+  useHealthRecordCategoryPages,
+} from './useHealthRecordCategoryPages';
 
 interface HealthRecordsLibraryScreenProps {
-  readonly loadObservations: (
-    cursor: HealthObservationCursor | null,
-  ) => Promise<HealthObservationPage>;
+  readonly loadObservations: HealthObservationPageLoader;
   readonly onBack: () => void;
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
-  readonly loadMedicationData?: () => Promise<HealthRecordsMedicationData>;
+  readonly loadMedicationData?: HealthRecordsMedicationLoader;
 }
 
 /** Summarizes imported values by type and keeps pagination bounded to storage pages. */
@@ -43,19 +37,41 @@ export function HealthRecordsLibraryScreen({
   loadMedicationData,
 }: HealthRecordsLibraryScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const [observations, setObservations] = useState<
-    readonly HealthObservation[]
-  >([]);
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'failed'>(
-    'loading',
-  );
-  const [revision, setRevision] = useState(0);
-  const [cursor, setCursor] = useState<HealthObservationCursor | null>(null);
   const [selectedCategory, setSelectedCategory] =
-    useState<HealthRecordFilter>('all');
-  const generation = useRef(0);
-  const pending = useRef(false);
-  const initialFilterChosen = useRef(false);
+    useState<HealthRecordFilter>('blood_pressure');
+  const { read, reload, revision } =
+    useHealthRecordCategoryPages(loadObservations);
+  const categories = healthRecordCategories();
+  const states = observationCategories.map(read);
+  const loadState = states.some(state => state.loadState === 'loading')
+    ? 'loading'
+    : states.some(state => state.loadState === 'failed')
+      ? 'failed'
+      : 'ready';
+  const observationCount = states.reduce(
+    (count, state) => count + state.records.length,
+    0,
+  );
+  const hasMore = states.some(state => state.cursor !== null);
+  const activeCategories =
+    selectedCategory === 'all'
+      ? observationCategories
+      : selectedCategory === 'medications'
+        ? []
+        : [selectedCategory];
+  const remaining = activeCategories.filter(
+    category => read(category).cursor || read(category).loadState === 'failed',
+  );
+  const loadingMore = remaining.some(
+    category => read(category).loadState === 'loading',
+  );
+  const failed = remaining.some(
+    category => read(category).loadState === 'failed',
+  );
+  const loadNext = () => {
+    for (const category of remaining)
+      void reload(category, read(category).cursor);
+  };
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -64,68 +80,11 @@ export function HealthRecordsLibraryScreen({
     revision,
     inputRevision: 0,
   } satisfies NavigationLeaveState);
-  const categories = healthRecordCategories();
-  const recordsByCategory = useMemo(() => {
-    const grouped = new Map<HealthObservationCategory, HealthObservation[]>();
-    for (const observation of observations) {
-      const category = classifyHealthObservation(observation);
-      const records = grouped.get(category) ?? [];
-      records.push(observation);
-      grouped.set(category, records);
-    }
-    return grouped;
-  }, [observations]);
-  // The filter promotes a record type without hiding the remaining type cards.
+  // Promoting a category never restarts another card's pending query.
   const displayedCategories = orderHealthRecordCategories(
     categories,
     selectedCategory,
   );
-
-  const reload = useCallback(
-    async (after: HealthObservationCursor | null = null) => {
-      if (pending.current) return;
-      pending.current = true;
-      const request = ++generation.current;
-      setLoadState('loading');
-      try {
-        // One request reads one storage page, even for a dense selected period.
-        const page = await loadObservations(after);
-        if (request !== generation.current) return;
-        setObservations(current =>
-          after ? [...current, ...page.records] : page.records,
-        );
-        setCursor(page.nextCursor);
-        setLoadState('ready');
-      } catch {
-        if (request === generation.current) setLoadState('failed');
-      } finally {
-        if (request === generation.current) {
-          pending.current = false;
-          setRevision(current => current + 1);
-        }
-      }
-    },
-    [loadObservations],
-  );
-
-  useEffect(() => {
-    pending.current = false;
-    setObservations([]);
-    setCursor(null);
-    reload();
-    return () => {
-      // A late read from an unmounted route must not replace the next route's records.
-      generation.current += 1;
-    };
-  }, [reload]);
-
-  useEffect(() => {
-    if (loadState !== 'ready' || initialFilterChosen.current) return;
-    initialFilterChosen.current = true;
-    if (categories.includes('blood_pressure')) {
-      setSelectedCategory('blood_pressure');
-    }
-  }, [categories, loadState]);
 
   return (
     <FlatList
@@ -133,25 +92,21 @@ export function HealthRecordsLibraryScreen({
       keyExtractor={category => category}
       contentContainerStyle={[styles.container, navigationInset]}
       ListFooterComponent={
-        cursor ? (
-          loadState === 'failed' ? (
+        remaining.length > 0 ? (
+          failed ? (
             <AppButton
-              onPress={() => {
-                reload(cursor);
-              }}
+              onPress={loadNext}
               testID="health-records-retry"
               title={t('healthRecords.retry')}
               variant="secondary"
             />
-          ) : loadState === 'loading' ? (
+          ) : loadingMore ? (
             <Text testID="health-records-loading-more">
               {t('healthRecords.loading')}
             </Text>
           ) : (
             <AppButton
-              onPress={() => {
-                reload(cursor);
-              }}
+              onPress={loadNext}
               testID="health-records-load-older"
               title={t('healthRecords.loadOlder')}
               variant="secondary"
@@ -163,18 +118,18 @@ export function HealthRecordsLibraryScreen({
         <HealthRecordsLibraryHeader
           hasSharedNavigation={hasSharedNavigation}
           loadState={loadState}
-          observationCount={observations.length}
-          hasMore={cursor !== null}
+          observationCount={observationCount}
+          hasMore={hasMore}
           onBack={onBack}
           onRetry={() => {
-            reload(null);
+            for (const category of observationCategories) void reload(category);
           }}
           onSelectCategory={setSelectedCategory}
           selectedCategory={selectedCategory}
         />
       }
       onEndReached={() => {
-        if (cursor && loadState === 'ready') reload(cursor);
+        if (!loadingMore && !failed) loadNext();
       }}
       onEndReachedThreshold={0.5}
       renderItem={({ item: category }) =>
@@ -186,9 +141,9 @@ export function HealthRecordsLibraryScreen({
         ) : (
           <HealthRecordsCategoryCard
             category={category}
-            hasMore={cursor !== null}
-            loadState={loadState}
-            observations={recordsByCategory.get(category) ?? []}
+            hasMore={read(category).cursor !== null}
+            loadState={read(category).loadState}
+            observations={read(category).records}
             onOpenDetail={onOpenDetail}
           />
         )

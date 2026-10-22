@@ -1,4 +1,5 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
+import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import RecordingWaveform from './RecordingWaveform';
@@ -25,6 +26,8 @@ interface RecordingSessionPanelProps {
   onPause: () => void;
   onResume: () => void;
   onStop: () => Promise<void>;
+  onOpenSavedRecordings?: () => void;
+  historyDisabled?: boolean;
 }
 
 // Consent and live session actions stay together; saved-recording actions remain in RecordingControls.
@@ -40,20 +43,42 @@ export default function RecordingSessionPanel({
   onPause,
   onResume,
   onStop,
+  onOpenSavedRecordings,
+  historyDisabled = false,
 }: RecordingSessionPanelProps) {
   const compact = useWindowDimensions().width < 375;
   return (
     <>
-      <Text
-        accessibilityRole="header"
-        style={[recordingControlStyles.title, styles.heading]}
-        testID="recording-title"
-      >
-        {t('recording.title')}
-      </Text>
-      <Text style={[recordingControlStyles.copy, styles.heading]}>
-        {t('recording.subtitle')}
-      </Text>
+      <View style={recordingControlStyles.headingRow}>
+        <Text
+          accessibilityRole="header"
+          style={recordingControlStyles.title}
+          testID="recording-title"
+        >
+          {t('recording.title')}
+        </Text>
+        {onOpenSavedRecordings ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('recording.library.title')}
+            disabled={
+              historyDisabled ||
+              (status !== 'idle' && status !== 'completed') ||
+              sourceRetryPending
+            }
+            onPress={onOpenSavedRecordings}
+            style={recordingControlStyles.history}
+            testID="recording-open-saved"
+          >
+            <ComposerGlassBackground />
+            <AppSymbol
+              name="clock.arrow.circlepath"
+              color={appColors.primaryText}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+      <Text style={recordingControlStyles.copy}>{t('recording.subtitle')}</Text>
       <RecordingConsentControl
         checked={consentAcknowledged}
         onPress={onToggleConsent}
@@ -152,6 +177,7 @@ export default function RecordingSessionPanel({
             ]}
             testID="recording-pause"
           >
+            <ComposerGlassBackground />
             <AppSymbol
               name="pause.fill"
               size={27}
@@ -171,6 +197,7 @@ export default function RecordingSessionPanel({
             ]}
             testID="recording-resume"
           >
+            <ComposerGlassBackground />
             <AppSymbol
               name="play.fill"
               size={27}

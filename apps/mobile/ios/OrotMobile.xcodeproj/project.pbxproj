@@ -20,19 +20,24 @@
 		2594B796D49220F636D98934 /* DebugUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */; };
 		2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */; };
 		283304E73431063EB5C4206B /* TestSpeechObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0CC908B80A06121230581D /* TestSpeechObservation.swift */; };
+		2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */; };
+		2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */; };
 		2E36EE573FDE4C56822B9AC1 /* AuthConsentWaitRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */; };
 		2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */; };
 		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
 		33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F894914E4F39E9162E577E /* RecordingExportUITests.swift */; };
 		332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */; };
 		3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */; };
+		3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */; };
 		403636589BB5F1697E88C9F7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4DD0E61F7D56E61215372EFE /* Foundation.framework */; };
 		4D43610E1739E517D500E672 /* StorageMigrationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */; };
 		4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */; };
 		5B4E4FC2203A9676941B5A49 /* AppointmentsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2876231A2E2CF74962278FA3 /* AppointmentsUITests.swift */; };
+		5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */; };
 		62B55178E945C9013C85D72E /* SpeechAssetPreparationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914B0D6C4BAF34135398323A /* SpeechAssetPreparationTests.swift */; };
 		6446256C8E7F4183D9B8A8BD /* RootNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84693FBFA3DCFD8F3B9CA92B /* RootNavigationUITests.swift */; };
 		64739A39D7801CDD922F60E3 /* BackupPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */; };
+		6DDA81C6B5654D44AFA384EF /* ConversationHistoryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */; };
 		71F4B91A31F8D6A5CB4E978F /* AutomaticSpeechPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */; };
 		72C4A8BB5C60CF299F9638F2 /* CalendarSelectionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -106,6 +111,7 @@
 		A64F00000000000000000013 /* TestAppearanceRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000013 /* TestAppearanceRefresh.swift */; };
 		A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */; };
 		A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */; };
+		A64F00000000000000000045 /* RecordingCaptureDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */; };
 		A65F00000000000000000001 /* EventKitCalendarModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000001 /* EventKitCalendarModule.swift */; };
 		A65F00000000000000000002 /* EventKitCalendarModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000002 /* EventKitCalendarModule.m */; };
 		A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */; };
@@ -116,6 +122,7 @@
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
 		B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
+		B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */; };
 		BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */; };
 		BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */; };
 		C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */; };
@@ -145,6 +152,8 @@
 		E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */; };
 		E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000011 /* HealthKitMedicationQueries.swift */; };
 		E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000012 /* HealthKitSampleChanges.swift */; };
+		E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000013 /* MedicationDoseCursor.swift */; };
+		E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000014 /* MedicationDoseCursorTests.swift */; };
 		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		E19810000000000000000001 /* LocalE5Preparation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19810000000000000000011 /* LocalE5Preparation.swift */; };
@@ -191,6 +200,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHistoryView.swift; sourceTree = "<group>"; };
 		0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionUITests.swift; sourceTree = "<group>"; };
 		1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleWorkflowIntegrationTests.swift; sourceTree = "<group>"; };
 		125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationLayoutIntegrationTests.swift; sourceTree = "<group>"; };
@@ -213,11 +223,14 @@
 		4072596F23B5863BD750A84B /* PagedHealthRecordsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PagedHealthRecordsUITests.swift; sourceTree = "<group>"; };
 		418ED459FC663BD5BF8F8725 /* synthetic-korean.json */ = {isa = PBXFileReference; includeInIndex = 1; path = "synthetic-korean.json"; sourceTree = "<group>"; };
 		435E9DB0A8821FDECA96AB0D /* LocalModelIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalModelIntegrationTests.swift; sourceTree = "<group>"; };
+		46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SummaryAndLiteratureUITests.swift; sourceTree = "<group>"; };
 		4D1FCB337FC3473EA50FC8C2 /* ProviderAuthUITestDiagnostics.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderAuthUITestDiagnostics.swift; sourceTree = "<group>"; };
 		4DD0E61F7D56E61215372EFE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerGlassView.swift; sourceTree = "<group>"; };
 		56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingPlaybackUITests.swift; sourceTree = "<group>"; };
 		5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestOperationBrokerTests.swift; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-OrotMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OrotMobile.release.xcconfig"; path = "Target Support Files/Pods-OrotMobile/Pods-OrotMobile.release.xcconfig"; sourceTree = "<group>"; };
+		57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHistoryUITestConditions.swift; sourceTree = "<group>"; };
 		5BE5AD9322100E94F95D8B77 /* ProviderIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderIntegrationTests.swift; sourceTree = "<group>"; };
 		5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AiFeatureNavigationUITests.swift; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-OrotMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OrotMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -262,6 +275,7 @@
 		B19500000000000000000002 /* NavigationRootGlassBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationRootGlassBar.swift; sourceTree = "<group>"; };
 		B20400000000000000000001 /* AppProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppProgressView.swift; sourceTree = "<group>"; };
 		B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressIndicatorIntegrationTests.swift; sourceTree = "<group>"; };
+		B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsentFingerprintModule.swift; path = OrotMobile/ConsentFingerprintModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
@@ -299,6 +313,7 @@
 		B64F00000000000000000013 /* TestAppearanceRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TestAppearanceRefresh.swift; path = OrotMobile/TestAppearanceRefresh.swift; sourceTree = "<group>"; };
 		B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackCompletion.swift; path = OrotMobile/RecordingPlaybackCompletion.swift; sourceTree = "<group>"; };
 		B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingPlaybackFixtureLifetime.swift; path = OrotMobile/RecordingPlaybackFixtureLifetime.swift; sourceTree = "<group>"; };
+		B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureDiagnostics.swift; path = OrotMobile/RecordingCaptureDiagnostics.swift; sourceTree = "<group>"; };
 		B65F00000000000000000001 /* EventKitCalendarModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarModule.swift; path = OrotMobile/EventKitCalendarModule.swift; sourceTree = "<group>"; };
 		B65F00000000000000000002 /* EventKitCalendarModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EventKitCalendarModule.m; path = OrotMobile/EventKitCalendarModule.m; sourceTree = "<group>"; };
 		B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitCalendarSnapshot.swift; path = OrotMobile/EventKitCalendarSnapshot.swift; sourceTree = "<group>"; };
@@ -335,6 +350,8 @@
 		E16A00000000000000000016 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		E17A00000000000000000011 /* HealthKitMedicationQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitMedicationQueries.swift; path = OrotMobile/HealthKitMedicationQueries.swift; sourceTree = "<group>"; };
 		E17A00000000000000000012 /* HealthKitSampleChanges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitSampleChanges.swift; path = OrotMobile/HealthKitSampleChanges.swift; sourceTree = "<group>"; };
+		E17A00000000000000000013 /* MedicationDoseCursor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicationDoseCursor.swift; path = OrotMobile/MedicationDoseCursor.swift; sourceTree = "<group>"; };
+		E17A00000000000000000014 /* MedicationDoseCursorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationDoseCursorTests.swift; sourceTree = "<group>"; };
 		E19800000000000000000003 /* ExportDismissalGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometry.swift; sourceTree = "<group>"; };
 		E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDismissalGeometryRegression.swift; sourceTree = "<group>"; };
 		E19810000000000000000011 /* LocalE5Preparation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5Preparation.swift; path = OrotMobile/LocalE5Preparation.swift; sourceTree = "<group>"; };
@@ -344,6 +361,7 @@
 		E19810000000000000000015 /* LocalE5PreparationLifetimeRegression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5PreparationLifetimeRegression.swift; path = LocalE5PreparationLifetimeRegression.swift; sourceTree = "<group>"; };
 		E82C35144FB2F64544FBD635 /* FormUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormUITestConditions.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConsentFingerprintModule.m; path = OrotMobile/ConsentFingerprintModule.m; sourceTree = "<group>"; };
 		F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingModule.swift; path = OrotMobile/LocalE5EmbeddingModule.swift; sourceTree = "<group>"; };
 		F24E00000000000000000012 /* LocalE5EmbeddingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocalE5EmbeddingModule.m; path = OrotMobile/LocalE5EmbeddingModule.m; sourceTree = "<group>"; };
 		F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalE5EmbeddingRequestSlot.swift; path = OrotMobile/LocalE5EmbeddingRequestSlot.swift; sourceTree = "<group>"; };
@@ -427,6 +445,7 @@
 				E16A00000000000000000013 /* HealthKitModule.m */,
 				E16A00000000000000000014 /* HealthKitSimulatorFixture.swift */,
 				E17A00000000000000000011 /* HealthKitMedicationQueries.swift */,
+				E17A00000000000000000013 /* MedicationDoseCursor.swift */,
 				E17A00000000000000000012 /* HealthKitSampleChanges.swift */,
 				B63F00000000000000000003 /* OpenAIProviderErrorDetails.swift */,
 				B64F00000000000000000001 /* RecordingModule.swift */,
@@ -436,6 +455,7 @@
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
+				B64F00000000000000000045 /* RecordingCaptureDiagnostics.swift */,
 				B64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift */,
 				B64F0000000000000000000D /* RecordingPlayback.swift */,
 				B64F0000000000000000000E /* RecordingMetering.swift */,
@@ -457,6 +477,8 @@
 				B65F00000000000000000003 /* EventKitCalendarSnapshot.swift */,
 				B66F00000000000000000001 /* SyntheticCalendarTestModule.swift */,
 				B66F00000000000000000002 /* SyntheticCalendarTestModule.m */,
+				B2EB315EC5D5450DABCC07D7 /* ConsentFingerprintModule.swift */,
+				F097A6B0483243F38A41E365 /* ConsentFingerprintModule.m */,
 				F24E00000000000000000011 /* LocalE5EmbeddingModule.swift */,
 				F24E00000000000000000012 /* LocalE5EmbeddingModule.m */,
 				F24E00000000000000000013 /* LocalE5EmbeddingRequestSlot.swift */,
@@ -547,6 +569,7 @@
 				71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */,
 				35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */,
 				A62450000000000000000002 /* HealthIntegrationTests.swift */,
+				E17A00000000000000000014 /* MedicationDoseCursorTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
 				B20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift */,
@@ -586,9 +609,11 @@
 			isa = PBXGroup;
 			children = (
 				B1011000B1011000B1011001 /* NavigationGlassView.swift */,
+				096C35CA6C954504BBDBCD04 /* ConversationHistoryView.swift */,
 				B1810000B1810000B1810001 /* NavigationGlassComponents.swift */,
 				B19500000000000000000002 /* NavigationRootGlassBar.swift */,
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
+				5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B20400000000000000000001 /* AppProgressView.swift */,
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
@@ -641,6 +666,8 @@
 				1F99104BC0DC6E9F9EF04286 /* RecordingLibraryUITests.swift */,
 				56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */,
 				B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */,
+				46208A52F4674EE1936A196A /* SummaryAndLiteratureUITests.swift */,
+				57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */,
 				5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */,
 				FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */,
 				F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */,
@@ -912,9 +939,11 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
+				3C2DFD796C9A4F21AC3A1BC9 /* ConversationHistoryView.swift in Sources */,
 				A1810000A1810000A1810001 /* NavigationGlassComponents.swift in Sources */,
 				A19500000000000000000002 /* NavigationRootGlassBar.swift in Sources */,
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
+				2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A20400000000000000000001 /* AppProgressView.swift in Sources */,
 				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,
@@ -943,6 +972,7 @@
 				E16A00000000000000000004 /* HealthKitModule.m in Sources */,
 				E16A00000000000000000005 /* HealthKitSimulatorFixture.swift in Sources */,
 				E17A00000000000000000001 /* HealthKitMedicationQueries.swift in Sources */,
+				E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */,
 				E17A00000000000000000002 /* HealthKitSampleChanges.swift in Sources */,
 				A63F00000000000000000004 /* OpenAIProviderErrorDetails.swift in Sources */,
 				A64F00000000000000000001 /* RecordingModule.swift in Sources */,
@@ -952,6 +982,7 @@
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
+				A64F00000000000000000045 /* RecordingCaptureDiagnostics.swift in Sources */,
 				A64F00000000000000000032 /* RecordingPlaybackFixtureLifetime.swift in Sources */,
 				A64F0000000000000000000D /* RecordingPlayback.swift in Sources */,
 				A64F0000000000000000000E /* RecordingMetering.swift in Sources */,
@@ -973,6 +1004,8 @@
 				A65F00000000000000000003 /* EventKitCalendarSnapshot.swift in Sources */,
 				A66F00000000000000000001 /* SyntheticCalendarTestModule.swift in Sources */,
 				A66F00000000000000000002 /* SyntheticCalendarTestModule.m in Sources */,
+				5DE544E9C786430A8CEAE33C /* ConsentFingerprintModule.swift in Sources */,
+				2D158C819B404E85932B08B6 /* ConsentFingerprintModule.m in Sources */,
 				F24E00000000000000000001 /* LocalE5EmbeddingModule.swift in Sources */,
 				F24E00000000000000000002 /* LocalE5EmbeddingModule.m in Sources */,
 				F24E00000000000000000003 /* LocalE5EmbeddingRequestSlot.swift in Sources */,
@@ -1041,6 +1074,8 @@
 				FA2BC94BE200F14DD648E466 /* RecordingLibraryUITests.swift in Sources */,
 				075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */,
 				332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */,
+				B53FBEEC48A74AA28EA98A97 /* SummaryAndLiteratureUITests.swift in Sources */,
+				6DDA81C6B5654D44AFA384EF /* ConversationHistoryUITestConditions.swift in Sources */,
 				4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */,
 				9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */,
 				A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */,
@@ -1057,6 +1092,7 @@
 				C14A6327A548E7F88C2E55E4 /* SpeechIntegrationTests.swift in Sources */,
 				B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */,
 				A62450000000000000000001 /* HealthIntegrationTests.swift in Sources */,
+				E17A00000000000000000004 /* MedicationDoseCursorTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
 				A20400000000000000000002 /* ProgressIndicatorIntegrationTests.swift in Sources */,

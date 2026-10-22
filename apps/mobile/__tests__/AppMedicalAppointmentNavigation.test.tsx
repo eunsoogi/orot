@@ -168,7 +168,8 @@ it('opens classification with the saved AI and reaches the separate manual page'
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
-  expect(loadSelection).toHaveBeenCalledTimes(1);
+  // Returning to the retained classification scene refreshes the saved model selection.
+  expect(loadSelection).toHaveBeenCalledTimes(2);
 });
 
 it('keeps manual entry available while the saved AI lookup is pending', async () => {

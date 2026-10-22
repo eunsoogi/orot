@@ -1,3 +1,5 @@
+import type { PublicWebSearch } from './publicWebSearch';
+
 export type ProviderId = string;
 
 export type ProviderInputType = 'audio' | 'image' | 'text';
@@ -127,6 +129,8 @@ export interface LanguageModelProvider {
   readonly id: ProviderId;
   readonly displayName: string;
   readonly capabilities: LanguageModelCapabilities;
+  /** Optional isolated public-query transport; model/account policy can still reject a request. */
+  readonly searchPublicWeb?: PublicWebSearch;
   generate(
     request: LanguageModelRequest,
     options?: { readonly signal?: AbortSignal },

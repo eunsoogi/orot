@@ -1,9 +1,46 @@
 import Foundation
 @testable import Orot
 import XCTest
+#if canImport(FoundationModels)
+    import FoundationModels
+#endif
 
 final class AppleModelIntegrationTests: OrotFailFastTestCase {
+    func testStreamingFailurePreservesKnownNativeDecisions() {
+        // These bridge-level synthetic errors do not claim real Apple model execution.
+        for code in ["SAFETY_REFUSAL", "UNSUPPORTED_CAPABILITY", "INVALID_REQUEST"] {
+            let packet = appleFoundationModelsErrorPacket(appleFoundationModelsFailure(code, "Synthetic failure", nil))
+            XCTAssertEqual(packet["type"] as? String, "error")
+            XCTAssertEqual(packet["code"] as? String, code)
+        }
+        let unavailable = appleFoundationModelsErrorPacket(
+            appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Synthetic unavailable", "modelNotReady"),
+        )
+        XCTAssertEqual(unavailable["status"] as? String, "modelNotReady")
+    }
+
     func testMockAvailabilityGenerationStreamingCancellationAndFailures() async throws {
+        // Closed diagnostics distinguish SDK decoding from bridge failures without exposing messages.
+        XCTAssertEqual(appleFoundationModelsFailureCategory(NSError(domain: "FoundationModels.GeneratedContent.ParsingError", code: 1)), "decoding")
+        XCTAssertEqual(appleFoundationModelsFailureCategory(NSError(domain: "FoundationModels.LanguageModelSession.Error", code: 0)), "concurrent_requests")
+        XCTAssertEqual(appleFoundationModelsFailureCategory(NSError(domain: "FoundationModels.LanguageModelSession.Error", code: 1)), "transcript_mutation")
+        XCTAssertEqual(appleFoundationModelsFailureCategory(AppleNativeToolGeneration.failure("Synthetic", category: .requiredToolMissing)), "required_tool_missing")
+        XCTAssertEqual(appleFoundationModelsFailureCategory(AppleNativeToolGeneration.failure("Synthetic", category: .callbackConflict)), "callback_conflict")
+        XCTAssertEqual(appleFoundationModelsFailureCategory(NSError(domain: "AppleFoundationModels", code: 1, userInfo: ["diagnosticCategory": "untrusted value"])), "bridge_failure")
+        #if canImport(FoundationModels)
+            if #available(iOS 27.0, *) {
+                // Inspect real SDK options without running inference or selecting a tool for the model.
+                let required = AppleFoundationModelsCodec.nativeToolOptions([
+                    "nativeToolChoice": "required", "temperature": 0.2, "maxOutputTokens": 512,
+                ])
+                XCTAssertEqual(required.toolCallingMode, .required)
+                XCTAssertEqual(required.temperature, 0.2)
+                XCTAssertEqual(required.maximumResponseTokens, 512)
+                XCTAssertEqual(AppleFoundationModelsCodec.nativeToolOptions(["nativeToolChoice": "required"], hasInvokedTool: true).toolCallingMode, .disallowed)
+                XCTAssertEqual(AppleFoundationModelsCodec.nativeToolOptions(["nativeToolChoice": "auto"], hasInvokedTool: true).toolCallingMode, .disallowed)
+                XCTAssertEqual(AppleFoundationModelsCodec.nativeToolOptions(["nativeToolChoice": "auto"]).toolCallingMode, .allowed)
+            }
+        #endif
         // The shipping bridge runs against a test-only raw-response mock; this does not measure Apple inference.
         let result = try await TestOperationBroker.shared.request("apple-model")
         XCTAssertEqual(result["platform"] as? String, "ios")

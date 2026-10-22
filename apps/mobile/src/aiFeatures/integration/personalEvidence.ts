@@ -12,6 +12,8 @@ import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { createPersonalSourceReader } from './personalSourceReader';
 import { fingerprint, stableJson } from './evidenceUtils';
 import type { StaleEvidenceArtifact } from './localData';
+import { healthSourceSemantics } from './healthSourceSemantics';
+import { guardDoseMedicationSource } from './doseSourceGuard';
 
 interface RecordShape {
   readonly id: string;
@@ -64,6 +66,7 @@ export function buildPersonalEvidence(input: {
 }): {
   readonly items: readonly EvidenceItem[];
   readonly chunks: readonly EvidenceChunk[];
+  readonly recordsByEvidenceId: ReadonlyMap<string, LocalHealthEvidenceRecord>;
 } {
   // Provenance IDs can name transcript segments or other records, so retain each ID's kind.
   const recordsById = new Map<string, LocalHealthEvidenceRecord[]>();
@@ -90,6 +93,7 @@ export function buildPersonalEvidence(input: {
 
   const items: EvidenceItem[] = [];
   const chunks: EvidenceChunk[] = [];
+  const recordsByEvidenceId = new Map<string, LocalHealthEvidenceRecord>();
   for (const entry of input.candidateRecords ?? input.records) {
     if (entry.kind === 'source_record') continue;
     const record = entry.record as RecordShape;
@@ -123,8 +127,11 @@ export function buildPersonalEvidence(input: {
       ...(typeof record.unit === 'string' ? { unit: record.unit } : {}),
       reviewState: evidenceReviewState(record),
     };
+    const semantics = healthSourceSemantics(entry);
+    // Preserve the payload and revision; share quantity, medication and sleep meanings across AI features.
     const content =
-      persisted?.text ?? `${entry.kind}: ${stableJson(payload(record))}`;
+      (persisted?.text ?? `${entry.kind}: ${stableJson(payload(record))}`) +
+      (semantics ? `\nsourceSemantics: ${stableJson(semantics)}` : '');
     const readSource = createPersonalSourceReader({
       record: entry,
       recordFingerprint,
@@ -133,12 +140,20 @@ export function buildPersonalEvidence(input: {
       repository: input.repository,
       externalHealthKitIds: record.provenance?.source?.system === 'healthkit',
     });
+    const doseSource = guardDoseMedicationSource(
+      entry,
+      input.records,
+      input.repository,
+      readSource,
+      input.loadCurrentStaleArtifacts,
+    );
     const item = input.registry.add({
       reference,
       content,
-      readSource,
+      readSource: doseSource.readSource,
       async validate(signal, context: EvidenceValidationContext) {
         if (signal.aborted) return false;
+        if (!(await doseSource.validate(signal))) return false;
         const current = await input.repository.readRecord(
           entry.kind,
           record.id,
@@ -216,6 +231,7 @@ export function buildPersonalEvidence(input: {
       },
     });
     items.push(item);
+    recordsByEvidenceId.set(item.evidenceId, entry);
     chunks.push(
       input.registry.toSearchChunk(
         item,
@@ -227,5 +243,5 @@ export function buildPersonalEvidence(input: {
       ),
     );
   }
-  return { items, chunks };
+  return { items, chunks, recordsByEvidenceId };
 }

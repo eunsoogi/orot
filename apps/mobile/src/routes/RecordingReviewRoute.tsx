@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -10,10 +11,16 @@ import RecordingPlaybackControls from '../recording/RecordingPlaybackControls';
 import RecordingExportPanel from '../recording/RecordingExportPanel';
 import { recordingService } from '../recording/recordingService';
 import TranscriptEvidencePanel from '../transcription/TranscriptEvidencePanel';
+import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
+import { useAutomaticRecordingTranscription } from '../recording/useAutomaticRecordingTranscription';
 
 /** Saved-source details retain review, playback and export as sections of one recording flow. */
 export function RecordingReviewRoute() {
+  const focused = useIsFocused();
   const { selection } = useRecordingSelection();
+  const transcription = useAutomaticRecordingTranscription(
+    transcriptEvidenceService,
+  );
   const [interaction, setInteraction] = useState({ busy: false, dirty: false });
   const [exportBusy, setExportBusy] = useState(false);
   const [autoPlayConsumed, setAutoPlayConsumed] = useState(false);
@@ -32,17 +39,23 @@ export function RecordingReviewRoute() {
       <View style={styles.page}>
         {source && selection ? (
           <>
-            <TranscriptEvidencePanel
-              recordingSourceId={source.id}
-              deletionBusy={exportBusy}
-              onInteractionChange={setInteraction}
-            />
             <RecordingPlaybackControls
+              active={focused}
               recordingId={source.id}
               durationMs={selection.summary.durationMs}
               playbackService={recordingService}
               autoPlay={selection.autoPlay && !autoPlayConsumed}
               onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
+            />
+            <TranscriptEvidencePanel
+              recordingSourceId={source.id}
+              deletionBusy={exportBusy}
+              onInteractionChange={setInteraction}
+              automaticTranscriptionStatus={
+                transcription.state?.sourceId === source.id
+                  ? transcription.state.status
+                  : undefined
+              }
             />
             <RecordingExportPanel
               recordingSourceId={source.id}

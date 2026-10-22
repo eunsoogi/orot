@@ -57,11 +57,12 @@ export interface MultiAgentBudget {
   readonly maxResearchCycles: number;
   readonly maxPayloadBytes: number;
   readonly maxOutputTokens: number;
-  readonly timeoutMs: number;
+  /** null explicitly disables elapsed time cancellation; source, call and size budgets still apply. */
+  readonly timeoutMs: number | null;
   readonly maxEvidenceItems: number;
 }
 
-export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
+export const DEFAULT_MULTI_AGENT_BUDGET = {
   maxModelCalls: 3,
   // A second bounded search can refine an empty result without preloading other sources.
   maxToolCalls: 2,
@@ -70,18 +71,18 @@ export const DEFAULT_MULTI_AGENT_BUDGET: MultiAgentBudget = {
   maxOutputTokens: 768,
   timeoutMs: 45_000,
   maxEvidenceItems: 8,
-};
+} satisfies MultiAgentBudget;
 
-export const MAX_MULTI_AGENT_BUDGET: MultiAgentBudget = {
+export const MAX_MULTI_AGENT_BUDGET = {
   maxModelCalls: 4,
   maxToolCalls: 2,
   maxResearchCycles: 1,
   maxPayloadBytes: 64 * 1024,
   maxOutputTokens: 1024,
-  // Explicit tool-and-answer workflows can opt into this ceiling; the default stays 45 seconds.
+  // This ceiling applies to finite deadlines; interactive callers may explicitly choose null.
   timeoutMs: 90_000,
   maxEvidenceItems: 8,
-};
+} satisfies MultiAgentBudget;
 
 export interface MultiAgentExecutionIdentity {
   readonly operationRunId: string;
@@ -89,6 +90,12 @@ export interface MultiAgentExecutionIdentity {
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  /** Trusted caller declares the reusable purpose/data boundary; record values and batch IDs are not permissions. */
+  readonly consentScope?: {
+    readonly purpose: string;
+    readonly dataCategories: readonly string[];
+    readonly policyVersion: string;
+  };
   readonly allowedScope: AllowedEvidenceScope;
   readonly budget: MultiAgentBudget;
 }
@@ -99,6 +106,7 @@ export interface OutboundProcessingRequest {
   readonly modelId: string;
   readonly recipient: string;
   readonly remoteProcessing: boolean;
+  readonly consentScope?: MultiAgentExecutionIdentity['consentScope'];
   readonly allowedScope: AllowedEvidenceScope;
   readonly payload: LanguageModelRequest;
   readonly signal: AbortSignal;
@@ -143,6 +151,9 @@ export interface EvidenceSearchTool {
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
   readonly execution: 'local_read_only' | 'external_read_only';
+  /** Trusted external adapters may perform exactly one delegated provider request.
+   * Reserve that slot in the parent workflow before dispatch; never hide another model budget. */
+  readonly additionalModelCalls?: 1;
   readonly description: string;
   readonly inputSchema: JsonObject;
   parseInput(value: unknown): JsonObject | undefined;

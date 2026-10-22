@@ -39,13 +39,63 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.localNotice': '기기 안에서 분류해요.',
   'medicalAppointments.remoteNotice':
     '원격 제공자를 선택하면 일정 제목과 시간은 별도 동의 후 전송됩니다.',
-  'medicalAppointments.inferenceDisclosure.title':
-    '전송 전에 내용을 확인해 주세요',
+  'medicalAppointments.inferenceDisclosure.forCalendar':
+    '진료 일정 분류에 사용할 정보를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forSummary':
+    '증상과 기록 요약에 사용할 정보를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forHypotheses':
+    '질환 가능성 검토에 사용할 정보를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forConversation':
+    '기록과 대화에 사용할 정보를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forVisit':
+    '다음 진료 질문을 준비할 정보를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forSearch':
+    '공개 의학 문헌 검색에 사용할 검색어를 보내요.',
+  'medicalAppointments.inferenceDisclosure.forWebSearch':
+    'AI가 만든 검색어로 공개 웹자료를 찾아요. 개인정보가 포함되어 있는지 확인해 주세요.',
+  'medicalAppointments.inferenceDisclosure.webSearchTerms': '공개 웹검색어',
+  'medicalAppointments.inferenceDisclosure.webResults': '공개 웹검색 자료',
+  'medicalAppointments.inferenceDisclosure.healthRecords':
+    '건강·복약·활동·수면·증상 기록',
+  'medicalAppointments.inferenceDisclosure.memory': '확인한 기억',
+  'medicalAppointments.inferenceDisclosure.conversation': '질문과 대화',
+  'medicalAppointments.inferenceDisclosure.visit': '진료 일정 제목과 시각',
+  'medicalAppointments.inferenceDisclosure.literature': '공개 의학 문헌',
+  'medicalAppointments.inferenceDisclosure.searchTerms':
+    '증상·약·검사에 관한 검색어',
+  'medicalAppointments.inferenceDisclosure.subtitle':
+    '선택한 AI로 아래 내용을 보내요.',
+  'medicalAppointments.inferenceDisclosure.account': '연결한 ChatGPT 계정',
+  'medicalAppointments.inferenceDisclosure.selectedModel': '사용할 AI',
+  'medicalAppointments.inferenceDisclosure.information': '전송할 정보',
+  'medicalAppointments.inferenceDisclosure.calendar':
+    '향후 1년의 일정 제목과 시각',
+  'medicalAppointments.inferenceDisclosure.records': '이번 요청의 기록과 대화',
+  'medicalAppointments.inferenceDisclosure.calendarPurpose':
+    '앞으로 같은 범위의 일정 분류에도 적용돼요.',
+  'medicalAppointments.inferenceDisclosure.reviewHint':
+    '아래에서 실제 전송 내용을 확인할 수 있어요.',
+  'medicalAppointments.inferenceDisclosure.expand': '전송 내용 확인',
+  'medicalAppointments.inferenceDisclosure.remember':
+    '이 기능의 같은 종류 정보는 다시 묻지 않아요.',
+  'medicalAppointments.inferenceDisclosure.oneTime': '이번 전송만 동의해요.',
+  'medicalAppointments.inferenceDisclosure.changes':
+    '계정·AI·기능·정보 종류나 허용 범위가 바뀌면 다시 확인해요.',
+  'medicalAppointments.inferenceDisclosure.unavailable':
+    '이번에 확인한 전송 내용에만 적용돼요. 다음 전송은 다시 확인해요.',
+  'medicalAppointments.inferenceDisclosure.settingsHint':
+    '동의 내역은 설정에서 지울 수 있어요.',
+  'medicalAppointments.inferenceDisclosure.clear': '외부 전송 동의 내역 지우기',
+  'medicalAppointments.inferenceDisclosure.cleared':
+    '동의 내역을 지웠어요. 다음 전송 때 다시 확인해요.',
+  'medicalAppointments.inferenceDisclosure.clearFailed':
+    '동의 내역을 지우지 못했어요. 자동 재사용은 중단했어요. 다시 시도해 주세요.',
+  'medicalAppointments.inferenceDisclosure.title': '외부 전송 동의',
   'medicalAppointments.inferenceDisclosure.service': '서비스',
   'medicalAppointments.inferenceDisclosure.recipient': '받는 곳',
   'medicalAppointments.inferenceDisclosure.model': '모델',
   'medicalAppointments.inferenceDisclosure.privacyBoundary':
-    '이 승인은 아래 요청의 원격 추론만 허용하며 외부 추적 동의와는 별개입니다.',
+    '이 기능에서 안내한 종류와 범위의 정보 전송에 동의해요. 설정에서 언제든 지울 수 있어요.',
   'medicalAppointments.inferenceDisclosure.sentMessages': '전송할 대화',
   'medicalAppointments.inferenceDisclosure.role.system': '시스템 지침',
   'medicalAppointments.inferenceDisclosure.role.user': '사용자 내용',
@@ -61,10 +111,11 @@ export const medicalAppointmentsKo = {
     '[{type} 첨부 내용을 이 화면에서 확인할 수 없습니다]',
   'medicalAppointments.inferenceDisclosure.blockedAttachment':
     '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
-  'medicalAppointments.inferenceDisclosure.allow': '이 내용 전송 허용',
+  'medicalAppointments.inferenceDisclosure.allow': '동의하고 전송',
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
   'medicalAppointments.actions.loadCalendar': '선택한 AI로 분류',
   'medicalAppointments.actions.classify': '선택한 AI로 분류',
+  'medicalAppointments.actions.chooseProvider': 'AI 선택',
   'medicalAppointments.actions.manual': '일정 직접 입력',
   'medicalAppointments.status.loading': '캘린더 일정을 불러오는 중입니다.',
   'medicalAppointments.status.classifying': '일정을 분류하고 있습니다.',

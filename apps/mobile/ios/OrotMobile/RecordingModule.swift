@@ -92,6 +92,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
                 )
             }
             guard status == .recording else { return }
+            RecordingCaptureDiagnostics.emit(.interrupted, clockMs: currentDurationMs())
             recorder?.pause()
             deactivateAudioSession()
             stopTimer()
@@ -112,6 +113,7 @@ public final class RecordingModule: RCTEventEmitter, AVAudioPlayerDelegate {
         // Saved playback does not resume behind another screen; release its player and session together.
         stopPlayback()
         guard status == .recording else { return }
+        RecordingCaptureDiagnostics.emit(.backgrounded, clockMs: currentDurationMs())
         recorder?.pause()
         deactivateAudioSession()
         stopTimer()

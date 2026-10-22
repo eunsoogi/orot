@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import {
+  TextInput,
+  View,
+  useWindowDimensions,
+  type ViewProps,
+} from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { ConversationGlassAction } from './ConversationGlassAction';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
@@ -11,83 +16,126 @@ import { getRagConversationCopy } from './copy';
 export function ConversationComposer({
   value,
   busy,
-  hasSharedCancel = false,
   onChangeText,
   onSend,
   onCancel,
+  onLayout,
 }: {
   readonly value: string;
   readonly busy: boolean;
-  readonly hasSharedCancel?: boolean;
   readonly onChangeText: (value: string) => void;
   readonly onSend: () => void;
   readonly onCancel: () => void;
+  readonly onLayout?: ViewProps['onLayout'];
 }) {
   const navigationInset = useNavigationContentInset();
   const copy = getRagConversationCopy();
-  const [inputFocused, setInputFocused] = useState(false);
-  const [inputHeight, setInputHeight] = useState(44);
+  const { fontScale, height } = useWindowDimensions();
+  const textScale = Math.max(1, fontScale);
+  // Native text scales its 22pt line but not the two 11pt insets. Reserve a full
+  // scaled line, then bound multiline growth to a third of the viewport.
+  const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
+  const maximumHeight = Math.max(
+    minimumHeight,
+    Math.min(Math.ceil(96 * textScale), Math.floor(height / 3)),
+  );
+  const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
+  const [contentHeight, setContentHeight] = useState(minimumHeight);
+  const boundedHeight = Math.max(
+    minimumHeight,
+    Math.min(maximumHeight, contentHeight),
+  );
   useEffect(() => {
-    if (!value) setInputHeight(44);
-  }, [value]);
+    if (!value) setContentHeight(minimumHeight);
+  }, [value, minimumHeight]);
+  useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
   return (
     <View
       style={[styles.composerArea, navigationInset]}
       testID="rag-conversation-composer"
+      onLayout={onLayout}
     >
-      <View
-        style={[styles.composer, inputFocused && styles.inputFocused]}
-        testID="rag-conversation-composer-field"
-      >
-        <TextInput
-          accessibilityLabel={copy.placeholder}
-          // Keep the keyboard available so users can draft while a response runs.
-          editable
-          maxLength={1000}
-          multiline
-          scrollEnabled
-          onContentSizeChange={event => {
-            // Grow only for actual text; longer values scroll without hiding send or navigation.
-            setInputHeight(
-              Math.max(44, Math.min(96, event.nativeEvent.contentSize.height)),
-            );
-          }}
-          onChangeText={nextValue => {
-            onChangeText(nextValue);
-          }}
-          placeholder={copy.placeholder}
-          placeholderTextColor={appColors.secondary}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          style={[styles.input, { height: inputHeight }]}
-          testID="rag-conversation-input"
-          value={value}
+      <View style={styles.composer}>
+        <ConversationGlassAction
+          busy={busy}
+          label={busy ? copy.cancel : copy.send}
+          disabled={!busy && !value.trim()}
+          onPress={busy ? onCancel : onSend}
         />
-        {busy && hasSharedCancel ? null : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={busy ? '답변 중단' : copy.send}
-            accessibilityState={{ busy, disabled: !busy && !value.trim() }}
-            disabled={!busy && !value.trim()}
-            style={[styles.send, !busy && !value.trim() && styles.disabled]}
-            testID={busy ? 'rag-conversation-cancel' : 'rag-conversation-send'}
-            onPress={() => {
-              if (busy) {
-                onCancel();
-                return;
-              }
-              onSend();
-            }}
+        <View
+          style={styles.composerField}
+          testID="rag-conversation-composer-field"
+        >
+          <Text
+            pointerEvents="none"
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.input, styles.placeholderMeasurement]}
+            onLayout={event =>
+              setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
+            }
+            testID="rag-conversation-placeholder-measurement"
           >
-            <AppSymbol
-              name={busy ? 'stop.fill' : 'arrow.up'}
-              size={24}
-              color={appColors.onPrimary}
-            />
-          </Pressable>
-        )}
+            {copy.placeholder}
+          </Text>
+          <TextInput
+            accessibilityLabel={copy.placeholder}
+            // Keep the keyboard available so users can draft while a response runs.
+            editable
+            maxLength={1000}
+            multiline
+            scrollEnabled={
+              value
+                ? boundedHeight >= maximumHeight
+                : placeholderHeight > maximumHeight
+            }
+            onContentSizeChange={event => {
+              // Native size includes padding. Keep typed content intrinsic: a fixed nonempty
+              // height prevents Fabric from relaying multiline layout changes on iOS.
+              if (value)
+                setContentHeight(
+                  Math.max(
+                    minimumHeight,
+                    Math.min(
+                      maximumHeight,
+                      event.nativeEvent.contentSize.height,
+                    ),
+                  ),
+                );
+            }}
+            onChangeText={value => {
+              onChangeText(value);
+            }}
+            placeholder={copy.placeholder}
+            placeholderTextColor={appColors.secondary}
+            // A cleared multiline native editor can retain its previous intrinsic height.
+            // UITextView can retain the previous frame in an empty content-size event.
+            // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
+            // shrinks independently. Typed content remains intrinsic for Fabric layout.
+            style={[
+              styles.input,
+              { minHeight: minimumHeight, maxHeight: maximumHeight },
+              !value && {
+                height: Math.max(
+                  minimumHeight,
+                  Math.min(maximumHeight, placeholderHeight),
+                ),
+              },
+            ]}
+            testID="rag-conversation-input"
+            value={value}
+          />
+        </View>
+        <View
+          pointerEvents="none"
+          style={styles.send}
+          testID="rag-conversation-action-slot"
+        />
       </View>
-      <Text style={styles.disclaimer}>AI 답변은 진료를 대신하지 않아요.</Text>
+      <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
+        {copy.disclaimer}
+      </Text>
     </View>
   );
 }

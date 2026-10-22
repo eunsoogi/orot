@@ -1,6 +1,11 @@
 import type { JsonValue } from '@orot/model-runtime';
 import { t } from '../../i18n';
-import { hasUnsupportedDateOrValue } from './questionFacts';
+import { hasUnsupportedQuestionFacts } from './questionFactValidation';
+import {
+  asQuestionObject as asObject,
+  hasOnlyQuestionKeys as hasOnlyKeys,
+  readKoreanQuestionText as readNonEmptyKoreanText,
+} from './questionShape';
 import type {
   VisitQuestionEvidenceItem,
   VisitQuestionResponderInput,
@@ -9,7 +14,6 @@ import type {
   VisitQuestionCandidate,
 } from './taskContract';
 
-const HANGUL = /[\uac00-\ud7a3]/u;
 const REQUESTED_DATE_PATTERNS = [
   /(?<!\d)(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?(?!\d)/gu,
   /(?<!\d)(?:19|20)\d{2}\s*년\s*(?:0?[1-9]|1[0-2])\s*월(?:\s*(?:0?[1-9]|[12]\d|3[01])\s*일)?/gu,
@@ -19,32 +23,6 @@ const MEDICATION_INSTRUCTION =
   /(?:약|약물|용량|복용|투약|처방|치료).{0,20}(?:중단|시작|변경|조절|증량|감량|늘리|줄이|바꾸|끊|복용하지|투여하지|먹지)(?:하세요|하십시오|으세요|세요|으십시오|해야 합니다|해야 해요|해야 한다|해야 돼요|하셔야|셔야|으셔야|하시기 바랍니다|하지 마세요|마세요)/u;
 const DIAGNOSTIC_CLAIM =
   /(?:고혈압|당뇨(?:병)?|고지혈증|심부전|[가-힣]{1,10}(?:병|증|염|암|질환)|진단).{0,16}(?:이므로|이라서|라서|때문에|로 보입니다|로 판단|이라고 할 수|입니다|이에요|일 수 있)/u;
-
-function asObject(value: unknown): Record<string, unknown> | null {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    return null;
-  return value as Record<string, unknown>;
-}
-
-function hasOnlyKeys(
-  value: Record<string, unknown>,
-  allowed: readonly string[],
-): boolean {
-  return Object.keys(value).every(key => allowed.includes(key));
-}
-
-function readNonEmptyKoreanText(
-  value: unknown,
-  maximumLength: number,
-): string | null {
-  if (typeof value !== 'string') return null;
-  const normalized = value.trim();
-  return normalized.length > 1 &&
-    normalized.length <= maximumLength &&
-    HANGUL.test(normalized)
-    ? normalized
-    : null;
-}
 
 function clarification(
   message: string,
@@ -109,7 +87,7 @@ export function validateVisitQuestionTaskResult(
       };
     }
     if (
-      hasUnsupportedDateOrValue(
+      hasUnsupportedQuestionFacts(
         message,
         input.evidence.items,
         supportedClarificationContext(input),
@@ -158,8 +136,10 @@ export function validateVisitQuestionTaskResult(
     input.evidence.items.map(item => [item.evidenceId, item]),
   );
   const questions: VisitQuestionCandidate[] = [];
-  // Only expose formatting as retryable after every question passes its other checks.
+  // Inspect the whole list before offering a bounded correction: a bad number cannot hide
+  // another question's invalid citation or unsafe clinical copy.
   let missingQuestionMark = false;
+  let unsupportedFacts = false;
   for (const rawQuestion of result.questions) {
     const question = asObject(rawQuestion);
     if (
@@ -217,16 +197,20 @@ export function validateVisitQuestionTaskResult(
       };
     }
     const exactCitations = citations as VisitQuestionEvidenceItem[];
+    if (hasUnsafeClinicalAdvice(`${questionText} ${rationale}`)) {
+      return {
+        status: 'invalid',
+        reason: 'A visit question contains unsafe clinical advice.',
+      };
+    }
     if (
-      hasUnsupportedDateOrValue(
+      hasUnsupportedQuestionFacts(
         `${questionText} ${rationale}`,
         exactCitations,
         appointmentDateFromContext(input.context),
       )
     ) {
-      return clarification(
-        t('visitQuestions.validation.unverifiedDateOrValue'),
-      );
+      unsupportedFacts = true;
     }
     questions.push({
       questionText,
@@ -234,6 +218,12 @@ export function validateVisitQuestionTaskResult(
       priority: question.priority,
       citations: exactCitations,
     });
+  }
+  if (unsupportedFacts) {
+    return {
+      status: 'invalid',
+      reason: 'A visit question contains an unsupported date or numeric value.',
+    };
   }
   if (missingQuestionMark) {
     return {

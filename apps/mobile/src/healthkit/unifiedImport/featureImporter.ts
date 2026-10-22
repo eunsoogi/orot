@@ -84,6 +84,7 @@ export function createUnifiedFeatureImporter(options: {
         repository: instrumentedRepository,
         now,
         rememberForAutoSync: true,
+        refreshDoseHistory: true,
       });
       return medicationOutcome(result);
     }

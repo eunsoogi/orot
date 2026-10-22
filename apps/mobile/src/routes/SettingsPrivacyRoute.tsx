@@ -5,6 +5,7 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
 
 /** Explains existing permission boundaries and sends permission changes to iOS Settings. */
 export function SettingsPrivacyRoute() {
@@ -68,6 +69,7 @@ export function SettingsPrivacyRoute() {
         <Text style={styles.detail}>
           {t('provider.selection.remotePrivacy')}
         </Text>
+        <InferenceConsentSettings />
       </View>
 
       <Pressable

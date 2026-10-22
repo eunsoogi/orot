@@ -2,6 +2,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { iosTestConfig } from './ios-test-config.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 
+// Each recording leaf retains the same fixture/reset contract while owning independent complete methods.
+const recordingFixture = { profiles: ['fixtures'], suites: ['recordings'], minutes: 20 };
+
 const cohorts = {
   release: { profiles: ['core', 'fixtures', 'backup', 'local-model'], minutes: 200 },
   // Hosted Release consumers partition tasks, never individual cases or stateful restore/model phases.
@@ -15,26 +18,122 @@ const cohorts = {
     fixtureSuites: ['navigation', 'recordings', 'calendar'],
     minutes: 90,
   },
-  speech: { profiles: ['speech'], minutes: 90 },
+  speech: { profiles: ['speech'], minutes: 20 },
   debug: {
     profiles: ['provider-data', 'health-import', 'microphone', 'provider-selection'],
     minutes: 180,
   },
   // Hosted jobs separate independent feature suites. Only phases that exchange state stay in one task driver.
-  'core-integration': { profiles: ['core'], suites: ['integration'], minutes: 45 },
-  'core-ui': { profiles: ['core'], suites: ['ui'], minutes: 45 },
-  persistence: { profiles: ['core'], suites: ['shared-persistence'], minutes: 45 },
-  isolation: { profiles: ['core'], suites: ['isolation'], minutes: 30 },
-  backup: { profiles: ['backup'], minutes: 65 },
-  'local-model': { profiles: ['local-model'], minutes: 65 },
-  navigation: { profiles: ['fixtures'], suites: ['navigation'], minutes: 60 },
-  recordings: { profiles: ['fixtures'], suites: ['recordings'], minutes: 60 },
-  questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 45 },
-  calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 60 },
-  provider: { profiles: ['provider-data'], minutes: 45 },
-  health: { profiles: ['health-import'], minutes: 45 },
-  microphone: { profiles: ['microphone'], minutes: 45 },
-  selection: { profiles: ['provider-selection'], minutes: 45 },
+  'core-integration': { profiles: ['core'], suites: ['integration'], minutes: 20 },
+  // Separate intact UI methods so host preparation and post-test work fit the whole-job limit.
+  'core-ui': {
+    profiles: ['core'],
+    suites: ['ui'],
+    minutes: 20,
+    classes: ['RootNavigationUITests', 'TestHostConnectionTests'],
+  },
+  'recording-evidence': {
+    profiles: ['core'],
+    suites: ['ui'],
+    minutes: 20,
+    classes: ['RecordingExportUITests', 'TranscriptEvidenceUITests'],
+  },
+  persistence: { profiles: ['core'], suites: ['shared-persistence'], minutes: 20 },
+  isolation: { profiles: ['core'], suites: ['isolation'], minutes: 20 },
+  backup: { profiles: ['backup'], minutes: 20 },
+  'local-model': { profiles: ['local-model'], minutes: 20 },
+  navigation: { profiles: ['fixtures'], suites: ['navigation'], minutes: 20 },
+  // Split only independent methods. Appearance, restart and restoration steps remain inside each method.
+  'navigation-features': {
+    profiles: ['fixtures'],
+    suites: ['navigation'],
+    minutes: 20,
+    cases: [
+      'AiFeatureNavigationUITests/testAiScreensAndSeparateHistoriesAcrossAppearanceChanges',
+      'AiFeatureNavigationUITests/testEvidenceKindsAndRecoveryAcrossAppearances',
+    ],
+  },
+  'navigation-routes': {
+    profiles: ['fixtures'],
+    suites: ['navigation'],
+    minutes: 20,
+    cases: [
+      'AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',
+      'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
+      'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
+    ],
+  },
+  // Large-text launch and cleanup are independent of route recovery and need their own VM budget.
+  'navigation-accessibility': {
+    profiles: ['fixtures'],
+    suites: ['navigation'],
+    minutes: 20,
+    cases: ['RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable'],
+  },
+  'navigation-imports': {
+    profiles: ['fixtures'],
+    suites: ['navigation'],
+    minutes: 20,
+    classes: ['SafeAreaNavigationUITests', 'UnifiedImportUITests'],
+  },
+  recordings: recordingFixture,
+  'recordings-controls': {
+    ...recordingFixture,
+    cases: [
+      'RecordingLibraryUITests/testActiveAndPausedRecordingControlsAcrossAppearanceChanges',
+      'RecordingLibraryUITests/testRecordingConsentAndSeparateLibraryAcrossAppearanceChanges',
+      'RecordingLibraryUITests/testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport',
+    ],
+  },
+  'recordings-review': {
+    ...recordingFixture,
+    cases: [
+      'RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
+      'RecordingLibraryUITests/testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText',
+    ],
+  },
+  'recordings-playback': { ...recordingFixture, classes: ['RecordingPlaybackUITests'] },
+  questions: { profiles: ['fixtures'], suites: ['questions'], minutes: 20 },
+  'questions-review': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 20,
+    classes: ['NextVisitReviewUITests', 'VisitQuestionConsentUITests'],
+  },
+  'questions-conversation': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 20,
+    classes: ['KeyboardSafeAreaUITests'],
+  },
+  'questions-summary': {
+    profiles: ['fixtures'],
+    suites: ['questions'],
+    minutes: 20,
+    classes: ['SummaryAndLiteratureUITests'],
+  },
+  calendar: { profiles: ['fixtures'], suites: ['calendar'], minutes: 20 },
+  'calendar-consent': {
+    profiles: ['fixtures'],
+    suites: ['calendar'],
+    minutes: 20,
+    classes: ['AppointmentConsentUITests'],
+  },
+  'calendar-appointments': {
+    profiles: ['fixtures'],
+    suites: ['calendar'],
+    minutes: 20,
+    classes: [
+      'AppointmentsUITests',
+      'CalendarSelectionUITests',
+      'HealthImportUITests',
+      'StorageMigrationUITests',
+    ],
+  },
+  provider: { profiles: ['provider-data'], minutes: 20 },
+  health: { profiles: ['health-import'], minutes: 20 },
+  microphone: { profiles: ['microphone'], minutes: 20 },
+  selection: { profiles: ['provider-selection'], minutes: 20 },
 };
 
 /** UI host preparation follows the selected XCTest task, independent of cohort naming. */
@@ -59,7 +158,7 @@ export function iosTestCohort(name) {
     if (!isDeepStrictEqual(comparable(iosTestConfig(profile)), comparable(config)))
       throw new Error('iOS cohort contains incompatible configuration or destination');
   }
-  // These are outer hosted job cancellation boundaries; individual test/setup observations have no elapsed-time allowance.
+  // Hosted leaves have a 20-minute cancellation boundary; cancellation never supplies a test pass.
   return { name, profiles: cohort.profiles.slice(), config, minutes: cohort.minutes };
 }
 
@@ -108,7 +207,16 @@ export function iosTestCohortTasks(name) {
     )
     .map((task) => ({
       ...task,
-      identifiers: iosTestInventory(task.profile, task.suite),
+      identifiers: iosTestInventory(task.profile, task.suite)
+        .filter(
+          (identifier) =>
+            !cohorts[name].classes || cohorts[name].classes.includes(identifier.split('/')[1]),
+        )
+        .filter(
+          (identifier) =>
+            !cohorts[name].cases ||
+            cohorts[name].cases.includes(identifier.split('/').slice(1).join('/')),
+        ),
     }));
 }
 

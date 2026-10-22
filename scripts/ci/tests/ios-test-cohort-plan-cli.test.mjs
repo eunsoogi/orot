@@ -41,13 +41,22 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
   assert.deepEqual(plan.notSelectedCohorts, [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'local-model',
-    'navigation',
-    'recordings',
-    'questions',
-    'calendar',
+    'navigation-features',
+    'navigation-routes',
+    'navigation-accessibility',
+    'navigation-imports',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'calendar-consent',
+    'calendar-appointments',
     'provider',
     'health',
     'microphone',
@@ -64,18 +73,27 @@ test('the plan CLI emits only selected profile cohorts and their explicit exclus
   assert.equal(outputs.oauth_required, 'false');
 });
 
-test('a full plan schedules all 96 observations and OAuth when selected', (t) => {
+test('a full plan schedules all 111 observations and OAuth when selected', (t) => {
   const cohorts = [
     'core-integration',
     'core-ui',
+    'recording-evidence',
     'persistence',
     'isolation',
     'backup',
     'local-model',
-    'navigation',
-    'recordings',
-    'questions',
-    'calendar',
+    'navigation-features',
+    'navigation-routes',
+    'navigation-accessibility',
+    'navigation-imports',
+    'recordings-controls',
+    'recordings-review',
+    'recordings-playback',
+    'questions-review',
+    'questions-conversation',
+    'questions-summary',
+    'calendar-consent',
+    'calendar-appointments',
     'provider',
     'health',
     'microphone',
@@ -84,14 +102,14 @@ test('a full plan schedules all 96 observations and OAuth when selected', (t) =>
   ];
   const { plan, outputs } = run(t, cohorts, true);
 
-  assert.equal(plan.selectedCohorts.length, 15);
+  assert.equal(plan.selectedCohorts.length, 24);
   assert.equal(plan.notSelectedCohorts.length, 0);
-  assert.equal(plan.uniqueTestCases, 96);
-  assert.equal(plan.scheduledTestObservations, 96);
+  assert.equal(plan.uniqueTestCases, 111);
+  assert.equal(plan.scheduledTestObservations, 111);
   assert.equal(plan.oauthRequired, true);
   assert.equal(JSON.parse(outputs.not_selected_cohorts).length, 0);
   assert.equal(JSON.parse(outputs.debug_cohorts).length, 4);
-  assert.equal(JSON.parse(outputs.release_cohorts).length, 11);
+  assert.equal(JSON.parse(outputs.release_cohorts).length, 20);
   assert.equal(outputs.has_debug, 'true');
   assert.equal(outputs.has_release, 'true');
   assert.equal(outputs.oauth_required, 'true');

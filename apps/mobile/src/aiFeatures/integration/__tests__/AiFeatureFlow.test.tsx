@@ -1,5 +1,4 @@
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -7,7 +6,6 @@ import {
 } from '@testing-library/react-native';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import { Alert } from 'react-native';
-import type { AlertButton } from 'react-native';
 import type {
   ProviderSelection,
   ProviderSelectionStore,
@@ -18,7 +16,6 @@ import {
   type VisitQuestionRenderInput,
 } from '../testSupport/VisitQuestionRouteHarness';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { navigationText } from '../../../i18n/navigation';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -163,9 +160,7 @@ test('routes all entry actions through the integration and returns from visit qu
     remoteProcessing: false,
   });
   await fireEvent.press(screen.getByTestId('visit-question-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
-  await pressAlertButton(alert, 1);
+  expect(alert).not.toHaveBeenCalled();
   await waitFor(() =>
     expect(screen.getByTestId('ai-features-screen')).toBeTruthy(),
   );
@@ -193,15 +188,4 @@ function mutableSelectionStore(): ProviderSelectionStore {
       selected = null;
     }),
   };
-}
-
-/** Uses the native confirmation callback to resume the shared navigation guard. */
-async function pressAlertButton(alert: jest.SpyInstance, index: number) {
-  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
-  const press = buttons?.[index]?.onPress;
-  if (!press) throw new Error(`Alert button ${index} was not registered.`);
-  await act(async () => {
-    press();
-    await Promise.resolve();
-  });
 }

@@ -63,10 +63,20 @@ describe('visit-question response correction', () => {
     expect(requests).toHaveLength(2);
     const userMessages = (index: number) =>
       requests[index]!.messages.filter(message => message.role === 'user');
-    expect(userMessages(1).slice(0, 2)).toEqual(userMessages(0));
-    expect(JSON.stringify(userMessages(1).at(-1))).toContain('의문문');
-    expect(JSON.stringify(requests[0])).not.toContain('의문문이어야');
-    expect(JSON.stringify(requests[1])).not.toContain(rejectedText);
+    expect(userMessages(1).slice(0, -1)).toEqual(userMessages(0));
+    expect(JSON.stringify(userMessages(1).at(-1))).toContain(
+      'Korean interrogative',
+    );
+    expect(JSON.stringify(requests[0])).not.toContain(
+      'The previous response failed local question-field validation.',
+    );
+    // Correction retains the rejected answer only as assistant context; source aliases still hide private IDs.
+    const previousAnswer = requests[1]!.messages.find(
+      message => message.role === 'assistant',
+    );
+    expect(JSON.parse(previousAnswer!.content as string)).toEqual(
+      JSON.parse(suggestionOutput(rejectedText)),
+    );
     expect(JSON.stringify(requests[1])).not.toContain('private-source-');
   });
 

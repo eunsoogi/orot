@@ -1,5 +1,8 @@
+import { operationRunId } from './featureRunIdentity';
+import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
-import { createExternalConversationEvidence } from './externalConversationEvidence';
+import { withProviderStage } from '../../providers/diagnostics';
+import { createSelectedExternalEvidence } from './selectedExternalEvidence';
 import type { ExternalMedicalQueryConsentPort } from '@orot/agent-runtime';
 import type {
   EvidenceReference,
@@ -11,6 +14,7 @@ import { runRagConversationTurn as defaultRagRunner } from '../../ragConversatio
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
+import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
 import type { DiseaseHypothesisRunOutcome } from '../../diseaseHypotheses/task';
 import { createEuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
 import type { EuropePmcMedicalEvidenceService } from '../../externalMedicalEvidence/europePmc';
@@ -26,8 +30,18 @@ import { createVisitQuestionSourceService } from './visitQuestionSourceRegistrat
 import { executionOptions, toolsFor } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import type { VisitQuestionSourceService } from './visitQuestionSourceRegistration';
+import type {
+  SymptomSummaryStorage,
+  SymptomSummaryHistory,
+} from '../../diseaseHypotheses/savedSummaries';
+import { createSymptomSummaryPersistence } from './symptomSummaryPersistence';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
+  readonly summaryHistory?: SymptomSummaryHistory;
+  summarizeSymptoms?(
+    signal?: AbortSignal,
+    observer?: AiWorkflowObserver,
+  ): Promise<DiseaseHypothesisRunOutcome>;
   readonly externalEvidence: EuropePmcMedicalEvidenceService;
   loadSavedVisitQuestions(
     appointmentId: string,
@@ -50,6 +64,7 @@ export interface AiFeatureServices extends VisitQuestionSourceService {
 }
 
 export interface AiFeatureServiceDependencies {
+  readonly summaryStorage?: () => Promise<SymptomSummaryStorage>;
   readonly selectedAi?: SelectedAiResolverOptions;
   readonly loadLocalData?: () => Promise<AiFeatureLocalData>;
   readonly diseaseRunner?: typeof runDiseaseHypothesisAnalysis;
@@ -61,19 +76,14 @@ export interface AiFeatureServiceDependencies {
 
 const DISEASE_REQUEST =
   '현재 앱 기록에서 검토할 수 있는 질환 가능성을 찾아 주세요. 확진하지 말고, 지지·반대 근거와 불확실성 및 더 필요한 자료를 모두 밝혀 주세요.';
-let operationSequence = 0;
-
-function operationRunId(): string {
-  operationSequence += 1;
-  return `ai-feature-${Date.now()}-${operationSequence}`;
-}
-
 /** Connects selected-AI operations and freshly revalidated local citations to owned feature screens. */
 export function createAiFeatureServices(
   consent: MultiAgentWorkflowOptions['consent'],
   dependencies: AiFeatureServiceDependencies = {},
 ): AiFeatureServices {
   const registry = new LocalEvidenceReferenceRegistry();
+  const queryConsent =
+    dependencies.externalQueryConsent ?? publicMedicalQueryConsent(consent);
   const externalEvidence =
     dependencies.externalEvidence ?? createEuropePmcMedicalEvidenceService();
   const loadLocalData =
@@ -92,13 +102,77 @@ export function createAiFeatureServices(
   const diseaseRunner =
     dependencies.diseaseRunner ?? runDiseaseHypothesisAnalysis;
   const ragRunner = dependencies.ragRunner ?? defaultRagRunner;
+  const summaryPersistence = createSymptomSummaryPersistence({
+    registry,
+    data: privateLocalData,
+    storage: dependencies.summaryStorage,
+  });
   async function selectedAi() {
     return requireSelectedAi(
       await resolveSelectedAiProvider(dependencies.selectedAi),
     );
   }
 
+  async function analyze(
+    summary: boolean,
+    signal?: AbortSignal,
+    observer?: AiWorkflowObserver,
+  ) {
+    const selected = await withProviderStage(
+      'disease',
+      'selection',
+      selectedAi,
+    );
+    const data = await withProviderStage('disease', 'data', privateLocalData);
+    const operationSignal = signal ?? new AbortController().signal;
+    // Both explicit actions use the same bounded tools, consent and freshness boundary.
+    const external = createSelectedExternalEvidence({
+      selected,
+      consent,
+      literature: externalEvidence,
+      literatureConsent: queryConsent,
+      requireAbstract: true,
+    });
+    const tools = [
+      ...toolsFor(undefined, data, registry, 6, summary),
+      ...external.tools,
+    ];
+    const runId = dependencies.createOperationRunId?.() ?? operationRunId();
+    const workflow = {
+      ...executionOptions({
+        selected,
+        operationRunId: runId,
+        consent,
+        registry,
+        tools,
+        external,
+        medicalExplanation: true,
+        consentPurpose: summary ? 'symptom_summary' : 'disease_hypotheses',
+      }),
+      request: summary
+        ? '복용약과 활동·걸음수, 혈압·심박수·체중, 수면 및 증상 기록에서 확인된 내용을 날짜와 함께 정리해 주세요. 이어서 이 기록을 이해하는 데 도움이 되는 공개 의학 문헌을 검색하고, 문헌이 설명하는 일반적인 의미를 별도 항목으로 작성해 주세요. 개인 기록의 사실과 일반 의학 설명을 구분하고 개인의 질환이나 원인으로 단정하지 마세요. 검색을 사용할 수 없다면 의학 설명은 만들지 말고 그 한계를 밝히세요.'
+        : DISEASE_REQUEST,
+      initialEvidence: { items: [], coverage: [], conflicts: [] },
+    };
+    const invocation = { ...observer, signal: operationSignal };
+    const resolver = (reference: EvidenceReference) =>
+      registry.resolve(reference);
+    const outcome = await (summary
+      ? diseaseRunner(
+          workflow,
+          undefined,
+          invocation,
+          resolver,
+          symptomSummaryTaskForProvider(selected.provider.id),
+        )
+      : diseaseRunner(workflow, undefined, invocation, resolver));
+    // Both actions produce durable results; presentation remains part of the
+    // saved analysis so reopening possibilities cannot turn them into factual summaries.
+    return summaryPersistence.save(outcome, selected, runId, operationSignal);
+  }
+
   return {
+    summaryHistory: summaryPersistence.history,
     ...createVisitQuestionSourceService(registry, loadLocalData),
     externalEvidence,
     async loadSavedVisitQuestions(appointmentId) {
@@ -109,36 +183,12 @@ export function createAiFeatureServices(
         records: await openLocalStorage(),
         sourceReader: data.repository,
         registry,
+        readHealthContext: data.readHealthContext,
       });
     },
-    async generateDiseaseHypotheses(signal, observer) {
-      const selected = await selectedAi();
-      const data = await privateLocalData();
-      const operationSignal = signal ?? new AbortController().signal;
-      // Records are read only after the selected model requests an allowlisted tool.
-      const tools = toolsFor(undefined, data, registry);
-      const runId = dependencies.createOperationRunId?.() ?? operationRunId();
-      const workflow = {
-        ...executionOptions({
-          selected,
-          operationRunId: runId,
-          consent,
-          registry,
-          tools,
-        }),
-        request: DISEASE_REQUEST,
-        initialEvidence: { items: [], coverage: [], conflicts: [] },
-      };
-      return diseaseRunner(
-        workflow,
-        undefined,
-        {
-          ...observer,
-          signal: operationSignal,
-        },
-        reference => registry.resolve(reference),
-      );
-    },
+    generateDiseaseHypotheses: (signal, observer) =>
+      analyze(false, signal, observer),
+    summarizeSymptoms: (signal, observer) => analyze(true, signal, observer),
     async sendRagMessage(question, previousMessages, parentSignal, observer) {
       const normalizedQuestion = question.trim();
       if (!normalizedQuestion || normalizedQuestion.length > 1000) {
@@ -146,14 +196,23 @@ export function createAiFeatureServices(
       }
       const linked = createLinkedAbortController(parentSignal);
       try {
-        const selected = await selectedAi();
-        const data = await privateLocalData();
-        const signal = linked.controller.signal;
-        const external = createExternalConversationEvidence(
-          externalEvidence,
-          dependencies.externalQueryConsent,
+        const selected = await withProviderStage(
+          'rag',
+          'selection',
+          selectedAi,
         );
-        const tools = [...toolsFor(undefined, data, registry), external.tool];
+        const data = await withProviderStage('rag', 'data', privateLocalData);
+        const signal = linked.controller.signal;
+        const external = createSelectedExternalEvidence({
+          selected,
+          consent,
+          literature: externalEvidence,
+          literatureConsent: queryConsent,
+        });
+        const tools = [
+          ...toolsFor(undefined, data, registry, 6, true, 'rag'),
+          ...external.tools,
+        ];
         const runId = dependencies.createOperationRunId?.() ?? operationRunId();
         const outcome = await ragRunner(
           {
@@ -167,6 +226,7 @@ export function createAiFeatureServices(
             resolveLocalEvidenceIdentity: reference =>
               registry.resolve(reference),
             workflow: executionOptions({
+              consentPurpose: 'record_conversation',
               selected,
               operationRunId: runId,
               consent,

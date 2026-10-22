@@ -1,9 +1,8 @@
-import { Linking, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
-import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
+import { AiResponseText } from '../layout/AiResponseText';
+import { ConversationSources } from './ConversationSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
 import type { RagConversationMessage } from './task';
@@ -27,20 +26,9 @@ export function ConversationMessage({
   readonly onLinkError: () => void;
 }) {
   const user = message.role === 'user';
+  const MessageText = user ? Text : AiResponseText;
   return (
     <View style={user ? styles.userMessage : styles.assistantMessage}>
-      {!user && (
-        <View style={styles.speaker}>
-          <View style={styles.avatar}>
-            <AppSymbol
-              name="sparkles"
-              color={appColors.primaryText}
-              size={20}
-            />
-          </View>
-          <Text style={styles.role}>오롯</Text>
-        </View>
-      )}
       <View style={!user && styles.assistantBody}>
         {message.incomplete && message.content ? (
           <>
@@ -53,13 +41,13 @@ export function ConversationMessage({
           </>
         ) : null}
         {message.content ? (
-          <Text
+          <MessageText
             selectable
             style={[styles.messageText, user && styles.userText]}
             testID={message.streaming ? 'rag-conversation-stream' : undefined}
           >
             {message.content}
-          </Text>
+          </MessageText>
         ) : null}
         {message.activity ? (
           <Text
@@ -70,56 +58,11 @@ export function ConversationMessage({
             {message.activity}
           </Text>
         ) : null}
-        {message.citations?.map((reference, index) => {
-          const external = reference.sourceKind === 'external_medical';
-          const locator = reference.locator as Record<string, unknown> | null;
-          const url =
-            external && typeof locator?.originalUrl === 'string'
-              ? locator.originalUrl
-              : '';
-          const title = external
-            ? typeof locator?.title === 'string'
-              ? locator.title
-              : 'Europe PMC 문헌'
-            : reference.sourceKind === 'reviewed_memory'
-              ? '검토한 메모'
-              : '건강 기록';
-          const date = reference.effectiveTime?.slice(0, 10);
-          return (
-            <Pressable
-              key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
-              accessibilityRole="button"
-              accessibilityLabel={`원문 근거 열기 · ${title}${date ? ` · ${date}` : ''}`}
-              style={styles.source}
-              onPress={() => {
-                if (!external) {
-                  onOpenSource(reference);
-                  return;
-                }
-                if (!isSafeEuropePmcArticleUrl(url)) {
-                  onLinkError();
-                  return;
-                }
-                Linking.openURL(url).catch(onLinkError);
-              }}
-            >
-              <AppSymbol
-                name={external ? 'book' : 'doc.text'}
-                color={appColors.primaryText}
-                size={22}
-              />
-              <Text style={styles.sourceText}>
-                {title}
-                {date ? ` · ${date}` : ''}
-                {external ? '\nEurope PMC · 공개 의학 문헌' : ''}
-                {external && typeof locator?.retrievedAt === 'string'
-                  ? ` · 조회 ${locator.retrievedAt.slice(0, 10)}`
-                  : ''}
-              </Text>
-              <AppSymbol name="chevron.right" size={14} />
-            </Pressable>
-          );
-        })}
+        <ConversationSources
+          references={message.citations ?? []}
+          onOpenSource={onOpenSource}
+          onLinkError={onLinkError}
+        />
       </View>
     </View>
   );

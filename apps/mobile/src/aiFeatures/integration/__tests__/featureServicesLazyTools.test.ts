@@ -1,4 +1,5 @@
 import { createAiFeatureServices } from '../featureServices';
+import type { runRagConversationTurn } from '../../../ragConversation/service';
 import {
   apple,
   consent,
@@ -13,7 +14,11 @@ test('starts disease and conversation workflows without selecting or indexing re
     status: 'incomplete_inventory' as const,
     reason: 'unavailable' as const,
   }));
-  const ragRunner = jest.fn(async () => ({ status: 'insufficient' as const }));
+  const ragRunner = jest.fn(
+    async (_options: Parameters<typeof runRagConversationTurn>[0]) => ({
+      status: 'insufficient' as const,
+    }),
+  );
   const services = createAiFeatureServices(consent, {
     selectedAi: {
       selectionStore: selectionStore({
@@ -30,6 +35,13 @@ test('starts disease and conversation workflows without selecting or indexing re
   await services.sendRagMessage('기록을 확인해 주세요', []);
   expect(diseaseRunner).toHaveBeenCalledTimes(1);
   expect(ragRunner).toHaveBeenCalledTimes(1);
+  const localTool = ragRunner.mock.calls[0]![0].workflow.tools[0]!;
+  expect(
+    localTool.parseInput({
+      query: 'steps sleep measurements',
+      view: 'health_overview',
+    }),
+  ).toEqual({ query: 'steps sleep measurements', view: 'health_overview' });
   expect(source.data.readCandidates).not.toHaveBeenCalled();
   expect(source.data.loadCurrentChunks).not.toHaveBeenCalled();
   expect(source.data.loadMemoryRecords).not.toHaveBeenCalled();

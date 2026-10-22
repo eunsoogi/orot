@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RecordIdSchema, RecordMetadataSchema } from './common';
+import { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
 const UniqueRecordIdsSchema = z
@@ -10,6 +11,8 @@ export const VisitQuestionSchema = RecordMetadataSchema.safeExtend({
   questionText: NonEmptyTextSchema,
   priority: z.enum(['routine', 'important']),
   evidenceSpanIds: UniqueRecordIdsSchema,
+  // Older lists have only quote spans. New computed citations retain their fixed period and revision.
+  healthContextSources: z.array(VisitQuestionHealthContextSourceSchema).min(1).max(3).optional(),
   // Optional fields keep older saved questions readable; new reviewed lists use the required schema below.
   appointmentId: RecordIdSchema.optional(),
   rationale: NonEmptyTextSchema.optional(),

@@ -1,11 +1,12 @@
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
+import { providerDiagnostic } from '../../providers/diagnostics';
 
-/** One deadline includes provider lookup, local preparation and inference; late work loses ownership. */
+/** User cancellation covers preparation and inference; optional finite deadlines serve explicit callers. */
 export async function boundedVisitGeneration<T>(
   caller: AbortSignal,
   work: (signal: AbortSignal) => Promise<T>,
-  timeoutMs: number = EVIDENCE_WORKFLOW_BUDGET.timeoutMs,
+  timeoutMs: number | null = EVIDENCE_WORKFLOW_BUDGET.timeoutMs,
 ): Promise<
   T | { status: 'cancelled' } | { status: 'unavailable'; message: string }
 > {
@@ -21,10 +22,14 @@ export async function boundedVisitGeneration<T>(
     stop();
   };
   caller.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    abort();
-  }, timeoutMs);
+  const timer =
+    timeoutMs === null
+      ? undefined
+      : setTimeout(() => {
+          timedOut = true;
+          providerDiagnostic('visit', 'workflow', 'budget_exceeded');
+          abort();
+        }, timeoutMs);
   try {
     const result = await Promise.race([
       work(controller.signal),
@@ -44,7 +49,7 @@ export async function boundedVisitGeneration<T>(
         ? { status: 'cancelled' }
         : result;
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
     caller.removeEventListener('abort', abort);
     // Even a rejected operation must not retain permission to publish late state changes.
     controller.abort();

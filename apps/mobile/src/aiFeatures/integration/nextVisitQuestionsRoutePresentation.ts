@@ -26,7 +26,8 @@ export function createNextVisitQuestionsTheme(
 
   return {
     colors: {
-      canvas: isDarkAppearance ? palette.background : palette.surface,
+      // The page must remain distinct from saved/review question cards in either appearance.
+      canvas: palette.background,
       surface: palette.surface,
       surfaceSubtle: isDarkAppearance ? palette.surface : palette.background,
       text: palette.text,

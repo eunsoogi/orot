@@ -1,4 +1,9 @@
 export * from './contracts';
+export type {
+  PublicWebSearch,
+  PublicWebSearchRequest,
+  PublicWebSearchResponse,
+} from './publicWebSearch';
 export { createExternalTelemetrySink, sanitizeTelemetryEvent } from './telemetryPrivacy';
 export type { ExternalTelemetryOptions } from './telemetryPrivacy';
 export { InMemoryFakeLanguageModelProvider } from './fake-provider';

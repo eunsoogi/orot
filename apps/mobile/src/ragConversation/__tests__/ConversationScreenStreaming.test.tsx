@@ -61,7 +61,7 @@ test('shows safe answer text and separate evidence activity while generating', a
       text: '기록에는 혈압이 남아 있어요.',
     });
   });
-  expect(screen.getByTestId('rag-conversation-stream').props.children).toBe(
+  expect(screen.getByTestId('rag-conversation-stream')).toHaveTextContent(
     '기록에는 혈압이 남아 있어요.',
   );
   expect(screen.queryByText(/citations|evidenceId|"value"/i)).toBeNull();

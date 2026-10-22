@@ -23,6 +23,8 @@ interface RunHealthKitAutoSyncOptions {
   readonly healthKit: Pick<HealthKitNativeModule, 'querySampleChanges'> &
     Partial<Pick<HealthKitNativeModule, 'queryMedicationDefinitions'>>;
   readonly now: () => string;
+  /** Set by explicit medication access/re-import actions, never ordinary app foreground refresh. */
+  readonly refreshMedicationDoseHistory?: boolean;
 }
 
 const pendingRuns = new WeakMap<object, Promise<HealthKitAutoSyncResult>>();
@@ -101,6 +103,7 @@ async function runRequestedFeatures(
           },
           repository: options.repository,
           now: options.now,
+          refreshDoseHistory: options.refreshMedicationDoseHistory,
         });
         retryable ||=
           result.definitions.status !== 'completed' ||

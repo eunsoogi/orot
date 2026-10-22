@@ -182,6 +182,7 @@ export async function callModel(
           modelId: execution.modelId,
           recipient: execution.recipient,
           remoteProcessing: true,
+          ...(execution.consentScope ? { consentScope: execution.consentScope } : {}),
           allowedScope: execution.allowedScope,
           payload: request,
           signal,

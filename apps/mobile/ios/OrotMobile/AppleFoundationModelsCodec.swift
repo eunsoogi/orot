@@ -4,6 +4,18 @@ import Foundation
 
     @available(iOS 26.0, *)
     enum AppleFoundationModelsCodec {
+        /// Keep request limits intact when adapting the common tool-choice contract to the SDK.
+        static func nativeToolOptions(_ request: [String: Any], hasInvokedTool: Bool = false) -> GenerationOptions {
+            var options = GenerationOptions(temperature: request["temperature"] as? Double,
+                                            maximumResponseTokens: request["maxOutputTokens"] as? Int)
+            if #available(iOS 27.0, macOS 27.0, *) {
+                // A required SDK mode needs an exit condition. After this generation's accepted
+                // callback, only its acknowledgement may drain; fresh runtime requests decide later searches.
+                options.toolCallingMode = hasInvokedTool ? .disallowed : request["nativeToolChoice"] as? String == "required" ? .required : .allowed
+            }
+            return options
+        }
+
         static func schema(_ value: [String: Any]) throws -> DynamicGenerationSchema {
             let name = value["name"] as? String ?? "AppleSchema"
             let description = value["description"] as? String

@@ -30,6 +30,15 @@ describe('iOS test entry routing', () => {
   });
 
   it('selects explicit capability scenarios while the integration host remains isolated', () => {
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'summary-visual' })).toBe(
+      'summary-visual',
+    );
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'conversation-visual' })).toBe(
+      'conversation-visual',
+    );
+    expect(selectTestRoute({ OROT_TEST_SCENARIO: 'evidence-visual' })).toBe(
+      'evidence-visual',
+    );
     expect(
       selectTestRoute({ OROT_TEST_SCENARIO: 'ai-feature-visit-questions' }),
     ).toBe('ai-feature-visit-questions');

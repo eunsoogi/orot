@@ -23,7 +23,7 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('keeps a running RAG turn on cancel and aborts it after confirmed leave', async () => {
+test('retains a running RAG turn on leave and aborts only through its stop control', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let signal: AbortSignal | undefined;
   const ragRunner = jest.fn(
@@ -55,20 +55,14 @@ test('keeps a running RAG turn on cancel and aborts it after confirmed leave', a
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
   await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(
-    navigationText.leaveUnsavedAndOperation.title,
-  );
-  await pressAlertButton(alert, 0);
-  expect(signal?.aborted).toBe(false);
-  expect(route.getByTestId('rag-conversation-progress')).toBeTruthy();
-
-  await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  await pressAlertButton(alert, 1);
   await waitFor(() =>
     expect(route.queryByTestId('rag-conversation-screen')).toBeNull(),
   );
+  expect(alert).not.toHaveBeenCalled();
+  expect(signal?.aborted).toBe(false);
+  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
+  expect(route.getByTestId('rag-conversation-progress')).toBeTruthy();
+  await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
 });
 
@@ -141,7 +135,7 @@ test('aborts disease analysis after confirmed leave and ignores its late result'
   expect(route.queryByTestId('disease-hypotheses-screen')).toBeNull();
 });
 
-test('aborts external search after confirmed leave and ignores its late result', async () => {
+test('retains a RAG external search on leave and ignores results after explicit stop', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   let signal: AbortSignal | undefined;
   let finish!: (
@@ -188,24 +182,18 @@ test('aborts external search after confirmed leave and ignores its late result',
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
   await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(
-    navigationText.leaveUnsavedAndOperation.title,
-  );
-  await pressAlertButton(alert, 0);
-  expect(signal?.aborted).toBe(false);
-  await fireEvent.press(route.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  expect(alert.mock.calls[1]?.[0]).toBe(
-    navigationText.leaveUnsavedAndOperation.title,
-  );
-  await pressAlertButton(alert, 1);
   await waitFor(() =>
     expect(route.queryByTestId('rag-conversation-screen')).toBeNull(),
   );
+  expect(alert).not.toHaveBeenCalled();
+  expect(signal?.aborted).toBe(false);
+  await fireEvent.press(route.getByTestId('ai-feature-rag-conversation'));
+  await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
   await act(async () => finish({ status: 'empty' }));
-  expect(route.queryByTestId('rag-conversation-screen')).toBeNull();
+  expect(
+    route.queryByText('현재 기록에서 답변 근거를 찾지 못했어요.'),
+  ).toBeNull();
 });
 
 function routeDependencies(

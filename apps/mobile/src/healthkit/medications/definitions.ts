@@ -4,11 +4,12 @@ import type { HealthKitMedicationQueryResult } from '../types';
 import type { MedicationRepository, MedicationSyncResult } from './syncTypes';
 import { medicationDefinitionId, preserveIngestedAt } from './syncIdentity';
 
-/** Applies observed medication definitions; deletion needs a complete, non-empty snapshot. */
+/** Applies observed definitions; callers hold deletions until the related dose scope is durable. */
 export async function applyDefinitionSnapshot(
   repository: MedicationRepository,
   result: HealthKitMedicationQueryResult,
   now: () => string,
+  allowDeletions = true,
 ): Promise<MedicationSyncResult['definitions']> {
   if (result.status !== 'completed' || result.availability !== 'available') {
     return {
@@ -72,7 +73,7 @@ export async function applyDefinitionSnapshot(
         upserted += 1;
       }
     }
-    if (result.completeSnapshot) {
+    if (result.completeSnapshot && allowDeletions) {
       // A HealthKit snapshot only owns definitions imported from HealthKit.
       for (const existing of existingRecords) {
         if (

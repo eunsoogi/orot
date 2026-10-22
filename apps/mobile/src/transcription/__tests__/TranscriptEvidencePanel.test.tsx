@@ -205,7 +205,7 @@ test('uses appearance-aware colors for transcript content and editing surfaces',
   expect(transcriptEvidenceStyles.editor.backgroundColor).toBe(
     appColors.primarySoft,
   );
-  expect(transcriptEvidenceStyles.title.fontSize).toBe(32);
+  expect(transcriptEvidenceStyles.title.fontSize).toBe(30);
 });
 
 test('can generate missing transcript evidence and recover after a provider failure', async () => {

@@ -1,5 +1,6 @@
 import { iosTestConfig, speechJourneyTests } from './ios-test-config.mjs';
-import { iosTestTaskNeedsUiPreparation } from './ios-test-cohorts.mjs';
+import { iosTestCohortTasks, iosTestTaskNeedsUiPreparation } from './ios-test-cohorts.mjs';
+import { iosTestExecutionPlan } from './ios-test-execution-plan.mjs';
 import { iosTestInventory } from './ios-test-inventory.mjs';
 import { fixtureIsolationTests } from './fixture-isolation-test-phases.mjs';
 import { recordingPersistenceTests } from './recording-persistence-test-phases.mjs';
@@ -160,4 +161,47 @@ export function verifyFocusedIosPullRequest(context, number, pullRequest) {
     throw new Error(
       'iOS focus must run the selected open PR head in its own repository and branch',
     );
+}
+
+/** Complete fixture selections share the full plan's independent jobs, never an oversized aggregate VM. */
+export function focusedIosTestCohorts(selection) {
+  if (selection.profile !== 'fixtures' || selection.mode !== 'fixture' || selection.identifier)
+    return [];
+  const cohorts = iosTestExecutionPlan().filter(
+    (job) =>
+      job.profile === 'fixtures' &&
+      iosTestCohortTasks(job.cohort).every(
+        (task) => selection.fixtureSuite === 'all' || task.suite === selection.fixtureSuite,
+      ),
+  );
+  const identifiers = cohorts.flatMap((job) =>
+    iosTestCohortTasks(job.cohort).flatMap((task) => task.identifiers),
+  );
+  if (
+    JSON.stringify(identifiers.slice().sort()) !==
+    JSON.stringify(selection.identifiers.slice().sort())
+  )
+    throw new Error('Focused cohort partition differs from the exact requested observations');
+  return cohorts.map((job) => job.cohort);
+}
+
+/** Exactly one execution route must pass; the alternate route must be explicitly skipped. */
+export function verifyFocusedIosJobResults(results, cohorts) {
+  if (
+    !Array.isArray(cohorts) ||
+    (cohorts.length && iosTestExecutionPlan(cohorts).some((job) => job.profile !== 'fixtures'))
+  )
+    throw new Error('Invalid focused fixture cohort selection');
+  const expected = {
+    selection: 'success',
+    products: 'success',
+    execution: cohorts.length ? 'skipped' : 'success',
+    fixture_execution: cohorts.length ? 'success' : 'skipped',
+  };
+  if (
+    !results ||
+    Object.keys(results).length !== Object.keys(expected).length ||
+    Object.entries(expected).some(([name, result]) => results[name]?.result !== result)
+  )
+    throw new Error('Incomplete integration focus');
 }

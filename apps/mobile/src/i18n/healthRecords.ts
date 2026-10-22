@@ -31,7 +31,7 @@ export const healthRecordsKo = {
   'healthRecords.chartSummary':
     '{title} 그래프. 저장된 {count}개 측정값: {values}',
   'healthRecords.measuredOnly':
-    '점은 저장된 측정값입니다. 측정하지 않은 날짜는 채우지 않아요.',
+    '그래프는 저장된 측정값을 보여줘요. 측정하지 않은 날짜는 채우지 않아요.',
   'healthRecords.eventSummary': '{count}개 기록 · 최근 기록 {timestamp}',
   'healthRecords.detailDescription': '선택한 기간에 저장된 기록을 확인해요.',
   'healthRecords.detailEmpty': '선택한 기간에 기록이 없어요.',

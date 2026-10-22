@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { selectFocusedIosTests } from '../ios-focused-selection.mjs';
+import { focusedIosTestCohorts, selectFocusedIosTests } from '../ios-focused-selection.mjs';
+import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 const sha = 'a'.repeat(40);
@@ -19,6 +20,12 @@ const inputs = ['core', 'backup', 'local-model'].map((profile) => {
   ];
 });
 inputs.push(['ios/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/recordings']);
+for (const group of ['navigation', 'calendar', 'questions', 'all'])
+  inputs.push([
+    'ios/fixtures',
+    'scripts/ci/ios-test-fixture-groups.mjs',
+    group === 'all' ? 'all' : `group/${group}`,
+  ]);
 inputs.push(['ios/speech', 'scripts/ci/speech-journey-test-phases.mjs', 'group/journey']);
 inputs.push(['ios/core', 'scripts/ci/fixture-isolation-test-phases.mjs', 'group/isolation']);
 inputs.push([
@@ -40,7 +47,7 @@ inputs.push(
 );
 
 // These fixtures prove Linux aggregation only, never integration runtime behavior.
-function fixture(input, mutate = () => {}, environment = context) {
+function fixture(input, mutate = () => {}, environment = context, mutateFiles = () => {}) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-ios-focus-results-'));
   try {
     const selection = selectFocusedIosTests(...input);
@@ -80,6 +87,30 @@ function fixture(input, mutate = () => {}, environment = context) {
           : 'results.json';
     if (path.includes('/')) mkdirSync(join(directory, path.split('/')[0]));
     writeFileSync(join(directory, path), JSON.stringify(report));
+    for (const cohort of focusedIosTestCohorts(selection)) {
+      const destination = join(directory, 'cohorts', `ios-cohort-report-${cohort}-1234-1`);
+      mkdirSync(destination, { recursive: true });
+      writeFileSync(
+        join(destination, 'results.json'),
+        JSON.stringify({
+          schemaVersion: 2,
+          cohort,
+          passed: true,
+          sourceSha: sha,
+          runId: '1234',
+          attempt: '1',
+          tasks: iosTestCohortTasks(cohort).map((task) => ({
+            profile: task.profile,
+            suite: task.suite,
+            status: 'passed',
+            observations: report.observations.filter((observation) =>
+              task.identifiers.includes(observation.identifier),
+            ),
+          })),
+        }),
+      );
+    }
+    mutateFiles(directory);
     return spawnSync(
       process.execPath,
       ['scripts/ci/ios-focused-results.mjs', ...input, directory],
@@ -101,6 +132,19 @@ test('Linux focus aggregation reads every evidence layout and always marks selec
     assert.equal(report.fullValidation, false);
     assert.equal(report.sourceSha, sha);
     assert.equal(report.selectedCases, selectFocusedIosTests(...input).expectedCount);
+  }
+});
+
+test('partitioned focus rejects a missing partition or an unexpected cohort artifact', () => {
+  const input = ['ios/fixtures', 'scripts/ci/ios-test-fixture-groups.mjs', 'group/navigation'];
+  for (const unexpected of [false, true]) {
+    const result = fixture(input, undefined, context, (directory) => {
+      const reports = join(directory, 'cohorts');
+      if (unexpected) mkdirSync(join(reports, 'unexpected-cohort'));
+      else rmSync(join(reports, 'ios-cohort-report-navigation-routes-1234-1'), { recursive: true });
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /omit a selected partition|unexpected report/);
   }
 });
 

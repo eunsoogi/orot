@@ -3,6 +3,14 @@ import { t } from '../i18n';
 /** Resolves display labels from the catalog and keeps evidence IDs as interpolated data. */
 export function getDiseaseHypothesisCopy() {
   return {
+    summaryTitle: t('diseaseHypotheses.summaryTitle'),
+    summaryGenerate: t('diseaseHypotheses.summaryGenerate'),
+    summaryRetry: t('diseaseHypotheses.summaryRetry'),
+    summaryError: t('diseaseHypotheses.summaryError'),
+    consentRequired: t('diseaseHypotheses.consentRequired'),
+    summaryInsufficient: t('diseaseHypotheses.summaryInsufficient'),
+    summaryExplanation: t('diseaseHypotheses.summaryExplanation'),
+    summaryScope: t('diseaseHypotheses.summaryScope'),
     title: t('diseaseHypotheses.title'),
     explanation: t('diseaseHypotheses.explanation'),
     generate: t('diseaseHypotheses.generate'),

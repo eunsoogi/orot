@@ -10,6 +10,7 @@ import TranscriptCorrectionEditor from './TranscriptCorrectionEditor';
 import {
   latestRevisions,
   errorLabel,
+  transcriptionCreationError,
   type TranscriptError,
 } from './transcriptReviewPresentation';
 import TranscriptReviewSummary from './TranscriptReviewSummary';
@@ -84,7 +85,7 @@ export default function TranscriptEvidencePanel({
     return () => {
       active = false;
     };
-  }, [recordingSourceId, service]);
+  }, [recordingSourceId, service, automaticTranscriptionStatus]);
 
   async function createTranscript(): Promise<void> {
     if (!view) return;
@@ -93,8 +94,8 @@ export default function TranscriptEvidencePanel({
     try {
       await service.transcribe(view.source.id);
       await reload();
-    } catch {
-      setError('create');
+    } catch (failure) {
+      setError(transcriptionCreationError(failure));
     } finally {
       setBusy(false);
     }
@@ -147,6 +148,11 @@ export default function TranscriptEvidencePanel({
       ) : null}
       {loading ? (
         <Text style={styles.copy}>{t('recording.transcript.loading')}</Text>
+      ) : null}
+      {automaticTranscriptionStatus === 'running' ? (
+        <Text accessibilityLiveRegion="polite" style={styles.copy}>
+          {t('recording.transcript.autoProgress')}
+        </Text>
       ) : null}
       {/* Keep the rendered failure state addressable for theme-contrast probes. */}
       {error ? (

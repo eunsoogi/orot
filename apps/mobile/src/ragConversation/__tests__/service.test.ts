@@ -149,18 +149,29 @@ test('forwards safe progress and task-stream observers to the workflow', async (
   });
 });
 
-test('does not call a model when retrieval finds no current evidence', async () => {
+test('lets the model continue a source-independent exchange when retrieval finds no current evidence', async () => {
   jest.mocked(runMultiAgentWorkflow).mockClear();
+  jest.mocked(runMultiAgentWorkflow).mockResolvedValueOnce({
+    status: 'result',
+    value: { answer: '천만에요!', answerKind: 'conversation' },
+    citations: [],
+    coverage: [],
+    checkpoint: {} as never,
+  });
   const loadCurrentEvidence = jest.fn(async () => snapshot(baseReference));
   const outcome = await runRagConversationTurn({
-    question: '질문',
+    question: '고마워',
     previousMessages: [{ role: 'assistant', content: 'old model claim' }],
     loadCurrentEvidence,
     rag: { search: jest.fn(async () => []) } as never,
     workflow: {} as never,
   });
-  expect(outcome).toEqual({ status: 'no_evidence' });
-  expect(runMultiAgentWorkflow).not.toHaveBeenCalled();
+  expect(outcome).toEqual({
+    status: 'answer',
+    answer: '천만에요!',
+    citations: [],
+  });
+  expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
 });
 
 test('allows literature-only research and makes limited-search attribution visible', async () => {

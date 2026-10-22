@@ -97,10 +97,12 @@ test('fresh creation, migration, key lifecycle, backup and native permission cas
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
-  assert.deepEqual(
-    full.map((identifier) => identifier.split('/')[1]),
-    ['StorageMigrationUITests'],
-  );
+  // The new summary/library journeys retain conservative fresh installation isolation.
+  assert.deepEqual(full, [
+    'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
+    'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
+    'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
+  ]);
   assert.equal(
     iosFixtureResetMode('fixtures', 'OrotUITests/NewTests/testUnknown'),
     'fresh-install',

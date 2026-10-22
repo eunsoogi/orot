@@ -3,6 +3,8 @@ import type {
   LanguageModelRequest,
 } from '@orot/model-runtime';
 import { compileResponseSchema, type AppleNativeRequest } from './schema';
+import { compactAppleEvidenceMessage } from './compactEvidenceMessage';
+import { createCompactSchemaNames } from './compactSchemaNames';
 
 const safetyInstructions = [
   'Follow the supplied task instructions and use only supplied evidence.',
@@ -30,7 +32,13 @@ export function serializeAppleRequest(
       instructions.push(content);
       continue;
     }
-    conversation.push(message.role + ': ' + content);
+    conversation.push(
+      message.role +
+        ': ' +
+        (message.role === 'user'
+          ? compactAppleEvidenceMessage(content)
+          : content),
+    );
     if (message.role === 'assistant' && message.toolCalls?.length) {
       conversation.push(
         'Requested tools: ' + JSON.stringify(message.toolCalls),
@@ -70,6 +78,7 @@ export function serializeAppleRequest(
     );
   }
   const format = request.responseFormat;
+  const compactSchemaNames = createCompactSchemaNames();
   const mode =
     request.toolChoice === 'required'
       ? 'tools'
@@ -98,17 +107,17 @@ export function serializeAppleRequest(
       name: tool.name,
       description:
         tool.description?.trim() || 'Run the requested evidence operation.',
-      parameters: compileResponseSchema(
-        [],
+      parameters: compactSchemaNames(
+        compileResponseSchema([], tool.inputSchema, 'NativeTool' + index)!,
         tool.inputSchema,
-        'NativeTool' + index,
-      )!,
+      ),
     })),
-    nativeResponseSchema: compileResponseSchema(
-      [],
-      format?.schema,
-      format?.name,
-    ),
+    nativeResponseSchema: format
+      ? compactSchemaNames(
+          compileResponseSchema([], format.schema, format.name)!,
+          format.schema,
+        )
+      : undefined,
     nativeToolChoice: request.toolChoice === 'required' ? 'required' : 'auto',
     nativeToolCalls: request.messages.flatMap(message =>
       message.role === 'assistant' ? (message.toolCalls ?? []) : [],

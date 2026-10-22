@@ -31,6 +31,51 @@ describe('visit question persistence contracts', () => {
     expect(VisitQuestionCreateSchema.parse(question)).toEqual(question);
   });
 
+  it('round-trips fixed health-period provenance through a saved record payload', () => {
+    const source = {
+      scope: {
+        kind: 'health_context_period',
+        version: 1,
+        topic: 'sleep',
+        window: {
+          fromInclusive: '2026-10-01T00:00:00Z',
+          toExclusive: '2026-10-05T00:00:00Z',
+          timeZone: 'UTC',
+        },
+      },
+      revision: 'synthetic-revision',
+      deletionGeneration: 2,
+    };
+    const question = { ...legacyQuestion, healthContextSources: [source] };
+    expect(VisitQuestionSchema.parse(JSON.parse(JSON.stringify(question)))).toEqual(question);
+    for (const invalid of [
+      { ...source, deletionGeneration: -1 },
+      { ...source, revision: '' },
+      { ...source, scope: { ...source.scope, topic: 'unknown' } },
+      {
+        ...source,
+        scope: { ...source.scope, window: { ...source.scope.window, timeZone: 'unknown' } },
+      },
+      {
+        ...source,
+        scope: {
+          ...source.scope,
+          window: { ...source.scope.window, toExclusive: '2026-10-01T00:00:00Z' },
+        },
+      },
+      {
+        ...source,
+        scope: {
+          ...source.scope,
+          window: { ...source.scope.window, toExclusive: '2027-10-01T00:00:00Z' },
+        },
+      },
+    ])
+      expect(
+        VisitQuestionSchema.safeParse({ ...question, healthContextSources: [invalid] }).success,
+      ).toBe(false);
+  });
+
   it.each([
     { appointmentId: '   ' },
     { rationale: '   ' },

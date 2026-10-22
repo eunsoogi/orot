@@ -1,16 +1,23 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
 import { useEffect, useState } from 'react';
-import { AppRegistry, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import RecordingScreen from '../src/recording/RecordingScreen';
 import { getAutomaticTranscriptionStore } from '../src/recording/automaticTranscriptionStore';
 import { prepareAutomaticProbe } from './automaticTranscriptionProbeSupport';
+import { automaticProbeProvider } from './transcription/emptySpeechProbeProvider';
 
 type Probe = Awaited<ReturnType<typeof prepareAutomaticProbe>>;
 
-/** Only capture/source insertion are synthetic. The screen starts real Speech and renders the saved draft. */
+/** Capture/source insertion are synthetic; explicit empty-result mode tests recovery without claiming Speech success. */
 function ProbeEntry() {
   const [probe, setProbe] = useState<Probe | null>(null);
   const [phase, setPhase] = useState('preparing');
@@ -23,7 +30,13 @@ function ProbeEntry() {
       setPhase('failed');
       setResult(JSON.stringify({ status: 'failed', message: String(error) }));
     };
-    prepareAutomaticProbe().then(value => {
+    const settings = NativeModules.SettingsManager;
+    const launch =
+      settings?.settings ?? settings?.getConstants?.().settings ?? {};
+    const provider = automaticProbeProvider(
+      launch.OROT_AUTOMATIC_SPEECH_EMPTY === 'YES',
+    );
+    prepareAutomaticProbe(provider).then(value => {
       if (!active) return;
       const store = getAutomaticTranscriptionStore(value.transcription);
       unsubscribe = store.subscribe(() => {

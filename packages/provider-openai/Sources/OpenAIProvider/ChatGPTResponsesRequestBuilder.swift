@@ -4,7 +4,7 @@ enum ChatGPTResponsesRequestBuilder {
     static func build(_ input: ChatGPTResponsesRequest, accessToken: String) throws -> URLRequest {
         guard !input.model.isEmpty,
               input.model == input.model.trimmingCharacters(in: .whitespacesAndNewlines),
-              !input.messages.isEmpty,
+              !input.messages.isEmpty || input.publicWebQuery != nil,
               !accessToken.isEmpty
         else {
             throw ChatGPTResponsesError.invalidRequest
@@ -12,7 +12,19 @@ enum ChatGPTResponsesRequestBuilder {
 
         var instructions = [String]()
         var messages = [Any]()
-        for message in input.messages {
+        var inputMessages = input.messages
+        if let query = input.publicWebQuery {
+            guard inputMessages.isEmpty, input.tools.isEmpty, input.toolChoice == nil,
+                  ResponsesPublicWebSearch.validQuery(query)
+            else { throw ChatGPTResponsesError.invalidRequest }
+            // This request contains only the explicitly reviewed public query. Never replay
+            // private model messages, function results or opaque provider continuation items.
+            inputMessages = [
+                .system("Search public web sources and explain the findings concisely in Korean. Use at most two hosted web calls and cite sources for factual claims. Cite at most six sources and write at most 1500 characters. Do not diagnose an individual."),
+                .user(query),
+            ]
+        }
+        for message in inputMessages {
             switch message {
             case let .system(text): instructions.append(text)
             case let .user(text): messages.append(["role": "user", "content": text])
@@ -49,13 +61,18 @@ enum ChatGPTResponsesRequestBuilder {
             "store": false,
             "stream": true,
         ]
+        if input.publicWebQuery != nil {
+            body["tools"] = [["type": "web_search", "search_context_size": "low"]]
+            body["tool_choice"] = "required"
+        }
         // Preserve explicit first-search selection across the native HTTP boundary.
         if let choice = input.toolChoice {
             guard choice == "required", !input.tools.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
             body["tool_choice"] = choice
-            body["parallel_tool_calls"] = false
         }
         if !input.tools.isEmpty {
+            // The runtime accepts one tool call per turn, including continuations without a required choice.
+            body["parallel_tool_calls"] = false
             body["tools"] = try input.tools.map { tool -> [String: Any] in
                 guard !tool.name.isEmpty,
                       let parameters = Self.jsonObject(tool.parametersJSON),

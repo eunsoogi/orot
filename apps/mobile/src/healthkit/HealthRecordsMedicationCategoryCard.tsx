@@ -8,14 +8,14 @@ import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import type { HealthRecordsDetailSelection } from './healthRecordsLibraryModel';
 import { healthRecordCategoryTitle } from './healthRecordsLibraryModel';
-import type { HealthRecordsMedicationData } from './healthRecordsMedicationLibrary';
+import type { HealthRecordsMedicationLoader } from './healthRecordsMedicationLibrary';
 import {
   emptyHealthRecordsMedicationData,
   loadEmptyHealthRecordsMedicationData,
 } from './healthRecordsMedicationLibrary';
 
 interface HealthRecordsMedicationCategoryCardProps {
-  readonly loadMedicationData?: () => Promise<HealthRecordsMedicationData>;
+  readonly loadMedicationData?: HealthRecordsMedicationLoader;
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
 }
 
@@ -30,6 +30,8 @@ export function HealthRecordsMedicationCategoryCard({
   );
   const generation = useRef(0);
   const title = healthRecordCategoryTitle('medications');
+  const medicationCount = data.totalDefinitions ?? data.definitions.length;
+  const doseCount = data.totalDoseEvents ?? data.doseEvents.length;
   const latestDose = [...data.doseEvents].sort((left, right) =>
     right.effectiveAt.localeCompare(left.effectiveAt),
   )[0];
@@ -59,7 +61,7 @@ export function HealthRecordsMedicationCategoryCard({
       ? t('healthRecords.loading')
       : status === 'failed'
         ? t('healthRecords.error')
-        : data.definitions.length === 0 && data.doseEvents.length === 0
+        : medicationCount === 0 && doseCount === 0
           ? t('healthRecords.categoryEmpty', { title })
           : latestDose
             ? t('healthRecords.medicationLatestDose', {
@@ -83,8 +85,8 @@ export function HealthRecordsMedicationCategoryCard({
           </Text>
           <Text style={styles.summary} testID="health-record-medications-count">
             {t('healthRecords.medicationCountSummary', {
-              medications: data.definitions.length,
-              doseEvents: data.doseEvents.length,
+              medications: medicationCount,
+              doseEvents: doseCount,
             })}
           </Text>
         </View>

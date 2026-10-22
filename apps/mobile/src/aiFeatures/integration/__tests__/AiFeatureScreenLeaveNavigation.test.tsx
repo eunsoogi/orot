@@ -1,7 +1,5 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import type { AlertButton } from 'react-native';
-import { navigationText } from '../../../i18n/navigation';
 import type { RagConversationOutcome } from '../../../ragConversation/service';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { AiFeatureRoute } from '../AiFeatureRoute';
@@ -19,7 +17,7 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('keeps a RAG draft when shared back confirmation is canceled', async () => {
+test('retains a RAG draft through Back and reentry without confirmation', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const view = await render(<AiFeatureRoute onBack={jest.fn()} />);
 
@@ -31,9 +29,11 @@ test('keeps a RAG draft when shared back confirmation is canceled', async () => 
   );
   await fireEvent.press(view.getByTestId('navigation-back'));
 
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(navigationText.leaveUnsaved.title);
-  await pressAlertButton(alert, 0);
+  await waitFor(() =>
+    expect(view.queryByTestId('rag-conversation-screen')).toBeNull(),
+  );
+  expect(alert).not.toHaveBeenCalled();
+  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
 
   expect(view.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 진료에서 확인할 내용을 정리하고 싶어요.',
@@ -41,7 +41,7 @@ test('keeps a RAG draft when shared back confirmation is canceled', async () => 
   expect(view.getByTestId('rag-conversation-screen')).toBeTruthy();
 });
 
-test('aborts RAG generation after confirmed Back and ignores a late answer', async () => {
+test('finishes a RAG turn while absent and shows it once on reentry', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const source = localData([memoryRecord(1)]);
   let finish!: (outcome: RagConversationOutcome) => void;
@@ -84,23 +84,13 @@ test('aborts RAG generation after confirmed Back and ignores a late answer', asy
   expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
 
   await fireEvent.press(view.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
-  expect(alert.mock.calls[0]?.[0]).toBe(
-    navigationText.leaveUnsavedAndOperation.title,
-  );
-  await pressAlertButton(alert, 0);
-  expect(runnerSignal?.aborted).toBe(false);
-  expect(view.getByTestId('rag-conversation-progress')).toBeTruthy();
-
-  await fireEvent.press(view.getByTestId('navigation-back'));
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
-  await pressAlertButton(alert, 1);
   await waitFor(() =>
     expect(view.getByTestId('ai-features-screen')).toBeTruthy(),
   );
-  expect(runnerSignal?.aborted).toBe(true);
+  expect(alert).not.toHaveBeenCalled();
+  expect(runnerSignal?.aborted).toBe(false);
 
-  // A provider can settle after cancellation; the departed feature must discard its answer.
+  // Completion belongs to the session even when no route subscribes to it.
   await act(async () => {
     finish({
       status: 'answer',
@@ -108,16 +98,7 @@ test('aborts RAG generation after confirmed Back and ignores a late answer', asy
       citations: [],
     });
   });
-  expect(view.queryByText('늦게 완료된 답변')).toBeNull();
+  await fireEvent.press(view.getByTestId('ai-feature-rag-conversation'));
+  expect(view.getAllByText('늦게 완료된 답변')).toHaveLength(1);
+  expect(ragRunner).toHaveBeenCalledTimes(1);
 });
-
-/** Resumes the route guard through the same native Alert callback used by the app. */
-async function pressAlertButton(alert: jest.SpyInstance, index: number) {
-  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
-  const press = buttons?.[index]?.onPress;
-  if (!press) throw new Error(`Alert button ${index} was not registered.`);
-  await act(async () => {
-    press();
-    await Promise.resolve();
-  });
-}

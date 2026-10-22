@@ -1,5 +1,8 @@
 import { readHealthObservationPage } from './healthObservationPages';
+import { readHealthMedicationPage } from './healthMedicationPages';
+import type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
 import type { HealthObservationCursor, HealthObservationPage } from './healthObservationPages';
+import type { HealthObservationPageFilter } from './healthObservationPageFilter';
 import { RecordIdSchema } from '@orot/domain';
 import { STORAGE_TABLES } from './contracts';
 import type { RecordKind, RecordMap, SyncCheckpoint } from './contracts';
@@ -34,16 +37,19 @@ export interface RecordWriter {
 }
 
 export interface RecordRepository extends RecordWriter {
+  listHealthMedicationPage(request: HealthMedicationPageRequest): Promise<HealthMedicationPage>;
   listHealthObservationPage(
     cursor?: HealthObservationCursor | null,
     limit?: number,
+    filter?: HealthObservationPageFilter,
   ): Promise<HealthObservationPage>;
   sourceRecords: SourceRecordRepository;
   evidenceSpans: EvidenceSpanRepository;
   transcripts: TranscriptEvidenceRepository;
   get<K extends RecordKind>(kind: K, id: string): Promise<RecordMap[K] | null>;
   getSyncCheckpoint(key: string): Promise<SyncCheckpoint | null>;
-  transaction<T>(operation: (writer: RecordWriter) => Promise<T>): Promise<T>;
+  /** SQL preconditions share the typed writer's transaction; callers must not open a nested transaction. */
+  transaction<T>(operation: (writer: RecordWriter, sql?: SqlExecutor) => Promise<T>): Promise<T>;
   deleteAllLocalData(
     withinDeletionTransaction?: (
       transaction: SqlExecutor,
@@ -108,8 +114,9 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
   const transcripts = createTranscriptEvidenceRepository(database);
   return {
     ...sourceEvidenceRepositories,
-    listHealthObservationPage: (cursor, limit) =>
-      readHealthObservationPage(database, cursor, limit),
+    listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
+    listHealthObservationPage: (cursor, limit, filter) =>
+      readHealthObservationPage(database, cursor, limit, filter),
     transcripts,
     async put<K extends RecordKind>(kind: K, record: RecordMap[K]) {
       await database.transaction(async (transaction) => {
@@ -131,10 +138,12 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         await createWriter(transaction).putSyncCheckpoint(checkpoint);
       });
     },
-    async transaction<T>(operation: (transactionWriter: RecordWriter) => Promise<T>) {
+    async transaction<T>(
+      operation: (transactionWriter: RecordWriter, sql?: SqlExecutor) => Promise<T>,
+    ) {
       let value!: T;
       await database.transaction(async (transaction) => {
-        value = await operation(createWriter(transaction));
+        value = await operation(createWriter(transaction), transaction);
       });
       return value;
     },
@@ -162,11 +171,15 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
         await transaction.execute('DELETE FROM healthkit_sync_checkpoints');
         await transaction.execute('DELETE FROM transcript_artifact_staleness');
         const checkpoints = await transaction.execute(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)",
-          ['langgraph_checkpoint_writes', 'langgraph_checkpoints'],
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?)",
+          ['langgraph_checkpoint_writes', 'langgraph_checkpoints', 'symptom_summary_runs'],
         );
         for (const row of checkpoints.rows) {
-          if (row.name === 'langgraph_checkpoint_writes' || row.name === 'langgraph_checkpoints') {
+          if (
+            row.name === 'langgraph_checkpoint_writes' ||
+            row.name === 'langgraph_checkpoints' ||
+            row.name === 'symptom_summary_runs'
+          ) {
             await transaction.execute('DELETE FROM ' + row.name);
           }
         }

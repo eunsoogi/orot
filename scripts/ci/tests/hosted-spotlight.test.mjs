@@ -167,7 +167,10 @@ test('every native producer and consumer suppresses indexing before dependencies
     ...Object.values(workflow('.github/workflows/ios-debug-tests.yml').jobs).map(
       (job) => job.steps,
     ),
-    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs).map(
+    ...Object.values(workflow('.github/workflows/ios-release-tests.yml').jobs)
+      .filter((job) => !job.uses)
+      .map((job) => job.steps),
+    ...Object.values(workflow('.github/workflows/ios-question-tests.yml').jobs).map(
       (job) => job.steps,
     ),
     workflow('.github/workflows/ios-focused.yml').jobs.execution.steps,

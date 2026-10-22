@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
-import { AppSymbol } from '../layout/AppSymbol';
+import { SelectedModelControl } from '../layout/SelectedModelControl';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
@@ -28,6 +28,7 @@ interface Props {
   readonly onImport: () => Promise<void>;
   readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings?: () => void;
+  readonly onOpenProviderSelection?: () => void;
 }
 
 /** One import action shows full scan progress and only confidently medical results. */
@@ -54,31 +55,21 @@ export function MedicalAppointmentReviewView(props: Props) {
         <Text accessibilityRole="header" style={styles.title}>
           {copy.title}
         </Text>
-        <Text style={styles.description}>{copy.description}</Text>
       </View>
-      <View style={styles.provider}>
-        <View style={styles.symbol}>
-          <AppSymbol
-            name={
-              props.provider?.privacyBoundary === 'on-device'
-                ? 'apple.logo'
-                : 'sparkles'
-            }
-            size={30}
-            color={appColors.text}
-          />
-        </View>
-        <View style={styles.providerCopy}>
-          <Text style={styles.providerName}>
-            {props.provider?.displayName ?? copy.noProvider}
-          </Text>
-          <Text style={styles.secondary}>
-            {props.provider?.privacyBoundary === 'on-device'
-              ? copy.localNotice
-              : copy.remoteNotice}
-          </Text>
-        </View>
-      </View>
+      <SelectedModelControl
+        // Keep this action scan-friendly; missing execution details are explanatory status copy.
+        name={props.provider?.displayName ?? copy.chooseProvider}
+        local={props.provider?.privacyBoundary === 'on-device'}
+        onPress={props.onOpenProviderSelection}
+        label="진료 일정 분류에 사용할 AI 선택"
+        testID="medical-appointment-select-provider"
+      />
+      <Text style={styles.secondary}>
+        {props.provider?.privacyBoundary === 'on-device'
+          ? copy.localNotice
+          : copy.remoteNotice}
+      </Text>
+      <Text style={styles.description}>{copy.description}</Text>
       {unavailable ? (
         <Text accessibilityRole="alert">{copy.providerUnavailable}</Text>
       ) : null}

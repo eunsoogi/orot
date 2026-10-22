@@ -10,4 +10,6 @@ export type {
   ChatGPTPlanInputMessage,
   ChatGPTPlanToolDefinition,
   ChatGPTPlanRequest,
+  ChatGPTPlanPublicWebRequest,
+  ChatGPTPlanWebSearchResult,
 } from './native-contract';

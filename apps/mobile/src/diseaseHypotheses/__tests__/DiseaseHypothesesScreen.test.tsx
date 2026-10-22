@@ -61,7 +61,7 @@ test('shows loading and opens the source citation for a result', async () => {
     },
   });
   expect(await screen.findByTestId('disease-hypotheses-results')).toBeTruthy();
-  await fireEvent.press(screen.getByText(/원문 근거 열기/));
+  await fireEvent.press(screen.getByLabelText(/원문 근거 열기/));
   expect(onOpenSource).toHaveBeenCalledWith(reference);
 });
 
@@ -172,13 +172,69 @@ test('explains native safety refusal and opens provider selection without automa
     />,
   );
   await fireEvent.press(screen.getByTestId('disease-hypotheses-generate'));
-  expect(
-    await screen.findByText(/Apple Intelligence의 안전 정책/),
-  ).toBeTruthy();
+  expect(await screen.findByText(/선택한 AI가 안전 정책/)).toBeTruthy();
   expect(screen.queryByTestId('disease-hypotheses-insufficient')).toBeNull();
   await fireEvent.press(
     screen.getByTestId('disease-hypotheses-select-provider'),
   );
   expect(selectProvider).toHaveBeenCalledTimes(1);
   expect(generate).toHaveBeenCalledTimes(1);
+});
+
+test('restored summaries keep clinical brackets and exact source actions without inline internal citations', async () => {
+  const external = {
+    ...reference,
+    sourceKind: 'external_medical' as const,
+    sourceId: 'MED:42515370',
+    evidenceId: 'MED:42515370',
+    locator: { originalUrl: 'https://europepmc.org/article/MED/42515370' },
+  };
+  const restored: DiseaseHypothesisAnalysis = {
+    presentation: 'symptom_summary',
+    hypotheses: [
+      {
+        ...analysis.hypotheses[0],
+        // Historical prose uses old turn aliases; restored references have fresh identities.
+        summary:
+          '등록된 복용약이에요. [e20, e18, e19]\n측정값은 [120/80] mmHg예요.',
+        uncertainty: '진단 코드 [E20]와 날짜 [2026-10-20]는 원문이에요.',
+        missingData: ['기록 구간을 확인해요. [e20]'],
+      },
+      {
+        ...analysis.hypotheses[0],
+        title: '일반 문헌 설명',
+        summary: '일반 문헌의 설명이에요. [MED:42515370]',
+        supportingEvidence: [external],
+        uncertainty: '',
+        missingData: [],
+      },
+    ],
+  };
+  const onOpenSource = jest.fn();
+  const onGenerate = jest.fn();
+  await render(
+    <DiseaseHypothesesScreen
+      onBack={jest.fn()}
+      onOpenSource={onOpenSource}
+      onGenerate={onGenerate}
+      restoredSummary={restored}
+    />,
+  );
+  expect(
+    await screen.findByText(
+      '등록된 복용약이에요.\n측정값은 [120/80] mmHg예요.',
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.getByText('진단 코드 [E20]와 날짜 [2026-10-20]는 원문이에요.'),
+  ).toBeTruthy();
+  expect(screen.getByText('일반 문헌의 설명이에요.')).toBeTruthy();
+  expect(screen.getByText('• 기록 구간을 확인해요.')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
+  expect(onOpenSource).toHaveBeenCalledWith(reference);
+  expect(
+    screen.getByLabelText('원문 근거 열기 · Europe PMC 의학 문헌'),
+  ).toBeTruthy();
+  expect(restored.hypotheses[0].summary).toContain('[e20, e18, e19]');
+  expect(onGenerate).not.toHaveBeenCalled();
 });

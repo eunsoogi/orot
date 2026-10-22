@@ -89,16 +89,17 @@ test('affected domains require successful complete selected execution and unrela
     0,
   );
 
-  for (const result of ['failure', 'cancelled', 'skipped', ''])
-    assert.notEqual(
-      evaluate('Questions', { selected: true, result, cohorts: ['questions'] }).status,
-      0,
-    );
+  for (const cohort of ['questions-review', 'questions-conversation', 'questions-summary'])
+    for (const result of ['failure', 'cancelled', 'skipped', ''])
+      assert.notEqual(
+        evaluate('Questions', { selected: true, result, cohorts: [cohort] }).status,
+        0,
+      );
   assert.notEqual(
     evaluate('Provider', {
       selected: true,
       result: 'success',
-      cohorts: ['questions'],
+      cohorts: ['questions-review', 'questions-conversation', 'questions-summary'],
       invalid: true,
     }).status,
     0,
@@ -164,4 +165,18 @@ test('metadata edits require verified same-head ready evidence before any protec
     }).status,
     0,
   );
+});
+
+// Recording partitions inherit the original UI, stored-state and speech gates independently.
+test('every recording leaf retains all original protected domain failure boundaries', () => {
+  for (const cohort of ['recordings-controls', 'recordings-review', 'recordings-playback']) {
+    for (const check of ['UI', 'Storage', 'Speech']) {
+      assert.equal(
+        evaluate(check, { selected: true, result: 'success', cohorts: [cohort] }).status,
+        0,
+      );
+      for (const result of ['failure', 'cancelled', 'skipped', ''])
+        assert.notEqual(evaluate(check, { selected: true, result, cohorts: [cohort] }).status, 0);
+    }
+  }
 });

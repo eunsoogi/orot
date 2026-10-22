@@ -1,5 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import type { HealthObservationPage } from '@orot/storage';
+import type {
+  HealthObservationPage,
+  HealthObservationPageFilter,
+} from '@orot/storage';
 import { HealthRecordsLibraryScreen } from '../HealthRecordsLibraryScreen';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation } from '../bloodPressure/testSupport';
@@ -41,7 +44,7 @@ test('shows the first page before requesting more current-period records', async
     correlation('summary-pressure'),
     pressureAt,
   ).observations;
-  const olderAt = new Date(now - 62 * 24 * 60 * 60_000).toISOString();
+  const olderAt = new Date(now - 120 * 60_000).toISOString();
   const olderMapped = mapCommonObservationSample(
     'heartRate',
     healthKitSample('heartRate', {
@@ -61,13 +64,22 @@ test('shows the first page before requesting more current-period records', async
     id: recentHeartRates.at(-1)!.id,
   };
   const olderCursor = { effectiveAt: older.effectiveAt, id: older.id };
-  const loader = jest.fn(async (cursor: { id: string } | null) => {
-    if (!cursor) return { records: recentHeartRates, nextCursor: firstCursor };
-    if (cursor.id === firstCursor.id) {
-      return { records: [...pressure, older], nextCursor: olderCursor };
-    }
-    return { records: [], nextCursor: null };
-  });
+  const loader = jest.fn(
+    async (
+      cursor: { id: string } | null,
+      filter?: HealthObservationPageFilter,
+    ) => {
+      if (filter?.category === 'blood_pressure')
+        return { records: pressure, nextCursor: null };
+      if (filter?.category !== 'heart_rate')
+        return { records: [], nextCursor: null };
+      if (!cursor)
+        return { records: recentHeartRates, nextCursor: firstCursor };
+      if (cursor.id === firstCursor.id)
+        return { records: [older], nextCursor: olderCursor };
+      return { records: [], nextCursor: null };
+    },
+  );
 
   await render(
     <HealthRecordsLibraryScreen
@@ -78,16 +90,21 @@ test('shows the first page before requesting more current-period records', async
   );
 
   // A dense current month must not delay first paint until every page arrives.
-  expect(loader).toHaveBeenCalledTimes(1);
+  expect(loader).toHaveBeenCalledTimes(6);
+  expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
   expect(screen.getByText('아직 불러오지 않은 기록이 있어요.')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   await fireEvent.press(screen.getByTestId('health-records-load-older'));
   expect(
     await screen.findByTestId('health-record-chart-blood_pressure'),
   ).toBeTruthy();
-  expect(loader).toHaveBeenCalledTimes(2);
+  expect(loader).toHaveBeenCalledTimes(7);
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
-  expect(loader).toHaveBeenCalledTimes(3);
-  expect(loader).toHaveBeenLastCalledWith(olderCursor);
+  expect(loader).toHaveBeenCalledTimes(8);
+  expect(loader).toHaveBeenLastCalledWith(
+    olderCursor,
+    expect.objectContaining({ category: 'heart_rate' }),
+  );
 });
 
 test('a pending library read registers safe leave state', async () => {
@@ -161,7 +178,10 @@ test('coalesces repeated end events while the next page is pending', async () =>
   );
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
-  expect(loader).toHaveBeenCalledTimes(2);
-  expect(loader).toHaveBeenLastCalledWith(cursor);
+  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenLastCalledWith(
+    cursor,
+    expect.objectContaining({ category: 'blood_pressure' }),
+  );
   await act(async () => next.resolve({ records: [], nextCursor: null }));
 });
