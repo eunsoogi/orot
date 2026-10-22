@@ -85,7 +85,16 @@ for (const status of [0, 65])
         resources.map((sample) => sample.stage),
         ['before', 'after'],
       );
-      assert.ok(resources.every((sample) => sample.observations.processes === 'synthetic ps\n'));
+      assert.equal(resources[0].observations.processes, 'synthetic ps\n');
+      // Preserve process inventory before readiness, while keeping final memory and swap telemetry.
+      assert.deepEqual(resources[1].observations, {
+        memory: 'synthetic vm_stat\n',
+        swap: 'synthetic sysctl\n',
+        processes: { unavailable: 'process snapshot skipped by boot policy' },
+      });
+      assert.ok(Number.isFinite(resources[1].commandElapsedMs.memory));
+      assert.ok(Number.isFinite(resources[1].commandElapsedMs.swap));
+      assert.equal(resources[1].commandElapsedMs.processes, null);
       assert.equal(value.calls.filter((args) => args[1] === 'boot').length, 1);
       assert.deepEqual(
         value.calls.filter((args) => args[1] === 'bootstatus'),

@@ -68,6 +68,7 @@ export async function iosTestResourceSnapshot(
   index = 0,
   execute = executeResourceCommand,
   signal,
+  { skipFinalProcessSnapshot = false } = {},
 ) {
   const started = performance.now();
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
@@ -77,6 +78,11 @@ export async function iosTestResourceSnapshot(
     ['swap', 'sysctl', ['vm.swapusage']],
     ['processes', 'ps', ['-axo', 'pid,ppid,%cpu,rss,comm']],
   ]) {
+    if (name === 'processes' && stage === 'after' && skipFinalProcessSnapshot) {
+      entry.observations[name] = { unavailable: 'process snapshot skipped by boot policy' };
+      commandElapsedMs[name] = null;
+      continue;
+    }
     if (signal?.aborted) {
       entry.observations[name] = { unavailable: 'sampling stopped' };
       commandElapsedMs[name] = null;
@@ -107,10 +113,12 @@ export async function iosTestResourceSnapshot(
 /**
  * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
  * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
+ * Boot sampling can omit its final process listing when hosted `ps` stalls after readiness, preserving
+ * earlier process evidence and final memory/swap telemetry.
  */
 export async function iosTestResourceSampler(
   path,
-  { intervalMs = 20000, execute = executeResourceCommand } = {},
+  { intervalMs = 20000, execute = executeResourceCommand, skipFinalProcessSnapshot = false } = {},
 ) {
   let index = 0;
   let stopped = false;
@@ -123,7 +131,9 @@ export async function iosTestResourceSampler(
   const sample = (stage) => {
     const controller = new AbortController();
     activeController = controller;
-    const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal);
+    const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal, {
+      skipFinalProcessSnapshot,
+    });
     activeSample = pending;
     return pending.finally(() => {
       if (activeSample === pending) activeSample = undefined;

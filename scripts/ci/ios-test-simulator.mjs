@@ -42,7 +42,9 @@ function simctl(...args) {
 
 /** Keep Apple's migration/readiness progress visible while sampling the wait. No boot retry or service mutation is performed. */
 async function bootOwnedSimulator(owner, ownerPath) {
-  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl');
+  const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl', {
+    skipFinalProcessSnapshot: true,
+  });
   let stage = 'boot';
   let failure;
   try {
