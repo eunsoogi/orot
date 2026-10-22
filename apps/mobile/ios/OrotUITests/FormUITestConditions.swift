@@ -89,11 +89,12 @@ enum FormUITestConditions {
                          dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
             }
             measure("caret-tap") { app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap() }
-            // Controlled fields can drop a batched delete when their value rerenders. Let each
-            // grapheme update settle once before sending the next key; do not recover by retrying.
+            // Controlled fields can drop batched backspaces while rerendering.
+            // Send one delete key through the focused app instead of re-resolving the input query per Character.
+            // exact-empty below remains the only outcome check; do not retry a missed deletion.
             measure("delete-existing") {
                 for _ in current {
-                    input.typeText(XCUIKeyboardKey.delete.rawValue)
+                    app.typeText(XCUIKeyboardKey.delete.rawValue)
                 }
             }
             measure("exact-empty") { exactValue(input, equals: "") }
