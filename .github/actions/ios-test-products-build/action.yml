@@ -16,6 +16,9 @@ runs:
   steps:
     - uses: ./.github/actions/ios-native-toolchain
     - uses: ./.github/actions/ios-platform-dependencies
+    - name: Verify generated Xcode project metadata
+      shell: bash
+      run: node scripts/ci/ios-test-project-source-inputs.mjs
     - name: Build without booting a Simulator
       shell: bash
       env:
