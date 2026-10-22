@@ -140,7 +140,7 @@ export function ConversationScreen({
           busy={busy}
           onChangeText={value => store.setDraft(id, value)}
           onSend={() => {
-            void store.send(id, onSend);
+            store.send(id, onSend);
           }}
           onCancel={cancel}
         />

@@ -115,7 +115,7 @@ export function DiseaseHypothesesScreen({
           disabled={state.status === 'loading'}
           accessibilityState={{ busy: state.status === 'loading' }}
           onPress={() => {
-            void generate(onSummarize, 'summary');
+            generate(onSummarize, 'summary');
           }}
           testID="symptom-summary-generate"
           title={

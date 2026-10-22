@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentProps,
@@ -75,6 +76,11 @@ function FadeSegment({
 }) {
   const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   const [alpha, setAlpha] = useState(reduceMotion ? 1 : 0);
+  // This per-segment opacity follows animation state and therefore cannot be a static StyleSheet entry.
+  const textStyle = useMemo(
+    () => ({ opacity: reduceMotion ? 1 : alpha }),
+    [alpha, reduceMotion],
+  );
   useEffect(() => {
     if (reduceMotion) {
       opacity.setValue(1);
@@ -99,10 +105,7 @@ function FadeSegment({
     };
   }, [opacity, reduceMotion, segment.id, onSettled]);
   return (
-    <Text
-      testID="ai-response-fragment"
-      style={{ opacity: reduceMotion ? 1 : alpha }}
-    >
+    <Text testID="ai-response-fragment" style={textStyle}>
       {segment.text}
     </Text>
   );

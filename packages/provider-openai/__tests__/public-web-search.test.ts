@@ -51,7 +51,7 @@ test('does not advertise public search on a bridge without that transport', () =
   expect(provider.searchPublicWeb).toBeUndefined();
 });
 
-test.each(['', ' query', 'query\nidentifier', 'a'.repeat(241)])(
+test.each(['', ' query', 'query\nidentifier', '\u0085query', 'a'.repeat(241)])(
   'rejects an invalid query before dispatch',
   async (query) => {
     const run = fixture();

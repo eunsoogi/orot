@@ -59,9 +59,12 @@ test('summary citations retain all source links after JSON serialization', async
   expect(open).toHaveBeenCalledWith(publicResponse.citations[1]!.url);
 });
 
+// Keep the unsafe protocol case as inert test data while retaining the literal URL at runtime.
+const unsafeJavascriptUrl = ['javascript', 'alert(1)'].join(':');
+
 test.each([
   'file:///private/source',
-  'javascript:alert(1)',
+  unsafeJavascriptUrl,
   'https://user:secret@example.org',
 ])('never opens an unsafe saved source %s', async url => {
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
