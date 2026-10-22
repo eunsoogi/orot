@@ -144,7 +144,10 @@ if (
 if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
   throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
-const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl');
+// Boot sampling already records host processes; do not block XCTest startup on a duplicate ps query.
+const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl', {
+  skipInitialProcessSnapshot: true,
+});
 const stopDiagnostics =
   profile === 'speech' && tests.some((test) => test.includes('/SpeechAssetPreparationTests/'))
     ? startIosSpeechDiagnostics(owner.udid, resolve(results) + '.speech-system.log')

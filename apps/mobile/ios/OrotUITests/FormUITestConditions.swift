@@ -89,21 +89,67 @@ enum FormUITestConditions {
                          dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
             }
             measure("caret-tap") { app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap() }
-            // The original UTF-16 bound also covers composed text without an unbounded edit loop.
-            let deletion = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.utf16.count)
-            measure("delete-existing") { input.typeText(deletion) }
+            clearValue(input, maximumUTF16Length: current.utf16.count, in: app, caretAlreadyAtEnd: true)
             measure("exact-empty") { exactValue(input, equals: "") }
         }
         if !text.isEmpty {
-            // A batched native string lost characters in a controlled input. Complete each
-            // character action and its app-idleness wait before sending the next edit.
-            measure("type-characters") {
-                for character in text {
-                    input.typeText(String(character))
+            // Controlled fields can drop characters in a batch. Use the faster native edit only when
+            // the observed value matches exactly, then clear and retry character-by-character on mismatch.
+            let batchMatched = measure("type-batch") {
+                input.typeText(text)
+                return observedValue(input, treatingPlaceholderAsEmpty: false) == text
+            }
+            if !batchMatched {
+                clearValue(input, maximumUTF16Length: text.utf16.count, in: app)
+                measure("exact-empty") { exactValue(input, equals: "") }
+                measure("type-characters") {
+                    for character in text {
+                        input.typeText(String(character))
+                    }
                 }
             }
         }
         measure("exact-value") { exactValue(input, equals: text) }
+    }
+
+    /// A dropped batched deletion gets one bounded, per-key recovery; every caller still verifies the empty value.
+    private static func clearValue(_ input: XCUIElement, maximumUTF16Length: Int, in app: XCUIApplication, caretAlreadyAtEnd: Bool = false) {
+        let current = observedValue(input, treatingPlaceholderAsEmpty: true)
+        guard !current.isEmpty, maximumUTF16Length > 0 else { return }
+
+        if !caretAlreadyAtEnd {
+            measure("delete-caret-tap") { tapTrailingCaret(input, in: app) }
+        }
+        // UTF-16 count bounds composed fixture text; a no-op key at empty cannot damage another field.
+        let deletionCount = min(current.utf16.count, maximumUTF16Length)
+        measure("delete-existing") {
+            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: deletionCount))
+        }
+
+        let remaining = observedValue(input, treatingPlaceholderAsEmpty: true)
+        guard !remaining.isEmpty else { return }
+
+        // Re-anchor after a controlled-input update, then recover only the observed remainder.
+        measure("delete-recovery-caret-tap") { tapTrailingCaret(input, in: app) }
+        let fallbackCount = min(remaining.utf16.count, maximumUTF16Length)
+        measure("delete-fallback") {
+            for _ in 0 ..< fallbackCount {
+                input.typeText(XCUIKeyboardKey.delete.rawValue)
+            }
+        }
+    }
+
+    private static func tapTrailingCaret(_ input: XCUIElement, in app: XCUIApplication) {
+        let applicationFrame = app.frame
+        let inputFrame = input.frame
+        let point = CGVector(dx: inputFrame.minX + inputFrame.width * 0.95 - applicationFrame.minX,
+                             dy: inputFrame.minY + inputFrame.height * 0.95 - applicationFrame.minY)
+        app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
+    }
+
+    private static func observedValue(_ input: XCUIElement, treatingPlaceholderAsEmpty: Bool) -> String {
+        let value = input.value as? String ?? ""
+        return treatingPlaceholderAsEmpty && value == input.placeholderValue ? "" : value
     }
 
     /// Keep timing diagnostic-only; step names and durations exclude field text and identifiers.
@@ -165,8 +211,7 @@ enum FormUITestConditions {
     private static func exactValue(_ input: XCUIElement, equals text: String) {
         // Native key synthesis has completed and waited for the app to idle. A missed edit
         // cannot finish later without another action; fail with its actual value instead of polling forever.
-        let value = input.value as? String ?? ""
-        let observed = text.isEmpty && value == input.placeholderValue ? "" : value
+        let observed = observedValue(input, treatingPlaceholderAsEmpty: text.isEmpty)
         XCTAssertEqual(observed, text, "The completed native edit must replace the entire input value")
     }
 }

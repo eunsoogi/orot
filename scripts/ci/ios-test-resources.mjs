@@ -68,7 +68,7 @@ export async function iosTestResourceSnapshot(
   index = 0,
   execute = executeResourceCommand,
   signal,
-  { skipFinalProcessSnapshot = false } = {},
+  { skipInitialProcessSnapshot = false, skipFinalProcessSnapshot = false } = {},
 ) {
   const started = performance.now();
   const entry = { stage, index, timestamp: new Date().toISOString(), observations: {} };
@@ -78,8 +78,17 @@ export async function iosTestResourceSnapshot(
     ['swap', 'sysctl', ['vm.swapusage']],
     ['processes', 'ps', ['-axo', 'pid,ppid,%cpu,rss,comm']],
   ]) {
-    if (name === 'processes' && stage === 'after' && skipFinalProcessSnapshot) {
-      entry.observations[name] = { unavailable: 'process snapshot skipped after boot readiness' };
+    if (
+      name === 'processes' &&
+      ((stage === 'before' && skipInitialProcessSnapshot) ||
+        (stage === 'after' && skipFinalProcessSnapshot))
+    ) {
+      entry.observations[name] = {
+        unavailable:
+          stage === 'before'
+            ? 'process snapshot skipped before XCTest launch'
+            : 'process snapshot skipped after boot readiness',
+      };
       commandElapsedMs[name] = null;
       continue;
     }
@@ -113,12 +122,18 @@ export async function iosTestResourceSnapshot(
 /**
  * Capture sequential samples so telemetry never blocks runner callbacks or overlaps its own host queries.
  * Callers await the initial sample and stop callback to keep the sidecar ordered and reap pending commands.
+ * A caller may omit the initial process listing before XCTest when boot sampling already captured host state.
  * A caller may omit the final process listing after it confirms readiness, preserving earlier evidence and
  * final memory/swap telemetry while retaining the process snapshot when readiness fails.
  */
 export async function iosTestResourceSampler(
   path,
-  { intervalMs = 20000, execute = executeResourceCommand, skipFinalProcessSnapshot = false } = {},
+  {
+    intervalMs = 20000,
+    execute = executeResourceCommand,
+    skipInitialProcessSnapshot = false,
+    skipFinalProcessSnapshot = false,
+  } = {},
 ) {
   let index = 0;
   let stopped = false;
@@ -133,6 +148,7 @@ export async function iosTestResourceSampler(
     const controller = new AbortController();
     activeController = controller;
     const pending = iosTestResourceSnapshot(path, stage, index++, execute, controller.signal, {
+      skipInitialProcessSnapshot,
       skipFinalProcessSnapshot:
         finalSampleOptions.skipFinalProcessSnapshot ?? defaultSkipFinalProcessSnapshot,
     });
