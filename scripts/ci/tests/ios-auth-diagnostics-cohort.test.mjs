@@ -53,10 +53,10 @@ test(
     const installed = join(value.root, 'installed');
     const ownerPath = join(value.root, 'owner.json');
     const output = join(value.root, 'results');
-    const runFile = join(value.products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun');
+    const runFile = join(value.products, 'OrotTests_iphonesimulator27.1-arm64.xctestrun');
     Object.assign(value.env, {
       PROFILE: definition.profiles[0],
-      DEVELOPER_DIR: '/Applications/Xcode.app/Contents/Developer',
+      DEVELOPER_DIR: '/Applications/Xcode_27.1.app/Contents/Developer',
       GITHUB_JOB: 'selection-test',
     });
     const hostReport = {

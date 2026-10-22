@@ -56,7 +56,7 @@ export function runToolchainCheck(
       'xcrun',
       [
         'if [[ "$*" == "--sdk iphonesimulator --show-sdk-version" ]]; then',
-        '  printf \'%s\\n\' "$EXPECTED_IOS_SIMULATOR_SDK"',
+        '  printf \'%s\\n\' "${SIMULATED_IOS_SIMULATOR_SDK:-$EXPECTED_IOS_SIMULATOR_SDK}"',
         'elif [[ "$*" == "simctl list runtimes --json" ]]; then',
         '  cat "$SIMULATOR_RUNTIMES_JSON"',
         'elif [[ "$*" == "simctl list devicetypes --json" ]]; then',

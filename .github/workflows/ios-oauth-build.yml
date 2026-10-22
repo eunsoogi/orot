@@ -10,7 +10,8 @@ permissions: { contents: read }
 env:
   CI: 'true'
   TZ: UTC
-  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  # Pin the named bundle because the hosted image default can change between releases.
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
 jobs:
   build:
     name: OAuth

@@ -1,10 +1,15 @@
 // iOS test products are separate when configuration, flags or runtime contracts differ.
+// The hosted xcode-27 label can change its default app between image releases; select one named bundle.
+export const iosXcodeVersion = '27.1';
+export const iosSimulatorSdk = '27.1';
+export const iosXcodeDeveloperDirectory = '/Applications/Xcode_27.1.app/Contents/Developer';
+
 export function iosTestConfig(profile) {
   const common = {
     scheme: 'OrotTests',
     entry: 'e2e/testEntry.tsx',
-    sdk: '27.0',
-    xcode: '27.0',
+    sdk: iosSimulatorSdk,
+    xcode: iosXcodeVersion,
     architecture: 'arm64',
     integrationTarget: 'OrotIntegrationTests',
     uiTarget: 'OrotUITests',

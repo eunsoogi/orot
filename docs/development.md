@@ -13,7 +13,7 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 | pnpm                                                | 12.3.4                                             |
 | React Native / React                                | 0.87.1 / 19.2.3                                    |
 | Jest / React Native Testing Library / test-renderer | 29.7.0 / 14.0.1 / 1.2.0                            |
-| Xcode                                               | 27.0                                               |
+| Xcode                                               | 27.1                                               |
 | Ruby / CocoaPods                                    | 4.0.7 / 1.17.0 (Homebrew)                          |
 
 iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
@@ -21,7 +21,7 @@ iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런
 `xcode-select -p`가 Command Line Tools 경로를 가리키면 Xcode 개발자 디렉터리를 지정해 의존성을 설치하고 iOS 명령을 실행하세요.
 
 ```sh
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer
 ```
 
 ## 설치 및 검사
@@ -79,12 +79,12 @@ GitHub가 제공하는 임시 macOS 러너에서는 checkout 직후, 도구 설�
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-release
 node scripts/ci/ios-test-simulator.mjs prepare core build/ios-core-owner.json
-node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
-node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
-node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
-OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
+node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
+node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
+node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
+OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
 OROT_IOS_TEST_SUITE=integration node scripts/ci/ios-test-results.mjs core build/ios-core-integration.xcresult build/ios-core-integration-results.json && \
-OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
+OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
 OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-ui.xcresult build/ios-core-ui-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```

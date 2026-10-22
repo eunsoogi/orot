@@ -13,9 +13,9 @@ const baseEnvironment = {
   EXPECTED_PNPM_VERSION: '12.3.4',
   EXPECTED_RUBY_VERSION: '4.0.7',
   EXPECTED_COCOAPODS_VERSION: '1.17.0',
-  EXPECTED_XCODE_VERSION: '27.0',
+  EXPECTED_XCODE_VERSION: '27.1',
   XCODEBUILD_FINGERPRINT: 'a'.repeat(64),
-  EXPECTED_IOS_SIMULATOR_SDK: '27.0',
+  EXPECTED_IOS_SIMULATOR_SDK: '27.1',
 };
 
 export function writeFixtureFile(root, path, content) {
