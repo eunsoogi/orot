@@ -99,11 +99,12 @@ enum FormUITestConditions {
             measure("exact-empty") { exactValue(input, equals: "") }
         }
         if !text.isEmpty {
-            // Controlled fields can drop characters in a batch. Send each Character once and keep
-            // the exact-value assertion as the sole outcome check, with no corrective edit.
+            // Controlled fields can drop batched input, so preserve per-character synchronization.
+            // Type through the app's focused control to avoid resolving this changing field query per Character.
+            // The exact-value assertion below remains the sole outcome check; no corrective edit follows.
             measure("type-characters") {
                 for character in text {
-                    input.typeText(String(character))
+                    app.typeText(String(character))
                 }
             }
         }
