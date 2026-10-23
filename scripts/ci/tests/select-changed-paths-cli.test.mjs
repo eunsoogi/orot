@@ -7,6 +7,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { CHECK_KEYS, selectEverything } from '../changed-paths-core.mjs';
 import { writeSelectionReport } from '../ios-e2e-selection-report.mjs';
+import { resolveFullValidationDeferred, selectChecksForEvent } from '../select-changed-paths.mjs';
 
 const CLI_PATH = fileURLToPath(new URL('../select-changed-paths.mjs', import.meta.url));
 
@@ -125,6 +126,58 @@ test('PR impact selection is reported without implying E2E execution', () => {
       /PR impact selection is report-only; Full E2E runs on the nightly main schedule/,
     );
     assert.doesNotMatch(summary, /scheduled for automatic execution/);
+  } finally {
+    process.chdir(previousCwd);
+    for (const [key, value] of originalEnvironment) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('Draft PR selection stays report-only while Full validation is deferred', () => {
+  const previousCwd = process.cwd();
+  const directory = mkdtempSync(join(tmpdir(), 'orot-ci-draft-pr-selection-'));
+  const summaryPath = join(directory, 'summary.md');
+  const originalEnvironment = new Map(
+    ['GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY'].map((key) => [key, process.env[key]]),
+  );
+  const payload = {
+    action: 'opened',
+    pull_request: {
+      draft: true,
+      base: { sha: 'b'.repeat(40) },
+      head: { sha: 'a'.repeat(40) },
+    },
+  };
+  try {
+    process.chdir(directory);
+    process.env.GITHUB_ACTIONS = 'true';
+    process.env.GITHUB_STEP_SUMMARY = summaryPath;
+    const selection = selectChecksForEvent(
+      'pull_request',
+      payload,
+      () => '',
+      null,
+      'refs/pull/217/merge',
+    );
+    const deferred = resolveFullValidationDeferred('pull_request', payload);
+
+    assert.equal(selection.validation_tier, 'pr');
+    assert.equal(deferred, true);
+    writeSelectionReport(selection, 'pull_request', null, deferred);
+
+    const summary = readFileSync(summaryPath, 'utf8');
+    const report = JSON.parse(
+      readFileSync(join(directory, 'artifacts/ios-e2e-selection.json'), 'utf8'),
+    );
+    assert.equal(report.fullValidationDeferred, true);
+    assert.match(
+      summary,
+      /PR impact selection is report-only; Full E2E runs on the nightly main schedule/,
+    );
+    assert.doesNotMatch(summary, /deferred until the pull request is ready for review/);
   } finally {
     process.chdir(previousCwd);
     for (const [key, value] of originalEnvironment) {

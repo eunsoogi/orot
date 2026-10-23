@@ -84,19 +84,20 @@ export function writeSelectionReport(selection, eventName, payload, fullValidati
   writeFileSync('artifacts/ios-e2e-selection.json', JSON.stringify(report, null, 2) + '\n');
   if (!process.env.GITHUB_STEP_SUMMARY) return;
   // PR impact selections stay visible for diagnosis without authorizing Mac execution.
-  const disposition = fullValidationDeferred
-    ? 'deferred until the pull request is ready for review'
-    : selection.validation_tier === 'candidate'
-      ? 'full candidate validation for the verified Draft PR head'
-      : selection.validation_tier === 'diagnostic'
-        ? 'diagnostic selection only; protected iOS validation is not scheduled'
-        : selection.metadata_only_edit
-          ? 'metadata-only edit; no new E2E run is scheduled for the unchanged source head'
-          : selection.validation_tier === 'pr'
-            ? 'PR impact selection is report-only; Full E2E runs on the nightly main schedule'
-            : selectedCohorts.length || selection.ios_oauth
-              ? 'scheduled for automatic execution'
-              : 'no iOS E2E tests selected';
+  const disposition =
+    selection.validation_tier === 'pr'
+      ? 'PR impact selection is report-only; Full E2E runs on the nightly main schedule'
+      : fullValidationDeferred
+        ? 'deferred until the pull request is ready for review'
+        : selection.validation_tier === 'candidate'
+          ? 'full candidate validation for the verified Draft PR head'
+          : selection.validation_tier === 'diagnostic'
+            ? 'diagnostic selection only; protected iOS validation is not scheduled'
+            : selection.metadata_only_edit
+              ? 'metadata-only edit; no new E2E run is scheduled for the unchanged source head'
+              : selectedCohorts.length || selection.ios_oauth
+                ? 'scheduled for automatic execution'
+                : 'no iOS E2E tests selected';
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
     [
