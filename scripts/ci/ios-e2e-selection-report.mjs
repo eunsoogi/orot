@@ -87,16 +87,20 @@ export function writeSelectionReport(selection, eventName, payload, fullValidati
   const disposition = selection.metadata_only_edit
     ? 'metadata-only edit; no new E2E run is scheduled for the unchanged source head'
     : selection.validation_tier === 'pr'
-      ? 'PR impact selection is report-only; Full E2E runs on the nightly main schedule'
+      ? 'PR impact selection is report-only; Full E2E runs on the nightly schedule or a manual dispatch from main'
       : fullValidationDeferred
         ? 'deferred until the pull request is ready for review'
         : selection.validation_tier === 'candidate'
           ? 'full candidate validation for the verified Draft PR head'
           : selection.validation_tier === 'diagnostic'
             ? 'diagnostic selection only; protected iOS validation is not scheduled'
-            : selectedCohorts.length || selection.ios_oauth
-              ? 'scheduled for automatic execution'
-              : 'no iOS E2E tests selected';
+            : selection.validation_tier === 'full'
+              ? eventName === 'workflow_dispatch'
+                ? 'complete Full validation selected by manual dispatch from main'
+                : 'complete Full validation selected by the main schedule'
+              : selectedCohorts.length || selection.ios_oauth
+                ? 'scheduled for automatic execution'
+                : 'no iOS E2E tests selected';
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
     [

@@ -19,9 +19,9 @@ for (const name of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml']) {
 }
 
 // GitHub parses these event bytes; separate assertions cover whether the jobs allocate Mac runners.
-test('full E2E listens only to the daily main schedule', () => {
+test('full E2E supports the daily main schedule and manual dispatch', () => {
   const e2e = read('e2e-test.yml');
-  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
   assert.equal(e2e.permissions['pull-requests'], undefined);
   assert.deepEqual(e2e.concurrency, {

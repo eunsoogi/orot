@@ -18,15 +18,16 @@ function evaluate(expression, context) {
   return Function('"use strict"; return (' + source + ');')();
 }
 
-test('only the successful Full run on the main nightly schedule can allocate Mac work', () => {
+test('only successful Full selection on main schedule or manual dispatch can allocate Mac work', () => {
   const e2e = read('e2e-test.yml');
 
-  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
+  assert.equal(e2e.on.workflow_dispatch, null);
   const selectionCheckout = e2e.jobs.selection.steps.find((step) =>
     step.uses?.startsWith('actions/checkout@'),
   );
-  // Nightly Full bypasses ref comparison, so its selector needs only the scheduled commit.
+  // Schedule and manual dispatch select the complete inventory without a path comparison.
   assert.equal(selectionCheckout?.with?.['fetch-depth'], 1);
   assert.equal(e2e.jobs.selection.outputs.diagnostic, false);
   assert.equal(e2e.jobs.selection.outputs.non_protected_contexts, false);
@@ -47,9 +48,27 @@ test('only the successful Full run on the main nightly schedule can allocate Mac
     { label: 'pull request event', eventName: 'pull_request', expected: false },
     { label: 'main push', eventName: 'push', ref: 'refs/heads/main', expected: false },
     {
-      label: 'manual dispatch on main',
+      label: 'manual Full dispatch on main',
       eventName: 'workflow_dispatch',
       ref: 'refs/heads/main',
+      tier: 'full',
+      complete: 'true',
+      outcome: 'success',
+      expected: true,
+    },
+    {
+      label: 'candidate dispatch on main',
+      eventName: 'workflow_dispatch',
+      ref: 'refs/heads/main',
+      tier: 'candidate',
+      complete: 'true',
+      outcome: 'success',
+      expected: false,
+    },
+    {
+      label: 'manual Full dispatch on another ref',
+      eventName: 'workflow_dispatch',
+      ref: 'refs/heads/feature',
       tier: 'full',
       complete: 'true',
       outcome: 'success',

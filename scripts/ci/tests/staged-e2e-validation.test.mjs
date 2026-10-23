@@ -37,10 +37,10 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(integration.ios_tests, true);
 });
 
-test('nightly E2E requires a complete Full selection before allocating macOS', () => {
+test('nightly and manual E2E require a complete Full selection before allocating macOS', () => {
   const source = read('.github/workflows/e2e-test.yml');
   const e2e = yaml.load(source);
-  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
   assert.equal(
     existsSync(fileURLToPath(new URL('.github/workflows/e2e-selected.yml', root))),
@@ -48,6 +48,7 @@ test('nightly E2E requires a complete Full selection before allocating macOS', (
   );
   assert.match(source, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
   assert.match(source, /github\.event_name == 'schedule'/);
+  assert.match(source, /github\.event_name == 'workflow_dispatch'/);
   assert.match(source, /github\.ref == 'refs\/heads\/main'/);
   assert.match(source, /steps\.select\.outputs\.validation_tier == 'full'/);
   assert.match(source, /steps\.select\.outputs\.selection_complete == 'true'/);
@@ -82,7 +83,7 @@ test('focused authentication workflow has no active public entry point', () => {
   assert.match(focus, /ios-focused-results\.mjs/);
   assert.doesNotMatch(focus, /ios-profile-status/);
   const full = yaml.load(read('.github/workflows/e2e-test.yml'));
-  assert.deepEqual(Object.keys(full.on), ['schedule']);
+  assert.deepEqual(Object.keys(full.on), ['schedule', 'workflow_dispatch']);
   assert.equal(full.jobs.debug_execution.uses, './.github/workflows/ios-debug-tests.yml');
   assert.equal(full.jobs.release_execution.uses, './.github/workflows/ios-release-tests.yml');
 });

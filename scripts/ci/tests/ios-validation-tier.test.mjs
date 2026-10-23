@@ -19,12 +19,13 @@ const pullRequest = {
   },
 };
 
-test('event tiers distinguish PR, main impact, Full, diagnostics, and unknown events', () => {
+test('event tiers distinguish main Full events, isolated candidates, and diagnostics', () => {
   assert.equal(iosValidationTierForEvent('pull_request', 'refs/pull/216/merge'), 'pr');
   assert.equal(iosValidationTierForEvent('push', mainRef), 'main-impact');
   assert.equal(iosValidationTierForEvent('schedule', mainRef), 'full');
-  assert.equal(iosValidationTierForEvent('workflow_dispatch', mainRef), 'diagnostic');
+  assert.equal(iosValidationTierForEvent('workflow_dispatch', mainRef), 'full');
   assert.equal(iosValidationTierForEvent('workflow_dispatch', 'refs/heads/feature'), 'diagnostic');
+  assert.equal(iosValidationTierForEvent('workflow_dispatch', mainRef, '217'), 'candidate');
   assert.equal(iosValidationTierForEvent('repository_dispatch', mainRef), 'unclassified');
 });
 
@@ -41,7 +42,7 @@ test('selection keeps tier provenance even when path impact selects every PR coh
   assert.deepEqual(selection.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
 });
 
-test('only a scheduled main selection is Full; manual dispatch stays diagnostic', () => {
+test('main manual dispatch selects Full while non-main and candidate dispatch stay isolated', () => {
   const schedule = selectChecksForEvent('schedule', {}, () => '', null, mainRef);
   const manual = selectChecksForEvent('workflow_dispatch', {}, () => '', null, mainRef);
   const offMainManual = selectChecksForEvent(
@@ -51,11 +52,15 @@ test('only a scheduled main selection is Full; manual dispatch stays diagnostic'
     null,
     'refs/heads/feature',
   );
+  const candidate = selectChecksForEvent('workflow_dispatch', {}, () => '', null, mainRef, '217');
 
   assert.equal(schedule.validation_tier, 'full');
   assert.deepEqual(schedule.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
   assert.equal(schedule.ios_oauth, true);
-  assert.equal(manual.validation_tier, 'diagnostic');
+  assert.equal(manual.validation_tier, 'full');
+  assert.deepEqual(manual.ios_test_cohorts, IOS_TEST_COHORT_NAMES);
+  assert.equal(manual.ios_oauth, true);
+  assert.equal(candidate.validation_tier, 'candidate');
   assert.equal(offMainManual.validation_tier, 'diagnostic');
 });
 
@@ -99,15 +104,16 @@ test('main pushes are impact-based and unknown events never claim a known tier',
   );
 });
 
-test('the E2E workflow schedules daily Full validation on main and threads tier into completeness', () => {
+test('the E2E workflow supports daily and manual Full selection and threads tier into completeness', () => {
   const workflow = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
   const completeness = yaml.load(
     readFileSync('.github/workflows/ios-test-completeness.yml', 'utf8'),
   );
 
-  assert.deepEqual(Object.keys(workflow.on), ['schedule']);
+  assert.deepEqual(Object.keys(workflow.on), ['schedule', 'workflow_dispatch']);
   assert.equal(workflow.on.schedule.length, 1);
   assert.equal(workflow.on.schedule[0].cron, '0 18 * * *');
+  assert.equal(workflow.on.workflow_dispatch, null);
   assert.equal(
     workflow.jobs.selection.outputs.validation_tier,
     '${{ steps.select.outputs.validation_tier }}',
@@ -119,7 +125,7 @@ test('the E2E workflow schedules daily Full validation on main and threads tier 
   assert.equal(completeness.on.workflow_call.inputs.validation_tier.required, true);
 });
 
-test('scheduled Full validation retains OAuth, Production and provider authentication coverage', () => {
+test('Full validation retains OAuth, Production and provider authentication coverage', () => {
   const workflow = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
   const receiptAction = yaml.load(
     readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
