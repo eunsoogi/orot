@@ -6,9 +6,9 @@ import { workflow } from './fixtures/ios-workflow.mjs';
 const workflowDirectory = '.github/workflows';
 const focusedPath = './.github/workflows/ios-focused.yml';
 
-test('only the daily main schedule starts E2E and it runs the serialized Keychain suite', () => {
+test('nightly and manual main Full runs execute the serialized Keychain suite', () => {
   const nightly = workflow(`${workflowDirectory}/e2e-test.yml`);
-  assert.deepEqual(Object.keys(nightly.on), ['schedule']);
+  assert.deepEqual(Object.keys(nightly.on), ['schedule', 'workflow_dispatch']);
   assert.deepEqual(nightly.on.schedule, [{ cron: '0 18 * * *' }]);
   assert.ok(
     Object.values(nightly.jobs).every(

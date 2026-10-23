@@ -19,7 +19,7 @@ function eventBlock(path, event) {
   return match[1];
 }
 
-test('PR check workflows and stale-focus cancellation receive stacked PR events while E2E stays nightly', () => {
+test('PR check workflows receive stacked PR events while Full E2E keeps its main entry points', () => {
   for (const path of [
     '.github/workflows/code-quality.yml',
     '.github/workflows/unit-test.yml',
@@ -33,7 +33,7 @@ test('PR check workflows and stale-focus cancellation receive stacked PR events 
       assert.match(eventBlock(path, 'push'), /branches: \[main\]/);
   }
   const e2e = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
-  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule', 'workflow_dispatch']);
 });
 
 test('stacked comparisons use the event base and exact head, and only drafts defer the full gate', () => {

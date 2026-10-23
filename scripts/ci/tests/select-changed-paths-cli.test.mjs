@@ -55,11 +55,11 @@ function runManualDispatch(
   }
 }
 
-test('CLI labels an unconfigured manual event as diagnostic without scheduling protected E2E', () => {
+test('CLI selects Full inventory for a manual main dispatch', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-ci-paths-output-'));
   const outputPath = join(directory, 'output');
   try {
-    // Direct CLI use cannot enable manual E2E because the public workflow has no manual trigger.
+    // The selection tier describes the event; the workflow separately gates Mac execution to Full on main.
     const { result, report, summary } = runManualDispatch(outputPath, 'refs/heads/main', true);
     assert.equal(result.status, 0, result.stderr);
     const outputs = Object.fromEntries(
@@ -70,15 +70,15 @@ test('CLI labels an unconfigured manual event as diagnostic without scheduling p
     );
     assert.equal(outputs.all, 'true');
     assert.equal(outputs.reason, 'manual-full-inventory-selection');
-    assert.equal(outputs.validation_tier, 'diagnostic');
+    assert.equal(outputs.validation_tier, 'full');
     assert.equal(outputs.selection_complete, 'true');
     assert.equal(
       CHECK_KEYS.every((key) => outputs[key] === 'true'),
       true,
     );
     assert.equal(report.schemaVersion, 2);
-    assert.equal(report.validationTier, 'diagnostic');
-    assert.match(summary, /diagnostic selection only; protected iOS validation is not scheduled/);
+    assert.equal(report.validationTier, 'full');
+    assert.match(summary, /complete Full validation selected by manual dispatch from main/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -123,7 +123,7 @@ test('PR impact selection is reported without implying E2E execution', () => {
     const summary = readFileSync(summaryPath, 'utf8');
     assert.match(
       summary,
-      /PR impact selection is report-only; Full E2E runs on the nightly main schedule/,
+      /PR impact selection is report-only; Full E2E runs on the nightly schedule or a manual dispatch from main/,
     );
     assert.doesNotMatch(summary, /scheduled for automatic execution/);
   } finally {
@@ -175,7 +175,7 @@ test('Draft PR selection stays report-only while Full validation is deferred', (
     assert.equal(report.fullValidationDeferred, true);
     assert.match(
       summary,
-      /PR impact selection is report-only; Full E2E runs on the nightly main schedule/,
+      /PR impact selection is report-only; Full E2E runs on the nightly schedule or a manual dispatch from main/,
     );
     assert.doesNotMatch(summary, /deferred until the pull request is ready for review/);
   } finally {
