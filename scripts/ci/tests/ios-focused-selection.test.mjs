@@ -44,6 +44,7 @@ test('authentication focus preserves both protected Keychain assertions as one s
   assert.equal(selection.mode, 'authentication');
   assert.equal(selection.suite, 'integration');
   assert.equal(selection.fixtureSuite, 'authentication');
+  assert.equal(selection.prepareUi, true);
   assert.equal(selection.identifier, '');
   assert.equal(selection.expectedCount, authentication.length);
   assert.deepEqual(selection.identifiers, authentication);

@@ -89,14 +89,14 @@ OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
 
-두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 `authentication` suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켜세요. 아래 명령은 두 사례를 모두 실행하며, prompted 사례에서 일치하는 얼굴을 입력해야 합니다. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
+두 보호 Keychain 회귀 검사는 Face ID 등록이 필요한 `authentication` suite에서 실행합니다. 하나는 `interactionNotAllowed`로 UI 없이 조회할 때 보호 항목을 거부하는지 확인하고, 다른 하나는 Keychain 조회가 띄운 Face ID 인증 창에서 일치하는 얼굴을 입력한 뒤 보호 항목 조회를 허용하는지 확인합니다. 로컬에서 아래 명령을 실행할 때는 owner 파일에 기록된 Simulator를 열고 Device 메뉴에서 Face ID 등록을 켠 뒤, prompted 사례에서 일치하는 얼굴을 입력하세요. 같은 Release Core 테스트 제품을 빌드한 뒤 다음과 같이 실행합니다.
 
 ```sh
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-keychain-auth.xcresult && \
 OROT_IOS_TEST_SUITE=authentication node scripts/ci/ios-test-results.mjs core build/ios-core-keychain-auth.xcresult build/ios-core-keychain-auth-results.json
 ```
 
-이 suite는 `e2e-selected.yml`에서도 `focus_profile=ios/core`, `focus_scenario_file=apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m`, `focus_scenario_name=group/authentication`으로 전체 사례를 선택할 수 있습니다. 이 경로는 선택한 Xcode runner의 `simctl` 명령과 Simulator 앱 구성을 기록하지만 Face ID enrollment나 matching 입력을 대신하지 않습니다.
+이 suite는 `e2e-selected.yml`에서도 `focus_profile=ios/core`, `focus_scenario_file=apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m`, `focus_scenario_name=group/authentication`으로 전체 사례를 선택할 수 있습니다. hosted focused 실행은 UI 준비에서 Device Hub를 열고, 생성된 owner Simulator window를 확인한 뒤 `Device > Face ID > Enrolled`로 등록합니다. 두 보호 쿼리 실행 중에는 `Device > Face ID > Authorized with Face ID` 입력을 보내며, Device Hub window나 메뉴 조작을 확인할 수 없으면 테스트를 중단합니다. 로컬 명령은 위의 수동 Face ID 절차를 따릅니다.
 
 이 집중 suite는 Face ID 등록과 Simulator UI 입력이 필요하므로 112개 release 관측 목록에는 포함하지 않습니다. 해당 task가 소유한 Simulator만 사용하고 owner 파일을 통해 정리하세요. 테스트는 합성 데이터만 저장합니다.
 

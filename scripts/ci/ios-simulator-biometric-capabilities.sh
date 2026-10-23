@@ -6,12 +6,14 @@ xcodebuild -version
 xcrun simctl help
 xcrun simctl help io
 
-developer_applications="${DEVELOPER_DIR:?}/Applications"
-if [[ -d "$developer_applications" ]]; then
-  simulator_apps="$(find "$developer_applications" -maxdepth 3 -name 'Simulator.app' -print -o -name 'DeviceHub.app' -print)"
-else
-  simulator_apps=''
-fi
+simulator_apps=''
+for applications in "${DEVELOPER_DIR:?}/Applications" "${DEVELOPER_DIR}/../Applications"; do
+  [[ -d "$applications" ]] || continue
+  found_apps="$(find "$applications" -maxdepth 3 \( -name 'Simulator.app' -o -name 'DeviceHub.app' \) -print)"
+  if [[ -n "$found_apps" ]]; then
+    simulator_apps+="${simulator_apps:+$'\n'}$found_apps"
+  fi
+done
 
 if [[ -n "$simulator_apps" ]]; then
   printf 'SIMULATOR_GUI_APP=%s\n' "$simulator_apps"

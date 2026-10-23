@@ -17,6 +17,7 @@ function runCapabilityProbe({ ioHelpExit = '0' } = {}) {
   const callsPath = join(root, 'simctl-calls.log');
   mkdirSync(bin);
   mkdirSync(join(developerDirectory, 'Applications'), { recursive: true });
+  mkdirSync(join(developerDirectory, '..', 'Applications', 'DeviceHub.app'), { recursive: true });
 
   // Stub the host tools so the helper's argument order and fail-fast behavior run without Xcode.
   const xcodebuildPath = join(bin, 'xcodebuild');
@@ -64,12 +65,12 @@ esac
   }
 }
 
-test('records Simulator help controls and continues to GUI discovery', () => {
+test('records Simulator help controls and discovers Device Hub beside Developer', () => {
   const { result, calls } = runCapabilityProbe();
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Xcode 27\.1/);
-  assert.match(result.stdout, /SIMULATOR_GUI_APP=absent/);
+  assert.match(result.stdout, /SIMULATOR_GUI_APP=.*DeviceHub\.app/);
   assert.deepEqual(calls, ['simctl help', 'simctl help io']);
 });
 

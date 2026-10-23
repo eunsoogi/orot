@@ -136,12 +136,12 @@ const cohorts = {
   selection: { profiles: ['provider-selection'], minutes: 20 },
 };
 
-/** UI host preparation follows the selected XCTest task, independent of cohort naming. */
+/** UI preparation follows the selected task; authentication needs Device Hub for its protected prompt. */
 export function iosTestTaskNeedsUiPreparation(task) {
   if (!task || !Array.isArray(task.identifiers))
     throw new Error('iOS UI preparation requires a planned task inventory');
   return (
-    ['fixture', 'backup', 'speech-journey'].includes(task.mode) ||
+    ['authentication', 'fixture', 'backup', 'speech-journey'].includes(task.mode) ||
     task.suite === 'ui' ||
     task.identifiers.some((identifier) => identifier.split('/')[0] === 'OrotUITests')
   );

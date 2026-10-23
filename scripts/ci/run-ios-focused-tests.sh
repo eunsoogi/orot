@@ -20,7 +20,7 @@ case "$mode" in
     ;;
   authentication)
     # Run both protected queries in the same suite so neither assertion becomes an optional single-case focus.
-    scripts/ci/run-command.sh ios-focus-tests "$directory/tests.log" -- node scripts/ci/run-ios-tests.mjs "$profile" "$test_run" "$owner_file" "$directory/results.xcresult"
+    node scripts/ci/ios-simulator-biometric-control.mjs run "$profile" "$test_run" "$owner_file" "$directory"
     node scripts/ci/ios-test-results.mjs "$profile" "$directory/results.xcresult" "$directory/results.json"
     ;;
   fixture)
