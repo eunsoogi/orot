@@ -6,3 +6,19 @@ nodeLinker: isolated
 
 allowBuilds:
   dtrace-provider: false
+
+patchedDependencies:
+  '@op-engineering/op-sqlite@18.2.5': vendor/patches/@op-engineering__op-sqlite@18.2.5.patch
+  '@react-native/codegen@0.87.1': vendor/patches/@react-native__codegen@0.87.1.patch
+  '@react-navigation/elements@2.9.44': vendor/patches/@react-navigation__elements@2.9.44.patch
+  '@react-navigation/native@7.5.0': vendor/patches/@react-navigation__native@7.5.0.patch
+  fast-text-encoding@1.0.6: vendor/patches/fast-text-encoding@1.0.6.patch
+  jest-worker@29.7.0: vendor/patches/jest-worker@29.7.0.patch
+  metro@0.87.1: vendor/patches/metro@0.87.1.patch
+  metro-runtime@0.87.1: vendor/patches/metro-runtime@0.87.1.patch
+  p-queue@6.6.2: vendor/patches/p-queue@6.6.2.patch
+  react-devtools-core@6.1.5: vendor/patches/react-devtools-core@6.1.5.patch
+  react-native-keychain@10.0.0: vendor/patches/react-native-keychain@10.0.0.patch
+  react-native-safe-area-context@5.10.1: vendor/patches/react-native-safe-area-context@5.10.1.patch
+  react-native-screens@4.27.0: vendor/patches/react-native-screens@4.27.0.patch
+  react-native@0.87.1: vendor/patches/react-native@0.87.1.patch

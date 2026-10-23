@@ -12,7 +12,7 @@ function repositoryEnvironment(env) {
 }
 
 export function buildInputDigest(root, env = process.env) {
-  // Hash the committed ios/JS inputs before generated dependency setup rewrites metadata.
+  // Hash app, package, and dependency-patch inputs before generated setup rewrites metadata.
   const gitEnv = repositoryEnvironment(env);
   const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], {
     encoding: 'utf8',
@@ -26,6 +26,7 @@ export function buildInputDigest(root, env = process.env) {
       (file) =>
         file.startsWith('apps/mobile/') ||
         file.startsWith('packages/') ||
+        file.startsWith('vendor/patches/') ||
         ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', '.nvmrc'].includes(file),
     )
     .sort()) {
@@ -56,6 +57,7 @@ export function productContext(root, profile, env = process.env) {
       '--',
       'apps/mobile',
       'packages',
+      'vendor/patches',
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
       'package.json',

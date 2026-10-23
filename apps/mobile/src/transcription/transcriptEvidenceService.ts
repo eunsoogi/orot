@@ -173,7 +173,7 @@ export function createTranscriptEvidenceService(
       }
     };
     // A rejection handler clears the map without creating an unhandled promise.
-    void pending.then(clear, clear);
+    pending.then(clear, clear);
     return pending;
   }
 

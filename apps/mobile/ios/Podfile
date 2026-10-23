@@ -35,5 +35,12 @@ target 'OrotMobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    # Reconcile RN's pinned artifact headers after a fresh install. Its patched
+    # configuration-switch script repeats the same repair before replacing a slice.
+    react_native_root = File.expand_path(config[:reactNativePath], __dir__)
+    Pod::Executable.execute_command('node', [
+                                      File.join(react_native_root, 'scripts/orot-prebuilt-headers.cjs'),
+                                      File.join(__dir__, 'Pods/React-Core-prebuilt')
+                                    ])
   end
 end

@@ -83,6 +83,62 @@
     }
   },
   "excludedPaths": {
+    "vendor/patches/@op-engineering__op-sqlite@18.2.5.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, SQLCipher native regressions and clean iOS compilation."
+    },
+    "vendor/patches/@react-native__codegen@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, Codegen empty-State regression and clean iOS compilation."
+    },
+    "vendor/patches/react-native@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff, including prebuilt-header repair code.",
+      "validation": "Frozen pnpm installation, header-repair tests, artifact integrity and clean Debug/Release builds."
+    },
+    "vendor/patches/react-native-keychain@10.0.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native Keychain regressions and clean iOS compilation."
+    },
+    "vendor/patches/react-native-safe-area-context@5.10.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native layout regression and clean iOS compilation."
+    },
+    "vendor/patches/react-native-screens@4.27.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, native navigation regression and clean iOS compilation."
+    },
+    "vendor/patches/metro-runtime@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, development-loader behavior tests and Hermes compilation."
+    },
+    "vendor/patches/metro@0.87.1.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, Metro WorkerFarm color-environment regression and clean Release app compilation."
+    },
+    "vendor/patches/p-queue@6.6.2.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation, p-queue Hermes timer regression and clean Release app compilation."
+    },
+    "vendor/patches/jest-worker@29.7.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen pnpm installation and actual child-process color environment tests."
+    },
+    "vendor/patches/react-devtools-core@6.1.5.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, shipped iterator/storage behavior, dead-code reference audit and Hermes compilation."
+    },
+    "vendor/patches/fast-text-encoding@1.0.6.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, UTF-8 behavior with and without Buffer, and Hermes compilation."
+    },
+    "vendor/patches/@react-navigation__native@7.5.0.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, native navigation regression and Hermes compilation."
+    },
+    "vendor/patches/@react-navigation__elements@2.9.44.patch": {
+      "reason": "Version-pinned third-party diff; formatters must not rewrite patch context.",
+      "validation": "Frozen installation, native layout regression and Hermes compilation."
+    },
     "pnpm-lock.yaml": {
       "reason": "Generated dependency-resolution data; its serialized order is owned by pnpm.",
       "validation": "pnpm install --frozen-lockfile"

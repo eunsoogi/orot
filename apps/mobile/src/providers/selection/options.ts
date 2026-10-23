@@ -82,6 +82,8 @@ function appleUnavailableMessage(
       return providerSelectionText.appleDisabled;
     case 'modelNotReady':
       return providerSelectionText.appleModelNotReady;
+    case 'unavailable':
+      return providerSelectionText.appleUnavailable;
     case 'unsupportedDevice':
       return providerSelectionText.appleUnsupportedDevice;
     case 'unsupportedLanguage':

@@ -5,8 +5,14 @@ import XCTest
 final class ProgressIndicatorIntegrationTests: OrotFailFastTestCase {
     /// Exercise the production view across native mount, request completion and reuse, without disabling animation globally.
     @MainActor
-    func testAnimationFollowsWindowAndRequestLifetime() {
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 640))
+    func testAnimationFollowsWindowAndRequestLifetime() throws {
+        // Current iOS windows belong to a scene; frame-only construction is deprecated in iOS 26.
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+                $0.activationState == .foregroundActive
+            },
+        )
+        let window = UIWindow(windowScene: scene)
         let indicator = AppProgressView(frame: .zero)
         defer { indicator.removeFromSuperview() }
         XCTAssertFalse(indicator.isAnimating)

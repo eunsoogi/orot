@@ -27,6 +27,7 @@ export function runLint({ entries, env, clang, binaryPaths, root }) {
     .map((entry) => resolve(root, entry.path));
   if (workspaceFiles.length > 0) {
     // Explicit inventory paths include files package-level lint scripts omit.
+    // Keep both local and CI ESLint runs from treating warnings as successful checks.
     invoke(
       'pnpm',
       [
@@ -34,6 +35,8 @@ export function runLint({ entries, env, clang, binaryPaths, root }) {
         '@orot/mobile',
         'exec',
         'eslint',
+        '--max-warnings',
+        '0',
         '--config',
         resolve(root, 'apps/mobile/.eslintrc.js'),
         '--no-ignore',
@@ -58,6 +61,8 @@ export function runLint({ entries, env, clang, binaryPaths, root }) {
       [
         'exec',
         'eslint',
+        '--max-warnings',
+        '0',
         '--no-eslintrc',
         '--no-ignore',
         '--config',

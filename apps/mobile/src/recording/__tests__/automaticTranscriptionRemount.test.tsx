@@ -22,7 +22,7 @@ test('retains the running job across route remount and does not duplicate recogn
     useAutomaticRecordingTranscription(service),
   );
   await act(async () => {
-    void first.result.current.start('saved-audio');
+    first.result.current.start('saved-audio');
   });
   await first.unmount();
   const second = await renderHook(() =>
@@ -33,7 +33,7 @@ test('retains the running job across route remount and does not duplicate recogn
     status: 'running',
   });
   await act(async () => {
-    void second.result.current.start('saved-audio');
+    second.result.current.start('saved-audio');
   });
   expect(service.transcribe).toHaveBeenCalledTimes(1);
   await act(async () => finish());
@@ -46,7 +46,7 @@ test('deletion from a remounted route cancels the original job and ignores late 
     useAutomaticRecordingTranscription(service),
   );
   await act(async () => {
-    void first.result.current.start('deleted-audio');
+    first.result.current.start('deleted-audio');
   });
   const signal = jest.mocked(service.transcribe).mock.calls[0][1]!;
   await first.unmount();

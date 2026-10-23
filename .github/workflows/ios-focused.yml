@@ -190,6 +190,9 @@ jobs:
         env:
           PROFILE: ${{ needs.products.outputs.profile }}
         run: scripts/ci/run-command.sh ios-focus-boot artifacts/ios-focus/simulator.log -- node scripts/ci/ios-test-simulator.mjs prepare "$PROFILE" artifacts/ios-focus/simulator-owner.json
+      - name: Record hosted Simulator biometric controls
+        if: needs.products.outputs.mode == 'authentication'
+        run: bash scripts/ci/ios-simulator-biometric-capabilities.sh
       - name: Verify integration app-host preparation before UI execution
         if: needs.products.outputs.prepare_ui == 'true'
         env:

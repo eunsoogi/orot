@@ -148,7 +148,7 @@ export default function RecordingScreen({
         await service.saveSource(result);
         clearPendingRecordingRetry(service);
         setSourceSaved(true);
-        void automaticTranscription.start(result.id);
+        automaticTranscription.start(result.id);
       } catch (reason) {
         setSourceSaved(false);
         setError(sourceSaveErrorMessage(reason));
@@ -169,7 +169,7 @@ export default function RecordingScreen({
       await service.saveSource(lastRecording);
       clearPendingRecordingRetry(service);
       setSourceSaved(true);
-      void automaticTranscription.start(lastRecording.id);
+      automaticTranscription.start(lastRecording.id);
     } catch (reason) {
       setError(sourceSaveErrorMessage(reason));
     } finally {
@@ -179,7 +179,7 @@ export default function RecordingScreen({
 
   function retryTranscription(): void {
     const sourceId = automaticTranscription.state?.sourceId;
-    if (sourceId) void automaticTranscription.start(sourceId);
+    if (sourceId) automaticTranscription.start(sourceId);
   }
 
   function handleRecordingSourceDeleted(sourceId: string): void {

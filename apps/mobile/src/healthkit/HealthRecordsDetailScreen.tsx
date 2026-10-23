@@ -114,7 +114,7 @@ export function HealthRecordsDetailScreen({
     pending.current = false;
     setObservations([]);
     setCursor(null);
-    void reload(null);
+    reload(null);
     return () => {
       // Reject reads from the previous period before its rows can enter this list.
       generation.current += 1;
@@ -141,7 +141,9 @@ export function HealthRecordsDetailScreen({
         cursor ? (
           loadState === 'failed' ? (
             <AppButton
-              onPress={() => void reload(cursor)}
+              onPress={() => {
+                reload(cursor);
+              }}
               testID="health-records-detail-retry"
               title={t('healthRecords.retry')}
               variant="secondary"
@@ -152,7 +154,9 @@ export function HealthRecordsDetailScreen({
             </Text>
           ) : (
             <AppButton
-              onPress={() => void reload(cursor)}
+              onPress={() => {
+                reload(cursor);
+              }}
               testID="health-records-load-older"
               title={t('healthRecords.loadOlder')}
               variant="secondary"
@@ -170,12 +174,14 @@ export function HealthRecordsDetailScreen({
           recordCount={rows.length}
           observationCount={observations.length}
           loadState={loadState}
-          onRetry={() => void reload(null)}
+          onRetry={() => {
+            reload(null);
+          }}
           hasMore={cursor !== null}
         />
       }
       onEndReached={() => {
-        if (cursor && loadState === 'ready') void reload(cursor);
+        if (cursor && loadState === 'ready') reload(cursor);
       }}
       onEndReachedThreshold={0.5}
       renderItem={({ item, index }) => (

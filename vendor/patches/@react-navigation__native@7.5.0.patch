@@ -1,0 +1,26 @@
+diff --git a/lib/module/NavigationContainer.js b/lib/module/NavigationContainer.js
+index eb131bab086f3e42dd4d0fdba20fa820ee2b6881..24f28dbe9e97fe41e7aac0a06731e1cc0e1f0316 100644
+--- a/lib/module/NavigationContainer.js
++++ b/lib/module/NavigationContainer.js
+@@ -42,7 +42,7 @@ function NavigationContainerInner({
+   // This will be used by the devtools
+   React.useEffect(() => {
+     if (refContainer.current) {
+-      REACT_NAVIGATION_DEVTOOLS.set(refContainer.current, {
++      globalThis.REACT_NAVIGATION_DEVTOOLS.set(refContainer.current, {
+         get linking() {
+           return {
+             ...linking,
+diff --git a/src/NavigationContainer.tsx b/src/NavigationContainer.tsx
+index 2afd96b3c43604c0633348cdfe3a4456d08e9344..2798aadd992a1c7723532fcb4ee84703b83c4aa6 100644
+--- a/src/NavigationContainer.tsx
++++ b/src/NavigationContainer.tsx
+@@ -102,7 +102,7 @@ function NavigationContainerInner(
+   // This will be used by the devtools
+   React.useEffect(() => {
+     if (refContainer.current) {
+-      REACT_NAVIGATION_DEVTOOLS.set(refContainer.current, {
++      globalThis.REACT_NAVIGATION_DEVTOOLS.set(refContainer.current, {
+         get linking() {
+           return {
+             ...linking,

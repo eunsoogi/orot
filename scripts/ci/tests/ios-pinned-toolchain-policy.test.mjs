@@ -25,6 +25,24 @@ test('pins every Xcode 27 workflow to the versioned Xcode 27.1 developer directo
   }
 });
 
+test('keeps the app library search paths off the optional Metal Toolchain', () => {
+  const project = readFileSync(
+    join(root, 'apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj'),
+    'utf8',
+  );
+  const searchPaths = [...project.matchAll(/LIBRARY_SEARCH_PATHS = \(([\s\S]*?)\n\s*\);/g)].map(
+    (match) => match[1],
+  );
+
+  // On hosted Xcode 27.1, TOOLCHAIN_DIR resolves to Metal.xctoolchain, which lacks this Simulator Swift directory.
+  assert.equal(searchPaths.length, 2);
+  for (const paths of searchPaths) {
+    assert.match(paths, /\$\(SDKROOT\)\/usr\/lib\/swift/);
+    assert.match(paths, /\$\(inherited\)/);
+    assert.doesNotMatch(paths, /\$\((?:DT_)?TOOLCHAIN_DIR\)/);
+  }
+});
+
 test('uses the same Xcode and Simulator SDK pins for production cache validation', () => {
   const action = readFileSync(
     join(root, '.github/actions/ios-production-validation/action.yml'),

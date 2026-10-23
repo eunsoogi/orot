@@ -29,6 +29,14 @@ const prefix = 'General public health information about: ';
 const suffix =
   '. Guidelines, associations, possible explanations and limitations.';
 
+// Keep the C0, DEL and C1 query boundary explicit without a control-character regex.
+function hasQueryControlCharacters(value: string): boolean {
+  return [...value].some(character => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+}
+
 export const publicWebQuerySchema: JsonObject = {
   type: 'object',
   additionalProperties: false,
@@ -76,9 +84,7 @@ export function parsePublicWebQuery(value: unknown): JsonObject | undefined {
   }
   if (typeof input.query !== 'string') return undefined;
   const query = input.query.trim();
-  return query &&
-    [...query].length <= 240 &&
-    !/[\u0000-\u001f\u007f-\u009f]/u.test(query)
+  return query && [...query].length <= 240 && !hasQueryControlCharacters(query)
     ? { query }
     : undefined;
 }

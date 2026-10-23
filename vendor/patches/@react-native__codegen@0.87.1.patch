@@ -1,0 +1,32 @@
+diff --git a/lib/generators/components/GenerateStateCpp.js b/lib/generators/components/GenerateStateCpp.js
+index 69bacca..b39b0cd 100644
+--- a/lib/generators/components/GenerateStateCpp.js
++++ b/lib/generators/components/GenerateStateCpp.js
+@@ -53,6 +53,11 @@ module.exports = {
+         });
+       }).filter(Boolean).join('\n');
+     }).filter(Boolean).join('\n');
++    // Avoid compiling a generated translation unit with no definitions.
++    if (stateClasses.length === 0) {
++      return new Map();
++    }
++
+     const replacedTemplate = FileTemplate({
+       stateClasses,
+       headerPrefix: headerPrefix !== null && headerPrefix !== void 0 ? headerPrefix : ''
+diff --git a/lib/generators/components/GenerateStateCpp.js.flow b/lib/generators/components/GenerateStateCpp.js.flow
+index 8cbb3fb..18077f5 100644
+--- a/lib/generators/components/GenerateStateCpp.js.flow
++++ b/lib/generators/components/GenerateStateCpp.js.flow
+@@ -84,6 +84,11 @@ module.exports = {
+       .filter(Boolean)
+       .join('\n');
+ 
++    // Avoid compiling a generated translation unit with no definitions.
++    if (stateClasses.length === 0) {
++      return new Map();
++    }
++
+     const replacedTemplate = FileTemplate({
+       stateClasses,
+       headerPrefix: headerPrefix ?? '',

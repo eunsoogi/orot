@@ -117,7 +117,8 @@ export function selectChecksForPaths(changedPaths, policies = null, { runtimeRoo
       }
       continue;
     }
-    if (SHARED_DEPENDENCIES.has(file)) {
+    // Vendored source patches affect installed and native products without changing package manifests.
+    if (SHARED_DEPENDENCIES.has(file) || lower.startsWith('vendor/patches/')) {
       return selectAll('shared-dependency-change');
     }
     if (file === 'gemfile.lock' || file === 'gemfile') {

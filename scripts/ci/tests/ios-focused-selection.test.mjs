@@ -35,6 +35,22 @@ test('fixture reset focus retains both native processes and the intervening cont
       ),
     );
 });
+
+test('authentication focus preserves both protected Keychain assertions as one suite', () => {
+  const file = 'apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m';
+  const authentication = iosTestInventory('core', 'authentication');
+  const selection = selectFocusedIosTests('ios/core', file, 'group/authentication');
+
+  assert.equal(selection.mode, 'authentication');
+  assert.equal(selection.suite, 'integration');
+  assert.equal(selection.fixtureSuite, 'authentication');
+  assert.equal(selection.prepareUi, true);
+  assert.equal(selection.identifier, '');
+  assert.equal(selection.expectedCount, authentication.length);
+  assert.deepEqual(selection.identifiers, authentication);
+  for (const id of authentication) assert.throws(() => selectFocusedIosTests('ios/core', file, id));
+});
+
 test('Speech focus preserves the UI-created baseline and its complete new-process readback group', () => {
   const selection = selectFocusedIosTests(
     'ios/speech',
@@ -171,6 +187,17 @@ test('focused consumer verifies exact products before its only boot and retains 
   const source = readFileSync('.github/workflows/ios-focused.yml', 'utf8');
   const execution = readFileSync('scripts/ci/run-ios-focused-tests.sh', 'utf8');
   const action = readFileSync('.github/actions/ios-test-products-build/action.yml', 'utf8');
+  const biometricCapabilities = readFileSync(
+    'scripts/ci/ios-simulator-biometric-capabilities.sh',
+    'utf8',
+  );
+  assert.match(
+    source,
+    /Record hosted Simulator biometric controls\n\s+if: needs\.products\.outputs\.mode == 'authentication'/,
+  );
+  assert.match(source, /ios-simulator-biometric-capabilities\.sh/);
+  assert.match(biometricCapabilities, /xcrun simctl help/);
+  assert.match(biometricCapabilities, /xcrun simctl help io/);
   assert.ok(
     source.indexOf('Verify product provenance and integrity before boot') <
       source.indexOf('Boot the dedicated execution destination'),
@@ -181,6 +208,7 @@ test('focused consumer verifies exact products before its only boot and retains 
   assert.match(source, /MANIFEST_DIGEST: \$\{\{ needs\.products\.outputs\.manifest_digest \}\}/);
   assert.match(source, /run-ios-focused-tests\.sh "\$PROFILE" "\$MODE" "\$TEST_ID"/);
   assert.match(execution, /ios-test-results\.mjs "\$profile"[^\n]*"\$test_id"/);
+  assert.match(execution, /authentication\)[\s\S]*run-ios-tests\.mjs/);
   assert.match(execution, /run-ios-fixture-tests\.mjs "\$@"/);
   assert.match(
     execution,
@@ -191,7 +219,11 @@ test('focused consumer verifies exact products before its only boot and retains 
     /continue-on-error|build-ios-tests\.mjs|test-with-building|test-iterations/,
   );
   assert.match(action, /build-ios-tests\.mjs "\$PROFILE"/);
-  assert.doesNotMatch(action, /simctl|ios-test-simulator/);
+  // Registry cleanup is allowed; booting remains reserved for the verified consumer step.
+  assert.deepEqual(action.match(/(?:xcrun\s+)?simctl\b[^\n]*/g) ?? [], [
+    'xcrun simctl delete unavailable',
+  ]);
+  assert.doesNotMatch(action, /ios-test-simulator/);
   assert.match(source, /Tear down the owned destination\n\s+if: always\(\)/);
   assert.match(source, /Preserve integration execution diagnostics\n\s+if: always\(\)/);
 });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import type { DiseaseHypothesisAnalysis } from './types';
@@ -7,6 +7,10 @@ import type {
   SavedSummaryListItem,
   SymptomSummaryHistory,
 } from './savedSummaries';
+
+const styles = StyleSheet.create({
+  container: { gap: 8 },
+});
 
 /** History reads only ten metadata rows at a time; opening a row loads one saved result without AI calls. */
 export function SavedSummaryHistory({
@@ -77,7 +81,7 @@ export function SavedSummaryHistory({
   // A hidden history panel must not introduce another empty flex gap in the summary form.
   if (!current && !expanded && !error) return null;
   return (
-    <View style={{ gap: 8 }} testID="symptom-summary-history">
+    <View style={styles.container} testID="symptom-summary-history">
       {current?.status === 'saved' ? (
         <AppText testID="symptom-summary-saved">
           저장됨 · {new Date(current.createdAt).toLocaleString('ko-KR')} ·{' '}
@@ -156,7 +160,7 @@ export function SavedSummaryHistory({
               title={`${new Date(row.createdAt).toLocaleString('ko-KR')} · ${row.modelName}`}
               disabled={disabled || busy}
               onPress={() => {
-                void read(row.id);
+                read(row.id);
               }}
             />
           ))}

@@ -27,7 +27,7 @@ export function useCalendarAutoSync(
   );
 
   useEffect(() => {
-    void controller.start();
+    controller.start();
     return controller.stop;
   }, [controller]);
 

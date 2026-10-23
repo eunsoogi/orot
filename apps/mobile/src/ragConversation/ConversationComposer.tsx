@@ -104,9 +104,7 @@ export function ConversationComposer({
                   ),
                 );
             }}
-            onChangeText={value => {
-              onChangeText(value);
-            }}
+            onChangeText={onChangeText}
             placeholder={copy.placeholder}
             placeholderTextColor={appColors.secondary}
             // A cleared multiline native editor can retain its previous intrinsic height.

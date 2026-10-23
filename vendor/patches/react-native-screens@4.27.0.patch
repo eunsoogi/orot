@@ -1,0 +1,191 @@
+diff --git a/ios/RNSScreen.mm b/ios/RNSScreen.mm
+index 3074998f64a1ec055936a7579797fe31fff966af..7b1055d6a767bad67604b77962f90acaedd12d36 100644
+--- a/ios/RNSScreen.mm
++++ b/ios/RNSScreen.mm
+@@ -11,6 +11,7 @@
+ #import <React/RCTRootComponentView.h>
+ #import <React/RCTScrollViewComponentView.h>
+ #import <React/RCTSurfaceTouchHandler.h>
++#import <React/RCTUtils.h>
+ #import <react/renderer/components/rnscreens/EventEmitters.h>
+ #import <react/renderer/components/rnscreens/Props.h>
+ #import <react/renderer/components/rnscreens/RCTComponentViewHelpers.h>
+@@ -1585,7 +1586,8 @@ - (BOOL)hasNestedStack
+ - (CGSize)getStatusBarHeightIsModal:(BOOL)isModal
+ {
+ #if !TARGET_OS_TV && !TARGET_OS_VISION
+-  CGSize fallbackStatusBarSize = [[UIApplication sharedApplication] statusBarFrame].size;
++  // Off-window screens use the active React window's scene for the fallback.
++  CGSize fallbackStatusBarSize = RCTKeyWindow().windowScene.statusBarManager.statusBarFrame.size;
+ 
+   CGSize primaryStatusBarSize = self.view.window.windowScene.statusBarManager.statusBarFrame.size;
+   if (primaryStatusBarSize.height == 0 || primaryStatusBarSize.width == 0) {
+diff --git a/ios/RNSScreenStackHeaderConfig.mm b/ios/RNSScreenStackHeaderConfig.mm
+index 1c844846a5c66e31cfa530ca462774d2fb6bbea1..369c5f70b94ddad2c18ac3dd35d8a393d9af26a9 100644
+--- a/ios/RNSScreenStackHeaderConfig.mm
++++ b/ios/RNSScreenStackHeaderConfig.mm
+@@ -947,6 +947,8 @@ - (void)replaceNavigationBarViewsWithSnapshotOfSubview:(RNSScreenStackHeaderSubv
+   }
+ }
+ 
++#ifndef NDEBUG
++// Only the development image-cache fallback above needs this conversion.
+ static RCTResizeMode resizeModeFromCppEquiv(react::ImageResizeMode resizeMode)
+ {
+   switch (resizeMode) {
+@@ -966,6 +968,8 @@ static RCTResizeMode resizeModeFromCppEquiv(react::ImageResizeMode resizeMode)
+   }
+ }
+ 
++#endif
++
+ + (RCTImageSource *)imageSourceFromImageView:(RCTImageComponentView *)view
+ {
+   const auto &imageProps = *std::static_pointer_cast<const react::ImageProps>(view.props);
+diff --git a/ios/RNSScreenWindowTraits.mm b/ios/RNSScreenWindowTraits.mm
+index fd6f70dafef35994ec73de1d58b45506df3b2186..c2fb28c07bfc0002c44244fa46340c18065deab7 100644
+--- a/ios/RNSScreenWindowTraits.mm
++++ b/ios/RNSScreenWindowTraits.mm
+@@ -154,7 +154,8 @@ + (void)enforceDesiredDeviceOrientation
+ 
+         // `attemptRotationToDeviceOrientation` is deprecated for modern OS versions
+         // so we need to use `setNeedsUpdateOfSupportedInterfaceOrientations`
+-        UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
++        // Rotate the controller belonging to the scene whose geometry was updated.
++        UIViewController *topController = scene.keyWindow.rootViewController;
+         while (topController.presentedViewController) {
+           topController = topController.presentedViewController;
+         }
+diff --git a/ios/conversion/RNSConversions-Tabs.mm b/ios/conversion/RNSConversions-Tabs.mm
+index fc53cb76c10d2d2a30209788f7e972fbdc08fbb0..426b5feb5872b6b4f09536d78b05b464bef730e7 100644
+--- a/ios/conversion/RNSConversions-Tabs.mm
++++ b/ios/conversion/RNSConversions-Tabs.mm
+@@ -328,6 +328,9 @@ UITabBarSystemItem RNSTabsScreenSystemItemToUITabBarSystemItem(RNSTabsScreenSyst
+   RCTAssert(systemItem != RNSTabsScreenSystemItemNone,
+             @"Attempt to convert tabs systemItem none to UITabBarSystemItem");
+   switch (systemItem) {
++    case RNSTabsScreenSystemItemNone:
++      // Preserve the assertion above and the existing release fallback below.
++      break;
+     case RNSTabsScreenSystemItemBookmarks:
+       return UITabBarSystemItemBookmarks;
+     case RNSTabsScreenSystemItemContacts:
+@@ -353,7 +356,7 @@ UITabBarSystemItem RNSTabsScreenSystemItemToUITabBarSystemItem(RNSTabsScreenSyst
+     case RNSTabsScreenSystemItemTopRated:
+       return UITabBarSystemItemTopRated;
+   }
+-  RCTAssert(true, @"Attempt to convert unknown tabs screen systemItem to UITabBarSystemItem [%d]", systemItem);
++  RCTAssert(true, @"Attempt to convert unknown tabs screen systemItem to UITabBarSystemItem [%ld]", (long)systemItem);
+   return UITabBarSystemItemSearch;
+ }
+ 
+
+diff --git a/RNScreens.podspec b/RNScreens.podspec
+index 3f20bfe..367a91a 100644
+--- a/RNScreens.podspec
++++ b/RNScreens.podspec
+@@ -52,7 +52,12 @@ Pod::Spec.new do |s|
+   s.requires_arc = true
+ 
+   if !gamma_project_enabled
+-    s.exclude_files = "ios/gamma/**/*.#{source_files_exts}"
++    s.exclude_files = [
++      "ios/gamma/**/*.#{source_files_exts}",
++      # These conversions are guarded by RNS_GAMMA_ENABLED and are empty otherwise.
++      "ios/conversion/RNSConversions-Stack.mm",
++      "ios/conversion/RNSConversions-ScrollViewMarker.mm",
++    ]
+   else
+     s.exclude_files = "ios/stubs/**/*.#{source_files_exts}"
+     Pod::UI.puts "[RNScreens] Gamma project enabled. Including source files."
+@@ -67,6 +72,17 @@ Pod::Spec.new do |s|
+   install_modules_dependencies(s)
+   s.subspec "common" do |ss|
+     ss.source_files         = ["common/cpp/**/*.{cpp,h}", "cpp/**/*.{cpp,h}"]
++    # Keep Android-only and placeholder state implementations out of the iOS archive.
++    ss.exclude_files        = [
++      "common/cpp/react/renderer/components/rnscreens/RNSFormSheetHostState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSSafeAreaViewState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSScreenShadowNodeCommitHook.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSScreenStackHeaderSubviewState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSScreenState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSStackHeaderItemState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSStackHeaderSubviewState.cpp",
++      "common/cpp/react/renderer/components/rnscreens/RNSStackScreenState.cpp",
++    ]
+     ss.project_header_files = "common/cpp/**/*.h", "cpp/**/*.h" # Don't expose C++ headers publicly to allow importing framework into Swift files
+     ss.header_dir           = "rnscreens"
+     ss.pod_target_xcconfig  = { "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"" }
+
+diff --git a/ios/utils/NSString+RNSUtility.mm b/ios/utils/NSString+RNSUtility.mm
+--- a/ios/utils/NSString+RNSUtility.mm
++++ b/ios/utils/NSString+RNSUtility.mm
+@@ -37,1 +37,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_NSStringRNSUtility(void) {}
+diff --git a/ios/tabs/RCTConvert+RNSTabs.mm b/ios/tabs/RCTConvert+RNSTabs.mm
+--- a/ios/tabs/RCTConvert+RNSTabs.mm
++++ b/ios/tabs/RCTConvert+RNSTabs.mm
+@@ -11,1 +11,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTConvertRNSTabs(void) {}
+diff --git a/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm b/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
+--- a/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
++++ b/ios/utils/RCTSurfaceTouchHandler+RNSUtility.mm
+@@ -12,1 +12,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTSurfaceTouchHandlerRNSUtility(void) {}
+diff --git a/ios/utils/UINavigationBar+RNSUtility.mm b/ios/utils/UINavigationBar+RNSUtility.mm
+--- a/ios/utils/UINavigationBar+RNSUtility.mm
++++ b/ios/utils/UINavigationBar+RNSUtility.mm
+@@ -86,1 +86,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UINavigationBarRNSUtility(void) {}
+diff --git a/ios/UIScrollView+RNScreens.mm b/ios/UIScrollView+RNScreens.mm
+--- a/ios/UIScrollView+RNScreens.mm
++++ b/ios/UIScrollView+RNScreens.mm
+@@ -15,1 +15,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIScrollViewRNScreens(void) {}
+diff --git a/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm b/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
+--- a/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
++++ b/ios/RCTImageComponentView+RNSScreenStackHeaderConfig.mm
+@@ -10,1 +10,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RCTImageComponentViewRNSScreenStackHeaderConfig(void) {}
+diff --git a/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm b/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
+--- a/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
++++ b/ios/tabs/extensions/RNSTabsHostComponentView+RNSImageLoader.mm
+@@ -19,1 +19,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_RNSTabsHostComponentViewRNSImageLoader(void) {}
+diff --git a/ios/utils/UIView+RNSUtility.mm b/ios/utils/UIView+RNSUtility.mm
+--- a/ios/utils/UIView+RNSUtility.mm
++++ b/ios/utils/UIView+RNSUtility.mm
+@@ -41,1 +41,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIViewRNSUtility(void) {}
+diff --git a/ios/UIWindow+RNScreens.mm b/ios/UIWindow+RNScreens.mm
+--- a/ios/UIWindow+RNScreens.mm
++++ b/ios/UIWindow+RNScreens.mm
+@@ -17,1 +17,4 @@
+ @end
++
++// Keep this category-only object visible to libtool without exporting a public API symbol.
++__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIWindowRNScreens(void) {}

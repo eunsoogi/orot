@@ -62,7 +62,7 @@ export function NextVisitQuestionsSessionProvider({
       if (!seenViews.current.has(view)) {
         seenViews.current.add(view);
         // One bounded appointment lookup per reentry detects edits made while this screen was absent.
-        void currentSnapshot.current?.route.refreshAppointment();
+        currentSnapshot.current?.route.refreshAppointment();
       }
       setInputs(current => {
         if (!current) return retainedVisitInputs(() => latest.current!);
@@ -82,7 +82,7 @@ export function NextVisitQuestionsSessionProvider({
 }
 
 // Publication updates subscribers without rerendering this headless owner through its parent.
-const SessionOwner = memo(function SessionOwner({
+const SessionOwner = memo(function NextVisitSessionOwner({
   inputs,
   publish,
 }: {

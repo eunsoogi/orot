@@ -143,7 +143,9 @@ export function HealthDataIntegrationRoute({
             {t('settings.healthData.loadError')}
           </Text>
           <AppButton
-            onPress={() => void load()}
+            onPress={() => {
+              load();
+            }}
             testID="health-data-load-retry"
             title={t('appointments.retry')}
             variant="secondary"
@@ -153,7 +155,9 @@ export function HealthDataIntegrationRoute({
       <AppButton
         accessibilityState={{ busy: saving }}
         disabled={!loaded || saving}
-        onPress={() => void save()}
+        onPress={() => {
+          save();
+        }}
         testID="health-data-save"
         title={
           saving

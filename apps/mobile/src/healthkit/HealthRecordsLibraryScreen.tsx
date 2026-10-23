@@ -69,8 +69,7 @@ export function HealthRecordsLibraryScreen({
     category => read(category).loadState === 'failed',
   );
   const loadNext = () => {
-    for (const category of remaining)
-      void reload(category, read(category).cursor);
+    for (const category of remaining) reload(category, read(category).cursor);
   };
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -122,7 +121,7 @@ export function HealthRecordsLibraryScreen({
           hasMore={hasMore}
           onBack={onBack}
           onRetry={() => {
-            for (const category of observationCategories) void reload(category);
+            for (const category of observationCategories) reload(category);
           }}
           onSelectCategory={setSelectedCategory}
           selectedCategory={selectedCategory}

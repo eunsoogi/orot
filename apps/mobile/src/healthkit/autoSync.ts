@@ -43,7 +43,7 @@ export function runHealthKitAutoSync(
       pendingRuns.delete(options.repository);
     }
   };
-  void run.then(clear, clear);
+  run.then(clear, clear);
   return run;
 }
 

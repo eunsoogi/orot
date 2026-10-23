@@ -11,6 +11,8 @@ export function appleAvailabilityMessage(
       return t('provider.apple.disabled');
     case 'modelNotReady':
       return t('provider.apple.modelNotReady');
+    case 'unavailable':
+      return t('provider.apple.unavailable');
     case 'unsupportedDevice':
       return t('provider.apple.unsupportedDevice');
     case 'unsupportedLanguage':

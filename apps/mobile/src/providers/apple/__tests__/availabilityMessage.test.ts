@@ -10,6 +10,7 @@ describe('Apple provider localization', () => {
     );
     expect(appleAvailabilityMessage('disabled')).toContain('설정');
     expect(appleAvailabilityMessage('modelNotReady')).toContain('준비');
+    expect(appleAvailabilityMessage('unavailable')).toContain('사용할 수');
     expect(appleAvailabilityMessage('unsupportedDevice')).toContain('기기');
     expect(appleAvailabilityMessage('unsupportedLanguage')).toContain('한국어');
     expect(appleGenerationFailureMessage()).toContain('질문');

@@ -153,7 +153,7 @@ export default function RecordingLibraryPanel({
       setSelectedSourceId(current => (current === target.id ? null : current));
       if (result.audioCleanupPending) {
         setDeleteNotice('cleanup-pending');
-        void refreshAfterDelete(target.id).then(refreshed => {
+        refreshAfterDelete(target.id).then(refreshed => {
           if (refreshed) setDeleteNotice(null);
         });
       }

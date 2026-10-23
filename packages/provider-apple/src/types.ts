@@ -1,7 +1,12 @@
 import type { LanguageModelRequest, LanguageModelResponse } from '@orot/model-runtime';
 
 export type AppleAvailabilityStatus =
-  'available' | 'disabled' | 'modelNotReady' | 'unsupportedDevice' | 'unsupportedLanguage';
+  | 'available'
+  | 'disabled'
+  | 'modelNotReady'
+  | 'unavailable'
+  | 'unsupportedDevice'
+  | 'unsupportedLanguage';
 
 export interface AppleModelAvailability {
   readonly status: AppleAvailabilityStatus;

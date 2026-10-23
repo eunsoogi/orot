@@ -29,7 +29,11 @@ export const healthRecordsChartStyles = StyleSheet.create({
   dateAxis: {
     position: 'relative',
   },
+  dateTick: { position: 'absolute' },
   dateLabel: { color: appColors.secondary, fontSize: 11 },
+  dateLabelStart: { textAlign: 'left' },
+  dateLabelEnd: { textAlign: 'right' },
+  dateLabelMiddle: { textAlign: 'center' },
   legend: {
     alignItems: 'center',
     flexDirection: 'row',

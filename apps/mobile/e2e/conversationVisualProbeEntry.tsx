@@ -40,7 +40,7 @@ function ConversationVisualProbe() {
       >
         {navigation => {
           const onBack = () => {
-            void navigation.onBack();
+            navigation.onBack();
           };
           if (navigation.route.name === 'history')
             return <ConversationHistoryScreen onBack={onBack} />;

@@ -10,12 +10,13 @@ import {
   hashInputGroups,
 } from './ios-cache-inputs.mjs';
 
-// Cache app products by their source and builder inputs; CI-only reuse policy does not affect bytes.
+// Cache app products by app, package, dependency-patch, and builder inputs; CI-only reuse policy does not affect bytes.
 const BUILD_INPUT_PATHS = [
   '.npmrc',
   'package.json',
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
+  'vendor/patches',
   'apps/mobile',
   'packages',
   'scripts/ci/build-ios-simulator-app.sh',
@@ -27,6 +28,7 @@ const PLATFORM_DEPENDENCY_INPUT_PATHS = [
   'package.json',
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
+  'vendor/patches',
   'apps/mobile/package.json',
   'apps/mobile/react-native.config.js',
   'apps/mobile/ios',

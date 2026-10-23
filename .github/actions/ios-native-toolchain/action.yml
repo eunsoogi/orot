@@ -1,5 +1,5 @@
 name: Prepare pinned native build tools
-description: Install the pinned JavaScript and Ruby tools once on each native build host.
+description: Install the pinned JavaScript and Ruby tools on each native build host.
 runs:
   using: composite
   steps:
