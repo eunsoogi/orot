@@ -29,11 +29,13 @@ test('fresh isolated cases reset only their owned app and Keychain without booti
       assert.ok(!value.calls.some((call) => ['boot', 'shutdown', 'delete'].includes(call.args[1])));
       // Reset needs only this bundle's installation state; full application enumeration stalled before the hosted backup case.
       assert.ok(!value.calls.some((call) => call.args[1] === 'listapps'));
-      // Each read or mutation has its own fresh ownership observation, with no extra inventory process.
-      for (let index = 0; index < value.calls.length; index += 2) {
+      // The exact read-only app lookup needs no inventory; each following mutation keeps a fresh one.
+      assert.deepEqual(
+        value.calls.map((call) => call.args[1]),
+        ['get_app_container', 'list', 'uninstall', 'list', 'keychain', 'list', 'install'],
+      );
+      for (let index = 1; index < value.calls.length; index += 2)
         assert.deepEqual(value.calls[index].args, ['simctl', 'list', '-j']);
-        assert.notEqual(value.calls[index + 1].args[1], 'list');
-      }
       const timings = value.outcome.stderr
         .split('\n')
         .filter((line) => line.startsWith('{'))
@@ -114,6 +116,12 @@ test('independent cleanup directly uninstalls the exact owned bundle and proves 
       assert.ok(
         !value.calls.some((call) => ['uninstall', 'keychain', 'install'].includes(call.args[1])),
       );
+      if (options.state === 'Shutdown')
+        assert.deepEqual(
+          value.calls.map((call) => call.args[1]),
+          ['list'],
+        );
+      else assert.deepEqual(value.calls, []);
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }
@@ -173,6 +181,12 @@ test('refuses shared Core, mismatched ownership, inactive devices and unsupporte
       assert.ok(
         !value.calls.some((call) => ['uninstall', 'keychain', 'install'].includes(call.args[1])),
       );
+      if (options.state === 'Shutdown')
+        assert.deepEqual(
+          value.calls.map((call) => call.args[1]),
+          ['get_app_container', 'list'],
+        );
+      else assert.deepEqual(value.calls, []);
     } finally {
       rmSync(value.root, { recursive: true, force: true });
     }

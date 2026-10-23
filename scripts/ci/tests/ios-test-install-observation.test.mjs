@@ -113,7 +113,7 @@ test('failed first install records status and exactly one owned observation, wit
         /diagnostic-must-not-expose|original-install-failure|Synthetic service/,
       );
       assert.match(value.outcome.stderr, /original-install-failure/);
-      assert.equal(value.calls.filter((call) => call.args[1] === 'list').length, 3);
+      assert.equal(value.calls.filter((call) => call.args[1] === 'list').length, 2);
       if (queries === 2) assert.deepEqual(value.calls.at(-2).args, ['simctl', 'list', '-j']);
       assert.match(value.outcome.stderr, /status: 7/);
     } finally {
@@ -168,7 +168,7 @@ test('one five-second diagnostic budget includes ownership and forcibly bounds u
       assert.equal(value.diagnostics[1].signal, 'SIGKILL');
       assert.ok(value.diagnostics[1].elapsedMs >= 4900);
       assert.match(value.outcome.stderr, /status: 7/);
-      assert.equal(value.calls.filter((call) => call.args[1] === 'list').length, 3);
+      assert.equal(value.calls.filter((call) => call.args[1] === 'list').length, 2);
     } finally {
       value.dispose();
     }

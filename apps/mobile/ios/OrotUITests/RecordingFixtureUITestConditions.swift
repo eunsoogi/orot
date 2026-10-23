@@ -24,9 +24,9 @@ enum RecordingFixtureUITestConditions {
         app.launch()
     }
 
-    static func reveal(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false) -> XCUIElement {
+    static func reveal(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45) -> XCUIElement {
         let target = UITestConditions.element(app, identifier)
-        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: towardTop)
+        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: towardTop, maximumScrollFraction: maximumScrollFraction)
         return target
     }
 

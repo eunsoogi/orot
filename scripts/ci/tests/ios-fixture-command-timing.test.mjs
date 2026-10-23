@@ -153,11 +153,15 @@ test('receipt waiting polls the child PID without rescanning Simulator inventory
     assert.equal(value.outcome.status, 0, value.outcome.stderr);
     // The fixture releases the receipt only after the runner probes the launched PID four times.
     assert.ok(value.pidChecks >= 4, `expected repeated PID probes, saw ${value.pidChecks}`);
-    // Four command boundaries plus receipt consumption each retain one fresh inventory.
+    // Privacy reset, launch, receipt consumption and termination each retain fresh ownership.
     assert.equal(
       value.calls.filter((args) => args[1] === 'list').length,
-      5,
-      'full Simulator inventory must not run once per receipt-wait iteration',
+      4,
+      'only the exact read-only data-container lookup skips full inventory',
+    );
+    assert.deepEqual(
+      value.calls.map((args) => args[1]),
+      ['get_app_container', 'list', 'privacy', 'list', 'launch', 'list', 'list', 'terminate'],
     );
   } finally {
     value.dispose();
