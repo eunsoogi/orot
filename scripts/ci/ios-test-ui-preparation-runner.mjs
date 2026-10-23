@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { iosTestTaskNeedsUiPreparation } from './ios-test-cohorts.mjs';
 import { hostConnectionTest } from './ios-test-preparation-contract.mjs';
 import { verifyIosTestResults } from './ios-test-results.mjs';
@@ -29,9 +30,12 @@ export function createIosTestUiPreparationGate({
   environment = process.env,
   runPreparation,
   runXcrun = execFileSync,
+  onTiming = () => {},
 }) {
   if (!Array.isArray(tasks) || typeof runPreparation !== 'function')
     throw new Error('iOS UI preparation requires a task plan and runner');
+  if (typeof onTiming !== 'function')
+    throw new Error('iOS UI preparation timing requires a result callback');
   const uiTasks = tasks.filter(iosTestTaskNeedsUiPreparation);
   if (!uiTasks.length) return () => false;
   if (!profile || !runFile || !ownerFile || !resultsDirectory)
@@ -70,12 +74,14 @@ export function createIosTestUiPreparationGate({
       rawObservation?.result !== 'Passed'
     )
       throw new Error('Current iOS UI preparation did not verify its owned host result');
+    return bootstrap;
   }
 
   return (task) => {
     if (!uiTasks.includes(task) || complete) return false;
     if (attempted) throw new Error('The first iOS UI preparation attempt did not complete');
     attempted = true;
+    const started = performance.now();
     runPreparation({
       profile,
       suite: uiTasks[0].suite,
@@ -84,7 +90,19 @@ export function createIosTestUiPreparationGate({
       directory: preparationDirectory,
       log: preparationLog,
     });
-    verifyCurrentPreparation();
+    const bootstrap = verifyCurrentPreparation();
+    // Optional timing metadata describes the inner script and must not gate the verified host result.
+    const bootstrapElapsedMs =
+      typeof bootstrap.elapsedMonotonicMs === 'number' &&
+      Number.isFinite(bootstrap.elapsedMonotonicMs) &&
+      bootstrap.elapsedMonotonicMs >= 0
+        ? bootstrap.elapsedMonotonicMs
+        : null;
+    // This outer interval includes the preparation command and evidence check; its nested value covers only the preparation script itself.
+    onTiming({
+      gateElapsedMs: Math.round((performance.now() - started) * 1000) / 1000,
+      bootstrapElapsedMs,
+    });
     complete = true;
     return true;
   };

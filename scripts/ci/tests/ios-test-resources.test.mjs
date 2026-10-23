@@ -207,6 +207,9 @@ test('sampler serializes queries and stops its owned child before writing the af
     );
     assert.equal(entries[1].observations.memory.unavailable, 'sampling stopped');
     assert.equal(entries[1].observations.swap.unavailable, 'sampling stopped');
+    assert.ok(Number.isFinite(entries[1].commandElapsedMs.memory));
+    assert.equal(entries[1].commandElapsedMs.swap, null);
+    assert.equal(entries[1].commandElapsedMs.processes, null);
     assert.equal(entries[2].observations.processes, 'ps synthetic\n');
 
     const stoppedCommandCount = commandStarts;

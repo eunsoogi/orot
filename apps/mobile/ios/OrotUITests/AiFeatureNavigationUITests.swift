@@ -52,7 +52,8 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(send))
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
-        FormUITestConditions.replace(input, with: "orot-no-provider-check", in: app, scrollID: "rag-conversation-screen")
+        // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
+        FormUITestConditions.replace(input, with: "test", in: app, scrollID: "rag-conversation-screen")
         input.typeText("\n")
         FormUITestConditions.reveal(send, in: app, scrollID: "rag-conversation-screen")
         XCTAssertTrue(send.isEnabled)

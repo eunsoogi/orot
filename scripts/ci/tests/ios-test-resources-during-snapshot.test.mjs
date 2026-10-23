@@ -5,30 +5,31 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { iosTestResourceSampler } from '../ios-test-resources.mjs';
 
-test('periodic sampling can keep memory and swap while skipping the process query', async () => {
-  const directory = mkdtempSync(join(tmpdir(), 'orot-resource-during-process-'));
-  const sidecar = join(directory, 'resources.jsonl');
+test('periodic snapshots can omit only the process query while retaining boundary snapshots', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'orot-resource-during-process-'));
+  const sidecar = join(root, 'resources.jsonl');
   const commands = [];
-  let periodicSnapshotStarted;
-  const periodicSample = new Promise((resolve) => (periodicSnapshotStarted = resolve));
+  let resolvePeriodicSample;
+  const periodicSample = new Promise((resolve) => (resolvePeriodicSample = resolve));
 
   async function execute(program, args, { signal } = {}) {
+    const commandIndex = commands.length + 1;
     commands.push([program, args]);
-    if (commands.length === 5) periodicSnapshotStarted();
-    // If the periodic ps query runs, model a child that completes only when shutdown aborts it.
-    if (program === 'ps' && commands.length === 6)
+    if (commandIndex === 5) resolvePeriodicSample();
+    // Without the periodic skip, model the `ps` child that stalls until sampler shutdown.
+    if (program === 'ps' && commandIndex === 6)
       return new Promise((resolve) => {
         signal.addEventListener('abort', () => resolve({ unavailable: 'sampling stopped' }), {
           once: true,
         });
       });
-    return program + ' synthetic\n';
+    return `${program} synthetic\n`;
   }
 
   let stopSampling;
   try {
     stopSampling = await iosTestResourceSampler(sidecar, {
-      intervalMs: 200,
+      intervalMs: 100,
       execute,
       skipDuringProcessSnapshot: true,
     });
@@ -48,12 +49,17 @@ test('periodic sampling can keep memory and swap while skipping the process quer
     assert.deepEqual(entries[1].observations, {
       memory: 'vm_stat synthetic\n',
       swap: 'sysctl synthetic\n',
-      processes: { unavailable: 'periodic process snapshot skipped during boot or XCTest' },
+      processes: {
+        unavailable: 'periodic process snapshot skipped to avoid blocking sampler shutdown',
+      },
     });
+    assert.ok(Number.isFinite(entries[1].commandElapsedMs.memory));
+    assert.ok(Number.isFinite(entries[1].commandElapsedMs.swap));
+    assert.equal(entries[1].commandElapsedMs.processes, null);
     assert.equal(entries[0].observations.processes, 'ps synthetic\n');
     assert.equal(entries[2].observations.processes, 'ps synthetic\n');
   } finally {
     if (stopSampling) await stopSampling();
-    rmSync(directory, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });

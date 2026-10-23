@@ -125,9 +125,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         if suffix == "320pt" {
             XCTAssertEqual(UITestConditions.element(app, "recording-controls-scroll").frame.width, 320, accuracy: 0.5)
         }
-        if suffix == "320pt" {
-            capture(app, "recording-library-list-\(suffix)")
-        }
+        capture(app, "recording-library-list-\(suffix)")
         row.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "recording-detail")))
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "transcript-panel")))
@@ -135,12 +133,14 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         XCTAssertNotEqual(UITestConditions.text(duration), "길이 확인 불가")
         XCTAssertTrue(UITestConditions.element(app, "recording-detail-date").exists)
         XCTAssertTrue(UITestConditions.element(app, "recording-playback-button").exists)
+        capture(app, "recording-library-detail-\(suffix)")
         if liveTheme || editTranscript {
             reveal(app, "transcript-create").tap()
             _ = reveal(app, "transcript-text-0")
             XCTAssertEqual(UITestConditions.text(reveal(app, "transcript-review-0")), "검토 전 초안")
             XCTAssertFalse(UITestConditions.element(app, "transcript-engine-0").exists)
             XCTAssertFalse(UITestConditions.element(app, "transcript-runtime-0").exists)
+            capture(app, "recording-transcript-review-\(suffix)")
         }
         if liveTheme {
             // Keep transcript content rendered while the real OS appearance changes in both directions.
@@ -154,7 +154,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         }
         if editTranscript {
             reveal(app, "transcript-edit-0").tap()
-            let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
+            let input = UITestConditions.element(app, "transcript-input-0")
             FormUITestConditions.replace(input, with: "수정됨", in: app, scrollID: "recording-controls-scroll")
             XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
             capture(app, "recording-transcript-editor-\(suffix)")
@@ -169,11 +169,15 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
             save.tap()
             XCTAssertEqual(UITestConditions.text(reveal(app, "transcript-text-0")), "수정됨")
         }
+        // Use a wider measured step for this tall control while retaining full-frame and hit-testing checks.
+        let exportAudio = reveal(app, "recording-export-audio", maximumScrollFraction: 0.7)
+        XCTAssertTrue(exportAudio.isHittable)
+        capture(app, "recording-export-panel-\(suffix)")
     }
 
     @MainActor
-    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false) -> XCUIElement {
-        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop)
+    private func reveal(_ app: XCUIApplication, _ id: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45) -> XCUIElement {
+        RecordingFixtureUITestConditions.reveal(app, id, towardTop: towardTop, maximumScrollFraction: maximumScrollFraction)
     }
 
     @MainActor

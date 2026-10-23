@@ -12,7 +12,7 @@ function run(
   hosted = false,
   cacheStatus = 0,
   blockedDiagnostic = false,
-  bootCommandStatus = 0,
+  bootStatusCode = 0,
 ) {
   const root = mkdtempSync(join(tmpdir(), 'orot-boot-observation-'));
   const ownerPath = join(root, 'owner.json');
@@ -35,7 +35,7 @@ const command=args[1];
 if(command==='list')console.log(${JSON.stringify(JSON.stringify(snapshot))});
 else if(command==='create')console.log('owned-device');
 else if(command==='runtime') { console.log('Runtime shared cache ready'); process.exit(${cacheStatus}); }
-else if(command==='boot')process.exit(${bootCommandStatus});
+else if(command==='boot')process.exit(${bootStatusCode});
 else if(command==='bootstatus') {
  console.log('Waiting for Data Migration');
  if(${blockedDiagnostic}){const file=${JSON.stringify(ownerPath + '.boot.resources.jsonl')};fs.unlinkSync(file);fs.mkdirSync(file);}
@@ -79,7 +79,7 @@ else if(command!=='boot')process.exit(99);
 }
 
 for (const status of [0, 65])
-  test(`boot progress and resources survive status ${status} without a retry or another destination`, () => {
+  test(`boot readiness status ${status} keeps its required final resource observations`, () => {
     const value = run(status);
     try {
       assert.equal(value.outcome.status === 0, status === 0, value.outcome.stderr);
@@ -93,18 +93,26 @@ for (const status of [0, 65])
         ['before', 'after'],
       );
       assert.equal(resources[0].observations.processes, 'synthetic ps\n');
-      if (status === 0) {
-        // A successful readiness boundary keeps memory and swap but avoids a final process query.
-        assert.deepEqual(resources[1].observations, {
-          memory: 'synthetic vm_stat\n',
-          swap: 'synthetic sysctl\n',
-          processes: {
-            unavailable: 'final process snapshot skipped after successful boot or XCTest',
-          },
-        });
-      } else {
-        assert.equal(resources[1].observations.processes, 'synthetic ps\n');
-      }
+      // Skip only after readiness succeeds; failures retain process evidence beside memory and swap.
+      assert.deepEqual(
+        resources[1].observations,
+        status === 0
+          ? {
+              memory: 'synthetic vm_stat\n',
+              swap: 'synthetic sysctl\n',
+              processes: {
+                unavailable: 'process snapshot skipped after readiness or test success',
+              },
+            }
+          : {
+              memory: 'synthetic vm_stat\n',
+              swap: 'synthetic sysctl\n',
+              processes: 'synthetic ps\n',
+            },
+      );
+      assert.ok(Number.isFinite(resources[1].commandElapsedMs.memory));
+      assert.ok(Number.isFinite(resources[1].commandElapsedMs.swap));
+      assert.equal(resources[1].commandElapsedMs.processes === null, status === 0);
       assert.equal(value.calls.filter((args) => args[1] === 'boot').length, 1);
       assert.deepEqual(
         value.calls.filter((args) => args[1] === 'bootstatus'),
@@ -118,7 +126,7 @@ for (const status of [0, 65])
     }
   });
 
-test('a failed simulator boot keeps its final process snapshot and does not publish readiness', () => {
+test('a failed simulator boot retains the final process sample and does not publish readiness', () => {
   const value = run(0, false, 0, false, 65);
   try {
     assert.notEqual(value.outcome.status, 0);
@@ -130,6 +138,7 @@ test('a failed simulator boot keeps its final process snapshot and does not publ
       .map(JSON.parse);
     assert.equal(resources[0].observations.processes, 'synthetic ps\n');
     assert.equal(resources[1].observations.processes, 'synthetic ps\n');
+    assert.ok(Number.isFinite(resources[1].commandElapsedMs.processes));
     const diagnostics = readFileSync(value.ownerPath + '.preparation.jsonl', 'utf8')
       .trim()
       .split('\n')

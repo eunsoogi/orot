@@ -40,9 +40,9 @@ function simctl(...args) {
   return runIosSimulatorCommand(args).trim();
 }
 
-/** Keep Apple's boot progress visible and retain a final process sample when boot readiness fails. */
+/** Keep Apple's boot progress visible while reserving process snapshots for the boot boundaries. */
 async function bootOwnedSimulator(owner, ownerPath) {
-  // A process query can hold the boot wait open; keep its initial and failure snapshots and skip periodic scans.
+  // A periodic `ps` can outlive bootstatus and hold shutdown; retain the initial and failure snapshots.
   const stopSampling = await iosTestResourceSampler(ownerPath + '.boot.resources.jsonl', {
     skipDuringProcessSnapshot: true,
   });

@@ -3,11 +3,6 @@ import XCTest
 
 @MainActor
 enum FormUITestConditions {
-    /// React Native backs multiline TextInput with UITextView; query that role instead of scanning every accessibility element.
-    static func multilineInput(_ app: XCUIApplication, identifier: String) -> XCUIElement {
-        app.textViews.matching(identifier: identifier).firstMatch
-    }
-
     /// AX can mark a keyboard-covered control hittable. Require its measured frame inside the visible scroller before touching it.
     /// Noninteractive text callers must prove rendered visibility separately when opting out of hit testing.
     @discardableResult
@@ -71,32 +66,62 @@ enum FormUITestConditions {
     }
 
     static func replace(_ input: XCUIElement, with text: String, in app: XCUIApplication, scrollID: String) {
-        guard let reference = reveal(input, in: app, scrollID: scrollID) else { return }
-        let current = input.value as? String ?? ""
-        input.tap()
-        guard let focused = exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID) else { return }
-        if !current.isEmpty, current != input.placeholderValue {
+        let replaceStartedAt = ProcessInfo.processInfo.systemUptime
+        defer { recordTiming("replace-total", since: replaceStartedAt) }
+        // Pass measured closures as explicit arguments so Swift binds `else` to each guard statement.
+        guard let reference = measure("reveal", { reveal(input, in: app, scrollID: scrollID) }) else { return }
+        let current = measure("value-read") { input.value as? String ?? "" }
+        measure("field-tap") { input.tap() }
+        guard let focused = measure("focused-input", {
+            exposeFocusedInput(input, referenceSize: reference.size, in: app, scrollID: scrollID)
+        }) else { return }
+        let shouldReplace = if current.isEmpty {
+            false
+        } else {
+            measure("placeholder-read") { current != input.placeholderValue }
+        }
+        if shouldReplace {
             // Default activation placed the caret at the start in hosted traces. Touch the lower trailing
             // interior of the independently observed input for these short, visible fixture contents.
             // This is not a document-end operation for internally scrolled text; exact-empty must reject a missed end.
-            let point = CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
-                                 dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
-            app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
-            // XCTest dropped backspaces when the controlled field received them as one batch.
-            for _ in current {
-                app.typeText(XCUIKeyboardKey.delete.rawValue)
+            let point = measure("caret-placement") {
+                CGVector(dx: focused.input.minX + focused.input.width * 0.95 - focused.application.minX,
+                         dy: focused.input.minY + focused.input.height * 0.95 - focused.application.minY)
             }
-            exactValue(input, equals: "")
+            measure("caret-tap") { app.coordinate(withNormalizedOffset: .zero).withOffset(point).tap() }
+            // Controlled fields can drop batched backspaces while rerendering.
+            // Send one delete key through the focused app instead of re-resolving the input query per Character.
+            // exact-empty below remains the only outcome check; do not retry a missed deletion.
+            measure("delete-existing") {
+                for _ in current {
+                    app.typeText(XCUIKeyboardKey.delete.rawValue)
+                }
+            }
+            measure("exact-empty") { exactValue(input, equals: "") }
         }
         if !text.isEmpty {
-            // Keep per-character synchronization because batched input dropped characters
-            // in controlled fields. The app's focused descendant receives each key without
-            // asking XCTest to resolve the changing field query for every character.
-            for character in text {
-                app.typeText(String(character))
+            // Controlled fields can drop batched input, so preserve per-character synchronization.
+            // Type through the app's focused control to avoid resolving this changing field query per Character.
+            // The exact-value assertion below remains the sole outcome check; no corrective edit follows.
+            measure("type-characters") {
+                for character in text {
+                    app.typeText(String(character))
+                }
             }
         }
-        exactValue(input, equals: text)
+        measure("exact-value") { exactValue(input, equals: text) }
+    }
+
+    /// Keep timing diagnostic-only; step names and durations exclude field text and identifiers.
+    private static func measure<T>(_ step: String, _ operation: () -> T) -> T {
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        defer { recordTiming(step, since: startedAt) }
+        return operation()
+    }
+
+    private static func recordTiming(_ step: String, since startedAt: TimeInterval) {
+        let elapsedMs = Int(((ProcessInfo.processInfo.systemUptime - startedAt) * 1000).rounded())
+        print("OROT_FORM_UI_TIMING {\"step\":\"\(step)\",\"elapsedMs\":\(elapsedMs)}")
     }
 
     /// Focus can clip the AX frame. Keep the earlier observed height, reserve the observed occlusion, then independently verify the refocused input.

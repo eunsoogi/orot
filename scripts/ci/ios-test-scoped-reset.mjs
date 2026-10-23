@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
+import { verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
 import { runIosSimulatorCommand, verifyIosTestSimulator } from './ios-test-simulator.mjs';
 import { verifyIosFixtureReceipt } from './ios-test-fixture-receipt.mjs';
 export { verifyIosFixtureReceipt } from './ios-test-fixture-receipt.mjs';
@@ -34,15 +35,28 @@ export function iosFixtureResetMode(profile, identifier) {
     : 'fresh-install';
 }
 
-/** Each command rechecks exact ownership and awaits its real exit; hosted job cancellation is the outer limit. */
+/** Exact Orot container lookups check the recorded profile; every state change still checks live ownership. */
 export function ownedFixtureCommand(profile, owner, args) {
-  if (
-    !['fixtures', 'core'].includes(profile) ||
-    verifyIosTestSimulator(owner, profile).state !== 'Booted'
-  )
+  if (!['fixtures', 'core'].includes(profile))
     throw new Error(
       'Scoped fixture commands require an owned booted fixture or isolation destination',
     );
+  const readsOwnedContainer =
+    args.length === 4 &&
+    args[0] === 'get_app_container' &&
+    typeof owner.udid === 'string' &&
+    owner.udid.length > 0 &&
+    args[1] === owner.udid &&
+    args[2] === bundle &&
+    ['app', 'data'].includes(args[3]);
+  if (readsOwnedContainer) {
+    // This only resolves the exact recorded device and Orot container; receipt acceptance and mutations keep live checks.
+    verifyIosSimulatorOwnerContract(owner, profile);
+  } else if (verifyIosTestSimulator(owner, profile).state !== 'Booted') {
+    throw new Error(
+      'Scoped fixture commands require an owned booted fixture or isolation destination',
+    );
+  }
   return runIosSimulatorCommand(args).trim();
 }
 
@@ -164,8 +178,6 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
     const pid = Number(match?.[1]);
     if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Invalid fixture launch PID');
     while (!existsSync(receiptPath)) {
-      if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
-        throw new Error('Fixture destination stopped before its receipt');
       try {
         process.kill(pid, 0);
       } catch (error) {
@@ -173,6 +185,10 @@ export async function runIosFixtureCommand(profile, owner, action, token = rando
       }
       await setTimeout(50);
     }
+    // Keep the wait loop on local state; a full inventory blocks receipt and PID checks.
+    // Fresh ownership remains required before consuming the receipt and every mutation.
+    if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
+      throw new Error('Fixture destination stopped before its receipt');
     const receipt = verifyIosFixtureReceipt(
       JSON.parse(readFileSync(receiptPath, 'utf8')),
       action,

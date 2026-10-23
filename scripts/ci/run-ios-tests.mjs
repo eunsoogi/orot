@@ -144,8 +144,9 @@ if (
 if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
   throw new Error('iOS and UI targets require separate verified invocations');
 // A single destination and worker avoid test-runner clones and retries concealing the first result.
-// Keep the pre-test process baseline, but skip periodic scans while XCTest is running.
+// Boot sampling already records host processes; do not block XCTest startup on a duplicate ps query.
 const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl', {
+  skipInitialProcessSnapshot: true,
   skipDuringProcessSnapshot: true,
 });
 const stopDiagnostics =
@@ -229,6 +230,6 @@ try {
 } finally {
   await stopDiagnostics();
   await stopAuthDiagnostics();
-  // Keep terminal process evidence after a test failure; successful XCTest needs no extra scan.
+  // Xcode success needs no extra host process scan; keep the final process snapshot when it fails.
   await stopSampling({ skipFinalProcessSnapshot: testStageSucceeded });
 }

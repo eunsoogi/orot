@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -8,15 +8,15 @@ import { iosTestCohort } from '../ios-test-cohorts.mjs';
 import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 
 // Exercise the real coordinator and first native driver; only external Apple commands are replaced.
-function run(state) {
+function run(state, cohort = 'debug') {
   const root = mkdtempSync(join(tmpdir(), 'orot-cohort-destination-'));
-  const definition = iosTestCohort('debug');
+  const definition = iosTestCohort(cohort);
   const owner = {
-    cohort: 'debug',
+    cohort,
     profiles: definition.profiles,
     runtime: definition.config.runtime,
     device: definition.config.device,
-    name: 'OrotTests-cohort-debug-fixture',
+    name: `OrotTests-cohort-${cohort}-fixture`,
     udid: '11111111-2222-4333-8444-555555555555',
   };
   const calls = join(root, 'calls.jsonl');
@@ -64,7 +64,7 @@ else console.log('synthetic bounded diagnostic');
   writeFileSync(runFile, 'verified by the separate product boundary');
   const outcome = spawnSync(
     process.execPath,
-    [resolve('scripts/ci/run-ios-test-cohort.mjs'), 'debug', runFile, ownerFile, results],
+    [resolve('scripts/ci/run-ios-test-cohort.mjs'), cohort, runFile, ownerFile, results],
     {
       encoding: 'utf8',
       env: {
@@ -88,14 +88,14 @@ else console.log('synthetic bounded diagnostic');
   };
 }
 
-test('preparation and task execution each verify their owned destination before Xcode', () => {
+test('each Xcode execution verifies its owned destination once at the operation boundary', () => {
   const value = run('Booted');
   try {
     assert.notEqual(value.outcome.status, 0);
     const calls = value.calls();
     const inventories = calls.filter((call) => call.name === 'xcrun' && call.args[1] === 'list');
     const builds = calls.filter((call) => call.name === 'xcodebuild');
-    assert.equal(inventories.length, 3);
+    assert.equal(inventories.length, 2);
     assert.equal(
       builds.length,
       2,
@@ -106,12 +106,35 @@ test('preparation and task execution each verify their owned destination before 
       ['-only-testing:' + hostConnectionTest],
     );
     assert.ok(calls.indexOf(inventories[0]) < calls.indexOf(builds[0]));
-    assert.ok(calls.indexOf(inventories[1]) < calls.indexOf(builds[0]));
-    assert.ok(calls.indexOf(builds[0]) < calls.indexOf(inventories[2]));
-    assert.ok(calls.indexOf(inventories[2]) < calls.indexOf(builds[1]));
+    assert.ok(calls.indexOf(builds[0]) < calls.indexOf(inventories[1]));
+    assert.ok(calls.indexOf(inventories[1]) < calls.indexOf(builds[1]));
     assert.deepEqual(
       value.report().tasks.map((task) => task.status),
       ['failed', 'not-run', 'not-run', 'not-run'],
+    );
+    assert.ok(Number.isFinite(value.report().elapsedMs));
+    assert.ok(Number.isFinite(value.report().uiPreparationElapsedMs));
+    assert.ok(Number.isFinite(value.report().uiBootstrapElapsedMs));
+    assert.match(value.outcome.stdout, /ui_preparation_ms=\d+(?:\.\d+)?/);
+    assert.match(value.outcome.stdout, /ui_bootstrap_ms=\d+(?:\.\d+)?/);
+  } finally {
+    value.dispose();
+  }
+});
+
+test('cohorts without UI preparation keep the separate timing fields not applicable', () => {
+  const value = run('Booted', 'core-integration');
+  try {
+    assert.notEqual(value.outcome.status, 0);
+    assert.ok(
+      existsSync(join(value.root, 'results/results.json')),
+      `${value.outcome.stdout}\n${value.outcome.stderr}`,
+    );
+    assert.equal(value.report().uiPreparationElapsedMs, null);
+    assert.equal(value.report().uiBootstrapElapsedMs, null);
+    assert.match(
+      value.outcome.stdout,
+      /ui_preparation_ms=not_required ui_bootstrap_ms=not_required/,
     );
   } finally {
     value.dispose();
@@ -124,7 +147,7 @@ test('an unbooted live destination fails before either preparation or task Xcode
     assert.notEqual(value.outcome.status, 0);
     assert.match(
       readFileSync(join(value.root, 'ui-preparation.log'), 'utf8'),
-      /booted owned destination/,
+      /booted owned simulator/,
     );
     assert.ok(!value.calls().some((call) => call.name === 'xcodebuild'));
   } finally {
