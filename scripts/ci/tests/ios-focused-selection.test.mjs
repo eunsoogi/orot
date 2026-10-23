@@ -196,7 +196,7 @@ test('focused consumer verifies exact products before its only boot and retains 
   );
   assert.match(source, /ios-simulator-biometric-capabilities\.sh/);
   assert.match(biometricCapabilities, /xcrun simctl help/);
-  assert.match(biometricCapabilities, /xcrun simctl io help/);
+  assert.match(biometricCapabilities, /xcrun simctl help io/);
   assert.ok(
     source.indexOf('Verify product provenance and integrity before boot') <
       source.indexOf('Boot the dedicated execution destination'),

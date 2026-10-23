@@ -4,7 +4,7 @@ set -euo pipefail
 # Record public Xcode runner controls without synthesizing Face ID input.
 xcodebuild -version
 xcrun simctl help
-xcrun simctl io help
+xcrun simctl help io
 
 developer_applications="${DEVELOPER_DIR:?}/Applications"
 if [[ -d "$developer_applications" ]]; then
