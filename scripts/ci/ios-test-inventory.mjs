@@ -13,6 +13,7 @@ const coreTests = [
   ...statePersistenceTests,
   ...fixtureIsolationTests,
   ...recordingPersistenceTests,
+  'OrotIntegrationTests/RecordingMeteringBoundaryTests/testRecorderErrorsHopToTheOwnedQueueAndIgnoreStaleSessions',
   'OrotIntegrationTests/RecordingMeteringBoundaryTests/testNotificationOccurrencePrecedesQueueDeliveryWithoutChangingActiveCaptureProtection',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testHostExecutesHermesOperations',
   'OrotIntegrationTests/HermesDomainIntegrationTests/testTwentyGraphInvocationsAndStreams',
@@ -61,6 +62,11 @@ const providerTests = [
   'OrotIntegrationTests/MedicationDoseCursorTests/testReplayExpansionAndErrorsPreserveCheckpointInvariants',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
   'OrotIntegrationTests/HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
+];
+// Both protected-item checks require Face ID enrollment; the positive case also opens a match prompt.
+const interactiveAuthenticationTests = [
+  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testKeychainQueryUsesFreshContextAndBlocksProtectedLookupWithoutUi',
+  'OrotIntegrationTests/KeychainAuthenticationIntegrationTests/testProtectedKeychainReadUsesPromptedContextAfterBiometricMatch',
 ];
 export const backupTests = [
   'OrotUITests/BackupPersistenceUITests/testKeyAndMemoryTombstonesSurviveProcessRestart',
@@ -131,6 +137,7 @@ export function iosTestInventory(profile, suite = 'all') {
       'all',
       'integration',
       'ui',
+      'authentication',
       'preparation',
       'journey',
       'isolation',
@@ -142,6 +149,7 @@ export function iosTestInventory(profile, suite = 'all') {
     (!['speech', 'core', 'fixtures'].includes(profile) && suite !== 'all') ||
     (suite === 'preparation' && profile !== 'speech') ||
     (suite === 'journey' && profile !== 'speech') ||
+    (suite === 'authentication' && profile !== 'core') ||
     (suite === 'isolation' && profile !== 'core') ||
     (suite === 'recording-persistence' && profile !== 'core') ||
     (suite === 'state-persistence' && profile !== 'core') ||
@@ -150,6 +158,7 @@ export function iosTestInventory(profile, suite = 'all') {
   )
     throw new Error('Unsupported integration test suite selection');
   if (suite === 'journey') return speechJourneyTests.slice();
+  if (suite === 'authentication') return interactiveAuthenticationTests.slice();
   if (suite === 'isolation') return fixtureIsolationTests.slice();
   if (suite === 'recording-persistence') return recordingPersistenceTests.slice();
   if (suite === 'state-persistence') return statePersistenceTests.slice();

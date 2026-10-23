@@ -49,7 +49,7 @@ export function TranscriptEvidenceProbe() {
         }
       }
     }
-    void prepare();
+    prepare();
     return () => {
       active = false;
     };

@@ -1,0 +1,33 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -86,9 +86,10 @@
+     _tryToStartAnother() {
+         if (this._queue.size === 0) {
+             // We can clear the interval ("pause")
+             // Because we can redo it later ("resume")
+             if (this._intervalId) {
++                // Hermes recognizes runtime timers through an explicit global-object access.
+-                clearInterval(this._intervalId);
++                globalThis.clearInterval(this._intervalId);
+             }
+             this._intervalId = undefined;
+             this._resolvePromises();
+@@ -114,8 +115,8 @@
+     _initializeIntervalIfNeeded() {
+         if (this._isIntervalIgnored || this._intervalId !== undefined) {
+             return;
+         }
+-        this._intervalId = setInterval(() => {
++        this._intervalId = globalThis.setInterval(() => {
+             this._onInterval();
+         }, this._interval);
+         this._intervalEnd = Date.now() + this._interval;
+@@ -123,6 +124,6 @@
+     _onInterval() {
+         if (this._intervalCount === 0 && this._pendingCount === 0 && this._intervalId) {
+-            clearInterval(this._intervalId);
++            globalThis.clearInterval(this._intervalId);
+             this._intervalId = undefined;
+         }
+         this._intervalCount = this._carryoverConcurrencyCount ? this._pendingCount : 0;

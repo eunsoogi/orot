@@ -12,7 +12,7 @@ on:
         type: string
         required: true
       focus_scenario_file:
-        description: Repository path to the selected Swift test or complete phase driver.
+        description: Repository path to the selected test source or complete phase driver.
         type: string
         required: true
       focus_scenario_name:

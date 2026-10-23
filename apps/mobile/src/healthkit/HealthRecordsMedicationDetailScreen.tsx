@@ -118,7 +118,7 @@ export function HealthRecordsMedicationDetailScreen({
   );
 
   useEffect(() => {
-    void reload();
+    reload();
     return () => {
       // A result for an old route or period must not replace the active record list.
       generation.current += 1;
@@ -131,13 +131,13 @@ export function HealthRecordsMedicationDetailScreen({
     <FlatList
       data={rows}
       onEndReached={() => {
-        if (cursor && loadState === 'ready') void reload(cursor);
+        if (cursor && loadState === 'ready') reload(cursor);
       }}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
         cursor ? (
           <AppButton
-            onPress={() => void reload(cursor)}
+            onPress={() => reload(cursor)}
             testID="health-records-detail-more"
             title={t('healthRecords.loadOlder')}
             variant="secondary"
@@ -219,7 +219,7 @@ export function HealthRecordsMedicationDetailScreen({
                 {t('healthRecords.error')}
               </Text>
               <AppButton
-                onPress={() => void reload(cursor)}
+                onPress={() => reload(cursor)}
                 testID="health-records-detail-retry"
                 title={t('healthRecords.retry')}
                 variant="secondary"

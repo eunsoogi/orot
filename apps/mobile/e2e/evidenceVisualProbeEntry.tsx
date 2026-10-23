@@ -1,6 +1,6 @@
 import '../src/agent/polyfills';
 import { useMemo, useState } from 'react';
-import { AppRegistry, View } from 'react-native';
+import { AppRegistry, StyleSheet, View } from 'react-native';
 import { name as appName } from '../app.json';
 import { AppButton } from '../src/layout/AppButton';
 import { EvidenceSourceDetailScreen } from '../src/aiFeatures/integration/EvidenceSourceDetailScreen';
@@ -13,6 +13,10 @@ import {
   evidenceVisualMedication,
 } from './evidenceVisualFixtures';
 import { evidenceVisualPeriod } from './evidenceVisualPeriod';
+
+const styles = StyleSheet.create({
+  picker: { padding: 24, gap: 8 },
+});
 
 const modes = [
   'medication',
@@ -50,7 +54,7 @@ function EvidenceVisualProbe() {
     >
       {navigation =>
         navigation.route.name === 'picker' ? (
-          <View style={{ padding: 24, gap: 8 }} testID="evidence-visual-picker">
+          <View style={styles.picker} testID="evidence-visual-picker">
             {modes.map(mode => (
               <AppButton
                 key={mode}
@@ -66,7 +70,7 @@ function EvidenceVisualProbe() {
             mode={navigation.route.name}
             routeKey={navigation.route.key}
             onBack={() => {
-              void navigation.onBack();
+              navigation.onBack();
             }}
           />
         )

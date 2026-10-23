@@ -18,6 +18,15 @@ describe('provider selection options', () => {
     expect(option.privacyBoundary).toBe('on-device');
   });
 
+  it('keeps unknown native availability reasons unavailable without inventing a cause', () => {
+    const option = createAppleSelectionOption('unavailable');
+
+    expect(option.availability).toEqual({
+      status: 'unavailable',
+      message: providerSelectionText.appleUnavailable,
+    });
+  });
+
   it('registers visible ChatGPT models through the normalized provider contract', () => {
     const [option] = createChatGPTSelectionOptions('opaque-synthetic-account', [
       { slug: 'gpt-synthetic', displayName: 'Synthetic model' },

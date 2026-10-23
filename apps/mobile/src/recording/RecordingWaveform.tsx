@@ -32,19 +32,19 @@ export default function RecordingWaveform({
       style={styles.waveform}
       testID="recording-waveform"
     >
-      {levels.map((level, index) => (
-        <View
-          key={index}
-          testID={`recording-waveform-bar-${index}`}
-          style={[
-            styles.bar,
-            {
-              height: 3 + Math.sqrt(level) * 51,
-              opacity: status === 'recording' ? 1 : 0.4,
-            },
-          ]}
-        />
-      ))}
+      {levels.map((level, index) => {
+        // Amplitude controls bar height; the recording state only selects a stable opacity style.
+        const heightStyle = { height: 3 + Math.sqrt(level) * 51 };
+        const statusStyle =
+          status === 'recording' ? styles.recordingBar : styles.inactiveBar;
+        return (
+          <View
+            key={index}
+            testID={`recording-waveform-bar-${index}`}
+            style={[styles.bar, heightStyle, statusStyle]}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -57,4 +57,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   bar: { width: 3, borderRadius: 2, backgroundColor: appColors.primary },
+  recordingBar: { opacity: 1 },
+  inactiveBar: { opacity: 0.4 },
 });

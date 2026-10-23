@@ -1,0 +1,15 @@
+diff --git a/src/DeltaBundler/WorkerFarm.js b/src/DeltaBundler/WorkerFarm.js
+--- a/src/DeltaBundler/WorkerFarm.js
++++ b/src/DeltaBundler/WorkerFarm.js
+@@ -65,6 +65,7 @@
+   _makeFarm(absoluteWorkerPath, exposedMethods, numWorkers) {
+-    const env = {
+-      ...process.env,
+-      FORCE_COLOR: 1,
+-    };
++    const env = { ...process.env };
++    // Keep the caller's color settings; only inject Metro's default when allowed.
++    if (!('NO_COLOR' in env)) {
++      env.FORCE_COLOR = 1;
++    }
+     return new _jestWorker.Worker(absoluteWorkerPath, {

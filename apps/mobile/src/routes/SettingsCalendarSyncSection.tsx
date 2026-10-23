@@ -86,7 +86,9 @@ export function SettingsCalendarSyncSection({
         <AppButton
           accessibilityState={{ busy: requestingAccess }}
           disabled={requestingAccess}
-          onPress={() => void requestAccess()}
+          onPress={() => {
+            requestAccess();
+          }}
           testID="settings-calendar-request-access"
           title={
             requestingAccess
@@ -98,7 +100,9 @@ export function SettingsCalendarSyncSection({
       <AppButton
         accessibilityState={{ busy: sync.loading }}
         disabled={sync.loading || sync.access !== 'fullAccess'}
-        onPress={() => void sync.refresh()}
+        onPress={() => {
+          sync.refresh();
+        }}
         testID="settings-calendar-refresh"
         title={
           sync.loading

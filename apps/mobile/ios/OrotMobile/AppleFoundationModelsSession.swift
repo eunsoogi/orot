@@ -18,6 +18,9 @@ import Foundation
                     case .deviceNotEligible: return ["status": "unsupportedDevice"]
                     case .appleIntelligenceNotEnabled: return ["status": "disabled"]
                     case .modelNotReady: return ["status": "modelNotReady"]
+                    @unknown default:
+                        // Keep future unavailable reasons truthful without guessing their cause.
+                        return ["status": "unavailable"]
                     }
                 }
             #endif

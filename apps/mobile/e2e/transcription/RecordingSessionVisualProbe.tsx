@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { appColors } from '../../src/layout/appColors';
 import RecordingScreen from '../../src/recording/RecordingScreen';
@@ -6,6 +7,10 @@ import type {
   RecordingService,
   RecordingSnapshot,
 } from '../../src/recording/recordingTypes';
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: appColors.background },
+});
 
 /** UI-only state: no microphone, audio files or native recording success claims. */
 export function RecordingSessionVisualProbe() {
@@ -43,7 +48,7 @@ export function RecordingSessionVisualProbe() {
   }, []);
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: appColors.background }}>
+      <SafeAreaView style={styles.root}>
         <RecordingScreen
           onBack={() => {}}
           onOpenSavedRecordings={() => {}}

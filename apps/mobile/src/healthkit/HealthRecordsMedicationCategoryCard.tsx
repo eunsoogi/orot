@@ -50,7 +50,7 @@ export function HealthRecordsMedicationCategoryCard({
   }, [loadMedicationData]);
 
   useEffect(() => {
-    void reload();
+    reload();
     return () => {
       generation.current += 1;
     };
@@ -109,7 +109,9 @@ export function HealthRecordsMedicationCategoryCard({
       </Text>
       {status === 'failed' ? (
         <AppButton
-          onPress={() => void reload()}
+          onPress={() => {
+            reload();
+          }}
           testID="health-record-medications-retry"
           title={t('healthRecords.retry')}
           variant="secondary"

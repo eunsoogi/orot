@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { t } from '../../i18n';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppButton } from '../../layout/AppButton';
 import { AppText } from '../../layout/AppText';
 import { resetInferenceConsentReceipts } from '../../storage/inferenceConsentStorage';
+
+const styles = StyleSheet.create({
+  container: { gap: 8 },
+});
 
 /** Revoking consent clears durable receipts and invalidates approvals held by active workflows. */
 export function InferenceConsentSettings() {
@@ -21,7 +25,7 @@ export function InferenceConsentSettings() {
     }
   }
   return (
-    <View style={{ gap: 8 }}>
+    <View style={styles.container}>
       <AppButton
         variant="neutral"
         title={t('medicalAppointments.inferenceDisclosure.clear')}

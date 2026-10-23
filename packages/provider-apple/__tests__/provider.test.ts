@@ -73,6 +73,7 @@ describe('AppleFoundationModelsProvider', () => {
     const unavailable: AppleAvailabilityStatus[] = [
       'disabled',
       'modelNotReady',
+      'unavailable',
       'unsupportedDevice',
       'unsupportedLanguage',
     ];

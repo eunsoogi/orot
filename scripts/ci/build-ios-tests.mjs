@@ -14,9 +14,13 @@ if (process.env.GITHUB_ACTIONS === 'true') productContext(process.cwd(), profile
 mkdirSync(dirname(resolve(directory)), { recursive: true });
 const stopSampling = await iosTestResourceSampler(resolve(directory) + '.resources.jsonl');
 const started = Date.now();
+// Keep Xcode diagnostics visible and fail product generation when a warning appears.
 const result = spawn(
-  'xcodebuild',
+  process.execPath,
   [
+    'scripts/ci/fail-on-warning.mjs',
+    '--',
+    'xcodebuild',
     'build-for-testing',
     '-quiet',
     '-jobs',

@@ -49,6 +49,7 @@ describe('Test entry routing', () => {
           }));
           jest.doMock('react-native', () => ({
             AppRegistry: { registerComponent: jest.fn() },
+            StyleSheet: { create: (styles: Record<string, unknown>) => styles },
           }));
           // Keep this assertion about polyfill ordering, not diagnostic service initialization.
           jest.doMock('../src/agent/execution/useInferenceConsent', () => ({

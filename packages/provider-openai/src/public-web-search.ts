@@ -15,6 +15,14 @@ const malformed = () =>
     retryable: false,
   });
 
+// Public query text may include Unicode, but C0, DEL and C1 controls stay out of dispatch.
+function hasQueryControlCharacters(query: string): boolean {
+  return [...query].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+}
+
 /** One isolated selected-account request. Never enters the private function continuation cache.
  * Local cancellation is a request to stop, not an acknowledgement that remote work stopped. */
 export function searchPublicWeb(
@@ -30,7 +38,7 @@ export function searchPublicWeb(
     !query ||
     query !== query.trim() ||
     [...query].length > 240 ||
-    /[\u0000-\u001f\u007f-\u009f]/u.test(query)
+    hasQueryControlCharacters(query)
   ) {
     return Promise.resolve(
       providerFailure({

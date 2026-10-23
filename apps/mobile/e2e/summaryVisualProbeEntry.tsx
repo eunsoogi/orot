@@ -109,7 +109,7 @@ function Routes({ services }: { services: Services }) {
     >
       {navigation => {
         const onBack = () => {
-          void navigation.onBack();
+          navigation.onBack();
         };
         if (navigation.route.name === 'evidence' && reference)
           return (

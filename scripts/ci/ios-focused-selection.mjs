@@ -100,6 +100,32 @@ export function selectFocusedIosTests(profileInput, scenarioFile, scenarioName) 
   }
   if (speechJourneyTests.includes(scenarioName))
     throw new Error('Speech UI and persistence focus requires the complete group/journey phases');
+  const authenticationTests = iosTestInventory('core', 'authentication');
+  if (profile === 'core' && scenarioName === 'group/authentication') {
+    if (
+      scenarioFile !==
+      'apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m'
+    )
+      throw new Error('Authentication focus requires its exact Objective-C test source');
+    // Keep no-UI and prompted protected queries together on one enrolled owner Simulator.
+    return {
+      profile,
+      configuration,
+      mode: 'authentication',
+      suite: 'integration',
+      fixtureSuite: 'authentication',
+      identifiers: authenticationTests,
+      identifier: '',
+      prepareUi: iosTestTaskNeedsUiPreparation({
+        mode: 'authentication',
+        suite: 'integration',
+        identifiers: authenticationTests,
+      }),
+      expectedCount: authenticationTests.length,
+    };
+  }
+  if (authenticationTests.includes(scenarioName))
+    throw new Error('Authentication focus requires the complete group/authentication suite');
   const statefulGroup = ['backup', 'local-model'].includes(profile);
   const fixtureGroup =
     profile === 'fixtures' && (scenarioName === 'all' || scenarioName.startsWith('group/'));

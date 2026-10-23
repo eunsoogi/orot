@@ -1,0 +1,263 @@
+diff --git a/ios/RNKeychainManager/RNKeychainAuthentication.h b/ios/RNKeychainManager/RNKeychainAuthentication.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..5db70de2260aaa4120d1cfc79d54519930654bfd
+--- /dev/null
++++ b/ios/RNKeychainManager/RNKeychainAuthentication.h
+@@ -0,0 +1,73 @@
++#import <Availability.h>
++#import <Foundation/Foundation.h>
++#import <LocalAuthentication/LocalAuthentication.h>
++#import <Security/Security.h>
++#import <TargetConditionals.h>
++
++#if TARGET_OS_TV || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000) || (TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
++#define RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY 1
++#else
++#define RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY 0
++#endif
++
++// tvOS lacks the LAContext prompt controls, and older deployment targets may
++// run before those properties exist. Orot's iOS target is 15.1, so its builds
++// compile only the modern path and retain no deprecated iOS Security keys.
++#if RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY
++static inline void RNKeychainSetLegacyAuthenticationPrompt(NSMutableDictionary *query,
++                                                           NSString *prompt)
++{
++  query[(__bridge NSString *)kSecUseOperationPrompt] = prompt;
++}
++
++static inline void RNKeychainDisallowLegacyAuthenticationUI(NSMutableDictionary *query)
++{
++  query[(__bridge NSString *)kSecUseAuthenticationUI] = (__bridge NSString *)kSecUseAuthenticationUIFail;
++}
++#endif
++
++// Each query receives a fresh context; do not reuse authentication across queries.
++static inline void RNKeychainSetAuthenticationPrompt(NSMutableDictionary *query,
++                                                    NSString *prompt)
++{
++#if TARGET_OS_TV
++  RNKeychainSetLegacyAuthenticationPrompt(query, prompt);
++#elif RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY
++  if (@available(iOS 11, macOS 10.13, *)) {
++    LAContext *context = [LAContext new];
++    context.localizedReason = prompt;
++    query[(__bridge NSString *)kSecUseAuthenticationContext] = context;
++  } else {
++    RNKeychainSetLegacyAuthenticationPrompt(query, prompt);
++  }
++#else
++  LAContext *context = [LAContext new];
++  context.localizedReason = prompt;
++  query[(__bridge NSString *)kSecUseAuthenticationContext] = context;
++#endif
++}
++
++static inline void RNKeychainDisallowAuthenticationUI(NSMutableDictionary *query)
++{
++#if TARGET_OS_TV
++  RNKeychainDisallowLegacyAuthenticationUI(query);
++#elif RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY
++  if (@available(iOS 11, macOS 10.13, *)) {
++    LAContext *context = [LAContext new];
++    // Preserve errSecInteractionNotAllowed for checks that would otherwise
++    // require user interaction, without displaying an auth prompt.
++    context.interactionNotAllowed = YES;
++    query[(__bridge NSString *)kSecUseAuthenticationContext] = context;
++  } else {
++    RNKeychainDisallowLegacyAuthenticationUI(query);
++  }
++#else
++  LAContext *context = [LAContext new];
++  // Preserve errSecInteractionNotAllowed for checks that would otherwise
++  // require user interaction, without displaying an auth prompt.
++  context.interactionNotAllowed = YES;
++  query[(__bridge NSString *)kSecUseAuthenticationContext] = context;
++#endif
++}
++
++#undef RNKEYCHAIN_USE_LEGACY_AUTHENTICATION_QUERY
+diff --git a/ios/RNKeychainManager/RNKeychainManager.m b/ios/RNKeychainManager/RNKeychainManager.m
+index 6888ff0d7ab0dbcef57452f3b0575570f0c1d3fe..3ed3b71fea034998b597075514761d5b4b5ebef6 100644
+--- a/ios/RNKeychainManager/RNKeychainManager.m
++++ b/ios/RNKeychainManager/RNKeychainManager.m
+@@ -8,6 +8,7 @@
+ 
+ #import <Security/Security.h>
+ #import "RNKeychainManager.h"
++#import "RNKeychainAuthentication.h"
+ #import <React/RCTConvert.h>
+ #import <React/RCTBridge.h>
+ #import <React/RCTUtils.h>
+@@ -98,7 +99,12 @@ CFStringRef accessibleValue(NSDictionary *options)
+     NSDictionary *keyMap = @{
+       @"AccessibleWhenUnlocked": (__bridge NSString *)kSecAttrAccessibleWhenUnlocked,
+       @"AccessibleAfterFirstUnlock": (__bridge NSString *)kSecAttrAccessibleAfterFirstUnlock,
++      // Retain the deprecated public option's lock-access policy. Orot does not
++      // request it; mapping it to AfterFirstUnlock would change existing callers.
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+       @"AccessibleAlways": (__bridge NSString *)kSecAttrAccessibleAlways,
++#pragma clang diagnostic pop
+       @"AccessibleWhenPasscodeSetThisDeviceOnly": (__bridge NSString *)kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+       @"AccessibleWhenUnlockedThisDeviceOnly": (__bridge NSString *)kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+       @"AccessibleAfterFirstUnlockThisDeviceOnly": (__bridge NSString *)kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+@@ -188,19 +194,19 @@ SecAccessControlCreateFlags accessControlValue(NSDictionary *options)
+       return kSecAccessControlUserPresence;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlBiometryAny]) {
+-      return kSecAccessControlTouchIDAny;
++      return kSecAccessControlBiometryAny;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlBiometryCurrentSet]) {
+-      return kSecAccessControlTouchIDCurrentSet;
++      return kSecAccessControlBiometryCurrentSet;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlDevicePasscode]) {
+       return kSecAccessControlDevicePasscode;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlBiometryAnyOrDevicePasscode]) {
+-      return kSecAccessControlTouchIDAny|kSecAccessControlOr|kSecAccessControlDevicePasscode;
++      return kSecAccessControlBiometryAny|kSecAccessControlOr|kSecAccessControlDevicePasscode;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlBiometryCurrentSetOrDevicePasscode]) {
+-      return kSecAccessControlTouchIDCurrentSet|kSecAccessControlOr|kSecAccessControlDevicePasscode;
++      return kSecAccessControlBiometryCurrentSet|kSecAccessControlOr|kSecAccessControlDevicePasscode;
+     }
+     else if ([options[kAccessControlType] isEqualToString: kAccessControlApplicationPassword]) {
+       return kSecAccessControlApplicationPassword;
+@@ -275,7 +281,7 @@ - (void)hasCredentialsWithSecClass:(CFTypeRef)secClass
+   CFBooleanRef cloudSync = cloudSyncValue(options);
+   NSString *accessGroup = accessGroupValue(options);
+   NSMutableDictionary *queryParts = [[NSMutableDictionary alloc] init];
+-  queryParts[(__bridge NSString *)kSecClass] = (__bridge id)(secClass),
++  queryParts[(__bridge NSString *)kSecClass] = (__bridge id)(secClass);
+   queryParts[(__bridge NSString *)kSecMatchLimit] = (__bridge NSString *)kSecMatchLimitOne;
+   queryParts[(__bridge NSString *)kSecAttrSynchronizable] = (__bridge id)(cloudSync);
+ 
+@@ -289,9 +295,7 @@ - (void)hasCredentialsWithSecClass:(CFTypeRef)secClass
+     queryParts[(__bridge NSString *)kSecAttrService] = serviceValue(options);
+   }
+ 
+-  if (@available(iOS 9, *)) {
+-    queryParts[(__bridge NSString *)kSecUseAuthenticationUI] = (__bridge NSString *)kSecUseAuthenticationUIFail;
+-  }
++  RNKeychainDisallowAuthenticationUI(queryParts);
+ 
+   NSDictionary *query = [queryParts copy];
+ 
+@@ -478,9 +482,9 @@ - (OSStatus)deleteCredentialsForServer:(NSString *)server withOptions:(NSDiction
+     (__bridge NSString *)kSecAttrSynchronizable: (__bridge id)(cloudSync),
+     (__bridge NSString *)kSecReturnAttributes: (__bridge id)kCFBooleanTrue,
+     (__bridge NSString *)kSecReturnData: (__bridge id)kCFBooleanTrue,
+-    (__bridge NSString *)kSecMatchLimit: (__bridge NSString *)kSecMatchLimitOne,
+-    (__bridge NSString *)kSecUseOperationPrompt: authenticationPrompt
++    (__bridge NSString *)kSecMatchLimit: (__bridge NSString *)kSecMatchLimitOne
+   } mutableCopy];
++  RNKeychainSetAuthenticationPrompt(query, authenticationPrompt);
+ 
+   if (accessGroup != nil) {
+     query[(__bridge NSString *)kSecAttrAccessGroup] = accessGroup;
+@@ -590,9 +594,9 @@ - (OSStatus)deleteCredentialsForServer:(NSString *)server withOptions:(NSDiction
+     (__bridge NSString *)kSecReturnAttributes: (__bridge id)kCFBooleanTrue,
+     (__bridge NSString *)kSecAttrSynchronizable: (__bridge id)(cloudSync),
+     (__bridge NSString *)kSecReturnData: (__bridge id)kCFBooleanTrue,
+-    (__bridge NSString *)kSecMatchLimit: (__bridge NSString *)kSecMatchLimitOne,
+-    (__bridge NSString *)kSecUseOperationPrompt: authenticationPrompt
++    (__bridge NSString *)kSecMatchLimit: (__bridge NSString *)kSecMatchLimitOne
+   } mutableCopy];
++  RNKeychainSetAuthenticationPrompt(query, authenticationPrompt);
+ 
+   if (accessGroup != nil) {
+     query[(__bridge NSString *)kSecAttrAccessGroup] = accessGroup;
+@@ -643,7 +647,10 @@ - (OSStatus)deleteCredentialsForServer:(NSString *)server withOptions:(NSDiction
+ 
+ #if (TARGET_OS_IOS || TARGET_OS_VISION) && !TARGET_OS_UIKITFORMAC
+ RCT_EXPORT_METHOD(requestSharedWebCredentials:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
++__attribute__((deprecated("This compatibility API preserves legacy shared web credential selection and its server result.")))
+ {
++  // AuthenticationServices credentials do not expose the same server field.
++  // Keep this deprecated public contract intact rather than changing its result.
+   SecRequestSharedWebCredential(NULL, NULL, ^(CFArrayRef credentials, CFErrorRef error) {
+     if (error != NULL) {
+       NSError *nsError = (__bridge NSError *)error;
+diff --git a/lib/typescript/enums.d.ts b/lib/typescript/enums.d.ts
+index e465f91f2544bc22073f614041b0201a3e5de3fa..b2bdb384391d132449f780e837f6a77f8750b82b 100644
+--- a/lib/typescript/enums.d.ts
++++ b/lib/typescript/enums.d.ts
+@@ -6,7 +6,11 @@ export declare enum ACCESSIBLE {
+     WHEN_UNLOCKED = "AccessibleWhenUnlocked",
+     /** The data in the keychain item cannot be accessed after a restart until the device has been unlocked once by the user. */
+     AFTER_FIRST_UNLOCK = "AccessibleAfterFirstUnlock",
+-    /** The data in the keychain item can always be accessed regardless of whether the device is locked. */
++    /**
++     * The data can be accessed regardless of whether the device is locked.
++     * @deprecated Apple deprecated this accessibility policy. Existing callers
++     * retain its behavior; select another policy only after reviewing lock access.
++     */
+     ALWAYS = "AccessibleAlways",
+     /** The data in the keychain can only be accessed when the device is unlocked. Only available if a passcode is set on the device. Items with this attribute never migrate to a new device. */
+     WHEN_PASSCODE_SET_THIS_DEVICE_ONLY = "AccessibleWhenPasscodeSetThisDeviceOnly",
+diff --git a/lib/typescript/index.d.ts b/lib/typescript/index.d.ts
+index b86889949b46e3350f3ba8984632e3a4da9acff3..ce4ad5d626bd896a7e7817e8fb6dcc462586b414 100644
+--- a/lib/typescript/index.d.ts
++++ b/lib/typescript/index.d.ts
+@@ -150,6 +150,8 @@ export declare function resetInternetCredentials(options: BaseOptions): Promise<
+ export declare function getSupportedBiometryType(): Promise<null | BIOMETRY_TYPE>;
+ /**
+  * Request shared web credentials.
++ * @deprecated Apple deprecated this legacy selection API. The existing server,
++ * username, and password result is retained for compatibility.
+  *
+  * @platform iOS
+  *
+
+diff --git a/package.json b/package.json
+index 009f738..e98db5b 100644
+--- a/package.json
++++ b/package.json
+@@ -73,14 +73,6 @@
+   "engines": {
+     "node": ">=16"
+   },
+-  "codegenConfig": {
+-    "name": "RNKeychainSpec",
+-    "type": "modules",
+-    "jsSrcsDir": "src",
+-    "android": {
+-      "javaPackageName": "com.oblador.keychain"
+-    }
+-  },
+   "react-native-builder-bob": {
+     "source": "src",
+     "output": "lib",
+diff --git a/src/enums.ts b/src/enums.ts
+index e360a4645219ab144b6507bb208057be1e602028..3b26a290d6b0dc235553122c0116784fc73d679d 100644
+--- a/src/enums.ts
++++ b/src/enums.ts
+@@ -10,7 +10,11 @@ export enum ACCESSIBLE {
+   WHEN_UNLOCKED = 'AccessibleWhenUnlocked',
+   /** The data in the keychain item cannot be accessed after a restart until the device has been unlocked once by the user. */
+   AFTER_FIRST_UNLOCK = 'AccessibleAfterFirstUnlock',
+-  /** The data in the keychain item can always be accessed regardless of whether the device is locked. */
++  /**
++   * The data can be accessed regardless of whether the device is locked.
++   * @deprecated Apple deprecated this accessibility policy. Existing callers
++   * retain its behavior; select another policy only after reviewing lock access.
++   */
+   ALWAYS = 'AccessibleAlways',
+   /** The data in the keychain can only be accessed when the device is unlocked. Only available if a passcode is set on the device. Items with this attribute never migrate to a new device. */
+   WHEN_PASSCODE_SET_THIS_DEVICE_ONLY = 'AccessibleWhenPasscodeSetThisDeviceOnly',
+diff --git a/src/index.ts b/src/index.ts
+index 1de35dad7edd71da5e581bd2c75b63dbd535c536..14163af24f393bbc83f9d7f92cc3f3895441aa79 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -238,6 +238,8 @@ export function getSupportedBiometryType(): Promise<null | BIOMETRY_TYPE> {
+ 
+ /**
+  * Request shared web credentials.
++ * @deprecated Apple deprecated this legacy selection API. The existing server,
++ * username, and password result is retained for compatibility.
+  *
+  * @platform iOS
+  *

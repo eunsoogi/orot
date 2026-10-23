@@ -101,7 +101,7 @@ export function useHealthRecordCategoryPages(
     generation.current += 1;
     pending.current.clear();
     setPages({});
-    for (const category of observationCategories) void reload(category);
+    for (const category of observationCategories) reload(category);
     return () => {
       generation.current += 1;
     };

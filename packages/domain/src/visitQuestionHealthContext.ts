@@ -16,8 +16,10 @@ export const VisitQuestionHealthContextSourceSchema = z.strictObject({
           .min(1)
           .refine((value) => {
             try {
-              new Intl.DateTimeFormat('en', { timeZone: value });
-              return true;
+              // Resolve through Intl's host timezone database while retaining its canonical validation.
+              return Boolean(
+                new Intl.DateTimeFormat('en', { timeZone: value }).resolvedOptions().timeZone,
+              );
             } catch {
               return false;
             }

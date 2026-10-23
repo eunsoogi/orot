@@ -19,7 +19,7 @@ export function syncLocalPreviouslyRequestedHealthKit(): Promise<HealthKitAutoSy
   const clear = () => {
     if (pendingLocalRun === run) pendingLocalRun = null;
   };
-  void run.then(clear, clear);
+  run.then(clear, clear);
   return run;
 }
 

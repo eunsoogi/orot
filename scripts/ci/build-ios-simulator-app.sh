@@ -36,11 +36,14 @@ fi
 
 # CI keeps Xcode outputs separate from CocoaPods Codegen under ios/build/generated.
 # Match Xcode's app slice to the runner and Node architectures required by cache validation.
-xcodebuild \
+# A generic platform destination avoids Xcode selecting the first of several matching simulators.
+# Forward the original diagnostics and fail this build if Xcode emits any warning marker.
+node scripts/ci/fail-on-warning.mjs -- xcodebuild \
   -workspace apps/mobile/ios/OrotMobile.xcworkspace \
   -scheme OrotMobile \
   -configuration Debug \
   -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath apps/mobile/ios/build-production \
   CODE_SIGNING_ALLOWED=NO \
   ARCHS="$host_arch" \

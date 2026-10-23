@@ -38,6 +38,16 @@ function connection() {
 const key = 'a'.repeat(64);
 const tick = () => new Promise<void>(done => setTimeout(done, 0));
 
+// Attach rejection handlers before releasing the gate, then assert after the transaction settles.
+function captureRejection(promise: Promise<unknown>): Promise<unknown> {
+  return promise.then(
+    () => {
+      throw new Error('Expected the synthetic transaction to reject.');
+    },
+    error => error,
+  );
+}
+
 test('initialization waits for an unrelated transaction rollback instead of losing its table', async () => {
   const c = connection();
   const entered = gate(),
@@ -48,7 +58,7 @@ test('initialization waits for an unrelated transaction rollback instead of losi
       await release.promise;
       throw new Error('Synthetic rollback');
     });
-    const rejected = expect(unrelated).rejects.toThrow('Synthetic rollback');
+    const rejection = captureRejection(unrelated);
     await entered.promise;
     const store = createInferenceConsentStorage(c.database);
     let finished = false;
@@ -59,7 +69,7 @@ test('initialization waits for an unrelated transaction rollback instead of losi
     await tick();
     expect(finished).toBe(false);
     release.resolve();
-    await rejected;
+    expect(await rejection).toMatchObject({ message: 'Synthetic rollback' });
     expect(await read).toBe(false);
     await store.save(key, () => true);
     expect(await store.has(key)).toBe(true);
@@ -81,7 +91,7 @@ test('clear cannot report success inside an unrelated transaction that later rol
       await release.promise;
       throw new Error('Synthetic rollback');
     });
-    const rejected = expect(unrelated).rejects.toThrow();
+    const rejection = captureRejection(unrelated);
     await entered.promise;
     let cleared = false;
     const clearing = store.clear().then(() => {
@@ -90,7 +100,7 @@ test('clear cannot report success inside an unrelated transaction that later rol
     await tick();
     expect(cleared).toBe(false);
     release.resolve();
-    await rejected;
+    expect(await rejection).toMatchObject({ message: 'Synthetic rollback' });
     await clearing;
     expect(await createInferenceConsentStorage(c.database).has(key)).toBe(
       false,
@@ -117,7 +127,7 @@ test('lookup does not authorize an uncommitted receipt that is subsequently roll
       await release.promise;
       throw new Error('Synthetic rollback');
     });
-    const rejected = expect(unrelated).rejects.toThrow();
+    const rejection = captureRejection(unrelated);
     await entered.promise;
     let read = false;
     const lookup = store.has(key).then(value => {
@@ -127,7 +137,7 @@ test('lookup does not authorize an uncommitted receipt that is subsequently roll
     await tick();
     expect(read).toBe(false);
     release.resolve();
-    await rejected;
+    expect(await rejection).toMatchObject({ message: 'Synthetic rollback' });
     expect(await lookup).toBe(false);
   } finally {
     release.resolve();

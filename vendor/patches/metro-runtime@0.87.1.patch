@@ -1,0 +1,14 @@
+diff --git a/src/modules/HMRClient.js b/src/modules/HMRClient.js
+index 534ac872bdd4f081c21a63aeb88adf689a3af5c5..6dd319f2b88ba5136f0409a0f1cb3d4ccf93e2f5 100644
+--- a/src/modules/HMRClient.js
++++ b/src/modules/HMRClient.js
+@@ -6,7 +6,8 @@ const inject = ({ module: [id, code], sourceURL }) => {
+   if (global.globalEvalWithSourceUrl) {
+     global.globalEvalWithSourceUrl(code, sourceURL);
+   } else {
+-    eval(code);
++    // Match the native evaluator's global scope; Hermes does not support lexical eval.
++    (0, eval)(code);
+   }
+ };
+ const injectUpdate = (update) => {

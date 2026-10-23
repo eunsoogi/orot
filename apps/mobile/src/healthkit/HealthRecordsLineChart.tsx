@@ -193,27 +193,22 @@ export function HealthRecordsLineChart({
               : last && !first
                 ? -dateLabelWidth
                 : -dateLabelWidth / 2;
+          // Keep alignment variants static while the point-specific label offset stays dynamic.
+          const alignmentStyle =
+            first && !last
+              ? styles.dateLabelStart
+              : last && !first
+                ? styles.dateLabelEnd
+                : styles.dateLabelMiddle;
+          const tickPosition = { left: x };
+          const labelPosition = { left: offset, width: dateLabelWidth };
           return (
             <View
               key={timestamp}
               testID={'health-chart-date-' + timestamp}
-              style={{ position: 'absolute', left: x }}
+              style={[styles.dateTick, tickPosition]}
             >
-              <Text
-                style={[
-                  styles.dateLabel,
-                  {
-                    left: offset,
-                    width: dateLabelWidth,
-                    textAlign:
-                      first && !last
-                        ? 'left'
-                        : last && !first
-                          ? 'right'
-                          : 'center',
-                  },
-                ]}
-              >
+              <Text style={[styles.dateLabel, alignmentStyle, labelPosition]}>
                 {healthChartDateLabel(timestamp)}
               </Text>
             </View>

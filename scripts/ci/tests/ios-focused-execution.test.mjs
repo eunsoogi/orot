@@ -131,6 +131,24 @@ test('the first focused failure prevents verification and any retry or fallback'
   }
 });
 
+test('authentication focus enrolls its owner Simulator and drives Face ID during both protected queries', () => {
+  const execution = readFileSync('scripts/ci/run-ios-focused-tests.sh', 'utf8');
+  const control = readFileSync('scripts/ci/ios-simulator-biometric-control.mjs', 'utf8');
+  const authentication = execution.match(/authentication\)([\s\S]*?)\n\s*;;/)?.[1];
+
+  assert.ok(authentication, 'the complete authentication focus must keep one dispatch branch');
+  assert.match(authentication, /ios-simulator-biometric-control\.mjs run/);
+  assert.ok(
+    control.indexOf("await runAction('enroll')") < control.indexOf('scripts/ci/run-ios-tests.mjs'),
+  );
+  assert.ok(
+    control.indexOf("sendAuthorizationInput: () => runAction('authorize')") >
+      control.indexOf('runWithFaceIdAuthorizationInput({'),
+    'Face ID authorization input must be sent while the protected Keychain suite is active',
+  );
+  assert.match(authentication, /ios-test-results\.mjs/);
+});
+
 test('focused selection uses its separate workflow and never repeats cases inside full CI', () => {
   const action = readYaml('.github/actions/ios-test-cohort-run/action.yml').runs.steps;
   const full = action.find((step) => step.run?.includes('run-ios-test-cohort.mjs'));

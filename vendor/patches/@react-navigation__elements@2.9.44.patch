@@ -1,0 +1,26 @@
+diff --git a/lib/module/useFrameSize.js b/lib/module/useFrameSize.js
+index ae0d341d1d4f569dd8728718d2aee17726953318..e6d6915f61b8edbc08691cd8e0b1434a27bbcb53 100644
+--- a/lib/module/useFrameSize.js
++++ b/lib/module/useFrameSize.js
+@@ -182,7 +182,7 @@ function FrameSizeListenerWeb({
+       width: rect.width,
+       height: rect.height
+     });
+-    const observer = new ResizeObserver(entries => {
++    const observer = new globalThis.ResizeObserver(entries => {
+       const entry = entries[0];
+       if (entry) {
+         const {
+diff --git a/src/useFrameSize.tsx b/src/useFrameSize.tsx
+index c1f3bfabe946aaebbbf46cd3787f536fe4fff108..3718188bbade7a1cfb3556d52d621c0d5b071111 100644
+--- a/src/useFrameSize.tsx
++++ b/src/useFrameSize.tsx
+@@ -252,7 +252,7 @@ function FrameSizeListenerWeb({
+       height: rect.height,
+     });
+ 
+-    const observer = new ResizeObserver((entries) => {
++    const observer = new globalThis.ResizeObserver((entries) => {
+       const entry = entries[0];
+ 
+       if (entry) {

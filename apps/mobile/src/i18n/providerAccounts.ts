@@ -4,6 +4,7 @@ export const providerAccountsKo = {
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',
   'provider.apple.modelNotReady': 'Apple Intelligence 모델을 준비하고 있어요.',
+  'provider.apple.unavailable': 'Apple Intelligence를 현재 사용할 수 없어요.',
   'provider.apple.unsupportedDevice':
     '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
   'provider.apple.unsupportedLanguage': '현재 한국어를 지원하지 않아요.',
@@ -47,6 +48,8 @@ export const providerAccountsKo = {
     '기기 설정에서 Apple Intelligence를 켜 주세요.',
   'provider.selection.appleModelNotReady':
     'Apple Intelligence 모델을 준비하고 있어요.',
+  'provider.selection.appleUnavailable':
+    'Apple Intelligence를 현재 사용할 수 없어요.',
   'provider.selection.appleUnsupportedDevice':
     '이 기기에서는 Apple Intelligence를 사용할 수 없어요.',
   'provider.selection.appleUnsupportedLanguage':

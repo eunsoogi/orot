@@ -1,0 +1,399 @@
+diff --git a/dist/backend.js b/dist/backend.js
+index 15c8ee70a80cb3ce86219b98fcda72fe6da39320..9b8dd4dd0e3a7e8e469022c09a7a08da7ef7232f 100644
+--- a/dist/backend.js
++++ b/dist/backend.js
+@@ -2280,44 +2280,16 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
+ /***/ }),
+ 
+ /***/ 476:
+-/***/ ((module) => {
+-
++/***/ (((module) => {
+ "use strict";
+-
+-
++// Match Yallist's source iterator using Hermes-supported generators. The shipped
++// transformed version referred to a regeneratorRuntime that it did not import.
+ module.exports = function (Yallist) {
+-  Yallist.prototype[Symbol.iterator] = /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
+-    var walker;
+-    return regeneratorRuntime.wrap(function _callee$(_context) {
+-      while (1) {
+-        switch (_context.prev = _context.next) {
+-          case 0:
+-            walker = this.head;
+-
+-          case 1:
+-            if (!walker) {
+-              _context.next = 7;
+-              break;
+-            }
+-
+-            _context.next = 4;
+-            return walker.value;
+-
+-          case 4:
+-            walker = walker.next;
+-            _context.next = 1;
+-            break;
+-
+-          case 7:
+-          case "end":
+-            return _context.stop();
+-        }
+-      }
+-    }, _callee, this);
+-  });
++  Yallist.prototype[Symbol.iterator] = function* () {
++    for (let walker = this.head; walker; walker = walker.next) yield walker.value;
++  };
+ };
+-
+-/***/ }),
++})),
+ 
+ /***/ 695:
+ /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+@@ -3838,6 +3810,7 @@ function printOperationsArray(operations) {
+ 
+   console.log(logs.join('\n  '));
+ }
++// Unexported frontend-only functions with no backend callers are omitted.
+ function getDefaultComponentFilters() {
+   return [{
+     type: ComponentFilterElementType,
+@@ -3845,21 +3818,8 @@ function getDefaultComponentFilters() {
+     isEnabled: true
+   }];
+ }
+-function getSavedComponentFilters() {
+-  try {
+-    var raw = localStorageGetItem(LOCAL_STORAGE_COMPONENT_FILTER_PREFERENCES_KEY);
+-
+-    if (raw != null) {
+-      var parsedFilters = JSON.parse(raw);
+-      return filterOutLocationComponentFilters(parsedFilters);
+-    }
+-  } catch (error) {}
+ 
+-  return getDefaultComponentFilters();
+-}
+-function setSavedComponentFilters(componentFilters) {
+-  localStorageSetItem(LOCAL_STORAGE_COMPONENT_FILTER_PREFERENCES_KEY, JSON.stringify(filterOutLocationComponentFilters(componentFilters)));
+-} // Following __debugSource removal from Fiber, the new approach for finding the source location
++ // Following __debugSource removal from Fiber, the new approach for finding the source location
+ // of a component, represented by the Fiber, is based on lazily generating and parsing component stack frames
+ // To find the original location, React DevTools will perform symbolication, source maps are required for that.
+ // In order to start filtering Fibers, we need to find location for all of them, which can't be done lazily.
+@@ -3879,71 +3839,8 @@ function filterOutLocationComponentFilters(componentFilters) {
+ function getDefaultOpenInEditorURL() {
+   return typeof process.env.EDITOR_URL === 'string' ? process.env.EDITOR_URL : '';
+ }
+-function getOpenInEditorURL() {
+-  try {
+-    var raw = localStorageGetItem(LOCAL_STORAGE_OPEN_IN_EDITOR_URL);
+-
+-    if (raw != null) {
+-      return JSON.parse(raw);
+-    }
+-  } catch (error) {}
+-
+-  return getDefaultOpenInEditorURL();
+-}
+-function parseElementDisplayNameFromBackend(displayName, type) {
+-  if (displayName === null) {
+-    return {
+-      formattedDisplayName: null,
+-      hocDisplayNames: null,
+-      compiledWithForget: false
+-    };
+-  }
+-
+-  if (displayName.startsWith('Forget(')) {
+-    var displayNameWithoutForgetWrapper = displayName.slice(7, displayName.length - 1);
+-
+-    var _parseElementDisplayN = parseElementDisplayNameFromBackend(displayNameWithoutForgetWrapper, type),
+-        formattedDisplayName = _parseElementDisplayN.formattedDisplayName,
+-        _hocDisplayNames = _parseElementDisplayN.hocDisplayNames;
+-
+-    return {
+-      formattedDisplayName: formattedDisplayName,
+-      hocDisplayNames: _hocDisplayNames,
+-      compiledWithForget: true
+-    };
+-  }
+-
+-  var hocDisplayNames = null;
+-
+-  switch (type) {
+-    case ElementTypeClass:
+-    case ElementTypeForwardRef:
+-    case ElementTypeFunction:
+-    case ElementTypeMemo:
+-    case ElementTypeVirtual:
+-      if (displayName.indexOf('(') >= 0) {
+-        var matches = displayName.match(/[^()]+/g);
+-
+-        if (matches != null) {
+-          // $FlowFixMe[incompatible-type]
+-          displayName = matches.pop();
+-          hocDisplayNames = matches;
+-        }
+-      }
+-
+-      break;
+ 
+-    default:
+-      break;
+-  }
+-
+-  return {
+-    // $FlowFixMe[incompatible-return]
+-    formattedDisplayName: displayName,
+-    hocDisplayNames: hocDisplayNames,
+-    compiledWithForget: false
+-  };
+-} // Pulled from react-compat
++ // Pulled from react-compat
+ // https://github.com/developit/preact-compat/blob/7c5de00e7c85e2ffd011bf3af02899b63f699d3a/src/index.js#L349
+ 
+ function shallowDiffers(prev, next) {
+@@ -4545,18 +4442,7 @@ var isPlainObject = function isPlainObject(object) {
+   var objectParentPrototype = Object.getPrototypeOf(objectPrototype);
+   return !objectParentPrototype;
+ };
+-function backendToFrontendSerializedElementMapper(element) {
+-  var _parseElementDisplayN2 = parseElementDisplayNameFromBackend(element.displayName, element.type),
+-      formattedDisplayName = _parseElementDisplayN2.formattedDisplayName,
+-      hocDisplayNames = _parseElementDisplayN2.hocDisplayNames,
+-      compiledWithForget = _parseElementDisplayN2.compiledWithForget;
+-
+-  return _objectSpread(_objectSpread({}, element), {}, {
+-    displayName: formattedDisplayName,
+-    hocDisplayNames: hocDisplayNames,
+-    compiledWithForget: compiledWithForget
+-  });
+-}
++
+ /**
+  * Should be used when treating url as a Chrome Resource URL.
+  */
+@@ -4570,38 +4456,24 @@ function normalizeUrlIfValid(url) {
+     return url;
+   }
+ }
++// Browser APIs are optional on native hosts; retain the existing failure fallback.
+ function getIsReloadAndProfileSupported() {
+   // Notify the frontend if the backend supports the Storage API (e.g. localStorage).
+   // If not, features like reload-and-profile will not work correctly and must be disabled.
+   var isBackendStorageAPISupported = false;
+ 
+   try {
+-    localStorage.getItem('test');
++    globalThis.localStorage.getItem('test');
+     isBackendStorageAPISupported = true;
+   } catch (error) {}
+ 
+   return isBackendStorageAPISupported && isSynchronousXHRSupported();
+ } // Expected to be used only by browser extension and react-devtools-inline
+ 
+-function getIfReloadedAndProfiling() {
+-  return sessionStorageGetItem(SESSION_STORAGE_RELOAD_AND_PROFILE_KEY) === 'true';
+-}
+-function getProfilingSettings() {
+-  return {
+-    recordChangeDescriptions: sessionStorageGetItem(SESSION_STORAGE_RECORD_CHANGE_DESCRIPTIONS_KEY) === 'true',
+-    recordTimeline: sessionStorageGetItem(SESSION_STORAGE_RECORD_TIMELINE_KEY) === 'true'
+-  };
+-}
+-function onReloadAndProfile(recordChangeDescriptions, recordTimeline) {
+-  sessionStorageSetItem(SESSION_STORAGE_RELOAD_AND_PROFILE_KEY, 'true');
+-  sessionStorageSetItem(SESSION_STORAGE_RECORD_CHANGE_DESCRIPTIONS_KEY, recordChangeDescriptions ? 'true' : 'false');
+-  sessionStorageSetItem(SESSION_STORAGE_RECORD_TIMELINE_KEY, recordTimeline ? 'true' : 'false');
+-}
+-function onReloadAndProfileFlagsReset() {
+-  sessionStorageRemoveItem(SESSION_STORAGE_RELOAD_AND_PROFILE_KEY);
+-  sessionStorageRemoveItem(SESSION_STORAGE_RECORD_CHANGE_DESCRIPTIONS_KEY);
+-  sessionStorageRemoveItem(SESSION_STORAGE_RECORD_TIMELINE_KEY);
+-}
++
++
++
++
+ ;// CONCATENATED MODULE: ../react-devtools-shared/src/hydration.js
+ function hydration_ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+ 
+@@ -5004,92 +4876,8 @@ function dehydrateKey(parent, key, cleaned, unserializable, path, isPathAllowed)
+   }
+ }
+ 
+-function fillInPath(object, data, path, value) {
+-  var target = getInObject(object, path);
+-
+-  if (target != null) {
+-    if (!target[meta.unserializable]) {
+-      delete target[meta.inspectable];
+-      delete target[meta.inspected];
+-      delete target[meta.name];
+-      delete target[meta.preview_long];
+-      delete target[meta.preview_short];
+-      delete target[meta.readonly];
+-      delete target[meta.size];
+-      delete target[meta.type];
+-    }
+-  }
+-
+-  if (value !== null && data.unserializable.length > 0) {
+-    var unserializablePath = data.unserializable[0];
+-    var isMatch = unserializablePath.length === path.length;
+-
+-    for (var i = 0; i < path.length; i++) {
+-      if (path[i] !== unserializablePath[i]) {
+-        isMatch = false;
+-        break;
+-      }
+-    }
+-
+-    if (isMatch) {
+-      upgradeUnserializable(value, value);
+-    }
+-  }
+-
+-  setInObject(object, path, value);
+-}
+-function hydrate(object, cleaned, unserializable) {
+-  cleaned.forEach(function (path) {
+-    var length = path.length;
+-    var last = path[length - 1];
+-    var parent = getInObject(object, path.slice(0, length - 1));
+-
+-    if (!parent || !parent.hasOwnProperty(last)) {
+-      return;
+-    }
+-
+-    var value = parent[last];
+ 
+-    if (!value) {
+-      return;
+-    } else if (value.type === 'infinity') {
+-      parent[last] = Infinity;
+-    } else if (value.type === 'nan') {
+-      parent[last] = NaN;
+-    } else if (value.type === 'undefined') {
+-      parent[last] = undefined;
+-    } else {
+-      // Replace the string keys with Symbols so they're non-enumerable.
+-      var replaced = {};
+-      replaced[meta.inspectable] = !!value.inspectable;
+-      replaced[meta.inspected] = false;
+-      replaced[meta.name] = value.name;
+-      replaced[meta.preview_long] = value.preview_long;
+-      replaced[meta.preview_short] = value.preview_short;
+-      replaced[meta.size] = value.size;
+-      replaced[meta.readonly] = !!value.readonly;
+-      replaced[meta.type] = value.type;
+-      parent[last] = replaced;
+-    }
+-  });
+-  unserializable.forEach(function (path) {
+-    var length = path.length;
+-    var last = path[length - 1];
+-    var parent = getInObject(object, path.slice(0, length - 1));
+ 
+-    if (!parent || !parent.hasOwnProperty(last)) {
+-      return;
+-    }
+-
+-    var node = parent[last];
+-
+-    var replacement = hydration_objectSpread({}, node);
+-
+-    upgradeUnserializable(replacement, node);
+-    parent[last] = replacement;
+-  });
+-  return object;
+-}
+ 
+ function upgradeUnserializable(destination, source) {
+   var _Object$definePropert;
+@@ -5977,7 +5765,7 @@ var Overlay = /*#__PURE__*/function () {
+       // We can't get the size of text nodes or comment nodes. React as of v15
+       // heavily uses comment nodes to delimit text.
+       var elements = nodes.filter(function (node) {
+-        return node.nodeType === Node.ELEMENT_NODE;
++        return node.nodeType === globalThis.Node.ELEMENT_NODE;
+       });
+ 
+       while (this.rects.length > elements.length) {
+@@ -6979,38 +6767,24 @@ var Bridge = /*#__PURE__*/function (_EventEmitter) {
+  *
+  * 
+  */
+-function storage_localStorageGetItem(key) {
+-  try {
+-    return localStorage.getItem(key);
+-  } catch (error) {
+-    return null;
+-  }
+-}
+-function localStorageRemoveItem(key) {
+-  try {
+-    localStorage.removeItem(key);
+-  } catch (error) {}
+-}
+-function storage_localStorageSetItem(key, value) {
+-  try {
+-    return localStorage.setItem(key, value);
+-  } catch (error) {}
+-}
++
++
++
+ function storage_sessionStorageGetItem(key) {
+   try {
+-    return sessionStorage.getItem(key);
++    return globalThis.sessionStorage.getItem(key);
+   } catch (error) {
+     return null;
+   }
+ }
+ function storage_sessionStorageRemoveItem(key) {
+   try {
+-    sessionStorage.removeItem(key);
++    globalThis.sessionStorage.removeItem(key);
+   } catch (error) {}
+ }
+ function storage_sessionStorageSetItem(key, value) {
+   try {
+-    return sessionStorage.setItem(key, value);
++    return globalThis.sessionStorage.setItem(key, value);
+   } catch (error) {}
+ }
+ ;// CONCATENATED MODULE: ../react-devtools-shared/src/backend/agent.js
+@@ -8942,8 +8716,15 @@ function getPropertyValueForStyleName(styleName) {
+     return cachedStyleNameToValueMap.get(styleName);
+   }
+ 
+-  for (var styleSheetIndex = 0; styleSheetIndex < document.styleSheets.length; styleSheetIndex++) {
+-    var styleSheet = document.styleSheets[styleSheetIndex];
++  // StyleX metadata can be inspected on native hosts that do not expose a DOM.
++  var document = globalThis.document;
++  var CSSStyleRuleConstructor = globalThis.CSSStyleRule;
++  if (document == null || typeof CSSStyleRuleConstructor !== 'function') {
++    return null;
++  }
++
++  for (var styleSheetIndex = 0; styleSheetIndex < document.styleSheets.length; styleSheetIndex++) {
++    var styleSheet = document.styleSheets[styleSheetIndex];
+     var rules = null; // this might throw if CORS rules are enforced https://www.w3.org/TR/cssom-1/#the-cssstylesheet-interface
+ 
+     try {
+@@ -8953,7 +8734,7 @@ function getPropertyValueForStyleName(styleName) {
+     }
+ 
+     for (var ruleIndex = 0; ruleIndex < rules.length; ruleIndex++) {
+-      if (!(rules[ruleIndex] instanceof CSSStyleRule)) {
++      if (!(rules[ruleIndex] instanceof CSSStyleRuleConstructor)) {
+         continue;
+       }
+ 

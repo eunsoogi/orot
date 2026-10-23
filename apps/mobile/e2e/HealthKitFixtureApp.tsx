@@ -26,7 +26,7 @@ export function HealthKitFixtureApp({
   useEffect(() => {
     let active = true;
     let prepared = false;
-    void healthKitFixture
+    healthKitFixture
       .prepareSyntheticFixtures([...features])
       .then(async result => {
         if (result.mode !== 'synthetic') {
@@ -41,7 +41,7 @@ export function HealthKitFixtureApp({
     return () => {
       active = false;
       if (prepared)
-        void healthKitFixture.removeSyntheticFixture().catch(() => undefined);
+        healthKitFixture.removeSyntheticFixture().catch(() => undefined);
     };
   }, [features]);
 
