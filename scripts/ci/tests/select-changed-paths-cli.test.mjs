@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CHECK_KEYS } from '../changed-paths-core.mjs';
+import { CHECK_KEYS, selectEverything } from '../changed-paths-core.mjs';
+import { writeSelectionReport } from '../ios-e2e-selection-report.mjs';
 
 const CLI_PATH = fileURLToPath(new URL('../select-changed-paths.mjs', import.meta.url));
 
@@ -98,6 +99,38 @@ test('off-main manual dispatch is described as diagnostic without protected iOS 
     assert.match(summary, /diagnostic selection only; protected iOS validation is not scheduled/);
     assert.doesNotMatch(summary, /scheduled for automatic execution/);
   } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('PR impact selection is reported without implying E2E execution', () => {
+  const previousCwd = process.cwd();
+  const directory = mkdtempSync(join(tmpdir(), 'orot-ci-pr-selection-'));
+  const summaryPath = join(directory, 'summary.md');
+  const originalEnvironment = new Map(
+    ['GITHUB_ACTIONS', 'GITHUB_STEP_SUMMARY'].map((key) => [key, process.env[key]]),
+  );
+  try {
+    process.chdir(directory);
+    process.env.GITHUB_ACTIONS = 'true';
+    process.env.GITHUB_STEP_SUMMARY = summaryPath;
+    const selection = selectEverything('report-test');
+    selection.validation_tier = 'pr';
+
+    writeSelectionReport(selection, 'pull_request', null, false);
+
+    const summary = readFileSync(summaryPath, 'utf8');
+    assert.match(
+      summary,
+      /PR impact selection is report-only; Full E2E runs on the nightly main schedule/,
+    );
+    assert.doesNotMatch(summary, /scheduled for automatic execution/);
+  } finally {
+    process.chdir(previousCwd);
+    for (const [key, value] of originalEnvironment) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     rmSync(directory, { recursive: true, force: true });
   }
 });
