@@ -16,7 +16,7 @@ test('manual dispatch always selects every protected check', () => {
     throw new Error('manual verification does not need a diff');
   });
 
-  assert.equal(selection.reason, 'manual-full-verification');
+  assert.equal(selection.reason, 'manual-full-inventory-selection');
   assert.equal(allSelected(selection), true);
 });
 

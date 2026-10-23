@@ -7,165 +7,6 @@ const require = createRequire(import.meta.url);
 const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const read = (name) => yaml.load(readFileSync('.github/workflows/' + name, 'utf8'));
 
-function evaluate(expression, context) {
-  const source = expression
-    .replace(/^\$\{\{\s*|\s*\}\}$/g, '')
-    .replace(/(?:github|steps)(?:\.[a-z_]+)+/g, (path) => {
-      const value = path.split('.').reduce((current, key) => current?.[key], context);
-      return typeof value === 'boolean' ? String(value) : JSON.stringify(value ?? '');
-    });
-  return Function(`"use strict"; return (${source});`)();
-}
-
-test('E2E workflow has ready PR, main push, and manual release entry points', () => {
-  const workflow = read('e2e-test.yml');
-  assert.deepEqual(workflow.on.pull_request.types, [
-    'opened',
-    'synchronize',
-    'reopened',
-    'ready_for_review',
-    'converted_to_draft',
-    'edited',
-  ]);
-  assert.deepEqual(workflow.on.push, { branches: ['main'] });
-  assert.deepEqual(workflow.on.workflow_dispatch, {});
-  assert.ok(workflow.jobs.plan.if.includes("needs.selection.outputs.run_ios == 'true'"));
-  assert.doesNotMatch(workflow.jobs.plan.if, /event_name != 'workflow_dispatch'/);
-});
-
-test('the workflow selection output never allocates native jobs for drafts or off-main dispatches', () => {
-  const selection = read('e2e-test.yml').jobs.selection;
-  const expression = selection.outputs.run_ios;
-  const cases = [
-    {
-      event: 'pull_request',
-      ref: 'refs/pull/203/merge',
-      draft: true,
-      complete: 'true',
-      iosBuild: 'true',
-      iosTests: 'true',
-      expected: false,
-    },
-    {
-      event: 'pull_request',
-      ref: 'refs/pull/203/merge',
-      draft: false,
-      metadataOnlyEdit: 'true',
-      complete: 'true',
-      iosBuild: 'true',
-      iosTests: 'true',
-      expected: false,
-    },
-    {
-      event: 'pull_request',
-      ref: 'refs/pull/203/merge',
-      draft: false,
-      complete: 'true',
-      iosBuild: 'false',
-      iosTests: 'true',
-      expected: true,
-    },
-    {
-      event: 'pull_request',
-      ref: 'refs/pull/203/merge',
-      draft: false,
-      complete: 'true',
-      iosBuild: 'false',
-      iosTests: 'false',
-      expected: false,
-    },
-    {
-      event: 'workflow_dispatch',
-      ref: 'refs/heads/main',
-      draft: false,
-      complete: 'true',
-      iosBuild: 'true',
-      iosTests: 'true',
-      expected: true,
-    },
-    {
-      event: 'workflow_dispatch',
-      ref: 'refs/heads/feature',
-      draft: false,
-      complete: 'true',
-      iosBuild: 'true',
-      iosTests: 'true',
-      expected: false,
-    },
-    {
-      event: 'pull_request',
-      ref: 'refs/pull/203/merge',
-      draft: false,
-      complete: 'false',
-      iosBuild: 'false',
-      iosTests: 'false',
-      expected: true,
-    },
-  ];
-
-  for (const scenario of cases) {
-    const result = evaluate(expression, {
-      github: {
-        event_name: scenario.event,
-        ref: scenario.ref,
-        event: { pull_request: { draft: scenario.draft } },
-      },
-      steps: {
-        select: {
-          outputs: {
-            selection_complete: scenario.complete,
-            metadata_only_edit: scenario.metadataOnlyEdit ?? 'false',
-            ios_build: scenario.iosBuild,
-            ios_tests: scenario.iosTests,
-          },
-        },
-      },
-    });
-    assert.equal(result, scenario.expected, JSON.stringify(scenario));
-  }
-});
-
-test('drafts use deferred names while metadata-only edits reuse protected validation names', () => {
-  const { jobs } = read('e2e-test.yml');
-  assert.equal(jobs.reuse_ready_evidence['runs-on'], 'ubuntu-24.04');
-  assert.equal(jobs.reuse_ready_evidence.permissions.actions, 'read');
-  const downloads = jobs.reuse_ready_evidence.steps.filter(({ uses }) =>
-    uses?.startsWith('actions/download-artifact@'),
-  );
-  assert.equal(downloads.length, 2);
-  assert.ok(
-    downloads.every(
-      ({ with: inputs }) =>
-        inputs['run-id'] === '${{ steps.discover.outputs.source_run_id }}' &&
-        inputs['github-token'] === '${{ github.token }}',
-    ),
-  );
-  assert.equal(
-    jobs.selection.outputs.metadata_only_edit,
-    '${{ steps.select.outputs.metadata_only_edit }}',
-  );
-  assert.ok(jobs.ios_simulator_build.needs.includes('reuse_ready_evidence'));
-  assert.match(jobs.required_statuses.with.metadata_only_edit, /outputs\.metadata_only_edit/);
-  assert.match(jobs.required_statuses.with.reuse_result, /needs\.reuse_ready_evidence\.result/);
-  assert.match(
-    jobs.required_statuses.with.selected_cohorts,
-    /needs\.reuse_ready_evidence\.outputs\.selected_cohorts/,
-  );
-
-  for (const [event, draft, ref, expected] of [
-    ['pull_request', true, 'refs/pull/203/merge', true],
-    ['pull_request', false, 'refs/pull/203/merge', false],
-    ['workflow_dispatch', false, 'refs/heads/feature', true],
-  ]) {
-    assert.equal(
-      evaluate(jobs.selection.outputs.non_protected_contexts, {
-        github: { event_name: event, ref, event: { pull_request: { draft } } },
-      }),
-      expected,
-    );
-  }
-});
-
 test('selected reusable workflow jobs are gated by their cohort and configuration inputs', () => {
   const workflow = read('e2e-test.yml');
   assert.equal(
@@ -218,31 +59,53 @@ test('selected reusable workflow jobs are gated by their cohort and configuratio
 
 test('the protected Build check consumes OAuth evidence only when the selected plan requires it', () => {
   const build = read('e2e-test.yml').jobs.ios_simulator_build;
-  const oauthDownload = build.steps.find(
+  const receiptAction = yaml.load(
+    readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
+  );
+  const oauthDownload = receiptAction.runs.steps.find(
     (step) => step.name === 'Read the separate OAuth execution receipt',
   );
-  const verify = build.steps.find(
+  const verify = receiptAction.runs.steps.find(
     (step) => step.name === 'Verify production receipt at this run and head',
   );
 
   assert.ok(build.needs.includes('plan'));
-  assert.equal(
-    oauthDownload.if,
-    "needs.selection.outputs.run_ios == 'true' && needs.plan.outputs.oauth_required == 'true'",
-  );
-  assert.equal(verify.if, "needs.selection.outputs.run_ios == 'true'");
-  assert.equal(verify.env.OROT_IOS_OAUTH_REQUIRED, '${{ needs.plan.outputs.oauth_required }}');
-  assert.match(verify.env.OROT_IOS_OAUTH_RECEIPT_PATH, /needs\.plan\.outputs\.oauth_required/);
+  assert.equal(oauthDownload.if, "inputs.run_ios == 'true' && inputs.oauth_required == 'true'");
+  assert.equal(verify.if, "inputs.run_ios == 'true'");
+  assert.equal(verify.env.OROT_IOS_OAUTH_REQUIRED, '${{ inputs.oauth_required }}');
+  assert.match(verify.env.OROT_IOS_OAUTH_RECEIPT_PATH, /inputs\.oauth_required/);
   assert.match(verify.run, /ios-production-receipt\.mjs verify/);
   assert.doesNotMatch(verify.run, /oauth-receipt/);
+  assert.ok(
+    build.steps.some(({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt'),
+  );
+});
+
+test('the receipt action is checked out before the runner loads it', () => {
+  const build = read('e2e-test.yml').jobs.ios_simulator_build;
+  const receiptAction = yaml.load(
+    readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8'),
+  );
+  const checkoutIndex = build.steps.findIndex(({ uses }) => uses?.startsWith('actions/checkout@'));
+  const receiptIndex = build.steps.findIndex(
+    ({ uses }) => uses === './.github/actions/ios-e2e-validation-receipt',
+  );
+
+  assert.notEqual(checkoutIndex, -1);
+  assert.notEqual(receiptIndex, -1);
+  assert.ok(checkoutIndex < receiptIndex);
+  assert.equal(
+    receiptAction.runs.steps.some(({ uses }) => uses?.startsWith('actions/checkout@')),
+    false,
+  );
 });
 
 test('the selection artifact records the event decision and the result artifact records executed cohorts', () => {
-  const source = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
-  const selector = readFileSync('scripts/ci/select-changed-paths.mjs', 'utf8');
+  const selectionAction = readFileSync('.github/actions/ios-e2e-selection/action.yml', 'utf8');
+  const selector = readFileSync('scripts/ci/ios-e2e-selection-report.mjs', 'utf8');
   const aggregator = readFileSync('scripts/ci/ios-test-plan-results.mjs', 'utf8');
   assert.match(
-    source,
+    selectionAction,
     /ios-e2e-selection-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
   );
   assert.match(selector, /selectedCohorts[\s\S]*notSelectedCohorts[\s\S]*fullValidationDeferred/);

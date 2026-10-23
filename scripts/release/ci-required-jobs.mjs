@@ -17,22 +17,18 @@ export const REQUIRED_CI_JOBS_BY_WORKFLOW = {
   ],
   '.github/workflows/unit-test.yml': ['TypeScript typecheck', 'Unit and component tests'],
   '.github/workflows/policy-check.yml': ['CI, release, and quality gate tests'],
-  '.github/workflows/e2e-test.yml': [
-    'Validate / Build',
-    'Validate / UI',
-    'Validate / Storage',
-    'Validate / Provider',
-    'Validate / Speech',
-    'Validate / Questions',
-  ],
 };
 
-export const TRUSTED_CI_WORKFLOW_PATHS = Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW);
+// Nightly E2E remains trusted release evidence, but its results are no longer PR branch-protection checks.
+export const TRUSTED_CI_WORKFLOW_PATHS = [
+  ...Object.keys(REQUIRED_CI_JOBS_BY_WORKFLOW),
+  '.github/workflows/e2e-test.yml',
+];
 
-// Full iOS release evidence is an explicit manual run on main; partial diagnostics never attest readiness.
+// Only the daily main schedule can provide full E2E evidence for a release target.
 export function isAcceptedCiWorkflowEvent(path, event) {
   if (!TRUSTED_CI_WORKFLOW_PATHS.includes(path)) return false;
-  if (path === '.github/workflows/e2e-test.yml') return event === 'workflow_dispatch';
+  if (path === '.github/workflows/e2e-test.yml') return event === 'schedule';
   return event === 'push' || event === 'workflow_dispatch';
 }
 

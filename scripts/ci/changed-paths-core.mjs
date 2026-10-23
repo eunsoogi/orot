@@ -55,9 +55,16 @@ export function emptySelection(reason = 'no-relevant-paths') {
   return {
     all: false,
     reason,
+    validation_tier: 'unclassified',
     paths: [],
     ios_test_cohorts: [],
     ios_test_impact_reasons: [],
+    runtime_test_import_analysis: {
+      status: 'not-applicable',
+      reason: 'analysis-not-run',
+      candidatePaths: [],
+      referencingImporters: [],
+    },
     metadata_only_edit: false,
     ...Object.fromEntries(CHECK_KEYS.map((key) => [key, false])),
   };
@@ -67,9 +74,16 @@ export function selectEverything(reason) {
   return {
     all: true,
     reason,
+    validation_tier: 'unclassified',
     paths: [],
     ios_test_cohorts: IOS_TEST_COHORT_NAMES.slice(),
     ios_test_impact_reasons: [reason],
+    runtime_test_import_analysis: {
+      status: 'not-applicable',
+      reason: 'analysis-not-run',
+      candidatePaths: [],
+      referencingImporters: [],
+    },
     metadata_only_edit: false,
     ...Object.fromEntries(CHECK_KEYS.map((key) => [key, true])),
   };

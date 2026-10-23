@@ -104,19 +104,32 @@ function validateLintScopes(entries) {
   }
 }
 
-export async function buildInventory() {
-  const entries = trackedAndNewPaths().map(classifyPath);
+export async function buildInventory({
+  trackedPaths = trackedAndNewPaths(),
+  root = repositoryRoot,
+} = {}) {
+  const entries = trackedPaths.map(classifyPath);
   validateLintScopes(entries);
+  const existingEntries = [];
   for (const entry of entries) {
-    if (entry.kind !== 'surface') continue;
-    const info = await lstat(resolve(repositoryRoot, entry.path));
-    // Refuse symlinks: formatters must not follow a repository path outside this checkout.
-    if (info.isSymbolicLink())
-      throw new Error(`Quality-managed source cannot be a symlink: ${entry.path}`);
-    if (!info.isFile())
-      throw new Error(`Quality-managed path is not a regular file: ${entry.path}`);
+    let info;
+    try {
+      info = await lstat(resolve(root, entry.path));
+    } catch (error) {
+      // Git lists unstaged deletions from its index, but absent paths are not formatter inputs.
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (entry.kind === 'surface') {
+      // Refuse symlinks: formatters must not follow a repository path outside this checkout.
+      if (info.isSymbolicLink())
+        throw new Error(`Quality-managed source cannot be a symlink: ${entry.path}`);
+      if (!info.isFile())
+        throw new Error(`Quality-managed path is not a regular file: ${entry.path}`);
+    }
+    existingEntries.push(entry);
   }
-  return entries;
+  return existingEntries;
 }
 
 export function getRepositoryRoot() {

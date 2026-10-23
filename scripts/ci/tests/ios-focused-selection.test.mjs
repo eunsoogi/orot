@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { speechJourneyTests } from '../ios-test-config.mjs';
 import { fixtureIsolationTests } from '../fixture-isolation-test-phases.mjs';
-import { selectFocusedIosTests, verifyFocusedIosPullRequest } from '../ios-focused-selection.mjs';
+import { selectFocusedIosTests } from '../ios-focused-selection.mjs';
 
 const profiles = [
   'core',
@@ -150,37 +150,6 @@ test('wrong profile, source path, fragments and incomplete stateful phase select
     ],
   ])
     assert.throws(() => selectFocusedIosTests(...args));
-});
-
-test('PR focus binds the actual workflow branch, repository and exact open head', () => {
-  const context = {
-    repository: 'eunsoogi/orot',
-    sha: 'a'.repeat(40),
-    ref: 'eunsoogi/issue-198-ci-build-reuse',
-  };
-  const pr = {
-    number: 200,
-    state: 'open',
-    head: { repo: { full_name: context.repository }, sha: context.sha, ref: context.ref },
-  };
-  assert.doesNotThrow(() => verifyFocusedIosPullRequest(context, '200', pr));
-  for (const change of [
-    { number: 201 },
-    { state: 'closed' },
-    { head: { ...pr.head, sha: 'b'.repeat(40) } },
-    { head: { ...pr.head, ref: 'main' } },
-    { head: { ...pr.head, repo: { full_name: 'other/orot' } } },
-  ])
-    assert.throws(() => verifyFocusedIosPullRequest(context, '200', { ...pr, ...change }));
-  for (const number of ['0', '0200', '200;echo', '200\n'])
-    assert.throws(() => verifyFocusedIosPullRequest(context, number, pr));
-});
-
-test('integration focus routing uses its independent entry without a legacy fallback', () => {
-  const dispatcher = readFileSync('.github/workflows/e2e-selected.yml', 'utf8');
-  assert.match(dispatcher, /selected:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
-  assert.doesNotMatch(dispatcher, /ios-required-statuses|ios-test-completeness|Validate \/ Build/);
-  assert.doesNotMatch(dispatcher, /detox-e2e-focused|e2e-focused\.yml/);
 });
 
 test('focused consumer verifies exact products before its only boot and retains strict selected-case verification', () => {

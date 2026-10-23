@@ -1,17 +1,13 @@
 name: E2E Test
 on:
-  # Ready PRs and main pushes select impacts; main dispatch remains full release validation.
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
-  push: { branches: [main] }
-  workflow_dispatch: {}
+  # Run the complete regression inventory on main every day at 03:00 KST.
+  schedule:
+    - cron: '0 18 * * *'
 permissions:
   contents: read
-  pull-requests: read
 concurrency:
-  # The selected entry shares this allocation window; the dedicated manager cancels stale PR runs.
+  # Nightly full validation shares the account-wide Mac reservation and never cancels an active run.
   group: ios-ci-macos-${{ github.repository }}
-  # Preserve ready-head validations when metadata or diagnostic runs are queued.
   queue: max
   cancel-in-progress: false
 jobs:
@@ -22,28 +18,22 @@ jobs:
     outputs:
       complete: ${{ steps.select.outputs.selection_complete }}
       deferred: ${{ steps.select.outputs.full_validation_deferred }}
+      validation_tier: ${{ steps.select.outputs.validation_tier }}
       ios_test_cohorts: ${{ steps.select.outputs.ios_test_cohorts }}
       ios_oauth: ${{ steps.select.outputs.ios_oauth }}
       metadata_only_edit: ${{ steps.select.outputs.metadata_only_edit }}
-      # An edited event exposes the full PR diff, so metadata-only edits must reuse existing source results.
-      run_ios: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) && !(github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') && steps.select.outputs.metadata_only_edit != 'true' && (steps.select.outputs.selection_complete != 'true' || steps.select.outputs.ios_build == 'true' || steps.select.outputs.ios_tests == 'true') }}
-      diagnostic: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
-      non_protected_contexts: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main') }}
+      # Only complete Full selection on the main schedule can allocate macOS jobs.
+      run_ios: ${{ steps.select.outcome == 'success' && github.event_name == 'schedule' && github.ref == 'refs/heads/main' && steps.select.outputs.validation_tier == 'full' && steps.select.outputs.selection_complete == 'true' }}
+      diagnostic: false
+      non_protected_contexts: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        # A PR comparison needs its base history; incomplete selection must not bypass required checks.
-        with: { fetch-depth: 0, persist-credentials: false }
+        # Scheduled Full selection uses the complete inventory and does not compare event refs.
+        with: { fetch-depth: 1, persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with: { node-version-file: .nvmrc }
       - id: select
-        run: node scripts/ci/select-changed-paths.mjs
-      - name: Preserve the event decision and selected inventory
-        if: steps.select.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ios-e2e-selection-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ios-e2e-selection.json
-          if-no-files-found: error
+        uses: ./.github/actions/ios-e2e-selection
   reuse_ready_evidence:
     name: Reuse / Ready evidence
     needs: selection
@@ -177,10 +167,30 @@ jobs:
       archive_digest: ${{ needs.release_products.outputs.archive_digest }}
       manifest_digest: ${{ needs.release_products.outputs.manifest_digest }}
       cohorts: ${{ needs.plan.outputs.release_cohorts }}
+  authentication:
+    name: Test / Keychain authentication
+    # Reuse the biometric path after all Mac producers and cohorts finish within the five-slot cap.
+    needs:
+      - selection
+      - plan
+      - production_validation
+      - oauth_products
+      - oauth_execution
+      - debug_products
+      - release_products
+      - debug_execution
+      - release_execution
+    if: ${{ needs.selection.outputs.validation_tier == 'full' }}
+    uses: ./.github/workflows/ios-focused.yml
+    with:
+      profile: ios/core
+      scenario_file: apps/mobile/ios/OrotIntegrationTests/KeychainAuthenticationIntegrationTests.m
+      scenario_name: group/authentication
   completeness:
     name: Validate
     needs:
       [
+        selection,
         plan,
         production_validation,
         oauth_products,
@@ -189,6 +199,7 @@ jobs:
         release_products,
         debug_execution,
         release_execution,
+        authentication,
       ]
     if: ${{ always() && needs.plan.result != 'skipped' }}
     uses: ./.github/workflows/ios-test-completeness.yml
@@ -196,47 +207,29 @@ jobs:
       execution_results: ${{ toJSON(needs) }}
       selected_cohorts: ${{ needs.plan.outputs.selected_cohorts }}
       oauth_required: ${{ needs.plan.outputs.oauth_required == 'true' }}
+      validation_tier: ${{ needs.selection.outputs.validation_tier }}
   ios_simulator_build:
-    name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred / Build' || 'Validate / Build' }}
+    name: Validate / Build
     needs: [selection, plan, completeness, reuse_ready_evidence]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require the applicable ready validation evidence
-        env:
-          COMPLETE: ${{ needs.selection.outputs.complete }}
-          DEFERRED: ${{ needs.selection.outputs.deferred }}
-          RUN_IOS: ${{ needs.selection.outputs.run_ios }}
-          DIAGNOSTIC: ${{ needs.selection.outputs.diagnostic }}
-          METADATA_ONLY_EDIT: ${{ needs.selection.outputs.metadata_only_edit }}
-          REUSE_RESULT: ${{ needs.reuse_ready_evidence.result }}
-        run: test "$COMPLETE" = true && test "$DIAGNOSTIC" != true && { test "$RUN_IOS" != true || test "$DEFERRED" != true; } && { test "$DEFERRED" = true || test "$METADATA_ONLY_EDIT" != true || test "$REUSE_RESULT" = success; }
+      # GitHub must check out this repository before it can load a local composite action.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with: { persist-credentials: false }
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with: { node-version-file: .nvmrc }
-      - name: Read the completed production build receipt
-        if: needs.selection.outputs.run_ios == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: ./.github/actions/ios-e2e-validation-receipt
         with:
-          name: ios-production-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/production-receipt
-      - name: Read the separate OAuth execution receipt
-        if: needs.selection.outputs.run_ios == 'true' && needs.plan.outputs.oauth_required == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: ios-oauth-execution-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/oauth-receipt
-      - name: Verify production receipt at this run and head
-        if: needs.selection.outputs.run_ios == 'true'
-        env:
-          OROT_IOS_OAUTH_REQUIRED: ${{ needs.plan.outputs.oauth_required }}
-          OROT_IOS_OAUTH_RECEIPT_PATH: ${{ needs.plan.outputs.oauth_required == 'true' && 'artifacts/oauth-receipt/products/receipt.json' || '' }}
-        run: node scripts/ci/ios-production-receipt.mjs verify artifacts/production-receipt/production-receipt.json
+          selection_complete: ${{ needs.selection.outputs.complete }}
+          deferred: ${{ needs.selection.outputs.deferred }}
+          run_ios: ${{ needs.selection.outputs.run_ios }}
+          diagnostic: ${{ needs.selection.outputs.diagnostic }}
+          metadata_only_edit: ${{ needs.selection.outputs.metadata_only_edit }}
+          reuse_result: ${{ needs.reuse_ready_evidence.result }}
+          oauth_required: ${{ needs.plan.outputs.oauth_required }}
   required_statuses:
-    # Drafts stay deferred; non-draft metadata edits keep protected names and require exact evidence reuse.
-    name: ${{ needs.selection.outputs.non_protected_contexts == 'true' && 'Deferred' || 'Validate' }}
+    # Keep the scheduled Full run's validation name stable for release evidence.
+    name: Validate
     needs: [selection, completeness, reuse_ready_evidence]
     if: always()
     uses: ./.github/workflows/ios-required-statuses.yml

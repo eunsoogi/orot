@@ -23,14 +23,14 @@ function run(id, path, overrides = {}) {
   };
 }
 
-test('selects the newest permitted main run while full iOS requires an explicit dispatch', () => {
+test('selects the newest permitted main run and keeps the latest scheduled E2E attempt', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', {
       event: 'workflow_dispatch',
       conclusion: 'failure',
     }),
-    run(3, '.github/workflows/e2e-test.yml'),
+    run(3, '.github/workflows/e2e-test.yml', { event: 'schedule' }),
     run(4, '.github/workflows/unit-test.yml', { event: 'pull_request' }),
     run(5, '.github/workflows/policy-check.yml', { head_sha: 'b'.repeat(40) }),
     run(6, '.github/workflows/other.yml', { head_branch: 'release' }),
@@ -40,18 +40,25 @@ test('selects the newest permitted main run while full iOS requires an explicit 
       head_branch: 'feature',
     }),
     run(9, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
+    run(11, '.github/workflows/e2e-test.yml', {
+      event: 'schedule',
+      status: 'queued',
+      conclusion: null,
+      created_at: '2026-10-11T00:00:11Z',
+    }),
     run(10, '.github/workflows/e2e-selected.yml', { event: 'workflow_dispatch' }),
   ];
   assert.deepEqual(
     latestMainValidationRuns(sourceSha, runs).map(({ id }) => id),
-    [2, 9],
+    [2, 11],
   );
 });
 
-test('release evidence accepts a full E2E dispatch on main and excludes push and diagnostics', () => {
+test('release evidence accepts scheduled E2E on main and excludes pushes, dispatches and diagnostics', () => {
+  assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'schedule'), true);
   assert.equal(
     isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'workflow_dispatch'),
-    true,
+    false,
   );
   assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'push'), false);
   assert.equal(isAcceptedCiWorkflowEvent('.github/workflows/e2e-test.yml', 'pull_request'), false);
@@ -66,7 +73,7 @@ test('collects jobs only from each selected main validation run', () => {
   const runs = [
     run(1, '.github/workflows/code-quality.yml'),
     run(2, '.github/workflows/code-quality.yml', { run_number: 2 }),
-    run(3, '.github/workflows/e2e-test.yml', { event: 'workflow_dispatch' }),
+    run(3, '.github/workflows/e2e-test.yml', { event: 'schedule' }),
   ];
   const jobs = collectJobsForMainValidation(sourceSha, runs, (id) => [{ name: `run-${id}` }]);
   assert.deepEqual(jobs, [

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { resolveChangedPaths, resolveFullValidationDeferred } from '../select-changed-paths.mjs';
+
+const require = createRequire(import.meta.url);
+const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 
 function eventBlock(path, event) {
   const source = readFileSync(path, 'utf8');
@@ -15,10 +19,9 @@ function eventBlock(path, event) {
   return match[1];
 }
 
-test('protected check workflows and stale-focus cancellation receive stacked PR events', () => {
+test('PR check workflows and stale-focus cancellation receive stacked PR events while E2E stays nightly', () => {
   for (const path of [
     '.github/workflows/code-quality.yml',
-    '.github/workflows/e2e-test.yml',
     '.github/workflows/unit-test.yml',
     '.github/workflows/policy-check.yml',
     '.github/workflows/cancel-stale-ios-focused.yml',
@@ -29,14 +32,8 @@ test('protected check workflows and stale-focus cancellation receive stacked PR 
     if (!path.includes('cancel-stale'))
       assert.match(eventBlock(path, 'push'), /branches: \[main\]/);
   }
-  const e2eEvents = eventBlock('.github/workflows/e2e-test.yml', 'pull_request');
-  assert.match(e2eEvents, /ready_for_review/);
-  assert.match(e2eEvents, /converted_to_draft/);
-  assert.match(e2eEvents, /edited/);
-  assert.match(
-    readFileSync('.github/workflows/e2e-test.yml', 'utf8'),
-    /^ {2}push: \{ branches: \[main\] \}$/m,
-  );
+  const e2e = yaml.load(readFileSync('.github/workflows/e2e-test.yml', 'utf8'));
+  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
 });
 
 test('stacked comparisons use the event base and exact head, and only drafts defer the full gate', () => {

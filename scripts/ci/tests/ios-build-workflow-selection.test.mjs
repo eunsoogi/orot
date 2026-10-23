@@ -30,12 +30,15 @@ test('production cache reuse skips only app compilation, preserving separate OAu
 
 test('production status reads the actual preserved filename and fails for diagnostic selection', () => {
   const e2e = readFileSync('.github/workflows/e2e-test.yml', 'utf8');
+  const receipt = readFileSync('.github/actions/ios-e2e-validation-receipt/action.yml', 'utf8');
   const product = readFileSync('.github/workflows/ios-production-validation.yml', 'utf8');
   assert.match(
-    e2e,
+    receipt,
     /ios-production-receipt\.mjs verify artifacts\/production-receipt\/production-receipt\.json/,
   );
+  assert.match(e2e, /uses: \.\/\.github\/actions\/ios-e2e-validation-receipt/);
+  assert.match(e2e, /diagnostic: \$\{\{ needs\.selection\.outputs\.diagnostic \}\}/);
   assert.match(product, /path: artifacts\/ios-focus\/production-receipt\.json/);
   assert.match(product, /if: always\(\)/);
-  assert.match(e2e, /test "\$DIAGNOSTIC" != true/);
+  assert.match(receipt, /test "\$DIAGNOSTIC" != true/);
 });

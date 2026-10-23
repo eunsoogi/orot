@@ -5,6 +5,7 @@ on:
       execution_results: { required: true, type: string }
       selected_cohorts: { required: true, type: string }
       oauth_required: { required: true, type: boolean }
+      validation_tier: { required: true, type: string }
 permissions: { contents: read }
 jobs:
   completeness:
@@ -17,20 +18,30 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with: { node-version-file: .nvmrc }
-      - name: Require selected producers and executors to succeed
-        # Unselected configurations must be explicitly skipped; selected work must complete successfully.
+      - name: Require selection, selected producers and executors to succeed
+        # Unselected configurations must be explicitly skipped; selection and selected work must succeed.
         env:
           OROT_IOS_EXECUTION_RESULTS: ${{ inputs.execution_results }}
           OROT_IOS_TEST_COHORTS: ${{ inputs.selected_cohorts }}
           OROT_IOS_OAUTH_TESTS: ${{ inputs.oauth_required }}
+          OROT_IOS_VALIDATION_TIER: ${{ inputs.validation_tier }}
         run: node scripts/ci/ios-test-execution-completeness.mjs
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: ios-cohort-report-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ios-reports
-      - name: Verify every planned first attempt and authentic Korean Speech evidence
+      - name: Download this attempt's Keychain authentication evidence
+        if: ${{ inputs.validation_tier == 'full' || inputs.validation_tier == 'candidate' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-focused-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ios-authentication
+      - name: Verify every planned first attempt and authentic Speech and Keychain evidence
         env:
           OROT_IOS_TEST_COHORTS: ${{ inputs.selected_cohorts }}
+          OROT_IOS_OAUTH_TESTS: ${{ inputs.oauth_required }}
+          OROT_IOS_VALIDATION_TIER: ${{ inputs.validation_tier }}
+          OROT_IOS_AUTHENTICATION_EVIDENCE: ${{ (inputs.validation_tier == 'full' || inputs.validation_tier == 'candidate') && 'artifacts/ios-authentication' || '' }}
         run: node scripts/ci/ios-test-plan-results.mjs artifacts/ios-reports
       - name: Preserve verified selected results and explicit exclusions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

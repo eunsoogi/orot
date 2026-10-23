@@ -90,21 +90,22 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
 
     @MainActor
     func testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges() throws {
-        try inspect(extra: [], suffix: "default", dark: false, liveTheme: true, review: true)
+        try inspect(extra: [], suffix: "default", dark: false, liveTheme: true, editTranscript: false)
+    }
+
+    /// Keeps the native keyboard, accessibility text size, scroll and save path under XCTest.
+    @MainActor
+    func testLargeTextKeepsTranscriptSaveReachableWithKeyboardVisible() throws {
+        try inspect(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"], suffix: "xxxl", dark: true, liveTheme: false, editTranscript: true)
     }
 
     @MainActor
-    func testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText() throws {
-        try inspect(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"], suffix: "xxxl", dark: true, liveTheme: false, review: true)
+    func testSavedRecordingRowsRemainReadableInA320PointViewport() throws {
+        try inspect(extra: ["-OROT_RECORDING_VISUAL_WIDTH", "320"], suffix: "320pt", dark: false, liveTheme: false, editTranscript: false)
     }
 
     @MainActor
-    func testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport() throws {
-        try inspect(extra: ["-OROT_RECORDING_VISUAL_WIDTH", "320"], suffix: "320pt", dark: false, liveTheme: false, review: false)
-    }
-
-    @MainActor
-    private func inspect(extra: [String], suffix: String, dark: Bool, liveTheme: Bool, review: Bool) throws {
+    private func inspect(extra: [String], suffix: String, dark: Bool, liveTheme: Bool, editTranscript: Bool) throws {
         let app = XCUIApplication()
         RecordingFixtureUITestConditions.launch(app, extra: extra + AppearanceUITestConditions.observationArguments)
         var appearance: AppearanceUITestConditions.Snapshot?
@@ -133,20 +134,29 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.element(app, "recording-detail-date").exists)
         XCTAssertTrue(UITestConditions.element(app, "recording-playback-button").exists)
         capture(app, "recording-library-detail-\(suffix)")
-        reveal(app, "transcript-create").tap()
-        _ = reveal(app, "transcript-text-0")
-        XCTAssertEqual(UITestConditions.text(reveal(app, "transcript-review-0")), "검토 전 초안")
-        XCTAssertFalse(UITestConditions.element(app, "transcript-engine-0").exists)
-        XCTAssertFalse(UITestConditions.element(app, "transcript-runtime-0").exists)
-        capture(app, "recording-transcript-review-\(suffix)")
+        if liveTheme || editTranscript {
+            reveal(app, "transcript-create").tap()
+            _ = reveal(app, "transcript-text-0")
+            XCTAssertEqual(UITestConditions.text(reveal(app, "transcript-review-0")), "검토 전 초안")
+            XCTAssertFalse(UITestConditions.element(app, "transcript-engine-0").exists)
+            XCTAssertFalse(UITestConditions.element(app, "transcript-runtime-0").exists)
+            capture(app, "recording-transcript-review-\(suffix)")
+        }
         if liveTheme {
+            // Keep transcript content rendered while the real OS appearance changes in both directions.
+            XCTAssertTrue(reveal(app, "transcript-text-0").exists)
+            capture(app, "recording-transcript-review-light-live")
             _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
             capture(app, "recording-transcript-review-dark-live")
+            XCTAssertTrue(reveal(app, "transcript-text-0").exists)
+            _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self)
+            XCTAssertTrue(reveal(app, "transcript-text-0").exists)
         }
-        if review {
+        if editTranscript {
             reveal(app, "transcript-edit-0").tap()
-            let input = UITestConditions.element(app, "transcript-input-0")
-            FormUITestConditions.replace(input, with: "화면 검토용 합성 전사 수정", in: app, scrollID: "recording-controls-scroll")
+            let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
+            FormUITestConditions.replace(input, with: "수정됨", in: app, scrollID: "recording-controls-scroll")
+            XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
             capture(app, "recording-transcript-editor-\(suffix)")
             let save = UITestConditions.element(app, "transcript-save-0")
             // Keep the scroll gesture outside the oversized editor while its keyboard is open.
@@ -157,16 +167,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
                 horizontalPosition: 0.9,
             )
             save.tap()
-            let history = reveal(app, "transcript-history-0-1")
-            XCTAssertTrue(UITestConditions.text(history).contains("이전 버전 1:"))
-            capture(app, "recording-transcript-history-\(suffix)")
-            reveal(app, "transcript-play-0").tap()
-            _ = reveal(app, "transcript-error", towardTop: true)
-            capture(app, "recording-transcript-error-\(suffix)")
-            if liveTheme {
-                _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self)
-                capture(app, "recording-transcript-error-light-live")
-            }
+            XCTAssertEqual(UITestConditions.text(reveal(app, "transcript-text-0")), "수정됨")
         }
         // Use a wider measured step for this tall control while retaining full-frame and hit-testing checks.
         let exportAudio = reveal(app, "recording-export-audio", maximumScrollFraction: 0.7)

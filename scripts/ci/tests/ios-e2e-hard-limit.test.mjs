@@ -22,17 +22,15 @@ function leaves(path, inputs = {}, parents = []) {
   });
 }
 
-for (const entry of ['e2e-test.yml', 'e2e-selected.yml']) {
-  test(`${entry} gives every independently scheduled job a hard limit of at most 20 minutes`, () => {
-    const jobs = leaves('.github/workflows/' + entry);
-    assert.ok(jobs.length > 0);
-    for (const job of jobs)
-      assert.ok(
-        Number.isFinite(job.minutes) && job.minutes > 0 && job.minutes <= 20,
-        `${job.name} has an invalid hard limit: ${job.minutes}`,
-      );
-  });
-}
+test('nightly cohort and authentication jobs retain hard limits of at most 20 minutes', () => {
+  const jobs = leaves('.github/workflows/e2e-test.yml');
+  assert.ok(jobs.length > 0);
+  for (const job of jobs)
+    assert.ok(
+      Number.isFinite(job.minutes) && job.minutes > 0 && job.minutes <= 20,
+      `${job.name} has an invalid hard limit: ${job.minutes}`,
+    );
+});
 
 test('the hosted execution plan never advertises a test allowance above 20 minutes', () => {
   for (const job of iosTestExecutionPlan()) assert.equal(job.minutes, 20, job.cohort);

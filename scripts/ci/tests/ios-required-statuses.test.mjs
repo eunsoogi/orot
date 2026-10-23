@@ -17,11 +17,11 @@ const checkCohorts = Object.fromEntries(
   status.strategy.matrix.include.map(({ check, cohorts }) => [check, cohorts]),
 );
 
-test('five domain statuses preserve their required check names and map affected cohorts', () => {
+test('five nightly domain statuses retain their names and map the complete cohort inventory', () => {
   assert.equal(caller.uses, './.github/workflows/ios-required-statuses.yml');
   assert.equal(caller.if, 'always()');
   assert.deepEqual(caller.needs, ['selection', 'completeness', 'reuse_ready_evidence']);
-  assert.match(caller.name, /non_protected_contexts/);
+  assert.equal(caller.name, 'Validate');
   assert.equal(
     caller.with.metadata_only_edit,
     "${{ needs.selection.outputs.metadata_only_edit == 'true' }}",
@@ -35,7 +35,15 @@ test('five domain statuses preserve their required check names and map affected 
   assert.deepEqual(Object.keys(checkCohorts), ['UI', 'Storage', 'Provider', 'Speech', 'Questions']);
 
   const names = Object.keys(checkCohorts).map((name) => 'Validate / ' + name);
-  assert.deepEqual(names, REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'].slice(1));
+  // Nightly E2E contexts remain visible, but are deliberately absent from PR branch protection.
+  assert.deepEqual(names, [
+    'Validate / UI',
+    'Validate / Storage',
+    'Validate / Provider',
+    'Validate / Speech',
+    'Validate / Questions',
+  ]);
+  assert.equal(REQUIRED_CI_JOBS_BY_WORKFLOW['.github/workflows/e2e-test.yml'], undefined);
   for (const cohort of IOS_TEST_COHORT_NAMES)
     assert.ok(
       Object.values(checkCohorts).some((cohorts) => cohorts.includes(cohort)),

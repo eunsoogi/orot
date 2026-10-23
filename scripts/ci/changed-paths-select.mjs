@@ -9,6 +9,7 @@ import {
 } from './changed-paths-core.mjs';
 import { selectE2EPath } from './changed-paths-e2e-rules.mjs';
 import { selectWorkflowPath } from './changed-paths-workflow-rules.mjs';
+import { analyzeRuntimeTestImports, isJestTestOnlyPath } from './runtime-test-imports.mjs';
 
 const IMAGES = new Set([
   '.png',
@@ -64,7 +65,7 @@ function mobileAsset(path) {
   );
 }
 
-export function selectChecksForPaths(changedPaths, policies = null) {
+export function selectChecksForPaths(changedPaths, policies = null, { runtimeRoot } = {}) {
   // Map paths to affected required-check families; unknown boundaries select the full verification set.
   if (!Array.isArray(changedPaths)) return selectEverything('incomplete-path-list');
   if (!changedPaths.length) return emptySelection();
@@ -81,6 +82,22 @@ export function selectChecksForPaths(changedPaths, policies = null) {
   if (paths.some((path) => !path)) return selectEverything('invalid-path');
   const selection = emptySelection('matched-paths');
   selection.paths = [...new Set(paths)].sort();
+  const testOnlyPaths = selection.paths.filter(isJestTestOnlyPath);
+  const runtimeTestImportAnalysis = analyzeRuntimeTestImports(
+    testOnlyPaths,
+    runtimeRoot ? { root: runtimeRoot } : {},
+  );
+  selection.runtime_test_import_analysis = runtimeTestImportAnalysis;
+  const excludedTestPaths = new Set(
+    runtimeTestImportAnalysis.status === 'unreferenced'
+      ? runtimeTestImportAnalysis.candidatePaths
+      : [],
+  );
+  const selectAll = (reason) => ({
+    ...selectEverything(reason),
+    paths: selection.paths,
+    runtime_test_import_analysis: runtimeTestImportAnalysis,
+  });
 
   for (const path of selection.paths) {
     const lower = path.toLowerCase();
@@ -102,7 +119,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
     }
     // Vendored source patches affect installed and native products without changing package manifests.
     if (SHARED_DEPENDENCIES.has(file) || lower.startsWith('vendor/patches/')) {
-      return { ...selectEverything('shared-dependency-change'), paths: selection.paths };
+      return selectAll('shared-dependency-change');
     }
     if (file === 'gemfile.lock' || file === 'gemfile') {
       if (lower.startsWith('scripts/quality/')) {
@@ -110,22 +127,22 @@ export function selectChecksForPaths(changedPaths, policies = null) {
         markAllQuality(selection);
         continue;
       }
-      return { ...selectEverything('dependency-change'), paths: selection.paths };
+      return selectAll('dependency-change');
     }
     if (lower.startsWith('.github/actions/')) {
-      return { ...selectEverything('local-action-change'), paths: selection.paths };
+      return selectAll('local-action-change');
     }
     if (lower.startsWith('.github/workflows/')) {
       if (!markQualityPath(path, selection, policies) || !selectWorkflowPath(path, selection)) {
-        return { ...selectEverything('unknown-workflow-change'), paths: selection.paths };
+        return selectAll('unknown-workflow-change');
       }
       continue;
     }
     if (lower.startsWith('.github/')) {
-      return { ...selectEverything('unknown-github-configuration'), paths: selection.paths };
+      return selectAll('unknown-github-configuration');
     }
     if (lower.startsWith('scripts/ci/')) {
-      return { ...selectEverything('ci-tool-change'), paths: selection.paths };
+      return selectAll('ci-tool-change');
     }
     if (lower.startsWith('scripts/quality/')) {
       selection.policy_tests = true;
@@ -135,20 +152,20 @@ export function selectChecksForPaths(changedPaths, policies = null) {
     if (lower.startsWith('scripts/release/') || lower.startsWith('scripts/version/')) {
       selection.policy_tests = true;
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-script-change'), paths: selection.paths };
+        return selectAll('unknown-script-change');
       }
       continue;
     }
     if (lower.startsWith('apps/mobile/e2e/')) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-e2e-file'), paths: selection.paths };
+        return selectAll('unknown-e2e-file');
       }
       selectE2EPath(path, selection);
       continue;
     }
     if (lower === 'apps/mobile/.eslintrc.js') {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-mobile-file'), paths: selection.paths };
+        return selectAll('unknown-mobile-file');
       }
       // The shared workspace ESLint invocation consumes this config for both JavaScript and TypeScript.
       selection.typescript = true;
@@ -156,7 +173,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
     }
     if (lower.startsWith('apps/mobile/android/')) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-android-file'), paths: selection.paths };
+        return selectAll('unknown-android-file');
       }
       selection.typecheck = true;
       selection.unit_tests = true;
@@ -169,21 +186,26 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       lower.startsWith('packages/')
     ) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-application-file'), paths: selection.paths };
+        return selectAll('unknown-application-file');
+      }
+      if (excludedTestPaths.has(path)) {
+        selection.typecheck = true;
+        selection.unit_tests = true;
+        continue;
       }
       mobileRuntime(selection, path);
       continue;
     }
     if (lower.startsWith('apps/mobile/')) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-mobile-file'), paths: selection.paths };
+        return selectAll('unknown-mobile-file');
       }
       mobileRuntime(selection, path);
       continue;
     }
     if (lower.startsWith('scripts/')) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-script-change'), paths: selection.paths };
+        return selectAll('unknown-script-change');
       }
       selection.policy_tests = true;
       continue;
@@ -199,7 +221,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       file === 'babel.config.js'
     ) {
       if (!markQualityPath(path, selection, policies)) {
-        return { ...selectEverything('unknown-tool-configuration'), paths: selection.paths };
+        return selectAll('unknown-tool-configuration');
       }
       selection.typecheck = true;
       selection.unit_tests = true;
@@ -214,7 +236,7 @@ export function selectChecksForPaths(changedPaths, policies = null) {
       selection.policy_tests = true;
       continue;
     }
-    return { ...selectEverything('unknown-path'), paths: selection.paths };
+    return selectAll('unknown-path');
   }
   return selection;
 }

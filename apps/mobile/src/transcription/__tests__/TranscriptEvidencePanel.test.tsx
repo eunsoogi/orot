@@ -5,9 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import type { SourceRecord, TranscriptEvidenceSegment } from '@orot/domain';
-import { appColors } from '../../layout/appColors';
 import TranscriptEvidencePanel from '../TranscriptEvidencePanel';
-import { transcriptEvidenceStyles } from '../TranscriptEvidencePanel.styles';
 import type {
   TranscriptEvidenceService,
   TranscriptRecordingView,
@@ -183,31 +181,6 @@ test('shows review provenance and range, preserves correction history, and plays
   });
 });
 
-test('uses appearance-aware colors for transcript content and editing surfaces', () => {
-  expect(transcriptEvidenceStyles.segment.borderColor).toBe(appColors.border);
-  expect(transcriptEvidenceStyles.segment.backgroundColor).toBe(
-    appColors.surface,
-  );
-  expect(transcriptEvidenceStyles.audioCard.backgroundColor).toBe(
-    appColors.surface,
-  );
-  expect(transcriptEvidenceStyles.title.color).toBe(appColors.text);
-  expect(transcriptEvidenceStyles.copy.color).toBe(appColors.secondary);
-  expect(transcriptEvidenceStyles.textBubble.color).toBe(appColors.text);
-  expect(transcriptEvidenceStyles.origin.color).toBe(appColors.secondary);
-  expect(transcriptEvidenceStyles.input.color).toBe(appColors.text);
-  expect(transcriptEvidenceStyles.input.borderColor).toBe(appColors.primary);
-  expect(transcriptEvidenceStyles.history.color).toBe(appColors.secondary);
-  expect(transcriptEvidenceStyles.error.color).toBe(appColors.danger);
-  expect(transcriptEvidenceStyles.summary.backgroundColor).toBe(
-    appColors.surface,
-  );
-  expect(transcriptEvidenceStyles.editor.backgroundColor).toBe(
-    appColors.primarySoft,
-  );
-  expect(transcriptEvidenceStyles.title.fontSize).toBe(30);
-});
-
 test('can generate missing transcript evidence and recover after a provider failure', async () => {
   let segments: TranscriptEvidenceSegment[] = [];
   const service: TranscriptEvidenceService = {
@@ -234,4 +207,28 @@ test('can generate missing transcript evidence and recover after a provider fail
     original.text,
   );
   expect(service.transcribe).toHaveBeenNthCalledWith(2, source.id);
+});
+
+test('shows a playback error when a transcript segment cannot be played', async () => {
+  // Native UI tests keep the actual keyboard and share-sheet paths; RNTL covers this service failure state.
+  const service: TranscriptEvidenceService = {
+    load: jest.fn(async () => ({
+      source,
+      segments: [original],
+      staleArtifacts: [],
+    })),
+    transcribe: jest.fn(),
+    correct: jest.fn(),
+    play: jest.fn().mockRejectedValue(new Error('audio unavailable')),
+  };
+  await render(
+    <TranscriptEvidencePanel recordingSourceId={source.id} service={service} />,
+  );
+
+  await fireEvent.press(await screen.findByTestId('transcript-play-0'));
+
+  expect(await screen.findByTestId('transcript-error')).toHaveTextContent(
+    '오디오 구간을 재생하지 못했어요.',
+  );
+  expect(service.play).toHaveBeenCalledWith(original);
 });

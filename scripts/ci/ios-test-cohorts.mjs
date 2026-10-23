@@ -82,14 +82,14 @@ const cohorts = {
     cases: [
       'RecordingLibraryUITests/testActiveAndPausedRecordingControlsAcrossAppearanceChanges',
       'RecordingLibraryUITests/testRecordingConsentAndSeparateLibraryAcrossAppearanceChanges',
-      'RecordingLibraryUITests/testSavedRecordingRowsAndDraftRemainReadableInA320PointViewport',
+      'RecordingLibraryUITests/testSavedRecordingRowsRemainReadableInA320PointViewport',
     ],
   },
   'recordings-review': {
     ...recordingFixture,
     cases: [
       'RecordingLibraryUITests/testSavedMetadataAndTranscriptReviewRemainReadableAcrossLiveAppearanceChanges',
-      'RecordingLibraryUITests/testSelectedRecordingAndCorrectionHistoryRemainReachableWithLargeText',
+      'RecordingLibraryUITests/testLargeTextKeepsTranscriptSaveReachableWithKeyboardVisible',
     ],
   },
   'recordings-playback': { ...recordingFixture, classes: ['RecordingPlaybackUITests'] },

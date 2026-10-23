@@ -34,9 +34,11 @@ test('each full CI schedules every cohort once after verified products are avail
     speech.inputs.manifest_digest,
     '${{ needs.release_products.outputs.manifest_digest }}',
   );
+  // The authentication job joins completeness so its result is part of every Full receipt.
   assert.deepEqual(
     [...full.jobs.completeness.needs].sort(),
     [
+      'authentication',
       'debug_execution',
       'debug_products',
       'oauth_execution',
@@ -45,6 +47,7 @@ test('each full CI schedules every cohort once after verified products are avail
       'production_validation',
       'release_products',
       'release_execution',
+      'selection',
     ].sort(),
   );
 });

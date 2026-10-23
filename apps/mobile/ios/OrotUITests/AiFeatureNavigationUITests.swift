@@ -14,6 +14,8 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        // The Home header appears before its asynchronous recording lookup settles; observe a terminal state before checking the expected empty fixture.
+        NavigationUITestConditions.route(app, markers: ["home-empty-recordings", "home-recent-recording", "home-recordings-retry"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-empty-recordings", navigationID: "navigation-tab-home")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "records-open-health-library", navigationID: "navigation-tab-records")

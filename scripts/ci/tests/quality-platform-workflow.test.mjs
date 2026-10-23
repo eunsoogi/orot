@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+const require = createRequire(import.meta.url);
+// Parse the workflow event map so trigger assertions validate structure rather than incidental text.
+const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const readRepositoryFile = (path) =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
 const e2eWorkflow = readRepositoryFile('.github/workflows/e2e-test.yml');
@@ -11,6 +15,9 @@ const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
 const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
 const platformSelector = readRepositoryFile('scripts/quality/platforms.mjs');
+const e2eReceiptAction = readRepositoryFile(
+  '.github/actions/ios-e2e-validation-receipt/action.yml',
+);
 const surfacePolicy = JSON.parse(readRepositoryFile('scripts/quality/surface-policy.json'));
 const qualitySurfaceAction = readRepositoryFile('.github/actions/run-quality-surface/action.yml');
 const qualitySetupAction = readRepositoryFile('.github/actions/setup-linux-quality/action.yml');
@@ -171,28 +178,26 @@ test('uses singular workflow names and matching paths with direct checks and can
       ),
     );
     assert.ok(workflow.includes('cancel-in-progress: true'));
-    assert.match(workflow, /^permissions:\n {2}contents: read/m);
+    assert.match(workflow, /^permissions:\n[ ]{2}contents: read/m);
     assert.doesNotMatch(workflow, /workflow_call/);
   }
-  assert.match(
-    e2eWorkflow.replace(/^ {4}#.*\n/gm, ''),
-    /pull_request:\n\s+types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
-  );
-  assert.match(e2eWorkflow, /workflow_dispatch: \{\}/);
-  assert.doesNotMatch(e2eWorkflow, /push:\n\s+branches: \[main\]/);
+  assert.deepEqual(Object.keys(yaml.load(e2eWorkflow).on), ['schedule']);
+  assert.deepEqual(yaml.load(e2eWorkflow).on.schedule, [{ cron: '0 18 * * *' }]);
+  assert.doesNotMatch(e2eWorkflow, /^[ ]{2}(pull_request|push|workflow_dispatch):/m);
   assert.match(e2eWorkflow, /group: ios-ci-macos-\$\{\{ github\.repository \}\}/);
-  // The allocation window spans full and focused routes; PR supersession is handled by the dedicated manager.
+  // Nightly runs own the Mac reservation; the auth suite is serialized inside this workflow.
   assert.doesNotMatch(e2eWorkflow, /group:.*pull_request\.draft/);
   assert.match(e2eWorkflow, /cancel-in-progress: false/);
   assert.match(e2eWorkflow, /runs-on: ubuntu-24\.04/);
-  assert.match(e2eWorkflow, /^permissions:\n {2}contents: read/m);
-  assert.match(e2eWorkflow, /^ {2}pull-requests: read$/m);
+  assert.match(e2eWorkflow, /^permissions:\n[ ]{2}contents: read/m);
+  assert.doesNotMatch(e2eWorkflow, /^ {2}pull-requests: read$/m);
   assert.doesNotMatch(e2eWorkflow, /workflow_call/);
   assert.doesNotMatch(e2eWorkflow, /quality_code:|quality_tests:/);
   assert.doesNotMatch(e2eWorkflow, /uses: \.\/\.github\/workflows\/code-quality/);
   const buildJob = e2eWorkflow.slice(e2eWorkflow.indexOf('  ios_simulator_build:\n'));
-  assert.match(buildJob, /name: \$\{\{[^\n]*'Validate \/ Build'/);
-  assert.match(buildJob, /test "\$DIAGNOSTIC" != true/);
+  assert.match(buildJob, /^ {4}name: Validate \/ Build$/m);
+  assert.match(buildJob, /uses: \.\/\.github\/actions\/ios-e2e-validation-receipt/);
+  assert.match(e2eReceiptAction, /test "\$DIAGNOSTIC" != true/);
   assert.doesNotMatch(e2eWorkflow, /name: Detox iOS E2E/);
   assert.doesNotMatch(e2eWorkflow, /detox_ios_e2e:/);
 });

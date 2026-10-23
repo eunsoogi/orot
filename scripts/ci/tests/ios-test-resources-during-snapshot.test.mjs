@@ -26,8 +26,9 @@ test('periodic snapshots can omit only the process query while retaining boundar
     return `${program} synthetic\n`;
   }
 
+  let stopSampling;
   try {
-    const stopSampling = await iosTestResourceSampler(sidecar, {
+    stopSampling = await iosTestResourceSampler(sidecar, {
       intervalMs: 100,
       execute,
       skipDuringProcessSnapshot: true,
@@ -58,6 +59,7 @@ test('periodic snapshots can omit only the process query while retaining boundar
     assert.equal(entries[0].observations.processes, 'ps synthetic\n');
     assert.equal(entries[2].observations.processes, 'ps synthetic\n');
   } finally {
+    if (stopSampling) await stopSampling();
     rmSync(root, { recursive: true, force: true });
   }
 });

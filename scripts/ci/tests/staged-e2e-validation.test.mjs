@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { selectChecksForPaths } from '../changed-paths-select.mjs';
 import { resolveFullValidationDeferred } from '../select-changed-paths.mjs';
 
+const require = createRequire(import.meta.url);
+const yaml = createRequire(require.resolve('eslint/package.json'))('js-yaml');
 const root = new URL('../../../', import.meta.url);
 const read = (path) => readFileSync(fileURLToPath(new URL(path, root)), 'utf8');
 
@@ -34,25 +37,26 @@ test('draft mode does not weaken conservative changed-path selection', () => {
   assert.equal(integration.ios_tests, true);
 });
 
-test('draft, metadata and diagnostic runs cannot satisfy the full integration gate', () => {
-  const e2e = read('.github/workflows/e2e-test.yml');
-  assert.match(
-    e2e,
-    /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft, edited\]/,
+test('nightly E2E requires a complete Full selection before allocating macOS', () => {
+  const source = read('.github/workflows/e2e-test.yml');
+  const e2e = yaml.load(source);
+  assert.deepEqual(Object.keys(e2e.on), ['schedule']);
+  assert.deepEqual(e2e.on.schedule, [{ cron: '0 18 * * *' }]);
+  assert.equal(
+    existsSync(fileURLToPath(new URL('.github/workflows/e2e-selected.yml', root))),
+    false,
   );
-  assert.match(e2e, /workflow_dispatch: \{\}/);
-  assert.match(e2e, /^ {2}push: \{ branches: \[main\] \}$/m);
-  assert.match(e2e, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
+  assert.match(source, /deferred: \$\{\{ steps\.select\.outputs\.full_validation_deferred \}\}/);
+  assert.match(source, /github\.event_name == 'schedule'/);
+  assert.match(source, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(source, /steps\.select\.outputs\.validation_tier == 'full'/);
+  assert.match(source, /steps\.select\.outputs\.selection_complete == 'true'/);
+  assert.match(source, /needs\.completeness\.result/);
+  const receipt = read('.github/actions/ios-e2e-validation-receipt/action.yml');
+  assert.match(receipt, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
+  assert.match(receipt, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
   assert.match(
-    e2e,
-    /github\.event_name == 'workflow_dispatch' && github\.ref != 'refs\/heads\/main'/,
-  );
-  assert.match(e2e, /metadata_only_edit != 'true'/);
-  assert.match(e2e, /needs\.completeness\.result/);
-  assert.match(e2e, /test "\$COMPLETE" = true[\s\S]*test "\$DIAGNOSTIC" != true/);
-  assert.match(e2e, /test "\$METADATA_ONLY_EDIT" != true \|\| test "\$REUSE_RESULT" = success/);
-  assert.match(
-    e2e,
+    source,
     /invalid_selection:.*complete != 'true'.*deferred == 'true'.*diagnostic == 'true'/,
   );
   const status = read('.github/workflows/ios-required-statuses.yml');
@@ -60,25 +64,25 @@ test('draft, metadata and diagnostic runs cannot satisfy the full integration ga
   assert.match(status, /process\.env\.REUSE_RESULT !== "success"/);
   assert.match(status, /EXECUTION_RESULT !== "success"/);
   assert.match(status, /An unselected E2E run must have no cohorts and no execution/);
-  assert.doesNotMatch(e2e, /detox-e2e-profile|run-detox/);
+  assert.doesNotMatch(source, /detox-e2e-profile|run-detox/);
   for (const path of ['code-quality.yml', 'unit-test.yml', 'policy-check.yml'])
     assert.match(read('.github/workflows/' + path), /types: \[opened, synchronize, reopened\]/);
 });
 
-test('manual focus uses exact integration selection and retains PR-scoped supersession', () => {
-  const selected = read('.github/workflows/e2e-selected.yml');
-  assert.match(selected, /selected:[\s\S]*uses: \.\/\.github\/workflows\/ios-focused\.yml/);
-  const focus = read('.github/workflows/ios-focused.yml');
-  assert.match(
-    focus,
-    /group: focused-ios-\$\{\{ inputs\.pr_number \|\| github\.run_id \}\}-scenario/,
+test('focused authentication workflow has no active public entry point', () => {
+  assert.equal(
+    existsSync(fileURLToPath(new URL('.github/workflows/e2e-selected.yml', root))),
+    false,
   );
+  const focus = read('.github/workflows/ios-focused.yml');
+  assert.match(focus, /^on:\n[ ]{2}workflow_call:/m);
+  assert.match(focus, /group: focused-ios-\$\{\{ github\.run_id \}\}-scenario/);
   assert.match(focus, /cancel-in-progress: true/);
   assert.match(focus, /ios-focused-selection-cli\.mjs/);
   assert.match(focus, /ios-focused-results\.mjs/);
   assert.doesNotMatch(focus, /ios-profile-status/);
-  const full = read('.github/workflows/e2e-test.yml');
-  assert.match(full, /workflow_dispatch: \{\}/);
-  assert.match(full, /github\.ref != 'refs\/heads\/main'/);
-  assert.match(full, /diagnostic:/);
+  const full = yaml.load(read('.github/workflows/e2e-test.yml'));
+  assert.deepEqual(Object.keys(full.on), ['schedule']);
+  assert.equal(full.jobs.debug_execution.uses, './.github/workflows/ios-debug-tests.yml');
+  assert.equal(full.jobs.release_execution.uses, './.github/workflows/ios-release-tests.yml');
 });
