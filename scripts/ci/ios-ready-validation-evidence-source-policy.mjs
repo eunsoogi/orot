@@ -9,6 +9,20 @@ const REQUIRED_SUCCESS_JOBS = [
   'Validate / Questions',
 ];
 const REUSE_JOB = 'Reuse / Ready evidence';
+const SKIPPED_READY_JOB_NAME_EXPRESSIONS = new Map([
+  [
+    'Plan / Coverage',
+    "github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Coverage' || 'Plan / Coverage'",
+  ],
+  [
+    'Validate',
+    "github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Completeness' || 'Validate'",
+  ],
+  [
+    REUSE_JOB,
+    "github.event_name == 'workflow_dispatch' && inputs.candidate_pr_number != '' && 'Candidate / Reuse Ready evidence' || 'Reuse / Ready evidence'",
+  ],
+]);
 const SELECTION_PREFIX = 'ios-e2e-selection-';
 const RESULTS_PREFIX = 'ios-e2e-results-';
 const RUN_ID = /^[1-9]\d*$/;
@@ -18,20 +32,28 @@ function reject(message) {
   throw new Error(message);
 }
 
-function exactJob(jobs, name) {
-  const matches = jobs.filter((job) => job.name === name);
+function exactJob(jobs, name, runEvent) {
+  const skippedExpression = SKIPPED_READY_JOB_NAME_EXPRESSIONS.get(name);
+  const matches = jobs.filter(
+    (job) =>
+      job.name === name ||
+      (runEvent === 'pull_request' &&
+        job.status === 'completed' &&
+        job.conclusion === 'skipped' &&
+        job.name === skippedExpression),
+  );
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-export function jobConclusion(jobs, name) {
-  const job = exactJob(jobs, name);
+export function jobConclusion(jobs, name, runEvent) {
+  const job = exactJob(jobs, name, runEvent);
   return job?.status === 'completed' ? job.conclusion : undefined;
 }
 
-// GitHub reports a skipped reusable workflow through its caller, without the child leaf job.
-export function completionConclusion(jobs) {
-  const leaf = exactJob(jobs, 'Validate / Complete');
-  const caller = exactJob(jobs, 'Validate');
+// Actions returns skipped expression-named jobs verbatim; only PR skips can represent Ready identities.
+export function completionConclusion(jobs, runEvent) {
+  const leaf = exactJob(jobs, 'Validate / Complete', runEvent);
+  const caller = exactJob(jobs, 'Validate', runEvent);
   if (Boolean(leaf) === Boolean(caller)) return undefined;
   if (caller)
     return caller.status === 'completed' && caller.conclusion === 'skipped' ? 'skipped' : undefined;
@@ -100,25 +122,28 @@ function matchesReadyRunContext(run, current) {
 }
 
 // Drafts publish Deferred jobs, metadata edits execute Reuse, and Ready runs skip Reuse.
-function sourceRunKind(jobs) {
+function sourceRunKind(jobs, run) {
   if (jobs.some((job) => job.name.startsWith('Deferred /'))) return 'deferred';
-  const reuse = exactJob(jobs, REUSE_JOB);
+  const reuse = exactJob(jobs, REUSE_JOB, run.event);
   if (!reuse || reuse.status !== 'completed') return 'incomplete';
   if (reuse.conclusion === 'skipped') return 'ready';
   return typeof reuse.conclusion === 'string' ? 'metadata' : 'incomplete';
 }
 
-function eligibleReadyJobs(jobs) {
-  if (REQUIRED_SUCCESS_JOBS.some((name) => jobConclusion(jobs, name) !== 'success')) return false;
-  if (!['success', 'skipped'].includes(jobConclusion(jobs, 'Plan / Coverage'))) return false;
-  return ['success', 'skipped'].includes(completionConclusion(jobs));
+function eligibleReadyJobs(jobs, run) {
+  if (REQUIRED_SUCCESS_JOBS.some((name) => jobConclusion(jobs, name, run.event) !== 'success'))
+    return false;
+  if (!['success', 'skipped'].includes(jobConclusion(jobs, 'Plan / Coverage', run.event)))
+    return false;
+  return ['success', 'skipped'].includes(completionConclusion(jobs, run.event));
 }
 
 function eligibleReadyArtifacts(run, jobs, artifacts) {
   const names = expectedArtifactNames(run);
   return (
     activeArtifact(artifacts, names.selection) &&
-    (completionConclusion(jobs) !== 'success' || activeArtifact(artifacts, names.results))
+    (completionConclusion(jobs, run.event) !== 'success' ||
+      activeArtifact(artifacts, names.results))
   );
 }
 
@@ -134,8 +159,8 @@ export function eligibleRun(run, jobs, artifacts, current) {
     matchesReadyRunContext(run, current) &&
     run.status === 'completed' &&
     run.conclusion === 'success' &&
-    sourceRunKind(jobs) === 'ready' &&
-    eligibleReadyJobs(jobs) &&
+    sourceRunKind(jobs, run) === 'ready' &&
+    eligibleReadyJobs(jobs, run) &&
     eligibleReadyArtifacts(run, jobs, artifacts)
   );
 }
@@ -168,13 +193,13 @@ export async function discoverReadyValidationCandidate(api, current) {
     });
   for (const run of ordered) {
     const jobs = await api.listJobs(run);
-    const kind = sourceRunKind(jobs);
+    const kind = sourceRunKind(jobs, run);
     if (kind === 'metadata' || kind === 'deferred') continue;
     if (kind !== 'ready')
       reject(
         'A newer E2E run has no completed Ready source classification; older evidence cannot be reused',
       );
-    if (run.status !== 'completed' || run.conclusion !== 'success' || !eligibleReadyJobs(jobs))
+    if (run.status !== 'completed' || run.conclusion !== 'success' || !eligibleReadyJobs(jobs, run))
       reject(
         'The newest Ready validation failed or is incomplete; older evidence cannot be reused',
       );

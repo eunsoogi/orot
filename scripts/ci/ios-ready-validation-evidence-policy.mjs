@@ -62,8 +62,8 @@ function validateSelectionReport(selection, candidate, current) {
     selection.notSelectedCohorts,
   );
   const selected = selection.selectedCohorts;
-  const plan = jobConclusion(candidate.jobs, 'Plan / Coverage');
-  const complete = completionConclusion(candidate.jobs);
+  const plan = jobConclusion(candidate.jobs, 'Plan / Coverage', candidate.run.event);
+  const complete = completionConclusion(candidate.jobs, candidate.run.event);
   if (selected.length > 0) {
     if (
       plan !== 'success' ||
