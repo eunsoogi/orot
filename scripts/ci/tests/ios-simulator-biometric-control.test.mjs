@@ -160,3 +160,39 @@ test('a failed Device Hub action stops the protected test instead of leaving it 
 
   assert.equal(cancelled, 1);
 });
+
+test('an authorization input completed after the protected test cannot count as proof', async () => {
+  let finishTest;
+  let finishInput;
+  let markInputStarted;
+  let sentCount = 0;
+  const testRun = new Promise((resolve) => {
+    finishTest = resolve;
+  });
+  const authorizationInput = new Promise((resolve) => {
+    finishInput = resolve;
+  });
+  const inputStarted = new Promise((resolve) => {
+    markInputStarted = resolve;
+  });
+
+  const outcome = runWithFaceIdAuthorizationInput({
+    runTest: () => testRun,
+    sendAuthorizationInput() {
+      markInputStarted();
+      return authorizationInput;
+    },
+    onInputSent: () => {
+      sentCount += 1;
+    },
+    intervalMs: 2,
+  });
+
+  await inputStarted;
+  finishTest(0);
+  await new Promise((resolve) => setImmediate(resolve));
+  finishInput();
+
+  await assert.rejects(outcome, /completed without a Face ID authorization input/);
+  assert.equal(sentCount, 0);
+});

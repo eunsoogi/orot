@@ -20,7 +20,7 @@ export function launchFaceIdOwnerApp(owner, { execFile = execFileSync, deviceHub
   return output.trim();
 }
 
-/** Keep sending documented authorization input while XCTest runs; the tests prove the Keychain result. */
+/** Keep documented authorization input tied to the active XCTest process; the tests prove the Keychain result. */
 export async function runWithFaceIdAuthorizationInput({
   runTest,
   sendAuthorizationInput,
@@ -44,10 +44,22 @@ export async function runWithFaceIdAuthorizationInput({
   let activeAction;
   let cancelled = false;
   let matching = true;
+  let testFinished = false;
   const controlFailurePromise = new Promise((_, reject) => {
     rejectControlFailure = reject;
   });
-  const testPromise = Promise.resolve().then(runTest);
+  const testPromise = Promise.resolve()
+    .then(runTest)
+    .then(
+      (result) => {
+        testFinished = true;
+        return result;
+      },
+      (error) => {
+        testFinished = true;
+        throw error;
+      },
+    );
   const resultPromise = Promise.race([testPromise, controlFailurePromise]);
   const cancel = async (error) => {
     if (cancelled) return;
@@ -55,10 +67,15 @@ export async function runWithFaceIdAuthorizationInput({
     await cancelTest(error);
   };
   const sendMatch = () => {
-    if (!matching || activeAction) return activeAction;
+    if (!matching || testFinished || activeAction) return activeAction;
     activeAction = Promise.resolve()
-      .then(sendAuthorizationInput)
       .then(() => {
+        if (!matching || testFinished) return;
+        return sendAuthorizationInput();
+      })
+      .then(() => {
+        // A delayed host UI action is not evidence once the protected test exits.
+        if (!matching || testFinished) return;
         inputCount += 1;
         onInputSent(inputCount);
       })
@@ -75,8 +92,8 @@ export async function runWithFaceIdAuthorizationInput({
   let timer;
 
   try {
-    // Start the first menu action as soon as the selected test process exists, then cover any prompt delay.
-    await sendMatch();
+    // Observe XCTest independently so a slow first menu action cannot hide test completion.
+    void sendMatch();
     timer = setInterval(() => void sendMatch(), intervalMs);
     const result = await resultPromise;
     if (result === 0 && inputCount === 0)
@@ -154,7 +171,9 @@ async function runAuthenticationSelection(profile, testRun, ownerPath, directory
     appendControlLog(controlLog, `FACE_ID_ACTION_BEGIN action=${action} udid=${owner.udid}`);
     try {
       await runDeviceHubFaceIdAction(action, owner);
-      appendControlLog(controlLog, `FACE_ID_ACTION_SENT action=${action} udid=${owner.udid}`);
+      // Authorization is recorded by onInputSent only after the active-test check.
+      if (action === 'enroll')
+        appendControlLog(controlLog, `FACE_ID_ACTION_SENT action=${action} udid=${owner.udid}`);
     } catch (error) {
       appendControlLog(
         controlLog,
