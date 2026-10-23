@@ -1,8 +1,9 @@
 import { runIosSimulatorCommand, verifyIosTestSimulator } from './ios-test-simulator.mjs';
+import { verifyIosSimulatorOwnerContract } from './ios-test-cohorts.mjs';
 
 const bundleIdentifier = 'com.orot.mobile';
 
-/** Query only the owned bundle; enumeration of every installed app is unrelated to the reset boundary. */
+/** Query the exact bundle directly; state changes and cleanup receipts retain fresh live ownership checks. */
 function hasInstalledApp(simctl) {
   try {
     const container = simctl('get_app_container', bundleIdentifier, 'app').trim();
@@ -63,8 +64,20 @@ export function resetIosTestFixtureContainer(
   if (preserveKeychain && profile !== 'backup')
     throw new Error('Only backup snapshot restore may retain fixture Keychain state');
   function simctl(...args) {
-    if (verifyIosTestSimulator(owner, profile).state !== 'Booted')
+    const readsOwnedAppContainer =
+      args.length === 4 &&
+      args[0] === 'get_app_container' &&
+      typeof owner.udid === 'string' &&
+      owner.udid.length > 0 &&
+      args[1] === owner.udid &&
+      args[2] === bundleIdentifier &&
+      args[3] === 'app';
+    if (readsOwnedAppContainer) {
+      // This read only identifies the exact app container; each following reset mutation is checked live.
+      verifyIosSimulatorOwnerContract(owner, profile);
+    } else if (verifyIosTestSimulator(owner, profile).state !== 'Booted') {
       throw new Error('Fixture reset requires its booted owned destination');
+    }
     // Wait for public command completion instead of imposing an unrelated per-command deadline.
     return runIosSimulatorCommand(args).trim();
   }

@@ -13,6 +13,7 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
 
     enum Phase { case generating, waiting, draining, terminated }
     typealias Response = [String: Any]
+    typealias WatchdogScheduler = (DispatchWorkItem, TimeInterval) -> Void
     private let lock = NSLock()
     private var phase = Phase.generating
     private var reply: CheckedContinuation<Response, Error>?
@@ -23,15 +24,24 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
     private var call: Response?
     private var terminalError: Error?
     private let timeoutSeconds: TimeInterval?
+    // Keeps production scheduling on Dispatch while letting lifecycle tests advance deadlines virtually.
+    private let watchdogScheduler: WatchdogScheduler
     let requestId: String
     // This is application correlation identity, never an SDK-generated transcript ID.
     let callId: String
     let onTermination: () -> Void
 
     /// Interactive work ends through caller cancellation; finite watchdogs are explicit opt-ins.
-    init(requestId: String, timeoutSeconds: TimeInterval? = nil, onTermination: @escaping () -> Void) {
+    /// The scheduler seam lets tests exercise deadline behavior without a wall-clock wait.
+    init(requestId: String, timeoutSeconds: TimeInterval? = nil,
+         watchdogScheduler: @escaping WatchdogScheduler = { item, interval in
+             DispatchQueue.global().asyncAfter(deadline: .now() + interval, execute: item)
+         },
+         onTermination: @escaping () -> Void)
+    {
         self.requestId = requestId
         self.timeoutSeconds = timeoutSeconds
+        self.watchdogScheduler = watchdogScheduler
         callId = requestId + "-bridge-tool-" + UUID().uuidString
         self.onTermination = onTermination
     }
@@ -56,7 +66,7 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
                 }
                 lock.unlock()
                 if let timeout, let timeoutSeconds {
-                    DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: timeout)
+                    watchdogScheduler(timeout, timeoutSeconds)
                 }
             }
         } onCancel: { self.cancel(CancellationError()) }

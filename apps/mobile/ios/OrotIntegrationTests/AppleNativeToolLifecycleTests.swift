@@ -110,14 +110,33 @@ final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
         generation.cancel()
 
         // Interactive requests have no elapsed cutoff while a user reviews consent or a tool result.
-        let interactive = AppleNativeToolGeneration(requestId: "interactive", onTermination: {})
+        let clock = ManualWatchdogScheduler()
+        let interactive = AppleNativeToolGeneration(requestId: "interactive", watchdogScheduler: { item, interval in
+            clock.schedule(item, after: interval)
+        }, onTermination: {})
         defer { interactive.cancel() }
         _ = try await interactive.start {
             _ = try await interactive.invoke(name: "search", arguments: [:])
             return [:]
         }
-        try await Task.sleep(nanoseconds: 91_000_000_000)
+        XCTAssertEqual(clock.scheduledCount, 0, "A default generation must not schedule an elapsed deadline")
+        clock.advance(by: 91)
         XCTAssertTrue(interactive.hasInvokedTool(), "A default generation must remain owned until caller cancellation")
+
+        let deadlineClock = ManualWatchdogScheduler()
+        let finite = AppleNativeToolGeneration(requestId: "virtual-deadline", timeoutSeconds: 90,
+                                               watchdogScheduler: { item, interval in
+                                                   deadlineClock.schedule(item, after: interval)
+                                               }, onTermination: {})
+        defer { finite.cancel() }
+        let finiteResponse = try await finite.start {
+            _ = try await finite.invoke(name: "search", arguments: [:])
+            return [:]
+        }
+        XCTAssertEqual(finiteResponse["finishReason"] as? String, "tool_calls")
+        XCTAssertEqual(deadlineClock.scheduledCount, 1)
+        deadlineClock.advance(by: 91)
+        XCTAssertFalse(finite.hasInvokedTool(), "The virtual clock must fire a configured 90-second deadline")
     }
 
     func testParallelCallbackFailsWithoutPublishingAnotherTool() async throws {
@@ -132,5 +151,33 @@ final class AppleNativeToolLifecycleTests: OrotFailFastTestCase {
         let call = try XCTUnwrap((response["toolCalls"] as? [[String: Any]])?.first)
         XCTAssertTrue(generation.hasInvokedTool(), "The accepted callback must remain owned")
         try await generation.consume(call: call, result: ["sourceIds": ["source-1"]])
+    }
+}
+
+/// Advances scheduled watchdogs deterministically without making tests wait on wall-clock time.
+private final class ManualWatchdogScheduler {
+    private let lock = NSLock()
+    private var elapsedTime: TimeInterval = 0
+    private var scheduled: [(deadline: TimeInterval, item: DispatchWorkItem)] = []
+
+    var scheduledCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return scheduled.count
+    }
+
+    func schedule(_ item: DispatchWorkItem, after interval: TimeInterval) {
+        lock.lock()
+        scheduled.append((deadline: elapsedTime + interval, item: item))
+        lock.unlock()
+    }
+
+    func advance(by interval: TimeInterval) {
+        lock.lock()
+        elapsedTime += interval
+        let due = scheduled.filter { $0.deadline <= elapsedTime }.map(\.item)
+        scheduled.removeAll { $0.deadline <= elapsedTime }
+        lock.unlock()
+        due.forEach { $0.perform() }
     }
 }

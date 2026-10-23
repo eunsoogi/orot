@@ -2,13 +2,19 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { iosTestConfig } from '../ios-test-config.mjs';
+import { iosTestConfig, iosXcodeDeveloperDirectory } from '../ios-test-config.mjs';
 
 /** These are transport fixtures, not compiled binaries or authentic hosted-run evidence. */
-export function createProductFixture(profile = 'core') {
+export function createProductFixture(profile = 'core', toolchainOverrides = {}) {
   const root = mkdtempSync(join(tmpdir(), 'ios-product-fixture-'));
   const bin = join(root, 'bin');
   mkdirSync(bin);
+  const spec = iosTestConfig(profile);
+  const xcodeVersion = toolchainOverrides.xcodeVersion ?? spec.xcode;
+  const sdkVersion = toolchainOverrides.sdkVersion ?? spec.sdk;
+  const developerDirectory = toolchainOverrides.developerDirectory ?? iosXcodeDeveloperDirectory;
+  const platform = toolchainOverrides.platform ?? 'Darwin';
+  const architecture = toolchainOverrides.architecture ?? 'arm64';
   const originalDirectory = process.cwd();
   const originalPath = process.env.PATH;
   function command(name, body) {
@@ -16,15 +22,18 @@ export function createProductFixture(profile = 'core') {
   }
   command(
     'xcodebuild',
-    'test "$1" = -version || exit 17\nprintf "Xcode 27.0\\nBuild version 27A266a\\n"',
+    `test "$1" = -version || exit 17\nprintf "Xcode ${xcodeVersion}\\nBuild version ${toolchainOverrides.xcodeBuildVersion ?? 'fixture'}\\n"`,
   );
   command(
     'xcrun',
-    'if test "$1" = --sdk; then printf "27.0\\n"; elif test "$1" = lipo; then printf "arm64\\n"; else exit 17; fi',
+    `if test "$1" = --sdk; then printf "${sdkVersion}\\n"; elif test "$1" = lipo; then printf "${architecture}\\n"; else exit 17; fi`,
   );
-  command('uname', 'if test "$1" = -s; then printf "Darwin\\n"; else printf "arm64\\n"; fi');
+  command(
+    'uname',
+    `if test "$1" = -s; then printf "${platform}\\n"; else printf "${architecture}\\n"; fi`,
+  );
   command('sw_vers', 'printf "27.0.1\\n"');
-  command('xcode-select', 'printf "/Applications/Xcode.app/Contents/Developer\\n"');
+  command('xcode-select', `printf "${developerDirectory}\\n"`);
   command('plutil', 'for argument in "$@"; do candidate="$argument"; done\ncat "$candidate"');
   const source = join(root, 'source');
   mkdirSync(join(source, 'apps/mobile/ios'), { recursive: true });
@@ -39,7 +48,7 @@ export function createProductFixture(profile = 'core') {
     execFileSync('git', args, { cwd: source });
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim();
   const products = join(root, 'input-products');
-  const configuration = iosTestConfig(profile).configuration + '-iphonesimulator';
+  const configuration = spec.configuration + '-iphonesimulator';
   const app = `__TESTROOT__/${configuration}/Orot.app`;
   const runner = `__TESTROOT__/${configuration}/OrotUITests-Runner.app`;
   const dependencies = [
@@ -76,7 +85,7 @@ export function createProductFixture(profile = 'core') {
   };
   mkdirSync(products);
   writeFileSync(
-    join(products, 'OrotTests_iphonesimulator27.0-arm64.xctestrun'),
+    join(products, `OrotTests_iphonesimulator${spec.sdk}-${spec.architecture}.xctestrun`),
     JSON.stringify(testRun),
   );
   for (const path of [
@@ -92,6 +101,7 @@ export function createProductFixture(profile = 'core') {
   process.chdir(source);
   const env = {
     ...process.env,
+    DEVELOPER_DIR: developerDirectory,
     GITHUB_ACTIONS: 'true',
     GITHUB_SHA: sha,
     GITHUB_RUN_ID: '12345',

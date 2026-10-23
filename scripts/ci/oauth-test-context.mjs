@@ -1,8 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import {
+  iosSimulatorSdk,
+  iosXcodeDeveloperDirectory,
+  iosXcodeVersion,
+} from './ios-test-config.mjs';
 
 const packagePath = 'packages/provider-openai';
-const command = (program, args) => execFileSync(program, args, { encoding: 'utf8' }).trim();
+const command = (program, args, env = process.env) =>
+  execFileSync(program, args, { encoding: 'utf8', env }).trim();
 
 /** OAuth products bind the package's committed inputs, not integration-app flags or another workflow attempt. */
 export function oauthInputDigest(root = process.cwd()) {
@@ -23,6 +29,39 @@ export function oauthInputDigest(root = process.cwd()) {
   return hash.digest('hex');
 }
 
+/** Reject stale or differently selected tools before OAuth products can be transferred or executed. */
+export function assertOAuthToolchain(toolchain) {
+  const actualXcode =
+    typeof toolchain.xcode === 'string' ? toolchain.xcode.split('\n')[0] : String(toolchain.xcode);
+  const expected =
+    'Xcode ' +
+    iosXcodeVersion +
+    ', iOS Simulator SDK ' +
+    iosSimulatorSdk +
+    ', platform Darwin, architecture arm64, developer directory ' +
+    iosXcodeDeveloperDirectory;
+  const actual =
+    actualXcode +
+    ', iOS Simulator SDK ' +
+    toolchain.sdk +
+    ', platform ' +
+    toolchain.platform +
+    ', architecture ' +
+    toolchain.architecture +
+    ', developer directory ' +
+    (toolchain.developerDirectory || '(unset)');
+  if (
+    actualXcode !== 'Xcode ' + iosXcodeVersion ||
+    toolchain.sdk !== iosSimulatorSdk ||
+    toolchain.platform !== 'Darwin' ||
+    toolchain.architecture !== 'arm64' ||
+    toolchain.developerDirectory !== iosXcodeDeveloperDirectory
+  )
+    throw new Error(
+      'OAuth product toolchain mismatch: expected ' + expected + '; actual ' + actual,
+    );
+}
+
 export function oauthTestContext(env = process.env) {
   const sourceSha = command('git', ['rev-parse', 'HEAD']);
   if (
@@ -36,17 +75,15 @@ export function oauthTestContext(env = process.env) {
   if (command('git', ['status', '--porcelain', '--untracked-files=all', '--', packagePath]))
     throw new Error('OAuth package inputs differ from the committed head');
   const toolchain = {
-    xcode: command('xcodebuild', ['-version']),
-    swift: command('swift', ['--version']),
-    macOS: command('sw_vers', ['-productVersion']),
-    architecture: command('uname', ['-m']),
+    xcode: command('xcodebuild', ['-version'], env),
+    sdk: command('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version'], env),
+    swift: command('swift', ['--version'], env),
+    macOS: command('sw_vers', ['-productVersion'], env),
+    platform: process.platform === 'darwin' ? 'Darwin' : process.platform,
+    architecture: command('uname', ['-m'], env),
+    developerDirectory: env.DEVELOPER_DIR ?? '',
   };
-  if (
-    process.platform !== 'darwin' ||
-    toolchain.xcode.split('\n')[0] !== 'Xcode 27.0' ||
-    toolchain.architecture !== 'arm64'
-  )
-    throw new Error('OAuth product toolchain mismatch');
+  assertOAuthToolchain(toolchain);
   return {
     sourceSha,
     runId: env.GITHUB_RUN_ID,

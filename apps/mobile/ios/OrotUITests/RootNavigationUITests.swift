@@ -93,7 +93,9 @@ final class RootNavigationUITests: OrotFailFastTestCase {
             captureNavigationObservation(app, "final-edge-back-observation")
             app.terminate()
         }
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
+        // This React Native text header has a native StaticText trait; use its typed XCTest query on startup.
+        let welcomeTitle = app.staticTexts.matching(identifier: "welcome-title").firstMatch
+        XCTAssertTrue(UITestConditions.exists(welcomeTitle))
         try NavigationUITestConditions.openTab(app, "ai", markers: ["ai-features-screen"])
         let action = UITestConditions.element(app, "ai-feature-visit-questions")
         FormUITestConditions.reveal(action, in: app, scrollID: "ai-features-screen", towardTop: true)

@@ -13,7 +13,7 @@ Orot은 `apps/mobile`의 iOS 앱과 루트 pnpm workspace로 구성되어 있습
 | pnpm                                                | 12.3.4                                             |
 | React Native / React                                | 0.87.1 / 19.2.3                                    |
 | Jest / React Native Testing Library / test-renderer | 29.7.0 / 14.0.1 / 1.2.0                            |
-| Xcode                                               | 27.0                                               |
+| Xcode                                               | 27.1                                               |
 | Ruby / CocoaPods                                    | 4.0.7 / 1.17.0 (Homebrew)                          |
 
 iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런타임을 설치하세요. CocoaPods가 없다면 `brew install cocoapods`로 설치합니다.
@@ -21,7 +21,7 @@ iOS 빌드와 iOS 테스트를 실행하기 전에 Xcode에서 iOS Simulator 런
 `xcode-select -p`가 Command Line Tools 경로를 가리키면 Xcode 개발자 디렉터리를 지정해 의존성을 설치하고 iOS 명령을 실행하세요.
 
 ```sh
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer
 ```
 
 ## 설치 및 검사
@@ -75,12 +75,12 @@ GitHub가 제공하는 임시 macOS 러너에서는 checkout 직후, 도구 설�
 ```sh
 node scripts/ci/build-ios-tests.mjs core build/integration-tests-release
 node scripts/ci/ios-test-simulator.mjs prepare core build/ios-core-owner.json
-node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
-node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
-node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
-OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
+node scripts/ci/run-ios-state-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-persistence && \
+node scripts/ci/run-ios-fixture-isolation-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-isolation && \
+node scripts/ci/run-ios-recording-persistence-tests.mjs build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-recording-persistence && \
+OROT_IOS_TEST_SUITE=integration node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-integration.xcresult && \
 OROT_IOS_TEST_SUITE=integration node scripts/ci/ios-test-results.mjs core build/ios-core-integration.xcresult build/ios-core-integration-results.json && \
-OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.0-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
+OROT_IOS_TEST_SUITE=ui node scripts/ci/run-ios-tests.mjs core build/integration-tests-release/Build/Products/OrotTests_iphonesimulator27.1-arm64.xctestrun build/ios-core-owner.json build/ios-core-ui.xcresult && \
 OROT_IOS_TEST_SUITE=ui node scripts/ci/ios-test-results.mjs core build/ios-core-ui.xcresult build/ios-core-ui-results.json
 node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 ```
@@ -89,7 +89,7 @@ node scripts/ci/ios-test-simulator.mjs cleanup core build/ios-core-owner.json
 
 Speech 자산 준비는 설치를 한 번 요청하고 실제 완료·오류·취소를 기다립니다. 테스트 준비용 180초 제한은 두지 않습니다. 요청 직전과 성공·실패 시점의 공개 `Progress` 수치를 첨부하며, 이 단위를 다운로드 바이트나 설치 성공으로 해석하지 않습니다. 준비 실행 중에는 소유 Simulator의 Orot 진단과 관측된 자산·Speech 프로세스의 공개 로그를 최대 8 MiB까지 보존합니다. 수집기 자체에 90분 상한을 두고 테스트 종료 시 해당 자식 프로세스만 정리합니다. 수집 실패·잘림·종료 확인 실패는 별도로 기록하며 원래 테스트 결과를 바꾸지 않습니다.
 
-테스트 실행은 `-test-timeouts-enabled NO`를 명시하고 사례별 실행 허용 시간을 지정하지 않습니다. UI 조건·native broker·asset 설치·앱 receipt·일반 준비 명령은 실제 결과를 기다립니다. UI의 50ms run-loop 양보와 receipt의 50ms 확인 간격은 관측 주기이며 완료 제한이 아닙니다. receipt를 기다리는 동안 소유권과 `simctl launch`가 반환한 실제 PID의 생존을 확인하고, 다른 PID의 receipt·프로세스 종료·오류는 실패합니다. 끝나지 않은 조건을 성공으로 처리하지 않습니다. Apple 내부 접근성 IPC의 자체 중단·runner crash는 이 정책으로 해결됐다고 해석하지 않습니다.
+테스트 실행은 `-test-timeouts-enabled NO`를 명시하고 사례별 실행 허용 시간을 지정하지 않습니다. UI 조건·native broker·asset 설치·앱 receipt·일반 준비 명령은 실제 결과를 기다립니다. UI의 50ms run-loop 양보와 receipt의 50ms 확인 간격은 관측 주기이며 완료 제한이 아닙니다. receipt 대기 중에는 현재 토큰의 receipt 존재 여부와 `simctl launch`가 반환한 실제 PID의 생존을 반복 확인합니다. receipt를 읽고 검증·삭제하기 직전에는 새 `simctl list -j` 결과로 승인 runtime, 기기 이름·UDID·유형 ID와 `Booted` 상태를 확인하고, 각 Simulator 변경 명령 직전에도 소유권을 새로 확인합니다. 소유권 또는 부팅 손실, 다른 PID의 receipt, 프로세스 종료와 오류는 실패합니다. 끝나지 않은 조건을 성공으로 처리하지 않습니다. Apple 내부 접근성 IPC의 자체 중단·runner crash는 이 정책으로 해결됐다고 해석하지 않습니다.
 
 공통 XCTest 준비·종료 단계는 호스트 소켓 대기를 별도 작업에서 수행해 메인 실행 흐름의 앱 상태 통지를 막지 않습니다. UI fixture 준비는 호스트 응답 뒤에도 XCTest가 `com.orot.mobile`의 `.notRunning` 상태를 직접 관측해야 본문에 진입합니다. 호스트 명령 완료와 XCTest의 상태 반영은 서로 다른 경계입니다. 이 관측에는 경과 시간 제한이나 앱 실행 재시도를 추가하지 않습니다. 실제 XCTest를 사용하는 메인 실행 흐름 회귀 검사는 macOS와 Xcode에서 `node --test scripts/ci/tests/ios-test-fixture-runloop.test.mjs`로 실행합니다. Apple XCTest가 없는 Linux에서는 이 검사만 실행하지 않으며, 현재 iOS 86개 사례의 필수 실행에는 영향을 주지 않습니다.
 
